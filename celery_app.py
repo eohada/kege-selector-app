@@ -34,9 +34,10 @@ def make_celery(app=None):
         from wsgi import app as flask_app
         app = flask_app
 
+    is_local = (os.environ.get('ENVIRONMENT') or 'local') == 'local'
     celery.conf.update(
-        broker_url=app.config.get('CELERY_BROKER_URL', 'redis://localhost:6379/0'),
-        result_backend=app.config.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'),
+        broker_url=app.config.get('CELERY_BROKER_URL', 'redis://localhost:6379/0') if not is_local else 'memory://',
+        result_backend=None if is_local else app.config.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'),
         task_serializer='json',
         result_serializer='json',
         accept_content=['json'],
@@ -46,6 +47,8 @@ def make_celery(app=None):
         task_soft_time_limit=90,
         worker_prefetch_multiplier=1,
         worker_max_tasks_per_child=100,
+        task_always_eager=is_local,
+        task_ignore_result=is_local,
     )
 
     beat = dict(app.config.get('CELERY_BEAT_SCHEDULE') or {})

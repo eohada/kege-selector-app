@@ -1,0 +1,29 @@
+{% if session.get('impersonator_id') %}
+<!-- IMPERSONATION BANNER -->
+<div id="impersonation-banner" class="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-slate-950 px-4 py-2 text-xs font-black flex items-center justify-between shadow-lg">
+    <div class="flex items-center gap-2">
+        <i class="ph-bold ph-user-switch text-base"></i>
+        <span>🎭 ВЫ НАХОДИТЕСЬ В РЕЖИМЕ ИМПЕРСОНАЦИИ ({{ current_user.username }} / {{ current_user.role }})</span>
+    </div>
+    <a href="/admin/impersonate/exit" class="px-3 py-1 bg-slate-950 hover:bg-slate-800 text-white rounded-lg transition-all font-bold no-underline flex items-center gap-1.5">
+        <span>❌ Вернуться в свой аккаунт (Ctrl+Alt+I)</span>
+    </a>
+</div>
+{% endif %}
+
+<!-- GLOBAL SHORTCUT FOR IMPERSONATION (Ctrl + Alt + I) -->
+<script>
+(function initImpersonationShortcut() {
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш')) {
+            e.preventDefault();
+            const isImpersonating = {{ 'true' if session.get('impersonator_id') else 'false' }};
+            if (isImpersonating) {
+                window.location.href = '/admin/impersonate/exit';
+            } else {
+                window.location.href = '/admin/qa';
+            }
+        }
+    });
+})();
+</script>

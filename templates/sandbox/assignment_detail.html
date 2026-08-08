@@ -1,0 +1,183 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+{% set total_students = counts.total if counts is defined else (submissions|length) %}
+{% set progress_done = ((counts.submitted if counts is defined else 0) + (counts.graded if counts is defined else 0) + (counts.returned if counts is defined else 0)) %}
+{% set progress_percent = ((progress_done * 100 / total_students)|round(1)) if total_students else 0 %}
+
+<!-- Единый холст без внутренних оберток со скроллом (Canvas) -->
+<main class="min-h-screen w-full relative z-10 bg-slate-50/50 p-6 pl-[7.5rem] pb-24">
+  <div class="max-w-[1400px] mx-auto w-full space-y-6">
+
+    <!-- 1. ИНФО-ШАПКА РАБОТЫ (Tactile 3D Card Header Plate) -->
+    <div class="w-full bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 relative overflow-hidden space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between items-start gap-4 relative z-10 w-full">
+          <div>
+              <a href="/assignments" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors no-underline mb-3">
+                <i class="ph-bold ph-arrow-left"></i> Назад к списку
+              </a>
+              <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display mb-3">
+                {{ assignment.title }}
+              </h1>
+              <div class="flex items-center gap-2 flex-wrap">
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                      {% if assignment.assignment_type == 'homework' %}ДЗ
+                      {% elif assignment.assignment_type == 'classwork' %}КР
+                      {% elif assignment.assignment_type == 'exam' %}Проверочная
+                      {% elif assignment.assignment_type == 'test' %}Тест
+                      {% elif assignment.assignment_type == 'manual_review' %}Без ответов
+                      {% else %}{{ assignment.assignment_type }}{% endif %}
+                  </span>
+                  
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
+                    <i class="ph-bold ph-clock text-indigo-500"></i> Дедлайн: {{ assignment_deadline_display if assignment_deadline_display is defined else (assignment.deadline.strftime('%d.%m.%Y %H:%M') if assignment.deadline else 'без дедлайна') }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
+                    <i class="ph-bold ph-list-numbers text-indigo-500"></i> Задач: {{ assignment.tasks|length }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
+                    <i class="ph-bold ph-arrow-counter-clockwise text-indigo-500"></i> Попыток: {{ assignment.max_attempts_default or 1 }}
+                  </span>
+                  <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
+                    <i class="ph-bold ph-users text-indigo-500"></i> Учеников: {{ total_students }}
+                  </span>
+              </div>
+          </div>
+          
+          <div class="flex flex-col items-end gap-3">
+              {% if can_manage %}
+              <div class="flex items-center gap-2">
+                  <a href="/assignments/{{ assignment.assignment_id }}/edit" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline">
+                      <i class="ph-bold ph-pencil-simple text-sm"></i> Редактировать
+                  </a>
+                  <button type="button" onclick="duplicateAssignment({{ assignment.assignment_id }})" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline cursor-pointer border-none">
+                      <i class="ph-bold ph-copy text-sm"></i> Дублировать
+                  </button>
+                  {% if assignment.is_active %}
+                  <button type="button" onclick="archiveAssignment({{ assignment.assignment_id }})" class="btn-3d bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-xs px-5 py-3 rounded-xl border border-rose-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline cursor-pointer border-none">
+                      <i class="ph-bold ph-archive text-sm text-rose-600"></i> В архив
+                  </button>
+                  {% endif %}
+              </div>
+              {% endif %}
+              <a href="/assignments/{{ assignment.assignment_id }}/queue?status=submitted" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline w-full justify-center">
+                  <i class="ph-bold ph-check-circle text-sm text-indigo-300"></i> Очередь проверки
+              </a>
+          </div>
+      </div>
+
+      <div class="mt-6 pt-6 border-t border-slate-200/80">
+          <div class="flex justify-between items-end gap-4 mb-2">
+              <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Прогресс выполнения (сдано {{ progress_done }} из {{ total_students }})</span>
+              <span class="font-black text-slate-900">{{ progress_percent }}%</span>
+          </div>
+          <!-- Concave Progress Bar -->
+          <div class="w-full bg-slate-200 rounded-full h-3 border border-slate-300 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] relative">
+              <div class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: {{ progress_percent }}%"></div>
+          </div>
+      </div>
+    </div>
+
+    <!-- 2. Pill-Tabs Controller (Фильтры по статусам) -->
+    <div class="flex flex-col sm:flex-row items-center justify-between p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] overflow-x-auto hide-scrollbar gap-2">
+      <div class="flex items-center gap-1 w-full overflow-x-auto">
+        <a href="?status=all" class="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors no-underline cursor-pointer {% if status_filter == 'all' or not status_filter %}bg-indigo-600 text-white shadow-md{% else %}text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900{% endif %}">
+          Все сдачи
+        </a>
+        <a href="?status=needs_grading" class="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors no-underline cursor-pointer {% if status_filter == 'needs_grading' %}bg-indigo-600 text-white shadow-md{% else %}text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900{% endif %}">
+          Нужно проверить
+          <span class="w-5 h-5 rounded-full {% if status_filter == 'needs_grading' %}bg-indigo-500 border-indigo-400 text-white{% else %}bg-indigo-100 border border-indigo-200 text-indigo-700{% endif %} flex justify-center items-center text-[10px] font-black">{{ (counts.needs_grading if counts is defined else 0) }}</span>
+        </a>
+        <a href="?status=pending" class="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors no-underline cursor-pointer {% if status_filter == 'pending' %}bg-indigo-600 text-white shadow-md{% else %}text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900{% endif %}">
+          Не сдано / В процессе
+          <span class="w-5 h-5 rounded-full {% if status_filter == 'pending' %}bg-indigo-500 border-indigo-400 text-white{% else %}bg-indigo-100 border border-indigo-200 text-indigo-700{% endif %} flex justify-center items-center text-[10px] font-black">{{ (counts.in_progress if counts is defined else 0) + (counts.assigned if counts is defined else 0) }}</span>
+        </a>
+        <a href="?status=returned" class="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors no-underline cursor-pointer {% if status_filter == 'returned' %}bg-indigo-600 text-white shadow-md{% else %}text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900{% endif %}">
+          На доработке
+          <span class="w-5 h-5 rounded-full {% if status_filter == 'returned' %}bg-indigo-500 border-indigo-400 text-white{% else %}bg-indigo-100 border border-indigo-200 text-indigo-700{% endif %} flex justify-center items-center text-[10px] font-black">{{ (counts.returned if counts is defined else 0) }}</span>
+        </a>
+        <a href="?status=graded" class="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 whitespace-nowrap transition-colors no-underline cursor-pointer {% if status_filter == 'graded' %}bg-indigo-600 text-white shadow-md{% else %}text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900{% endif %}">
+          Проверено
+          <span class="w-5 h-5 rounded-full {% if status_filter == 'graded' %}bg-indigo-500 border-indigo-400 text-white{% else %}bg-indigo-100 border border-indigo-200 text-indigo-700{% endif %} flex justify-center items-center text-[10px] font-black">{{ (counts.graded if counts is defined else 0) }}</span>
+        </a>
+      </div>
+      
+      <form method="GET" class="flex-shrink-0 flex items-center gap-2 w-full sm:w-auto px-2 pb-2 sm:p-0 sm:pr-2">
+          <input type="hidden" name="status" value="{{ status_filter }}">
+          <div class="relative w-full sm:w-64">
+              <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+              <input class="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 font-medium text-slate-700 text-sm focus:outline-none focus:border-indigo-500 shadow-sm transition-colors" id="student" name="student" value="{{ student_query }}" placeholder="Поиск ученика...">
+          </div>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2.5 rounded-xl shadow-[0_2px_5px_rgba(79,70,229,0.2)] transition-all cursor-pointer border-none text-xs">
+              Найти
+          </button>
+      </form>
+    </div>
+
+    <!-- 3. Списки сдач (Tactile 3D Cards) -->
+    <div class="grid grid-cols-1 gap-4">
+      {% for sub in submissions %}
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-transform hover:-translate-y-[2px]">
+          <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-[1rem] bg-white border-2 border-slate-200 flex items-center justify-center shrink-0 shadow-sm overflow-hidden relative">
+                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ sub.student.user.full_name or sub.student.user.username }}&backgroundColor=e0f2fe" class="w-full h-full object-cover">
+              </div>
+              <div>
+                  <h3 class="text-lg font-black text-slate-800 tracking-tight">{{ sub.student.user.full_name or sub.student.user.username }}</h3>
+                  <div class="flex items-center gap-2 mt-1 flex-wrap">
+                      {% if sub.status in ['COMPLETED', 'CHECKED', 'GRADED'] %}
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded text-[10px] font-black uppercase tracking-wider">
+                          <i class="ph-bold ph-check"></i> Проверено
+                      </span>
+                      {% elif sub.status == 'NEEDS_MANUAL_REVIEW' %}
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded text-[10px] font-black uppercase tracking-wider">
+                          <i class="ph-bold ph-magnifying-glass"></i> Требует проверки
+                      </span>
+                      {% elif sub.status == 'SUBMITTED' %}
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-black uppercase tracking-wider">
+                          <i class="ph-fill ph-clock"></i> Сдано
+                      </span>
+                      {% elif sub.status == 'RETURNED' %}
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-200 rounded text-[10px] font-black uppercase tracking-wider">
+                          <i class="ph-bold ph-arrow-u-up-left"></i> На доработке
+                      </span>
+                      {% else %}
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 text-slate-600 border border-slate-300 rounded text-[10px] font-black uppercase tracking-wider">
+                          <i class="ph-bold ph-circle-dashed"></i> В процессе
+                      </span>
+                      {% endif %}
+                      
+                      <span class="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 border border-slate-200 rounded shadow-sm">
+                          Итог: {{ (sub.total_score or 0)|int }}/{{ (sub.max_score or 0)|int }} баллов
+                      </span>
+                  </div>
+              </div>
+          </div>
+          
+          <div class="flex items-center gap-3">
+              <a href="/submissions/{{ sub.submission_id }}" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-sm px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline text-center">
+                  Перейти в работу
+              </a>
+              {% if sub.status != 'REVOKED' %}
+              <form action="/submissions/{{ sub.submission_id }}/revoke" method="POST" class="inline" onsubmit="return confirm('Вы уверены, что хотите отозвать работу у этого ученика?');">
+                <button type="submit" class="btn-3d bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-sm px-4 py-2.5 rounded-xl border border-rose-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer border-none" title="Отозвать">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+              </form>
+              {% endif %}
+          </div>
+      </div>
+      {% else %}
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] rounded-[2rem] p-12 text-center flex flex-col items-center">
+          <div class="w-16 h-16 bg-white border-2 border-slate-200 rounded-2xl flex justify-center items-center text-slate-300 mb-4 shadow-sm">
+              <i class="ph-bold ph-ghost text-3xl"></i>
+          </div>
+          <h3 class="text-lg font-black text-slate-700 mb-1">Ничего не найдено</h3>
+          <p class="text-sm font-bold text-slate-400">По выбранным фильтрам нет сдач учеников.</p>
+      </div>
+      {% endfor %}
+    </div>
+    
+  </div>
+</main>
+{% endblock %}

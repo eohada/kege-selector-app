@@ -1,0 +1,360 @@
+{% extends "sandbox/layout_tester.html" %}
+
+{% block tester_content %}
+<div class="space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+            <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">Кабинет Тестировщика (QA Tester Workspace)</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Персональные тест-кейсы, пошаговая проверка функционала и регистрация багов</p>
+        </div>
+
+        <button onclick="openQaWidgetModal()" class="btn-3d px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl border-b-[3px] border-emerald-800 transition-all cursor-pointer border-0 flex items-center gap-2">
+            <i class="ph-bold ph-bug text-base"></i>
+            <span>🛠️ Сообщить о баге</span>
+        </button>
+    </div>
+
+    <!-- MODULE 1: ACTIVE TEST CASES (ACTIVE & PASSED ONLY) -->
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-6">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <h3 class="text-base font-black text-slate-900 font-display flex items-center gap-2">
+                <i class="ph-bold ph-list-checks text-emerald-600 text-xl"></i> 📋 Мои Активные Тест-Кейсы
+            </h3>
+            <span class="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black uppercase tracking-wider">
+                Компактные карточки
+            </span>
+        </div>
+
+        {% set grouped = cases_by_area if cases_by_area is defined else {} %}
+        {% set has_active = false %}
+        
+        {% for area_name, cases in grouped.items() %}
+            {% set active_in_area = [] %}
+            {% for tc in cases %}
+                {% if tc.status != 'FAILED' %}
+                    {% set _ = active_in_area.append(tc) %}
+                {% endif %}
+            {% endfor %}
+
+            {% if active_in_area|length > 0 %}
+            {% set has_active = true %}
+            <div class="space-y-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <h4 class="text-xs font-black uppercase tracking-widest text-slate-700 font-display">{{ area_name }} ({{ active_in_area|length }})</h4>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                    {% for tc in active_in_area %}
+                    <!-- ULTRA-COMPACT DENSITY BENTO TEST CARD (CLICK OPENS MODAL) -->
+                    <div onclick="openTestCaseModal('{{ tc.id }}')" id="tc-card-{{ tc.id }}" class="p-3 rounded-2xl border-2 border-slate-200 hover:border-emerald-300 bg-white hover:bg-slate-50/80 transition-all cursor-pointer shadow-2xs hover:shadow-md flex flex-col justify-between h-[105px]">
+                        <div class="flex items-center justify-between gap-1.5">
+                            <div class="flex items-center gap-1">
+                                <span class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 font-black text-slate-900 text-[10px] rounded-md">#{{ tc.id }}</span>
+                                <span class="px-1.5 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-[9px] uppercase rounded-md truncate max-w-[80px]">{{ tc.area }}</span>
+                            </div>
+                            <span id="tc-card-status-{{ tc.id }}" class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider
+                                {% if tc.status == 'PASSED' %}bg-emerald-100 text-emerald-800 border border-emerald-200
+                                {% else %}bg-indigo-50 text-indigo-700 border border-indigo-200{% endif %}">
+                                {{ tc.status }}
+                            </span>
+                        </div>
+
+                        <div>
+                            <h5 class="text-xs font-bold text-slate-900 leading-snug truncate" title="{{ tc.title }}">{{ tc.title }}</h5>
+                        </div>
+
+                        <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                            <span class="flex items-center gap-1 text-slate-600"><i class="ph-bold ph-list-checks text-emerald-600"></i> {{ tc.steps|length if tc.steps is defined else 0 }} шагов</span>
+                            <span class="text-indigo-600 flex items-center gap-0.5">Старт <i class="ph-bold ph-arrow-right"></i></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+
+        {% if not has_active %}
+        <div class="p-8 text-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl space-y-2">
+            <i class="ph-bold ph-check-circle text-emerald-500 text-4xl"></i>
+            <p class="text-xs font-bold text-slate-600">Все активные тесты пройдены! Замечаний по открытым тестам нет.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- MODULE 2: BUG REPORTS & FAILED TEST CASES SECTION -->
+    <div id="bug-reports" class="bg-white border-2 border-rose-200 rounded-[2rem] p-6 shadow-sm space-y-6">
+        <div class="flex items-center justify-between pb-4 border-b border-rose-100">
+            <h3 class="text-base font-black text-rose-950 font-display flex items-center gap-2">
+                <i class="ph-bold ph-bug text-rose-600 text-xl"></i> 🐞 Баг-Репорты и Проваленные Тесты
+            </h3>
+            <span class="px-3 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-black uppercase tracking-wider">
+                Реестр Сбоев
+            </span>
+        </div>
+
+        <!-- FAILED TEST CASES SUB-SECTION -->
+        {% set failed_cases = [] %}
+        {% for tc in assigned_cases %}
+            {% if tc.status == 'FAILED' %}
+                {% set _ = failed_cases.append(tc) %}
+            {% endif %}
+        {% endfor %}
+
+        {% if failed_cases|length > 0 %}
+        <div class="space-y-3">
+            <h4 class="text-xs font-black uppercase tracking-widest text-rose-900 font-display flex items-center gap-1.5">
+                <i class="ph-bold ph-warning text-rose-600 text-sm"></i> Тест-Кейсы со статусом FAILED ({{ failed_cases|length }})
+            </h4>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                {% for tc in failed_cases %}
+                <!-- FAILED TEST BENTO CARD -->
+                <div onclick="openTestCaseModal('{{ tc.id }}')" id="tc-card-{{ tc.id }}" class="p-3 bg-rose-50/70 hover:bg-rose-100/70 border-2 border-rose-300 rounded-2xl transition-all cursor-pointer shadow-2xs hover:shadow-md flex flex-col justify-between h-[105px]">
+                    <div class="flex items-center justify-between gap-1.5">
+                        <span class="px-1.5 py-0.5 bg-white border border-rose-200 font-black text-rose-900 text-[10px] rounded-md">#{{ tc.id }}</span>
+                        <span class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white border border-rose-700">
+                            🚨 FAILED
+                        </span>
+                    </div>
+
+                    <div>
+                        <h5 class="text-xs font-bold text-slate-900 leading-snug truncate" title="{{ tc.title }}">{{ tc.title }}</h5>
+                        <span class="text-[9px] font-bold text-rose-600 bg-rose-100 px-1.5 py-0.2 rounded border border-rose-200 inline-block mt-0.5">{{ tc.area }}</span>
+                    </div>
+
+                    <div class="pt-1.5 border-t border-rose-200/80 flex items-center justify-between text-[11px] font-bold text-rose-700">
+                        <span class="flex items-center gap-1"><i class="ph-bold ph-chat-circle"></i> 💬 Чат и детали</span>
+                        <i class="ph-bold ph-arrow-right text-xs"></i>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- AD-HOC BUG REPORTS ACCORDION LIST -->
+        <div class="space-y-3">
+            <h4 class="text-xs font-black uppercase tracking-widest text-slate-700 font-display flex items-center gap-1.5">
+                <i class="ph-bold ph-file-text text-indigo-600 text-sm"></i> Зарегистрированные Баг-Репорты ({{ my_bug_reports|length if my_bug_reports is defined else 0 }})
+            </h4>
+
+            <div class="grid grid-cols-1 gap-3">
+                {% set bug_items = my_bug_reports if my_bug_reports is defined else [] %}
+                {% for b in bug_items %}
+                <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                    <!-- BUG CARD HEADER -->
+                    <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-100/60" onclick="toggleBugAccordion('{{ b.id }}')">
+                        <div class="flex items-center gap-3">
+                            <span class="px-2.5 py-1 bg-white border border-slate-200 font-black text-slate-900 text-xs rounded-lg">#{{ b.id }}</span>
+                            <div>
+                                <h5 class="text-sm font-black text-slate-900 font-display leading-tight">{{ b.title }}</h5>
+                                <span class="text-[10px] text-slate-400 font-mono block mt-0.5">
+                                    {{ b.created_at.strftime('%d.%m %H:%M') if b.created_at else '' }} &bull; {{ b.page_url|truncate(35) if b.page_url else 'Без URL' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider
+                                {% if b.severity == 'CRITICAL' %}bg-rose-600 text-white
+                                {% elif b.severity == 'MAJOR' %}bg-amber-500 text-white
+                                {% else %}bg-slate-200 text-slate-700{% endif %}">
+                                {{ b.severity }}
+                            </span>
+
+                            <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider
+                                {% if b.status == 'RESOLVED' %}bg-emerald-100 text-emerald-800 border border-emerald-200
+                                {% elif b.status == 'IN_PROGRESS' %}bg-amber-100 text-amber-800 border border-amber-200
+                                {% elif b.status == 'REJECTED' %}bg-slate-100 text-slate-600 border border-slate-200
+                                {% else %}bg-rose-100 text-rose-800 border border-rose-200{% endif %}">
+                                {{ b.status }}
+                            </span>
+
+                            <button type="button" class="btn-3d px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg border-0 cursor-pointer flex items-center gap-1">
+                                <i class="ph-bold ph-chat-circle"></i>
+                                <span>Чат ({{ b.comments|length if b.comments is defined else 0 }})</span>
+                                <i id="bug-icon-{{ b.id }}" class="ph-bold ph-caret-down text-xs transition-transform ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- BUG CARD BODY & COMMENTS THREAD -->
+                    <div id="bug-body-{{ b.id }}" class="hidden p-5 bg-white border-t border-slate-200 space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Страница и шаг:</span>
+                                <a href="{{ b.page_url }}" target="_blank" class="text-indigo-600 font-mono font-bold hover:underline block truncate">{{ b.page_url or '—' }}</a>
+                                {% if b.step_failed %}
+                                <span class="text-slate-700 block mt-1 font-bold">Сбой: {{ b.step_failed }}</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                                <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Ожидаемый vs Фактический результат:</span>
+                                <p class="text-slate-700 font-medium leading-tight">{{ b.expected_vs_actual or 'Не указан' }}</p>
+                            </div>
+                        </div>
+
+                        <!-- COMMENTS THREAD -->
+                        <div class="space-y-3 pt-2">
+                            <span class="text-xs font-black uppercase tracking-wider text-slate-700 font-display flex items-center gap-2">
+                                <i class="ph-bold ph-chat-teardrop-dots text-indigo-600 text-base"></i> Обсуждение проблемы ({{ b.comments|length if b.comments is defined else 0 }})
+                            </span>
+
+                            <div id="bug-comments-list-{{ b.id }}" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                {% set comments = b.comments if b.comments is defined else [] %}
+                                {% for c in comments %}
+                                <div class="p-3 rounded-xl border text-xs space-y-1 {% if c.author and c.author.role in ['admin', 'creator'] %}bg-indigo-50/70 border-indigo-200 text-indigo-950{% else %}bg-slate-50 border-slate-200 text-slate-800{% endif %}">
+                                    <div class="flex items-center justify-between font-bold text-[11px]">
+                                        <span class="flex items-center gap-1.5">
+                                            <i class="ph-bold {% if c.author and c.author.role in ['admin', 'creator'] %}ph-shield-star text-indigo-600{% else %}ph-user text-emerald-600{% endif %}"></i>
+                                            <span>{{ c.author.username if c.author else 'Пользователь' }}</span>
+                                            <span class="text-[9px] uppercase px-1.5 py-0.2 bg-white/80 rounded border border-slate-200">{{ c.author.role if c.author else '' }}</span>
+                                        </span>
+                                        <span class="text-[10px] font-mono text-slate-400">{{ c.created_at.strftime('%d.%m %H:%M') if c.created_at else '' }}</span>
+                                    </div>
+                                    <p class="font-medium leading-relaxed">{{ c.text }}</p>
+                                </div>
+                                {% else %}
+                                <p class="text-xs text-slate-400 font-bold italic py-2">Комментариев пока нет. Напишите первый ответ ниже.</p>
+                                {% endfor %}
+                            </div>
+
+                            <!-- ADD COMMENT FORM -->
+                            <div class="flex gap-2 pt-2">
+                                <input type="text" id="bug-comment-input-{{ b.id }}" placeholder="Написать ответ по этому баг-репорту..." class="flex-1 h-10 px-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+                                <button onclick="submitBugComment({{ b.id }})" type="button" class="btn-3d px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 cursor-pointer border-0 flex items-center gap-1">
+                                    <i class="ph-bold ph-paper-plane-right"></i> Отправить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-6 text-center text-slate-400 font-bold">Вы еще не отправляли баг-репорты.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function toggleTcAccordion(tcId) {
+    const body = document.getElementById(`tc-body-${tcId}`);
+    const icon = document.getElementById(`tc-icon-${tcId}`);
+    if (body) {
+        body.classList.toggle('hidden');
+        if (icon) icon.classList.toggle('rotate-180');
+    }
+}
+
+function toggleBugAccordion(bugId) {
+    const body = document.getElementById(`bug-body-${bugId}`);
+    const icon = document.getElementById(`bug-icon-${bugId}`);
+    if (body) {
+        body.classList.toggle('hidden');
+        if (icon) icon.classList.toggle('rotate-180');
+    }
+}
+
+async function setTestCaseStatus(tcId, status) {
+    try {
+        let res = await fetch(`/api/qa/test-cases/${tcId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ status: status })
+        });
+        if (!res.ok) {
+            res = await fetch(`/tester/test-cases/${tcId}/status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ status: status })
+            });
+        }
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(data.message || `Статус изменен на ${status}`, 'success');
+            const badge = document.getElementById(`tc-badge-${tcId}`);
+            if (badge) {
+                badge.textContent = status;
+                badge.className = 'px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ' +
+                    (status === 'PASSED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                    (status === 'FAILED' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                    'bg-indigo-50 text-indigo-700 border border-indigo-200'));
+            }
+        } else {
+            showToast(data.message || 'Ошибка обновления статуса', 'error');
+        }
+    } catch(err) {
+        showToast('Ошибка сети при обновлении статуса', 'error');
+    }
+}
+
+async function submitBugComment(bugId) {
+    const input = document.getElementById(`bug-comment-input-${bugId}`);
+    if (!input || !input.value.trim()) {
+        showToast('Введите текст комментария', 'error');
+        return;
+    }
+    const text = input.value.trim();
+
+    try {
+        const res = await fetch(`/api/qa/bug-reports/${bugId}/comments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ text: text })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(data.message, 'success');
+            input.value = '';
+            const container = document.getElementById(`bug-comments-list-${bugId}`);
+            if (container) {
+                const cmt = data.comment;
+                const div = document.createElement('div');
+                div.className = 'p-3 rounded-xl border text-xs space-y-1 ' +
+                    (cmt.author_role === 'admin' || cmt.author_role === 'creator' ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950' : 'bg-slate-50 border-slate-200 text-slate-800');
+                div.innerHTML = `
+                    <div class="flex items-center justify-between font-bold text-[11px]">
+                        <span class="flex items-center gap-1.5">
+                            <i class="ph-bold ${cmt.author_role === 'admin' || cmt.author_role === 'creator' ? 'ph-shield-star text-indigo-600' : 'ph-user text-emerald-600'}"></i>
+                            <span>${cmt.author_name}</span>
+                            <span class="text-[9px] uppercase px-1.5 py-0.2 bg-white/80 rounded border border-slate-200">${cmt.author_role}</span>
+                        </span>
+                        <span class="text-[10px] font-mono text-slate-400">${cmt.created_at}</span>
+                    </div>
+                    <p class="font-medium leading-relaxed">${cmt.text}</p>
+                `;
+                container.appendChild(div);
+            }
+        } else {
+            showToast(data.message || 'Ошибка отправки комментария', 'error');
+        }
+    } catch(err) {
+        showToast('Ошибка соединения при отправке комментария', 'error');
+    }
+}
+
+function openWidgetForTestCase(tcId, tcTitle) {
+    if (window.openQaWidgetWithTestCase) {
+        window.openQaWidgetWithTestCase(tcId, tcTitle);
+    } else {
+        openQaWidgetModal();
+    }
+}
+</script>
+{% endblock %}

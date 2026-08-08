@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>BooStudy | Ученик (Student Workspace)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              boo: {
+                primary: '#4f46e5',
+                accent: '#F97316',
+                bgCanvas: '#F8FAFC',
+                bgPlate: '#FFFFFF',
+                bgCard: '#F4F7FA',
+              }
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                display: ['Golos Text', 'system-ui', 'sans-serif'], 
+            }
+          }
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body {
+            background-color: #F8FAFC;
+            color: #0f172a;
+            font-family: 'Inter', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, .font-display {
+            font-family: 'Golos Text', 'Inter', system-ui, sans-serif;
+        }
+
+        .btn-3d {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .btn-3d:active {
+            transform: translateY(4px);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;  
+            scrollbar-width: none;  
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-[#F8FAFC]">
+    {% block sandbox_sidebar %}
+    <!-- Mobile Top Header Bar (Visible on screens < lg) -->
+    <header class="lg:hidden sticky top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-2.5 flex items-center justify-between shadow-xs">
+        <a href="/dashboard" class="flex items-center gap-2.5 no-underline">
+            <div class="w-9 h-9 rounded-xl bg-indigo-600 shadow-[0_3px_0_#3730A3] flex items-center justify-center text-white font-bold">
+                <i class="ph-bold ph-graduation-cap text-lg"></i>
+            </div>
+            <span class="font-display font-black text-slate-800 text-base tracking-tight">BooStudy</span>
+        </a>
+
+        <div class="flex items-center gap-3">
+            <a href="/profile" class="w-9 h-9 rounded-xl border-2 border-indigo-500 overflow-hidden shrink-0 shadow-xs">
+                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}https://api.dicebear.com/7.x/avataaars/svg?seed={{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'QAStudent' }}&backgroundColor=e0f2fe{% endif %}" class="w-full h-full object-cover">
+            </a>
+        </div>
+    </header>
+
+    <!-- Student Centralized Vertical Sidebar Dock (Desktop only) -->
+    <nav id="desktop-sidebar" class="hidden lg:flex fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex-col items-center py-6 shrink-0 z-50">
+        <!-- Logo -->
+        <a href="/dashboard" class="w-12 h-12 rounded-[1rem] bg-indigo-600 shadow-[0_4px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-8 cursor-pointer hover:-translate-y-1 active:translate-y-[3px] active:shadow-none transition-all" title="Дашборд ученика">
+            <i class="ph-bold ph-graduation-cap text-2xl"></i>
+        </a>
+
+        <!-- Dock Items for Student -->
+        <div class="flex flex-col gap-3 flex-1 w-full px-3">
+            
+            <!-- 1. Главная -->
+            <a href="/dashboard" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/dashboard', '/sandbox/student_dashboard'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏠 Главная">
+                <i class="ph-bold ph-house text-xl"></i>
+                {% if request.path in ['/dashboard', '/sandbox/student_dashboard'] %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 2. Мои задания -->
+            <a href="/submissions" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📝 Мои задания">
+                <i class="ph-bold ph-books text-xl"></i>
+                {% if request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 3. Теория & База знаний -->
+            <a href="{{ url_for('theory.theory_index') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/theory') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📖 Теория">
+                <i class="ph-bold ph-book-open text-xl"></i>
+                {% if request.path.startswith('/theory') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 4. Тренажёр -->
+            <a href="{{ url_for('trainer.trainer_v2') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/trainer') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="⚡ Тренажёр">
+                <i class="ph-bold ph-lightning text-xl"></i>
+                {% if request.path.startswith('/trainer') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 4. Расписание -->
+            <a href="{{ url_for('schedule.schedule') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/schedule') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📅 Расписание">
+                <i class="ph-bold ph-calendar-blank text-xl"></i>
+                {% if request.path.startswith('/schedule') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            {% if current_user is defined and current_user and current_user.is_authenticated and (current_user.role|upper in ['CREATOR', 'ADMIN'] or current_user.is_admin() or current_user.is_creator()) %}
+            <!-- 🛡️ Панель управления (Админка) -->
+            <a href="/admin/users" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/admin') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-rose-50/80 text-rose-500 hover:text-rose-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏛️ Панель управления (Админка)">
+                <i class="ph-bold ph-shield-check text-xl"></i>
+                {% if request.path.startswith('/admin') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+            {% endif %}
+
+        </div>
+
+        <!-- Student Profile Link -->
+        <div class="mt-auto w-full px-3">
+            <a href="/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/profile') or request.path == '/sandbox/profile' %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Ученик' }}">
+                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}https://api.dicebear.com/7.x/avataaars/svg?seed={{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'QAStudent' }}&backgroundColor=e0f2fe{% endif %}" class="w-full h-full object-cover">
+                <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+            </a>
+        </div>
+
+    </nav>
+
+    <!-- Mobile Bottom Navigation Tab Bar (Visible on screens < lg) -->
+    <nav id="mobile-bottom-nav" class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 py-1 flex items-center justify-around shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        {% set is_dash = request.path in ['/dashboard', '/sandbox/student_dashboard'] %}
+        <a href="/dashboard" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_dash %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
+            {% if is_dash %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
+            <i class="ph-bold ph-house text-xl"></i>
+            <span class="text-[10px]">Главная</span>
+        </a>
+
+        {% set is_sub = request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}
+        <a href="/submissions" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_sub %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
+            {% if is_sub %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
+            <i class="ph-bold ph-books text-xl"></i>
+            <span class="text-[10px]">Задания</span>
+        </a>
+
+        {% set is_th = request.path.startswith('/theory') %}
+        <a href="{{ url_for('theory.theory_index') }}" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_th %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
+            {% if is_th %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
+            <i class="ph-bold ph-book-open text-xl"></i>
+            <span class="text-[10px]">Теория</span>
+        </a>
+
+        {% set is_tr = request.path.startswith('/trainer') %}
+        <a href="{{ url_for('trainer.trainer_v2') }}" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_tr %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
+            {% if is_tr %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
+            <i class="ph-bold ph-lightning text-xl"></i>
+            <span class="text-[10px]">Тренажёр</span>
+        </a>
+
+        {% set is_sch = request.path.startswith('/schedule') %}
+        <a href="{{ url_for('schedule.schedule') }}" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_sch %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
+            {% if is_sch %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
+            <i class="ph-bold ph-calendar-blank text-xl"></i>
+            <span class="text-[10px]">Расписание</span>
+        </a>
+
+        {% set is_prof = request.path.startswith('/profile') or request.path == '/sandbox/profile' %}
+        <a href="/profile" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_prof %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
+            {% if is_prof %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
+            <i class="ph-bold ph-user text-xl"></i>
+            <span class="text-[10px]">Профиль</span>
+        </a>
+    </nav>
+    {% endblock %}
+
+    {% block sandbox_content %}{% endblock %}
+
+    {% include 'sandbox/components/_qa_widget.html' ignore missing %}
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll("#desktop-sidebar a[href]");
+        navLinks.forEach(link => {
+          const href = link.getAttribute("href");
+          if (!href || href === "#") return;
+          const linkPath = href.split('?')[0];
+
+          if (linkPath === currentPath) {
+            link.classList.remove("text-slate-400", "hover:bg-slate-100", "bg-transparent");
+            link.classList.add("bg-indigo-50", "text-indigo-600", "border", "border-indigo-200/60", "shadow-sm", "relative");
+            if (!link.querySelector('.bg-indigo-500')) {
+              const indicator = document.createElement('div');
+              indicator.className = 'absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]';
+              link.appendChild(indicator);
+            }
+          }
+        });
+      });
+    </script>
+
+    {% include 'sandbox/components/dev_switcher.html' %}
+</body>
+</html>
+
+

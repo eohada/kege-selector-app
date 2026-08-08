@@ -186,30 +186,43 @@ def _parse_notification_feedback_payload(data: str) -> tuple[str, str]:
     return '', 'generic'
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+async def send_or_edit(target, text: str, reply_markup=None, parse_mode='HTML'):
+    """Универсальная отправка: редактирует сообщение для CallbackQuery, отправляет новое для Message."""
+    from telegram import CallbackQuery, Message
+    if isinstance(target, CallbackQuery):
+        try:
+            await target.answer()
+        except Exception:
+            pass
+        try:
+            return await target.edit_message_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+        except BadRequest as e:
+            if 'Message is not modified' in str(e):
+                return
+            return await target.message.reply_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+        except Exception:
+            return await target.message.reply_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+    elif isinstance(target, Message):
+        return await target.reply_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+    elif hasattr(target, 'message') and target.message:
+        return await target.message.reply_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
+    elif hasattr(target, 'reply_text'):
+        return await target.reply_text(text=text, reply_markup=reply_markup, parse_mode=parse_mode)
 
-async def _answer_callback_query(query, *args, **kwargs) -> bool:
-    """Acknowledge callback quickly without making old callbacks retry forever."""
-    if not query:
-        return False
-    try:
-        await query.answer(*args, **kwargs)
-        return True
-    except BadRequest as exc:
-        message = str(exc).lower()
-        if 'query is too old' in message or 'query id is invalid' in message:
-            logger.warning('Telegram callback answer skipped: %s', exc)
-            return False
-        raise
-    except TelegramError as exc:
-        logger.warning('Telegram callback answer failed: %s', exc)
-        return False
 
 def _mini_app_url() -> str:
-    base = (APP_URL or os.environ.get('APP_URL') or '').strip().rstrip('/')
-    return f'{base}/tg-app/' if base else ''
+    base = (APP_URL or os.environ.get('APP_URL') or os.environ.get('BASE_URL') or '').strip().rstrip('/')
+    if not base or base.startswith('http://'):
+        base = 'https://boostudy.ru'
+    return f'{base}/tg-app/'
+
+
+def make_webapp_button(text_label: str, url_path: str) -> InlineKeyboardButton:
+    base = (APP_URL or os.environ.get('APP_URL') or os.environ.get('BASE_URL') or '').strip().rstrip('/')
+    full_url = f"{base}/{url_path.lstrip('/')}"
+    if full_url.startswith('http://'):
+        full_url = full_url.replace(base, 'https://boostudy.ru')
+    return InlineKeyboardButton(text=text_label, web_app=WebAppInfo(url=full_url))
 
 
 def _normalize_tg_username(value: str | None) -> str:
@@ -434,17 +447,9 @@ def _get_linked_user(
 ) -> Optional[dict]:
     session = get_session()
     try:
-        linked = get_user_by_chat_id(session, chat_id)
+        return get_user_by_chat_id(session, chat_id)
     finally:
         close_session(session)
-    if linked:
-        return linked
-    return _ensure_bootstrap_creator_link(
-        chat_id,
-        tg_username=tg_username,
-        first_name=first_name,
-        last_name=last_name,
-    )
 
 
 def _is_creator(role: str) -> bool:
@@ -486,14 +491,12 @@ def _has_access_role(role: str) -> bool:
 _BACK_ROW = [InlineKeyboardButton('« Меню', callback_data='back_menu')]
 
 
-def _reply_keyboard_with_mini_app(user: dict | None) -> ReplyKeyboardMarkup | None:
-    url = _mini_app_url()
-    if not url or not user:
+def _reply_keyboard_with_mini_app(user: dict | None, creator_mode: str = 'creator') -> ReplyKeyboardMarkup | None:
+    if not user:
         return None
-    return ReplyKeyboardMarkup(
-        [[KeyboardButton(text='📱 Открыть BooStudy', web_app=WebAppInfo(url=url))]],
-        resize_keyboard=True,
-    )
+    from app.telegram.keyboards import get_main_keyboard
+    role = user.get('role', 'student')
+    return get_main_keyboard(user_role=role, creator_mode=creator_mode)
 
 
 def _menu_keyboard(user: dict | None) -> InlineKeyboardMarkup:
@@ -651,8 +654,12 @@ def _menu_keyboard(user: dict | None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
-def _back_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([_BACK_ROW])
+def _admin_dashboard_keyboard() -> InlineKeyboardMarkup:
+    mini_app_url = _mini_app_url()
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🚀 Открыть WebApp", web_app=WebAppInfo(url=mini_app_url))],
+        [InlineKeyboardButton("🔄 Обновить сводку", callback_data="admin_home")]
+    ])
 
 
 def _student_dashboard_keyboard() -> InlineKeyboardMarkup:
@@ -951,6 +958,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message and context.args:
         token = (context.args[0] or '').strip()
+        if token.upper().startswith("BS-"):
+            linked = await _try_link_by_code(update, context, token)
+            if linked:
+                return
         
         # QA department integration (auto-injected)
         from core.db_models import User, db
@@ -985,7 +996,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         first_name=update.effective_user.first_name,
         last_name=update.effective_user.last_name,
     )
-    mini_kb = _reply_keyboard_with_mini_app(user)
+    creator_mode = context.user_data.get('creator_mode', 'creator')
+    mini_kb = _reply_keyboard_with_mini_app(user, creator_mode=creator_mode)
 
     if user:
         _track_start_lead(chat_id, assigned_user_id=int(user['id']), is_authorized=True)
@@ -996,7 +1008,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(
                     _student_dashboard_text(session, user),
                     parse_mode='HTML',
-                    reply_markup=_student_dashboard_keyboard(),
+                    reply_markup=mini_kb or _student_dashboard_keyboard(),
                 )
             finally:
                 close_session(session)
@@ -1006,7 +1018,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(
                     _admin_dashboard_text(session),
                     parse_mode='HTML',
-                    reply_markup=_admin_dashboard_keyboard(),
+                    reply_markup=mini_kb or _admin_dashboard_keyboard(),
                 )
             finally:
                 close_session(session)
@@ -1014,19 +1026,50 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f'👋 <b>Привет, {esc(name)}!</b>\n\n'
                 f'Ты привязан к BooStudy как <b>{esc(user.get("username", ""))}</b>.\n'
-                'Нажми /menu для навигации или открой Mini App кнопкой ниже.',
+                'Используй клавиатуру ниже или /menu для навигации.',
                 parse_mode='HTML',
                 reply_markup=mini_kb,
             )
             await update.message.reply_text(
-                '📋 <b>Меню BooStudy</b>',
+                '📋 <b>Главное меню BooStudy</b>',
                 parse_mode='HTML',
                 reply_markup=_menu_keyboard(user),
             )
+        # Переключение режима Создателя
+        raw_text = (update.message.text or '').strip() if update.message else ''
+        if raw_text in ['🔄 Режим: 👨‍🏫 Преподаватель', '🔄 Режим: 👑 Создатель']:
+            chat_id = update.effective_chat.id
+            new_mode = 'teacher' if 'Преподаватель' in raw_text else 'creator'
+            context.user_data['creator_mode'] = new_mode
+            from app.telegram.keyboards import get_main_keyboard
+            kb = get_main_keyboard(user_role='creator', creator_mode=new_mode)
+            mode_label = '👨‍🏫 Преподаватель' if new_mode == 'teacher' else '👑 Создатель'
+            await update.message.reply_text(f'🔄 Вы переключены в режим: <b>{mode_label}</b>', parse_mode='HTML', reply_markup=kb)
+            return
+
+        if raw_text and (raw_text.upper().startswith('BS-') or len(raw_text) in (6, 7)):
+            code = raw_text.strip().upper()
+            uname = (update.effective_user.username or '').strip()
+            result = call_link_bot_api(
+                chat_id=chat_id,
+                telegram_id=f'@{uname}' if uname else None,
+                code=code,
+                app_url=APP_URL,
+            )
+            if result and result.get('status') == 200 and (result.get('data') or {}).get('success'):
+                await _apply_link_result(update, chat_id=chat_id, result=result)
+                return
     else:
+        # ЕДИНОЕ ТРЕБОВАНИЕ: Если аккаунт НЕ ПРИВЯЗАН
+        from telegram import ReplyKeyboardRemove
         await update.message.reply_text(
-            WELCOME_MESSAGE + f'\n\n🔢 <b>Твой chat_id:</b> <code>{chat_id}</code>',
-            parse_mode='HTML',
+            "🔒 <b>Ваш Telegram-аккаунт не привязан к платформе BooStudy.</b>\n\n"
+            "Чтобы привязать аккаунт:\n"
+            "1. Зайдите в профиль на сайте (http://127.0.0.1:5000/profile).\n"
+            "2. Нажмите «🔑 Сгенерировать код привязки».\n"
+            "3. Отправьте полученный 6-значный код <code>BS-XXXX</code> сюда в чат.",
+            reply_markup=ReplyKeyboardRemove(),
+            parse_mode='HTML'
         )
 
 
@@ -1514,7 +1557,10 @@ async def _send_settings(send_fn, chat_id: int) -> None:
 async def bug_report_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало: отправляем приглашение описать проблему."""
     if update.callback_query:
-        await _answer_callback_query(update.callback_query)
+        try:
+            await update.callback_query.answer()
+        except Exception:
+            pass
 
     touch_telegram_activity(update.effective_chat.id)
     user = _get_linked_user(update.effective_chat.id)
@@ -1671,7 +1717,10 @@ async def bug_report_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def creator_reply_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Создатель нажал «Ответить» на баг-репорте."""
     query = update.callback_query
-    await _answer_callback_query(query)
+    try:
+        await query.answer()
+    except Exception:
+        pass
 
     _, _, report_id_str, student_chat_str = query.data.split('_', 3)
     context.user_data[_CTX_REPLY_REPORT_ID] = int(report_id_str)
@@ -1748,7 +1797,10 @@ async def creator_reply_cancel(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def lesson_call_link_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
-    await _answer_callback_query(query)
+    try:
+        await query.answer()
+    except Exception:
+        pass
 
     try:
         lesson_id = int((query.data or '').split(':', 1)[1])
@@ -1877,7 +1929,10 @@ async def lesson_call_link_cancel(update: Update, context: ContextTypes.DEFAULT_
 
 async def lesson_hw_note_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
-    await _answer_callback_query(query)
+    try:
+        await query.answer()
+    except Exception:
+        pass
     try:
         lesson_id = int((query.data or '').split(':', 1)[1])
     except Exception:
@@ -2001,7 +2056,10 @@ async def lesson_hw_note_cancel(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await _answer_callback_query(query)
+    try:
+        await query.answer()
+    except Exception:
+        pass
 
     data = query.data or ''
     chat_id = update.effective_chat.id
@@ -2076,6 +2134,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             'test_broadcast_send': _cb_test_broadcast_send,
             'bug_report_start':   _cb_bug_report_start_inline,
         }
+
+        if data == 'confirm_unlink':
+            await _cb_confirm_unlink(query, context)
+            return
+
+        if data == 'cancel_unlink':
+            await _cb_cancel_unlink(query, context)
+            return
 
         if data.startswith('toggle_'):
             await _cb_toggle_notification(query, data, chat_id)
@@ -2178,13 +2244,40 @@ async def _cb_back_menu(query, session, user):
 
 async def _cb_admin_home(query, session, user):
     if not user or not _is_admin(user.get('role', '')):
-        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        await send_or_edit(query, '⛔ Доступ запрещён.', reply_markup=None, parse_mode='HTML')
         return
-    await query.edit_message_text(
-        _admin_dashboard_text(session),
-        parse_mode='HTML',
-        reply_markup=_admin_dashboard_keyboard(),
+
+    now_utc = datetime.now(timezone.utc)
+    today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
+    today_end = now_utc.replace(hour=23, minute=59, second=59, microsecond=999999).replace(tzinfo=None)
+
+    total_users = session.execute(text('SELECT COUNT(*) FROM "Users" WHERE is_active = TRUE')).scalar() or 0
+    students_cnt = session.execute(text('SELECT COUNT(*) FROM "Users" WHERE role = \'student\' AND is_active = TRUE')).scalar() or 0
+    parents_cnt = session.execute(text('SELECT COUNT(*) FROM "Users" WHERE role = \'parent\' AND is_active = TRUE')).scalar() or 0
+    teachers_cnt = session.execute(text('SELECT COUNT(*) FROM "Users" WHERE role IN (\'teacher\', \'tutor\') AND is_active = TRUE')).scalar() or 0
+
+    lessons_today_cnt = session.execute(text("""
+        SELECT COUNT(*) FROM "Lessons"
+        WHERE lesson_date >= :t_start AND lesson_date <= :t_end
+    """), {'t_start': today_start, 't_end': today_end}).scalar() or 0
+
+    pending_subs_cnt = session.execute(text("""
+        SELECT COUNT(*) FROM "Submissions"
+        WHERE status IN ('ASSIGNED', 'IN_PROGRESS', 'RETURNED', 'SUBMITTED')
+    """)).scalar() or 0
+
+    summary_text = (
+        f"📊 <b>СВОДКА ПЛАТФОРМЫ BOOSTUDY</b>\n"
+        f"📅 <i>{datetime.now().strftime('%d.%m.%Y %H:%M')}</i>\n\n"
+        f"👥 <b>Пользователи:</b> {total_users}\n"
+        f" ├ 🎓 Учеников: {students_cnt}\n"
+        f" ├ 👨‍👩‍👧 Родителей: {parents_cnt}\n"
+        f" └ 👨‍🏫 Преподавателей: {teachers_cnt}\n\n"
+        f"📚 <b>Активность:</b>\n"
+        f" ├ 📅 Уроков на сегодня: <b>{lessons_today_cnt}</b>\n"
+        f" └ 📥 Домашек на проверку: <b>{pending_subs_cnt}</b>\n"
     )
+    await send_or_edit(query, summary_text, reply_markup=None, parse_mode='HTML')
 
 
 async def _cb_admin_student_search_help(query, session, user):
@@ -3551,6 +3644,66 @@ async def _cb_designer_status(query, session, user):
     )
 
 
+async def _cb_teacher_students(target, session, user):
+    """Выводит список учеников, привязанных строго к текущему преподавателю/создателю."""
+    user_id = user.get('id') if isinstance(user, dict) else getattr(user, 'id', None)
+    
+    if not user_id:
+        await send_or_edit(target, "❌ <b>Ошибка:</b> Пользователь не авторизован.", parse_mode='HTML', reply_markup=None)
+        return
+
+    from app.models import Student
+    students = session.query(Student).filter(
+        Student.mentor_id == user_id
+    ).all()
+
+    if not students:
+        await send_or_edit(
+            target,
+            "👥 <b>У вас пока нет привязанных учеников.</b>\n\n"
+            "Привязать ученика можно в веб-кабинете на платформе BooStudy во вкладке <i>«Все ученики»</i>.",
+            reply_markup=None,
+            parse_mode='HTML'
+        )
+        return
+
+    lines = ["👥 <b>Ваши привязанные ученики:</b>\n"]
+    for idx, st in enumerate(students, 1):
+        st_user = st.user
+        st_name = st_user.username if st_user else f"Ученик #{st.student_id}"
+        tg_status = "✅ TG" if (st_user and getattr(st_user, 'telegram_id', None)) else "❌ Нет TG"
+        lines.append(f"{idx}. <b>{esc(st_name)}</b> <code>[{tg_status}]</code>")
+
+    text_msg = "\n".join(lines)
+    await send_or_edit(target, text_msg, reply_markup=None, parse_mode='HTML')
+
+
+async def _cb_admin_students(target, session, user):
+    """Выводит полный список всех активных учеников платформы для Администрации."""
+    if not user or not _is_admin(user.get('role', '')):
+        await _cb_teacher_students(target, session, user)
+        return
+
+    from app.models import Student
+    students = session.query(Student).filter(Student.is_active == True).all()
+
+    if not students:
+        await send_or_edit(target, "👥 <b>На платформе пока нет зарегистрированных учеников.</b>", reply_markup=None, parse_mode='HTML')
+        return
+
+    lines = [f"🎓 <b>Все ученики платформы (Всего: {len(students)}):</b>\n"]
+    for idx, st in enumerate(students[:25], 1):
+        st_user = st.user
+        st_name = st.name or (st_user.username if st_user else f"Ученик #{st.student_id}")
+        tg_status = "✅ TG" if (st_user and getattr(st_user, 'telegram_id', None)) else "❌ Нет TG"
+        lines.append(f"{idx}. <b>{esc(st_name)}</b> <code>[{tg_status}]</code>")
+
+    if len(students) > 25:
+        lines.append(f"\n<i>... и еще {len(students) - 25} учеников в веб-кабинете</i>")
+
+    await send_or_edit(target, "\n".join(lines), reply_markup=None, parse_mode='HTML')
+
+
 # ---------------------------------------------------------------------------
 # Мои долги (student)
 # ---------------------------------------------------------------------------
@@ -3865,52 +4018,74 @@ async def _cb_parent_subscription(query, session, user):
 # Преподаватель
 # ---------------------------------------------------------------------------
 
-async def _cb_teacher_students(query, session, user):
-    if not user:
-        await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode='HTML', reply_markup=_back_keyboard())
+async def _cb_teacher_students(target, session, user):
+    """Выводит список учеников, привязанных строго к текущему преподавателю/создателю."""
+    user_id = user.get('id') if isinstance(user, dict) else getattr(user, 'id', None)
+    
+    if not user_id:
+        await send_or_edit(target, "❌ <b>Ошибка:</b> Пользователь не авторизован.", parse_mode='HTML', reply_markup=None)
         return
-    rows = session.execute(text("""
-        SELECT DISTINCT su.id, st.student_id, st.name, su.username, e.subject
-        FROM "Enrollments" e
-        JOIN "Users" su ON su.id = e.student_id
-        LEFT JOIN "Students" st ON st.user_id = su.id
-        WHERE e.tutor_id = :uid AND e.status != 'archived'
-        ORDER BY st.name ASC NULLS LAST, su.username ASC
-        LIMIT 20
-    """), {'uid': int(user['id'])}).fetchall()
-    lines = ['🎓 <b>Мои ученики</b>', '']
-    if not rows:
-        lines.append('Пока нет прикрепленных учеников.')
-    else:
-        for _uid, _sid, name, username, subject in rows:
-            subj = f' · {subject}' if subject else ''
-            lines.append(f'• <b>{esc(name or username or "Ученик")}</b>{esc(subj)}')
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_back_keyboard())
+
+    from app.models import Student
+    students = session.query(Student).filter(
+        Student.mentor_id == user_id
+    ).all()
+
+    if not students:
+        await send_or_edit(
+            target,
+            "👥 <b>У вас пока нет привязанных учеников.</b>\n\n"
+            "Привязать ученика можно в веб-кабинете на платформе BooStudy во вкладке <i>«Все ученики»</i>.",
+            reply_markup=None,
+            parse_mode='HTML'
+        )
+        return
+
+    lines = ["👥 <b>Ваши привязанные ученики:</b>\n"]
+    for idx, st in enumerate(students, 1):
+        st_user = st.user
+        st_name = st_user.username if st_user else f"Ученик #{st.student_id}"
+        tg_status = "✅ TG" if (st_user and getattr(st_user, 'telegram_id', None)) else "❌ Нет TG"
+        lines.append(f"{idx}. <b>{esc(st_name)}</b> <code>[{tg_status}]</code>")
+
+    text_msg = "\n".join(lines)
+    await send_or_edit(target, text_msg, reply_markup=None, parse_mode='HTML')
 
 
-async def _cb_teacher_schedule(query, session, user):
-    if not user:
-        await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode='HTML', reply_markup=_back_keyboard())
+async def _cb_teacher_schedule(target, session, user):
+    """Выводит расписание уроков на сегодня для преподавателя/создателя."""
+    user_id = user.get('id') if isinstance(user, dict) else getattr(user, 'id', None)
+    if not user_id:
+        await send_or_edit(target, PROFILE_NOT_LINKED, parse_mode='HTML', reply_markup=None)
         return
+
+    now_utc = datetime.now(timezone.utc)
+    start_of_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
+    end_of_day = now_utc.replace(hour=23, minute=59, second=59, microsecond=999999).replace(tzinfo=None)
+
     rows = session.execute(text("""
-        SELECT l.lesson_date, l.topic, st.name
+        SELECT DISTINCT l.lesson_date, l.topic, COALESCE(st.name, su.username, 'Ученик') AS student_name
         FROM "Lessons" l
         JOIN "Students" st ON st.student_id = l.student_id
-        JOIN "Enrollments" e ON e.student_id = st.user_id
-        WHERE e.tutor_id = :uid
-          AND e.status != 'archived'
-          AND l.lesson_date >= NOW()
+        LEFT JOIN "Users" su ON su.id = st.user_id
+        LEFT JOIN "Enrollments" e ON e.student_id = st.user_id
+        WHERE (st.mentor_id = :uid OR e.tutor_id = :uid)
+          AND l.lesson_date >= :t_start
+          AND l.lesson_date <= :t_end
         ORDER BY l.lesson_date ASC
-        LIMIT 10
-    """), {'uid': int(user['id'])}).fetchall()
-    lines = ['📅 <b>Расписание преподавателя</b>', '']
+    """), {'uid': int(user_id), 't_start': start_of_day, 't_end': end_of_day}).fetchall()
+
     if not rows:
-        lines.append('Ближайших уроков пока нет.')
-    else:
-        for date_val, topic, student_name in rows:
-            d = date_val.strftime('%d.%m %H:%M') if date_val else '—'
-            lines.append(f'• {d} — <b>{esc(student_name or "Ученик")}</b>, {esc(topic or "урок")}')
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_back_keyboard())
+        await send_or_edit(target, "☕ <b>На сегодня запланированных уроков нет.</b>", parse_mode='HTML', reply_markup=None)
+        return
+
+    lines = ['📅 <b>Ваши уроки на сегодня:</b>', '']
+    for date_val, topic, student_name in rows:
+        d = date_val.strftime('%H:%M') if date_val else '—'
+        t = esc(topic or "Занятие")
+        lines.append(f'⏰ <b>{d}</b> — {esc(student_name)} (<code>{t}</code>)')
+        
+    await send_or_edit(target, '\n'.join(lines), parse_mode='HTML', reply_markup=None)
 
 
 # ---------------------------------------------------------------------------
@@ -4031,7 +4206,7 @@ async def _cb_gen_invite(query, session, user):
 
 async def _cb_admin_users(query, session, user):
     if not user or not _is_admin(user.get('role', '')):
-        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        await send_or_edit(query, '⛔ Доступ запрещён.', reply_markup=None, parse_mode='HTML')
         return
 
     rows = session.execute(text("""
@@ -4049,18 +4224,29 @@ async def _cb_admin_users(query, session, user):
         tg_badge = ' 📱' if has_tg else ''
         last_str = ''
         if last_tg:
-            last_str = f' (был {last_tg.strftime("%d.%m")})'
+            if isinstance(last_tg, str):
+                try:
+                    last_dt = datetime.fromisoformat(last_tg.replace('Z', '+00:00'))
+                    last_str = f' (был {last_dt.strftime("%d.%m")})'
+                except Exception:
+                    last_str = f' (был {last_tg[:10]})'
+            else:
+                try:
+                    last_str = f' (был {last_tg.strftime("%d.%m")})'
+                except Exception:
+                    last_str = ''
         lines.append(f'• <b>{esc(username or "—")}</b>{tg_badge} — {esc(role_label(role))}{last_str}')
     if not rows:
         lines.append('Нет активных пользователей.')
 
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=_back_keyboard())
+    await send_or_edit(query, '\n'.join(lines), reply_markup=None, parse_mode='HTML')
 
 
 async def _cb_admin_students(query, session, user):
     if not user or not _is_admin(user.get('role', '')):
-        await query.edit_message_text('⛔ Доступ запрещён.', reply_markup=_back_keyboard())
+        await send_or_edit(query, '⛔ Доступ запрещён.', reply_markup=None, parse_mode='HTML')
         return
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     rows = session.execute(text("""
         SELECT u.id AS student_user_id,
                st.student_id,
@@ -4070,7 +4256,7 @@ async def _cb_admin_students(query, session, user):
                up.telegram_id,
                (SELECT COUNT(*) FROM "FamilyTies" ft WHERE ft.student_id = u.id) AS parent_count,
                (SELECT COUNT(*) FROM "Submissions" s WHERE s.student_id = st.student_id AND s.status IN ('ASSIGNED', 'IN_PROGRESS', 'RETURNED')) AS debt_count,
-               (SELECT lesson_date FROM "Lessons" l WHERE l.student_id = st.student_id AND l.status = 'planned' AND l.lesson_date >= NOW() ORDER BY l.lesson_date ASC LIMIT 1) AS next_lesson_at
+               (SELECT lesson_date FROM "Lessons" l WHERE l.student_id = st.student_id AND l.status = 'planned' AND l.lesson_date >= :now_param ORDER BY l.lesson_date ASC LIMIT 1) AS next_lesson_at
         FROM "Users" u
         LEFT JOIN "Students" st ON st.user_id = u.id
         LEFT JOIN "UserProfiles" up ON up.user_id = u.id
@@ -4079,7 +4265,7 @@ async def _cb_admin_students(query, session, user):
           AND COALESCE(u.is_demo_user, FALSE) = FALSE
         ORDER BY up.telegram_last_interaction_at DESC NULLS LAST, u.created_at DESC
         LIMIT 12
-    """)).fetchall()
+    """), {'now_param': now_utc}).fetchall()
     lines = ['🎓 <b>Ученики</b>', '']
     buttons = []
     if not rows:
@@ -4100,7 +4286,7 @@ async def _cb_admin_students(query, session, user):
             if student_user_id and student_id:
                 buttons.append([InlineKeyboardButton(display_name[:34], callback_data=f'student_manage_{student_user_id}_{student_id}')])
     buttons.append(_BACK_ROW)
-    await query.edit_message_text('\n'.join(lines), parse_mode='HTML', reply_markup=InlineKeyboardMarkup(buttons))
+    await send_or_edit(query, '\n'.join(lines), reply_markup=InlineKeyboardMarkup(buttons), parse_mode='HTML')
 
 
 async def _cb_admin_parents(query, session, user):
@@ -4226,7 +4412,8 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         "test": {"name": "Тестовый Юзер", "category": "Тестовая зона"}
     }
 
-    with get_session() as session:
+    session = get_session()
+    try:
         from sqlalchemy import text as sa_text
         from core.db_models import QAReport, QATestCase
         
@@ -4314,6 +4501,8 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
                 
                 await update.message.reply_text(msg_text, reply_markup=reply_markup)
                 return
+    finally:
+        close_session(session)
     touch_telegram_activity(update.effective_chat.id)
 
     chat_id = update.effective_chat.id
@@ -4376,9 +4565,17 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     chat_id = update.effective_chat.id
     text_val = (update.message.text or "").strip()
 
+    # Проверка на формат кода привязки (например: BS-45CS, BS-0HSN)
+    import re
+    if re.match(r'^BS-[A-Z0-9]{4,6}$', text_val, re.IGNORECASE):
+        linked = await _try_link_by_code(update, context, text_val)
+        if linked:
+            return
+
     # QA Department check
     if text_val:
-        with get_session() as session:
+        session = get_session()
+        try:
             from sqlalchemy import text as sa_text
             user_query = session.execute(
                 sa_text('SELECT id, username FROM "Users" WHERE tg_auth_key = :k LIMIT 1'),
@@ -4404,6 +4601,210 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
                     reply_markup=reply_markup
                 )
                 return
+        finally:
+            close_session(session)
+
+    user = _get_linked_user(chat_id)
+    user_role = (user.get('role') or '') if user else ''
+
+    # Переключатель для CREATOR
+    if _is_creator(user_role):
+        if "Преподаватель" in text_val:
+            context.user_data['creator_mode'] = 'teacher'
+            from app.telegram.keyboards import get_main_keyboard
+            new_kb = get_main_keyboard('creator', creator_mode='teacher')
+            await update.message.reply_text("👨‍🏫 Переключено в режим <b>Преподавателя</b>", reply_markup=new_kb, parse_mode='HTML')
+            return
+        elif "Создатель" in text_val:
+            context.user_data['creator_mode'] = 'creator'
+            from app.telegram.keyboards import get_main_keyboard
+            new_kb = get_main_keyboard('creator', creator_mode='creator')
+            await update.message.reply_text("👑 Переключено в режим <b>Создателя</b>", reply_markup=new_kb, parse_mode='HTML')
+            return
+
+    # Ответы на нативные кнопки клавиатур всех 5 ролей
+    if text_val in ["📊 Сводка", "📊 Статистика"]:
+        session = get_session()
+        try:
+            if _is_admin(user_role) or _is_creator(user_role):
+                await _cb_admin_home(update.message, session, user)
+            else:
+                await send_or_edit(update.message, _student_dashboard_text(session, user), reply_markup=_student_dashboard_keyboard(), parse_mode='HTML')
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["👥 Пользователи"]:
+        session = get_session()
+        try:
+            await _cb_admin_users(update.message, session, user)
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["👥 Мои ученики", "Мои ученики"]:
+        session = get_session()
+        try:
+            await _cb_teacher_students(update.message, session, user)
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["📝 Ученики", "Все ученики"]:
+        session = get_session()
+        try:
+            if user and (user.get('role') in ['admin', 'chief_admin', 'creator']):
+                await _cb_admin_students(update.message, session, user)
+            else:
+                await _cb_teacher_students(update.message, session, user)
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["📅 Уроки на сегодня", "📅 Мое расписание", "Мои уроки"]:
+        session = get_session()
+        try:
+            now_utc = datetime.now(timezone.utc)
+            t_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0).replace(tzinfo=None)
+            t_end = now_utc.replace(hour=23, minute=59, second=59, microsecond=999999).replace(tzinfo=None)
+            lessons = session.execute(text("""
+                SELECT l.lesson_date, COALESCE(st.name, up.first_name, u.username, 'Группа/Ученик') AS student_name, COALESCE(NULLIF(l.topic, ''), 'Занятие') AS topic
+                FROM "Lessons" l
+                LEFT JOIN "Students" st ON st.student_id = l.student_id
+                LEFT JOIN "Users" u ON u.id = st.user_id
+                LEFT JOIN "UserProfiles" up ON up.user_id = u.id
+                WHERE l.lesson_date >= :t_start AND l.lesson_date <= :t_end
+                ORDER BY l.lesson_date ASC
+            """), {'t_start': t_start, 't_end': t_end}).fetchall()
+
+            if not lessons:
+                text_msg = "☕ <b>На сегодня запланированных уроков нет.</b>\nОтличный повод отдохнуть или подготовить материалы!"
+            else:
+                lines = ["📅 <b>Запланированные уроки на сегодня:</b>\n"]
+                for l_date, st_name, topic in lessons:
+                    time_str = l_date.strftime("%H:%M") if hasattr(l_date, 'strftime') else str(l_date)[11:16]
+                    lines.append(f"• <b>{time_str}</b> — {esc(st_name)} ({esc(topic)})")
+                text_msg = "\n".join(lines)
+
+            await send_or_edit(update.message, text_msg, parse_mode='HTML')
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["📥 На проверку", "📝 Очередь ДЗ"]:
+        session = get_session()
+        try:
+            pending_subs = session.execute(text("""
+                SELECT s.status, COALESCE(st.name, up.first_name, u.username, 'Ученик') AS student_name, COALESCE(a.title, 'Домашняя работа') AS task_title
+                FROM "Submissions" s
+                LEFT JOIN "Students" st ON st.student_id = s.student_id
+                LEFT JOIN "Users" u ON u.id = st.user_id
+                LEFT JOIN "UserProfiles" up ON up.user_id = u.id
+                LEFT JOIN "Assignments" a ON a.assignment_id = s.assignment_id
+                WHERE s.status IN ('SUBMITTED', 'IN_PROGRESS', 'ASSIGNED')
+                LIMIT 10
+            """)).fetchall()
+
+            if not pending_subs:
+                text_msg = "🎉 <b>Все домашние работы проверены / выполнены!</b>\nОчередь пуста."
+            else:
+                lines = ["📥 <b>Очередь домашних работ:</b>\n"]
+                for idx, (st_status, st_name, as_title) in enumerate(pending_subs, 1):
+                    lines.append(f"{idx}. <b>{esc(st_name)}</b> — {esc(as_title)} <code>[{st_status}]</code>")
+                text_msg = "\n".join(lines)
+
+            await send_or_edit(update.message, text_msg, parse_mode='HTML')
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["📊 Мой прогресс"]:
+        session = get_session()
+        try:
+            if user:
+                uid = user.get('id')
+                solved = session.execute(text('SELECT COUNT(*) FROM "Submissions" s JOIN "Students" st ON st.student_id = s.student_id WHERE st.user_id = :uid AND s.status = \'PASSED\''), {'uid': uid}).scalar() or 0
+                score = session.execute(text('SELECT COALESCE(SUM(s.score), 0) FROM "Submissions" s JOIN "Students" st ON st.student_id = s.student_id WHERE st.user_id = :uid'), {'uid': uid}).scalar() or 0
+                msg_text = f"📊 <b>Ваш учебный прогресс:</b>\n\n✅ Решено задач: <b>{solved}</b>\n⭐ Баллы / XP: <b>{score}</b>\n🎯 Статус: <b>В процессе обучения</b>"
+            else:
+                msg_text = "🔒 Сначала привяжите аккаунт по коду из профиля."
+            await send_or_edit(update.message, msg_text, parse_mode='HTML')
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["⚙️ Профиль"]:
+        session = get_session()
+        try:
+            if user:
+                uname = user.get('username') or 'User'
+                urole = (user.get('role') or 'student').upper()
+                msg_text = f"👤 <b>Ваш профиль в BooStudy:</b>\n\nЛогин: <b>{esc(uname)}</b>\nРоль: <b>{esc(urole)}</b>\nЧасовой пояс: <b>Europe/Moscow</b>\nTelegram ID: <code>{chat_id}</code>"
+            else:
+                msg_text = "🔒 Сначала привяжите аккаунт по коду из профиля."
+            await send_or_edit(update.message, msg_text, parse_mode='HTML')
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["👨‍👩‍👧 Мои дети"]:
+        session = get_session()
+        try:
+            kids = session.execute(text("""
+                SELECT COALESCE(st.name, u.username, 'Ребенок') AS kid_name, u.id
+                FROM "FamilyTies" ft
+                JOIN "Users" u ON u.id = ft.child_user_id
+                LEFT JOIN "Students" st ON st.user_id = u.id
+                WHERE ft.parent_user_id = :uid
+            """), {'uid': user.get('id') if user else 0}).fetchall()
+
+            if not kids:
+                msg_text = "👨‍👩‍👧 <b>Связанные профили детей не найдены.</b>\nПривяжите учеников в кабинете родителя на сайте."
+            else:
+                lines = ["👨‍👩‍👧 <b>Ваши дети на платформе:</b>\n"]
+                for k_name, k_id in kids:
+                    lines.append(f"• <b>{esc(k_name)}</b> (ID: {k_id}) — Активен")
+                msg_text = "\n".join(lines)
+            await send_or_edit(update.message, msg_text, parse_mode='HTML')
+        finally:
+            close_session(session)
+        return
+
+    elif text_val in ["💳 Семейный баланс"]:
+        msg_text = "💳 <b>Семейный баланс уроков:</b>\n\nВсего доступно занятий: <b>8 уроков</b>\nОплаченный период: <b>Активен</b>"
+        await send_or_edit(update.message, msg_text, parse_mode='HTML')
+        return
+
+    elif text_val in ["🔔 Настройки отчетов"]:
+        session = get_session()
+        try:
+            if user:
+                uid = user.get('id')
+                prof = session.execute(text('SELECT weekly_reports_enabled FROM "UserProfiles" WHERE user_id = :uid LIMIT 1'), {'uid': uid}).fetchone()
+                curr = prof.weekly_reports_enabled if prof and hasattr(prof, 'weekly_reports_enabled') else True
+                new_val = not curr
+                session.execute(text('UPDATE "UserProfiles" SET weekly_reports_enabled = :v WHERE user_id = :uid'), {'v': new_val, 'uid': uid})
+                session.commit()
+                st_label = "ВКЛЮЧЕНЫ ✅" if new_val else "ВЫКЛЮЧЕНЫ ❌"
+                msg_text = f"🔔 Еженедельные отчеты для родителей теперь: <b>{st_label}</b>"
+            else:
+                msg_text = "🔒 Сначала привяжите аккаунт."
+            await send_or_edit(update.message, msg_text, parse_mode='HTML')
+        finally:
+            close_session(session)
+        return
+
+    elif text_val == "📢 Рассылка":
+        await send_or_edit(
+            update.message,
+            "📢 Напишите команду <code>/broadcast Текст рассылки</code> для отправки массового сообщения всем пользователям.",
+            parse_mode='HTML',
+        )
+        return
+
+    elif text_val in ["🚪 Отвязать аккаунт", "/unlink"]:
+        await cmd_unlink(update, context)
+        return
 
     pending_feedback = context.user_data.get(_CTX_NOTIFICATION_MULTI_FEEDBACK) or _load_notification_multi_feedback(update.effective_chat.id)
     if pending_feedback:
@@ -4583,7 +4984,8 @@ async def _handle_refresh_stats(update: Update, context: ContextTypes.DEFAULT_TY
     if len(parts) >= 3:
         user_id = parts[2]
         
-        with get_session() as session:
+        session = get_session()
+        try:
             from sqlalchemy import text as sa_text
             user = session.execute(
                 sa_text("SELECT id, username, tg_auth_key FROM \"Users\" WHERE id = :uid LIMIT 1"),
@@ -4629,3 +5031,137 @@ async def _handle_refresh_stats(update: Update, context: ContextTypes.DEFAULT_TY
                 # Избегаем ошибки NotModified, если статистика не изменилась
                 if query.message.text != msg_text:
                     await query.edit_message_text(msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
+        finally:
+            close_session(session)
+
+
+async def cmd_unlink(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик команды /unlink и кнопки '🚪 Отвязать аккаунт'"""
+    msg_text = (
+        "⚠️ <b>Вы уверены, что хотите отвязать текущий Telegram-аккаунт от платформы BooStudy?</b>\n\n"
+        "Уведомления об уроках и доступ к расписанию будут приостановлены."
+    )
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Да, отвязать", callback_data="confirm_unlink"),
+            InlineKeyboardButton("❌ Отмена", callback_data="cancel_unlink"),
+        ]
+    ])
+    target = update.callback_query if update.callback_query else update.message
+    await send_or_edit(target, msg_text, reply_markup=keyboard, parse_mode='HTML')
+
+
+async def _cb_confirm_unlink(query: CallbackQuery, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Подтверждение отвязки Telegram-аккаунта"""
+    tg_user_id = query.from_user.id
+    chat_id = query.message.chat_id
+    session = get_session()
+    try:
+        from app.models import User, UserProfile
+        db_user = session.query(User).filter(
+            (User.tg_id == chat_id) | (User.tg_id == tg_user_id)
+        ).first()
+
+        if not db_user:
+            profile = session.query(UserProfile).filter(
+                (UserProfile.telegram_chat_id == chat_id) | (UserProfile.telegram_chat_id == tg_user_id)
+            ).first()
+            if profile:
+                db_user = session.query(User).get(profile.user_id)
+
+        if db_user:
+            db_user.tg_id = None
+            if hasattr(db_user, 'telegram_id'):
+                db_user.telegram_id = None
+            
+            profile = session.query(UserProfile).filter_by(user_id=db_user.id).first()
+            if profile:
+                profile.telegram_id = None
+                profile.telegram_chat_id = None
+                profile.telegram_link_code = None
+                profile.telegram_link_expires_at = None
+                
+            session.commit()
+
+        await send_or_edit(
+            query,
+            "👋 <b>Ваш аккаунт успешно отвязан от платформы BooStudy.</b>\n\n"
+            "Для повторной привязки сгенерируйте новый код в личной карточке профиля на сайте.",
+            reply_markup=None,
+            parse_mode='HTML'
+        )
+
+        from telegram import ReplyKeyboardMarkup, KeyboardButton
+        start_kb = ReplyKeyboardMarkup([[KeyboardButton(text="/start")]], resize_keyboard=True)
+        await query.message.reply_text("Для начала работы нажмите /start", reply_markup=start_kb)
+    finally:
+        close_session(session)
+
+
+async def _cb_cancel_unlink(query: CallbackQuery, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Отмена отвязки Telegram-аккаунта"""
+    await send_or_edit(query, "✅ <b>Отвязка аккаунта отменена.</b>", reply_markup=None, parse_mode='HTML')
+
+
+async def _try_link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE, code: str) -> bool:
+    """Привязывает Telegram ID к пользователю по 6-значному коду BS-XXXX."""
+    import re
+    from datetime import datetime, timezone
+    code = code.strip().upper()
+    tg_user = update.effective_user
+    chat_id = update.effective_chat.id
+
+    session = get_session()
+    try:
+        from app.models import User, UserProfile
+        from app.telegram.keyboards import get_main_keyboard
+
+        profile = session.query(UserProfile).filter(
+            UserProfile.telegram_link_code == code
+        ).first()
+
+        if not profile or not profile.user:
+            await update.message.reply_text(
+                "❌ <b>Код не найден или недействителен.</b>\n"
+                "Сгенерируйте новый код в личной карточке профиля на сайте.",
+                parse_mode='HTML'
+            )
+            return False
+
+        expires_at = getattr(profile, 'telegram_link_code_expires', None) or getattr(profile, 'telegram_link_expires_at', None)
+        if expires_at:
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at < datetime.now(timezone.utc):
+                await update.message.reply_text(
+                    "⏳ <b>Срок действия кода истек.</b>\n"
+                    "Сгенерируйте новый код в карточке профиля.",
+                    parse_mode='HTML'
+                )
+                return False
+
+        user = profile.user
+        user.tg_id = chat_id
+        if hasattr(user, 'telegram_id'):
+            user.telegram_id = f"@{tg_user.username}" if tg_user.username else str(tg_user.id)
+        profile.telegram_id = f"@{tg_user.username}" if tg_user.username else str(tg_user.id)
+        profile.telegram_chat_id = chat_id
+        profile.telegram_link_code = None  # гасим одноразовый код
+        profile.telegram_link_expires_at = None
+
+        session.commit()
+
+        user_role = getattr(user, 'role', 'student')
+        main_kb = get_main_keyboard(user_role)
+
+        await update.message.reply_text(
+            f"🎉 <b>Аккаунт успешно привязан к BooStudy!</b>\n\n"
+            f"👤 <b>Пользователь:</b> {esc(user.username)}\n"
+            f"🎭 <b>Роль:</b> {esc(user_role.upper())}\n\n"
+            f"Теперь вам доступны уведомления и интерактивное меню.",
+            reply_markup=main_kb,
+            parse_mode='HTML'
+        )
+        return True
+    finally:
+        close_session(session)

@@ -13,9 +13,10 @@ from app.sandbox.python_runner import normalize_leading_tabs_to_spaces, run_pyth
 from .error_hints import explain_python_error
 from .service import (
     resolve_workspace_context,
-    save_workspace_draft,
+    save_workspace_code,
     load_workspace_versions_payload,
     load_workspace_state_payload,
+    restore_workspace_version,
 )
 from .socket import emit_workspace_snapshot
 
@@ -95,7 +96,7 @@ def workspace_save_api():
     if ctx.context_type == "demo":
         return jsonify({"success": True, "saved": "local-only"})
     frames = data.get("playback_frames") or []
-    save_workspace_draft(ctx, data.get("code") or "", data.get("answer") or "", frames=frames)
+    save_workspace_code(ctx, data.get("code") or "", data.get("answer") or "", frames=frames)
     versions = load_workspace_versions_payload(ctx)
     try:
         emit_workspace_snapshot(
@@ -117,6 +118,27 @@ def workspace_versions_api():
     assignment_task_id = request.args.get("assignment_task_id", type=int)
     ctx = resolve_workspace_context(current_user, context_type, context_id, assignment_task_id)
     return jsonify({"success": True, "versions": load_workspace_versions_payload(ctx)})
+
+
+@task_workspace_bp.route("/api/versions/<int:version_id>/restore", methods=["POST"])
+@login_required
+@limiter.limit("20/minute")
+def workspace_restore_version_api(version_id):
+    data = request.get_json(silent=True) or {}
+    ctx = resolve_workspace_context(
+        current_user,
+        data.get("context_type") or "demo",
+        data.get("context_id"),
+        data.get("assignment_task_id"),
+    )
+    if not ctx.can_edit or ctx.context_type == "demo":
+        return jsonify({"success": False, "error": "Нет прав на восстановление версии"}), 403
+    restored = restore_workspace_version(ctx, version_id)
+    try:
+        emit_workspace_snapshot(current_app.socketio, ctx, saved_by=current_user.id)
+    except Exception:
+        pass
+    return jsonify({"success": True, **restored})
 
 
 @task_workspace_bp.route("/api/state")

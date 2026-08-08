@@ -42,7 +42,7 @@
 
     <!-- КНОПКА НАЗАД И БЕЙДЖ -->
     <div class="flex items-center justify-between">
-        <a href="{{ request.referrer or url_for('main.index') }}" class="student-surface-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-2 py-0.5 rounded-md backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none">
+        <a href="{{ request.referrer or url_for('main.dashboard') }}" class="student-surface-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-2 py-0.5 rounded-md backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none">
             <i class="ph-bold ph-arrow-left"></i> Назад
         </a>
         

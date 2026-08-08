@@ -173,3 +173,35 @@ def emit_lesson_message_new(lesson_id: int, payload: dict) -> None:
             )
     except Exception as e:
         logger.warning("emit_lesson_message_new failed: %s", e)
+
+
+def emit_lesson_studio_updated(lesson_id: int, state: dict) -> None:
+    """Synchronize the teacher's lesson controls with the student's studio."""
+    try:
+        from flask import current_app
+        sio = getattr(current_app, "socketio", None)
+        if sio:
+            sio.emit(
+                "lesson_studio_updated",
+                {"lesson_id": lesson_id, "state": state},
+                room=_room(lesson_id),
+                namespace="/lesson",
+            )
+    except Exception as e:
+        logger.warning("emit_lesson_studio_updated failed: %s", e)
+
+
+def emit_lesson_studio_pointer(lesson_id: int, pointer: dict) -> None:
+    """Send a transient board/page pointer without writing high-frequency events to PostgreSQL."""
+    try:
+        from flask import current_app
+        sio = getattr(current_app, "socketio", None)
+        if sio:
+            sio.emit(
+                "lesson_studio_pointer",
+                {"lesson_id": lesson_id, "pointer": pointer},
+                room=_room(lesson_id),
+                namespace="/lesson",
+            )
+    except Exception as exc:
+        logger.warning("emit_lesson_studio_pointer failed: %s", exc)

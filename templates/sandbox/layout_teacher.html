@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>BooStudy | Преподаватель (Teacher Workspace)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              boo: {
+                primary: '#4f46e5',
+                accent: '#F97316',
+                bgCanvas: '#F8FAFC',
+                bgPlate: '#FFFFFF',
+                bgCard: '#F4F7FA',
+              }
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                display: ['Golos Text', 'system-ui', 'sans-serif'], 
+            }
+          }
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body {
+            background-color: #F8FAFC;
+            color: #0f172a;
+            font-family: 'Inter', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, .font-display {
+            font-family: 'Golos Text', 'Inter', system-ui, sans-serif;
+        }
+
+        .btn-3d {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .btn-3d:active {
+            transform: translateY(4px);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;  
+            scrollbar-width: none;  
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-[#F8FAFC]">
+    {% block sandbox_sidebar %}
+    <!-- Teacher Centralized Vertical Sidebar Dock -->
+    <nav class="fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex flex-col items-center py-6 shrink-0 z-50">
+        <!-- Logo -->
+        <a href="/dashboard" class="w-12 h-12 rounded-[1rem] bg-indigo-600 shadow-[0_4px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-6 cursor-pointer hover:-translate-y-1 active:translate-y-[3px] active:shadow-none transition-all" title="Кабинет преподавателя">
+            <i class="ph-bold ph-graduation-cap text-2xl"></i>
+        </a>
+
+        <!-- Dock Items for Teacher (9 Items) -->
+        <div class="flex flex-col gap-2.5 flex-1 w-full px-3 overflow-y-auto hide-scrollbar">
+            
+            <!-- 1. Ученики -->
+            <a href="/students" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/students', '/teacher/students', '/sandbox/teacher_dashboard'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="👥 Ученики">
+                <i class="ph-bold ph-users text-xl"></i>
+                {% if request.path in ['/students', '/teacher/students', '/sandbox/teacher_dashboard'] %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 2. Группы -->
+            <a href="/groups" class="w-full aspect-square rounded-[1rem] {% if request.path == '/groups' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏫 Группы">
+                <i class="ph-bold ph-users-three text-xl"></i>
+                {% if request.path == '/groups' %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 3. Работы -->
+            <a href="/assignments" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/assignments', '/assignments/create', '/sandbox/assignments', '/sandbox/create_assignment', '/sandbox/assignment_details', '/sandbox/mentor_task_check'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📚 Работы">
+                <i class="ph-bold ph-books text-xl"></i>
+                {% if request.path in ['/assignments', '/assignments/create', '/sandbox/assignments', '/sandbox/create_assignment', '/sandbox/assignment_details', '/sandbox/mentor_task_check'] %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 4. Генератор -->
+            <a href="/task-generator" class="w-full aspect-square rounded-[1rem] {% if request.path == '/task-generator' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="⚙️ Генератор">
+                <i class="ph-bold ph-magic-wand text-xl"></i>
+                {% if request.path == '/task-generator' %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 5. Библиотека знаний -->
+            <a href="/library" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/library', '/teacher/library', '/sandbox/library'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📁 Библиотека знаний">
+                <i class="ph-bold ph-folder text-xl"></i>
+                {% if request.path in ['/library', '/teacher/library', '/sandbox/library'] %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 6. Карта курса -->
+            <a href="/theory/course-map" class="w-full aspect-square rounded-[1rem] {% if request.path == '/theory/course-map' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🗺️ Карта курса">
+                <i class="ph-bold ph-map-trifold text-xl"></i>
+                {% if request.path == '/theory/course-map' %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 8. Расписание -->
+            <a href="/schedule" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/schedule', '/sandbox/teacher_schedule'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📅 Расписание">
+                <i class="ph-bold ph-calendar-blank text-xl"></i>
+                {% if request.path in ['/schedule', '/sandbox/teacher_schedule'] %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 9. Аналитика -->
+            <a href="/analytics" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/analytics', '/teacher/analytics', '/sandbox/teacher_analytics'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📈 Аналитика">
+                <i class="ph-bold ph-chart-line-up text-xl"></i>
+                {% if request.path in ['/analytics', '/teacher/analytics', '/sandbox/teacher_analytics'] %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            {% if current_user is defined and current_user and current_user.is_authenticated and (current_user.role|upper in ['CREATOR', 'ADMIN'] or current_user.is_admin() or current_user.is_creator()) %}
+            <!-- 🛡️ Панель управления (Админка) -->
+            <a href="/admin/users" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/admin') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-rose-50/80 text-rose-500 hover:text-rose-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏛️ Панель управления (Админка)">
+                <i class="ph-bold ph-shield-check text-xl"></i>
+                {% if request.path.startswith('/admin') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+            {% endif %}
+
+        </div>
+
+        <!-- Teacher Mentor Profile Avatar Button -->
+        <div class="mt-auto w-full px-3 pt-3">
+            <a href="/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/profile') or request.path in ['/teacher/profile', '/sandbox/mentor_profile'] %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Преподаватель' }}">
+                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}https://api.dicebear.com/7.x/avataaars/svg?seed={{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'TeacherAlex' }}&backgroundColor=b6e3f4{% endif %}" class="w-full h-full object-cover">
+                <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+            </a>
+        </div>
+
+    </nav>
+    {% endblock %}
+
+    {% block sandbox_content %}{% endblock %}
+
+    {% include 'sandbox/components/_qa_widget.html' ignore missing %}
+
+    
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll("nav a[href]");
+        navLinks.forEach(link => {
+          const href = link.getAttribute("href");
+          if (!href || href === "#") return;
+          const linkPath = href.split('?')[0];
+
+          if (linkPath === currentPath) {
+            link.classList.remove("text-slate-400", "hover:bg-slate-100", "bg-transparent");
+            link.classList.add("bg-indigo-50", "text-indigo-600", "border", "border-indigo-200/60", "shadow-sm", "relative");
+            if (!link.querySelector('.bg-indigo-500')) {
+              const indicator = document.createElement('div');
+              indicator.className = 'absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]';
+              link.appendChild(indicator);
+            }
+          }
+        });
+      });
+    </script>
+
+    {% include 'sandbox/components/dev_switcher.html' %}
+</body>
+</html>
+

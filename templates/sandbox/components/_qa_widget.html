@@ -1,0 +1,258 @@
+{% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or current_user.role in ['tester', 'chief_tester']) %}
+<!-- FLOATING QA COMPANION BUTTON -->
+<div id="qa-widget-trigger-btn" class="fixed bottom-6 right-6 z-[9999]">
+    <button onclick="if(!window.qaWidgetWasDragged) toggleQaWidgetModal()" type="button" class="btn-3d px-4 py-3 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-2xl border-b-[4px] border-rose-800 shadow-[0_10px_25px_rgba(244,63,94,0.4)] flex items-center gap-2 cursor-pointer border-0">
+        <i class="ph-bold ph-bug text-lg"></i>
+        <span>🐞 QA Bug Report</span>
+    </button>
+</div>
+
+<!-- QA COMPANION MODAL OVERLAY -->
+<div id="qa-companion-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[10000] flex items-center justify-center hidden p-4">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center font-black text-lg">
+                    <i class="ph-bold ph-bug"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-black text-slate-900 font-display">QA Companion (Bug Report)</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Авто-захват страницы и выбор шага</p>
+                </div>
+            </div>
+            <button onclick="toggleQaWidgetModal()" type="button" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center cursor-pointer border-0">
+                &times;
+            </button>
+        </div>
+
+        <form id="qa-widget-form" onsubmit="submitQaWidgetBugReport(event)" class="space-y-3">
+            
+            <!-- 1. PAGE URL AUTO-CAPTURED -->
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">URL Страницы (Авто-захват):</label>
+                <input type="text" id="qa-widget-page-url" readonly class="w-full h-9 px-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-600 focus:outline-none">
+            </div>
+
+            <!-- 2. ASSIGNED TEST CASE SELECTOR -->
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Привязать к Тест-Кейсу:</label>
+                <select id="qa-widget-tc-select" onchange="loadWidgetTcSteps(this.value)" class="w-full h-10 px-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                    <option value="">-- Выберите тест-кейс (или Ad-hoc баг) --</option>
+                </select>
+            </div>
+
+            <!-- 3. FAILED STEP SELECTOR -->
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Шаг сбоя (Конкретный шаг):</label>
+                <select id="qa-widget-step-select" class="w-full h-10 px-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                    <option value="">-- Выберите конкретный шаг --</option>
+                </select>
+            </div>
+
+            <!-- 4. TITLE -->
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Заголовок проблемы *</label>
+                <input type="text" id="qa-widget-title" required placeholder="Кнопка Войти не реагирует при клике..." class="w-full h-10 px-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+            </div>
+
+            <!-- 5. EXPECTED VS ACTUAL -->
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Ожидаемый vs Фактический результат:</label>
+                <textarea id="qa-widget-expected-actual" rows="2" placeholder="Ожидалось: Переход на /dashboard. Фактически: Всплывает ошибка 500." class="w-full p-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500 resize-none"></textarea>
+            </div>
+
+            <!-- 6. SEVERITY -->
+            <div class="space-y-1">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Приоритет (Severity):</label>
+                <select id="qa-widget-severity" class="w-full h-10 px-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                    <option value="CRITICAL">🔴 CRITICAL (Критический блокиратор)</option>
+                    <option value="MAJOR" selected>🟡 MAJOR (Важная функциональность)</option>
+                    <option value="MINOR">🟢 MINOR (Косметический / верстка)</option>
+                </select>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="toggleQaWidgetModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer">
+                    Отмена
+                </button>
+                <button type="submit" class="btn-3d px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 border-0 cursor-pointer">
+                    Отправить Баг-Репорт
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleQaWidgetModal() {
+    const modal = document.getElementById('qa-companion-modal');
+    if (!modal) return;
+    modal.classList.toggle('hidden');
+    if (!modal.classList.contains('hidden')) {
+        document.getElementById('qa-widget-page-url').value = window.location.href;
+        loadWidgetAssignedTestCases();
+    }
+}
+
+function openQaWidgetModal() {
+    const modal = document.getElementById('qa-companion-modal');
+    if (modal && modal.classList.contains('hidden')) {
+        toggleQaWidgetModal();
+    }
+}
+
+async function loadWidgetAssignedTestCases() {
+    const select = document.getElementById('qa-widget-tc-select');
+    if (!select) return;
+    try {
+        const res = await fetch('/api/qa/assigned-test-cases');
+        const data = await res.json();
+        if (res.ok && data.test_cases) {
+            select.innerHTML = '<option value="">-- Выберите тест-кейс (или Ad-hoc баг) --</option>';
+            data.test_cases.forEach(tc => {
+                select.innerHTML += `<option value="${tc.id}">[#${tc.id}] ${tc.title} (${tc.area})</option>`;
+            });
+        }
+    } catch(err) {
+        console.error('Failed to load assigned test cases:', err);
+    }
+}
+
+async function loadWidgetTcSteps(tcId) {
+    const select = document.getElementById('qa-widget-step-select');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Выберите конкретный шаг --</option>';
+    if (!tcId) return;
+
+    try {
+        const res = await fetch(`/api/qa/test-cases/${tcId}/steps`);
+        const data = await res.json();
+        if (res.ok && data.steps) {
+            data.steps.forEach(s => {
+                select.innerHTML += `<option value="${s.id}">Шаг ${s.step_number}: ${s.action_text}</option>`;
+            });
+        }
+    } catch(err) {
+        console.error('Failed to load tc steps:', err);
+    }
+}
+
+function openQaWidgetWithTestCase(tcId, tcTitle) {
+    openQaWidgetModal();
+    setTimeout(() => {
+        const select = document.getElementById('qa-widget-tc-select');
+        if (select) {
+            select.value = tcId;
+            loadWidgetTcSteps(tcId);
+        }
+        document.getElementById('qa-widget-title').value = `Баг в тест-кейсе #${tcId} «${tcTitle}»`;
+    }, 200);
+}
+
+async function submitQaWidgetBugReport(e) {
+    e.preventDefault();
+    const title = document.getElementById('qa-widget-title').value;
+    const pageUrl = document.getElementById('qa-widget-page-url').value;
+    const tcId = document.getElementById('qa-widget-tc-select').value;
+    const stepId = document.getElementById('qa-widget-step-select').value;
+    const stepSelect = document.getElementById('qa-widget-step-select');
+    const stepFailedText = stepSelect && stepSelect.selectedIndex > 0 ? stepSelect.options[stepSelect.selectedIndex].text : '';
+    const expectedVsActual = document.getElementById('qa-widget-expected-actual').value;
+    const severity = document.getElementById('qa-widget-severity').value;
+
+    try {
+        const res = await fetch('/api/qa/bug-reports/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                title: title,
+                page_url: pageUrl,
+                test_case_id: tcId,
+                test_step_id: stepId,
+                step_failed: stepFailedText,
+                expected_vs_actual: expectedVsActual,
+                severity: severity
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            if (window.showToast) {
+                showToast(data.message, 'success');
+            }
+            toggleQaWidgetModal();
+            document.getElementById('qa-widget-form').reset();
+        } else {
+            if (window.showToast) {
+                showToast(data.message || 'Ошибка отправки баг-репорта', 'error');
+            }
+        }
+    } catch(err) {
+        if (window.showToast) showToast('Ошибка сети при отправке баг-репорта', 'error');
+    }
+}
+
+// DRAGGABLE & CLICK LOGIC FOR FLOATING WIDGET
+(function initDraggableQaWidget() {
+    let isDragging = false;
+    let dragDistance = 0;
+    let startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const widget = document.getElementById('qa-widget-trigger-btn');
+        if (!widget) return;
+
+        const savedX = localStorage.getItem('qa_widget_x');
+        const savedY = localStorage.getItem('qa_widget_y');
+        if (savedX && savedY) {
+            widget.style.left = savedX + 'px';
+            widget.style.top = savedY + 'px';
+            widget.style.bottom = 'auto';
+            widget.style.right = 'auto';
+        }
+
+        widget.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            dragDistance = 0;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = widget.getBoundingClientRect();
+            initialLeft = rect.left;
+            initialTop = rect.top;
+            try { widget.setPointerCapture(e.pointerId); } catch(err) {}
+        });
+
+        widget.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            dragDistance = Math.hypot(dx, dy);
+            if (dragDistance <= 5) return;
+
+            const newLeft = Math.max(10, Math.min(window.innerWidth - widget.offsetWidth - 10, initialLeft + dx));
+            const newTop = Math.max(10, Math.min(window.innerHeight - widget.offsetHeight - 10, initialTop + dy));
+
+            widget.style.left = newLeft + 'px';
+            widget.style.top = newTop + 'px';
+            widget.style.bottom = 'auto';
+            widget.style.right = 'auto';
+        });
+
+        widget.addEventListener('pointerup', (e) => {
+            if (!isDragging) return;
+            try { widget.releasePointerCapture(e.pointerId); } catch(err) {}
+            if (dragDistance > 5) {
+                localStorage.setItem('qa_widget_x', parseInt(widget.style.left));
+                localStorage.setItem('qa_widget_y', parseInt(widget.style.top));
+            } else {
+                toggleQaWidgetModal();
+            }
+            isDragging = false;
+        });
+    });
+})();
+</script>
+{% endif %}

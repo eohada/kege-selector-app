@@ -1,277 +1,147 @@
 {% extends "base.html" %}
-{% block title %}Рабочее место Тестировщика — BooStudy{% endblock %}
+{% block title %}QA Workspace{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style="padding-top: 6rem; padding-bottom: 4rem;">
 
-    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 2rem;">
+    <!-- Header Section -->
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
-            <h1 style="font-size: 1.875rem; font-weight: 800; color: var(--color-text-primary); margin: 0;">Тест-кейсы</h1>
-            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0.35rem 0 0;">Выбери тест, пройди шаги и вынеси вердикт.</p>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/30">
+                    <i class="ph-bold ph-bug-beetle"></i>
+                </div>
+                QA Workspace
+            </h1>
+            <p class="text-slate-400 text-sm mt-2">Выполнение тест-кейсов и поиск свободных багов</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-            <select id="areaFilter" onchange="filterTests()"
-                style="padding: 0.5rem 0.875rem; border-radius: 10px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-weight: 700; font-size: 0.875rem; outline: none; cursor: pointer;">
-                <option value="all">Все зоны ({{ tests_by_area|length }})</option>
-                {% for area in tests_by_area.keys() %}
-                <option value="{{ loop.index }}">{{ area }}</option>
-                {% endfor %}
-            </select>
-            <a href="{{ url_for('qa_tester.tester.history') }}"
-                style="background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); padding: 0.5rem 1.125rem; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
-                <i class="ph-bold ph-clock-counter-clockwise"></i> Мои репорты
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ url_for('qa_tester.history') }}" class="flex items-center gap-2 px-4 py-2 border border-slate-700 bg-slate-800/50 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition-colors">
+                <i class="ph-bold ph-clock-counter-clockwise"></i> Моя история
             </a>
-            <a href="/qa/ad-hoc"
-                style="background: var(--color-accent); color: white; padding: 0.5rem 1.125rem; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
-                <i class="ph-bold ph-bug"></i> Спонтанный баг
+            <a href="{{ url_for('qa_tester.ad_hoc_bug') }}" class="flex items-center gap-2 px-4 py-2 bg-rose-500 hover:bg-rose-600 shadow-lg shadow-rose-500/30 text-white rounded-xl font-bold text-sm transition-all focus:ring-2 focus:ring-rose-400">
+                <i class="ph-bold ph-plus-circle"></i> Спонтанный баг
             </a>
         </div>
     </div>
 
-    <!-- Вкладки -->
-    <div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; padding-bottom: 1rem; overflow-x: auto; border-bottom: 1px solid var(--color-stroke);">
-        <button onclick="switchTab('attention')" id="tab-attention"
-            style="padding: 0.5rem 1.25rem; border-radius: 12px; font-weight: 700; font-size: 0.875rem; white-space: nowrap; cursor: pointer; border: 1px solid rgba(168,85,247,0.3); background: rgba(168,85,247,0.1); color: #a855f7; transition: all 0.2s;">
-            <i class="ph-bold ph-warning" style="margin-right: 0.25rem;"></i> Требуют внимания ({{ retest_test_ids|length }})
-        </button>
-        <button onclick="switchTab('new')" id="tab-new"
-            style="padding: 0.5rem 1.25rem; border-radius: 12px; font-weight: 700; font-size: 0.875rem; white-space: nowrap; cursor: pointer; border: 1px solid var(--color-stroke); background: var(--color-bg-surface-alt); color: var(--color-text-primary); opacity: 0.5; transition: all 0.2s;">
-            <i class="ph-bold ph-sparkle" style="margin-right: 0.25rem;"></i> Новые тесты
-        </button>
-        <button onclick="switchTab('done')" id="tab-done"
-            style="padding: 0.5rem 1.25rem; border-radius: 12px; font-weight: 700; font-size: 0.875rem; white-space: nowrap; cursor: pointer; border: 1px solid rgba(16,185,129,0.3); background: rgba(16,185,129,0.1); color: #10b981; opacity: 0.5; transition: all 0.2s;">
-            <i class="ph-bold ph-check" style="margin-right: 0.25rem;"></i> Завершенные ({{ passed_test_ids|length }})
-        </button>
+    <!-- Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-2xl flex-shrink-0">
+                <i class="ph-fill ph-check-circle"></i>
+            </div>
+            <div>
+                <div class="text-3xl font-black text-white leading-none">{{ passed_test_ids|length }}</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Пройдено</div>
+            </div>
+        </div>
+        
+        <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center text-2xl flex-shrink-0">
+                <i class="ph-fill ph-warning-circle"></i>
+            </div>
+            <div>
+                <div class="text-3xl font-black text-white leading-none">{{ bug_test_ids|length }}</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">С багами</div>
+            </div>
+        </div>
+
+        <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-2xl flex-shrink-0">
+                <i class="ph-fill ph-arrows-clockwise"></i>
+            </div>
+            <div>
+                <div class="text-3xl font-black text-white leading-none">{{ retest_test_ids|length }}</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">На ретесте</div>
+            </div>
+        </div>
     </div>
 
-    <!-- Toast -->
-    <div id="toastContainer" style="position: fixed; top: 6rem; right: 1rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem;"></div>
+    <!-- Tests List -->
+    <div class="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+        {% set current_area = namespace(val='') %}
+        
+        {% for test in tests %}
+            {% if current_area.val != test.area %}
+                {% set current_area.val = test.area %}
+                <div class="bg-slate-900/50 px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider border-y border-slate-700 flex items-center gap-2 {% if loop.index > 1 %}-mt-px{% endif %}">
+                    <i class="ph-bold ph-folder-open text-base"></i> {{ test.area }}
+                </div>
+            {% endif %}
 
-    <!-- Секции по зонам -->
-    <div style="display: flex; flex-direction: column; gap: 2.5rem; position: relative; z-index: 1;">
-        {% for area, area_tests in tests_by_area.items() %}
-        <div class="qa-area-section" data-area-idx="{{ loop.index }}">
-
-            <!-- Заголовок зоны с кнопкой Bulk Pass -->
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding-bottom: 0.625rem; border-bottom: 1px solid var(--color-stroke);">
-                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                    <h2 style="font-size: 1.125rem; font-weight: 800; color: var(--color-text-primary); margin: 0;">{{ area }}</h2>
-                    {% set progress = area_progress[area] %}
-                    {% if progress %}
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted);">{{ progress.done }}/{{ progress.total }}</span>
-                        <div style="width: 80px; height: 6px; background: var(--color-bg-surface-alt); border-radius: 999px; overflow: hidden; border: 1px solid var(--color-stroke);">
-                            <div style="height: 100%; width: {{ progress.pct }}%; background: var(--color-accent); border-radius: 999px; transition: width 0.4s;"></div>
+            <a href="{{ url_for('qa_tester.execute_test', test_id=test.id) }}" class="flex justify-between items-center p-5 border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors group">
+                <div class="flex items-center gap-4 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xs font-black text-slate-500 flex-shrink-0 group-hover:border-indigo-500/50 group-hover:text-indigo-400 transition-colors">
+                        T{{ test.id }}
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-sm font-bold text-white mb-1 truncate">{{ test.title }}</div>
+                        <div class="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                            <span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1"><i class="ph-bold ph-user-focus"></i> {{ test.role }}</span>
                         </div>
                     </div>
-                    {% endif %}
                 </div>
 
-                <!-- Bulk Pass кнопка -->
-                {% set area_new_tests = area_tests | selectattr('id', 'in', passed_test_ids) | list %}
-                <button
-                    data-bulk-area="{{ loop.index }}"
-                    onclick="bulkPassArea(this, {{ loop.index }})"
-                    style="display: none; padding: 0.375rem 0.875rem; border-radius: 8px; background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.3); font-size: 0.75rem; font-weight: 800; cursor: pointer; gap: 0.35rem; align-items: center; transition: all 0.2s; white-space: nowrap;"
-                    class="bulk-pass-btn">
-                    <i class="ph-bold ph-check-circle"></i> Отметить все как успешно
-                </button>
+                <div class="flex-shrink-0 ml-4">
+                    {% if test.id in passed_test_ids %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20"><i class="ph-bold ph-check"></i> Успешно</span>
+                    {% elif test.id in bug_test_ids %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-500 bg-rose-500/10 border border-rose-500/20"><i class="ph-bold ph-bug"></i> С багом</span>
+                    {% elif test.id in retest_test_ids %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20"><i class="ph-bold ph-arrows-clockwise"></i> Ретест</span>
+                    {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 bg-slate-900 border border-slate-700"><i class="ph-bold ph-dots-three"></i> Ждет</span>
+                    {% endif %}
+                </div>
+            </a>
+        {% endfor %}
+        {% if not tests %}
+            <div class="p-16 text-center">
+                <i class="ph-thin ph-files text-5xl text-slate-600 mb-4 inline-block"></i>
+                <h3 class="text-lg font-bold text-white mb-2">Нет активных тест-кейсов</h3>
+                <p class="text-sm text-slate-400">В базе пока ничего нет. Можете начать со спонтанного баг-репорта.</p>
             </div>
+        {% endif %}
+    </div>
 
-            <!-- Карточки тестов -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.125rem;">
-                {% for test in area_tests %}
-                {% set is_adhoc = test.__class__.__name__ == 'QAReport' %}
-                
-                {% if is_adhoc %}
-                    {% set is_passed = test.status == 'resolved' %}
-                    {% set is_retest = test.status == 'retest' %}
-                    {% set is_bug = test.status in ['pending', 'in_progress'] %}
-                    {% set tab_status = 'attention' if is_retest else ('done' if is_passed else 'new') %}
-                    {% set href = url_for('qa_tester.tester.edit_report', report_id=test.id) %}
-                    {% set t_title = test.description[:50] + '...' if test.description else 'Без описания' %}
-                    {% set t_desc = 'Спонтанный баг' %}
-                    {% set t_steps = 0 %}
-                    {% set t_role = 'Ad-hoc' %}
-                    {% set t_id = '' %}
-                {% else %}
-                    {% set is_passed = test.id in passed_test_ids and test.id not in retest_test_ids %}
-                    {% set is_bug = test.id in bug_test_ids and test.id not in retest_test_ids %}
-                    {% set is_retest = test.id in retest_test_ids %}
-                    {% set tab_status = 'done' if is_passed else ('attention' if is_retest else 'new') %}
-                    {% set href = url_for('qa_tester.tester.execute_test', test_id=test.id) %}
-                    {% set t_title = test.title %}
-                    {% set t_desc = test.expected_result %}
-                    {% set t_steps = test.steps|length %}
-                    {% set t_role = test.role or '—' %}
-                    {% set t_id = test.id %}
-                {% endif %}
-
-                <a href="{{ href }}"
-                   data-tab="{{ tab_status }}"
-                   data-area-idx="{{ loop.index }}"
-                   data-test-id="{{ t_id }}"
-                   class="qa-test-card"
-                   style="display: block; padding: 1.25rem; border-radius: 14px; text-decoration: none; position: relative; z-index: 1; background: var(--color-bg-surface); transition: all 0.15s;
-                       border: 2px solid {% if is_retest %}#a855f7{% elif is_bug %}rgba(59,130,246,0.4){% elif is_passed %}rgba(16,185,129,0.3){% else %}var(--color-stroke){% endif %};">
-
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.625rem; flex-wrap: wrap; gap: 0.375rem;">
-                        <span style="background: var(--color-bg-surface-alt); color: var(--color-text-muted); border: 1px solid var(--color-stroke); border-radius: 6px; padding: 0.175rem 0.5rem; font-size: 0.7rem; font-weight: 700;">
-                            {{ t_role }}
-                        </span>
-                        {% if is_retest %}
-                        <span style="background: #a855f7; color: white; border-radius: 6px; padding: 0.175rem 0.5rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
-                            <i class="ph-bold ph-arrow-counter-clockwise"></i> Ретест
-                        </span>
-                        {% elif is_bug %}
-                        <span style="background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); border-radius: 6px; padding: 0.175rem 0.5rem; font-size: 0.7rem; font-weight: 700;">
-                            <i class="ph-bold ph-bug"></i> Баг отправлен
-                        </span>
-                        {% elif is_passed %}
-                        <span style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.25); border-radius: 6px; padding: 0.175rem 0.5rem; font-size: 0.7rem; font-weight: 700;">
-                            <i class="ph-bold ph-check"></i> Сдано
-                        </span>
-                        {% endif %}
+    <!-- Спонтанные Баги (Ad-hoc) -->
+    {% if adhoc_reports %}
+    <div class="mt-8 bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+        <div class="bg-slate-900/50 px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700 flex items-center gap-2">
+            <i class="ph-bold ph-bug text-base text-rose-500"></i> Спонтанные Баги (Ad-Hoc)
+        </div>
+        
+        {% for report in adhoc_reports %}
+            <div class="flex justify-between items-center p-5 border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors group">
+                <div class="flex items-center gap-4 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center text-xs font-black text-rose-500 flex-shrink-0 group-hover:border-rose-500/50 transition-colors">
+                        #{{ report.id }}
                     </div>
-
-                    <h3 style="font-size: 1rem; font-weight: 700; color: var(--color-text-primary); margin: 0 0 0.375rem; line-height: 1.4; {% if is_passed and not is_retest %}opacity: 0.55;{% endif %}">{{ t_title }}</h3>
-                    <p style="font-size: 0.825rem; color: var(--color-text-muted); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 0 0 0.875rem; {% if is_passed and not is_retest %}opacity: 0.55;{% endif %}">{{ t_desc }}</p>
-
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.625rem; border-top: 1px dashed var(--color-stroke);">
-                        <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted);">{% if t_steps %}{{ t_steps }} шагов{% else %}Без шагов{% endif %}</span>
-                        <span style="font-size: 0.825rem; font-weight: 700; color: var(--color-accent);">Пройти <i class="ph-bold ph-arrow-right"></i></span>
+                    <div class="min-w-0">
+                        <div class="text-sm font-bold text-white mb-1 truncate">{{ report.notes | truncate(50) if report.notes else 'Без описания' }}</div>
+                        <div class="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                            <span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1">
+                                <i class="ph-bold ph-calendar-blank"></i> {{ report.created_at.strftime('%d.%m.%Y %H:%M') }}
+                            </span>
+                            <span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{{ report.area }}</span>
+                        </div>
                     </div>
-                </a>
-                {% endfor %}
+                </div>
+
+                <div class="flex-shrink-0 ml-4">
+                    {% set st = report.status %}
+                    {% if st == 'pending' %}<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20">Ожидает</span>
+                    {% elif st == 'in_progress' %}<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-blue-500 bg-blue-500/10 border border-blue-500/20">В работе</span>
+                    {% elif st == 'retest' %}<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-purple-400 bg-purple-500/10 border border-purple-500/20">На ретесте</span>
+                    {% elif st == 'resolved' %}<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">Решен</span>
+                    {% elif st == 'rejected' %}<span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-500 bg-rose-500/10 border border-rose-500/20">Отклонен</span>
+                    {% endif %}
+                </div>
             </div>
-        </div>
-        {% else %}
-        <div style="text-align: center; padding: 3rem; border-radius: 16px; background: var(--color-bg-surface); border: 1px solid var(--color-stroke);">
-            <i class="ph-bold ph-check-circle" style="font-size: 3rem; color: #10b981; display: block; margin-bottom: 1rem;"></i>
-            <h3 style="font-size: 1.125rem; font-weight: 700; color: var(--color-text-primary); margin: 0;">База тест-кейсов пуста</h3>
-        </div>
         {% endfor %}
     </div>
-</div>
-
-<script>
-const urlParams = new URLSearchParams(window.location.search);
-let currentTab = urlParams.get('tab') || 'attention';
-
-function showToast(message, type = 'success') {
-    const c = document.getElementById('toastContainer');
-    const t = document.createElement('div');
-    const ok = type === 'success';
-    t.style.cssText = `padding:0.875rem 1.125rem;border-radius:12px;font-size:0.875rem;font-weight:700;display:flex;align-items:center;gap:0.625rem;transform:translateX(120%);transition:transform 0.3s;background:var(--color-bg-surface);color:${ok?'#10b981':'#f43f5e'};border:1px solid ${ok?'rgba(16,185,129,0.3)':'rgba(244,63,94,0.3)'};box-shadow:0 8px 24px rgba(0,0,0,0.2);max-width:320px;`;
-    t.innerHTML = `<i class="ph-fill ${ok?'ph-check-circle':'ph-warning-circle'}" style="font-size:1.25rem;flex-shrink:0;"></i>${message}`;
-    c.appendChild(t);
-    requestAnimationFrame(() => { t.style.transform = 'translateX(0)'; });
-    setTimeout(() => { t.style.transform = 'translateX(120%)'; setTimeout(()=>t.remove(),350); }, 3500);
-}
-
-function switchTab(tab) {
-    currentTab = tab;
-    ['attention','new','done'].forEach(t => {
-        const btn = document.getElementById('tab-' + t);
-        if(t === tab) {
-            btn.style.opacity = '1';
-            btn.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
-        } else {
-            btn.style.opacity = '0.5';
-            btn.style.boxShadow = 'none';
-        }
-    });
-    applyFilters();
-}
-
-function filterTests() { applyFilters(); }
-
-function applyFilters() {
-    const selectedAreaIdx = document.getElementById('areaFilter').value;
-    const sections = document.querySelectorAll('.qa-area-section');
-
-    sections.forEach(sec => {
-        const areaIdx = sec.getAttribute('data-area-idx');
-        const isAreaMatch = (selectedAreaIdx === 'all' || selectedAreaIdx === areaIdx);
-        let hasVisible = false;
-        let hasNewCards = false;
-
-        const cards = sec.querySelectorAll('.qa-test-card');
-        cards.forEach(card => {
-            const tabStatus = card.getAttribute('data-tab');
-            const show = isAreaMatch && (tabStatus === currentTab || currentTab === 'all');
-            card.style.display = show ? 'block' : 'none';
-            if (show) hasVisible = true;
-            if (tabStatus === 'new') hasNewCards = true;
-        });
-
-        sec.style.display = hasVisible ? 'block' : 'none';
-
-        // Показываем Bulk Pass только на вкладке "new" если есть новые карточки
-        const bulkBtn = sec.querySelector('.bulk-pass-btn');
-        if (bulkBtn) {
-            bulkBtn.style.display = (currentTab === 'new' && hasNewCards && isAreaMatch) ? 'inline-flex' : 'none';
-        }
-    });
-}
-
-async function bulkPassArea(btn, areaIdx) {
-    const section = document.querySelector(`.qa-area-section[data-area-idx="${areaIdx}"]`);
-    if (!section) return;
-
-    const testIds = [];
-    section.querySelectorAll('.qa-test-card[data-tab="new"]').forEach(card => {
-        const tid = card.getAttribute('data-test-id');
-        if (tid) testIds.push(parseInt(tid));
-    });
-
-    if (!testIds.length) { showToast('Нет новых тестов в этой зоне', 'error'); return; }
-
-    const origHtml = btn.innerHTML;
-    btn.innerHTML = '<i class="ph-bold ph-spinner" style="animation:spin 1s linear infinite;"></i> Отправка...';
-    btn.disabled = true;
-
-    try {
-        const res = await fetch("{{ url_for('qa_tester.tester.bulk_pass') }}", {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ test_ids: testIds })
-        });
-        const data = await res.json();
-        if (data.success) {
-            showToast(`Отмечено как успешно: ${data.passed} тестов`);
-            setTimeout(() => { window.location.href = "{{ url_for('qa_tester.tester.index') }}?tab=done"; }, 1500);
-        } else {
-            showToast(data.error || 'Ошибка', 'error');
-            btn.innerHTML = origHtml;
-            btn.disabled = false;
-        }
-    } catch(e) {
-        showToast('Сетевая ошибка', 'error');
-        btn.innerHTML = origHtml;
-        btn.disabled = false;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    {% if retest_test_ids|length == 0 %}
-        switchTab('new');
-    {% else %}
-        switchTab('attention');
     {% endif %}
-});
-
-// Для анимации кнопки bulk-pass
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .qa-test-card:hover { background: var(--color-bg-surface-alt) !important; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-    .bulk-pass-btn:hover { background: rgba(16,185,129,0.2) !important; }
-`;
-document.head.appendChild(style);
-</script>
+</div>
 {% endblock %}
+

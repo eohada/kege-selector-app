@@ -1,0 +1,944 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<!-- CSRF Meta Token for AJAX requests -->
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token else '' }}">
+
+<!-- KaTeX CDN Integration -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initKaTeX()"></script>
+
+<!-- Единый каноничный холст модуля «Конструктор создания новых работ» (Master Canvas max-w-[1400px]) -->
+<main class="min-h-screen w-full relative z-10 bg-slate-50/50 p-6 pl-[7.5rem] pb-28">
+  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+    
+    <!-- 1. ИНФО-ШАПКА МОДУЛЯ (Tactile 3D Card) -->
+    <div class="w-full bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 relative overflow-hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+              Конструктор • Новая работа
+            </span>
+            <span id="draft-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+              {% if assignment_id %}Черновик ID #{{ assignment_id }}{% else %}Новая работа{% endif %}
+            </span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display flex items-center gap-3">
+            🛠️ Конструктор новых работ
+          </h1>
+        </div>
+
+        <!-- Кнопки управления в шапке (Tactile 3D Buttons) -->
+        <div class="flex items-center gap-3">
+          <button onclick="saveAssignmentDraft()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center gap-1.5 text-xs">
+            <i class="ph-bold ph-floppy-disk text-base text-indigo-600"></i> Сохранить черновик
+          </button>
+          <a href="/assignments" class="bg-white hover:bg-slate-50 text-slate-600 font-black px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline flex items-center gap-1.5 text-xs">
+            <i class="ph-bold ph-x text-base text-slate-400"></i> Отмена
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ОСНОВНАЯ СЕТКА КОНСТРУКТОРА -->
+    <div class="grid grid-cols-12 gap-6 w-full items-start">
+      
+      <!-- ЛЕВАЯ КОЛОНКА: БЛОК 1 (Информация/Пресеты) & БЛОК 3 (Правила) -->
+      <div class="col-span-12 lg:col-span-7 space-y-6">
+        
+        <!-- БЛОК 1: ОСНОВНАЯ ИНФОРМАЦИЯ & УМНЫЕ ПРЕСЕТЫ (Tactile 3D Card) -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-5">
+          <div class="pb-3 border-b-2 border-slate-200/80 flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
+              <i class="ph-bold ph-file-text text-indigo-600 text-base"></i> 1. Основная информация & Пресеты
+            </h3>
+            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xs">
+              Шаг 1 из 4
+            </span>
+          </div>
+
+          <!-- Умные Пресеты типов работы -->
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Тип работы (Умный Пресет):</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              
+              <!-- Пресет: Домашнее задание -->
+              <div id="preset-card-homework" onclick="applyPreset('homework')" class="preset-card bg-indigo-50 border-2 border-indigo-600 shadow-[0_4px_0_#4338CA] rounded-2xl p-4 transition-all cursor-pointer space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-black text-indigo-950">🏠 Домашка</span>
+                  <i class="ph-fill ph-check-circle text-indigo-600 text-base preset-check"></i>
+                </div>
+                <p class="text-[11px] text-slate-600 leading-tight">Без таймера, сдача по 1 задаче, ответы открыты.</p>
+              </div>
+
+              <!-- Пресет: Контрольная -->
+              <div id="preset-card-test" onclick="applyPreset('test')" class="preset-card bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 hover:border-indigo-300 transition-all cursor-pointer space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-black text-slate-800">📝 Контрольная</span>
+                  <i class="ph-bold ph-circle text-slate-300 text-base preset-check"></i>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-tight">Строгие правила, ответы скрыты, 1 попытка.</p>
+              </div>
+
+              <!-- Пресет: Пробник КЕГЭ -->
+              <div id="preset-card-exam" onclick="applyPreset('exam')" class="preset-card bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 hover:border-indigo-300 transition-all cursor-pointer space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-black text-slate-800">⚡ Пробник КЕГЭ</span>
+                  <i class="ph-bold ph-circle text-slate-300 text-base preset-check"></i>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-tight">Таймер 235 мин, 27 задач, 1 попытка.</p>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="space-y-1">
+              <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Название работы (необязательно):</label>
+              <input type="text" id="assignment-title" placeholder="Оставьте пустым для автоназвания (например: Домашнее задание от DD.MM.YYYY)" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Курс / Предмет:</label>
+                <select id="assignment-course" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800">
+                  <!-- Заполняется из сервера -->
+                </select>
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Макс. Попыток сдачи:</label>
+                <input type="number" id="assignment-max-attempts" min="1" max="99" value="3" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800">
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Инструкция / Пояснения для учеников:</label>
+              <textarea id="assignment-description" rows="2" placeholder="Добавьте комментарий или указания по выполнению работы..." class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800 leading-relaxed"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- БЛОК 3: ПРАВИЛА СДАЧИ И ДЕДЛАЙН (Tactile 3D Card) -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-5">
+          <div class="pb-3 border-b-2 border-slate-200/80 flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
+              <i class="ph-bold ph-clock-afternoon text-indigo-600 text-base"></i> 3. Правила сдачи & Таймер
+            </h3>
+            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xs">
+              Шаг 3 из 4
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Дедлайн (Дата и время):</label>
+              <input type="datetime-local" id="assignment-deadline" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800">
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Ограничение времени (в минутах):</label>
+              <input type="number" id="assignment-time-limit" min="0" max="600" placeholder="Без ограничений (например: 235)" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800">
+            </div>
+          </div>
+
+          <!-- Чекбоксы настроек -->
+          <div class="space-y-3 pt-2 border-t-2 border-slate-200/80">
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" id="assignment-hard-deadline" class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
+              <span class="text-xs font-bold text-slate-700">Запретить отправку ответов после истечения дедлайна</span>
+            </label>
+
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" id="assignment-allow-separate" checked class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
+              <span class="text-xs font-bold text-slate-700">Разрешить последовательную сдачу по 1 задаче</span>
+            </label>
+
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" id="assignment-hide-before-start" onchange="toggleStartDateField()" class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
+              <span class="text-xs font-bold text-slate-700">Скрывать задания до наступления даты старта</span>
+            </label>
+
+            <div id="start-date-container" class="hidden pl-8 space-y-1 pt-1">
+              <label class="text-[10px] font-black uppercase text-slate-500">Дата и время старта:</label>
+              <input type="datetime-local" id="assignment-start-date" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-2 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none text-xs text-slate-800">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ПРАВАЯ КОЛОНКА: БЛОК 2 (Источники и Список задач) & БЛОК 4 (Адресаты) -->
+      <div class="col-span-12 lg:col-span-5 space-y-6">
+        
+        <!-- БЛОК 2: ОТКУДА БЕРЕМ ЗАДАНИЯ & СПИСОК ЗАДАЧ (Tactile 3D Card) -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-5">
+          <div class="pb-3 border-b-2 border-slate-200/80 flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
+              <i class="ph-bold ph-list-numbers text-indigo-600 text-base"></i> 2. Источники & Задачи (<span id="task-count-badge">0</span>)
+            </h3>
+            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xs">
+              Шаг 2 из 4
+            </span>
+          </div>
+
+          <!-- 4 Кнопки ИСТОЧНИКОВ ЗАДАЧ (Tactile 3D Buttons) -->
+          <div class="grid grid-cols-2 gap-2.5">
+            <button onclick="openInputIdsModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
+              <i class="ph-bold ph-textbox text-indigo-600"></i> Ввести ID
+            </button>
+            <button type="button" onclick="goToTaskGenerator(event)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black px-4 py-3 rounded-xl border border-indigo-200 border-b-[4px] shadow-[0_2px_5px_rgba(79,70,229,0.1)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
+              <i class="ph-bold ph-sparkle text-indigo-600"></i> Генератор
+            </button>
+            <button onclick="loadQuickMockVariant()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black px-4 py-3 rounded-xl border border-emerald-200 border-b-[4px] shadow-[0_2px_5px_rgba(16,185,129,0.1)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
+              <i class="ph-bold ph-lightning text-emerald-600"></i> Быстрый пробник
+            </button>
+            <button onclick="openTemplatesModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
+              <i class="ph-bold ph-copy text-indigo-600"></i> Из шаблона
+            </button>
+          </div>
+
+          <!-- СПИСОК ДОБАВЛЕННЫХ ЗАДАЧ (Accordion List) -->
+          <div id="assignment-tasks-container" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+            <!-- Заполняется динамически -->
+          </div>
+        </div>
+
+        <!-- БЛОК 4: КОМУ ВЫДАЕМ РАБОТУ? (АДРЕСАТЫ) (Tactile 3D Card) -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-5">
+          <div class="pb-3 border-b-2 border-slate-200/80 flex items-center justify-between">
+            <h3 class="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
+              <i class="ph-bold ph-users text-indigo-600 text-base"></i> 4. Адресаты (<span id="selected-recipients-count">0</span>)
+            </h3>
+            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xs">
+              Шаг 4 из 4
+            </span>
+          </div>
+
+          <!-- Pill-Tabs Controller «Группы / Индивидуалы» -->
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center p-1.5 bg-slate-200/60 rounded-[1.25rem] border border-slate-300/50 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)]">
+              <button id="recipient-tab-groups" onclick="switchRecipientTab('groups')" class="bg-white text-indigo-700 font-extrabold shadow-sm rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer">
+                👥 Группы
+              </button>
+              <button id="recipient-tab-students" onclick="switchRecipientTab('students')" class="text-slate-600 hover:text-slate-900 font-bold rounded-xl px-5 py-2 bg-transparent border-none transition-all text-xs cursor-pointer">
+                👤 Индивидуалы
+              </button>
+            </div>
+
+            <button onclick="toggleSelectAllRecipients()" class="text-[11px] font-black text-indigo-600 hover:text-indigo-800 border-none bg-transparent cursor-pointer">
+              Выбрать всех
+            </button>
+          </div>
+
+          <!-- Поиск адресатов -->
+          <input type="text" id="recipients-search" oninput="filterRecipients()" placeholder="Поиск ученика или группы..." class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-2.5 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800">
+
+          <!-- Контейнеры адресатов -->
+          <div id="recipients-groups-area" class="space-y-2 max-h-[220px] overflow-y-auto">
+            <!-- Список групп -->
+          </div>
+
+          <div id="recipients-students-area" class="space-y-2 max-h-[220px] overflow-y-auto hidden">
+            <!-- Список индивидуальных учеников -->
+          </div>
+        </div>
+
+        <!-- КНОПКА ФИНАЛЬНОГО ДЕЙСТВИЯ (Tactile 3D Main Button) -->
+        <button onclick="submitAssignmentForm()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer w-full flex items-center justify-center gap-2 text-base">
+          <i class="ph-bold ph-paper-plane-tilt text-xl"></i> Создать и отправить работу!
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<!-- МОДАЛЬНОЕ ОКНО ВВОДА ID ЗАДАЧ (Tactile 3D Modal) -->
+<div id="input-ids-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-md w-full space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
+      <h3 class="text-base font-black text-slate-800 font-display">
+        📥 Ввод ID задач из базы
+      </h3>
+      <button onclick="closeInputIdsModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition-colors border-none cursor-pointer">
+        &times;
+      </button>
+    </div>
+
+    <div class="space-y-2">
+      <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Введите ID задач (через запятую или пробел):</label>
+      <textarea id="modal-ids-input" rows="4" placeholder="Например: 1, 2, 3, 15" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl p-3 font-mono font-bold text-xs text-slate-800 outline-none w-full"></textarea>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 pt-2">
+      <button type="button" onclick="closeInputIdsModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs">
+        Отмена
+      </button>
+      <button type="button" onclick="handleFetchTasksByIds()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs">
+        Добавить задачи
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ШАБЛОНА (Tactile 3D Modal) -->
+<div id="templates-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-md w-full space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
+      <h3 class="text-base font-black text-slate-800 font-display">
+        📚 Доступные шаблоны работ
+      </h3>
+      <button onclick="closeTemplatesModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition-colors border-none cursor-pointer">
+        &times;
+      </button>
+    </div>
+
+    <div class="space-y-3">
+      <div onclick="applyTemplate('standard-27')" class="p-4 bg-white hover:bg-indigo-50/50 border-2 border-slate-200 hover:border-indigo-300 shadow-[0_3px_0_#DAE1E9] rounded-2xl cursor-pointer transition-all space-y-1">
+        <span class="text-xs font-black text-slate-800">⚡ Полный вариант КЕГЭ 2026 (27 задач)</span>
+        <p class="text-[11px] text-slate-500">По 1 задаче каждого типа №1–27</p>
+      </div>
+
+      <div onclick="applyTemplate('logic-block')" class="p-4 bg-white hover:bg-indigo-50/50 border-2 border-slate-200 hover:border-indigo-300 shadow-[0_3px_0_#DAE1E9] rounded-2xl cursor-pointer transition-all space-y-1">
+        <span class="text-xs font-black text-slate-800">🧩 Блок Алгебра Логики (№2, №15)</span>
+        <p class="text-[11px] text-slate-500">Подборка задач на таблицы истинности и предикаты</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NON-EXECUTABLE JSON CONTAINER FOR SERVER DATA -->
+<script id="create-assignment-data" type="application/json">
+{
+  "activeUserId": {{ (current_user.id if current_user is defined and current_user else None) | tojson | safe }},
+  "isAdmin": {{ (is_admin if is_admin is defined else False) | tojson | safe }},
+  "courses": {{ (courses if courses is defined else []) | tojson | safe }},
+  "students": [
+    {% if recipient_options %}
+      {% for st in recipient_options %}
+      {
+        "student_id": {{ st.student_id }},
+        "name": {{ (st.name or 'Без имени') | tojson | safe }},
+        "group_name": "Индивидуальный",
+        "school_class": {{ (st.school_class or '—') | tojson | safe }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    {% endif %}
+  ],
+  "groups": {
+    {% if available_groups %}
+      {% for grp in available_groups %}
+      {{ grp.title | tojson | safe }}: {{ group_members_map.get(grp.group_id | string, []) | tojson | safe }}{% if not loop.last %},{% endif %}
+      {% endfor %}
+    {% endif %}
+  },
+  "existingAssignment": {{ (existing_assignment if existing_assignment is defined else None) | tojson | safe }},
+  "initialTasks": [
+    {% if tasks %}
+      {% for t in tasks %}
+      {
+        "task_id": {{ t.task_id | tojson | safe }},
+        "task_number": {{ (t.task_number or 1) | tojson | safe }},
+        "max_score": {{ (t.max_score or 1) | tojson | safe }},
+        "answer": {{ (t.answer or '') | tojson | safe }},
+        "source": {{ (t.source_url or t.kege_source_tag or 'Банк задач') | tojson | safe }},
+        "content_html": {{ (t.content_html or '') | tojson | safe }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    {% endif %}
+  ],
+  "assignmentId": {{ ((source_meta.assignment_id if (source_meta is defined and source_meta and source_meta.assignment_id) else (assignment_id if assignment_id is defined else None))) | tojson | safe }}
+}
+</script>
+
+<!-- CLIENT JAVASCRIPT LOGIC (100% CLEAN FOR VS CODE LINTER) -->
+<script>
+const rawDataEl = document.getElementById('create-assignment-data');
+const pageData = rawDataEl ? JSON.parse(rawDataEl.textContent) : {};
+
+let attachedTasks = [];
+let selectedGroupNames = new Set();
+let selectedStudentIds = new Set();
+let activeRecipientTab = 'groups';
+
+// Ensure all sidebar links to generator contain our assignment_id
+document.addEventListener('DOMContentLoaded', () => {
+  if (pageData.assignmentId) {
+    document.querySelectorAll('a[href="/task-generator"]').forEach(a => {
+      a.href = `/task-generator?assignment_id=${pageData.assignmentId}`;
+    });
+  }
+});
+
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? (meta.getAttribute('content') || '') : '';
+}
+
+function renderKaTeXNow(targetNode) {
+  const target = targetNode || document.body;
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(target, {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "$", right: "$", display: false},
+        {left: "\\(", right: "\\)", display: false},
+        {left: "\\[", right: "\\]", display: true}
+      ],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre"],
+      throwOnError: false
+    });
+  }
+}
+
+function initKaTeX() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => renderKaTeXNow());
+  } else {
+    renderKaTeXNow();
+  }
+}
+
+/* --- PRESETS LOGIC --- */
+function applyPreset(presetType) {
+  document.querySelectorAll('.preset-card').forEach(card => {
+    card.className = 'preset-card bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 hover:border-indigo-300 transition-all cursor-pointer space-y-1';
+    const icon = card.querySelector('.preset-check');
+    if (icon) icon.className = 'ph-bold ph-circle text-slate-300 text-base preset-check';
+  });
+
+  const activeCard = document.getElementById(`preset-card-${presetType}`);
+  if (activeCard) {
+    activeCard.className = 'preset-card bg-indigo-50 border-2 border-indigo-600 shadow-[0_4px_0_#4338CA] rounded-2xl p-4 transition-all cursor-pointer space-y-1';
+    const icon = activeCard.querySelector('.preset-check');
+    if (icon) icon.className = 'ph-fill ph-check-circle text-indigo-600 text-base preset-check';
+  }
+
+  const timeLimitInput = document.getElementById('assignment-time-limit');
+  const allowSeparateCheckbox = document.getElementById('assignment-allow-separate');
+  const maxAttemptsInput = document.getElementById('assignment-max-attempts');
+
+  if (presetType === 'exam') {
+    timeLimitInput.value = 235;
+    allowSeparateCheckbox.checked = false;
+    allowSeparateCheckbox.disabled = true;
+    maxAttemptsInput.value = 1;
+  } else if (presetType === 'test') {
+    timeLimitInput.value = '';
+    allowSeparateCheckbox.checked = false;
+    allowSeparateCheckbox.disabled = true;
+    maxAttemptsInput.value = 1;
+  } else {
+    // homework
+    timeLimitInput.value = '';
+    allowSeparateCheckbox.disabled = false;
+    allowSeparateCheckbox.checked = true;
+    maxAttemptsInput.value = 3;
+  }
+}
+
+function toggleStartDateField() {
+  const checkbox = document.getElementById('assignment-hide-before-start');
+  const container = document.getElementById('start-date-container');
+  if (checkbox && container) {
+    if (checkbox.checked) {
+      container.classList.remove('hidden');
+    } else {
+      container.classList.add('hidden');
+    }
+  }
+}
+
+/* --- TASKS MANAGEMENT (TACTILE 3D ACCORDION) --- */
+function renderAttachedTasks() {
+  const container = document.getElementById('assignment-tasks-container');
+  const badge = document.getElementById('task-count-badge');
+  if (!container) return;
+
+  badge.textContent = attachedTasks.length;
+
+  if (attachedTasks.length === 0) {
+    container.innerHTML = `
+      <div class="p-8 border-2 border-dashed border-slate-300 rounded-2xl text-center space-y-2 bg-white/60">
+        <p class="text-xs font-bold text-slate-500">Задачи еще не добавлены в работу</p>
+        <p class="text-[11px] text-slate-400">Воспользуйтесь кнопками выше (Ввести ID, Быстрый пробник или Генератор)</p>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  attachedTasks.forEach((t, idx) => {
+    const snippet = (t.content_html || '').replace(/<[^>]*>?/gm, '').substring(0, 70);
+
+    html += `
+      <div id="task-card-${idx}" class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 transition-all space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 overflow-hidden flex-1 cursor-pointer" onclick="toggleTaskExpand(${idx})">
+            <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-black shadow-xs">
+              № ${t.task_number}
+            </span>
+            <span class="text-xs font-mono font-bold text-slate-400">ID #${t.task_id}</span>
+            <span class="text-xs font-bold text-slate-700 truncate">${snippet}...</span>
+          </div>
+
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex items-center gap-1">
+              <span class="text-[10px] font-black uppercase text-slate-400">Балл:</span>
+              <input type="number" min="1" max="10" value="${t.max_score || 1}" onchange="updateTaskScore(${idx}, this.value)" class="w-12 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-0.5 text-xs font-bold text-slate-800 text-center outline-none">
+            </div>
+
+            <button onclick="moveTaskUp(${idx})" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30">
+              ↑
+            </button>
+            <button onclick="moveTaskDown(${idx})" ${idx === attachedTasks.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30">
+              ↓
+            </button>
+            <button onclick="removeTaskFromAssignment(${idx})" class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer">
+              &times;
+            </button>
+          </div>
+        </div>
+
+        <div id="task-expand-body-${idx}" class="hidden pt-3 border-t-2 border-slate-100 space-y-3">
+          <div class="space-y-2 text-xs text-slate-700 leading-relaxed math-content bg-slate-50 p-3 rounded-xl border border-slate-200">
+            ${t.content_html}
+          </div>
+          <div class="p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl text-xs font-bold text-amber-900 flex items-center justify-between">
+            <span>Ответ: <strong class="font-mono font-black">${t.answer || '—'}</strong></span>
+            <span class="text-[10px] font-bold text-slate-400">Источник: ${t.source || 'Банк задач'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+
+  setTimeout(() => {
+    attachedTasks.forEach((t, idx) => {
+      const el = document.getElementById(`task-expand-body-${idx}`);
+      if (el) renderKaTeXNow(el);
+    });
+  }, 50);
+}
+
+function toggleTaskExpand(idx) {
+  const body = document.getElementById(`task-expand-body-${idx}`);
+  if (body) body.classList.toggle('hidden');
+}
+
+function updateTaskScore(idx, newScore) {
+  if (attachedTasks[idx]) {
+    attachedTasks[idx].max_score = parseInt(newScore) || 1;
+  }
+}
+
+function moveTaskUp(idx) {
+  if (idx <= 0) return;
+  const temp = attachedTasks[idx];
+  attachedTasks[idx] = attachedTasks[idx - 1];
+  attachedTasks[idx - 1] = temp;
+  renderAttachedTasks();
+}
+
+function moveTaskDown(idx) {
+  if (idx >= attachedTasks.length - 1) return;
+  const temp = attachedTasks[idx];
+  attachedTasks[idx] = attachedTasks[idx + 1];
+  attachedTasks[idx + 1] = temp;
+  renderAttachedTasks();
+}
+
+function removeTaskFromAssignment(idx) {
+  attachedTasks.splice(idx, 1);
+  renderAttachedTasks();
+}
+
+/* --- MODALS & APIS --- */
+function openInputIdsModal() {
+  document.getElementById('input-ids-modal').classList.remove('hidden');
+}
+function closeInputIdsModal() {
+  document.getElementById('input-ids-modal').classList.add('hidden');
+}
+
+/* --- 3D TOAST HELPER (BOOSTUDY UI CANON) --- */
+function show3DToast(message, redirectUrl = null) {
+  let toast = document.getElementById('boostudy-3d-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'boostudy-3d-toast';
+    toast.className = 'bg-emerald-500 text-white border-2 border-emerald-700 shadow-[0_4px_0_#047857] rounded-2xl p-4 font-black flex items-center gap-3 fixed bottom-6 right-6 z-50 transition-all transform duration-300';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<i class="ph-bold ph-check-circle text-xl"></i> <span>${message}</span>`;
+  toast.classList.remove('hidden', 'opacity-0', 'translate-y-4');
+
+  setTimeout(() => {
+    if (redirectUrl) {
+      window.location.href = redirectUrl;
+    } else {
+      toast.classList.add('opacity-0', 'translate-y-4');
+      setTimeout(() => toast.classList.add('hidden'), 300);
+    }
+  }, 1500);
+}
+
+async function handleFetchTasksByIds() {
+  const idsVal = document.getElementById('modal-ids-input').value;
+  if (!idsVal.trim()) return;
+
+  try {
+    const res = await fetch(`/sandbox/api/create_assignment/get_tasks_by_ids?ids=${encodeURIComponent(idsVal)}`);
+    const data = await res.json();
+    if (data.success && data.tasks) {
+      data.tasks.forEach(t => {
+        if (!attachedTasks.some(existing => existing.task_id === t.task_id)) {
+          attachedTasks.push(t);
+        }
+      });
+      renderAttachedTasks();
+      closeInputIdsModal();
+    } else {
+      show3DToast(data.message || 'Задачи по введенным ID не найдены');
+    }
+  } catch (e) {
+    show3DToast('Ошибка запроса задач');
+  }
+}
+
+async function loadQuickMockVariant() {
+  try {
+    const res = await fetch('/sandbox/api/create_assignment/quick_mock_variant');
+    const data = await res.json();
+    if (data.success && data.tasks) {
+      attachedTasks = data.tasks;
+      renderAttachedTasks();
+      applyPreset('exam');
+    }
+  } catch (e) {
+    show3DToast('Ошибка генерации полного варианта');
+  }
+}
+
+function openTemplatesModal() {
+  document.getElementById('templates-modal').classList.remove('hidden');
+}
+function closeTemplatesModal() {
+  document.getElementById('templates-modal').classList.add('hidden');
+}
+
+function applyTemplate(tplName) {
+  if (tplName === 'standard-27') {
+    loadQuickMockVariant();
+  } else if (tplName === 'logic-block') {
+    handleFetchTasksByIdsDirect('1, 2, 3');
+  }
+  closeTemplatesModal();
+}
+
+async function handleFetchTasksByIdsDirect(idsStr) {
+  try {
+    const res = await fetch(`/sandbox/api/create_assignment/get_tasks_by_ids?ids=${encodeURIComponent(idsStr)}`);
+    const data = await res.json();
+    if (data.success && data.tasks) {
+      attachedTasks = data.tasks;
+      renderAttachedTasks();
+    }
+  } catch (e) {}
+}
+
+async function goToTaskGenerator(e) {
+  if (e) e.preventDefault();
+  
+  let draftId = pageData.assignmentId;
+  if (!draftId) {
+    const urlParams = new URLSearchParams(window.location.search);
+    draftId = urlParams.get('assignment_id');
+  }
+
+  if (!draftId) {
+    show3DToast('Ошибка: невозможно получить ID черновика');
+    return;
+  }
+
+  try {
+    const draftRes = await saveAssignmentDraft(false);
+    if (draftRes && draftRes.assignment_id) {
+      draftId = draftRes.assignment_id;
+    }
+  } catch (e) {
+    console.error("Save draft error:", e);
+  }
+
+  sessionStorage.setItem(`draft_recipients_${draftId}`, JSON.stringify({
+    students: Array.from(selectedStudentIds),
+    groups: Array.from(selectedGroupNames)
+  }));
+
+  window.location.href = `/task-generator?assignment_id=${draftId}`;
+}
+
+/* --- RECIPIENTS (GROUPS & STUDENTS) LOGIC --- */
+function switchRecipientTab(tabName) {
+  activeRecipientTab = tabName;
+  const groupsBtn = document.getElementById('recipient-tab-groups');
+  const studentsBtn = document.getElementById('recipient-tab-students');
+  const groupsArea = document.getElementById('recipients-groups-area');
+  const studentsArea = document.getElementById('recipients-students-area');
+
+  if (tabName === 'groups') {
+    groupsBtn.className = 'bg-white text-indigo-700 font-extrabold shadow-sm rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer';
+    studentsBtn.className = 'text-slate-600 hover:text-slate-900 font-bold rounded-xl px-5 py-2 bg-transparent border-none transition-all text-xs cursor-pointer';
+    groupsArea.classList.remove('hidden');
+    studentsArea.classList.add('hidden');
+  } else {
+    studentsBtn.className = 'bg-white text-indigo-700 font-extrabold shadow-sm rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer';
+    groupsBtn.className = 'text-slate-600 hover:text-slate-900 font-bold rounded-xl px-5 py-2 bg-transparent border-none transition-all text-xs cursor-pointer';
+    studentsArea.classList.remove('hidden');
+    groupsArea.classList.add('hidden');
+  }
+}
+
+function renderRecipients() {
+  const groupsArea = document.getElementById('recipients-groups-area');
+  const studentsArea = document.getElementById('recipients-students-area');
+
+  const groups = pageData.groups || {};
+  const students = pageData.students || [];
+
+  // Render Groups
+  let gHtml = '';
+  Object.keys(groups).forEach(gName => {
+    const members = groups[gName];
+    const isChecked = selectedGroupNames.has(gName);
+    gHtml += `
+      <label class="flex items-center justify-between p-3 bg-white border-2 border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 transition-all shadow-xs">
+        <div class="flex items-center gap-3">
+          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleGroupSelection('${gName}', this.checked)" class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
+          <div>
+            <p class="text-xs font-black text-slate-800">${gName}</p>
+            <p class="text-[10px] font-bold text-slate-400">${members.length} учеников в группе</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[10px] font-black uppercase">Группа</span>
+      </label>
+    `;
+  });
+  groupsArea.innerHTML = gHtml || '<p class="text-xs text-slate-400">Группы не найдены</p>';
+
+  // Render Students
+  let sHtml = '';
+  students.forEach(st => {
+    const isChecked = selectedStudentIds.has(st.student_id);
+    sHtml += `
+      <label class="flex items-center justify-between p-2.5 bg-white border-2 border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 transition-all shadow-xs">
+        <div class="flex items-center gap-3">
+          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleStudentSelection(${st.student_id}, this.checked)" class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">
+              ${(st.name || 'U')[0]}
+            </div>
+            <div>
+              <p class="text-xs font-black text-slate-800">${st.name}</p>
+              <p class="text-[10px] text-slate-400">${st.group_name}</p>
+            </div>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-bold">${st.school_class} кл.</span>
+      </label>
+    `;
+  });
+  studentsArea.innerHTML = sHtml || '<p class="text-xs text-slate-400">Ученики не найдены</p>';
+
+  updateSelectedRecipientsCount();
+}
+
+function toggleGroupSelection(gName, isChecked) {
+  if (isChecked) {
+    selectedGroupNames.add(gName);
+  } else {
+    selectedGroupNames.delete(gName);
+  }
+  updateSelectedRecipientsCount();
+}
+
+function toggleStudentSelection(stId, isChecked) {
+  if (isChecked) {
+    selectedStudentIds.add(stId);
+  } else {
+    selectedStudentIds.delete(stId);
+  }
+  updateSelectedRecipientsCount();
+}
+
+function toggleSelectAllRecipients() {
+  if (activeRecipientTab === 'groups') {
+    const groups = pageData.groups || {};
+    if (selectedGroupNames.size === Object.keys(groups).length) {
+      selectedGroupNames.clear();
+    } else {
+      Object.keys(groups).forEach(g => selectedGroupNames.add(g));
+    }
+  } else {
+    const students = pageData.students || [];
+    if (selectedStudentIds.size === students.length) {
+      selectedStudentIds.clear();
+    } else {
+      students.forEach(s => selectedStudentIds.add(s.student_id));
+    }
+  }
+  renderRecipients();
+}
+
+function updateSelectedRecipientsCount() {
+  const badge = document.getElementById('selected-recipients-count');
+  const count = selectedGroupNames.size + selectedStudentIds.size;
+  if (badge) badge.textContent = count;
+}
+
+function filterRecipients() {
+  const query = (document.getElementById('recipients-search').value || '').toLowerCase();
+}
+
+/* --- SAVE & SUBMIT LOGIC --- */
+async function saveAssignmentDraft(showAlert = true) {
+  const presetCard = document.querySelector('.preset-card.border-indigo-600');
+  const presetType = presetCard ? presetCard.id.replace('preset-card-', '') : 'homework';
+
+  const body = {
+    assignment_id: pageData.assignmentId,
+    title: document.getElementById('assignment-title').value,
+    description: document.getElementById('assignment-description').value,
+    assignment_type: presetType,
+    deadline: document.getElementById('assignment-deadline').value,
+    time_limit_minutes: document.getElementById('assignment-time-limit').value,
+    max_attempts_default: document.getElementById('assignment-max-attempts').value,
+    hard_deadline: document.getElementById('assignment-hard-deadline').checked,
+    allow_separate_submission: document.getElementById('assignment-allow-separate').checked,
+    target_students: Array.from(selectedStudentIds),
+    target_groups: Array.from(selectedGroupNames),
+    tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1 }))
+  };
+
+  try {
+    const res = await fetch('/sandbox/api/create_assignment/save_draft', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) {
+      pageData.assignmentId = data.assignment_id;
+      const badge = document.getElementById('draft-status-badge');
+      if (badge) badge.textContent = `Черновик ID #${data.assignment_id}`;
+      if (showAlert) show3DToast(data.message || 'Черновик сохранен!');
+      return data;
+    }
+  } catch (e) {
+    if (showAlert) show3DToast('Ошибка сохранения черновика');
+  }
+  return null;
+}
+
+async function submitAssignmentForm() {
+  const presetCard = document.querySelector('.preset-card.border-indigo-600');
+  const presetType = presetCard ? presetCard.id.replace('preset-card-', '') : 'homework';
+
+  const body = {
+    assignment_id: pageData.assignmentId,
+    title: document.getElementById('assignment-title').value,
+    description: document.getElementById('assignment-description').value,
+    assignment_type: presetType,
+    deadline: document.getElementById('assignment-deadline').value,
+    time_limit_minutes: document.getElementById('assignment-time-limit').value,
+    max_attempts_default: document.getElementById('assignment-max-attempts').value,
+    hard_deadline: document.getElementById('assignment-hard-deadline').checked,
+    allow_separate_submission: document.getElementById('assignment-allow-separate').checked,
+    tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1 })),
+    target_students: Array.from(selectedStudentIds),
+    target_groups: Array.from(selectedGroupNames)
+  };
+
+  try {
+    const res = await fetch('/sandbox/api/create_assignment/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.success) {
+      show3DToast(data.message || 'Работа создана!', '/assignments');
+    } else {
+      show3DToast(data.message || 'Ошибка создания работы');
+    }
+  } catch (e) {
+    show3DToast('Ошибка соединения при отправке работы');
+  }
+}
+
+/* --- INIT --- */
+document.addEventListener('DOMContentLoaded', () => {
+  initKaTeX();
+
+  // Populate course dropdown
+  const courseSelect = document.getElementById('assignment-course');
+  if (courseSelect && pageData.courses) {
+    pageData.courses.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.title;
+      courseSelect.appendChild(opt);
+    });
+  }
+
+  // Populate existing data if loaded
+  if (pageData.initialTasks && pageData.initialTasks.length > 0) {
+    attachedTasks = pageData.initialTasks;
+  }
+
+  if (pageData.existingAssignment) {
+    const ea = pageData.existingAssignment;
+    document.getElementById('assignment-title').value = ea.title || '';
+    document.getElementById('assignment-description').value = ea.description || '';
+    if (ea.deadline) document.getElementById('assignment-deadline').value = ea.deadline;
+    if (ea.time_limit_minutes) document.getElementById('assignment-time-limit').value = ea.time_limit_minutes;
+    if (ea.max_attempts_default) document.getElementById('assignment-max-attempts').value = ea.max_attempts_default;
+    document.getElementById('assignment-hard-deadline').checked = !!ea.hard_deadline;
+    document.getElementById('assignment-allow-separate').checked = !!ea.allow_separate_submission;
+
+    if (ea.assignment_type) applyPreset(ea.assignment_type);
+    if (ea.tasks && ea.tasks.length > 0) {
+      attachedTasks = ea.tasks;
+    }
+  } else {
+    applyPreset('homework');
+  }
+
+  if (pageData.assignmentId) {
+    const savedRecipients = sessionStorage.getItem(`draft_recipients_${pageData.assignmentId}`);
+    if (savedRecipients) {
+      try {
+        const parsed = JSON.parse(savedRecipients);
+        if (parsed.students) parsed.students.forEach(id => selectedStudentIds.add(id));
+        if (parsed.groups) parsed.groups.forEach(name => selectedGroupNames.add(name));
+      } catch (e) {}
+    }
+  }
+
+  renderAttachedTasks();
+  renderRecipients();
+});
+</script>
+{% endblock %}

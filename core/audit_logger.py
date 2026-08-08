@@ -49,12 +49,13 @@ class AuditLogger:
         logger.info("AuditLogger worker thread started")
 
     def stop_worker(self):
-
+        worker_thread = self.worker_thread
+        if worker_thread is None:
+            return
         self.is_running = False
-        if self.worker_thread:
-            self.log_queue.put(None)
-            self.worker_thread.join(timeout=5)
-            logger.info("AuditLogger worker thread stopped")
+        self.log_queue.put(None)
+        worker_thread.join(timeout=5)
+        self.worker_thread = None
 
     def _worker_loop(self):
 
@@ -168,8 +169,16 @@ class AuditLogger:
 
         if has_request_context():
             if current_user.is_authenticated:
-                user_id = current_user.id
-                user_name = current_user.username
+                try:
+                    user_id = current_user.id
+                    user_name = current_user.username
+                except Exception:
+                    try:
+                        uid_str = current_user.get_id()
+                        if uid_str:
+                            user_id = int(uid_str)
+                    except Exception:
+                        pass
             else:
                 tester_id = request.headers.get('X-Tester-UUID')
 

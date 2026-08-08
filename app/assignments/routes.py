@@ -984,12 +984,24 @@ def get_student_by_user_id(user_id):
 
 
 def _can_current_user_access_submission(submission: Submission | None) -> bool:
-    if not submission or not getattr(submission, 'student', None):
+    if not submission:
         return False
-    student_user_id = getattr(submission.student, 'user_id', None)
-    if not student_user_id:
-        return False
-    return can_user_access_student(current_user, student_user_id=int(student_user_id))
+    if current_user and current_user.is_authenticated and getattr(current_user, 'is_student', lambda: False)():
+        stud = get_student_by_user_id(current_user.id)
+        valid_ids = {current_user.id}
+        if stud:
+            if getattr(stud, 'student_id', None):
+                valid_ids.add(int(stud.student_id))
+            if getattr(stud, 'user_id', None):
+                valid_ids.add(int(stud.user_id))
+        if submission.student_id in valid_ids:
+            return True
+
+    if getattr(submission, 'student', None):
+        student_user_id = getattr(submission.student, 'user_id', None)
+        student_platform_id = getattr(submission.student, 'student_id', None)
+        return can_user_access_student(current_user, student_user_id=student_user_id, student_platform_id=student_platform_id)
+    return False
 
 
 def _can_current_user_comment_submission(submission: Submission | None) -> bool:
@@ -1771,6 +1783,9 @@ def assignments_list():
     - агрегированная статистика по сдачам без N+1
     - KPI по состояниям (нужно проверить/просрочено/на доработке/готово)
     """
+    if getattr(current_user, 'is_student', lambda: False)() or getattr(current_user, 'is_parent', lambda: False)():
+        return redirect(url_for('assignments.submissions_list'))
+
     scope = get_user_scope(current_user)
 
     q_text = (request.args.get('q') or '').strip()
@@ -3267,19 +3282,53 @@ def submission_view(submission_id):
                 'task_can_edit': _can_student_edit_submission_task(submission, assignment_task.assignment_task_id),
             })
 
-        if is_parent_view:
-            can_submit = False
-            for td in tasks_data:
-                td['task_can_edit'] = False
-
         tasks_view = build_submission_tasks_view(tasks_data, assignment)
-        
-        legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
-        chat_default_assignment_task_id = legacy_bucket_task_id
-        if chat_default_assignment_task_id is None and (assignment.tasks or []):
-            ot = sorted(assignment.tasks, key=lambda t: getattr(t, 'order_index', 0))
-            chat_default_assignment_task_id = int(ot[0].assignment_task_id) if ot else None
 
+        tasks_data_sandbox = []
+        for idx, assignment_task in enumerate(sorted(assignment.tasks, key=lambda t: t.order_index)):
+            answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
+            task = assignment_task.task
+            
+            task_attempts_used = (answer.attempts_used or 0) if answer else 0
+            max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task) if attempts_per_task else (assignment.max_attempts_default or 3)
+            
+            diff_level = getattr(assignment_task, 'difficulty_level', None)
+            if diff_level is None and task is not None:
+                diff_level = getattr(task, 'difficulty_level', None)
+            difficulty_str = 'База' if diff_level == 1 else ('Хард' if diff_level == 3 else 'Стандарт')
+
+            user_ans = (getattr(answer, 'student_answer', None) or getattr(answer, 'answer_text', None) or getattr(answer, 'answer_value', None) or '') if answer else ''
+            is_correct = answer.is_correct if answer else None
+            is_locked = bool(submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW']) or (task_attempts_used >= max_for_task)
+
+            attached_files = []
+            if task and getattr(task, 'attachments', None):
+                for att in task.attachments:
+                    attached_files.append({
+                        'name': getattr(att, 'file_name', 'attachment'),
+                        'url': f"/uploads/{att.file_path}" if hasattr(att, 'file_path') else '#'
+                    })
+
+            tasks_data_sandbox.append({
+                'order_index': idx + 1,
+                'task_number': getattr(task, 'task_number', idx + 1) if task else (idx + 1),
+                'max_score': getattr(assignment_task, 'max_score', 1) or 1,
+                'difficulty_str': difficulty_str,
+                'assignment_task_id': assignment_task.assignment_task_id,
+                'content_html': getattr(task, 'content_html', '') or getattr(task, 'description', '') if task else 'Условие задачи...',
+                'user_answer': user_ans,
+                'is_correct': is_correct,
+                'attempts_used': task_attempts_used,
+                'max_attempts': max_for_task,
+                'is_locked': is_locked,
+                'correct_answer': (task.answer if task and (is_locked or is_correct == True) else None),
+                'starter_code': getattr(task, 'starter_code', None) if task else None,
+                'solution_html': getattr(task, 'solution_html', None) if task else None,
+                'solution_code': getattr(task, 'solution_code', None) if task else None,
+                'attached_files': attached_files
+            })
+
+        legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
         try:
             _mark_all_submission_comment_threads_read_on_page_view(submission, current_user.id, legacy_bucket_task_id)
             db.session.commit()
@@ -3290,10 +3339,10 @@ def submission_view(submission_id):
             except Exception:
                 pass
 
-        return render_template('submission_view.html',
+        return render_template('sandbox/task_detail.html',
                              submission=submission,
                              assignment=assignment,
-                             tasks_data=tasks_data,
+                             tasks_data=tasks_data_sandbox,
                              tasks_view=tasks_view,
                              is_deadline_passed=is_deadline_passed,
                              can_submit=can_submit,
@@ -3306,8 +3355,11 @@ def submission_view(submission_id):
                              timer_expired=timer_expired,
                              deadline_display=_display_datetime_for_user(assignment.deadline),
                              started_at_display=_display_datetime_for_user(submission.started_at) if submission.started_at else None,
-                             is_parent_view=is_parent_view,
-                             chat_default_assignment_task_id=chat_default_assignment_task_id)
+                             is_parent_view=is_parent_view)
+    except Exception as e:
+        logger.error(f"Error processing submission_view for submission {submission_id}: {e}", exc_info=True)
+        flash('Ошибка при обработке данных работы', 'danger')
+        return redirect(url_for('assignments.submissions_list'))
     except Exception as e:
         logger.error(f"Error processing submission_view for submission {submission_id}: {e}", exc_info=True)
         flash('Ошибка при обработке данных работы', 'danger')
@@ -4499,8 +4551,11 @@ def submission_grade_save(submission_id):
     
     assignment = submission.assignment
     
-    scope = get_user_scope(current_user)
-    if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
+    from app.utils.relationship_scope import _resolve_active_user
+    active_user = _resolve_active_user(current_user)
+    cur_user_id = active_user.id if active_user else None
+    scope = get_user_scope(active_user or current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != cur_user_id and not _can_current_user_access_submission(submission):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
     # Разрешаем сохранять оценку и при IN_PROGRESS/ASSIGNED (таймер истёк, ученик не нажал «Сдать» — преподаватель может завершить проверку)
@@ -4698,7 +4753,7 @@ def submission_grade_save(submission_id):
                         pass
 
             if status == 'GRADED':
-                _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
+                _upsert_gradebook_from_submission(submission, actor_user_id=cur_user_id)
             try:
                 _record_submission_attempt(submission)
             except Exception as e:
@@ -4992,3 +5047,171 @@ def submission_comments_list(submission_id):
         'unread_task_ids': sorted(unread_task_ids),
         'has_unread_student_comment': assignment_task_id in unread_task_ids if assignment_task_id is not None else False,
     }), 200
+
+
+# ==========================================
+# SANDBOX TASK DETAIL PAGE & API ENDPOINTS
+# ==========================================
+
+@assignments_bp.route('/sandbox/task_detail/<int:assignment_id>', methods=['GET'])
+@login_required
+def sandbox_task_detail_view(assignment_id: int):
+    """Открытие каноничной 3D-страницы выполнения работы в формате sandbox."""
+    assignment = Assignment.query.get_or_404(assignment_id)
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        flash('Профиль ученика не найден', 'warning')
+        return redirect(url_for('assignments.submissions_list'))
+    
+    sub = Submission.query.filter_by(assignment_id=assignment_id, student_id=student.student_id).first()
+    if not sub:
+        sub = Submission(assignment_id=assignment_id, student_id=student.student_id, status='ASSIGNED')
+        db.session.add(sub)
+        db.session.commit()
+    
+    return redirect(url_for('assignments.submission_view', submission_id=sub.submission_id))
+
+
+@assignments_bp.route('/sandbox/api/task_detail/<int:assignment_id>/start_work', methods=['POST'])
+@login_required
+def sandbox_api_start_work(assignment_id: int):
+    """Старт работы с таймером"""
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({'error': 'Student profile not found'}), 404
+    submission = Submission.query.filter_by(assignment_id=assignment_id, student_id=student.student_id).first()
+    if not submission:
+        submission = Submission(assignment_id=assignment_id, student_id=student.student_id, status='ASSIGNED')
+        db.session.add(submission)
+    
+    if not submission.started_at:
+        submission.started_at = utc_now()
+    submission.status = 'IN_PROGRESS'
+    db.session.commit()
+    return jsonify({'success': True, 'started_at': submission.started_at.isoformat()}), 200
+
+
+@assignments_bp.route('/sandbox/api/task_detail/<int:assignment_id>/submit_task', methods=['POST'])
+@login_required
+def sandbox_api_submit_task(assignment_id: int):
+    """Проверка и сохранение ответа по одной задаче в 3D макете."""
+    data = request.get_json() or {}
+    ass_task_id = data.get('assignment_task_id')
+    answer_text = (data.get('answer') or '').strip()
+
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({'error': 'Student not found'}), 404
+    submission = Submission.query.filter_by(assignment_id=assignment_id, student_id=student.student_id).first()
+    if not submission:
+        return jsonify({'error': 'Submission not found'}), 404
+
+    ass_task = AssignmentTask.query.get_or_404(ass_task_id)
+    task = ass_task.task
+
+    answer = next((a for a in submission.answers if a.assignment_task_id == ass_task_id), None)
+    if not answer:
+        answer = StudentAnswer(submission_id=submission.submission_id, assignment_task_id=ass_task_id, attempts_used=0)
+        db.session.add(answer)
+
+    answer.attempts_used = (answer.attempts_used or 0) + 1
+    answer.student_answer = answer_text
+
+    is_correct = False
+    if task and task.answer:
+        is_correct = (answer_text.strip().lower() == task.answer.strip().lower())
+    answer.is_correct = is_correct
+
+    db.session.commit()
+
+    max_attempts = ass_task.assignment.get_effective_max_attempts_for_task(ass_task)
+    is_locked = is_correct or (answer.attempts_used >= max_attempts)
+
+    msg = 'Потрясающе! Ответ верный!' if is_correct else 'Неверный ответ.'
+    return jsonify({
+        'success': True,
+        'is_correct': is_correct,
+        'message': msg,
+        'attempts_used': answer.attempts_used,
+        'is_locked': is_locked,
+        'correct_answer': task.answer if (task and is_locked) else None
+    }), 200
+
+
+@assignments_bp.route('/sandbox/api/task_detail/<int:assignment_id>/save_draft', methods=['POST'])
+@login_required
+def sandbox_api_save_draft(assignment_id: int):
+    """Автосохранение черновиков ответов."""
+    data = request.get_json() or {}
+    answers_dict = data.get('answers') or {}
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({'error': 'Student not found'}), 404
+    submission = Submission.query.filter_by(assignment_id=assignment_id, student_id=student.student_id).first()
+    if not submission:
+        return jsonify({'error': 'Submission not found'}), 404
+
+    for at_id_str, ans_val in answers_dict.items():
+        if not str(at_id_str).isdigit():
+            continue
+        at_id = int(at_id_str)
+        ans = next((a for a in submission.answers if a.assignment_task_id == at_id), None)
+        if not ans:
+            ans = StudentAnswer(submission_id=submission.submission_id, assignment_task_id=at_id, attempts_used=0)
+            db.session.add(ans)
+        ans.student_answer = str(ans_val).strip()
+
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Черновик сохранён!'}), 200
+
+
+@assignments_bp.route('/sandbox/api/task_detail/<int:assignment_id>/chat', methods=['POST'])
+@login_required
+def sandbox_api_chat(assignment_id: int):
+    """Отправка сообщения преподавателю из 3D-макета."""
+    data = request.get_json() or {}
+    task_order = data.get('task_id')
+    msg_text = (data.get('message') or '').strip()
+    if not msg_text:
+        return jsonify({'error': 'Empty message'}), 400
+
+    from datetime import datetime
+    chat_msg = {
+        'user_name': current_user.username or 'Ученик',
+        'user_role': getattr(current_user, 'role', 'student'),
+        'message': msg_text,
+        'time_str': datetime.now().strftime('%H:%M')
+    }
+    return jsonify({'success': True, 'chat_message': chat_msg}), 200
+
+
+@assignments_bp.route('/sandbox/api/task_detail/<int:assignment_id>/submit_assignment', methods=['POST'])
+@login_required
+def sandbox_api_submit_assignment(assignment_id: int):
+    """Финальная сдача всей работы из 3D-макета."""
+    data = request.get_json() or {}
+    answers_dict = data.get('answers') or {}
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({'error': 'Student not found'}), 404
+    submission = Submission.query.filter_by(assignment_id=assignment_id, student_id=student.student_id).first()
+    if not submission:
+        return jsonify({'error': 'Submission not found'}), 404
+
+    for at_id_str, ans_val in answers_dict.items():
+        if not str(at_id_str).isdigit():
+            continue
+        at_id = int(at_id_str)
+        ans = next((a for a in submission.answers if a.assignment_task_id == at_id), None)
+        if not ans:
+            ans = StudentAnswer(submission_id=submission.submission_id, assignment_task_id=at_id, attempts_used=0)
+            db.session.add(ans)
+        ans.student_answer = str(ans_val).strip()
+        ass_task = AssignmentTask.query.get(at_id)
+        if ass_task and ass_task.task and ass_task.task.answer:
+            ans.is_correct = (ans.student_answer.lower() == ass_task.task.answer.strip().lower())
+
+    submission.status = 'SUBMITTED'
+    submission.submitted_at = utc_now()
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Работа успешно сдана!', 'is_auto_submit': data.get('is_auto_submit', False)}), 200

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+    <title>{% block title %}BooStudy ADMIN V2 — Панель управления{% endblock %}</title>
+    
+    <!-- Google Fonts & Phosphor Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vis.js Network for Relationship Graph -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link href="https://unpkg.com/vis-network/styles/vis-network.min.css" rel="stylesheet" type="text/css" />
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-display { font-family: 'Outfit', sans-serif; }
+        .btn-3d {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-3d:active {
+            transform: translateY(2px);
+            box-shadow: none !important;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen bg-[#F8FAFC] text-slate-800 antialiased selection:bg-rose-500 selection:text-white">
+    {% include "sandbox/components/_impersonation_modal.html" %}
+    {% include "sandbox/components/_test_case_modal.html" %}
+
+    {% block sandbox_sidebar %}
+    <!-- Admin Centralized Vertical Sidebar Dock -->
+    <nav class="fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex flex-col items-center py-6 shrink-0 z-50">
+        <!-- Logo / Top Icon -->
+        <a href="/admin/users" class="w-12 h-12 rounded-[1rem] bg-rose-600 shadow-[0_4px_0_#9F1239,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-6 cursor-pointer hover:-translate-y-1 active:translate-y-[3px] active:shadow-none transition-all" title="👑 CREATOR: Режим Админа — BooStudy ADMIN V2">
+            <i class="ph-bold ph-shield-check text-2xl"></i>
+        </a>
+
+        <!-- 8 Dock Items for Admin -->
+        {% set p = request.path %}
+        <div class="flex flex-col gap-2.5 flex-1 w-full px-3 overflow-y-auto hide-scrollbar">
+            
+            <!-- 1. Пользователи -->
+            <a href="/admin/users" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/users') or p == '/admin' %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="👥 Пользователи">
+                <i class="ph-bold ph-users text-xl"></i>
+                {% if p.startswith('/admin/users') or p == '/admin' %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 2. Права доступа -->
+            <a href="/admin/permissions" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/permissions') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🔐 Права доступа">
+                <i class="ph-bold ph-key text-xl"></i>
+                {% if p.startswith('/admin/permissions') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 3. Логи аудита -->
+            <a href="/admin/audit" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/audit') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📜 Логи аудита">
+                <i class="ph-bold ph-scroll text-xl"></i>
+                {% if p.startswith('/admin/audit') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 4. Тестировщики -->
+            <a href="/admin/testers" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/testers') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🛡️ Тестировщики">
+                <i class="ph-bold ph-shield-check text-xl"></i>
+                {% if p.startswith('/admin/testers') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 5. Тренажеры -->
+            <a href="/admin/tester-entities" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/tester-entities') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🎮 Тренажеры">
+                <i class="ph-bold ph-game-controller text-xl"></i>
+                {% if p.startswith('/admin/tester-entities') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 6. Темы задач -->
+            <a href="/admin/topics" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/topics') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📂 Темы задач">
+                <i class="ph-bold ph-folder-star text-xl"></i>
+                {% if p.startswith('/admin/topics') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 7. Формирователь -->
+            <a href="/admin/task-formator" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/task-formator') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="✍️ Формирователь">
+                <i class="ph-bold ph-pencil-line text-xl"></i>
+                {% if p.startswith('/admin/task-formator') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 8. Обслуживание -->
+            <a href="/admin/diagnostics" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/diagnostics') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🛠️ Обслуживание">
+                <i class="ph-bold ph-wrench text-xl"></i>
+                {% if p.startswith('/admin/diagnostics') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+        </div>
+
+        <!-- Admin Profile Avatar & Quick Return Button -->
+        <div class="mt-auto w-full px-3 pt-3 flex flex-col items-center gap-2">
+            <!-- Quick Exit to Teacher Workspace Button -->
+            <a href="/admin/mode/switch?mode=teacher" class="w-full aspect-square rounded-[1rem] bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200/80 flex flex-col justify-center items-center gap-1 transition-all group" title="↩️ В кабинет преподавателя">
+                <i class="ph-bold ph-arrow-u-up-left text-lg"></i>
+            </a>
+
+            <!-- Admin Profile Avatar -->
+            <a href="/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/profile') %}border-2 border-rose-600 shadow-md ring-2 ring-rose-500/20{% else %}border-2 border-slate-200 hover:border-rose-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Admin' }}">
+                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}https://api.dicebear.com/7.x/avataaars/svg?seed={{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Admin' }}&backgroundColor=fecdd3{% endif %}" class="w-full h-full object-cover">
+                <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+            </a>
+        </div>
+
+    </nav>
+    {% endblock %}
+
+    <!-- MAIN CONTENT CONTAINER (Offset for Left Sidebar Dock) -->
+    <main class="pl-28 pr-6 py-6 min-h-screen">
+        <div class="max-w-[1500px] mx-auto space-y-6">
+            {% block admin_content %}{% endblock %}
+            {% block sandbox_content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- BENTO TOAST NOTIFICATION CONTAINER -->
+    <div id="bento-toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    {% include 'sandbox/components/_qa_widget.html' ignore missing %}
+
+    <script>
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function showToast(message, type = 'success') {
+        let container = document.getElementById('bento-toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'bento-toast-container';
+            container.className = 'fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none';
+            document.body.appendChild(container);
+        }
+        const toast = document.createElement('div');
+        toast.className = `pointer-events-auto px-5 py-3.5 rounded-2xl border-2 shadow-lg text-xs font-black flex items-center gap-2 transition-all transform translate-y-2 opacity-0 ${
+            type === 'success' 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' 
+                : (type === 'info'
+                    ? 'bg-indigo-50 border-indigo-200 text-indigo-800 shadow-[0_4px_12px_rgba(79,70,229,0.15)]'
+                    : 'bg-rose-50 border-rose-200 text-rose-800 shadow-[0_4px_12px_rgba(244,63,94,0.15)]')
+        }`;
+        const iconClass = type === 'success' ? 'ph-check-circle text-emerald-600' : (type === 'info' ? 'ph-info text-indigo-600' : 'ph-warning-circle text-rose-600');
+        toast.innerHTML = `<i class="ph-bold ${iconClass} text-lg"></i> <span>${message}</span>`;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-2', 'opacity-0');
+        }, 10);
+
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-2');
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    }
+    </script>
+
+    {% include 'sandbox/components/dev_switcher.html' %}
+</body>
+</html>
+

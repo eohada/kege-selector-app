@@ -233,7 +233,7 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
     is_student_owner = getattr(user, "is_student", lambda: False)() and user.id == student.user_id
     can_review = _has_teacher_scope(user)
     is_parent = getattr(user, "is_parent", lambda: False)()
-    can_edit = ((is_student_owner and (lesson_task.status or "pending") in {"pending", "returned", "assigned", "in_progress"}) or can_review) and not is_parent
+    can_edit = is_student_owner and (lesson_task.status or "pending") in {"pending", "returned", "assigned", "in_progress"} and not is_parent
     mmr_policy = "manual_confirm"
     if (lesson_task.assignment_type or "homework") != "classwork":
         mmr_policy = "always"
@@ -286,7 +286,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     can_review = _has_teacher_scope(user)
     is_parent = getattr(user, "is_parent", lambda: False)()
     normalized_status = (submission.status or "").strip().upper()
-    can_edit = ((is_owner and normalized_status in {"IN_PROGRESS", "RETURNED"}) or can_review) and not is_parent
+    can_edit = is_owner and normalized_status in {"IN_PROGRESS", "RETURNED"} and not is_parent
 
     timer_seconds_left = None
     if normalized_status != "RETURNED" and submission.started_at and submission.assignment.time_limit_minutes:
@@ -494,6 +494,20 @@ def load_workspace_versions_payload(ctx: WorkspaceContext) -> dict[str, Any]:
             "preview": (version.code or "")[:240],
         })
     return {"items": items, "count": len(items)}
+
+
+def restore_workspace_version(ctx: WorkspaceContext, version_id: int) -> dict[str, Any]:
+    """Restore an owned workspace version as a new, auditable snapshot."""
+    version = _version_lookup(ctx).filter_by(version_id=int(version_id)).first()
+    if not version:
+        abort(404, "Версия Workspace не найдена")
+    code = version.code or ""
+    answer = version.answer or ""
+    save_workspace_code(ctx, code, answer)
+    save_workspace_version(ctx, code=code, answer=answer, source="restore")
+    cache_workspace_snapshot(ctx, code, answer, source="restore")
+    db.session.commit()
+    return {"code": code, "answer": answer, "versions": load_workspace_versions_payload(ctx)}
 
 
 def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:

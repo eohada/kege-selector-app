@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QA Чек-лист BooStudy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F8FAFC; color: #0F172A; font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-display { font-family: 'Golos Text', sans-serif; }
+        .bento-card {
+            background-color: #F4F7FA;
+            border: 2px solid #E2E8F0;
+            box-shadow: 0 4px 0 #DAE1E9;
+            border-radius: 1.5rem;
+        }
+        .bento-btn-red {
+            border-bottom: 4px solid #DC2626;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
+            transition: all 0.15s ease;
+        }
+        .bento-btn-red:active {
+            transform: translateY(2px);
+            border-bottom-width: 2px;
+        }
+    </style>
+</head>
+<body class="p-4 max-w-md mx-auto min-h-screen">
+    <!-- Header -->
+    <div class="bento-card p-5 mb-4 flex items-center justify-between">
+        <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-purple-600 bg-purple-100 px-2.5 py-1 rounded-full">QA TMA</span>
+            <h1 class="text-xl font-display font-black text-slate-900 mt-1">📋 Чек-лист Тестов</h1>
+        </div>
+        <div class="w-10 h-10 rounded-2xl bg-purple-500 text-white flex items-center justify-center font-bold shadow-[0_3px_0_#7C3AED]">
+            🧪
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="hidden fixed top-4 left-4 right-4 z-50 bg-slate-900 text-white p-3 rounded-2xl shadow-xl text-xs font-medium text-center"></div>
+
+    <!-- Checklist Container -->
+    <div id="qa-list" class="space-y-3">
+        <div class="bento-card p-4 animate-pulse flex items-center justify-between">
+            <div class="h-4 bg-slate-200 rounded w-2/3"></div>
+            <div class="h-8 bg-slate-200 rounded w-1/4"></div>
+        </div>
+    </div>
+
+    <!-- Bug Report Form Modal -->
+    <div id="bug-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+        <div class="bento-card w-full max-w-sm p-5 bg-white relative">
+            <h3 class="font-display font-bold text-slate-900 text-base mb-3">🐛 Зафиксировать Баг</h3>
+            <input type="text" id="bug-title" placeholder="Название проблемы" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 mb-2 focus:outline-none focus:ring-2 focus:ring-red-400">
+            <textarea id="bug-desc" placeholder="Описание ошибки..." rows="3" class="w-full text-xs p-2.5 rounded-xl border border-slate-200 mb-3 focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
+            <div class="flex gap-2">
+                <button onclick="closeBugModal()" class="w-1/2 py-2 text-xs font-bold text-slate-600 bg-slate-100 rounded-xl">Отмена</button>
+                <button onclick="submitBug()" class="w-1/2 bento-btn-red bg-red-500 hover:bg-red-600 text-white py-2 text-xs font-bold rounded-xl">Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand();
+            tg.ready();
+        }
+
+        function showToast(msg) {
+            if (tg && tg.showPopup) {
+                tg.showPopup({ title: "QA Studio", message: msg, buttons: [{ type: "ok" }] });
+                return;
+            }
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+
+        function openBugModal(title) {
+            document.getElementById('bug-title').value = `[Сбой] ${title}`;
+            document.getElementById('bug-modal').classList.remove('hidden');
+        }
+
+        function closeBugModal() {
+            document.getElementById('bug-modal').classList.add('hidden');
+        }
+
+        async function submitBug() {
+            const title = document.getElementById('bug-title').value;
+            const description = document.getElementById('bug-desc').value;
+
+            if (!title) {
+                showToast('Заполните название бага');
+                return;
+            }
+
+            try {
+                const initData = tg?.initData || 'test_mock';
+                const resp = await fetch('/api/tma/qa/report-bug', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData, title, description, severity: 'MAJOR' })
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    showToast(`Баг #${data.bug_id} зарегистрирован!`);
+                    closeBugModal();
+                } else {
+                    showToast(data.error || 'Ошибка записи бага');
+                }
+            } catch(e) {
+                showToast('Ошибка сети');
+            }
+        }
+
+        async function loadChecklist() {
+            try {
+                const initData = tg?.initData || 'test_mock';
+                const resp = await fetch('/api/tma/qa/checklist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ initData })
+                });
+                const data = await resp.json();
+                
+                if (!data.ok) {
+                    showToast(data.error || 'Ошибка загрузки');
+                    return;
+                }
+
+                const container = document.getElementById('qa-list');
+                container.innerHTML = data.test_cases.map(tc => `
+                    <div class="bento-card p-4 flex flex-col gap-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">${tc.area}</span>
+                                <h3 class="font-bold text-slate-900 text-sm mt-1">${tc.title}</h3>
+                            </div>
+                        </div>
+                        <div class="text-xs text-slate-600 bg-white/70 p-2.5 rounded-xl border border-slate-200">
+                            <strong>Ожидается:</strong> ${tc.expected}
+                        </div>
+                        <button onclick="openBugModal('${tc.title}')" class="bento-btn-red bg-red-500 hover:bg-red-600 text-white font-bold text-xs py-2 px-3 rounded-xl text-center">
+                            🚨 Зафиксировать Ошибку
+                        </button>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                showToast('Ошибка подключения к серверу');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadChecklist);
+    </script>
+</body>
+</html>

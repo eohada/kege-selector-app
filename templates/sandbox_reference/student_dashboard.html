@@ -1,0 +1,195 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block sandbox_content %}
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
+            
+            <!-- Header -->
+            <header class="flex justify-between items-center shrink-0">
+                <div>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                        <i class="ph-bold ph-user-circle"></i> Студент ID #83274
+                    </p>
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-3xl font-display font-black text-slate-800 tracking-tight">QA Student 35</h1>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-md text-[10px] font-bold text-emerald-700">
+                            <i class="ph-fill ph-circle text-emerald-500 animate-pulse text-[8px]"></i> Online
+                        </span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <a href="/sandbox/analytics" class="btn-3d px-5 py-2.5 bg-[#F4F7FA] text-slate-700 font-bold border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-xl active:shadow-none hover:bg-slate-100 flex items-center text-xs gap-2 whitespace-nowrap no-underline">
+                        <i class="ph-bold ph-chart-bar text-base text-indigo-600"></i> 📊 Подробная аналитика
+                    </a>
+                    <a href="/sandbox/analytics" class="btn-3d px-5 py-2.5 bg-indigo-600 text-white font-bold border-2 border-indigo-700 shadow-[0_4px_0_#3730A3] hover:bg-indigo-500 rounded-xl active:shadow-none flex items-center text-xs gap-2 whitespace-nowrap no-underline">
+                        <i class="ph-bold ph-trend-up text-base"></i> Траектория
+                    </a>
+                </div>
+            </header>
+
+            <!-- Grid Split Layout -->
+            <div class="flex flex-col lg:flex-row gap-6 h-full flex-1">
+
+                <!-- MAIN FOCUS PANEL (2/3)-->
+                <div class="w-full lg:w-[65%] flex flex-col gap-6">
+                    
+                    <!-- Super Hero Hub (Active Lesson) -->
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[2rem] shadow-[0_4px_0_#DAE1E9] p-8 flex flex-col xl:flex-row gap-8 items-center justify-between relative overflow-hidden group">
+                        
+                        <div class="absolute -right-20 -bottom-20 opacity-20 pointer-events-none group-hover:scale-110 transition-transform duration-700">
+                            <i class="ph-fill ph-chalkboard-teacher text-[250px] text-indigo-400"></i>
+                        </div>
+
+                        <!-- Active Lesson Info -->
+                        <div class="relative z-10 w-full xl:w-auto">
+                            <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm mb-4">
+                                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span><span class="relative inline-flex h-full w-full rounded-full bg-indigo-600"></span></span>
+                                Идет сейчас
+                            </div>
+                            <h2 class="text-3xl sm:text-4xl font-display font-black leading-tight text-slate-800 mb-2">Урок 14. <br><span class="text-indigo-600">Производная</span></h2>
+                            <p class="text-slate-500 font-bold text-sm">Задание №11. Геометрический смысл.</p>
+                            <p class="text-xs font-bold text-slate-400 mt-4 uppercase tracking-widest">Сегодня, 17:33 — 19:00</p>
+                        </div>
+                        
+                        <!-- CTA -->
+                        <div class="relative z-10 w-full xl:w-auto shrink-0 flex justify-end">
+                            <button class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm px-8 py-5 rounded-2xl border-2 border-indigo-800 shadow-[0_6px_0_#3730A3,0_10px_20px_rgba(79,70,229,0.3)] active:translate-y-[6px] active:shadow-none transition-all flex items-center justify-center gap-2 w-full xl:w-auto">
+                                В КОМНАТУ <i class="ph-bold ph-arrow-right text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hub Modules (Trajectory + Simulator) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 flex-1">
+                        
+                        <!-- Trajectory -->
+                        <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[2rem] shadow-[0_4px_0_#DAE1E9] p-6 sm:p-8 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center gap-3 mb-6">
+                                    <div class="w-12 h-12 rounded-xl bg-white border-2 border-emerald-200 text-emerald-500 flex items-center justify-center shadow-sm"><i class="ph-bold ph-trend-up text-2xl"></i></div>
+                                    <div>
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Курс: Информатика</p>
+                                        <h3 class="text-2xl font-display font-black text-slate-800">100% DONE</h3>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-5">
+                                    <div>
+                                        <div class="flex justify-between text-xs font-bold text-slate-500 mb-2">
+                                            <span>Сдано уроков</span>
+                                            <span class="text-slate-800 font-black">15 / 90</span>
+                                        </div>
+                                        <div class="w-full bg-slate-200 rounded-full h-3 border border-slate-300 overflow-hidden shadow-inner">
+                                            <div class="bg-emerald-500 h-full rounded-full w-[25%]"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-4">
+                                         <div class="p-3 bg-white border-2 border-slate-200 rounded-xl flex-1 text-center shadow-sm">
+                                             <span class="block text-xl font-black text-slate-700">0</span>
+                                             <span class="block text-[10px] font-bold text-slate-400 uppercase">Долгов</span>
+                                         </div>
+                                         <div class="p-3 bg-white border-2 border-slate-200 rounded-xl flex-1 text-center shadow-sm">
+                                             <span class="block text-xl font-black text-slate-700">42</span>
+                                             <span class="block text-[10px] font-bold text-slate-400 uppercase">Баллы РТ</span>
+                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <a href="/sandbox/analytics" class="mt-5 pt-3 border-t border-slate-200/80 text-xs font-black text-indigo-600 hover:text-indigo-800 flex items-center justify-between no-underline">
+                                <span>📊 Подробная аналитика КЕГЭ</span>
+                                <i class="ph-bold ph-arrow-right"></i>
+                            </a>
+                        </div>
+
+                        <!-- Simulator Widget -->
+                        <div class="bg-[#FFF7ED] border-2 border-orange-200 rounded-[2rem] shadow-[0_4px_0_#FED7AA] p-6 sm:p-8 flex flex-col justify-center relative overflow-hidden group">
+                            <div class="absolute -right-8 -bottom-8 opacity-20 pointer-events-none group-hover:scale-110 transition-transform duration-500">
+                                <i class="ph-fill ph-barbell text-[140px] text-orange-400"></i>
+                            </div>
+                            <div class="relative z-10 w-full">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="ph-bold ph-lightning text-orange-500 text-2xl"></i>
+                                    <h3 class="font-display font-black text-slate-800 text-xl">Тренажёр</h3>
+                                </div>
+                                <p class="text-xs font-bold text-orange-800/70 mb-6 leading-relaxed">Введи номер задачи из ЕГЭ для мгновенной практики.</p>
+                                
+                                <div class="flex gap-2">
+                                    <div class="relative flex-1">
+                                        <input type="text" placeholder="Задание (напр. 15)" class="w-full pl-10 pr-4 py-3.5 rounded-xl border-2 border-orange-200 bg-white font-bold text-sm outline-none focus:border-orange-400 shadow-inner text-slate-800 placeholder:text-slate-400">
+                                        <i class="ph-bold ph-hash text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2 text-lg"></i>
+                                    </div>
+                                    <button class="btn-3d bg-orange-500 hover:bg-orange-400 text-white w-14 rounded-xl border-2 border-orange-700 shadow-[0_4px_0_#C2410C] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center shrink-0">
+                                        <i class="ph-bold ph-play text-xl"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- CONTEXT STREAM (1/3)  -->
+                <div class="w-full lg:w-[35%] flex flex-col gap-6">
+                    
+                    <!-- Deep Mentor Widget -->
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-6 flex flex-col justify-center items-center text-center rounded-[2rem]">
+                        <div class="w-16 h-16 rounded-[1.25rem] bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-400 mb-4">
+                            <i class="ph-bold ph-user-circle-dashed text-3xl"></i>
+                        </div>
+                        <h4 class="text-lg font-display font-black text-slate-800 mb-1">Наставник не назначен</h4>
+                        <p class="text-xs font-bold text-slate-500 mb-4 px-2">Ждем распределения группы.</p>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-200/50 border border-slate-300 rounded-lg text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <i class="ph-bold ph-hourglass text-slate-400"></i> Ожидание
+                        </div>
+                    </div>
+
+                    <!-- TG Integration -->
+                    <div class="bg-[#E0F2FE] border-2 border-sky-200 shadow-[0_4px_0_#BAE6FD] p-6 flex flex-col justify-center rounded-[2rem] relative overflow-hidden">
+                        <div class="absolute right-0 top-0 opacity-40 pointer-events-none transform translate-x-4 -translate-y-4"><i class="ph-fill ph-telegram-logo text-[100px] text-sky-400"></i></div>
+                        <div class="relative z-10 flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-white border border-sky-100 flex items-center justify-center text-sky-500 shadow-sm shrink-0">
+                                <i class="ph-fill ph-telegram-logo text-2xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-base font-display font-black text-slate-800 mb-1 leading-tight">Привяжи Telegram</h4>
+                                <p class="text-[10px] font-bold text-sky-800 mb-4 leading-snug w-4/5">Ссылки на уроки и дедлайны прямо в мессенджер.</p>
+                            </div>
+                        </div>
+                        <button class="btn-3d w-full py-2.5 border-2 border-[#006699] bg-[#0088cc] shadow-[0_3px_0_#006699] hover:bg-[#0099e6] text-white font-black text-xs justify-center items-center gap-1.5 flex rounded-xl">
+                            Подключить бота <i class="ph-bold ph-paper-plane-tilt text-sm"></i>
+                        </button>
+                    </div>
+
+                    <!-- Vertical Lesson Feed -->
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-6 flex-1 flex flex-col rounded-[2rem]">
+                        <div class="flex justify-between items-center mb-5">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Недавние уроки</h3>
+                            <a href="#" class="text-[10px] font-black text-indigo-500 hover:text-indigo-700 transition uppercase underline">Все</a>
+                        </div>
+                        
+                        <div class="flex flex-col gap-5 relative before:absolute before:inset-0 before:ml-[0.8rem] before:h-full before:w-[2px] before:bg-slate-200">
+                            
+                            <div class="relative flex items-start gap-3">
+                                <div class="w-7 h-7 rounded-[0.7rem] border-[3px] border-[#F4F7FA] bg-emerald-400 z-10 shadow-sm ring-1 ring-emerald-500 flex items-center justify-center text-white shrink-0 mt-0.5"><i class="ph-bold ph-check text-[10px]"></i></div>
+                                <div class="flex-1 bg-white border border-slate-200 p-3 rounded-[1rem] shadow-sm cursor-pointer hover:border-emerald-200 transition-colors">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">15 Июля, 18:00</span>
+                                    <h4 class="text-sm font-black text-slate-800 leading-tight mb-2">Урок 13. Производная</h4>
+                                    <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 uppercase tracking-widest">Изучено</span>
+                                </div>
+                            </div>
+
+                            <div class="relative flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-[0.7rem] border-[3px] border-[#F4F7FA] bg-slate-200 z-10 flex justify-center items-center shadow-sm ring-1 ring-slate-300 text-slate-400 shrink-0">
+                                    <div class="w-1.5 h-1.5 bg-slate-400 rounded-full"></div>
+                                </div>
+                                <div class="flex-1 py-1"><p class="text-xs font-bold text-slate-400">Начало курса</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+{% endblock %}

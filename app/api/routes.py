@@ -5,9 +5,13 @@ import json
 import logging
 import os
 import secrets
-from flask import request, jsonify, url_for
-from flask_login import login_required
-from sqlalchemy import or_, func
+from flask import Blueprint, jsonify, request, flash, redirect, url_for, render_template, current_app
+from flask_login import login_required, current_user
+import random
+import string
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import func, or_
+from app.models import db, Student, UserProfile
 
 from app.api import api_bp
 from app import csrf
@@ -388,7 +392,6 @@ def api_global_search():
             'results': results,
             'total': len(results['students']) + len(results['lessons']) + len(results['tasks'])
         })
-    
     except Exception as e:
         logger.error(f"Ошибка при глобальном поиске: {e}", exc_info=True)
         return jsonify({
@@ -396,7 +399,37 @@ def api_global_search():
             'error': str(e)
         }), 500
 
-@api_bp.route('/api/lesson/create', methods=['POST'])
+@api_bp.route('/api/telegram/generate_auth_code', methods=['POST'])
+@csrf.exempt
+@login_required
+def generate_telegram_auth_code():
+    """Генерация 6-значного кода привязки к Telegram (например, BS-8F2A) со сроком 15 минут"""
+    try:
+        code_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        auth_code = f"BS-{code_chars}"
+        
+        profile = getattr(current_user, 'profile', None)
+        if not profile:
+            profile = UserProfile(user_id=current_user.id)
+            db.session.add(profile)
+            
+        profile.telegram_link_code = auth_code
+        profile.telegram_link_code_expires = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=15)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'code': auth_code,
+            'expires_in_minutes': 15,
+            'instructions': f'Отправьте этот код боту в Telegram: {auth_code}'
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Error generating telegram auth code: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/lessons/balance/adjust', methods=['POST'])
 @login_required
 def api_lesson_create():
     """API для создания урока"""

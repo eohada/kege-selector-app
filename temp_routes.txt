@@ -1,0 +1,83 @@
+@theory_bp.route('/theory/course-map')
+@login_required
+def theory_course_map():
+    if not _can_manage_theory():
+        abort(403)
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    
+    from core.db_models import CourseTimelineBlock
+    blocks = CourseTimelineBlock.query.filter_by(course_id=course_id).order_by(CourseTimelineBlock.lesson_number.asc()).all()
+    
+    return render_template('sandbox/course_map.html', blocks=blocks, course_id=course_id)
+
+@theory_bp.route('/theory/api/upload-map-archive', methods=['POST'])
+@login_required
+def upload_map_archive():
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Нет прав'}), 403
+        
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'Нет файла'}), 400
+        
+    file = request.files['file']
+    if not file.filename.endswith('.zip'):
+        return jsonify({'success': False, 'error': 'Нужен ZIP-архив'}), 400
+        
+    course_id = request.form.get('course_id', type=int) or _get_default_course_id()
+    
+    from core.db_models import CourseTimelineBlock
+    
+    storage_info = _resolve_theory_storage('pdfs')
+    upload_folder = storage_info['base_folder']
+    
+    import zipfile
+    import re
+    from uuid import uuid4
+    
+    processed_count = 0
+    try:
+        with zipfile.ZipFile(file, 'r', metadata_encoding='cp866') as z:
+            for info in z.infolist():
+                if info.filename.endswith('.pdf'):
+                    # Извлекаем номер блока из названия (поддержка "№ X" или "Блок X")
+                    filename = info.filename
+                    match = re.search(r'(?:№|Блок|Урок)\s*(\d+)[\.\s-]+(.*?)\.pdf$', filename, re.IGNORECASE)
+                    if match:
+                        lesson_number = int(match.group(1))
+                        title = match.group(2).strip()
+                        
+                        pdf_data = z.read(info)
+                        safe_name = f"timeline_{course_id}_lesson_{lesson_number}_{uuid4().hex[:8]}.pdf"
+                        save_path = os.path.join(upload_folder, safe_name)
+                        
+                        with open(save_path, 'wb') as f_out:
+                            f_out.write(pdf_data)
+                            
+                        pdf_db_url = _build_theory_public_url(save_path, storage_info['base_root'], storage_info['persistent'])
+                        if not pdf_db_url:
+                            # fallback if persistent is false
+                            rel_path = os.path.relpath(save_path, current_app.root_path).replace('\\', '/')
+                            pdf_db_url = f"/{rel_path}"
+                        
+                        block = CourseTimelineBlock.query.filter_by(course_id=course_id, lesson_number=lesson_number).first()
+                        if not block:
+                            block = CourseTimelineBlock(
+                                course_id=course_id,
+                                lesson_number=lesson_number,
+                                title=title,
+                                pdf_path=pdf_db_url
+                            )
+                            db.session.add(block)
+                        else:
+                            block.pdf_path = pdf_db_url
+                            if title:
+                                block.title = title
+                                
+                        processed_count += 1
+                        
+        db.session.commit()
+        return jsonify({'success': True, 'processed': processed_count})
+        
+    except Exception as e:
+        current_app.logger.error(f"Error parsing map archive: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

@@ -1,0 +1,286 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block sandbox_content %}
+<!-- Полноэкранный контрастный холст платформы (Full-Height Neo-Bento Canvas) -->
+<main class="min-h-screen w-full relative z-10 bg-[#EAEFF5] p-4 sm:p-6 pl-[7.5rem] flex flex-col justify-between gap-4">
+  <div class="max-w-[1400px] mx-auto w-full flex-1 flex flex-col gap-5">
+    
+    <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ IDE (Top Navigation Bar Plate) -->
+    <div class="w-full bg-white border-2 border-slate-300/80 rounded-[2.2rem] p-5 shadow-md shadow-slate-200/50 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shrink-0 transition-all hover:border-slate-300">
+      
+      <!-- Навигация и название сессии -->
+      <div class="flex items-center gap-4">
+        <a href="/sandbox/task_detail" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300/80 transition-all shadow-xs flex items-center gap-2 shrink-0 cursor-pointer">
+          <i class="ph-bold ph-arrow-left"></i> Назад к задаче
+        </a>
+
+        <div class="h-6 w-px bg-slate-300 hidden sm:block"></div>
+
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-md text-[10px] font-black uppercase tracking-wider">
+              Python 3.12 IDE Workspace
+            </span>
+            <span class="text-xs font-bold text-slate-400">Домашняя работа №7</span>
+          </div>
+          <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-display mt-0.5">
+            Задание №2: Алгебра логики & Построение таблиц истинности
+          </h1>
+        </div>
+      </div>
+
+      <!-- Переключатель роли (Ученик / Ментор) и статус -->
+      <div class="flex items-center gap-3 flex-wrap">
+        
+        <!-- Статус сохранения -->
+        <div class="flex items-center gap-3 text-xs font-bold text-slate-600 bg-slate-100/90 px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-inner">
+          <span class="flex items-center gap-1.5 text-emerald-600 font-black">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> 🟢 Автосохранение
+          </span>
+          <span class="text-slate-300">•</span>
+          <span>Память: 4.2 МБ</span>
+        </div>
+
+        <!-- Демо переключатель ролей -->
+        <div class="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80">
+          <button id="role-student" onclick="switchRoleView('student')" class="seg-btn active px-3.5 py-1.5 rounded-lg text-xs font-bold text-indigo-700 flex items-center gap-1.5 cursor-pointer">
+            👨‍🎓 Ученик
+          </button>
+          <button id="role-mentor" onclick="switchRoleView('mentor')" class="seg-btn px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5 cursor-pointer">
+            👨‍🏫 Ментор (Инспекция)
+          </button>
+        </div>
+
+        <!-- Главные кнопки действий -->
+        <div class="flex items-center gap-2">
+          <button class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all active:scale-95 cursor-pointer">
+            <i class="ph-fill ph-play text-sm"></i> Запустить (Ctrl+Enter)
+          </button>
+          <button class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1.5">
+            <i class="ph-bold ph-paper-plane-right"></i> Отправить ответ
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 2. BENTO-СЕТКА РАБОЧЕЙ СРЕДЫ (12 колонок / Full-Height Layout) -->
+    <div class="grid grid-cols-12 gap-5 w-full flex-1 items-stretch">
+      
+      <!-- ЛЕВАЯ КОЛОНКА: УСЛОВИЕ И ФАЙЛЫ (col-span-12 lg:col-span-3 flex flex-col gap-4 justify-between) -->
+      <div class="col-span-12 lg:col-span-3 flex flex-col gap-4 justify-between">
+        
+        <!-- Плита 1: Условие задачи -->
+        <div class="bg-white border-2 border-slate-300/80 rounded-[2rem] p-5 shadow-md shadow-slate-200/40 space-y-3 hover:border-indigo-300 transition-all">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <i class="ph-bold ph-file-text text-indigo-500"></i> Условие КЕГЭ №2
+            </h3>
+            <span class="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">#84649c</span>
+          </div>
+
+          <div class="text-xs font-medium text-slate-700 leading-relaxed space-y-2.5">
+            <p>
+              Функция $F$: <span class="bg-indigo-50 border border-indigo-200 text-indigo-800 font-mono font-bold px-2.5 py-1 rounded-lg text-[11px] block mt-1">((x → y) ≡ (w → z)) ∨ (x ∧ w)</span>
+            </p>
+            <p class="text-xs text-slate-500">
+              Определите порядок переменных $x, y, z, w$ для строк таблицы истинности, где $F = 0$.
+            </p>
+          </div>
+
+          <a href="/sandbox/theory" class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold border border-indigo-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer block text-center">
+            <i class="ph-bold ph-book-open"></i> Открыть теорию №2
+          </a>
+        </div>
+
+        <!-- Плита 2: Вложенные файлы датасетов -->
+        <div class="bg-white border-2 border-slate-300/80 rounded-[2rem] p-5 shadow-md shadow-slate-200/40 space-y-3 hover:border-indigo-300 transition-all">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <i class="ph-bold ph-folder-open text-amber-500"></i> Файлы и Датасеты
+          </h3>
+
+          <div class="space-y-2 text-xs font-mono">
+            <div class="p-2.5 bg-[#F8FAFC] border border-slate-200/80 rounded-xl flex items-center justify-between hover:border-indigo-300 transition-colors group">
+              <div class="flex items-center gap-2 min-w-0">
+                <i class="ph-bold ph-file-text text-amber-500 text-base"></i>
+                <span class="text-slate-800 text-[11px] font-bold truncate">data_02.txt</span>
+              </div>
+              <button class="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer shrink-0">
+                Копировать
+              </button>
+            </div>
+
+            <div class="p-2.5 bg-[#F8FAFC] border border-slate-200/80 rounded-xl flex items-center justify-between hover:border-indigo-300 transition-colors group">
+              <div class="flex items-center gap-2 min-w-0">
+                <i class="ph-bold ph-file-xls text-emerald-500 text-base"></i>
+                <span class="text-slate-800 text-[11px] font-bold truncate">table_02.xlsx</span>
+              </div>
+              <button class="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer shrink-0">
+                Копировать
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Плита 3: Быстрый черновик (Занимает оставшуюся высоту) -->
+        <div class="bg-white border-2 border-slate-300/80 rounded-[2rem] p-5 shadow-md shadow-slate-200/40 space-y-2 hover:border-indigo-300 transition-all flex-1 flex flex-col justify-between">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <i class="ph-bold ph-note-pencil text-purple-500"></i> Быстрый черновик
+          </h3>
+          <textarea placeholder="Ваши личные заметки к решению..." class="w-full bg-[#F8FAFC] border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white flex-1 min-h-[100px] resize-none leading-relaxed shadow-inner"></textarea>
+        </div>
+
+      </div>
+
+      <!-- ЦЕНТРАЛЬНАЯ КОЛОНКА: МОЩНЫЙ ТЁМНЫЙ РЕДАКТОР КОДА (col-span-12 lg:col-span-6 flex flex-col h-full) -->
+      <div class="col-span-12 lg:col-span-6 flex flex-col h-full">
+        
+        <!-- Тёмная плита редактора VS Code Style (Полноэкранная высота) -->
+        <div class="bg-slate-900 border-2 border-slate-700/90 rounded-[2.2rem] shadow-xl overflow-hidden flex-1 flex flex-col min-h-[550px] lg:min-h-[620px]">
+          
+          <!-- Табы файлов редактора -->
+          <div class="bg-slate-950 border-b border-slate-800 px-5 py-3 flex items-center justify-between gap-4 shrink-0">
+            <div class="flex items-center gap-2">
+              <div class="px-4 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono font-bold text-indigo-400 flex items-center gap-2 shadow-xs">
+                <span class="text-amber-400">🐍</span> main.py
+              </div>
+              <div class="px-4 py-1.5 bg-slate-950 hover:bg-slate-900/60 rounded-xl text-xs font-mono text-slate-500 flex items-center gap-2 transition-colors cursor-pointer">
+                solution_alt.py
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <span>UTF-8</span>
+              <span>•</span>
+              <span>Tab: 4 Spaces</span>
+            </div>
+          </div>
+
+          <!-- Поле кода с нумерацией строк 1..30 -->
+          <div class="p-5 flex gap-4 font-mono text-xs overflow-x-auto flex-1 leading-relaxed bg-slate-950/95 text-slate-100">
+            
+            <!-- Нумерация строк -->
+            <div class="text-slate-600 select-none text-right font-mono pr-3 border-r border-slate-800/80 space-y-1">
+              <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div>
+              <div>6</div><div>7</div><div>8</div><div>9</div><div>10</div>
+              <div>11</div><div>12</div><div>13</div><div>14</div><div>15</div>
+              <div>16</div><div>17</div><div>18</div><div>19</div><div>20</div>
+              <div>21</div><div>22</div><div>23</div>
+            </div>
+
+            <!-- Код программы -->
+            <div class="flex-1 space-y-1">
+              <div><span class="text-slate-500"># --------------------------------------------------</span></div>
+              <div><span class="text-slate-500"># BooStudy IDE: Решение задачи КЕГЭ №2</span></div>
+              <div><span class="text-slate-500"># --------------------------------------------------</span></div>
+              <div><span class="text-purple-400">from</span> itertools <span class="text-purple-400">import</span> product</div>
+              <div></div>
+              <div><span class="text-purple-400">def</span> <span class="text-blue-400">F</span>(x, y, z, w):</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-500"># Выражение: ((x -> y) == (w -> z)) or (x and w)</span></div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-purple-400">return</span> ((<span class="text-purple-400">not</span>(x &lt;= y)) == (w &lt;= z)) <span class="text-purple-400">or</span> (x <span class="text-purple-400">and</span> w)</div>
+              <div></div>
+              <div><span class="text-purple-400">print</span>(<span class="text-green-300">"x y z w | F"</span>)</div>
+              <div><span class="text-purple-400">print</span>(<span class="text-green-300">"-" * 15</span>)</div>
+              <div></div>
+              <div><span class="text-purple-400">for</span> x, y, z, w <span class="text-purple-400">in</span> product([<span class="text-orange-400">0</span>, <span class="text-orange-400">1</span>], repeat=<span class="text-orange-400">4</span>):</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;res = F(x, y, z, w)</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-purple-400">if</span> <span class="text-purple-400">not</span> res:</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-purple-400">print</span>(<span class="text-green-300">f"</span>{x} {y} {z} {w} | <span class="text-rose-400 font-bold">{int(res)}</span><span class="text-green-300">"</span>)</div>
+              <div></div>
+              <div><span class="text-slate-500"># Вывод строк со значением 0 завершен.</span></div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ПРАВАЯ КОЛОНКА: ТЕРМИНАЛ И ИНСПЕКЦИЯ (col-span-12 lg:col-span-3 flex flex-col gap-4 justify-between) -->
+      <div class="col-span-12 lg:col-span-3 flex flex-col gap-4 justify-between">
+        
+        <!-- Тёмная плита консоли терминала -->
+        <div class="bg-slate-900 border-2 border-slate-800 rounded-[2rem] p-5 shadow-xl font-mono space-y-3 flex-1 flex flex-col justify-between">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800 text-xs">
+            <span class="text-slate-400 font-bold flex items-center gap-2">
+              <i class="ph-bold ph-terminal text-emerald-400"></i> Терминал вывода
+            </span>
+            <span class="text-[10px] text-emerald-400 font-bold">Exit code: 0</span>
+          </div>
+
+          <div class="text-[11px] text-emerald-400 space-y-1 leading-relaxed flex-1">
+            <div class="text-slate-500">>>> Executing main.py...</div>
+            <div class="font-bold text-slate-200">x y z w | F</div>
+            <div class="text-slate-600">-----------------</div>
+            <div>0 1 0 0 | 0</div>
+            <div>1 0 1 0 | 0</div>
+            <div>0 0 1 1 | 0</div>
+            <div class="text-slate-400 pt-3">Done in 0.012s</div>
+          </div>
+        </div>
+
+        <!-- Белая плита Инспекции Преподавателя -->
+        <div id="mentor-inspection-block" class="bg-white border-2 border-slate-300/80 rounded-[2rem] p-5 shadow-md shadow-slate-200/40 space-y-3 hover:border-purple-300 transition-all">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <i class="ph-bold ph-shield-check text-purple-500"></i> Инспекция Ментора
+            </h3>
+            <span class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">2 Версии</span>
+          </div>
+
+          <!-- История версий решения ученика -->
+          <div class="space-y-2 text-xs font-medium">
+            <div class="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between">
+              <div>
+                <p class="text-slate-800 font-bold">Версия 2 (Сдана)</p>
+                <p class="text-[10px] text-slate-500">21 Июля, 18:30</p>
+              </div>
+              <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">Верно</span>
+            </div>
+
+            <div class="p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between opacity-70">
+              <div>
+                <p class="text-slate-700 font-bold">Версия 1 (Черновик)</p>
+                <p class="text-[10px] text-slate-400">21 Июля, 18:15</p>
+              </div>
+              <span class="text-[10px] font-bold text-slate-500">Черновик</span>
+            </div>
+          </div>
+
+          <!-- Оценка сложности алгоритма -->
+          <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-200/60 text-xs font-medium space-y-1">
+            <p class="text-slate-700">Сложность по времени: <strong class="text-indigo-700">$O(2^N)$</strong> (Оптимально)</p>
+            <p class="text-slate-700">Использование памяти: <strong class="text-indigo-700">4.2 МБ</strong></p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+  function switchRoleView(role) {
+    const studentBtn = document.getElementById('role-student');
+    const mentorBtn = document.getElementById('role-mentor');
+    const inspectionBlock = document.getElementById('mentor-inspection-block');
+
+    if (role === 'student') {
+      studentBtn.classList.add('active', 'text-indigo-700');
+      studentBtn.classList.remove('text-slate-500');
+      mentorBtn.classList.remove('active', 'text-indigo-700');
+      mentorBtn.classList.add('text-slate-500');
+      inspectionBlock.classList.add('opacity-40');
+    } else {
+      mentorBtn.classList.add('active', 'text-indigo-700');
+      mentorBtn.classList.remove('text-slate-500');
+      studentBtn.classList.remove('active', 'text-indigo-700');
+      studentBtn.classList.add('text-slate-500');
+      inspectionBlock.classList.remove('opacity-40');
+    }
+  }
+</script>
+{% endblock %}

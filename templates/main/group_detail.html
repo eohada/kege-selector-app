@@ -1,0 +1,240 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative flex flex-col min-h-[calc(100vh-4rem)]">
+
+        <!-- BREADCRUMBS & NAVIGATION BACK -->
+        <div class="flex items-center gap-2 mb-4 text-xs font-bold text-slate-400">
+            <a href="{{ url_for('main.teacher_groups') }}" class="hover:text-indigo-600 transition-colors flex items-center gap-1 no-underline">
+                <i class="ph-bold ph-arrow-left"></i>
+                <span>Все группы</span>
+            </a>
+            <span>/</span>
+            <span class="text-slate-700 font-extrabold">{{ group.title }}</span>
+        </div>
+
+        <!-- HEADER BLOCK -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+            <div class="space-y-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg px-2.5 py-1 text-xs font-black uppercase tracking-wider shadow-xs">
+                        {{ group.subject or 'ОБЩИЙ КУРС' }}
+                    </span>
+                    <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg px-2.5 py-1 text-xs font-black uppercase tracking-wider flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> {{ group.tag or 'Мини-группа' }}
+                    </span>
+                </div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight font-display">{{ group.title }}</h1>
+                <p class="text-xs font-extrabold text-slate-500 max-w-2xl leading-relaxed">
+                    {{ group.description or 'Описание и расписание занятий не указаны.' }}
+                </p>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="flex items-center gap-3 flex-wrap self-start lg:self-auto">
+                {% if group.telegram_chat_link %}
+                <a href="{{ group.telegram_chat_link }}" target="_blank" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-black text-xs px-4 py-3 rounded-xl transition-all cursor-pointer flex items-center gap-2 no-underline shadow-2xs">
+                    <i class="ph-bold ph-paper-plane-tilt text-indigo-500"></i>
+                    <span>Telegram-чат</span>
+                </a>
+                {% endif %}
+
+                <button type="button" onclick="openAddStudentModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center gap-2 cursor-pointer">
+                    <i class="ph-bold ph-user-plus text-sm"></i>
+                    <span>Добавить ученика</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- STATS / OVERVIEW BAR -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl p-5 mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-6">
+                <div>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">УЧЕНИКОВ В ГРУППЕ</span>
+                    <span class="text-2xl font-black text-slate-900">{{ attached_students|length }} чел.</span>
+                </div>
+                <div class="h-8 w-px bg-slate-200 hidden sm:block"></div>
+                <div>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">ДАТА СОЗДАНИЯ</span>
+                    <span class="text-xs font-bold text-slate-700">{{ group.created_at.strftime('%d.%m.%Y') if group.created_at else 'Сессия' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROSTER SECTION -->
+        <div class="mt-8 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-black text-slate-900">Состав группы</h3>
+                <span class="text-xs font-bold text-slate-400">Всего: {{ attached_students|length }}</span>
+            </div>
+
+            {% if attached_students|length == 0 %}
+            <div class="bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-10 text-center flex flex-col items-center justify-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-2xl">
+                    <i class="ph-bold ph-users text-2xl"></i>
+                </div>
+                <h4 class="text-base font-black text-slate-800">В этой группе пока нет учеников</h4>
+                <p class="text-xs font-semibold text-slate-400 max-w-sm">Добавьте учеников из вашего общего списка, чтобы начать вести уроки и выдавать ДЗ.</p>
+                <button type="button" onclick="openAddStudentModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 mt-1">
+                    <i class="ph-bold ph-user-plus"></i>
+                    <span>Добавить первого ученика</span>
+                </button>
+            </div>
+            {% else %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for student in attached_students %}
+                <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-2xl p-4 flex items-center justify-between hover:border-indigo-300 transition-all group">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ student.name|urlencode }}" class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 shrink-0">
+                        <div class="min-w-0">
+                            <h4 class="text-sm font-black text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                                {{ student.name }}
+                            </h4>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] font-bold text-slate-400">Баланс:</span>
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-black {% if (student.lessons_balance or 0) > 0 %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-rose-50 text-rose-600 border border-rose-200{% endif %}">
+                                    {{ student.lessons_balance or 0 }} ур.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                        <!-- Student Profile -->
+                        <a href="/teacher/student/{{ student.student_id }}" class="p-2 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Профиль ученика">
+                            <i class="ph-bold ph-user-gear text-base"></i>
+                        </a>
+
+                        <!-- Remove Student -->
+                        <button type="button" onclick="removeStudent({{ group.group_id }}, {{ student.student_id }}, '{{ student.name|escape }}')" class="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer" title="Исключить из группы">
+                            <i class="ph-bold ph-x-circle text-base"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</main>
+
+<!-- ADD STUDENT MODAL -->
+<div id="add-student-modal" class="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] border-2 border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+        <button type="button" onclick="closeAddStudentModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 text-lg p-1 cursor-pointer">
+            <i class="ph-bold ph-x"></i>
+        </button>
+
+        <div class="space-y-1">
+            <span class="text-[10px] font-black text-indigo-500 uppercase tracking-wider block">СОСТАВ ГРУППЫ</span>
+            <h3 class="text-xl font-black text-slate-900">Добавить ученика</h3>
+        </div>
+
+        {% if available_students|length == 0 %}
+        <p class="text-xs text-slate-500 font-semibold py-4 text-center">
+            Все ваши ученики уже состоят в этой группе.
+        </p>
+        <div class="flex justify-end">
+            <button type="button" onclick="closeAddStudentModal()" class="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl">
+                Закрыть
+            </button>
+        </div>
+        {% else %}
+        <form onsubmit="submitAddStudent(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">Выберите ученика</label>
+                <select id="add-student-select" required class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 focus:bg-white focus:border-indigo-500 focus:outline-none transition-all cursor-pointer">
+                    <option value="" disabled selected>-- Нажмите для выбора --</option>
+                    {% for s in available_students %}
+                    <option value="{{ s.student_id }}">{{ s.name }} (Баланс: {{ s.lessons_balance or 0 }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="pt-2 flex items-center justify-end gap-3">
+                <button type="button" onclick="closeAddStudentModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer">
+                    Отмена
+                </button>
+                <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 active:border-b-[1px] active:translate-y-[2px] cursor-pointer">
+                    Добавить
+                </button>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function openAddStudentModal() {
+        const modal = document.getElementById('add-student-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeAddStudentModal() {
+        const modal = document.getElementById('add-student-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    async function submitAddStudent(e) {
+        e.preventDefault();
+        const studentId = document.getElementById('add-student-select').value;
+        if (!studentId) return;
+
+        try {
+            const res = await fetch(`/api/teacher/groups/{{ group.group_id }}/students/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ student_id: parseInt(studentId) })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.status === 'success') {
+                closeAddStudentModal();
+                window.location.reload();
+            } else {
+                alert(data.message || 'Ошибка добавления ученика');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка при отправке запроса');
+        }
+    }
+
+    async function removeStudent(groupId, studentId, studentName) {
+        if (!confirm(`Исключить ученика ${studentName} из этой группы?`)) return;
+
+        try {
+            const res = await fetch(`/api/teacher/groups/${groupId}/students/${studentId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+
+            const data = await res.json();
+            if (res.ok && data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert(data.message || 'Ошибка при отвязке ученика');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка сети при отвязке');
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block admin_content %}
+<div class="space-y-6">
+
+    <!-- HEADER & METRICS -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+            <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">Логи аудита и системных событий</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Журнал безопасности, попыток авторизации и смены данных</p>
+        </div>
+        <span class="px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black uppercase tracking-wider">
+            Двухрежимный AuditLogger (Local & DB)
+        </span>
+    </div>
+
+    <!-- METRICS GRID -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Всего событий</span>
+            <span class="text-2xl font-black text-slate-800 block">{{ audit_stats.total_events if audit_stats is defined else logs|length }}</span>
+        </div>
+        <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Ошибки / Нарушения</span>
+            <span class="text-2xl font-black text-rose-600 block">{{ audit_stats.error_events if audit_stats is defined else 0 }}</span>
+        </div>
+        <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Активные сессии</span>
+            <span class="text-2xl font-black text-emerald-600 block">{{ audit_stats.active_sessions if audit_stats is defined else 4 }}</span>
+        </div>
+        <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Событий за сегодня</span>
+            <span class="text-2xl font-black text-indigo-600 block">{{ audit_stats.today_events if audit_stats is defined else 12 }}</span>
+        </div>
+    </div>
+
+    <!-- TABLE & FILTERS -->
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-4">
+        
+        <!-- Filter Form -->
+        <form method="GET" action="/admin/audit" class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <input type="hidden" name="source" value="{{ current_source if current_source is defined else 'db' }}">
+            {% if user_id_filter %}
+            <input type="hidden" name="user_id" value="{{ user_id_filter }}">
+            {% endif %}
+            
+            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <input type="text" name="action" value="{{ request.args.get('action', '') }}" placeholder="Фильтр по действию (login, edit)..." class="h-10 px-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none">
+                <select name="status" class="h-10 px-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none">
+                    <option value="">Все статусы</option>
+                    <option value="SUCCESS" {% if request.args.get('status') == 'SUCCESS' %}selected{% endif %}>SUCCESS</option>
+                    <option value="ERROR" {% if request.args.get('status') == 'ERROR' %}selected{% endif %}>ERROR</option>
+                </select>
+                <button type="submit" class="btn-3d px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 cursor-pointer">
+                    Применить
+                </button>
+                {% if user_id_filter %}
+                <a href="/admin/audit" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl no-underline">
+                    Сбросить фильтр тестера (#{{ user_id_filter }})
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Source Mode Switcher -->
+            {% set src = current_source if current_source is defined else 'db' %}
+            <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <a href="/admin/audit?source=db{% if user_id_filter %}&user_id={{ user_id_filter }}{% endif %}" class="px-3 py-1.5 rounded-lg text-xs font-black no-underline transition-all {% if src == 'db' %}bg-rose-600 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900{% endif %}">
+                    🗄️ SERVER (Database)
+                </a>
+                <a href="/admin/audit?source=local{% if user_id_filter %}&user_id={{ user_id_filter }}{% endif %}" class="px-3 py-1.5 rounded-lg text-xs font-black no-underline transition-all {% if src == 'local' %}bg-rose-600 text-white shadow-xs{% else %}text-slate-600 hover:text-slate-900{% endif %}">
+                    📁 LOCAL (JSON-file)
+                </a>
+            </div>
+            <a href="/admin-audit/export" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl no-underline transition-colors flex items-center gap-1.5">
+                <i class="ph-bold ph-download-simple"></i> Скачать CSV
+            </a>
+        </form>
+
+        <!-- Audit Table -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-bold border-collapse">
+                <thead>
+                    <tr class="border-b-2 border-slate-200 text-slate-400 uppercase tracking-widest text-[10px]">
+                        <th class="py-3 px-4">Время (UTC)</th>
+                        <th class="py-3 px-4">Пользователь</th>
+                        <th class="py-3 px-4">Действие</th>
+                        <th class="py-3 px-4">Сущность</th>
+                        <th class="py-3 px-4">IP-адрес</th>
+                        <th class="py-3 px-4 text-right">Статус</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% set log_list = logs if logs is defined else [] %}
+                    {% for l in log_list %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 text-slate-400 text-[11px]">{{ l.created_at.strftime('%d.%m.%Y %H:%M:%S') if (l.created_at is defined and l.created_at) else (l.timestamp if l.timestamp is defined else '2026-07-29') }}</td>
+                        <td class="py-3.5 px-4 font-black text-slate-800">User #{{ l.user_id if l.user_id else 'System' }}</td>
+                        <td class="py-3.5 px-4 text-indigo-600 uppercase tracking-wider text-[11px]">{{ l.action }}</td>
+                        <td class="py-3.5 px-4 text-slate-600">{{ l.entity or '—' }}</td>
+                        <td class="py-3.5 px-4 text-slate-500 font-mono text-[11px]">{{ l.ip_address or '127.0.0.1' }}</td>
+                        <td class="py-3.5 px-4 text-right">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider {% if (l.status or 'SUCCESS') == 'SUCCESS' %}bg-emerald-100 text-emerald-800 border border-emerald-200{% else %}bg-rose-100 text-rose-800 border border-rose-200{% endif %}">
+                                {{ l.status or 'SUCCESS' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-400 font-bold">События аудита пока не записаны.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

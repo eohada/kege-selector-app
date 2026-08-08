@@ -1,0 +1,254 @@
+<style>
+#qaFloatingWidget { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; font-family: inherit; }
+#qaWidgetBtn { display: flex; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; background: #a855f7; color: white; border-radius: 50%; box-shadow: 0 4px 12px rgba(168,85,247,0.4); cursor: pointer; border: none; outline: none; transition: transform 0.2s, box-shadow 0.2s, background 0.2s; }
+#qaWidgetBtn:hover { transform: scale(1.1); box-shadow: 0 6px 16px rgba(168,85,247,0.6); }
+#qaWidgetBtn.active { background: #9333ea; transform: scale(1.05); }
+#qaWidgetMenu { position: absolute; bottom: 4.5rem; right: 0; width: 260px; background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(10px) scale(0.95); transform-origin: bottom right; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+#qaWidgetMenu.open { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+.qa-widget-header { padding: 0.75rem 1rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
+.qa-widget-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; color: var(--color-text-primary); text-decoration: none; font-size: 0.875rem; font-weight: 600; transition: background 0.15s; border-bottom: 1px solid var(--color-stroke); cursor: pointer; border: none; background: transparent; width: 100%; text-align: left; }
+.qa-widget-item:hover { background: var(--color-bg-surface-alt); }
+.qa-widget-item.danger { color: #ef4444; }
+.qa-widget-item.danger:hover { background: rgba(239,68,68,0.1); }
+.qa-impersonation-active { background: rgba(239,68,68,0.1) !important; border-color: rgba(239,68,68,0.3) !important; }
+.qa-impersonation-active .qa-widget-header { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+/* Modal Styles */
+#qaAdHocModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+.qa-modal-content { background: var(--color-bg-surface); width: 100%; max-width: 500px; border-radius: 16px; border: 1px solid var(--color-stroke); box-shadow: 0 20px 40px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; }
+.qa-modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-stroke); display: flex; justify-content: space-between; align-items: center; background: var(--color-bg-surface-alt); }
+.qa-modal-body { padding: 1.5rem; overflow-y: auto; }
+.qa-form-group { margin-bottom: 1rem; }
+.qa-form-label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--color-text-primary); }
+.qa-form-control { width: 100%; padding: 0.625rem; font-size: 0.875rem; border-radius: 8px; border: 1px solid var(--color-stroke); background: var(--color-bg-surface); color: var(--color-text-primary); outline: none; transition: border-color 0.2s; font-family: inherit; }
+.qa-form-control:focus { border-color: #a855f7; }
+.qa-attachments-preview { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.qa-att-item { background: rgba(168,85,247,0.1); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); border-radius: 6px; padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem; }
+</style>
+
+{% set is_impersonating = session.get('impersonator_id') is not none %}
+
+<div id="qaFloatingWidget">
+    <div id="qaWidgetMenu" class="{% if is_impersonating %}qa-impersonation-active{% endif %}">
+        <div class="qa-widget-header">
+            <i class="ph-bold ph-wrench" style="margin-right: 0.35rem;"></i> QA Инструменты
+        </div>
+        
+        {% if not is_impersonating %}
+        <!-- ФОРМА ИМПЕРСОНАЦИИ -->
+        <form action="{{ url_for('admin_impersonate.start_impersonating') }}" method="POST" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-stroke); margin: 0; display: flex; flex-direction: column; gap: 0.5rem; background: rgba(168,85,247,0.05);">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="font-size: 0.7rem; font-weight: 800; color: #a855f7; text-transform: uppercase;">Имперсонация</div>
+            <div style="display: flex; gap: 0.35rem;">
+                <input type="text" name="username" placeholder="username" required style="width: 100%; padding: 0.35rem 0.5rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--color-stroke); background: var(--color-bg-surface); color: var(--color-text-primary);">
+                <button type="submit" style="background: #a855f7; color: white; border: none; border-radius: 6px; padding: 0 0.625rem; cursor: pointer; transition: background 0.2s;"><i class="ph-bold ph-arrow-right"></i></button>
+            </div>
+        </form>
+        {% endif %}
+        
+        <button type="button" onclick="openQaAdHocModal()" class="qa-widget-item">
+            <i class="ph-bold ph-bug" style="font-size: 1.25rem; color: #ef4444;"></i>
+            Спонтанный баг
+        </button>
+        
+        <a href="/qa" class="qa-widget-item">
+            <i class="ph-bold ph-list-checks" style="font-size: 1.25rem; color: #10b981;"></i>
+            Мои тесты
+        </a>
+
+        {% if is_impersonating %}
+        <!-- КНОПКА ВОЗВРАТА -->
+        <a href="{{ url_for('admin_impersonate.stop_impersonating') }}" class="qa-widget-item danger" style="background: rgba(239,68,68,0.1);">
+            <i class="ph-bold ph-user-minus" style="font-size: 1.25rem;"></i>
+            Вернуть аккаунт
+        </a>
+        {% endif %}
+    </div>
+
+    <button id="qaWidgetBtn" onclick="toggleQaWidget()" class="{% if is_impersonating %}qa-impersonation-active{% endif %}">
+        {% if is_impersonating %}
+            <i class="ph-bold ph-user-switch" style="font-size: 1.75rem;"></i>
+        {% else %}
+            <i class="ph-bold ph-wrench" style="font-size: 1.75rem;"></i>
+        {% endif %}
+    </button>
+</div>
+
+<!-- МОДАЛКА СПОНТАННОГО БАГА (Inline) -->
+<div id="qaAdHocModal">
+    <div class="qa-modal-content">
+        <div class="qa-modal-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <div style="width: 2rem; height: 2rem; background: rgba(239,68,68,0.1); color: #ef4444; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;"><i class="ph-bold ph-bug"></i></div>
+                <h3 style="margin: 0; font-size: 1.125rem; font-weight: 800; color: var(--color-text-primary);">Спонтанный баг</h3>
+            </div>
+            <button type="button" onclick="closeQaAdHocModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--color-text-muted);">&times;</button>
+        </div>
+        
+        <div class="qa-modal-body">
+            <form id="qaAdHocForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="page_url" id="qaAdHocUrl">
+                <input type="hidden" name="screen_size" id="qaAdHocScreen">
+                <input type="hidden" name="attachments_json" id="qaAdHocAttachments" value="[]">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="qa-form-group">
+                        <label class="qa-form-label">Зона <span style="color: #ef4444;">*</span></label>
+                        <select name="area" class="qa-form-control">
+                            <option value="Общая">Общая</option>
+                            <option value="Авторизация и доступ">Авторизация и доступ</option>
+                            <option value="Биллинг и подписки">Биллинг и подписки</option>
+                            <option value="Админка">Админка</option>
+                            <option value="Курсы и уроки">Курсы и уроки</option>
+                            <option value="Генератор задач">Генератор задач</option>
+                            <option value="Песочница (Sandbox)">Песочница (Sandbox)</option>
+                            <option value="Telegram">Telegram</option>
+                            <option value="Библиотека">Библиотека</option>
+                            <option value="Workspace">Workspace</option>
+                            <option value="Мобильная версия">Мобильная версия</option>
+                        </select>
+                    </div>
+                    <div class="qa-form-group">
+                        <label class="qa-form-label">Вердикт <span style="color: #ef4444;">*</span></label>
+                        <select name="verdict" class="qa-form-control">
+                            <option value="minor">Минорный баг</option>
+                            <option value="critical">Критичный баг</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="qa-form-group">
+                    <label class="qa-form-label">Что пошло не так? <span style="color: #ef4444;">*</span></label>
+                    <textarea name="description" id="qaAdHocDesc" required rows="4" class="qa-form-control" placeholder="1. Я нажал туда...&#10;2. Ожидал это...&#10;3. Получил вот это..."></textarea>
+                    <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.35rem; display: flex; align-items: center; gap: 0.25rem;">
+                        <i class="ph-bold ph-info"></i> Можно вставить скриншот через Ctrl+V прямо сюда
+                    </div>
+                    <div id="qaAdHocPreviews" class="qa-attachments-preview"></div>
+                </div>
+
+                <button type="submit" id="qaAdHocSubmitBtn" style="width: 100%; padding: 0.875rem; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: background 0.2s;">
+                    Отправить репорт
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+window.qaAdHocAttachmentsList = [];
+
+function toggleQaWidget() {
+    document.getElementById('qaWidgetMenu').classList.toggle('open');
+    document.getElementById('qaWidgetBtn').classList.toggle('active');
+}
+
+function openQaAdHocModal() {
+    toggleQaWidget(); // Закрываем меню
+    document.getElementById('qaAdHocUrl').value = window.location.href;
+    document.getElementById('qaAdHocScreen').value = window.innerWidth + 'x' + window.innerHeight;
+    document.getElementById('qaAdHocModal').style.display = 'flex';
+    document.getElementById('qaAdHocDesc').focus();
+}
+
+function closeQaAdHocModal() {
+    document.getElementById('qaAdHocModal').style.display = 'none';
+}
+
+// Вставка скриншота (Ctrl+V)
+document.getElementById('qaAdHocDesc').addEventListener('paste', async function(e) {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (let index in items) {
+        const item = items[index];
+        if (item.kind === 'file') {
+            const blob = item.getAsFile();
+            const btn = document.getElementById('qaAdHocSubmitBtn');
+            const originalText = btn.innerText;
+            btn.innerText = 'Загрузка скриншота...';
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+
+            const fd = new FormData();
+            fd.append('image', blob);
+            fd.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+            try {
+                const res = await fetch('/qa/upload-screenshot', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success) {
+                    window.qaAdHocAttachmentsList.push({ url: data.url, type: 'image', filename: data.filename });
+                    document.getElementById('qaAdHocAttachments').value = JSON.stringify(window.qaAdHocAttachmentsList);
+                    
+                    const preview = document.createElement('div');
+                    preview.className = 'qa-att-item';
+                    preview.innerHTML = `<i class="ph-bold ph-image"></i> Скриншот ${window.qaAdHocAttachmentsList.length}`;
+                    document.getElementById('qaAdHocPreviews').appendChild(preview);
+                }
+            } catch (err) {
+                console.error('Screenshot upload failed', err);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
+    }
+});
+
+// Отправка формы (AJAX)
+document.getElementById('qaAdHocForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('qaAdHocSubmitBtn');
+    if (btn.disabled) return;
+    
+    btn.disabled = true;
+    btn.innerText = 'Отправка...';
+    
+    try {
+        const fd = new FormData(this);
+        const res = await fetch('/qa/ad-hoc', {
+            method: 'POST',
+            body: fd,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+        const data = await res.json();
+        if (data.success) {
+            closeQaAdHocModal();
+            // Сбрасываем форму
+            this.reset();
+            window.qaAdHocAttachmentsList = [];
+            document.getElementById('qaAdHocAttachments').value = '[]';
+            document.getElementById('qaAdHocPreviews').innerHTML = '';
+            
+            // Если есть toast функция на странице
+            if (typeof showToast === 'function') {
+                showToast('Спонтанный баг отправлен!');
+            } else {
+                alert('Спонтанный баг успешно зарегистрирован!');
+            }
+        } else {
+            alert(data.error || 'Произошла ошибка');
+        }
+    } catch (err) {
+        alert('Ошибка сети при отправке бага');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Отправить репорт';
+    }
+});
+
+document.addEventListener('click', function(event) {
+    const widget = document.getElementById('qaFloatingWidget');
+    if (widget && !widget.contains(event.target)) {
+        const menu = document.getElementById('qaWidgetMenu');
+        const btn = document.getElementById('qaWidgetBtn');
+        if (menu && menu.classList.contains('open')) {
+            menu.classList.remove('open');
+            btn.classList.remove('active');
+        }
+    }
+});
+</script>

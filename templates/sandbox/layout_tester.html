@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>BooStudy | Кабинет Тестировщика (QA Tester Workspace)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              boo: {
+                primary: '#4f46e5',
+                accent: '#10B981',
+                bgCanvas: '#F8FAFC',
+                bgPlate: '#FFFFFF',
+                bgCard: '#F4F7FA',
+              }
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                display: ['Golos Text', 'system-ui', 'sans-serif'], 
+            }
+          }
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body {
+            background-color: #F8FAFC;
+            color: #0f172a;
+            font-family: 'Inter', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, .font-display {
+            font-family: 'Golos Text', 'Inter', system-ui, sans-serif;
+        }
+
+        .btn-3d {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .btn-3d:active {
+            transform: translateY(4px);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;  
+            scrollbar-width: none;  
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-[#F8FAFC]">
+    {% include "sandbox/components/_impersonation_modal.html" %}
+    {% include "sandbox/components/_test_case_modal.html" %}
+    {% block sandbox_sidebar %}
+    <!-- Tester Centralized Vertical Sidebar Dock -->
+    <nav class="fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex flex-col items-center py-6 shrink-0 z-50">
+        <!-- Logo -->
+        <a href="/tester" class="w-12 h-12 rounded-[1rem] bg-emerald-600 shadow-[0_4px_0_#065F46,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-6 cursor-pointer hover:-translate-y-1 active:translate-y-[3px] active:shadow-none transition-all" title="Кабинет тестировщика">
+            <i class="ph-bold ph-shield-check text-2xl"></i>
+        </a>
+
+        <!-- Dock Items for Tester -->
+        <div class="flex flex-col gap-2.5 flex-1 w-full px-3 overflow-y-auto hide-scrollbar">
+            
+            <!-- 1. Мои Тест-Кейсы -->
+            <a href="/tester" class="w-full aspect-square rounded-[1rem] {% if request.path == '/tester' %}bg-emerald-50 text-emerald-600 border border-emerald-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📋 Мои Тест-Кейсы">
+                <i class="ph-bold ph-list-checks text-xl"></i>
+                {% if request.path == '/tester' %}
+                <div class="absolute left-0 w-1.5 h-6 bg-emerald-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 2. Мои Баги -->
+            <a href="/tester#bug-reports" class="w-full aspect-square rounded-[1rem] bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex flex-col justify-center items-center gap-1 transition-all group" title="🐛 Мои Баг-Репорты">
+                <i class="ph-bold ph-bug text-xl"></i>
+            </a>
+
+            {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
+            <!-- 3. Панель Управления Админа -->
+            <a href="/admin/qa" class="w-full aspect-square rounded-[1rem] bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm flex flex-col justify-center items-center gap-1 transition-all group" title="🏛️ Панель Управления Админа (QA)">
+                <i class="ph-bold ph-shield-star text-xl"></i>
+            </a>
+            {% endif %}
+
+        </div>
+
+        <!-- User Profile Bottom Left -->
+        <a href="/profile" class="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center text-emerald-800 font-black text-xs hover:scale-105 transition-transform" title="{{ current_user.username if current_user.is_authenticated else 'Тестировщик' }}">
+            {{ (current_user.username[0] if current_user.is_authenticated and current_user.username else 'T')|upper }}
+        </a>
+    </nav>
+    {% endblock %}
+
+    <!-- Main Canvas Area -->
+    <main class="pl-28 pr-6 py-6 max-w-[1400px] mx-auto min-h-screen">
+        {% block tester_content %}{% endblock %}
+    </main>
+
+    {% include 'sandbox/components/_qa_widget.html' ignore missing %}
+
+    <script>
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        const colors = {
+            success: 'bg-emerald-500 text-white shadow-emerald-500/20',
+            error: 'bg-rose-500 text-white shadow-rose-500/20',
+            info: 'bg-slate-800 text-white shadow-slate-900/20'
+        };
+        toast.className = `fixed bottom-6 right-6 z-50 px-5 py-3.5 rounded-2xl font-bold text-xs shadow-xl transition-all duration-300 transform translate-y-4 opacity-0 flex items-center gap-3 ${colors[type] || colors.info}`;
+        toast.innerHTML = `
+            <i class="ph-bold ${type === 'success' ? 'ph-check-circle' : (type === 'error' ? 'ph-x-circle' : 'ph-info')} text-base"></i>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-y-4', 'opacity-0');
+        });
+        setTimeout(() => {
+            toast.classList.add('translate-y-4', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    </script>
+</body>
+</html>

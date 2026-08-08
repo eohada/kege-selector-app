@@ -1,264 +1,280 @@
 {% extends "base.html" %}
 {% block title %}Баг-репорт #{{ report.id }} — QA Control Room{% endblock %}
 
-{% block content %}
-<!-- UAParser.js CDN -->
+{% block head_js %}
+{{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1.0.37/dist/ua-parser.min.js"></script>
+{% endblock %}
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
+{% block head_css %}
+{{ super() }}
+<style>
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+</style>
+{% endblock %}
 
-    <a href="{{ url_for('qa_tester.admin.dashboard') }}" style="color: var(--color-text-muted); text-decoration: none; font-weight: 600; font-size: 0.875rem; display: inline-flex; align-items: center; margin-bottom: 1.5rem;">
-        <i class="ph-bold ph-arrow-left" style="margin-right: 0.35rem;"></i> Назад в Control Room
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" style="padding-top: 6rem; padding-bottom: 4rem;">
+
+    <a href="{{ url_for('qa_admin.dashboard') }}" class="inline-flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-white transition-colors mb-6">
+        <i class="ph-bold ph-arrow-left"></i> Назад в Control Room
     </a>
 
-    <!-- Шапка репорта -->
-    <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 16px; overflow: hidden; margin-bottom: 1.5rem;">
-        <div style="padding: 1.75rem 2rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke);">
-            <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1.5rem;">
-                <div style="flex: 1; min-width: 0;">
-                    <!-- Бейджи -->
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.875rem; align-items: center;">
-                        <span style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); color: var(--color-text-muted); border-radius: 8px; padding: 0.2rem 0.625rem; font-size: 0.75rem; font-weight: 800;">#{{ report.id }}</span>
-                        <span style="background: rgba(99,102,241,0.1); color: #6366f1; border: 1px solid rgba(99,102,241,0.25); border-radius: 8px; padding: 0.2rem 0.625rem; font-size: 0.75rem; font-weight: 700;">{{ report.area }}</span>
-
-                        {% if report.verdict == 'critical' %}
-                        <span style="background: rgba(244,63,94,0.1); color: #f43f5e; border: 1px solid rgba(244,63,94,0.25); border-radius: 8px; padding: 0.2rem 0.625rem; font-size: 0.75rem; font-weight: 800;"><i class="ph-bold ph-x-circle"></i> Критичный</span>
-                        {% elif report.verdict == 'minor' %}
-                        <span style="background: rgba(245,158,11,0.1); color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); border-radius: 8px; padding: 0.2rem 0.625rem; font-size: 0.75rem; font-weight: 800;"><i class="ph-bold ph-warning-circle"></i> Минорный</span>
-                        {% else %}
-                        <span style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.25); border-radius: 8px; padding: 0.2rem 0.625rem; font-size: 0.75rem; font-weight: 800;"><i class="ph-bold ph-check-circle"></i> Успешно</span>
-                        {% endif %}
-
-                        {% set statuses = {
-                            'pending': ('Ожидает', 'rgba(245,158,11,0.1)', '#f59e0b', 'rgba(245,158,11,0.25)'),
-                            'in_progress': ('В работе', 'rgba(59,130,246,0.1)', '#3b82f6', 'rgba(59,130,246,0.25)'),
-                            'retest': ('На ретесте', 'rgba(168,85,247,0.1)', '#a855f7', 'rgba(168,85,247,0.25)'),
-                            'resolved': ('Решён', 'rgba(16,185,129,0.1)', '#10b981', 'rgba(16,185,129,0.25)'),
-                            'rejected': ('Отклонён', 'rgba(244,63,94,0.1)', '#f43f5e', 'rgba(244,63,94,0.25)'),
-                        } %}
-                        {% set st = statuses.get(report.status, ('Неизвестно', 'var(--color-bg-surface-alt)', 'var(--color-text-muted)', 'var(--color-stroke)')) %}
-                        <span style="background: {{ st[1] }}; color: {{ st[2] }}; border: 1px solid {{ st[3] }}; border-radius: 8px; padding: 0.2rem 0.625rem; font-size: 0.75rem; font-weight: 800;">{{ st[0] }}</span>
-
-                        {% if report.cycle_id %}
-                        <span style="background: rgba(0,0,0,0.15); color: var(--color-text-muted); border: 1px solid var(--color-stroke); border-radius: 8px; padding: 0.2rem 0.625rem; font-size: 0.75rem; font-weight: 700;"><i class="ph-bold ph-repeat"></i> Итерация {{ report.cycle_id }}</span>
-                        {% endif %}
-                    </div>
-
-                    <h1 style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin: 0 0 0.5rem;">
-                        {% if report.test_case %}{{ report.test_case.title }}{% else %}Ad-hoc баг (свободная форма){% endif %}
-                    </h1>
-
-                    {% if report.page_url %}
-                    <div style="font-size: 0.8rem; color: var(--color-text-muted); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
-                        <i class="ph-bold ph-link"></i>
-                        <a href="{{ report.page_url }}" target="_blank" style="color: var(--color-accent); text-decoration: none; word-break: break-all;">{{ report.page_url }}</a>
-                    </div>
+    <!-- Header Card -->
+    <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-6 md:p-8 mb-8 relative overflow-hidden">
+        <div class="absolute right-0 top-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+        
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-6 relative z-10">
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-4">
+                    <span class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-xs font-mono font-bold text-indigo-400">#{{ report.id }}</span>
+                    <span class="px-2.5 py-1 rounded bg-slate-700/50 text-xs font-bold text-slate-300">{{ report.area }}</span>
+                    
+                    {% if report.verdict == 'critical' %}
+                        <span class="px-2.5 py-1 rounded bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-500 flex items-center gap-1"><i class="ph-fill ph-fire"></i> Блокирующий</span>
+                    {% elif report.verdict == 'minor' %}
+                        <span class="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-amber-500 flex items-center gap-1"><i class="ph-fill ph-warning"></i> Минорный</span>
+                    {% else %}
+                        <span class="px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400 flex items-center gap-1"><i class="ph-fill ph-check-circle"></i> Успешно</span>
                     {% endif %}
 
-                    <!-- User-Agent красивые бейджи (рендерится через UAParser.js на клиенте) -->
-                    {% if report.user_agent %}
-                    <div style="font-size: 0.8rem; color: var(--color-text-muted); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.375rem;">
-                        <i class="ph-bold ph-desktop"></i>
-                        <span id="uaBadges" data-ua="{{ report.user_agent }}">
-                            <span style="opacity: 0.6;">{{ report.user_agent[:80] }}{% if report.user_agent|length > 80 %}...{% endif %}</span>
-                        </span>
-                        {% if report.screen_size %}
-                        <span style="background: rgba(0,0,0,0.15); border: 1px solid var(--color-stroke); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 700;"><i class="ph-bold ph-monitor"></i> {{ report.screen_size }}</span>
-                        {% endif %}
-                    </div>
+                    {% set st = report.status %}
+                    {% if st == 'pending' %}<span class="px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-amber-500">Ожидает</span>
+                    {% elif st == 'in_progress' %}<span class="px-2.5 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-xs font-bold text-blue-500">В работе</span>
+                    {% elif st == 'retest' %}<span class="px-2.5 py-1 rounded bg-purple-500/10 border border-purple-500/20 text-xs font-bold text-purple-400">На ретесте</span>
+                    {% elif st == 'resolved' %}<span class="px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400">Решен</span>
+                    {% elif st == 'rejected' %}<span class="px-2.5 py-1 rounded bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-500">Отклонен</span>
                     {% endif %}
                 </div>
 
-                <!-- Репортер + дата -->
-                <div style="background: rgba(0,0,0,0.12); border: 1px solid var(--color-stroke); border-radius: 12px; padding: 1rem 1.25rem; text-align: center; flex-shrink: 0; min-width: 140px;">
-                    <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 0.375rem;">Репортер</div>
-                    <div style="font-size: 0.95rem; font-weight: 800; color: var(--color-text-primary);">{{ report.reporter.username if report.reporter else 'Аноним' }}</div>
-                    <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 0.25rem;">{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-white mb-4 leading-tight">
+                    {% if report.test_case %}{{ report.test_case.title }}{% else %}Спонтанный баг (Ad-hoc){% endif %}
+                </h1>
+                
+                <div class="flex flex-wrap items-center gap-6 text-sm font-semibold text-slate-400">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-[10px] text-slate-300">
+                            {{ report.reporter.username[:2] | upper if report.reporter else '?' }}
+                        </div>
+                        <span class="text-slate-300">{{ report.reporter.username if report.reporter else 'Неизвестно' }}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5"><i class="ph-bold ph-calendar-blank text-lg"></i> {{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
+            </div>
+
+            <!-- Panel Action Status -->
+            <div class="w-full md:w-72 bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 shrink-0 backdrop-blur-md">
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Действия с репортом</div>
+                <form method="POST" action="{{ url_for('qa_admin.update_report_status', report_id=report.id) }}" class="flex flex-col gap-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="status" class="w-full bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                        <option value="pending" {% if report.status == 'pending' %}selected{% endif %}>Ожидает (Pending)</option>
+                        <option value="in_progress" {% if report.status == 'in_progress' %}selected{% endif %}>В работе (In progress)</option>
+                        <option value="retest" {% if report.status == 'retest' %}selected{% endif %}>Готово (Retest)</option>
+                        <option value="resolved" {% if report.status == 'resolved' %}selected{% endif %}>Закрыто (Resolved)</option>
+                        <option value="rejected" {% if report.status == 'rejected' %}selected{% endif %}>Отклонено (Rejected)</option>
+                    </select>
+                    <textarea name="admin_comment" placeholder="Ответ админа (опционально)..." rows="2" class="w-full bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none transition-colors"></textarea>
+                    <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 rounded-lg text-sm transition-colors shadow-lg shadow-indigo-500/20">
+                        Обновить
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- 3-блочный layout -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start;">
-
-        <!-- БЛОК 1: Иммутабельное описание + шаги + медиа -->
-        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-
-            <!-- Шаги воспроизведения -->
-            {% if report.test_case %}
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; overflow: hidden;">
-                <div style="padding: 0.875rem 1.25rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke);">
-                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted);"><i class="ph-bold ph-list-checks"></i> Шаги воспроизведения</div>
+    <!-- 2 Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Main Content -->
+        <div class="lg:col-span-2 flex flex-col gap-8">
+            
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-700 bg-slate-900/30 flex items-center gap-2 text-sm font-bold text-white uppercase tracking-wider">
+                    <i class="ph-bold ph-article text-indigo-400 text-lg"></i> Описание
                 </div>
-                <div style="padding: 1.125rem 1.25rem;">
-                    {% set completed = report.failed_steps or [] %}
-                    <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.625rem;">
-                        {% for step in report.test_case.steps %}
-                        {% set failed = loop.index0 in completed %}
-                        <li style="display: flex; align-items: flex-start; gap: 0.625rem; {% if failed %}color: #f43f5e; font-weight: 700;{% else %}color: var(--color-text-primary);{% endif %}">
-                            {% if failed %}
-                            <i class="ph-bold ph-x-circle" style="color: #f43f5e; font-size: 1.125rem; flex-shrink: 0; margin-top: 0.1rem;"></i>
-                            {% else %}
-                            <i class="ph-bold ph-check-circle" style="color: #10b981; font-size: 1.125rem; flex-shrink: 0; margin-top: 0.1rem;"></i>
+                <div class="p-6 text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{% if report.notes %}{{ report.notes }}{% else %}<span class="italic text-slate-500">Описание отсутствует.</span>{% endif %}</div>
+            </div>
+
+            {% set attachments = report.attachments | fromjson %}
+            {% if attachments %}
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-700 bg-slate-900/30 flex items-center gap-2 text-sm font-bold text-white uppercase tracking-wider">
+                    <i class="ph-bold ph-images text-indigo-400 text-lg"></i> Вложения
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        {% for file in attachments %}
+                            {% set is_video = false %}
+                            {% set file_path = file.url if file is mapping else file %}
+                            {% if file_path and (file_path.endswith('.mp4') or file_path.endswith('.avi') or file_path.endswith('.webm') or file_path.endswith('.mov')) %}
+                                {% set is_video = true %}
                             {% endif %}
-                            <div>
-                                <span style="font-size: 0.875rem; line-height: 1.5;">{{ step }}</span>
-                                {% if failed %}
-                                <span style="display: inline-flex; align-items: center; margin-left: 0.5rem; background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.2); color: #f43f5e; border-radius: 4px; padding: 0.05rem 0.4rem; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Спотыкнулся</span>
-                                {% endif %}
+                            
+                            {% if is_video %}
+                            <div class="col-span-2 bg-slate-900 rounded-xl overflow-hidden border border-slate-700 relative">
+                                <div class="absolute top-3 left-3 bg-red-500/90 backdrop-blur text-white text-[10px] font-black uppercase px-2 py-1 rounded flex items-center gap-1 z-10"><i class="ph-fill ph-video-camera"></i> Record</div>
+                                <video controls class="w-full outline-none" style="max-height: 400px; background: #000;">
+                                    <source src="{{ url_for('static', filename=file_path.replace('/static/', '')) if file_path.startswith('/static/') else url_for('static', filename='uploads/qa/' ~ file_path) }}" type="video/mp4">
+                                </video>
                             </div>
-                        </li>
+                            {% else %}
+                            <a href="{{ url_for('static', filename=file_path.replace('/static/', '')) if file_path.startswith('/static/') else url_for('static', filename='uploads/qa/' ~ file_path) }}" target="_blank" class="block aspect-video bg-slate-900 rounded-xl overflow-hidden border border-slate-700 relative group">
+                                <div class="absolute top-3 left-3 bg-indigo-500/90 backdrop-blur text-white text-[10px] font-black uppercase px-2 py-1 rounded flex items-center gap-1 z-10"><i class="ph-fill ph-image"></i> Скриншот</div>
+                                <img src="{{ url_for('static', filename=file_path.replace('/static/', '')) if file_path.startswith('/static/') else url_for('static', filename='uploads/qa/' ~ file_path) }}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
+                                <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span class="bg-white/10 backdrop-blur-md text-white font-bold text-sm px-4 py-2 rounded-lg border border-white/20"><i class="ph-bold ph-magnifying-glass-plus"></i> Увеличить</span>
+                                </div>
+                            </a>
+                            {% endif %}
                         {% endfor %}
-                    </ul>
-                    {% if report.test_case.expected_result %}
-                    <div style="margin-top: 1rem; padding-top: 0.875rem; border-top: 1px dashed var(--color-stroke);">
-                        <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #6366f1; margin-bottom: 0.35rem;">Ожидаемый результат:</div>
-                        <p style="font-size: 0.875rem; color: var(--color-text-primary); margin: 0; line-height: 1.6;">{{ report.test_case.expected_result }}</p>
                     </div>
-                    {% endif %}
                 </div>
             </div>
             {% endif %}
 
-            <!-- Описание проблемы -->
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; overflow: hidden;">
-                <div style="padding: 0.875rem 1.25rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke);">
-                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted);"><i class="ph-bold ph-note-pencil"></i> Описание проблемы</div>
-                </div>
-                <div style="padding: 1.125rem 1.25rem;">
-                    {% set desc = report.description or report.comment or '' %}
-                    {% if desc %}
-                    <div style="font-size: 0.9rem; color: var(--color-text-primary); line-height: 1.7; white-space: pre-wrap; background: rgba(0,0,0,0.15); border: 1px solid var(--color-stroke); border-radius: 8px; padding: 0.875rem 1rem;">{{ desc | render_qa_comment }}</div>
-                    {% else %}
-                    <p style="color: var(--color-text-muted); font-size: 0.875rem; margin: 0; font-style: italic;">Описание не указано</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Медиавложения -->
-            {% if report.attachments %}
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; overflow: hidden;">
-                <div style="padding: 0.875rem 1.25rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke);">
-                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted);"><i class="ph-bold ph-paperclip"></i> Вложения ({{ report.attachments|length }})</div>
-                </div>
-                <div style="padding: 1.125rem 1.25rem; display: flex; flex-wrap: wrap; gap: 0.875rem;">
-                    {% for att in report.attachments %}
-                    {% if att.type == 'image' %}
-                    <a href="{{ att.url }}" target="_blank" style="display: block; border-radius: 10px; overflow: hidden; border: 2px solid var(--color-stroke); max-width: 240px; transition: opacity 0.2s; text-decoration: none;">
-                        <img src="{{ att.url }}" alt="Screenshot" style="display: block; width: 100%; height: auto;">
-                        <div style="background: rgba(0,0,0,0.6); padding: 0.375rem 0.75rem; text-align: center; font-size: 0.75rem; color: white; font-weight: 700;"><i class="ph-bold ph-image"></i> Скриншот</div>
-                    </a>
-                    {% elif att.type == 'video' %}
-                    <div style="border-radius: 10px; overflow: hidden; border: 2px solid var(--color-stroke); max-width: 320px; background: #000;">
-                        <video controls style="width: 100%; display: block;">
-                            <source src="{{ att.url }}" type="video/webm">
-                        </video>
-                        <div style="background: rgba(0,0,0,0.6); padding: 0.375rem 0.75rem; text-align: center; font-size: 0.75rem; color: white; font-weight: 700;"><i class="ph-bold ph-video-camera"></i> Запись экрана</div>
+            {% if report.env_info %}
+            {% set env = report.env_info | fromjson %}
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-700 bg-slate-900/30 flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-sm font-bold text-white uppercase tracking-wider">
+                        <i class="ph-bold ph-terminal text-indigo-400 text-lg"></i> Среда выполнения (Runtime)
                     </div>
-                    {% endif %}
-                    {% endfor %}
+                    <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Auto-Captured</span>
+                </div>
+                
+                <div class="p-6">
+                    <!-- Browser Info -->
+                    <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-4 flex gap-4 items-center mb-4">
+                        <i class="ph-thin ph-browsers text-4xl text-slate-500"></i>
+                        <div>
+                            <div id="browser-name" class="font-bold text-white text-sm">Браузер...</div>
+                            <div id="ua-string" class="text-xs text-slate-400 font-mono mt-1 break-all">{{ env.userAgent }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Viewport Info -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-4 text-center">
+                            <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Разрешение</div>
+                            <div class="text-lg font-mono font-bold text-white">{{ env.innerWidth }}x{{ env.innerHeight }}</div>
+                        </div>
+                        <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-4 text-center">
+                            <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Scroll Offset</div>
+                            <div class="text-lg font-mono font-bold text-white">Y:{{ env.scrollY }}</div>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1 bg-slate-900/50 border border-slate-700 rounded-xl p-4 text-center flex flex-col justify-center">
+                            <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">URL Ошибки</div>
+                            <a href="{{ env.href }}" target="_blank" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 break-all truncate block px-2">{{ env.href }}</a>
+                        </div>
+                    </div>
+
+                    <!-- Console Logs -->
+                    <div class="text-sm font-bold text-white mb-2 ml-1">Terminal Output (Console)</div>
+                    <div class="bg-[#0f172a] rounded-xl border border-slate-700 p-4 font-mono text-[11px] h-64 overflow-y-auto custom-scrollbar text-slate-300">
+                        {% if env.logs %}
+                            {% for log in env.logs %}
+                                <div class="py-1 border-b border-white/5 last:border-0 flex gap-2 hover:bg-white/5 transition-colors">
+                                    <span class="text-slate-600 shrink-0">[{{ log.ts.split('T')[1][:8] }}]</span>
+                                    
+                                    {% if log.type == 'error' or log.type == 'exception' %}
+                                        <span class="text-rose-500 font-bold shrink-0">ERR</span>
+                                        <span class="text-rose-400 drop-shadow-[0_0_2px_rgba(244,63,94,0.5)]">{{ log.msg }}</span>
+                                    {% elif log.type == 'warn' %}
+                                        <span class="text-amber-500 font-bold shrink-0">WRN</span>
+                                        <span class="text-amber-400">{{ log.msg }}</span>
+                                    {% else %}
+                                        <span class="text-indigo-400 font-bold shrink-0">LOG</span>
+                                        <span>{{ log.msg }}</span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-slate-500 italic">Ошибок в консоли не зафиксировано.</div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             {% endif %}
 
         </div>
 
-        <!-- ПРАВАЯ ЧАСТЬ: Системные логи + История + Форма смены статуса -->
-        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-
-            <!-- БЛОК 2: Системные логи (JSON) -->
-            {% if report.logs %}
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; overflow: hidden;">
-                <div style="padding: 0.875rem 1.25rem; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--color-stroke); display: flex; align-items: center; justify-content: space-between;">
-                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted);"><i class="ph-bold ph-terminal"></i> Системные логи</div>
-                    <span style="background: rgba(99,102,241,0.1); color: #6366f1; border-radius: 999px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 800;">{{ report.logs|length }}</span>
+        <!-- Sidebar -->
+        <div class="flex flex-col gap-8">
+            
+            {% if report.test_case %}
+            <div class="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-indigo-500/20 text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
+                    <i class="ph-bold ph-list-numbers text-lg"></i> Тест-Кейс
                 </div>
-                <div style="padding: 1rem; max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 0.78rem; display: flex; flex-direction: column; gap: 0.35rem; background: rgba(0,0,0,0.15);">
-                    {% for log in report.logs %}
-                    <div style="padding: 0.3rem 0.625rem; border-radius: 5px; word-break: break-all; line-height: 1.5;
-                        {% if '[console]' in log %}background: rgba(244,63,94,0.1); color: #f43f5e; border-left: 2px solid #f43f5e;
-                        {% elif '[network]' in log %}background: rgba(245,158,11,0.1); color: #f59e0b; border-left: 2px solid #f59e0b;
-                        {% elif '[har]' in log %}background: rgba(59,130,246,0.1); color: #3b82f6; border-left: 2px solid #3b82f6;
-                        {% else %}background: rgba(0,0,0,0.2); color: var(--color-text-muted); border-left: 2px solid var(--color-stroke);{% endif %}
-                    ">{{ log }}</div>
-                    {% endfor %}
+                <div class="p-5">
+                    <div class="flex flex-col gap-3">
+                        {% set steps = report.test_case.steps | fromjson %}
+                        {% for step in steps %}
+                            <div class="flex items-start gap-3">
+                                <div class="w-6 h-6 rounded-md bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-xs font-black shrink-0 border border-indigo-500/20 mt-0.5">{{ loop.index }}</div>
+                                <div class="text-sm text-slate-300 leading-relaxed">{{ step }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-6 pt-4 border-t border-indigo-500/20">
+                        <div class="text-[10px] font-bold text-indigo-400/70 uppercase tracking-wider mb-2">Ожидаемый результат</div>
+                        <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-sm font-semibold text-emerald-400 leading-relaxed">
+                            {{ report.test_case.expected_result }}
+                        </div>
+                    </div>
                 </div>
             </div>
             {% endif %}
 
-            <!-- БЛОК 3: История и переписка (таймлайн) -->
-            {% if history and history|length > 0 %}
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; overflow: hidden;">
-                <div style="padding: 0.875rem 1.25rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke);">
-                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted);"><i class="ph-bold ph-chat-dots"></i> История / Переписка ({{ history|length }})</div>
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-700 bg-slate-900/30 text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <i class="ph-bold ph-clock-counter-clockwise text-lg text-indigo-400"></i> История
                 </div>
-                <div style="padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; max-height: 440px; overflow-y: auto;">
-                    {% for item in history %}
-                    {% set is_admin_msg = item.new_status in ['retest', 'rejected', 'in_progress'] %}
-                    <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
-                        <!-- Аватар -->
-                        <div style="width: 2rem; height: 2rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 0.9rem;
-                            {% if is_admin_msg %}background: rgba(99,102,241,0.15); color: #6366f1; border: 2px solid rgba(99,102,241,0.3);
-                            {% else %}background: rgba(16,185,129,0.1); color: #10b981; border: 2px solid rgba(16,185,129,0.25);{% endif %}">
-                            <i class="ph-bold {% if is_admin_msg %}ph-wrench{% else %}ph-bug{% endif %}"></i>
-                        </div>
-                        <!-- Пузырь -->
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
-                                <span style="font-weight: 800; font-size: 0.8rem; color: {% if is_admin_msg %}#6366f1{% else %}#10b981{% endif %};">{{ item.author.username if item.author else 'Система' }}</span>
-                                <time style="font-size: 0.7rem; color: var(--color-text-muted);">{{ item.created_at.strftime('%d.%m %H:%M') }}</time>
-                            </div>
-                            <div style="font-size: 0.7rem; color: var(--color-text-muted); display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;">
-                                <span style="text-decoration: line-through; opacity: 0.55;">{{ item.old_status or '—' }}</span>
-                                <i class="ph-bold ph-arrow-right" style="font-size: 0.55rem;"></i>
-                                <span style="font-weight: 800; color: var(--color-accent);">{{ item.new_status }}</span>
-                            </div>
-                            {% if item.comment %}
-                            <div style="padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.845rem; color: var(--color-text-primary); line-height: 1.55;
-                                {% if is_admin_msg %}background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
-                                {% else %}background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke);{% endif %}">
-                                {{ item.comment }}
-                            </div>
+                <div class="p-5 flex flex-col gap-5">
+                    {% for h in history %}
+                        <div class="relative pl-6">
+                            {% if not loop.last %}
+                            <div class="absolute left-1.5 top-6 bottom-[-20px] w-px bg-slate-700"></div>
                             {% endif %}
+                            
+                            <div class="absolute left-0 top-1.5 w-3 h-3 rounded-full border-2 border-slate-800 bg-slate-400 z-10
+                                {% if h.new_state == 'resolved' %}bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]
+                                {% elif h.new_state == 'rejected' %}bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]
+                                {% elif h.new_state == 'in_progress' %}bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]
+                                {% elif h.new_state == 'retest' %}bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.5)]
+                                {% endif %}">
+                            </div>
+
+                            <div class="bg-slate-900/50 border border-slate-700 rounded-xl p-3">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-xs font-bold text-white">{{ h.user.username if h.user else 'Система' }}</span>
+                                    <span class="text-[10px] font-semibold text-slate-500">{{ h.created_at.strftime('%d.%m %H:%M') }}</span>
+                                </div>
+                                <div class="text-xs text-slate-300">
+                                    {% if h.action == 'created' %}
+                                        🎉 Репорт создан
+                                    {% elif h.action == 'status_change' %}
+                                        Статус изменен: 
+                                        <span class="px-1.5 py-0.5 bg-slate-800 rounded text-slate-400">{{ h.old_state }}</span>
+                                        <i class="ph-bold ph-arrow-right text-slate-500 mx-1"></i>
+                                        <span class="px-1.5 py-0.5 bg-slate-800 rounded text-white font-bold">{{ h.new_state }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if h.comment %}
+                                <div class="mt-2 pt-2 border-t border-slate-700/50 text-xs italic text-slate-400">
+                                    "{{ h.comment }}"
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
+                    {% else %}
+                        <div class="text-center text-slate-500 text-sm py-4">Нет истории изменений.</div>
                     {% endfor %}
                 </div>
-            </div>
-            {% endif %}
-
-            <!-- Форма смены статуса (ответ) -->
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; overflow: hidden;">
-                <div style="padding: 0.875rem 1.25rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke);">
-                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted);"><i class="ph-bold ph-arrow-bend-up-right"></i> Действие (смена статуса)</div>
-                </div>
-                <form action="{{ url_for('qa_tester.admin.update_report_status', report_id=report.id) }}" method="POST" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                    <div>
-                        <label style="display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); margin-bottom: 0.4rem;">Перевести в статус</label>
-                        <select name="status" style="width: 100%; padding: 0.625rem 0.875rem; border-radius: 10px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-weight: 700; font-size: 0.875rem; outline: none; cursor: pointer;">
-                            <option value="pending" {% if report.status == 'pending' %}selected{% endif %}>Ожидает проверки</option>
-                            <option value="in_progress" {% if report.status == 'in_progress' %}selected{% endif %}>В работе (чиним)</option>
-                            <option value="retest" {% if report.status == 'retest' %}selected{% endif %}>Отправить на ретест QA</option>
-                            <option value="resolved" {% if report.status == 'resolved' %}selected{% endif %}>Решено (закрыть)</option>
-                            <option value="rejected" {% if report.status == 'rejected' %}selected{% endif %}>Отклонить</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label style="display: block; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); margin-bottom: 0.4rem;">Комментарий для тестировщика</label>
-                        <textarea name="admin_comment" rows="3"
-                            placeholder="Что исправлено? Что проверить при ретесте?"
-                            style="width: 100%; padding: 0.75rem 1rem; border-radius: 10px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-size: 0.875rem; resize: vertical; outline: none; box-sizing: border-box; line-height: 1.5;"></textarea>
-                    </div>
-
-                    <button type="submit"
-                        style="width: 100%; padding: 0.75rem; background: var(--color-accent); color: white; border: none; border-radius: 10px; font-size: 0.9rem; font-weight: 800; cursor: pointer; transition: opacity 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                        <i class="ph-bold ph-paper-plane-tilt"></i> Сохранить и отправить
-                    </button>
-                </form>
             </div>
 
         </div>
@@ -266,49 +282,15 @@
 </div>
 
 <script>
-// UAParser.js — красивые бейджи браузера
-document.addEventListener('DOMContentLoaded', function() {
-    const el = document.getElementById('uaBadges');
-    if (!el) return;
-    const uaStr = el.getAttribute('data-ua');
-    if (!uaStr || typeof UAParser === 'undefined') return;
-
-    try {
-        const parser = new UAParser(uaStr);
-        const browser = parser.getBrowser();
-        const os = parser.getOS();
-        const device = parser.getDevice();
-
-        const badges = [];
-        const badgeStyle = 'display:inline-flex;align-items:center;gap:0.25rem;padding:0.15rem 0.5rem;border-radius:6px;font-size:0.7rem;font-weight:800;border:1px solid;margin:0.1rem;';
-
-        if (os.name) {
-            const isWin = (os.name || '').toLowerCase().includes('windows');
-            const isMac = (os.name || '').toLowerCase().includes('mac');
-            const isLinux = (os.name || '').toLowerCase().includes('linux');
-            const isAndroid = (os.name || '').toLowerCase().includes('android');
-            const icon = isWin ? 'ph-windows-logo' : isMac ? 'ph-apple-logo' : isLinux ? 'ph-linux-logo' : isAndroid ? 'ph-android-logo' : 'ph-desktop';
-            badges.push(`<span style="${badgeStyle}background:rgba(99,102,241,0.08);color:#6366f1;border-color:rgba(99,102,241,0.25);"><i class="ph-bold ${icon}"></i>${os.name} ${os.version || ''}</span>`);
+    document.addEventListener('DOMContentLoaded', function() {
+        const uaString = document.getElementById('ua-string').innerText;
+        if(uaString) {
+            const parser = new UAParser(uaString);
+            const result = parser.getResult();
+            const browser = result.browser.name ? `${result.browser.name} ${result.browser.version}` : 'Unknown Browser';
+            const os = result.os.name ? `${result.os.name} ${result.os.version || ''}` : 'Unknown OS';
+            document.getElementById('browser-name').innerHTML = `<i class="ph-fill ph-monitor mr-2"></i>${os} — ${browser}`;
         }
-        if (browser.name) {
-            const isChrome = (browser.name || '').toLowerCase().includes('chrome');
-            const isFirefox = (browser.name || '').toLowerCase().includes('firefox');
-            const isSafari = (browser.name || '').toLowerCase().includes('safari');
-            const icon = isChrome ? 'ph-globe' : isFirefox ? 'ph-firefox-logo' : isSafari ? 'ph-compass' : 'ph-browser';
-            const ver = browser.version ? browser.version.split('.')[0] : '';
-            badges.push(`<span style="${badgeStyle}background:rgba(16,185,129,0.08);color:#10b981;border-color:rgba(16,185,129,0.25);"><i class="ph-bold ${icon}"></i>${browser.name} ${ver}</span>`);
-        }
-        if (device.type) {
-            const icon = device.type === 'mobile' ? 'ph-device-mobile' : device.type === 'tablet' ? 'ph-device-tablet' : 'ph-desktop';
-            badges.push(`<span style="${badgeStyle}background:rgba(245,158,11,0.08);color:#f59e0b;border-color:rgba(245,158,11,0.25);"><i class="ph-bold ${icon}"></i>${device.type}</span>`);
-        }
-
-        if (badges.length > 0) {
-            el.innerHTML = badges.join('');
-        }
-    } catch(e) {
-        console.warn('UAParser failed:', e);
-    }
-});
+    });
 </script>
 {% endblock %}

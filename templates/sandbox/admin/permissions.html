@@ -1,0 +1,74 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block admin_content %}
+<div class="space-y-6">
+    <div class="flex flex-col gap-2 border-b border-slate-200 pb-4">
+        <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">Матрица прав доступа</h2>
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Реальные записи RolePermissions. Изменение применяется сразу.</p>
+    </div>
+
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-4 sm:p-6 shadow-sm overflow-x-auto">
+        <table class="w-full min-w-[950px] text-left text-xs font-bold border-collapse">
+            <thead>
+                <tr class="border-b-2 border-slate-200 text-slate-400 uppercase tracking-widest text-[10px]">
+                    <th class="py-3 px-3">Право</th>
+                    {% for role in roles %}<th class="py-3 px-3 text-center">{{ role }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for key, permission in permissions.items() %}
+                <tr class="hover:bg-slate-50/80">
+                    <td class="py-3 px-3">
+                        <span class="block text-slate-900 font-black">{{ permission.name }}</span>
+                        <span class="block text-[10px] text-slate-400">{{ key }} · {{ categories.get(permission.category, permission.category) }}</span>
+                    </td>
+                    {% for role in roles %}
+                    {% set allowed = role_permissions[role][key] %}
+                    <td class="py-3 px-3 text-center">
+                        <input type="checkbox" aria-label="{{ key }} для {{ role }}" data-role="{{ role }}" data-permission="{{ key }}"
+                               onchange="toggleRolePermission(this)" {% if allowed %}checked{% endif %}
+                               {% if role in ['admin', 'creator'] %}disabled title="System roles cannot be changed in the permissions matrix"{% endif %}
+                               class="w-5 h-5 accent-rose-600 rounded cursor-pointer disabled:cursor-not-allowed disabled:opacity-50">
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+async function toggleRolePermission(control) {
+    const previous = !control.checked;
+    control.disabled = true;
+    try {
+        const res = await fetch('/admin/permissions/toggle', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                permission_key: control.dataset.permission,
+                role: control.dataset.role,
+                enabled: control.checked
+            })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+            control.checked = previous;
+            showToast(data.message || 'Не удалось обновить право.', 'error');
+            return;
+        }
+        control.checked = data.enabled;
+        showToast('Право сохранено.', 'success');
+    } catch (error) {
+        control.checked = previous;
+        showToast('Ошибка сети при сохранении права.', 'error');
+    } finally {
+        if (!['admin', 'creator'].includes(control.dataset.role)) control.disabled = false;
+    }
+}
+</script>
+{% endblock %}

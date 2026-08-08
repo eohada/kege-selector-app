@@ -2,126 +2,186 @@
 
 {% block title %}Регистрация · BooStudy{% endblock %}
 
-{% block content %}
-<div class="w-full">
-    <section class="glass-panel">
-        <div class="text-center mb-3">
-            <p class="hero-eyebrow">создание аккаунта</p>
-            <h1 class="hero-title">Регистрация</h1>
-            <p class="hero-subtitle">Заполните поля ниже, чтобы присоединиться к платформе</p>
+{% block head_extra %}
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          boo: {
+            primary: '#4f46e5',
+            accent: '#F97316',
+            bgCanvas: '#F8FAFC',
+          }
+        },
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          display: ['Golos Text', 'system-ui', 'sans-serif'], 
+        }
+      }
+    }
+  }
+</script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen w-full bg-[#F8FAFC] flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden my-6">
+    <!-- Background subtle gradient decor -->
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="max-w-lg w-full flex flex-col gap-6 relative z-10">
+        
+        <!-- Logo Header -->
+        <div class="flex flex-col items-center text-center gap-3">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-600 shadow-[0_6px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-1">
+                <i class="ph-bold ph-user-plus text-3xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">Создание аккаунта</h1>
+                <p class="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Присоединяйтесь к BooStudy</p>
+            </div>
         </div>
 
-        {% if error %}
-        <div class="alert alert-danger mb-3">
-            {{ error }}
-        </div>
-        {% endif %}
+        <!-- Bento 3D Auth Card -->
+        <div class="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-slate-200/80 shadow-[0_8px_0_#DAE1E9,0_15px_30px_rgba(15,23,42,0.06)] flex flex-col gap-6">
+            
+            <div class="border-b border-slate-100 pb-4">
+                <h2 class="text-xl font-black text-slate-900 font-display">Заполните профиль</h2>
+                <p class="text-xs font-bold text-slate-400 mt-0.5">Укажите ваш логин, e-mail и роль на платформе</p>
+            </div>
 
-        <!-- Контекстные уведомления о приглашениях -->
-        {% if tutor %}
-        <div class="bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 dark:text-cyan-400 p-4 rounded-xl mb-3 text-sm font-semibold flex items-center gap-2">
-            <i class="ph-bold ph-graduation-cap text-lg"></i>
-            <span>По приглашению от преподавателя <strong>{{ tutor.username }}</strong>. Вы будете прикреплены к его онлайн-школе.</span>
-        </div>
-        {% endif %}
-
-        {% if invite_student %}
-        <div class="bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-400 p-4 rounded-xl mb-3 text-sm font-semibold flex items-center gap-2">
-            <i class="ph-bold ph-users-three text-lg"></i>
-            <span>Вход как родитель для ученика <strong>{{ invite_student.name or invite_student.user.username }}</strong>. Связь будет установлена автоматически.</span>
-        </div>
-        {% endif %}
-
-        {% if ref %}
-        <div class="bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 p-4 rounded-xl mb-3 text-sm font-semibold flex items-center gap-2">
-            <i class="ph-bold ph-sparkles text-lg"></i>
-            <span>Применен реферальный код: <strong>{{ ref }}</strong></span>
-        </div>
-        {% endif %}
-
-        <form method="POST" action="{{ url_for('auth.register') }}">
-            <!-- CSRF Token (since Flask uses Flask-WTF or custom CSRF validation) -->
-            {% if csrf_token %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <!-- Error Banner -->
+            {% if error %}
+            <div class="p-4 bg-rose-50 border-2 border-rose-200 rounded-2xl text-xs font-bold text-rose-700 flex items-center gap-3 shadow-2xs">
+                <i class="ph-bold ph-warning-circle text-xl text-rose-500 shrink-0"></i>
+                <span>{{ error }}</span>
+            </div>
             {% endif %}
 
-            <!-- Скрытые параметры связей -->
+            <!-- Context Invitation Banners -->
             {% if tutor %}
-            <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
+            <div class="p-4 bg-sky-50 border-2 border-sky-200 rounded-2xl text-xs font-bold text-sky-800 flex items-center gap-3 shadow-2xs">
+                <i class="ph-bold ph-graduation-cap text-xl text-sky-600 shrink-0"></i>
+                <span>Приглашение от преподавателя <strong>{{ tutor.username }}</strong>. Вы автоматически будете прикреплены к его школе.</span>
+            </div>
             {% endif %}
+
             {% if invite_student %}
-            <input type="hidden" name="invite_parent_to" value="{{ invite_student.user_id }}">
+            <div class="p-4 bg-indigo-50 border-2 border-indigo-200 rounded-2xl text-xs font-bold text-indigo-800 flex items-center gap-3 shadow-2xs">
+                <i class="ph-bold ph-users-three text-xl text-indigo-600 shrink-0"></i>
+                <span>Регистрация родителя для ученика <strong>{{ invite_student.name or invite_student.user.username }}</strong>. Связь будет установлена автоматически.</span>
+            </div>
             {% endif %}
+
             {% if ref %}
-            <input type="hidden" name="ref" value="{{ ref }}">
+            <div class="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl text-xs font-bold text-amber-800 flex items-center gap-3 shadow-2xs">
+                <i class="ph-bold ph-sparkles text-xl text-amber-600 shrink-0"></i>
+                <span>Активирован реферальный код: <strong>{{ ref }}</strong></span>
+            </div>
             {% endif %}
 
-            <div class="neo-field">
-                <label class="neo-label" for="username">Имя пользователя (Логин)</label>
-                <input type="text" id="username" name="username" class="neo-input" placeholder="Введите логин" required autofocus value="{{ username or '' }}">
-            </div>
+            <form method="POST" action="{{ url_for('auth.register') }}" class="flex flex-col gap-4">
+                <!-- CSRF Token -->
+                {% if csrf_token %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
 
-            <div class="neo-field">
-                <label class="neo-label" for="email">E-mail</label>
-                <input type="email" id="email" name="email" class="neo-input" placeholder="example@mail.com" required value="{{ email or '' }}">
-            </div>
+                <!-- Hidden Invitation Parameters -->
+                {% if tutor %}
+                <input type="hidden" name="tutor_id" value="{{ tutor.id }}">
+                {% endif %}
+                {% if invite_student %}
+                <input type="hidden" name="invite_parent_to" value="{{ invite_student.user_id }}">
+                {% endif %}
+                {% if ref %}
+                <input type="hidden" name="ref" value="{{ ref }}">
+                {% endif %}
 
-            <div class="neo-field">
-                <label class="neo-label" for="password">Пароль</label>
-                <input type="password" id="password" name="password" class="neo-input" placeholder="Введите сложный пароль" required>
-            </div>
-
-            <!-- Выбор роли (скрыт, если перешли по инвайту родителя) -->
-            {% if invite_student %}
-            <input type="hidden" name="role" value="parent">
-            {% elif tutor %}
-            <input type="hidden" name="role" value="student">
-            {% else %}
-            <div class="neo-field">
-                <label class="neo-label" for="role">Я регистрируюсь как</label>
-                <select id="role" name="role" class="neo-input cursor-pointer" style="height: 48px; padding: 0 1rem;" onchange="updateRoleWarning()">
-                    <option value="student">Ученик</option>
-                    <option value="tutor">Преподаватель</option>
-                    <option value="parent">Родитель</option>
-                </select>
-                <div id="role-warning-box" class="mt-3 p-3.5 rounded-xl text-xs font-semibold leading-relaxed" style="display: none;">
-                    <!-- Заполняется динамически JS -->
+                <!-- Username Input -->
+                <div class="flex flex-col gap-1.5">
+                    <label for="username" class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ph-bold ph-user text-indigo-500"></i> Имя пользователя (Логин)
+                    </label>
+                    <input type="text" id="username" name="username" class="w-full px-4 py-3.5 bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="Придумайте логин" required autofocus value="{{ username or '' }}">
                 </div>
-            </div>
-            <script>
-                function updateRoleWarning() {
-                    const role = document.getElementById('role').value;
-                    const box = document.getElementById('role-warning-box');
-                    if (role === 'student') {
-                        box.innerHTML = '⚠️ <strong>Ученикам:</strong> Для полноценной учебы вам нужна ссылка-приглашение от вашего преподавателя. При прямой регистрации без ссылки вы не будете привязаны к курсам и урокам.';
-                        box.className = "mt-3 p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-semibold leading-relaxed";
-                        box.style.display = 'block';
-                    } else if (role === 'parent') {
-                        box.innerHTML = '⚠️ <strong>Родителям:</strong> Чтобы видеть успеваемость ребенка, регистрируйтесь только по специальной ссылке из его личного кабинета (раздел «Ссылки и приглашения»).';
-                        box.className = "mt-3 p-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl text-xs font-semibold leading-relaxed";
-                        box.style.display = 'block';
-                    } else {
-                        box.innerHTML = '✨ <strong>Преподавателям:</strong> Создайте аккаунт и сразу переходите к организации своей онлайн-школы и приглашению учеников.';
-                        box.className = "mt-3 p-3.5 bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 dark:text-cyan-400 rounded-xl text-xs font-semibold leading-relaxed";
-                        box.style.display = 'block';
+
+                <!-- Email Input -->
+                <div class="flex flex-col gap-1.5">
+                    <label for="email" class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ph-bold ph-envelope text-indigo-500"></i> Электронная почта
+                    </label>
+                    <input type="email" id="email" name="email" class="w-full px-4 py-3.5 bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="example@mail.com" required value="{{ email or '' }}">
+                </div>
+
+                <!-- Password Input -->
+                <div class="flex flex-col gap-1.5">
+                    <label for="password" class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ph-bold ph-lock-key text-indigo-500"></i> Пароль
+                    </label>
+                    <input type="password" id="password" name="password" class="w-full px-4 py-3.5 bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="Введите надежный пароль" required>
+                </div>
+
+                <!-- Role Selection -->
+                {% if invite_student %}
+                <input type="hidden" name="role" value="parent">
+                {% elif tutor %}
+                <input type="hidden" name="role" value="student">
+                {% else %}
+                <div class="flex flex-col gap-1.5">
+                    <label for="role" class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ph-bold ph-user-gear text-indigo-500"></i> Я регистрируюсь как
+                    </label>
+                    <select id="role" name="role" class="w-full px-4 py-3.5 bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner cursor-pointer" onchange="updateRoleWarning()">
+                        <option value="student">Ученик</option>
+                        <option value="tutor">Преподаватель</option>
+                        <option value="parent">Родитель</option>
+                    </select>
+
+                    <div id="role-warning-box" class="mt-2 p-4 rounded-2xl text-xs font-bold leading-relaxed shadow-2xs" style="display: none;"></div>
+                </div>
+
+                <script>
+                    function updateRoleWarning() {
+                        const role = document.getElementById('role').value;
+                        const box = document.getElementById('role-warning-box');
+                        if (role === 'student') {
+                            box.innerHTML = '⚠️ <strong>Ученикам:</strong> Для подключения к урокам желательно использовать ссылку от вашего репетитора. При регистрации без ссылки вы сможете заходить в бесплатные демо-режимы.';
+                            box.className = "mt-2 p-4 bg-amber-50 border-2 border-amber-200 text-amber-800 rounded-2xl text-xs font-medium leading-relaxed shadow-2xs";
+                            box.style.display = 'block';
+                        } else if (role === 'parent') {
+                            box.innerHTML = '⚠️ <strong>Родителям:</strong> Чтобы отслеживать оценки ребёнка, регистрируйтесь по инвайт-ссылке из личного кабинета ученика.';
+                            box.className = "mt-2 p-4 bg-amber-50 border-2 border-amber-200 text-amber-800 rounded-2xl text-xs font-medium leading-relaxed shadow-2xs";
+                            box.style.display = 'block';
+                        } else {
+                            box.innerHTML = '✨ <strong>Преподавателям:</strong> Создайте личный кабинет для ведения групп, отправки домашних заданий и проведения онлайн-уроков.';
+                            box.className = "mt-2 p-4 bg-indigo-50 border-2 border-indigo-200 text-indigo-800 rounded-2xl text-xs font-medium leading-relaxed shadow-2xs";
+                            box.style.display = 'block';
+                        }
                     }
-                }
-                // Запускаем при загрузке
-                document.addEventListener('DOMContentLoaded', updateRoleWarning);
-            </script>
-            {% endif %}
+                    document.addEventListener('DOMContentLoaded', updateRoleWarning);
+                </script>
+                {% endif %}
 
-            <div class="mt-3">
-                <button type="submit" class="neo-button accent w-full">Создать аккаунт</button>
+                <!-- Submit Button -->
+                <button type="submit" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm py-4 px-6 rounded-2xl border-b-[4px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider">
+                    <i class="ph-bold ph-check-circle text-lg"></i> Создать аккаунт
+                </button>
+            </form>
+
+            <!-- Footer links -->
+            <div class="pt-4 border-t border-slate-100 flex flex-col gap-3 text-center">
+                <p class="text-xs font-bold text-slate-400">Уже есть зарегистрированный аккаунт?</p>
+                <a href="{{ url_for('auth.login') }}" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs py-3 px-4 rounded-xl border-b-[3px] border-slate-300 active:translate-y-0.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer no-underline uppercase tracking-wider">
+                    <i class="ph-bold ph-sign-in text-base"></i> Войти в систему
+                </a>
             </div>
 
-            <div class="mt-5 pt-5 border-t border-stroke text-center">
-                <p class="text-muted">Уже есть аккаунт?</p>
-                <a href="{{ url_for('auth.login') }}" class="neo-button ghost w-full justify-center mt-2">Войти в систему</a>
-            </div>
-        </form>
-    </section>
+        </div>
 
-    <p class="text-center mt-3 text-muted">Платформа для управления учебным процессом</p>
+        <p class="text-center text-xs font-bold text-slate-400">© 2026 BooStudy. Платформа для управления учебным процессом</p>
+
+    </div>
 </div>
 {% endblock %}

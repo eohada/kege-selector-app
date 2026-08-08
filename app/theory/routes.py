@@ -637,31 +637,20 @@ def _build_visible_with_state(course_id):
 @theory_bp.route('/theory')
 @login_required
 def theory_index():
-    """Каталог теории по группам и темам."""
     if not has_permission(current_user, 'theory.view'):
-        flash('У вас нет доступа к разделу «Теория».', 'warning')
+        flash('У вас нет доступа к теории.', 'warning')
         return redirect(url_for('main.dashboard'))
 
     course_id = request.args.get('course_id', type=int) or _get_default_course_id()
     if course_id is None:
-        flash('Нет доступных курсов. Обратитесь к администратору.', 'warning')
-        return render_template(
-            'theory/theory_index.html',
-            visible_groups=[],
-            course_id=None,
-            active_page='theory',
-        )
+        flash('Нет доступных курсов.', 'warning')
+        return redirect(url_for('main.dashboard'))
 
     visible_groups, state_by_number = _build_visible_with_state(course_id)
-
-    return render_template(
-        'theory/theory_shell.html',
-        visible_groups=visible_groups,
-        state_by_number=state_by_number,
-        course_id=course_id,
-        active_page='theory',
-        initial_view='groups',
-    )
+    return render_template('sandbox/theory.html',
+                           visible_groups=visible_groups,
+                           state_by_number=state_by_number,
+                           course_id=course_id)
 
 
 @theory_bp.route('/theory/group/<int:group_id>')
@@ -1755,3 +1744,132 @@ def manage_access_student(student_id):
         course_id=course_id,
         active_page='theory_manage',
     )
+
+
+@theory_bp.route('/theory/course-map')
+@login_required
+def theory_course_map():
+    if not _can_manage_theory():
+        abort(403)
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    
+    from core.db_models import CourseTimelineBlock
+    blocks = CourseTimelineBlock.query.filter_by(course_id=course_id).order_by(CourseTimelineBlock.lesson_number.asc()).all()
+    
+    return render_template('sandbox/course_map.html', blocks=blocks, course_id=course_id)
+
+@theory_bp.route('/theory/api/upload-map-archive', methods=['POST'])
+@login_required
+def upload_map_archive():
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Нет прав'}), 403
+        
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'Нет файла'}), 400
+        
+    file = request.files['file']
+    if not file.filename.endswith('.zip'):
+        return jsonify({'success': False, 'error': 'Нужен ZIP-архив'}), 400
+        
+    course_id = request.form.get('course_id', type=int) or _get_default_course_id()
+    
+    from core.db_models import CourseTimelineBlock
+    
+    storage_info = _resolve_theory_storage('pdfs')
+    upload_folder = storage_info['base_folder']
+    
+    import zipfile
+    import re
+    import io
+    from uuid import uuid4
+    from pypdf import PdfReader
+    
+    processed_count = 0
+    files_to_save = []
+    
+    try:
+        with zipfile.ZipFile(file, 'r', metadata_encoding='cp866') as z:
+            for info in z.infolist():
+                if info.filename.endswith('.pdf'):
+                    pdf_data = z.read(info)
+                    safe_name = f"timeline_{course_id}_{uuid4().hex[:8]}.pdf"
+                    save_path = os.path.join(upload_folder, safe_name)
+                    
+                    pdf_db_url = _build_theory_public_url(save_path, storage_info['base_root'], storage_info['persistent'])
+                    if not pdf_db_url:
+                        # fallback if persistent is false
+                        rel_path = os.path.relpath(save_path, current_app.root_path).replace('\\', '/')
+                        pdf_db_url = f"/{rel_path}"
+                    
+                    # Извлекаем текст из PDF в памяти, не сохраняя на диск, чтобы не триггерить рестарт Flask
+                    reader = PdfReader(io.BytesIO(pdf_data))
+                    text = ''
+                    for page in reader.pages:
+                        extracted = page.extract_text()
+                        if extracted:
+                            text += extracted + '\n'
+                            
+                    # Ищем уроки по паттерну "Урок X. Название"
+                    lessons = re.findall(r'Урок\.?\s*(\d+)\.\s*(.*?)(?=\nУрок|\Z)', text, re.DOTALL)
+                    
+                    if not lessons:
+                        # Fallback: парсим из имени файла
+                        filename = info.filename
+                        match = re.search(r'(?:№|Блок|Урок)\.?\s*(\d+)[\.\s-]+(.*?)\.pdf$', filename, re.IGNORECASE)
+                        if match:
+                            lessons = [(match.group(1), match.group(2).strip())]
+                            
+                    parsed_lessons = []
+                    for num, title in lessons:
+                        lines = title.split('\n')
+                        parsed_lessons.append({
+                            'num': int(num),
+                            'title': lines[0].strip(),
+                            'content': '\n'.join(lines[1:]).strip()
+                        })
+                        
+                    # Распределяем общее описание с конца (если оно относится к блоку уроков)
+                    for i in range(len(parsed_lessons) - 2, -1, -1):
+                        if not parsed_lessons[i]['content'] and parsed_lessons[i+1]['content']:
+                            parsed_lessons[i]['content'] = parsed_lessons[i+1]['content']
+                            
+                    for pl in parsed_lessons:
+                        lesson_number = pl['num']
+                        clean_title = pl['title']
+                        lesson_content = pl['content']
+                        
+                        block = CourseTimelineBlock.query.filter_by(course_id=course_id, lesson_number=lesson_number).first()
+                        if not block:
+                            block = CourseTimelineBlock(
+                                course_id=course_id,
+                                lesson_number=lesson_number,
+                                title=clean_title,
+                                pdf_path=pdf_db_url,
+                                content=lesson_content
+                            )
+                            db.session.add(block)
+                        else:
+                            block.pdf_path = pdf_db_url
+                            if clean_title:
+                                block.title = clean_title
+                            block.content = lesson_content
+                                
+                        processed_count += 1
+                        
+                    # Откладываем сохранение файла на самый конец
+                    if lessons:
+                        files_to_save.append((save_path, pdf_data))
+                        
+        db.session.commit()
+        
+        # Сохраняем все файлы разом в самом конце. Это нужно, чтобы Flask auto-reloader (watchdog) 
+        # не успел перезагрузить сервер до отправки ответа, обрывая соединение.
+        for path, data in files_to_save:
+            with open(path, 'wb') as f_out:
+                f_out.write(data)
+                
+        return jsonify({'success': True, 'processed': processed_count})
+        
+    except Exception as e:
+        current_app.logger.error(f"Error parsing map archive: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

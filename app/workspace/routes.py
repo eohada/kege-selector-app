@@ -114,7 +114,7 @@ def _workspace_context_scope(task_id: int, context_type: str | None, context_id:
             'owner_user_id': int(student.user_id),
             'context_type': 'submission',
             'context_id': int(context_id),
-            'can_write': not _is_parent_user(),
+            'can_write': int(current_user.id) == int(student.user_id) and not _is_parent_user(),
         }
 
     if context_type == 'lesson':
@@ -138,7 +138,7 @@ def _workspace_context_scope(task_id: int, context_type: str | None, context_id:
             'owner_user_id': int(student.user_id),
             'context_type': 'lesson',
             'context_id': int(context_id),
-            'can_write': not _is_parent_user(),
+            'can_write': int(current_user.id) == int(student.user_id) and not _is_parent_user(),
         }
 
     task = Tasks.query.filter_by(task_id=int(task_id)).first()

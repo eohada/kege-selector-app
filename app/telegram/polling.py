@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import asyncio
 
 from telegram import Update
 from telegram.error import Conflict
@@ -18,14 +19,18 @@ def _truthy(value: str | None) -> bool:
     return (value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
-async def _log_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.callback_query:
-        update_type = 'callback_query'
-    elif update.message:
-        update_type = 'message'
-    else:
-        update_type = 'other'
-    logger.debug('Telegram polling received update_id=%s type=%s', update.update_id, update_type)
+async def _debug_incoming_logger(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = update.effective_user
+    username = f"@{user.username}" if user and user.username else "no_username"
+    user_id = user.id if user else "unknown"
+    if update.message:
+        text = update.message.text or "не текст (media/other)"
+        print(f"📥 [ВХОДЯЩЕЕ СООБЩЕНИЕ] От: {username} (ID: {user_id}) | Текст: {text}")
+        logger.info("📥 [ВХОДЯЩЕЕ СООБЩЕНИЕ] От: %s (ID: %s) | Текст: %s", username, user_id, text)
+    elif update.callback_query:
+        cb_data = update.callback_query.data or ""
+        print(f"📥 [НАЖАТИЕ КНОПКИ] От: {username} (ID: {user_id}) | Data: {cb_data}")
+        logger.info("📥 [НАЖАТИЕ КНОПКИ] От: %s (ID: %s) | Data: %s", username, user_id, cb_data)
 
 
 async def _log_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -37,14 +42,10 @@ async def _log_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None
 
 def main() -> None:
     """
-    Run the same Telegram handlers as the webhook integration via getUpdates.
-
-    This is a production fallback for environments where Telegram cannot reach
-    the public webhook endpoint, while outbound access through TELEGRAM_PROXY_URL
-    is available.
+    Run Telegram handlers in Long Polling mode.
+    Clears active webhooks before starting to ensure getUpdates is not blocked.
     """
     logging.getLogger('httpx').setLevel(logging.WARNING)
-    drop_pending = _truthy(os.environ.get('TELEGRAM_POLLING_DROP_PENDING_UPDATES'))
     with flask_app.app_context():
         application = _build_application(with_updater=True)
         from app.telegram.handlers import (
@@ -53,6 +54,11 @@ def main() -> None:
             LESSON_HW_NOTE_TEXT, LESSON_HW_NOTE_REMIND,
             cmd_lessonnotes,
         )
+        
+        # Добавляем глобальный отладочный логгер входящих сообщений (group=-1)
+        application.add_handler(MessageHandler(filters.ALL, _debug_incoming_logger), group=-1)
+        application.add_handler(CallbackQueryHandler(_debug_incoming_logger), group=-1)
+
         lesson_call_link_conv = ConversationHandler(
             entry_points=[
                 CallbackQueryHandler(lesson_call_link_start, pattern=r'^lesson_call_link:\d+$'),
@@ -88,13 +94,31 @@ def main() -> None:
         )
         application.add_handler(lesson_hw_note_conv)
         application.add_handler(CommandHandler('lessonnotes', cmd_lessonnotes))
-        application.add_handler(MessageHandler(filters.ALL, _log_update, block=False), group=-1000)
-        application.add_handler(CallbackQueryHandler(_log_update, block=False), group=-1000)
         application.add_error_handler(_log_error)
+
+        print("🔄 Очищаем Webhook и старые очереди обновлений...")
+        logger.info("Clearing Telegram Webhook and pending updates for long polling...")
+        
+        async def _clear_webhook():
+            try:
+                await application.bot.delete_webhook(drop_pending_updates=True)
+                print("✅ Webhook успешно сброшен, переходим в режим Long Polling")
+                logger.info("✅ Telegram Webhook cleared successfully.")
+            except Exception as e:
+                print(f"⚠️ Ошибка при сбросе Webhook: {e}")
+                logger.warning("Failed to delete webhook: %s", e)
+
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.create_task(_clear_webhook())
+        else:
+            loop.run_until_complete(_clear_webhook())
+
         logger.info('Starting Telegram long-polling runner')
         application.run_polling(
             allowed_updates=['message', 'callback_query'],
-            drop_pending_updates=drop_pending,
+            drop_pending_updates=True,
+            bootstrap_retries=-1,
             close_loop=True,
         )
 

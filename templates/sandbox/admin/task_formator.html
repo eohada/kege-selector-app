@@ -1,0 +1,241 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block admin_content %}
+<div class="space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+            <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">Формирователь Банка Заданий КЕГЭ</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Модерация задач из БД, фильтры 1–27, конвертер HTML в Markdown и песочница прототипов</p>
+        </div>
+    </div>
+
+    <!-- FILTERS & TASK SELECTOR PANEL -->
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            
+            <!-- 1. KEGE Task Number Filter (1–27) -->
+            <div class="space-y-1.5">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Номер задания КЕГЭ (1–27):</label>
+                <select id="filter-task-number" onchange="filterTaskTable()" class="w-full h-11 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                    <option value="all">Все задания (1–27)</option>
+                    {% for n in range(1, 28) %}
+                    <option value="{{ n }}">Задание №{{ n }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- 2. Moderation Status Filter -->
+            <div class="space-y-1.5">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Статус модерации:</label>
+                <select id="filter-status" onchange="filterTaskTable()" class="w-full h-11 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                    <option value="all">Все статусы</option>
+                    <option value="ok">Одобрено [ OK ]</option>
+                    <option value="needs_fix">Нужно править</option>
+                    <option value="skip">Пропуск</option>
+                    <option value="new">Новое</option>
+                </select>
+            </div>
+
+            <!-- 3. Text Search -->
+            <div class="space-y-1.5">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Поиск по ID / Тексту:</label>
+                <div class="relative">
+                    <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="filter-search-input" onkeyup="filterTaskTable()" placeholder="ID или фрагмент текста..." class="w-full pl-10 pr-4 h-11 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TASK LIST TABLE WITH QUICK MODERATION BUTTONS -->
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <i class="ph-bold ph-list-checks text-rose-500 text-lg"></i> Реестр задач КЕГЭ для модерации ({{ tasks|length if tasks is defined else 0 }})
+        </h3>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-bold border-collapse">
+                <thead>
+                    <tr class="border-b-2 border-slate-200 text-slate-400 uppercase tracking-widest text-[10px]">
+                        <th class="py-3 px-4">ID / №</th>
+                        <th class="py-3 px-4">Условие (Фрагмент)</th>
+                        <th class="py-3 px-4">Статус</th>
+                        <th class="py-3 px-4 text-right">Действия модерации</th>
+                    </tr>
+                </thead>
+                <tbody id="task-table-body" class="divide-y divide-slate-100">
+                    {% set task_items = tasks if tasks is defined else [] %}
+                    {% for t in task_items %}
+                    {% set t_id = t.task_id if t.task_id is defined else (t.id if t.id is defined else loop.index) %}
+                    {% set t_num = t.task_number if t.task_number is defined else 1 %}
+                    {% set t_text = t.content_html if t.content_html is defined and t.content_html else (t.text if t.text is defined and t.text else (t.description if t.description is defined else '')) %}
+                    {% set t_status = t.review_status if t.review_status is defined and t.review_status else 'new' %}
+                    <tr class="task-table-row hover:bg-slate-50 transition-colors" data-id="{{ t_id }}" data-num="{{ t_num }}" data-status="{{ t_status|lower }}" data-text="{{ t_text|striptags }}">
+                        <td class="py-3.5 px-4">
+                            <span class="font-black text-slate-900 block">#{{ t_id }}</span>
+                            <span class="text-[10px] text-indigo-600 uppercase tracking-wider block">Задание №{{ t_num }}</span>
+                        </td>
+                        <td class="py-3.5 px-4 max-w-md">
+                            <p class="text-xs text-slate-700 line-clamp-2 mb-0 font-medium leading-relaxed">{{ t_text|striptags|truncate(120) or '—' }}</p>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span id="task-status-badge-{{ t_id }}" class="task-status-badge px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider
+                                {% if t_status|lower == 'ok' %}bg-emerald-100 text-emerald-800 border border-emerald-200
+                                {% elif t_status|lower == 'needs_fix' %}bg-amber-100 text-amber-800 border border-amber-200
+                                {% elif t_status|lower == 'skip' %}bg-slate-100 text-slate-600 border border-slate-200
+                                {% else %}bg-indigo-50 text-indigo-700 border border-indigo-200{% endif %}">
+                                {{ t_status }}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="inline-flex items-center gap-1.5">
+                                <button onclick="selectTaskForEditor('{{ t_id }}', '{{ t_text|e }}')" class="btn-3d px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg cursor-pointer border-0">
+                                    Предпросмотр
+                                </button>
+                                <button onclick="setTaskStatus('{{ t_id }}', 'ok')" class="btn-3d px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] rounded-lg border-b-[2px] border-emerald-800 cursor-pointer border-0">
+                                    [ OK ]
+                                </button>
+                                <button onclick="setTaskStatus('{{ t_id }}', 'needs_fix')" class="btn-3d px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-white font-black text-[11px] rounded-lg border-b-[2px] border-amber-700 cursor-pointer border-0">
+                                    [ Править ]
+                                </button>
+                                <button onclick="setTaskStatus('{{ t_id }}', 'skip')" class="btn-3d px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-[11px] rounded-lg border-b-[2px] border-slate-300 cursor-pointer border-0">
+                                    [ Пропуск ]
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="py-8 text-center text-slate-400 font-bold">Задачи не найдены.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TWO-COLUMN SANDBOX INTERFACE (HTML ➔ MARKDOWN CONVERTER) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- LEFT: HTML SOURCE & EDITOR -->
+        <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-code text-indigo-500 text-lg"></i> Исходный HTML / Текст выбранной задачи
+                </h3>
+                <button onclick="convertHtmlToMarkdown()" class="btn-3d px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 cursor-pointer border-0">
+                    Конвертировать &rarr;
+                </button>
+            </div>
+
+            <textarea id="task-html-source" oninput="convertHtmlToMarkdown()" rows="12" class="w-full p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-2xl border-2 border-slate-700 focus:outline-none resize-none" placeholder="Выберите задачу из таблицы выше или вставьте HTML код условия задачи КЕГЭ..."><p>Текстовый файл состоит из символов <b>A</b>, <b>B</b>, <b>C</b>. Определите максимальное количество символов в непрерывной последовательности <code>ABC</code>...</p></textarea>
+        </div>
+
+        <!-- RIGHT: MARKDOWN PREVIEW & LIVE RENDER -->
+        <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-eye text-emerald-500 text-lg"></i> Результат Markdown (Live Preview)
+                </h3>
+                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">Интерактивный рендер</span>
+            </div>
+
+            <div id="markdown-result-preview" class="w-full h-[288px] p-4 bg-[#F8FAFC] border-2 border-slate-200 rounded-2xl overflow-y-auto text-xs font-bold text-slate-800 leading-relaxed">
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+function filterTaskTable() {
+    const numFilter = document.getElementById('filter-task-number').value;
+    const statusFilter = document.getElementById('filter-status').value;
+    const searchText = document.getElementById('filter-search-input').value.toLowerCase();
+    
+    const rows = document.querySelectorAll('.task-table-row');
+    rows.forEach(row => {
+        const id = row.getAttribute('data-id');
+        const num = row.getAttribute('data-num');
+        const st = row.getAttribute('data-status');
+        const txt = row.getAttribute('data-text').toLowerCase();
+
+        const matchNum = (numFilter === 'all' || num === numFilter);
+        const matchStatus = (statusFilter === 'all' || st === statusFilter);
+        const matchSearch = (!searchText || id.includes(searchText) || txt.includes(searchText));
+
+        if (matchNum && matchStatus && matchSearch) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function selectTaskForEditor(taskId, textHtml) {
+    document.getElementById('task-html-source').value = textHtml;
+    convertHtmlToMarkdown();
+    showToast(`Задача #${taskId} загружена в редактор!`, 'info');
+}
+
+function convertHtmlToMarkdown() {
+    const src = document.getElementById('task-html-source').value;
+    const prev = document.getElementById('markdown-result-preview');
+    if (!src.trim()) {
+        prev.innerHTML = '<p class="text-slate-400 font-bold">Введите текст условия...</p>';
+        return;
+    }
+
+    let md = src
+        .replace(/<p>/gi, '')
+        .replace(/<\/p>/gi, '\n\n')
+        .replace(/<b>(.*?)<\/b>/gi, '**$1**')
+        .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+        .replace(/<i>(.*?)<\/i>/gi, '*$1*')
+        .replace(/<em>(.*?)<\/em>/gi, '*$1*')
+        .replace(/<code>(.*?)<\/code>/gi, '`$1`')
+        .replace(/<br\s*\/?>/gi, '\n');
+
+    prev.innerHTML = `<pre class="font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">${md}</pre>`;
+}
+
+async function setTaskStatus(taskId, status) {
+    try {
+        const res = await fetch('/admin/task-formator/status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ task_id: parseInt(taskId) || taskId, status: status })
+        });
+        const data = await res.json();
+        if (res.ok && (data.success || data.status === 'ok')) {
+            showToast(data.message || `Статус задачи #${taskId} сохранен: [${status.toUpperCase()}]`, 'success');
+            
+            // Dynamic badge update in table
+            const badge = document.getElementById(`task-status-badge-${taskId}`);
+            if (badge) {
+                badge.textContent = status.toUpperCase();
+                badge.className = 'task-status-badge px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ' +
+                    (status === 'ok' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                    (status === 'needs_fix' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                    'bg-slate-100 text-slate-600 border border-slate-200'));
+            }
+        } else {
+            showToast(data.message || 'Ошибка сохранения статуса.', 'error');
+        }
+    } catch(err) {
+        showToast('Ошибка сети при смене статуса', 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    convertHtmlToMarkdown();
+});
+</script>
+{% endblock %}

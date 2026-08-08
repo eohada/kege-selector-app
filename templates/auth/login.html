@@ -2,69 +2,142 @@
 
 {% block title %}Вход в систему · BooStudy{% endblock %}
 
-{% block content %}
-<div class="w-full mx-auto" style="max-width: 480px;">
-    <section class="glass-panel">
-        <div class="text-center mb-3">
-            <p class="hero-eyebrow">авторизация</p>
-            <h1 class="hero-title">Вход в систему</h1>
-            <p class="hero-subtitle">Введите ключ и пароль для доступа к платформе</p>
-        </div>
+{% block head_extra %}
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          boo: {
+            primary: '#4f46e5',
+            accent: '#F97316',
+            bgCanvas: '#F8FAFC',
+          }
+        },
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          display: ['Golos Text', 'system-ui', 'sans-serif'], 
+        }
+      }
+    }
+  }
+</script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+{% endblock %}
 
-        {% if form and form.errors %}
-        <div class="alert alert-danger mb-3">
-            <strong>Ошибки:</strong>
-            <ul class="mt-2 ml-6 list-disc">
-            {% for field_name, error_list in form.errors.items() %}
-                {% for error in error_list %}
-                <li>{{ field_name }}: {{ error }}</li>
-                {% endfor %}
-            {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
+{% block body %}
+<div class="min-h-screen w-full bg-[#F8FAFC] flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+    <!-- Background subtle gradient decor -->
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        {% if form %}
-        <form method="POST" action="{{ url_for('auth.login') }}">
-            {{ form.hidden_tag() }}
-
-            <div class="neo-field">
-                <label class="neo-label">Ключ</label>
-                {{ form.username(class='neo-input', placeholder='Введите ключ', autofocus=True) }}
-                {% if form.username.errors %}
-                <div class="text-error text-sm mt-1 font-medium">{{ form.username.errors[0] }}</div>
-                {% endif %}
+    <div class="max-w-md w-full flex flex-col gap-6 relative z-10">
+        
+        <!-- Logo Header -->
+        <div class="flex flex-col items-center text-center gap-3">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-600 shadow-[0_6px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-1">
+                <i class="ph-bold ph-graduation-cap text-3xl"></i>
             </div>
-
-            <div class="neo-field">
-                <div class="flex justify-between items-center mb-1">
-                    {{ form.password.label(class='neo-label m-0') }}
-                    <a href="{{ url_for('auth.forgot_password') }}" class="text-xs text-boo-primary hover:underline font-bold" style="text-decoration:none;">Забыли пароль?</a>
-                </div>
-                {{ form.password(class='neo-input', placeholder='Введите пароль') }}
-                {% if form.password.errors %}
-                <div class="text-error text-sm mt-1 font-medium">{{ form.password.errors[0] }}</div>
-                {% endif %}
-            </div>
-
             <div>
-                {{ form.submit(class='neo-button accent w-full') }}
+                <h1 class="text-2xl sm:text-3xl font-black text-slate-900 font-display tracking-tight">BooStudy</h1>
+                <p class="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Платформа КЕГЭ & Информатики</p>
             </div>
-
-            <div class="mt-5 pt-5 border-t border-stroke text-center">
-                <p class="text-muted mb-3">Нет аккаунта? Зарегистрируйтесь на платформе.</p>
-                <a href="{{ url_for('auth.register') }}" class="neo-button ghost w-full justify-center mb-3">Создать аккаунт</a>
-                <p class="text-muted mb-3">Или попробуйте демо без регистрации:</p>
-                <a href="{{ (config.DEMO_BASE_URL + '/demo') if config.DEMO_BASE_URL else url_for('auth.demo_choose') }}" class="neo-button ghost w-full justify-center">Попробовать демо</a>
-            </div>
-        </form>
-        {% else %}
-        <div class="alert alert-danger">
-            Ошибка: форма не загружена. Пожалуйста, обновите страницу.
         </div>
-        {% endif %}
-    </section>
 
-    <p class="text-center mt-3 text-muted">Платформа для управления учебным процессом</p>
+        <!-- Bento 3D Auth Card -->
+        <div class="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-slate-200/80 shadow-[0_8px_0_#DAE1E9,0_15px_30px_rgba(15,23,42,0.06)] flex flex-col gap-6">
+            
+            <div class="border-b border-slate-100 pb-4">
+                <h2 class="text-xl font-black text-slate-900 font-display">Вход в систему</h2>
+                <p class="text-xs font-bold text-slate-400 mt-0.5">Введите ваши учётные данные для продолжения</p>
+            </div>
+
+            <!-- Flash & Form Errors Box -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flex flex-col gap-2">
+                {% for category, message in messages %}
+                    <div class="p-4 rounded-2xl border-2 text-xs font-bold flex items-center gap-3 shadow-2xs {% if category in ['danger', 'error'] %}bg-rose-50 border-rose-200 text-rose-700{% elif category == 'warning' %}bg-amber-50 border-amber-200 text-amber-800{% else %}bg-indigo-50 border-indigo-200 text-indigo-800{% endif %}">
+                        <i class="ph-bold {% if category in ['danger', 'error'] %}ph-warning-circle text-lg text-rose-500{% elif category == 'warning' %}ph-warning text-lg text-amber-500{% else %}ph-check-circle text-lg text-indigo-500{% endif %}"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+            {% endwith %}
+
+            {% if form and form.errors %}
+            <div class="p-4 bg-rose-50 border-2 border-rose-200 rounded-2xl text-xs font-bold text-rose-700 flex flex-col gap-1 shadow-2xs">
+                <div class="flex items-center gap-2 text-rose-800 font-black">
+                    <i class="ph-bold ph-x-circle text-lg text-rose-500"></i>
+                    <span>Ошибки заполнения формы:</span>
+                </div>
+                <ul class="list-disc pl-5 mt-1 font-semibold text-rose-600 space-y-0.5">
+                {% for field_name, error_list in form.errors.items() %}
+                    {% for error in error_list %}
+                    <li>{{ field_name }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if form %}
+            <form method="POST" action="{{ url_for('auth.login') }}" class="flex flex-col gap-4">
+                {{ form.hidden_tag() }}
+
+                <!-- Username Input Field -->
+                <div class="flex flex-col gap-1.5">
+                    <label for="username" class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="ph-bold ph-user text-indigo-500"></i> Логин / Ключ
+                    </label>
+                    {{ form.username(class='w-full px-4 py-3.5 bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner', placeholder='Введите ваш логин', autofocus=True) }}
+                    {% if form.username.errors %}
+                    <span class="text-xs font-bold text-rose-500 pl-1">{{ form.username.errors[0] }}</span>
+                    {% endif %}
+                </div>
+
+                <!-- Password Input Field -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex justify-between items-center">
+                        <label for="password" class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="ph-bold ph-lock-key text-indigo-500"></i> Пароль
+                        </label>
+                        <a href="{{ url_for('auth.forgot_password') }}" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 no-underline">Забыли пароль?</a>
+                    </div>
+                    {{ form.password(class='w-full px-4 py-3.5 bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner', placeholder='••••••••') }}
+                    {% if form.password.errors %}
+                    <span class="text-xs font-bold text-rose-500 pl-1">{{ form.password.errors[0] }}</span>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="mt-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm py-4 px-6 rounded-2xl border-b-[4px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider">
+                    <i class="ph-bold ph-sign-in text-lg"></i> Войти в систему
+                </button>
+            </form>
+            {% else %}
+            <div class="p-4 bg-rose-50 border-2 border-rose-200 rounded-2xl text-xs font-bold text-rose-700">
+                Ошибка: форма не загружена. Пожалуйста, обновите страницу.
+            </div>
+            {% endif %}
+
+            <!-- Footer links -->
+            <div class="pt-4 border-t border-slate-100 flex flex-col gap-3 text-center">
+                <p class="text-xs font-bold text-slate-400">Ещё нет аккаунта на платформе?</p>
+                <a href="{{ url_for('auth.register') }}" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs py-3 px-4 rounded-xl border-b-[3px] border-slate-300 active:translate-y-0.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer no-underline uppercase tracking-wider">
+                    <i class="ph-bold ph-user-plus text-base"></i> Создать аккаунт
+                </a>
+
+                <a href="{{ (config.DEMO_BASE_URL + '/demo') if config.DEMO_BASE_URL else url_for('auth.demo_choose') }}" class="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors mt-1 no-underline">
+                    <i class="ph-bold ph-sparkles text-amber-500"></i> Попробовать демо без регистрации
+                </a>
+            </div>
+
+        </div>
+
+        <p class="text-center text-xs font-bold text-slate-400">© 2026 BooStudy. Платформа для управления учебным процессом</p>
+
+    </div>
 </div>
 {% endblock %}

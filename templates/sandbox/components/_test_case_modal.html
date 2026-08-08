@@ -1,0 +1,556 @@
+<!-- UNIFIED BENTO MODAL FOR TEST CASE VIEWING, PERSISTENT EXECUTION & MULTIPLE BUGS INTEGRATION (#test-case-detail-modal) -->
+<div id="test-case-detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[10000] flex items-center justify-center hidden p-4 select-none">
+    <div class="bg-white border-2 border-slate-200 rounded-[2.5rem] max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- MODAL HEADER -->
+        <div class="p-6 sm:p-8 bg-slate-50 border-b border-slate-200/80 flex items-start justify-between gap-4 shrink-0">
+            <div class="space-y-2">
+                <div class="flex items-center flex-wrap gap-2">
+                    <span id="tc-modal-area-badge" class="px-3 py-1 bg-indigo-100 text-indigo-700 font-black text-[10px] uppercase tracking-wider rounded-xl border border-indigo-200">
+                        ОБЛАСТЬ
+                    </span>
+                    <span id="tc-modal-status-badge" class="px-3 py-1 bg-amber-100 text-amber-700 font-black text-[10px] uppercase tracking-wider rounded-xl border border-amber-200">
+                        ACTIVE
+                    </span>
+                    <span id="tc-modal-assigned" class="text-xs font-bold text-slate-500 flex items-center gap-1">
+                        <i class="ph-bold ph-user"></i> <span id="tc-modal-assigned-name">—</span>
+                    </span>
+                </div>
+                <h2 id="tc-modal-title" class="text-xl sm:text-2xl font-black text-slate-900 font-display leading-tight">
+                    Загрузка тест-кейса...
+                </h2>
+            </div>
+            
+            <button onclick="closeTestCaseModal()" type="button" class="w-10 h-10 rounded-2xl bg-white hover:bg-slate-200/80 text-slate-500 hover:text-slate-900 font-bold flex items-center justify-center cursor-pointer border border-slate-200 shadow-sm shrink-0">
+                &times;
+            </button>
+        </div>
+
+        <!-- MODAL BODY (SCROLLABLE) -->
+        <div class="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1">
+            <!-- DESCRIPTION & PREREQUISITES -->
+            <div class="bg-slate-50 border-2 border-slate-200/60 rounded-2xl p-5 space-y-2">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-widest block flex items-center gap-1.5">
+                    <i class="ph-bold ph-info text-indigo-500 text-sm"></i> Описание и предусловия
+                </span>
+                <p id="tc-modal-description" class="text-sm font-medium text-slate-700 leading-relaxed">
+                    Описание отсутствует.
+                </p>
+            </div>
+
+            <!-- STEP-BY-STEP CHECKLIST -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-sm font-black text-slate-900 uppercase tracking-wider font-display flex items-center gap-2">
+                        <i class="ph-bold ph-list-checks text-emerald-500 text-base"></i> Интерактивный Чек-лист Шагов
+                    </h4>
+                    <span id="tc-modal-progress" class="text-xs font-bold text-slate-500">
+                        Пройдено: 0 / 0
+                    </span>
+                </div>
+
+                <!-- STEPS CONTAINER -->
+                <div id="tc-modal-steps-container" class="space-y-3">
+                    <!-- Dynamic step rows rendered via JS -->
+                </div>
+            </div>
+
+            <!-- INLINE BUG REPORT FORM (EXPANDS WHEN CLICKING 🐞 ON ANY STEP) -->
+            <div id="tc-modal-inline-bug-section" class="hidden p-6 bg-rose-50/60 border-2 border-rose-200 rounded-3xl space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                <div class="flex items-center justify-between pb-3 border-b border-rose-200/80">
+                    <h4 class="text-sm font-black text-rose-900 font-display flex items-center gap-2">
+                        <i class="ph-bold ph-bug text-rose-600 text-lg"></i> Регистрация ошибки на шаге
+                    </h4>
+                    <button onclick="toggleInlineBugForm(false)" type="button" class="text-xs font-bold text-slate-400 hover:text-slate-600 border-0 bg-transparent cursor-pointer">
+                        Отмена
+                    </button>
+                </div>
+
+                <form onsubmit="submitInlineBugReport(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-black text-rose-950 uppercase tracking-wider block">Приоритет / Тяжесть *</label>
+                            <div class="flex items-center gap-3 pt-1">
+                                <label class="flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
+                                    <input type="radio" name="inline-bug-severity" value="CRITICAL" checked class="text-rose-600 focus:ring-rose-500">
+                                    <span class="px-2 py-0.5 bg-rose-600 text-white rounded font-black text-[10px]">CRITICAL</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
+                                    <input type="radio" name="inline-bug-severity" value="MAJOR" class="text-amber-600 focus:ring-amber-500">
+                                    <span class="px-2 py-0.5 bg-amber-500 text-white rounded font-black text-[10px]">MAJOR</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 text-xs font-bold text-slate-800 cursor-pointer">
+                                    <input type="radio" name="inline-bug-severity" value="MINOR" class="text-slate-600 focus:ring-slate-500">
+                                    <span class="px-2 py-0.5 bg-slate-300 text-slate-700 rounded font-black text-[10px]">MINOR</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-black text-rose-950 uppercase tracking-wider block">Сбойный шаг *</label>
+                            <select id="inline-bug-step-select" required class="w-full h-10 px-3 bg-white border border-rose-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none">
+                                <!-- Dynamic step options -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-black text-rose-950 uppercase tracking-wider block">Ожидаемый vs Фактический результат *</label>
+                        <textarea id="inline-bug-expected-vs-actual" rows="3" required placeholder="Ожидалось: переход на страницу. Фактически: 500 Internal Error / неверное поведение." class="w-full p-3 bg-white border border-rose-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none resize-none"></textarea>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-black text-rose-950 uppercase tracking-wider block">URL страницы сбоя</label>
+                        <input type="text" id="inline-bug-page-url" class="w-full h-10 px-3 bg-white border border-rose-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none">
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button type="submit" class="btn-3d px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-2xl border-b-[4px] border-rose-800 shadow-lg cursor-pointer border-0 flex items-center gap-2">
+                            <i class="ph-bold ph-paper-plane-right"></i>
+                            <span>🚀 Зафиксировать Баг-Репорт</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ATTACHED BUGS LIST & DISCUSSION CHAT (ONE-TO-MANY SUPPORT) -->
+            <div id="tc-modal-attached-bug-section" class="hidden space-y-5 border-t-2 border-slate-200/80 pt-6">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-black text-rose-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="ph-bold ph-warning text-rose-600 text-base"></i> Зафиксированные Ошибки по этому Тесту (<span id="tc-modal-bugs-count">0</span>)
+                    </h4>
+                </div>
+
+                <!-- BUGS CONTAINER -->
+                <div id="tc-modal-bugs-container" class="space-y-4">
+                    <!-- Dynamic bug cards list -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- MODAL FOOTER (CLEANED - NO RED FAIL BUTTON) -->
+        <div class="p-6 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between gap-3 shrink-0">
+            <!-- TESTER VERDICT CONTROLS (ONLY PASSED BUTTON) -->
+            <div id="tc-modal-tester-controls" class="flex items-center gap-2">
+                <button onclick="setTestCaseVerdict('PASSED')" type="button" class="btn-3d px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-2xl border-b-[4px] border-emerald-800 shadow-lg flex items-center gap-2 cursor-pointer border-0">
+                    <i class="ph-bold ph-check-circle text-base"></i>
+                    <span>✅ ТЕСТ ПРОЙДЕН</span>
+                </button>
+            </div>
+
+            <!-- ADMIN INSPECTION BADGE -->
+            <div id="tc-modal-admin-inspection-info" class="hidden text-xs font-bold text-slate-500 flex items-center gap-2">
+                <i class="ph-bold ph-shield-check text-indigo-600 text-lg"></i>
+                <span>Режим инспекции (Read-Only)</span>
+            </div>
+            
+            <button onclick="closeTestCaseModal()" type="button" class="px-5 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-2xl transition-all border-0 cursor-pointer">
+                Закрыть
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+let currentModalTestCaseId = null;
+let activeBugsList = [];
+
+const currentUserRole = "{{ current_user.role if current_user.is_authenticated else 'student' }}";
+const isImpersonating = {{ 'true' if session.get('impersonator_id') else 'false' }};
+const isTesterUser = (currentUserRole === 'tester' || currentUserRole === 'chief_tester') || (isImpersonating && currentUserRole === 'tester');
+
+async function openTestCaseModal(tcId) {
+    currentModalTestCaseId = tcId;
+    activeBugsList = [];
+    const modal = document.getElementById('test-case-detail-modal');
+    if (!modal) return;
+
+    toggleInlineBugForm(false);
+    document.getElementById('tc-modal-attached-bug-section').classList.add('hidden');
+    document.getElementById('tc-modal-title').textContent = `Загрузка теста #${tcId}...`;
+    document.getElementById('tc-modal-steps-container').innerHTML = `
+        <div class="p-6 text-center text-slate-400 font-bold text-xs animate-pulse">
+            Загрузка данных...
+        </div>`;
+    modal.classList.remove('hidden');
+
+    try {
+        const res = await fetch(`/api/qa/test-cases/${tcId}`);
+        const data = await res.json();
+        if (data.success && data.test_case) {
+            const tc = data.test_case;
+            document.getElementById('tc-modal-title').textContent = `#${tc.id}: ${tc.title}`;
+            document.getElementById('tc-modal-area-badge').textContent = tc.area || 'ОБЩЕЕ';
+            document.getElementById('tc-modal-description').textContent = tc.description || 'Описание не указано.';
+            document.getElementById('tc-modal-assigned-name').textContent = tc.assigned_to_username || 'Все тестеры';
+            
+            updateModalStatusBadge(tc.status);
+            renderModalSteps(tc.steps || [], isTesterUser);
+            setupRoleControls(isTesterUser);
+
+            const bugs = tc.bug_reports || (tc.bug_report ? [tc.bug_report] : []);
+            activeBugsList = bugs;
+            if (bugs.length > 0) {
+                renderMultipleAttachedBugs(bugs);
+            }
+        } else {
+            if (window.showToast) showToast(data.message || 'Ошибка загрузки теста', 'error');
+            closeTestCaseModal();
+        }
+    } catch(err) {
+        if (window.showToast) showToast('Ошибка соединения при загрузке теста', 'error');
+        closeTestCaseModal();
+    }
+}
+
+function closeTestCaseModal() {
+    const modal = document.getElementById('test-case-detail-modal');
+    if (modal) modal.classList.add('hidden');
+    currentModalTestCaseId = null;
+    activeBugsList = [];
+}
+
+function setupRoleControls(isTester) {
+    const testerControls = document.getElementById('tc-modal-tester-controls');
+    const adminInfo = document.getElementById('tc-modal-admin-inspection-info');
+
+    if (isTester) {
+        if (testerControls) testerControls.classList.remove('hidden');
+        if (adminInfo) adminInfo.classList.add('hidden');
+    } else {
+        if (testerControls) testerControls.classList.add('hidden');
+        if (adminInfo) adminInfo.classList.remove('hidden');
+    }
+}
+
+function updateModalStatusBadge(status) {
+    const badge = document.getElementById('tc-modal-status-badge');
+    if (!badge) return;
+    badge.textContent = status;
+    if (status === 'PASSED') {
+        badge.className = "px-3 py-1 bg-emerald-100 text-emerald-800 font-black text-[10px] uppercase tracking-wider rounded-xl border border-emerald-300";
+    } else if (status === 'FAILED') {
+        badge.className = "px-3 py-1 bg-rose-600 text-white font-black text-[10px] uppercase tracking-wider rounded-xl border border-rose-700";
+    } else {
+        badge.className = "px-3 py-1 bg-indigo-100 text-indigo-800 font-black text-[10px] uppercase tracking-wider rounded-xl border border-indigo-300";
+    }
+}
+
+function renderModalSteps(steps, isInteractive) {
+    const container = document.getElementById('tc-modal-steps-container');
+    const stepSelect = document.getElementById('inline-bug-step-select');
+    if (!container) return;
+
+    if (!steps || steps.length === 0) {
+        container.innerHTML = `<p class="text-xs font-bold text-slate-400 py-4 text-center">В этом тесте пока нет пошаговых инструкций.</p>`;
+        if (stepSelect) stepSelect.innerHTML = `<option value="">Шаги отсутствуют</option>`;
+        updateProgressCounter();
+        return;
+    }
+
+    if (stepSelect) {
+        stepSelect.innerHTML = steps.map((s, idx) => `
+            <option value="${s.id}" data-text="Шаг ${s.step_number || idx + 1}: ${escapeHtml(s.action_text)}">
+                Шаг ${s.step_number || idx + 1}: ${escapeHtml(s.action_text)}
+            </option>
+        `).join('');
+    }
+
+    container.innerHTML = steps.map((s, idx) => {
+        const stepNum = s.step_number || (idx + 1);
+        const isChecked = s.is_completed ? 'checked' : '';
+        const disabledAttr = isInteractive ? '' : 'disabled';
+        return `
+        <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl hover:border-indigo-200 transition-all space-y-3">
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <input type="checkbox" ${isChecked} ${disabledAttr} onchange="toggleStepCompleted(${s.id})" class="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5 cursor-pointer step-checkbox">
+                    <div class="space-y-1">
+                        <span class="text-xs font-black text-indigo-600 uppercase tracking-wider">Шаг ${stepNum}</span>
+                        <p class="text-sm font-bold text-slate-800">${escapeHtml(s.action_text || '')}</p>
+                    </div>
+                </div>
+                ${isInteractive ? `
+                <button onclick="triggerFailOnStep(${s.id}, ${stepNum})" type="button" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer">
+                    <i class="ph-bold ph-bug text-sm"></i>
+                    <span>🐞 Зафиксировать ошибку</span>
+                </button>
+                ` : ''}
+            </div>
+            ${s.expected_result ? `
+                <div class="pl-8 pt-1 border-t border-slate-200/50 text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                    <i class="ph-bold ph-check text-sm"></i>
+                    <span>Ожидаемый результат: ${escapeHtml(s.expected_result)}</span>
+                </div>
+            ` : ''}
+        </div>
+        `;
+    }).join('');
+
+    updateProgressCounter();
+}
+
+async function toggleStepCompleted(stepId) {
+    try {
+        const res = await fetch(`/api/qa/test-steps/${stepId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+        const data = await res.json();
+        if (data.success) {
+            updateProgressCounter();
+        } else {
+            if (window.showToast) showToast(data.message || 'Ошибка сохранения шага', 'error');
+        }
+    } catch(err) {
+        if (window.showToast) showToast('Ошибка соединения при сохранении шага', 'error');
+    }
+}
+
+function updateProgressCounter() {
+    const checkboxes = document.querySelectorAll('.step-checkbox');
+    const progressEl = document.getElementById('tc-modal-progress');
+    if (!checkboxes.length || !progressEl) return;
+    const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+    progressEl.textContent = `Пройдено: ${checked} / ${checkboxes.length}`;
+}
+
+function toggleInlineBugForm(show) {
+    const sec = document.getElementById('tc-modal-inline-bug-section');
+    if (!sec) return;
+    if (show) {
+        document.getElementById('inline-bug-page-url').value = window.location.href;
+        sec.classList.remove('hidden');
+        sec.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        sec.classList.add('hidden');
+    }
+}
+
+function triggerFailOnStep(stepId, stepNum) {
+    toggleInlineBugForm(true);
+    const select = document.getElementById('inline-bug-step-select');
+    if (select) {
+        select.value = stepId;
+    }
+}
+
+async function submitInlineBugReport(e) {
+    e.preventDefault();
+    if (!currentModalTestCaseId) return;
+
+    const severity = document.querySelector('input[name="inline-bug-severity"]:checked')?.value || 'CRITICAL';
+    const stepSelect = document.getElementById('inline-bug-step-select');
+    const step_failed = stepSelect ? stepSelect.options[stepSelect.selectedIndex]?.dataset.text || stepSelect.value : '';
+    const expected_vs_actual = document.getElementById('inline-bug-expected-vs-actual').value.trim();
+    const page_url = document.getElementById('inline-bug-page-url').value.trim();
+
+    try {
+        const res = await fetch(`/api/qa/test-cases/${currentModalTestCaseId}/fail-with-report`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                severity,
+                test_step_id: stepSelect ? stepSelect.value : null,
+                step_failed,
+                expected_vs_actual,
+                page_url
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (window.showToast) showToast('🚀 Баг-репорт отправлен!', 'success');
+            toggleInlineBugForm(false);
+            updateModalStatusBadge('FAILED');
+            document.getElementById('inline-bug-expected-vs-actual').value = '';
+            
+            openTestCaseModal(currentModalTestCaseId);
+            updateDashboardCardToFailed(currentModalTestCaseId, severity);
+        } else {
+            if (window.showToast) showToast(data.message || 'Ошибка создания баг-репорта', 'error');
+        }
+    } catch(err) {
+        if (window.showToast) showToast('Ошибка сети при отправке баг-репорта', 'error');
+    }
+}
+
+function renderMultipleAttachedBugs(bugs) {
+    const section = document.getElementById('tc-modal-attached-bug-section');
+    const container = document.getElementById('tc-modal-bugs-container');
+    const countEl = document.getElementById('tc-modal-bugs-count');
+    if (!section || !container) return;
+
+    countEl.textContent = bugs.length;
+    
+    container.innerHTML = bugs.map(bug => `
+        <div class="p-5 bg-rose-50/80 border-2 border-rose-200 rounded-2xl space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-black text-rose-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="ph-bold ph-bug text-rose-600 text-base"></i> Баг #${bug.id}: ${escapeHtml(bug.title || '')}
+                </span>
+                <div class="flex items-center gap-2">
+                    <span class="px-2.5 py-0.5 bg-rose-600 text-white font-black text-[10px] uppercase rounded-md">
+                        ${bug.severity || 'MAJOR'}
+                    </span>
+                    <span class="px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 font-black text-[10px] uppercase rounded-md">
+                        ${bug.status || 'NEW'}
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div class="p-3 bg-white border border-rose-100 rounded-xl space-y-1">
+                    <span class="text-[10px] font-black uppercase text-slate-400 block">Сбойный шаг:</span>
+                    <span class="font-bold text-slate-800 block">${escapeHtml(bug.step_failed || '—')}</span>
+                </div>
+                <div class="p-3 bg-white border border-rose-100 rounded-xl space-y-1">
+                    <span class="text-[10px] font-black uppercase text-slate-400 block">URL сбоя:</span>
+                    <a href="${bug.page_url || '#'}" target="_blank" class="text-indigo-600 font-mono font-bold hover:underline block truncate">${escapeHtml(bug.page_url || '—')}</a>
+                </div>
+            </div>
+
+            <div class="p-3 bg-white border border-rose-100 rounded-xl text-xs space-y-1">
+                <span class="text-[10px] font-black uppercase text-slate-400 block">Ожидаемый vs Фактический результат:</span>
+                <p class="font-medium text-slate-800 leading-relaxed">${escapeHtml(bug.expected_vs_actual || '—')}</p>
+            </div>
+
+            ${!isTesterUser ? `
+            <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-rose-200/60">
+                <span class="text-xs font-bold text-slate-700">Управление статусом:</span>
+                <div class="inline-flex items-center gap-1.5">
+                    <button onclick="updateAttachedBugStatus(${bug.id}, 'IN_PROGRESS')" type="button" class="btn-3d px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white font-black text-[11px] rounded-xl border-b-[2px] border-amber-700 cursor-pointer border-0">
+                        👨‍💻 В работе
+                    </button>
+                    <button onclick="updateAttachedBugStatus(${bug.id}, 'RESOLVED')" type="button" class="btn-3d px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] rounded-xl border-b-[2px] border-emerald-800 cursor-pointer border-0">
+                        ✅ Исправлено
+                    </button>
+                    <button onclick="updateAttachedBugStatus(${bug.id}, 'REJECTED')" type="button" class="btn-3d px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-black text-[11px] rounded-xl border-0 cursor-pointer">
+                        🚫 Отклонить
+                    </button>
+                </div>
+            </div>
+            ` : ''}
+
+            <!-- COMMENTS THREAD FOR THIS BUG -->
+            <div class="space-y-2 pt-2 border-t border-rose-200/40">
+                <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">Обсуждение бага #${bug.id}:</span>
+                <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    ${(bug.comments || []).map(c => `
+                        <div class="p-2.5 rounded-xl border text-xs space-y-1 ${c.author_role === 'admin' || c.author_role === 'creator' ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950' : 'bg-white border-slate-200 text-slate-800'}">
+                            <div class="flex items-center justify-between font-bold text-[10px]">
+                                <span>${escapeHtml(c.author_name)} (${escapeHtml(c.author_role)})</span>
+                                <span class="font-mono text-slate-400">${c.created_at}</span>
+                            </div>
+                            <p class="font-medium leading-relaxed">${escapeHtml(c.text)}</p>
+                        </div>
+                    `).join('') || '<p class="text-xs text-slate-400 italic">Комментариев пока нет.</p>'}
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <input type="text" id="attached-bug-comment-input-${bug.id}" placeholder="Написать ответ по багу #${bug.id}..." class="flex-1 h-9 px-3 bg-white border border-rose-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none">
+                    <button onclick="submitAttachedBugCommentForId(${bug.id})" type="button" class="btn-3d px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[2px] border-indigo-800 cursor-pointer border-0">
+                        Отправить
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    section.classList.remove('hidden');
+}
+
+async function submitAttachedBugCommentForId(bugId) {
+    const input = document.getElementById(`attached-bug-comment-input-${bugId}`);
+    if (!input || !input.value.trim()) return;
+
+    const text = input.value.trim();
+    try {
+        const res = await fetch(`/api/qa/bug-reports/${bugId}/comments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        if (data.success) {
+            input.value = '';
+            if (window.showToast) showToast('Сообщение отправлено!', 'success');
+            openTestCaseModal(currentModalTestCaseId);
+        }
+    } catch(err) {
+        if (window.showToast) showToast('Ошибка отправки комментария', 'error');
+    }
+}
+
+async function updateAttachedBugStatus(bugId, newStatus) {
+    try {
+        const res = await fetch(`/admin/qa/bug-reports/${bugId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ status: newStatus })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (window.showToast) showToast(`Статус бага изменен на ${newStatus}`, 'success');
+            openTestCaseModal(currentModalTestCaseId);
+        }
+    } catch(err) {
+        if (window.showToast) showToast('Ошибка сети при обновлении статуса бага', 'error');
+    }
+}
+
+async function setTestCaseVerdict(status) {
+    if (!currentModalTestCaseId) return;
+    try {
+        const res = await fetch(`/api/qa/test-cases/${currentModalTestCaseId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ status })
+        });
+        const data = await res.json();
+        if (data.success) {
+            updateModalStatusBadge(status);
+            if (window.showToast) showToast(`Вердикт теста #${currentModalTestCaseId} сохранен: ${status}`, 'success');
+            setTimeout(closeTestCaseModal, 400);
+        }
+    } catch(err) {
+        if (window.showToast) showToast('Ошибка сети при сохранении вердикта', 'error');
+    }
+}
+
+function updateDashboardCardToFailed(tcId, severity) {
+    const card = document.getElementById(`tc-card-${tcId}`) || document.getElementById(`admin-tc-card-${tcId}`);
+    if (card) {
+        card.className = "tc-card-item bg-rose-50/70 hover:bg-rose-100/70 border-2 border-rose-300 rounded-2xl p-3 transition-all cursor-pointer shadow-xs hover:shadow-md flex flex-col justify-between h-[105px]";
+    }
+    const badge = document.getElementById(`tc-card-status-${tcId}`);
+    if (badge) {
+        badge.textContent = '🚨 FAILED';
+        badge.className = "px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white border border-rose-700";
+    }
+}
+
+function escapeHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+</script>

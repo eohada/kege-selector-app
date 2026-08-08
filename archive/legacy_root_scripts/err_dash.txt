@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 · Ошибка</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="/static/icons/BooStudyLogo1-Photoroom.png">
+    <link rel="stylesheet" href="/static/dist/boostudy.css?v=20260708-v1">
+    
+    
+    <meta name="csrf-token" content="ImI5NmZjMGEwNTk0ZDk0ZDQzODMyMzBmOTc3Nzc1MjhiN2M3OTBjODQi.amOvdQ.mHhDiOMOko1tY4HYS3eOjqUM5Ss">
+    
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+    
+</head>
+<body class="">
+    
+    <div class="min-h-screen flex items-center justify-center p-6">
+        
+<div class="w-full">
+    <section class="glass-panel">
+        <div class="flex items-center justify-between flex-wrap gap-4 mb-3">
+            <div class="flex items-center gap-2 text-text-muted font-extrabold uppercase text-xs tracking-wide">
+                <span class="inline-grid place-items-center min-w-10 px-2.5 py-0.5 rounded-pill border border-stroke bg-bg-surface-alt text-text-primary font-black">500</span>
+                <span>системное сообщение</span>
+            </div>
+            <img src="/static/icons/mascot-boo.svg" alt="" class="mascot-boo mascot-boo--md mascot-boo--neon">
+        </div>
+
+        <h1 class="mt-3 mb-2 text-2xl md:text-lg font-bold tracking-tight leading-tight">СТРАНИЦА НЕ ЗАГРУЗИЛАСЬ, ОШИБКА!!</h1>
+        
+        <p class="text-text-muted leading-relaxed max-w-prose">Произошла непредвиденная ошибка. Попробуй обновить страницу.</p>
+        
+
+        <div class="flex gap-2.5 flex-wrap mt-5">
+            <a href="/home" class="neo-button accent">
+                На главную
+            </a>
+            
+            <a href="/dashboard" class="neo-button outline">
+                В дашборд
+            </a>
+            
+            <button type="button" class="neo-button ghost" onclick="history.back()">
+                ⟵ Назад
+            </button>
+            
+            <button type="button" class="neo-button outline" onclick="location.reload()" aria-label="Обновить страницу">
+                Обновить страницу
+            </button>
+            
+        </div>
+
+        <div class="mt-3 p-4 rounded-card border border-dashed border-stroke text-text-muted text-sm leading-relaxed">
+            <strong class="text-text-primary">Подсказка:</strong> если ошибка повторяется, приложи скрин + URL и время — мы быстро найдём причину.
+        </div>
+
+        <div class="mt-3 pt-4 border-t border-stroke text-text-muted text-sm flex flex-wrap gap-3 items-center justify-between">
+            <div>
+                URL: <code class="bg-bg-surface-alt border border-stroke px-1.5 py-0.5 rounded-lg text-text-primary">/sandbox/student_dashboard</code>
+            </div>
+            <div>
+                Метод: <code class="bg-bg-surface-alt border border-stroke px-1.5 py-0.5 rounded-lg text-text-primary">GET</code>
+            </div>
+        </div>
+    </section>
+</div>
+
+    </div>
+    
+
+    <script src="/static/toast.js"></script>
+
+    
+    
+    
+
+    
+</body>
+</html>

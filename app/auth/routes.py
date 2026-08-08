@@ -1161,13 +1161,35 @@ def miro_oauth_callback():
     return redirect(url_for('main.dashboard'))
 
 
+import hashlib
+from core.db_models import InviteLink, TeacherStudent, TeacherProfile
+
+def _find_invite_link_by_token(token: str) -> InviteLink | None:
+    if not token:
+        return None
+    token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+    invite = InviteLink.query.filter_by(token_hash=token_hash).first()
+    if not invite:
+        invite = InviteLink.query.filter_by(token_hash=token).first()
+    return invite
+
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    """Регистрация нового пользователя с поддержкой связей и рефералов"""
+    """Самостоятельная регистрация преподавателя (Teacher/Tutor)"""
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
 
-    # Забираем параметры связей
+    # Редирект старых запросов с кодами инвайтов на новые токен-маршруты, если токен передан в query
+    invite_token = request.args.get('token') or request.args.get('code')
+    if invite_token:
+        inv = _find_invite_link_by_token(invite_token)
+        if inv and inv.is_valid:
+            if inv.role == 'parent':
+                return redirect(url_for('auth.register_parent_invite', token=invite_token))
+            elif inv.role == 'student':
+                return redirect(url_for('auth.register_student_invite', token=invite_token))
+
     tutor_id_param = request.args.get('tutor_id', type=int) or request.form.get('tutor_id', type=int)
     invite_parent_to_param = request.args.get('invite_parent_to', type=int) or request.form.get('invite_parent_to', type=int)
     ref_param = (request.args.get('ref', '') or request.form.get('ref', '')).strip()
@@ -1175,48 +1197,51 @@ def register():
     tutor = None
     invite_student = None
     if tutor_id_param:
-        tutor = User.query.filter_by(id=tutor_id_param, role='tutor').first()
+        tutor = User.query.filter_by(id=tutor_id_param).first()
     if invite_parent_to_param:
         invite_student = Student.query.filter_by(user_id=invite_parent_to_param).first()
 
     if request.method == 'POST':
+        full_name = (request.form.get('full_name') or request.form.get('username') or '').strip()
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip()
         password = request.form.get('password')
-        role = request.form.get('role', 'student').strip()
+        password_confirm = request.form.get('password_confirm')
+        role = request.form.get('role', 'tutor').strip()
 
-        # Валидация
-        if not username or not email or not password:
-            return render_template('auth/register.html', error='Все поля обязательны для заполнения.', 
+        if not username or not password:
+            return render_template('auth/register.html', error='Все обязательные поля должны быть заполнены.',
                                    tutor=tutor, invite_student=invite_student, ref=ref_param,
-                                   username=username, email=email)
+                                   username=username, email=email, full_name=full_name)
 
-        # Если регистрируется родитель по инвайту, жестко ставим роль parent
+        if password_confirm and password != password_confirm:
+            return render_template('auth/register.html', error='Пароли не совпадают.',
+                                   tutor=tutor, invite_student=invite_student, ref=ref_param,
+                                   username=username, email=email, full_name=full_name)
+
         if invite_student:
             role = 'parent'
-        # Если регистрируется ученик по инвайту препода, жестко ставим роль student
         elif tutor:
             role = 'student'
+        elif role not in ('tutor', 'teacher'):
+            role = 'tutor'
+        else:
+            role = 'tutor'
 
-        if role not in ('student', 'tutor', 'parent'):
-            role = 'student'
-
-        # Проверка уникальности
         if User.query.filter_by(username=username).first():
-            return render_template('auth/register.html', error='Пользователь с таким логином уже существует.', 
+            return render_template('auth/register.html', error='Пользователь с таким логином уже существует.',
                                    tutor=tutor, invite_student=invite_student, ref=ref_param,
-                                   username=username, email=email)
+                                   username=username, email=email, full_name=full_name)
 
-        if User.query.filter_by(email=email).first():
-            return render_template('auth/register.html', error='Пользователь с таким email уже существует.', 
+        if email and User.query.filter_by(email=email).first():
+            return render_template('auth/register.html', error='Пользователь с таким email уже существует.',
                                    tutor=tutor, invite_student=invite_student, ref=ref_param,
-                                   username=username, email=email)
+                                   username=username, email=email, full_name=full_name)
 
         try:
-            # Создаем пользователя
             new_user = User(
                 username=username,
-                email=email,
+                email=email if email else None,
                 password_hash=generate_password_hash(password),
                 role=role,
                 is_active=True
@@ -1224,50 +1249,27 @@ def register():
             db.session.add(new_user)
             db.session.flush()
 
-            # Добавляем роль в UserRole
             db.session.add(UserRole(user_id=new_user.id, role=role))
-
-            # Создаем профиль
-            profile = UserProfile(
-                user_id=new_user.id,
-                first_name=username,
-                last_name=''
-            )
+            profile = UserProfile(user_id=new_user.id, first_name=full_name or username, last_name='')
             db.session.add(profile)
 
-            # Если ученик, создаем запись Student
-            student = None
-            if role == 'student':
+            if role == 'tutor':
+                tp = TeacherProfile(user_id=new_user.id)
+                db.session.add(tp)
+            elif role == 'student':
                 student = Student(
-                    name=username,
+                    name=full_name or username,
                     user_id=new_user.id,
                     is_active=True,
-                    email=email
+                    email=email if email else None,
+                    mentor_id=tutor.id if tutor else None
                 )
                 db.session.add(student)
                 db.session.flush()
+                if tutor:
+                    db.session.add(TeacherStudent(teacher_id=tutor.id, student_id=new_user.id, status='active'))
+                    db.session.add(Enrollment(tutor_id=tutor.id, student_id=new_user.id, subject='Информатика', status='active'))
 
-            # Обрабатываем реферальную ссылку
-            if ref_param:
-                referral_obj = ReferralCode.query.filter(
-                    func.upper(ReferralCode.code) == ref_param.upper(),
-                    ReferralCode.is_active.is_(True)
-                ).first()
-                if referral_obj:
-                    referral_obj.usage_count += 1
-                    db.session.add(ReferralUsage(referral_code_id=referral_obj.id, user_id=new_user.id))
-
-            # Автоматическая привязка к преподавателю
-            if tutor and role == 'student':
-                enrollment = Enrollment(
-                    tutor_id=tutor.id,
-                    student_id=new_user.id,
-                    subject='Информатика',
-                    status='active'
-                )
-                db.session.add(enrollment)
-
-            # Автоматическая привязка родителя к ребенку
             if invite_student and role == 'parent':
                 family_tie = FamilyTie(
                     parent_id=new_user.id,
@@ -1279,7 +1281,6 @@ def register():
 
             db.session.commit()
 
-            # Логируем вход и авторизуем пользователя
             login_user(new_user, remember=True)
             new_user.last_login = moscow_now()
             db.session.commit()
@@ -1292,17 +1293,190 @@ def register():
                 metadata={'username': username, 'role': role}
             )
 
-            flash('Регистрация прошла успешно!', 'success')
+            flash('Регистрация прошла успешно! Добро пожаловать!', 'success')
             return redirect(_redirect_after_login(new_user))
 
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error during registration: {e}", exc_info=True)
-            return render_template('auth/register.html', error=f'Ошибка при регистрации: {str(e)}', 
+            return render_template('auth/register.html', error=f'Ошибка при регистрации: {str(e)}',
                                    tutor=tutor, invite_student=invite_student, ref=ref_param,
-                                   username=username, email=email)
+                                   username=username, email=email, full_name=full_name)
 
     return render_template('auth/register.html', tutor=tutor, invite_student=invite_student, ref=ref_param)
+
+
+@auth_bp.route('/register/student/<token>', methods=['GET', 'POST'])
+@auth_bp.route('/invite/student/<token>', methods=['GET', 'POST'])
+def register_student_invite(token: str):
+    """Регистрация Ученика по токен-ссылке приглашения преподавателя"""
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+
+    invite = _find_invite_link_by_token(token)
+    if not invite:
+        return render_template('auth/register_student_invite.html', error='Приглашение не найдено. Пожалуйста, попросите преподавателя отправить вам новую ссылку.', invite=None), 404
+
+    if not invite.is_valid:
+        if invite.used_at:
+            return render_template('auth/register_student_invite.html', error='Эта ссылка-приглашение уже была использована.', invite=None), 400
+        if invite.revoked_at:
+            return render_template('auth/register_student_invite.html', error='Эта ссылка-приглашение была отозвана преподавателем.', invite=None), 400
+        return render_template('auth/register_student_invite.html', error='Срок действия ссылки-приглашения истёк. Запросите новую ссылку у преподавателя.', invite=None), 410
+
+    teacher = invite.teacher or invite.created_by
+
+    if request.method == 'POST':
+        full_name = (request.form.get('full_name') or request.form.get('username') or '').strip()
+        username = (request.form.get('username') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+
+        if not username or not password:
+            return render_template('auth/register_student_invite.html', error='Все обязательные поля должны быть заполнены.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+
+        if password_confirm and password != password_confirm:
+            return render_template('auth/register_student_invite.html', error='Пароли не совпадают.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+
+        if User.query.filter_by(username=username).first():
+            return render_template('auth/register_student_invite.html', error='Пользователь с таким логином уже существует.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+
+        if email and User.query.filter_by(email=email).first():
+            return render_template('auth/register_student_invite.html', error='Пользователь с таким email уже существует.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+
+        try:
+            new_user = User(
+                username=username,
+                email=email if email else None,
+                password_hash=generate_password_hash(password),
+                role='student',
+                is_active=True
+            )
+            db.session.add(new_user)
+            db.session.flush()
+
+            db.session.add(UserRole(user_id=new_user.id, role='student'))
+            profile = UserProfile(user_id=new_user.id, first_name=full_name or username, last_name='')
+            db.session.add(profile)
+
+            teacher_id = teacher.id if teacher else None
+            student_profile = Student(
+                name=full_name or username,
+                user_id=new_user.id,
+                is_active=True,
+                email=email if email else None,
+                mentor_id=teacher_id
+            )
+            db.session.add(student_profile)
+            db.session.flush()
+
+            if teacher_id:
+                existing_ts = TeacherStudent.query.filter_by(teacher_id=teacher_id, student_id=new_user.id).first()
+                if not existing_ts:
+                    ts = TeacherStudent(teacher_id=teacher_id, student_id=new_user.id, status='active')
+                    db.session.add(ts)
+                enrollment = Enrollment(tutor_id=teacher_id, student_id=new_user.id, subject='Информатика', status='active')
+                db.session.add(enrollment)
+
+            invite.mark_used(new_user.id)
+            db.session.commit()
+
+            login_user(new_user, remember=True)
+            new_user.last_login = moscow_now()
+            db.session.commit()
+
+            flash(f'Регистрация прошла успешно! Вы привязаны к преподавателю {teacher.username if teacher else ""}.', 'success')
+            return redirect(url_for('main.student_dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error registering student via invite: {e}", exc_info=True)
+            return render_template('auth/register_student_invite.html', error=f'Ошибка при регистрации: {str(e)}', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 500
+
+    return render_template('auth/register_student_invite.html', invite=invite, teacher=teacher)
+
+
+@auth_bp.route('/register/parent/<token>', methods=['GET', 'POST'])
+@auth_bp.route('/invite/parent/<token>', methods=['GET', 'POST'])
+def register_parent_invite(token: str):
+    """Регистрация Родителя по токен-ссылке приглашения"""
+    if current_user.is_authenticated:
+        return redirect(url_for('parents.parent_dashboard'))
+
+    invite = _find_invite_link_by_token(token)
+    if not invite:
+        return render_template('auth/register_parent_invite.html', error='Приглашение не найдено. Пожалуйста, попросите преподавателя отправить вам новую ссылку.', invite=None), 404
+
+    if not invite.is_valid:
+        if invite.used_at:
+            return render_template('auth/register_parent_invite.html', error='Эта ссылка-приглашение уже была использована.', invite=None), 400
+        if invite.revoked_at:
+            return render_template('auth/register_parent_invite.html', error='Эта ссылка-приглашение была отозвана.', invite=None), 400
+        return render_template('auth/register_parent_invite.html', error='Срок действия ссылки-приглашения истёк. Запросите новую ссылку.', invite=None), 410
+
+    target_student = invite.student
+    target_student_user = target_student.user if target_student else None
+
+    if request.method == 'POST':
+        full_name = (request.form.get('full_name') or request.form.get('username') or '').strip()
+        username = (request.form.get('username') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+
+        if not username or not password:
+            return render_template('auth/register_parent_invite.html', error='Все обязательные поля должны быть заполнены.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+
+        if password_confirm and password != password_confirm:
+            return render_template('auth/register_parent_invite.html', error='Пароли не совпадают.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+
+        if User.query.filter_by(username=username).first():
+            return render_template('auth/register_parent_invite.html', error='Пользователь с таким логином уже существует.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+
+        if email and User.query.filter_by(email=email).first():
+            return render_template('auth/register_parent_invite.html', error='Пользователь с таким email уже существует.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+
+        try:
+            new_user = User(
+                username=username,
+                email=email if email else None,
+                password_hash=generate_password_hash(password),
+                role='parent',
+                is_active=True
+            )
+            db.session.add(new_user)
+            db.session.flush()
+
+            db.session.add(UserRole(user_id=new_user.id, role='parent'))
+            profile = UserProfile(user_id=new_user.id, first_name=full_name or username, last_name='')
+            db.session.add(profile)
+
+            if target_student_user:
+                family_tie = FamilyTie.query.filter_by(parent_id=new_user.id, student_id=target_student_user.id).first()
+                if not family_tie:
+                    family_tie = FamilyTie(
+                        parent_id=new_user.id,
+                        student_id=target_student_user.id,
+                        access_level='full',
+                        is_confirmed=True
+                    )
+                    db.session.add(family_tie)
+
+            invite.mark_used(new_user.id)
+            db.session.commit()
+
+            login_user(new_user, remember=True)
+            new_user.last_login = moscow_now()
+            db.session.commit()
+
+            flash('Регистрация прошла успешно! Вы подключены к дашборду ученика.', 'success')
+            return redirect(url_for('parents.parent_dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error registering parent via invite: {e}", exc_info=True)
+            return render_template('auth/register_parent_invite.html', error=f'Ошибка при регистрации: {str(e)}', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 500
+
+    return render_template('auth/register_parent_invite.html', invite=invite, student=target_student, student_user=target_student_user)
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])

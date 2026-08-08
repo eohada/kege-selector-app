@@ -1,3 +1,4 @@
+from app.services.daily_service import DailyService
 """
 Маршруты для управления уроками
 """
@@ -9,6 +10,7 @@ from datetime import timezone as dt_timezone
 from math import ceil
 from werkzeug.utils import secure_filename
 from app.uploads.service import save_uploaded_file
+from flask import abort
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required, current_user  # comment
 from sqlalchemy import text, or_  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
@@ -29,6 +31,13 @@ from app.utils.course_tasks import get_task_numbers
 from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local
 
 logger = logging.getLogger(__name__)
+
+
+def _lesson_material_root(lesson_id: int) -> str:
+    configured_root = (current_app.config.get('LESSON_UPLOAD_ROOT') or '').strip()
+    # В production и sandbox /app/uploads подключён как persistent volume.
+    base_root = configured_root or os.path.join(os.path.dirname(current_app.root_path), 'uploads', 'lessons')
+    return os.path.join(base_root, str(int(lesson_id)))
 
 def _record_lesson_task_attempt(lesson_task: LessonTask) -> None:
     """Записываем попытку сдачи (снимок) для LessonTask."""
@@ -481,15 +490,486 @@ def lesson_homework_view(lesson_id):
         assignment_type='homework',
     ))
 
-@lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks')
+@lessons_bp.route('/api/lesson_room/check_task', methods=['POST'])
 @login_required
-def lesson_classwork_view(lesson_id):
-    """Просмотр заданий классной работы"""
+def check_lesson_room_task_api():
+    """API автопроверки ответа для интерактивной комнаты урока."""
+    data = request.get_json(silent=True) or {}
+    lesson_id = data.get('lesson_id')
+    task_order = data.get('task_id')
+    answer = (data.get('answer') or '').strip()
+
+    if not lesson_id:
+        return jsonify({'ok': False, 'error': 'Параметр lesson_id не указан'}), 400
+
+    lesson = Lesson.query.get(lesson_id)
+    if not lesson:
+        return jsonify({'ok': False, 'error': 'Урок не найден'}), 404
+
+    classwork_tasks = get_sorted_assignments(lesson, 'classwork')
+    target_task = None
+    if task_order and isinstance(task_order, int) and 1 <= task_order <= len(classwork_tasks):
+        target_task = classwork_tasks[task_order - 1]
+    elif classwork_tasks:
+        target_task = classwork_tasks[0]
+
+    if not target_task:
+        return jsonify({'ok': False, 'error': 'В комнате нет задания для проверки.'}), 409
+
+    expected = (getattr(target_task, 'student_answer', None) or (target_task.task.answer if target_task.task else '')) or ''
+    target_task.student_submission = answer
+
+    if expected:
+        norm_sub = normalize_answer_value(answer)
+        norm_exp = normalize_answer_value(expected)
+        is_correct = (norm_sub == norm_exp) and bool(norm_exp)
+    else:
+        is_correct = True
+
+    target_task.submission_correct = is_correct
+    target_task.status = 'submitted'
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error saving task check answer: {e}")
+
+    return jsonify({
+        'ok': True,
+        'is_correct': is_correct,
+        'message': 'Ответ верный 🎉' if is_correct else 'Неверно, попробуйте еще раз'
+    })
+
+
+def _lesson_studio_is_teacher() -> bool:
+    from flask import session
+    if not current_user or not current_user.is_authenticated:
+        return False
+    active_role = session.get('sandbox_role') or session.get('role') or getattr(current_user, 'role', '')
+    if active_role == 'student':
+        return False
+    return bool(
+        active_role in {'teacher', 'tutor', 'admin', 'creator'} or
+        current_user.is_admin() or
+        current_user.is_creator() or
+        getattr(current_user, 'role', '') in {'teacher', 'tutor'}
+    )
+
+
+def _lesson_studio_access(lesson: Lesson) -> None:
+    student = lesson.student
+    allowed = can_user_access_student(current_user, student_user_id=getattr(student, 'user_id', None), student_platform_id=getattr(student, 'platform_id', None))
+    if not allowed and current_user.is_student():
+        allowed = bool(_get_current_lesson_student(lesson))
+    if not allowed and not (current_user.is_admin() or current_user.is_creator()):
+        abort(403)
+
+
+def _default_lesson_studio_state(lesson: Lesson) -> dict:
+    duration_minutes = max(15, int(getattr(lesson, 'duration', 60) or 60))
+    preparation_minutes = max(5, round(duration_minutes * 0.15))
+    reflection_minutes = max(5, round(duration_minutes * 0.15))
+    practice_minutes = max(5, duration_minutes - preparation_minutes - reflection_minutes)
+    return {
+        'phase': 'preparation', 'active_task_id': None, 'active_pane': 'work', 'follow_student': False,
+        'timer': {'mode': 'phase', 'seconds': preparation_minutes * 60, 'running': False, 'updated_at': None},
+        'phase_timers': {
+            'preparation': preparation_minutes * 60,
+            'practice': practice_minutes * 60,
+            'reflection': reflection_minutes * 60,
+        },
+        'phase_durations': {
+            'preparation': preparation_minutes * 60,
+            'practice': practice_minutes * 60,
+            'reflection': reflection_minutes * 60,
+        },
+        'agenda': [
+            {'id': 'warmup', 'title': 'Старт и цель урока', 'done': False},
+            {'id': 'practice', 'title': 'Практика и разбор задач', 'done': False},
+            {'id': 'reflection', 'title': 'Рефлексия и план до следующего урока', 'done': False},
+        ],
+        'student_signal': None, 'teacher_private_note': '',
+        'student_checkpoint': {'understanding': None, 'blocker': '', 'submitted_at': None},
+        'guidance': {'next_step': '', 'hints': [], 'updated_at': None},
+        'board': {'strokes': [], 'revision': 0, 'updated_at': None},
+        'outcome': {'completed': [], 'repeat': [], 'homework': '', 'published': False},
+    }
+
+
+def _lesson_studio_state(lesson: Lesson) -> dict:
+    state = _default_lesson_studio_state(lesson)
+    review_summaries = getattr(lesson, 'review_summaries', None) or {}
+    stored = review_summaries.get('_studio') if isinstance(review_summaries, dict) else None
+    if isinstance(stored, dict):
+        state.update({key: value for key, value in stored.items() if key in state})
+        if not isinstance(stored.get('phase_durations'), dict):
+            state['phase_durations'] = dict(state['phase_timers'])
+        # Состояния, созданные до появления отдельных таймеров этапов, не должны
+        # продолжать показывать один общий таймер на весь урок.
+        if not isinstance(stored.get('phase_timers'), dict):
+            state['timer'] = {
+                'mode': 'phase',
+                'seconds': state['phase_timers'].get(state.get('phase'), state['phase_timers']['preparation']),
+                'running': False,
+                'updated_at': None,
+            }
+    return state
+
+
+def _lesson_studio_state_for_viewer(state: dict, *, is_teacher: bool) -> dict:
+    """Never serialize the teacher's private context into a student response."""
+    visible = dict(state or {})
+    if not is_teacher:
+        visible.pop('teacher_private_note', None)
+    return visible
+
+
+def _save_lesson_studio_state(lesson: Lesson, state: dict) -> None:
+    summaries = dict(getattr(lesson, 'review_summaries', None) or {})
+    summaries['_studio'] = state
+    lesson.review_summaries = summaries
+    flag_modified(lesson, 'review_summaries')
+    db.session.commit()
+    from app.lessons.lesson_socket import emit_lesson_studio_updated
+    emit_lesson_studio_updated(lesson.lesson_id, _lesson_studio_state_for_viewer(state, is_teacher=False))
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/state')
+@login_required
+def lesson_studio_state_get(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    is_teacher = _lesson_studio_is_teacher()
+    return jsonify({'success': True, 'state': _lesson_studio_state_for_viewer(_lesson_studio_state(lesson), is_teacher=is_teacher), 'is_teacher': is_teacher})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/state', methods=['POST'])
+@login_required
+def lesson_studio_state_save(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Управлять сценарием урока может только преподаватель'}), 403
+    payload = request.get_json(silent=True) or {}
+    state = _lesson_studio_state(lesson)
+    for key in ('phase', 'active_task_id', 'active_pane', 'follow_student', 'timer', 'phase_timers', 'phase_durations', 'agenda', 'teacher_private_note', 'guidance', 'outcome'):
+        if key in payload:
+            state[key] = payload[key]
+    guidance = state.get('guidance')
+    phase_timers = state.get('phase_timers')
+    phase_durations = state.get('phase_durations')
+    if not isinstance(state.get('timer'), dict) or not isinstance(state.get('agenda'), list) or len(state['agenda']) > 30:
+        return jsonify({'success': False, 'error': 'Некорректное состояние урока'}), 400
+    if not isinstance(guidance, dict):
+        return jsonify({'success': False, 'error': 'Некорректные подсказки преподавателя'}), 400
+    if state.get('phase') not in {'preparation', 'practice', 'reflection'}:
+        return jsonify({'success': False, 'error': 'Некорректный этап урока'}), 400
+    if state.get('active_pane') not in {'control', 'work', 'board', 'meeting', 'materials', 'scenario', 'outcome'} or not isinstance(state.get('follow_student'), bool):
+        return jsonify({'success': False, 'error': 'Некорректная синхронизация интерфейса'}), 400
+    if not isinstance(phase_timers, dict) or not isinstance(phase_durations, dict):
+        return jsonify({'success': False, 'error': 'Некорректные таймеры этапов'}), 400
+    normalized_phase_timers, normalized_phase_durations = {}, {}
+    for phase in ('preparation', 'practice', 'reflection'):
+        try:
+            seconds = int(phase_timers.get(phase))
+            duration_seconds = int(phase_durations.get(phase))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Некорректные таймеры этапов'}), 400
+        if not 0 <= seconds <= 4 * 60 * 60 or not 60 <= duration_seconds <= 4 * 60 * 60:
+            return jsonify({'success': False, 'error': 'Таймер этапа должен быть от 1 минуты до 4 часов'}), 400
+        normalized_phase_timers[phase] = seconds
+        normalized_phase_durations[phase] = duration_seconds
+    state['phase_timers'] = normalized_phase_timers
+    state['phase_durations'] = normalized_phase_durations
+    timer = state['timer']
+    try:
+        timer_seconds = int(timer.get('seconds'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректное значение таймера'}), 400
+    if not 0 <= timer_seconds <= 4 * 60 * 60 or not isinstance(timer.get('running'), bool):
+        return jsonify({'success': False, 'error': 'Некорректное состояние таймера'}), 400
+    state['timer'] = {
+        'mode': 'phase',
+        'seconds': timer_seconds,
+        'running': timer.get('running', False),
+        'updated_at': moscow_now().isoformat(),
+        'completed_at': timer.get('completed_at') if timer_seconds == 0 else None,
+    }
+    next_step = str(guidance.get('next_step') or '').strip()
+    hints = guidance.get('hints') or []
+    if not isinstance(hints, list) or len(next_step) > 2_000 or len(hints) > 10:
+        return jsonify({'success': False, 'error': 'Некорректные подсказки преподавателя'}), 400
+    state['guidance'] = {
+        'next_step': next_step,
+        'hints': [str(hint).strip() for hint in hints if str(hint).strip()][:10],
+        'updated_at': moscow_now().isoformat(),
+    }
+    _save_lesson_studio_state(lesson, state)
+    return jsonify({'success': True, 'state': _lesson_studio_state_for_viewer(state, is_teacher=_lesson_studio_is_teacher())})
+
+
+def _normalize_lesson_board_stroke(raw_stroke: object) -> dict | None:
+    if not isinstance(raw_stroke, dict):
+        return None
+    tool = str(raw_stroke.get('tool') or 'pen').strip().lower()
+    if tool not in {'pen', 'eraser', 'line', 'rectangle', 'ellipse', 'text', 'image'}:
+        return None
+    raw_points = raw_stroke.get('points')
+    minimum_points = 1 if tool in {'text', 'image'} else 2
+    if not isinstance(raw_points, list) or not minimum_points <= len(raw_points) <= 350:
+        return None
+    points = []
+    for raw_point in raw_points:
+        if not isinstance(raw_point, dict):
+            return None
+        try:
+            x, y = float(raw_point.get('x')), float(raw_point.get('y'))
+        except (TypeError, ValueError):
+            return None
+        if not -1000000 <= x <= 1000000 or not -1000000 <= y <= 1000000:
+            return None
+        points.append({'x': round(x, 5), 'y': round(y, 5)})
+    color = str(raw_stroke.get('color') or '#312E81').lower()
+    if color not in {'#312e81', '#0f172a', '#dc2626', '#2563eb', '#059669', '#ea580c'}:
+        color = '#312e81'
+    try:
+        width = int(raw_stroke.get('width', 4))
+    except (TypeError, ValueError):
+        width = 4
+    stroke = {'tool': tool, 'points': points, 'color': color, 'width': max(1, min(width, 48))}
+    if tool == 'text':
+        text_value = str(raw_stroke.get('text') or '').strip()
+        if not text_value or len(text_value) > 500:
+            return None
+        stroke['text'] = text_value
+    if tool == 'image':
+        image_url = str(raw_stroke.get('url') or '').strip()
+        if not image_url.startswith('/files/lessons/'):
+            return None
+        try:
+            image_width = float(raw_stroke.get('image_width', .25))
+            image_height = float(raw_stroke.get('image_height', .25))
+        except (TypeError, ValueError):
+            return None
+        stroke.update({'url': image_url, 'image_width': image_width, 'image_height': image_height})
+    return stroke
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/board', methods=['POST'])
+@login_required
+def lesson_studio_board_update(lesson_id: int):
+    """Append or clear a shared drawing stroke for the individual lesson board."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    payload = request.get_json(silent=True) or {}
+    action = str(payload.get('action') or 'append').strip().lower()
+    state = _lesson_studio_state(lesson)
+    board = state.get('board') if isinstance(state.get('board'), dict) else {'strokes': [], 'revision': 0}
+    strokes = board.get('strokes') if isinstance(board.get('strokes'), list) else []
+    if action == 'clear':
+        if not _lesson_studio_is_teacher():
+            return jsonify({'success': False, 'error': 'Очищать доску может только преподаватель'}), 403
+        strokes = []
+    elif action == 'rewrite':
+        if not _lesson_studio_is_teacher() and state.get('follow_student'):
+            return jsonify({'success': False, 'error': 'Нет прав'}), 403
+        new_strokes = payload.get('strokes', [])
+        if isinstance(new_strokes, list):
+            strokes = []
+            for s in new_strokes:
+                ns = _normalize_lesson_board_stroke(s)
+                if ns: strokes.append(ns)
+    elif action == 'undo':
+        if len(strokes) > 0:
+            strokes.pop()
+    elif action == 'append':
+        stroke = _normalize_lesson_board_stroke(payload.get('stroke'))
+        if not stroke:
+            return jsonify({'success': False, 'error': 'Некорректный штрих доски'}), 400
+        stroke['author'] = 'teacher' if _lesson_studio_is_teacher() else 'student'
+        strokes = [*strokes[-399:], stroke]
+    else:
+        return jsonify({'success': False, 'error': 'Неизвестное действие доски'}), 400
+    try:
+        revision = int(board.get('revision') or 0) + 1
+    except (TypeError, ValueError):
+        revision = 1
+    state['board'] = {'strokes': strokes, 'revision': revision, 'updated_at': moscow_now().isoformat()}
+    _save_lesson_studio_state(lesson, state)
+    return jsonify({'success': True, 'board': state['board']})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/board/image', methods=['POST'])
+@login_required
+def lesson_studio_board_image(lesson_id: int):
+    """Store a board image as a lesson material, then let the board reference only that local URL."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({'success': False, 'error': 'Выберите изображение'}), 400
+    try:
+        filename, file_path, _size = save_uploaded_file(
+            file=file,
+            base_folder=_lesson_material_root(lesson_id),
+            allowed_exts={'png', 'jpg', 'jpeg', 'webp', 'gif'},
+            max_bytes=8 * 1024 * 1024,
+        )
+    except Exception as exc:
+        return jsonify({'success': False, 'error': f'Не удалось загрузить изображение: {exc}'}), 400
+    stored_name = os.path.basename(file_path)
+    return jsonify({'success': True, 'name': filename, 'url': url_for('uploads.lesson_file', lesson_id=lesson_id, stored_name=stored_name)})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/pointer', methods=['POST'])
+@login_required
+def lesson_studio_pointer(lesson_id: int):
+    """Broadcast an ephemeral cursor/laser signal; it is deliberately never stored in lesson history."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    payload = request.get_json(silent=True) or {}
+    kind = str(payload.get('kind') or 'cursor').strip().lower()
+    if kind not in {'cursor', 'laser'}:
+        return jsonify({'success': False, 'error': 'Неизвестный указатель'}), 400
+    try:
+        x, y = float(payload.get('x')), float(payload.get('y'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректная позиция указателя'}), 400
+    if not 0 <= x <= 1 or not 0 <= y <= 1:
+        return jsonify({'success': False, 'error': 'Некорректная позиция указателя'}), 400
+    from app.lessons.lesson_socket import emit_lesson_studio_pointer
+    emit_lesson_studio_pointer(lesson_id, {
+        'kind': kind, 'x': round(x, 5), 'y': round(y, 5),
+        'author': 'teacher' if _lesson_studio_is_teacher() else 'student',
+        'name': current_user.username or ('Преподаватель' if _lesson_studio_is_teacher() else 'Ученик'),
+    })
+    return jsonify({'success': True})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/signal', methods=['POST'])
+@login_required
+def lesson_studio_signal(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not current_user.is_student() or not _get_current_lesson_student(lesson):
+        return jsonify({'success': False, 'error': 'Сигнал доступен только ученику этого урока'}), 403
+    signal = (request.get_json(silent=True) or {}).get('signal')
+    if signal not in {'need_hint', 'need_pause', 'ready', None}:
+        return jsonify({'success': False, 'error': 'Неизвестный сигнал'}), 400
+    state = _lesson_studio_state(lesson)
+    state['student_signal'] = signal
+    _save_lesson_studio_state(lesson, state)
+    return jsonify({'success': True, 'state': _lesson_studio_state_for_viewer(state, is_teacher=False)})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/checkpoint', methods=['POST'])
+@login_required
+def lesson_studio_checkpoint(lesson_id: int):
+    """Save a short individual self-assessment without turning the lesson into a chat."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not current_user.is_student() or not _get_current_lesson_student(lesson):
+        return jsonify({'success': False, 'error': 'Самооценка доступна только ученику этого урока'}), 403
+    payload = request.get_json(silent=True) or {}
+    understanding = payload.get('understanding')
+    try:
+        understanding = int(understanding)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Выберите уровень понимания'}), 400
+    if understanding not in {1, 2, 3, 4, 5}:
+        return jsonify({'success': False, 'error': 'Уровень понимания должен быть от 1 до 5'}), 400
+    blocker = str(payload.get('blocker') or '').strip()
+    if len(blocker) > 1_000:
+        return jsonify({'success': False, 'error': 'Комментарий слишком длинный'}), 400
+    state = _lesson_studio_state(lesson)
+    state['student_checkpoint'] = {
+        'understanding': understanding,
+        'blocker': blocker,
+        'submitted_at': moscow_now().isoformat(),
+    }
+    _save_lesson_studio_state(lesson, state)
+    return jsonify({'success': True, 'state': _lesson_studio_state_for_viewer(state, is_teacher=False)})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/finish', methods=['POST'])
+@login_required
+def lesson_studio_finish(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Завершить урок может только преподаватель'}), 403
+    payload = request.get_json(silent=True) or {}
+    state = _lesson_studio_state(lesson)
+    outcome = payload.get('outcome') if isinstance(payload.get('outcome'), dict) else state.get('outcome') or {}
+    state['outcome'] = {
+        'completed': [str(item).strip() for item in (outcome.get('completed') or []) if str(item).strip()][:30],
+        'repeat': [str(item).strip() for item in (outcome.get('repeat') or []) if str(item).strip()][:30],
+        'homework': str(outcome.get('homework') or '').strip()[:10_000],
+        'published': True,
+    }
+    state['phase'] = 'reflection'
+    timer = state.get('timer') if isinstance(state.get('timer'), dict) else {}
+    timer['running'] = False
+    state['timer'] = timer
+    lesson.status = 'completed'
+    lesson.homework = state['outcome']['homework'] or lesson.homework
+    outcome_text = '\n'.join(
+        part for part in (
+            'Итог индивидуального урока:',
+            ('Освоено: ' + '; '.join(state['outcome']['completed'])) if state['outcome']['completed'] else '',
+            ('Повторить: ' + '; '.join(state['outcome']['repeat'])) if state['outcome']['repeat'] else '',
+            ('Домашнее задание: ' + state['outcome']['homework']) if state['outcome']['homework'] else '',
+        ) if part
+    )
+    if outcome_text and outcome_text not in (lesson.notes or ''):
+        lesson.notes = ((lesson.notes or '').rstrip() + '\n\n' + outcome_text).strip()
+    try:
+        _save_lesson_studio_state(lesson, state)
+    except Exception as exc:
+        db.session.rollback()
+        logger.exception('Unable to finish lesson studio')
+        return jsonify({'success': False, 'error': 'Не удалось сохранить итог урока'}), 500
+    try:
+        notify_student_and_parents(
+            lesson.student,
+            kind='lesson_completed',
+            title='Урок завершён: доступен итог',
+            body=outcome_text or None,
+            link_url=url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id),
+            meta={'lesson_id': lesson.lesson_id, 'studio_outcome': True},
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.warning('Unable to send lesson studio outcome notification', exc_info=True)
+    return jsonify({'success': True, 'state': _lesson_studio_state_for_viewer(state, is_teacher=True), 'status': lesson.status})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/student-notes', methods=['POST'])
+@login_required
+def lesson_studio_student_notes_save(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not current_user.is_student() or not _get_current_lesson_student(lesson):
+        return jsonify({'success': False, 'error': 'Личные заметки доступны только ученику урока'}), 403
+    notes = ((request.get_json(silent=True) or {}).get('notes') or '').strip()
+    if len(notes) > 20000:
+        return jsonify({'success': False, 'error': 'Заметка слишком длинная'}), 400
+    lesson.student_notes = notes
+    db.session.commit()
+    return jsonify({'success': True, 'notes': notes})
+
+
+@lessons_bp.route('/sandbox/lesson_room/<int:lesson_id>')
+@lessons_bp.route('/lesson/<int:lesson_id>/room')
+@login_required
+def lesson_interactive_room(lesson_id: int):
+    """Интерактивная комната урока (Bento Studio Room)"""
     lesson = Lesson.query.options(
         db.joinedload(Lesson.student),
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task),
-        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.attempts),
     ).get_or_404(lesson_id)
+
     student = lesson.student
     can_access = can_user_access_student(
         current_user,
@@ -501,9 +981,139 @@ def lesson_classwork_view(lesson_id):
             can_access = int(current_user.id) == int(getattr(student, 'user_id', None) or getattr(student, 'student_id', None))
         except Exception:
             can_access = False
+    if not can_access and not (current_user.is_admin() or current_user.is_creator()):
+        from flask import abort
+        abort(403)
+
+    classwork_tasks = get_sorted_assignments(lesson, 'classwork')
+    is_studio_teacher = _lesson_studio_is_teacher()
+    studio_state = _lesson_studio_state_for_viewer(_lesson_studio_state(lesson), is_teacher=is_studio_teacher)
+    tasks_json = json.dumps([
+        {
+            'lesson_task_id': t.lesson_task_id,
+            'task_id': t.task_id,
+            'title': f'Задание №{t.task.task_number} (№{idx + 1})' if t.task else f'Задание #{idx + 1}',
+            'description': t.task.content_html if t.task else 'Условие задачи...',
+            'answer': t.student_answer or (t.task.answer if t.task else ''),
+            'student_submission': t.student_submission or '',
+            'teacher_comment': t.teacher_comment or '',
+            'submission_correct': t.submission_correct,
+            'status': t.status or 'pending',
+            'order': idx + 1
+        } for idx, t in enumerate(classwork_tasks or [])
+    ], ensure_ascii=False) if classwork_tasks else '[]'
+
+    summary_text = lesson.notes or ''
+    video_url = getattr(lesson, 'video_url', None) or ''
+    timecodes = getattr(lesson, 'timecodes', None) or []
+
+    tutor_user = User.query.get(student.tutor_id) if (student and getattr(student, 'tutor_id', None)) else None
+    teacher_name = tutor_user.username if tutor_user else (current_user.username if current_user else 'Преподаватель КЕГЭ')
+    teacher_avatar = f"https://api.dicebear.com/7.x/avataaars/svg?seed={teacher_name}&backgroundColor=fef3c7"
+    is_live = (lesson.status == 'in_progress')
+    try:
+        can_open_task_generator = bool(
+            is_studio_teacher and (
+                current_user.is_admin()
+                or current_user.is_creator()
+                or has_permission(current_user, 'task.manage')
+            )
+        )
+    except Exception:
+        can_open_task_generator = False
+
+    return render_template(
+        'sandbox/lesson_room.html',
+        lesson=lesson,
+        lesson_id=lesson.lesson_id,
+        student=student,
+        classwork_tasks=classwork_tasks,
+        tasks_json=tasks_json,
+        summary_text=summary_text,
+        video_url=video_url,
+        timecodes=timecodes,
+        teacher_name=teacher_name,
+        teacher_avatar=teacher_avatar,
+        is_live=is_live,
+        studio_state=studio_state,
+        is_studio_teacher=is_studio_teacher,
+        can_open_task_generator=can_open_task_generator,
+        active_page='lesson_room'
+    )
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks')
+@login_required
+def lesson_classwork_view(lesson_id):
+    """Просмотр заданий классной работы"""
+    lesson = Lesson.query.options(
+        db.joinedload(Lesson.student),
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task),
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.attempts),
+    ).get_or_404(lesson_id)
+    student = lesson.student
+    stud = Student.query.filter_by(user_id=current_user.id).first() if (current_user and current_user.is_authenticated) else None
+    student_user_id = getattr(student, 'user_id', None)
+    student_platform_id = getattr(student, 'student_id', None)
+    can_access = can_user_access_student(
+        current_user,
+        student_user_id=student_user_id,
+        student_platform_id=student_platform_id,
+    )
+    if not can_access and current_user.is_student():
+        try:
+            if student_user_id and int(current_user.id) == int(student_user_id):
+                can_access = True
+            elif stud and student_platform_id and int(stud.student_id) == int(student_platform_id):
+                can_access = True
+        except Exception:
+            can_access = False
     if not can_access:
         from flask import abort
         abort(403)
+
+    classwork_tasks = get_sorted_assignments(lesson, 'classwork')
+
+    if current_user.is_student():
+        try:
+            from core.db_models import Assignment, Submission, AssignmentTask
+            from datetime import timedelta, datetime
+            assign = Assignment.query.filter_by(lesson_id=lesson_id, is_active=True).first()
+            if not assign:
+                assign = Assignment(
+                    title=f"Классная работа: {lesson.topic or 'Урок ' + str(lesson_id)}",
+                    assignment_type='classwork',
+                    deadline=(lesson.lesson_date + timedelta(days=7)) if lesson.lesson_date else (datetime.utcnow() + timedelta(days=7)),
+                    created_by_id=getattr(student, 'tutor_id', None) or getattr(lesson, 'created_by_id', None) or current_user.id,
+                    lesson_id=lesson_id,
+                    is_active=True
+                )
+                db.session.add(assign)
+                db.session.flush()
+                for idx, lt in enumerate(classwork_tasks or []):
+                    if lt.task_id:
+                        at = AssignmentTask(
+                            assignment_id=assign.assignment_id,
+                            task_id=lt.task_id,
+                            order_index=idx + 1,
+                            max_score=getattr(lt, 'max_score', 1) or 1
+                        )
+                        db.session.add(at)
+                db.session.commit()
+
+            sub = Submission.query.filter_by(assignment_id=assign.assignment_id, student_id=student.student_id).first()
+            if not sub:
+                sub = Submission(
+                    assignment_id=assign.assignment_id,
+                    student_id=student.student_id,
+                    status='ASSIGNED'
+                )
+                db.session.add(sub)
+                db.session.commit()
+
+            return redirect(url_for('assignments.submission_view', submission_id=sub.submission_id))
+        except Exception as e:
+            logger.warning(f"Failed to auto-redirect student to submission for lesson {lesson_id}: {e}")
     content_blocks = []
     try:
         cb = lesson.content_blocks
@@ -559,7 +1169,7 @@ def lesson_classwork_view(lesson_id):
                            attempts_default=_get_lesson_attempts_default(lesson, 'classwork'),
                            allow_task_submit=_is_task_submit_enabled(lesson, 'classwork'),
                            viewer_timezone=viewer_timezone,  # comment
-                           review_summary=(lesson.review_summaries or {}).get('classwork', {}),  # comment
+                           review_summary=(getattr(lesson, 'review_summaries', None) or {}).get('classwork', {}),  # comment
                            library_materials=library_materials,  # comment
                            content_blocks=content_blocks)  # comment
 
@@ -2114,7 +2724,7 @@ def lesson_messages_send(lesson_id: int):
                 kind='lesson_comment',
                 title='Новый комментарий по уроку',
                 body=body,
-                link_url=url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) + '#tab=chat',
+                link_url=url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id),
                 meta={'lesson_id': lesson.lesson_id},
             )
     except Exception as e:
@@ -2760,10 +3370,10 @@ def lesson_student_notes_save(lesson_id):
 @lessons_bp.route('/lesson/<int:lesson_id>/upload', methods=['POST'])
 @login_required
 def lesson_upload_material(lesson_id):
-    if current_user.is_student() or current_user.is_parent():
-         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
-    
     lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     if 'file' not in request.files:
         return jsonify({'success': False, 'error': 'No file part'}), 400
     file = request.files['file']
@@ -2771,7 +3381,7 @@ def lesson_upload_material(lesson_id):
         return jsonify({'success': False, 'error': 'No selected file'}), 400
         
     if file:
-        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id))
+        upload_folder = _lesson_material_root(lesson_id)
         try:
             filename, file_path, _size = save_uploaded_file(
                 file=file,
@@ -2794,7 +3404,7 @@ def lesson_upload_material(lesson_id):
             'name': filename,
             'url': url_for('uploads.lesson_file', lesson_id=lesson_id, stored_name=stored_name),
             'type': filename.split('.')[-1].lower() if '.' in filename else 'file',
-            'storage_path': f"static/uploads/lessons/{lesson_id}/{stored_name}",
+            'storage_path': os.path.join('lessons', str(lesson_id), stored_name),
         }
         materials.append(new_material)
         lesson.materials = materials 
@@ -2810,10 +3420,10 @@ def lesson_upload_material(lesson_id):
 @lessons_bp.route('/lesson/<int:lesson_id>/material/delete', methods=['POST'])
 @login_required
 def lesson_delete_material(lesson_id):
-    if current_user.is_student() or current_user.is_parent():
-         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
-         
     lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     data = request.get_json()
     url_to_delete = data.get('url')
     
@@ -2837,7 +3447,9 @@ def lesson_delete_material(lesson_id):
         
         try:
              filename = (url_to_delete.split('?')[0] or '').split('/')[-1]
-             file_path = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id), secure_filename(filename))
+             file_path = os.path.join(_lesson_material_root(lesson_id), secure_filename(filename))
+             if not os.path.exists(file_path):
+                 file_path = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id), secure_filename(filename))
              if os.path.exists(file_path):
                  os.remove(file_path)
         except Exception as e:
@@ -3216,8 +3828,10 @@ def lesson_whiteboard_miro_auth_status(lesson_id):
 def lesson_videocall_create_room(lesson_id):
     """Создать или получить комнату Daily.co для урока."""
     import requests
+    import time
     
     lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
     
     api_key = current_app.config.get('DAILY_API_KEY')
     domain = current_app.config.get('DAILY_DOMAIN', 'urep')
@@ -3226,7 +3840,29 @@ def lesson_videocall_create_room(lesson_id):
         return jsonify({'success': False, 'error': 'Daily.co API key not configured'}), 500
     
     room_name = f"lesson-{lesson_id}"
-    
+
+    def room_payload(room_data):
+        token_response = requests.post(
+            'https://api.daily.co/v1/meeting-tokens',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={'properties': {
+                'room_name': room_name,
+                'user_name': current_user.username,
+                'is_owner': _lesson_studio_is_teacher(),
+                'exp': int(time.time()) + max(7200, int(lesson.duration or 60) * 60 + 1800),
+            }},
+        )
+        if token_response.status_code not in (200, 201):
+            logger.error('Daily.co meeting-token creation failed: %s', token_response.text)
+            return None
+        token_data = token_response.json()
+        return {
+            'success': True,
+            'room_url': room_data.get('url') or f"https://{domain}.daily.co/{room_name}",
+            'room_name': room_name,
+            'token': token_data.get('token'),
+        }
+
     try:
         check_response = requests.get(
             f'https://api.daily.co/v1/rooms/{room_name}',
@@ -3235,12 +3871,11 @@ def lesson_videocall_create_room(lesson_id):
         
         if check_response.status_code == 200:
             room_data = check_response.json()
-            return jsonify({
-                'success': True,
-                'room_url': room_data.get('url') or f"https://{domain}.daily.co/{room_name}",
-                'room_name': room_name,
-                'exists': True
-            })
+            payload = room_payload(room_data)
+            if not payload or not payload.get('token'):
+                return jsonify({'success': False, 'error': 'Failed to authorize lesson room'}), 500
+            payload['exists'] = True
+            return jsonify(payload)
         
         create_response = requests.post(
             'https://api.daily.co/v1/rooms',
@@ -3250,10 +3885,10 @@ def lesson_videocall_create_room(lesson_id):
             },
             json={
                 'name': room_name,
-                'privacy': 'public',  # Можно сделать 'private' если нужна авторизация
+                'privacy': 'private',
                 'properties': {
                     'enable_screenshare': True,
-                    'enable_chat': True,
+                    'enable_chat': False,
                     'start_video_off': False,
                     'start_audio_off': False,
                     'enable_knocking': False,
@@ -3265,12 +3900,11 @@ def lesson_videocall_create_room(lesson_id):
         if create_response.status_code in [200, 201]:
             room_data = create_response.json()
             logger.info(f"Daily.co room created for lesson {lesson_id}: {room_name}")
-            return jsonify({
-                'success': True,
-                'room_url': room_data.get('url') or f"https://{domain}.daily.co/{room_name}",
-                'room_name': room_name,
-                'exists': False
-            })
+            payload = room_payload(room_data)
+            if not payload or not payload.get('token'):
+                return jsonify({'success': False, 'error': 'Failed to authorize lesson room'}), 500
+            payload['exists'] = False
+            return jsonify(payload)
         else:
             logger.error(f"Daily.co room creation failed: {create_response.text}")
             return jsonify({'success': False, 'error': 'Failed to create room'}), 500
@@ -3284,6 +3918,8 @@ def lesson_videocall_create_room(lesson_id):
 @login_required
 def lesson_videocall_get_room(lesson_id):
     """Получить информацию о комнате Daily.co для урока."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
     domain = current_app.config.get('DAILY_DOMAIN', 'urep')
     room_name = f"lesson-{lesson_id}"
     
@@ -3293,3 +3929,21 @@ def lesson_videocall_get_room(lesson_id):
         'room_name': room_name,
         'domain': domain
     })
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/daily/join', methods=['POST'])
+@login_required
+def lesson_studio_daily_join(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    
+    is_teacher = _lesson_studio_is_teacher()
+    user_name = getattr(current_user, 'display_name', None) or current_user.username
+    room_name = f"lesson_{lesson_id}"
+    
+    try:
+        room_url = DailyService.get_or_create_room(room_name)
+        token = DailyService.create_meeting_token(room_name, user_name, is_teacher)
+        return jsonify({'success': True, 'room_url': room_url, 'token': token})
+    except Exception as e:
+        logger.error(f"Daily.co integration error for lesson {lesson_id}: {e}")
+        return jsonify({'success': False, 'error': 'Не удалось подключиться к видеосерверу'}), 500

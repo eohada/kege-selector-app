@@ -1,32 +1,20 @@
-{% extends 'base.html' %}
-{% block title %}Управление тестировщиками · Админ-панель{% endblock %}
+{% extends "sandbox/layout_admin.html" %}
 
-{% set active_page = 'admin' %}
+{% block admin_content %}
+<div class="space-y-6">
 
-{% block content %}
-<section class="glass-panel w-full">
-    <div class="flex items-center justify-between mb-5">
-        <div class="flex items-center gap-4">
-            <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
-                ← На главную
-            </a>
-            <h1 class="m-0">Панель управления</h1>
+    <!-- HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+            <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">QA Сущности и Симуляторы Тренажера</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Виртуальные боты для автотестирования решений и нагрузочных тестов</p>
         </div>
-        {% if is_production and sandbox_base_url %}
-        <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}#sandbox" class="neo-button accent" style="text-decoration: none;">
-            {{ ui_icon('action.plus', 'sm', decorative=true) }}Создать в sandbox
-        </a>
-        {% else %}
-        <a href="{{ url_for('admin.admin_tester_entities_create') }}" class="neo-button accent" style="text-decoration: none;">
-            {{ ui_icon('action.plus', 'sm', decorative=true) }}Создать тестировщика
-        </a>
-        {% endif %}
-    </div>
 
-    {% include 'admin/_admin_nav.html' %}
-    <p class="text-text-muted mb-3">
-        Управление записями <code>Tester</code> (tester entities). Это отдельная сущность от <code>User</code> (логин/пароль).
-    </p>
+        <button onclick="openCreateTesterEntityModal()" class="btn-3d px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 transition-all cursor-pointer flex items-center gap-2 border-0">
+            <i class="ph-bold ph-plus text-base"></i>
+            <span>+ Создать тестировщика</span>
+        </button>
+    </div>
 
     {% if anonymous_count and anonymous_count > 0 %}
     <div class="p-4 bg-error-soft rounded-card mb-3">

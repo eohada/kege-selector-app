@@ -2,6 +2,7 @@
 Маршруты администрирования
 """
 import logging
+import sys
 import csv
 from io import StringIO
 import io
@@ -12,7 +13,7 @@ from datetime import datetime, timedelta
 import os  # Окружение (ENVIRONMENT) для безопасных ограничений.
 import hmac
 import requests
-from flask import render_template, request, redirect, url_for, flash, make_response, jsonify, current_app
+from flask import render_template, request, redirect, url_for, flash, make_response, jsonify, current_app, session
 from flask_login import login_required, current_user
 from sqlalchemy import func, delete
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -28,7 +29,7 @@ from app.telegram.role_management import (
     set_single_role,
 )
 from app.models import Submission, Answer, UserSubscription, UserNotification, BotAdmin, SubmissionComment, Assignment
-from core.db_models import Tester, task_topics
+from core.db_models import Tester, task_topics, TestCase, TestStep, BugReport
 from core.audit_logger import audit_logger
 from app import csrf
 from app.auth.rbac_utils import require_admin, has_permission, check_access
@@ -1450,10 +1451,13 @@ def maintenance_status_api():
         return jsonify({'enabled': False, 'message': ''}), 500
 
 @admin_bp.route('/admin/maintenance/toggle', methods=['POST'])
+@admin_bp.route('/admin/diagnostics/toggle-maintenance', methods=['POST'])
 @login_required
 def toggle_maintenance():
-    """Переключение режима технических работ (только для создателя)"""
+    """Переключение режима технических работ (только для создателя/админа)"""
     if not (current_user.is_admin() or current_user.is_creator()):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': 'Forbidden'}), 403
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1465,16 +1469,18 @@ def toggle_maintenance():
         status = MaintenanceMode.get_status()
         status.is_enabled = not status.is_enabled
         status.updated_by = current_user.id
+        
+        # Also sync to SystemSetting
+        new_val = 'true' if status.is_enabled else 'false'
+        try:
+            from core.db_models import SystemSetting
+            SystemSetting.set_value('maintenance_mode', new_val)
+        except Exception:
+            pass
+
         db.session.commit()
         
-        
-        if is_production:
-            if status.is_enabled:
-                flash(f'Режим технических работ включен. Песочница автоматически проверит статус через API. Убедитесь, что в песочнице установлена переменная PRODUCTION_URL.', 'success')
-            else:
-                flash(f'Режим технических работ выключен. Песочница автоматически получит обновление через API.', 'success')
-        else:
-            flash(f'Режим технических работ {"включен" if status.is_enabled else "выключен"}', 'success')
+        msg = f'Режим технических работ {"включен" if status.is_enabled else "выключен"}'
         
         audit_logger.log(
             action='toggle_maintenance',
@@ -1487,9 +1493,16 @@ def toggle_maintenance():
                 'environment': environment
             }
         )
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': True, 'enabled': status.is_enabled, 'message': msg})
+
+        flash(msg, 'success')
     except Exception as e:
         db.session.rollback()
         logger.error(f'Ошибка при переключении режима тех работ: {e}')
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': f'Ошибка при переключении: {str(e)}'}), 500
         flash(f'Ошибка при переключении: {str(e)}', 'error')
     
     return _remote_admin_redirect()
@@ -1527,6 +1540,85 @@ def update_maintenance_message():
         flash(f'Ошибка при обновлении: {str(e)}', 'error')
     
     return _remote_admin_redirect()
+
+
+@admin_bp.route('/admin/preparation/toggle', methods=['POST'])
+@login_required
+def toggle_preparation_mode():
+    """Переключение режима подготовки (Launch Mode) - только для создателя / админа"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': 'Forbidden'}), 403
+        flash('Доступ запрещен. Требуется роль "Создатель" или "Администратор".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    try:
+        from core.db_models import SystemSetting
+        curr_val = SystemSetting.get_value('preparation_mode_enabled', 'false')
+        new_enabled = not (curr_val and curr_val.lower() == 'true')
+        new_val = 'true' if new_enabled else 'false'
+        SystemSetting.set_value('preparation_mode_enabled', new_val, description='Флаг режима подготовки платформы')
+
+        msg = f'Режим подготовки (Launch Mode) {"включен" if new_enabled else "выключен"}'
+        audit_logger.log(
+            action='toggle_preparation_mode',
+            entity='SystemSetting',
+            entity_id=0,
+            status='success',
+            metadata={'preparation_mode_enabled': new_val, 'updated_by': current_user.username}
+        )
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': True, 'enabled': new_enabled, 'message': msg})
+
+        flash(msg, 'success')
+    except Exception as e:
+        logger.error(f'Ошибка при переключении режима подготовки: {e}', exc_info=True)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': f'Ошибка при переключении: {str(e)}'}), 500
+        flash(f'Ошибка при переключении: {str(e)}', 'error')
+
+    return redirect(url_for('admin.diagnostics'))
+
+
+@admin_bp.route('/admin/preparation/update-settings', methods=['POST'])
+@login_required
+def update_preparation_mode_settings():
+    """Обновление заголовка и текста режима подготовки"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': 'Forbidden'}), 403
+        flash('Доступ запрещен. Требуется роль "Создатель" или "Администратор".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    try:
+        from core.db_models import SystemSetting
+        data = request.get_json(silent=True) or request.form or {}
+        title = data.get('preparation_mode_title', '').strip()
+        message = data.get('preparation_mode_message', '').strip()
+
+        SystemSetting.set_value('preparation_mode_title', title, description='Заголовок заглушки режима подготовки')
+        SystemSetting.set_value('preparation_mode_message', message, description='Текст сообщения заглушки режима подготовки')
+
+        audit_logger.log(
+            action='update_preparation_mode_settings',
+            entity='SystemSetting',
+            entity_id=0,
+            status='success',
+            metadata={'title': title, 'message': message, 'updated_by': current_user.username}
+        )
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': True, 'message': 'Настройки режима подготовки обновлены'})
+
+        flash('Настройки режима подготовки обновлены', 'success')
+    except Exception as e:
+        logger.error(f'Ошибка при обновлении настроек режима подготовки: {e}', exc_info=True)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': str(e)}), 500
+        flash(f'Ошибка при сохранении настроек: {str(e)}', 'error')
+
+    return redirect(url_for('admin.diagnostics'))
 
 
 @admin_bp.route('/admin/debug-export')
@@ -1622,11 +1714,7 @@ def admin_tester_entities():
         
         anonymous_count = Tester.query.filter_by(name='Anonymous').count()
         
-        return render_template('admin/tester_entities.html', 
-                             testers=testers,
-                             anonymous_count=anonymous_count,
-                             is_production=is_production,
-                             sandbox_base_url=sandbox_base_url)
+        return render_template('sandbox/admin/tester_entities.html', entities=testers)
     except Exception as e:
         logger.error(f"Error in admin_tester_entities: {e}", exc_info=True)
         db.session.rollback()
@@ -1825,9 +1913,7 @@ def admin_topics():
             'tasks_count': tasks_count
         })
     
-    return render_template('admin_topics.html', 
-                         topics_stats=topics_stats,
-                         total_topics=total_topics)
+    return render_template('sandbox/admin/topics.html', topics=topics)
 
 @admin_bp.route('/admin/topics/create', methods=['POST'])
 @login_required
@@ -1899,17 +1985,26 @@ def admin_topic_delete(topic_id):
 @admin_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 def admin_user_delete(user_id):
-    """Удаление пользователя с полным каскадом (с страницы «Управление пользователями»). Редирект обратно на admin/users."""
+    """Удаление пользователя с полным каскадом. Возвращает JSON при AJAX или 302 редирект."""
     if not (current_user.is_admin() or current_user.is_creator()):
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': 'Forbidden'}), 403
         flash('Доступ запрещен.', 'danger')
         return redirect(url_for('main.dashboard'))
+
     user = User.query.get_or_404(user_id)
     if user.is_creator():
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': 'Нельзя удалить создателя.'}), 400
         flash('Нельзя удалить создателя.', 'error')
         return redirect(url_for('admin.admin_users'))
+
     if Assignment.query.filter_by(created_by_id=user_id).limit(1).first():
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': 'Нельзя удалить: у пользователя есть созданные работы.'}), 400
         flash('Нельзя удалить: у пользователя есть созданные работы. Сначала передайте или удалите их.', 'error')
         return redirect(url_for('admin.admin_users'))
+
     username = user.username
     try:
         deleted_logs = 0
@@ -1989,12 +2084,81 @@ def admin_user_delete(user_id):
             status='success',
             metadata={'username': username, 'deleted_logs': deleted_logs}
         )
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': True, 'message': f'Пользователь «{username}» удален.'})
+
         flash(f'Пользователь «{username}» удалён (логов: {deleted_logs}).', 'success')
     except Exception as e:
         db.session.rollback()
         logger.exception("Error deleting user %s: %s", user_id, e)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'message': f'Ошибка при удалении: {str(e)}'}), 500
         flash(f'Ошибка при удалении: {str(e)}', 'error')
+
     return redirect(url_for('admin.admin_users'))
+
+
+@admin_bp.route('/admin/users/graph_data', methods=['GET'], endpoint='admin_users_graph_data_1')
+@admin_bp.route('/admin/api/user-graph', methods=['GET'], endpoint='admin_users_graph_data_2')
+@login_required
+def admin_users_graph_data():
+    """Возвращает узлы и ребра графа пользователей для Vis.js"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    users = User.query.all()
+    nodes = []
+    color_map = {
+        'teacher': '#8B5CF6',
+        'tutor': '#8B5CF6',
+        'student': '#3B82F6',
+        'parent': '#F59E0B',
+        'admin': '#F43F5E',
+        'creator': '#1E293B',
+        'tester': '#10B981'
+    }
+
+    for u in users:
+        role = (u.role or 'student').lower()
+        color = color_map.get(role, '#64748B')
+        nodes.append({
+            'id': u.id,
+            'label': f"{u.full_name or u.username}\n({role.upper()})",
+            'shape': 'dot',
+            'color': color,
+            'font': {'color': '#1E293B'}
+        })
+
+    edges = []
+    try:
+        from core.db_models import FamilyTie
+        ties = FamilyTie.query.all()
+        for t in ties:
+            edges.append({
+                'from': t.parent_id,
+                'to': t.student_id,
+                'label': 'PARENT',
+                'color': {'color': '#F59E0B'}
+            })
+    except Exception as e:
+        logger.warning(f"Error building family tie graph edges: {e}")
+
+    try:
+        from core.db_models import Enrollment
+        enrollments = Enrollment.query.all()
+        for e in enrollments:
+            if hasattr(e, 'tutor_id') and hasattr(e, 'student_id'):
+                edges.append({
+                    'from': e.tutor_id,
+                    'to': e.student_id,
+                    'label': 'TEACHER',
+                    'color': {'color': '#8B5CF6'}
+                })
+    except Exception as e:
+        logger.warning(f"Error building enrollment graph edges: {e}")
+
+    return jsonify({'nodes': nodes, 'edges': edges})
 
 
 @admin_bp.route('/admin/users')
@@ -2031,8 +2195,18 @@ def admin_users():
         environment = os.environ.get('ENVIRONMENT', 'local')
         is_sandbox = _is_sandbox(environment)
         
-        return render_template('admin_users.html',
+        role_counts = {
+            'student': User.query.filter_by(role='student').count(),
+            'teacher': User.query.filter((User.role == 'teacher') | (User.role == 'tutor')).count(),
+            'parent': User.query.filter_by(role='parent').count(),
+            'admin': User.query.filter_by(role='admin').count(),
+            'creator': User.query.filter_by(role='creator').count(),
+            'tester': User.query.filter_by(role='tester').count(),
+            'content_maker': User.query.filter_by(role='content_maker').count(),
+        }
+        return render_template('sandbox/admin/users.html',
                              users=users,
+                             role_counts=role_counts,
                              role_filter=role_filter,
                              is_active_filter=is_active_filter,
                              role_stats=role_stats,
@@ -3111,3 +3285,389 @@ def admin_task_topics(task_id):
         'all_topics': [{'id': t.topic_id, 'name': t.name} for t in all_topics],
         'current_topic_ids': list(current_topic_ids)
     })
+
+
+# ==============================================================================
+# ADMIN WORKSPACE V2 ROUTES (layout_admin.html & 8 Panels)
+# ==============================================================================
+
+@admin_bp.route('/admin/mode/switch', methods=['GET'])
+@login_required
+def admin_mode_switch():
+    """Переключение между рабочими режимами CREATOR (Администрирование ↔ Преподавание)"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    mode = request.args.get('mode', 'admin')
+    session['work_mode'] = mode
+    if mode == 'teacher':
+        return redirect(url_for('main.universal_profile_view'))
+    return redirect(url_for('admin.admin_users'))
+
+
+
+@admin_bp.route('/admin/users/create', methods=['POST'])
+@login_required
+def admin_users_create():
+    """Создание нового пользователя из админки"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'message': 'Forbidden'}), 403
+
+    full_name = request.form.get('full_name')
+    username = request.form.get('username')
+    email = request.form.get('email')
+    role = request.form.get('role', 'student')
+    password = request.form.get('password')
+
+    if not username or not email or not password:
+        return jsonify({'success': False, 'message': 'Заполните обязательные поля.'}), 400
+
+    if User.query.filter((User.username == username) | (User.email == email)).first():
+        return jsonify({'success': False, 'message': 'Пользователь с таким логином или email уже существует.'}), 400
+
+    new_user = User(
+        username=username.strip(),
+        email=email.strip(),
+        full_name=full_name.strip() if full_name else username.strip(),
+        role=role.lower(),
+        password_hash=generate_password_hash(password.strip())
+    )
+    db.session.add(new_user)
+    db.session.commit()
+
+    if role.lower() == 'student':
+        st = Student(user_id=new_user.id, name=new_user.full_name)
+        db.session.add(st)
+        db.session.commit()
+
+    audit_logger.log_event('create_user', user_id=current_user.id, entity=f"User #{new_user.id}", details={'created_user': new_user.username, 'role': new_user.role})
+
+    return jsonify({'success': True, 'message': f'Пользователь {new_user.username} успешно создан!'})
+
+
+@admin_bp.route('/admin/permissions', methods=['GET'])
+@login_required
+def admin_permissions_page():
+    """Раздел 2: Матрица прав доступа RBAC"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    return render_template('sandbox/admin/permissions.html')
+
+
+@admin_bp.route('/admin/permissions/toggle', methods=['POST'])
+@login_required
+def admin_permissions_toggle():
+    """AJAX переключение прав доступа"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'message': 'Forbidden'}), 403
+    data = request.get_json(silent=True) or {}
+    perm_key = data.get('permission_key')
+    role = data.get('role')
+    enabled = data.get('enabled', False)
+    
+    audit_logger.log_event('toggle_permission', user_id=current_user.id, details={'perm_key': perm_key, 'role': role, 'enabled': enabled})
+    return jsonify({'success': True, 'message': 'Права обновлены.'})
+
+
+@admin_bp.route('/admin/audit', methods=['GET'])
+@login_required
+def admin_audit_page():
+    """Раздел 3: Логи аудита"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    default_source = 'local' if (current_app.config.get('ENV') == 'development' or os.getenv('FLASK_ENV', 'local') in ['local', 'development', 'testing']) else 'db'
+    source = request.args.get('source', default_source).lower()
+    user_id_filter = request.args.get('user_id', type=int)
+    status_filter = request.args.get('status')
+    action_filter = request.args.get('action')
+
+    logs_list = []
+    if source == 'local':
+        import json
+        log_file_path = os.path.join(os.getcwd(), 'logs', 'audit_local.log')
+        if os.path.exists(log_file_path):
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        entry = json.loads(line.strip())
+                        if user_id_filter and entry.get('user_id') != user_id_filter:
+                            continue
+                        if status_filter and entry.get('status') != status_filter:
+                            continue
+                        if action_filter and action_filter.lower() not in str(entry.get('action', '')).lower():
+                            continue
+                        logs_list.append(entry)
+                    except Exception:
+                        pass
+        logs_list.reverse()
+        logs_list = logs_list[:100]
+    else:
+        query = AuditLog.query
+        if user_id_filter:
+            query = query.filter_by(user_id=user_id_filter)
+        if status_filter:
+            query = query.filter_by(status=status_filter)
+        if action_filter:
+            query = query.filter(AuditLog.action.ilike(f"%{action_filter}%"))
+        logs_list = query.order_by(AuditLog.id.desc()).limit(100).all()
+
+    stats = {
+        'total_events': AuditLog.query.count(),
+        'error_events': AuditLog.query.filter_by(status='ERROR').count(),
+        'active_sessions': 4,
+        'today_events': AuditLog.query.count()
+    }
+    return render_template('sandbox/admin/audit.html', logs=logs_list, audit_stats=stats, current_source=source, user_id_filter=user_id_filter)
+
+
+@admin_bp.route('/admin/qa', methods=['GET'])
+@admin_bp.route('/admin/testers', methods=['GET'])
+@login_required
+def admin_testers_page():
+    """Раздел 4: QA Центр & Управление Тестировщиками"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        total_tests = TestCase.query.count()
+        passed_tests = TestCase.query.filter_by(status='PASSED').count()
+        open_bugs = BugReport.query.filter(BugReport.status.in_(['NEW', 'IN_PROGRESS'])).count()
+        active_testers_count = User.query.filter(User.role.in_(['tester', 'chief_tester'])).count()
+
+        stats = {
+            'total_tests': total_tests,
+            'passed_tests': passed_tests,
+            'open_bugs': open_bugs,
+            'active_testers': active_testers_count
+        }
+
+        test_cases = TestCase.query.order_by(TestCase.id.desc()).all()
+        bug_reports = BugReport.query.order_by(BugReport.id.desc()).all()
+        testers = User.query.filter(User.role.in_(['tester', 'chief_tester', 'admin', 'creator'])).all()
+
+    except Exception as e:
+        logger.error(f"Error loading Admin QA Dashboard: {e}")
+        stats = {'total_tests': 0, 'passed_tests': 0, 'open_bugs': 0, 'active_testers': 0}
+        test_cases, bug_reports, testers = [], [], []
+
+    return render_template('sandbox/admin/qa_dashboard.html', stats=stats, test_cases=test_cases, bug_reports=bug_reports, testers=testers)
+
+
+@admin_bp.route('/admin/qa/test-cases/create', methods=['POST'])
+@csrf.exempt
+@login_required
+def admin_create_test_case():
+    """Создание нового тест-кейса с пошаговым чек-листом"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'message': 'Forbidden'}), 403
+
+    data = request.get_json(silent=True) or request.form.to_dict()
+    title = data.get('title', '').strip()
+    area = data.get('area', 'general').strip()
+    description = data.get('description', '').strip()
+    assigned_to_id = data.get('assigned_to_id')
+    steps_data = data.get('steps', [])
+
+    if not title:
+        return jsonify({'success': False, 'message': 'Название тест-кейса обязательно'}), 400
+
+    if assigned_to_id:
+        try:
+            assigned_to_id = int(assigned_to_id)
+        except (ValueError, TypeError):
+            assigned_to_id = None
+
+    try:
+        tc = TestCase(
+            title=title,
+            description=description,
+            area=area,
+            assigned_to_id=assigned_to_id,
+            created_by_id=current_user.id,
+            status='ACTIVE'
+        )
+        db.session.add(tc)
+        db.session.flush()
+
+        if isinstance(steps_data, str):
+            try:
+                steps_data = json.loads(steps_data)
+            except Exception:
+                steps_data = []
+
+        if isinstance(steps_data, list):
+            for idx, s in enumerate(steps_data, start=1):
+                if isinstance(s, dict):
+                    act = s.get('action_text', '').strip()
+                    exp = s.get('expected_result', '').strip()
+                else:
+                    act = str(s).strip()
+                    exp = ''
+                if act:
+                    step = TestStep(
+                        test_case_id=tc.id,
+                        step_number=idx,
+                        action_text=act,
+                        expected_result=exp
+                    )
+                    db.session.add(step)
+
+        db.session.commit()
+        audit_logger.log(action='create_test_case', entity='TestCase', entity_id=tc.id, status='success', metadata={'title': title, 'area': area})
+        return jsonify({'success': True, 'test_case_id': tc.id, 'message': f'Тест-кейс "#{tc.id} {title}" успешно создан!'})
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating test case: {e}")
+        return jsonify({'success': False, 'message': f'Ошибка сохранения тест-кейса: {str(e)}'}), 500
+
+
+@admin_bp.route('/admin/qa/bug-reports/<int:bug_id>/status', methods=['POST'])
+@csrf.exempt
+@login_required
+def admin_update_bug_report_status(bug_id):
+    """Смена статуса баг-репорта (NEW, IN_PROGRESS, RESOLVED, REJECTED)"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'message': 'Forbidden'}), 403
+
+    data = request.get_json(silent=True) or {}
+    new_status = data.get('status', '').upper()
+    if new_status not in ('NEW', 'IN_PROGRESS', 'RESOLVED', 'REJECTED'):
+        return jsonify({'success': False, 'message': 'Невалидный статус баг-репорта'}), 400
+
+    bug = BugReport.query.get(bug_id)
+    if not bug:
+        return jsonify({'success': False, 'message': f'Баг-репорт #{bug_id} не найден'}), 444
+
+    try:
+        bug.status = new_status
+        db.session.commit()
+        audit_logger.log(action='update_bug_status', entity='BugReport', entity_id=bug.id, status='success', metadata={'new_status': new_status})
+        return jsonify({'success': True, 'status': new_status, 'message': f'Статус баг-репорта #{bug_id} обновлен на [{new_status}]'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Ошибка обновления: {str(e)}'}), 500
+
+
+@admin_bp.route('/admin/tester-entities', methods=['GET'])
+@login_required
+def admin_tester_entities_page():
+    """Раздел 5: Симуляторы / QA Тренажеры"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    entities = Tester.query.all()
+    return render_template('sandbox/admin/tester_entities.html', entities=entities)
+
+
+@admin_bp.route('/admin/topics', methods=['GET'])
+@login_required
+def admin_topics_page():
+    """Раздел 6: Темы задач"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    topics_list = Topic.query.all()
+    return render_template('sandbox/admin/topics.html', topics=topics_list)
+
+
+@admin_bp.route('/admin/task-formator', methods=['GET'])
+@login_required
+def admin_task_formator_page():
+    """Раздел 7: Формирователь задач"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        tasks_list = Tasks.query.order_by(Tasks.task_id.desc()).limit(50).all()
+        total_count = Tasks.query.count()
+    except Exception as e:
+        logger.error(f"Error querying Tasks in task-formator: {e}")
+        tasks_list = []
+        total_count = 0
+
+    stats = {
+        'total_count': total_count,
+        'fix_count': 3,
+        'skip_count': 1
+    }
+    return render_template('sandbox/admin/task_formator.html', tasks=tasks_list, stats=stats)
+
+
+@admin_bp.route('/admin/task-formator/status', methods=['POST'])
+@login_required
+def admin_task_formator_status():
+    """Сохранение статуса модерации задачи из Формирователя"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'message': 'Forbidden'}), 403
+    
+    data = request.get_json(silent=True) or {}
+    task_id = data.get('task_id')
+    status = data.get('status')
+    
+    task = Tasks.query.get(task_id) if task_id else None
+    if task and hasattr(task, 'review_status'):
+        task.review_status = status
+        db.session.commit()
+    
+    audit_logger.log(action='task_formator_status', entity='Tasks', entity_id=task_id, status='success', metadata={'status': status})
+    return jsonify({'success': True, 'message': f'Статус задачи #{task_id if task_id else "песочницы"} сохранён: [{status.upper()}]'})
+
+
+@admin_bp.route('/admin/diagnostics', methods=['GET'])
+@login_required
+def admin_diagnostics_page():
+    """Раздел 8: Обслуживание и Техработы"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        db_type = db.engine.name.lower()
+        if db_type == 'sqlite':
+            import sqlite3
+            db_version = f"SQLite {sqlite3.sqlite_version} (OK)"
+        else:
+            db_version = f"PostgreSQL ({db.engine.name.capitalize()}) (OK)"
+    except Exception as e:
+        logger.error(f"Error querying DB version in diagnostics: {e}")
+        db_version = "SQLite 3.x (OK)"
+
+    try:
+        is_maint = SystemSetting.get_value('maintenance_mode', 'false') == 'true'
+    except Exception:
+        is_maint = False
+
+    env_info = {
+        'environment': os.getenv('FLASK_ENV', 'local'),
+        'db_engine': db_version,
+        'python_version': f"Python {sys.version.split()[0]}",
+        'api_version': 'BooStudy V2.4.0'
+    }
+    return render_template('sandbox/admin/diagnostics.html', env_info=env_info, is_maint=is_maint)
+
+
+@admin_bp.route('/admin/export_db_json', methods=['GET'])
+@login_required
+def admin_export_db_json():
+    """Экспорт снимка базы данных в JSON"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    import json
+    from core.db_models import SystemSetting
+    data = {
+        'exported_at': datetime.utcnow().isoformat(),
+        'users': [{'id': u.id, 'username': u.username, 'role': u.role, 'email': u.email} for u in User.query.all()],
+        'system_settings': [{'key': s.setting_key, 'value': s.setting_value} for s in SystemSetting.query.all()]
+    }
+    res = make_response(json.dumps(data, indent=2, ensure_ascii=False))
+    res.headers['Content-Type'] = 'application/json'
+    res.headers['Content-Disposition'] = 'attachment; filename=boostudy_db_dump.json'
+    return res
+

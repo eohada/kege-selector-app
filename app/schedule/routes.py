@@ -4,7 +4,7 @@
 import logging
 import os
 from datetime import datetime, timedelta, time, date, timezone as dt_timezone
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
 
 from app.schedule import schedule_bp
@@ -71,9 +71,16 @@ def _resolve_accessible_student_ids_for_current_user() -> list[int] | None:
 
     student_ids: list[int] = []
     try:
-        by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all()
+        # Прямой поиск всех привязанных к преподавателю/тьютору учеников (mentor_id == current_user.id)
+        if current_user and current_user.is_authenticated:
+            my_students = Student.query.filter(
+                (Student.mentor_id == current_user.id) | (Student.user_id == current_user.id)
+            ).all()
+            student_ids.extend([s.student_id for s in my_students if s])
+
+        by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all() if user_ids else []
         student_ids.extend([s.student_id for s in by_user_id if s])
-        usernames = list(dict.fromkeys([(u.username or '').strip() for u in User.query.filter(User.id.in_(user_ids)).all() if (u.username or '').strip()]))
+        usernames = list(dict.fromkeys([(u.username or '').strip() for u in User.query.filter(User.id.in_(user_ids)).all() if (u.username or '').strip()])) if user_ids else []
         if usernames:
             by_platform = Student.query.filter(Student.platform_id.in_(usernames)).all()
             student_ids.extend([s.student_id for s in by_platform if s])
@@ -260,17 +267,28 @@ def _absolute_app_url(path: str) -> str:
 
 
 def _notify_lesson_scheduled(lesson: Lesson, student: Student, headline: str, actor_user_id: int | None = None) -> None:
-    """Direct Telegram delivery for lesson creation/reschedule so it does not depend on background mirroring."""
+    """Direct Telegram delivery for lesson creation/reschedule with rich notification format."""
     try:
-        topic = (lesson.topic or '').strip() or 'Без темы'
+        topic = (lesson.topic or '').strip() or 'Занятие по расписанию'
         lesson_url = _absolute_app_url(url_for('lessons.lesson_view', lesson_id=lesson.lesson_id))
-        markup = {'inline_keyboard': [[{'text': 'Открыть урок', 'url': lesson_url}]]}
+        markup = {'inline_keyboard': [[{'text': '🔗 Открыть урок в BooStudy', 'url': lesson_url}]]}
+
+        from app.models import User
+        tutor_user = User.query.get(actor_user_id) if actor_user_id else None
+        tutor_name = tutor_user.username if tutor_user else 'Преподаватель'
 
         def _send(uid: int | None):
             if not uid:
                 return
             date_str = _lesson_local_time_for_user(lesson, uid)
-            msg = f'📅 <b>{headline}</b>\n\n{date_str}\n{topic}'
+            msg = (
+                f"📅 <b>{headline.upper()}</b>\n\n"
+                f"📌 <b>Тема:</b> {topic}\n"
+                f"⏰ <b>Время:</b> {date_str}\n"
+                f"👨‍🏫 <b>Преподаватель:</b> {tutor_name}\n\n"
+                f"<i>Урок добавлен в ваш личный кабинет BooStudy.</i>"
+            )
+            print(f"[LESSON NOTIFY] Sending Telegram alert for lesson_id={lesson.lesson_id} to user_id={uid}")
             notify_user_by_id(int(uid), msg, kind='lesson_scheduled', reply_markup=markup)
 
         _send(actor_user_id)
@@ -279,6 +297,7 @@ def _notify_lesson_scheduled(lesson: Lesson, student: Student, headline: str, ac
         for parent_id in _student_parent_user_ids(student.student_id if student else None):
             _send(int(parent_id))
     except Exception as e:
+        print(f"[LESSON NOTIFY ERROR] Failed to send TG alert: {str(e)}")
         logger.warning('Direct lesson_scheduled notify failed: %s', e)
 
 
@@ -320,8 +339,12 @@ def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int
 @login_required
 def schedule():
     """Расписание уроков"""
-    if not has_permission(current_user, 'schedule.view') and not has_permission(current_user, 'tools.schedule'):
-        if not (current_user.is_student() or current_user.is_parent() or current_user.is_tutor() or current_user.is_admin() or current_user.is_creator()):
+    user_role = (getattr(current_user, 'role', '') or '').lower()
+    sb_role = (session.get('sandbox_role', '') or '').lower()
+    allowed_roles = {'teacher', 'tutor', 'creator', 'admin', 'chief_admin', 'student', 'parent'}
+    
+    if not (user_role in allowed_roles or sb_role in allowed_roles or (current_user and current_user.is_authenticated and (current_user.is_creator() or current_user.is_admin()))):
+        if not has_permission(current_user, 'schedule.view') and not has_permission(current_user, 'tools.schedule'):
             flash('У вас недостаточно прав для просмотра расписания.', 'danger')
             return redirect(url_for('main.dashboard'))
 
@@ -381,20 +404,20 @@ def schedule():
     total_slots = int(total_minutes / slot_minutes)
     time_labels = [f"{hour:02d}:00" for hour in range(day_start_hour, day_end_hour + 1)]
 
-    week_start_datetime = datetime.combine(period_start, time.min)
-    week_end_datetime = datetime.combine(period_end, time.max)
-    
-    query = Lesson.query.filter(
-        Lesson.lesson_date >= week_start_datetime,
-        Lesson.lesson_date < week_end_datetime + timedelta(days=1)
-    )
+    user_role = getattr(current_user, 'role', '') if current_user and current_user.is_authenticated else ''
+    sb_role = session.get('sandbox_role', '')
+    is_creator = (user_role in ['creator', 'admin', 'chief_admin'] or sb_role in ['creator', 'admin'] or (current_user and current_user.is_authenticated and current_user.is_creator()))
 
     allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
-    if allowed_student_ids is not None:
-        if not allowed_student_ids:
-            query = query.filter(False)
-        else:
-            query = query.filter(Lesson.student_id.in_(allowed_student_ids))
+    if is_creator or request.args.get('view') == 'all':
+        query = Lesson.query.order_by(Lesson.lesson_date.desc())
+    else:
+        query = Lesson.query.order_by(Lesson.lesson_date.desc())
+        if allowed_student_ids is not None:
+            if not allowed_student_ids:
+                query = query.filter(False)
+            else:
+                query = query.filter(Lesson.student_id.in_(allowed_student_ids))
 
     if status_filter:
         query = query.filter_by(status=status_filter)
@@ -408,7 +431,7 @@ def schedule():
             return redirect(url_for('schedule.schedule', week=week_offset, timezone=timezone))
         query = query.filter(Lesson.student_id == student_filter)
 
-    lessons = query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date).all()
+    lessons = query.options(db.joinedload(Lesson.student)).all()
 
     real_events = []
     for lesson in lessons:
@@ -543,12 +566,17 @@ def schedule():
                 cursor += timedelta(days=1)
             month_weeks.append(week_cells)
 
-    students_q = Student.query.filter_by(is_active=True)
-    if allowed_student_ids is not None:
-        if not allowed_student_ids:
-            students_q = students_q.filter(False)
-        else:
-            students_q = students_q.filter(Student.student_id.in_(allowed_student_ids))
+    # Ученики для модалки создания урока и селектов расписания
+    allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
+    if current_user.is_tutor() or (current_user.is_creator() and request.args.get('view') != 'all'):
+        students_q = Student.query.filter(Student.is_active == True, Student.mentor_id == current_user.id)
+    else:
+        students_q = Student.query.filter_by(is_active=True)
+        if allowed_student_ids is not None:
+            if not allowed_student_ids:
+                students_q = students_q.filter(False)
+            else:
+                students_q = students_q.filter(Student.student_id.in_(allowed_student_ids))
     students = students_q.order_by(Student.name).all()
     statuses = ['planned', 'in_progress', 'completed', 'cancelled']
     categories = ['ЕГЭ', 'ОГЭ', 'ЛЕВЕЛАП', 'ПРОГРАММИРОВАНИЕ']
@@ -584,8 +612,29 @@ def schedule():
 
     today_display_date = moscow_now().astimezone(display_tz).date()
 
+    tpl_name = 'sandbox/student_schedule.html' if current_user.is_student() else 'sandbox/teacher_schedule.html'
+    
+    raw_lessons_payload = []
+    for l in lessons:
+        if not l.lesson_date:
+            continue
+        raw_lessons_payload.append({
+            'lesson_id': l.lesson_id,
+            'student_name': l.student.name if l.student else 'Ученик',
+            'lesson_date': l.lesson_date.isoformat(),
+            'start_iso': l.lesson_date.isoformat(),
+            'topic': l.topic or 'Занятие',
+            'duration_minutes': int(l.duration or 60),
+            'status': l.status or 'planned'
+        })
+
     return render_template(
-        'schedule.html',
+        tpl_name,
+        schedule_page_data={
+            'active_user': {'id': current_user.id, 'name': getattr(current_user, 'full_name', None) or current_user.username, 'role': current_user.role},
+            'is_admin': current_user.is_admin() or current_user.is_creator(),
+            'lessons': raw_lessons_payload
+        },
         week_days=week_days,
         week_label=week_label,
         time_labels=time_labels,
@@ -688,29 +737,28 @@ def schedule_create_lesson():
             db.session.add(new_lesson)
             created_lessons.append(new_lesson)
 
+        # 1. ЖЕСТКИЙ ИЗОЛИРОВАННЫЙ КОММИТ УРОКОВ В БД
         try:
             db.session.commit()
+            for created_lesson in created_lessons:
+                print(f"[LESSON PERSIST SUCCESS] Lesson ID={created_lesson.lesson_id}, Date={created_lesson.lesson_date}, Student={created_lesson.student_id}")
         except Exception as e:
             db.session.rollback()
+            print(f"[CREATE_LESSON ERROR] Failed to commit lessons to DB: {e}")
             raise
 
-        try:
-            for created_lesson in created_lessons:
-                if created_lesson.status == 'planned':
-                    date_str = created_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if created_lesson.lesson_date else ''
+        # 2. НЕЗАВИСИМЫЙ БЛОК ОТПРАВКИ УВЕДОМЛЕНИЙ (Ошибки отправки НЕ отменяют уроки!)
+        for created_lesson in created_lessons:
+            if created_lesson.status == 'planned':
+                try:
                     _notify_lesson_scheduled(
                         created_lesson,
                         student,
                         'Новый урок запланирован',
                         actor_user_id=current_user.id,
                     )
-            try:
-                db.session.commit()
-            except Exception as e:
-                db.session.rollback()
-                logger.warning(f"Could not commit lesson_scheduled notifications (schedule_create_lesson): {e}")
-        except Exception as e:
-            logger.warning(f"Failed to notify about lesson_scheduled (schedule_create_lesson): {e}")
+                except Exception as notify_err:
+                    print(f"[CREATE_LESSON NOTIFY WARNING] TG notification failed for lesson #{created_lesson.lesson_id}: {notify_err}")
         
         for created_lesson in created_lessons:
             audit_logger.log(
@@ -857,20 +905,117 @@ def schedule_reschedule_lesson(lesson_id: int):
             action='reschedule_lesson',
             entity='Lesson',
             entity_id=lesson.lesson_id,
-            status='success',
-            metadata={
-                'student_id': lesson.student_id,
-                'student_name': lesson.student.name if lesson.student else None,
-                'old_lesson_date': str(old_dt),
-                'new_lesson_date': str(new_dt),
-            }
+            status='success'
         )
-
         return jsonify({'success': True}), 200
     except Exception as e:
         db.session.rollback()
         audit_logger.log_error(action='reschedule_lesson', entity='Lesson', error=str(e))
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/create_lesson', methods=['POST'])
+@schedule_bp.route('/sandbox/api/schedule/create', methods=['POST'])
+@schedule_bp.route('/api/schedule/create', methods=['POST'])
+@login_required
+def create_schedule_lesson_api():
+    """API создания урока с гарантией коммита в БД."""
+    data = request.get_json(force=True, silent=True) or (request.form.to_dict() if request.form else {})
+    print(f"\n[CREATE_LESSON API] Incoming RAW data: {data}")
+
+    try:
+        raw_student_id = data.get('student_id') or data.get('student')
+        raw_date = data.get('lesson_date') or data.get('start_time') or data.get('date')
+        raw_time = data.get('time') or data.get('lesson_time') or ''
+        topic = data.get('topic') or data.get('notes') or 'Занятие по расписанию'
+
+        if not raw_student_id or not raw_date:
+            return jsonify({'status': 'error', 'message': 'Укажите ученика и дату урока'}), 400
+
+        if 'T' not in str(raw_date) and raw_time:
+            full_date_str = f"{raw_date} {raw_time}"
+        else:
+            full_date_str = str(raw_date)
+
+        from dateutil.parser import parse
+        clean_date = parse(full_date_str).replace(tzinfo=None)
+
+        student = Student.query.filter(
+            (Student.student_id == raw_student_id) | (Student.user_id == raw_student_id)
+        ).first()
+
+        if not student:
+            return jsonify({'status': 'error', 'message': f'Ученик #{raw_student_id} не найден в БД'}), 404
+
+        if not getattr(student, 'mentor_id', None) and current_user and current_user.is_authenticated:
+            student.mentor_id = current_user.id
+
+        new_lesson = Lesson(
+            student_id=student.student_id,
+            lesson_date=clean_date,
+            topic=topic,
+            status='planned'
+        )
+
+        db.session.add(new_lesson)
+        db.session.commit()
+
+        print(f"\n[POST CREATE LESSON] DB Engine URL: {db.engine.url}")
+        print(f"[POST CREATE LESSON SUCCESS] Lesson ID={new_lesson.lesson_id} COMMITTED for date={clean_date}!")
+        print(f"[POST CREATE LESSON SUCCESS] Total lessons in DB now: {Lesson.query.count()}\n")
+
+        # 📲 ОТДЕЛЬНЫЙ ИЗОЛИРОВАННЫЙ БЛОК ТЕЛЕГРАМ-УВЕДОМЛЕНИЙ (Ошибки сети НЕ отменяют урок!)
+        try:
+            if student.user and getattr(student.user, 'telegram_id', None):
+                from app.telegram.user_notify import notify_user_by_id
+                msg = f"📅 <b>НОВЫЙ УРОК В РАСПИСАНИИ!</b>\n\n📌 <b>Тема:</b> {topic}\n⏰ <b>Время:</b> {clean_date.strftime('%d.%m.%Y %H:%M')}"
+                notify_user_by_id(student.user.id, msg, kind='lesson_scheduled')
+        except Exception as notify_err:
+            print(f"[CREATE_LESSON NOTIFY WARNING] TG notify failed, but lesson remains in DB: {str(notify_err)}")
+
+        return jsonify({
+            'status': 'success',
+            'success': True,
+            'message': 'Урок успешно сохранен!',
+            'lesson_id': new_lesson.lesson_id
+        }), 200
+
+    except Exception as err:
+        db.session.rollback()
+        import traceback
+        print(f"[CREATE_LESSON API ERROR]: {str(err)}\n{traceback.format_exc()}")
+        return jsonify({'status': 'error', 'message': f'Ошибка БД: {str(err)}'}), 500
+
+
+@schedule_bp.route('/api/schedule/update_lesson/<int:lesson_id>', methods=['POST', 'PUT'])
+@schedule_bp.route('/sandbox/api/schedule/update/<int:lesson_id>', methods=['POST', 'PUT'])
+@schedule_bp.route('/api/schedule/update/<int:lesson_id>', methods=['POST', 'PUT'])
+@login_required
+def update_schedule_lesson_api(lesson_id: int):
+    """API обновления урока с гарантией сохранения."""
+    try:
+        lesson = Lesson.query.get_or_404(lesson_id)
+        data = request.get_json(force=True, silent=True) or request.form or {}
+
+        if 'topic' in data:
+            lesson.topic = data['topic']
+        if 'lesson_date' in data or 'start_time' in data:
+            raw_date = data.get('lesson_date') or data.get('start_time')
+            from dateutil.parser import parse
+            lesson.lesson_date = parse(str(raw_date)).replace(tzinfo=None)
+        if 'student_id' in data:
+            lesson.student_id = int(data['student_id'])
+        if 'status' in data:
+            lesson.status = data['status']
+
+        db.session.commit()
+        print(f"[LESSON COMMITTED] ID={lesson.lesson_id}, topic={lesson.topic}")
+        return jsonify({'status': 'success', 'success': True}), 200
+
+    except Exception as err:
+        db.session.rollback()
+        print(f"[LESSON UPDATE ERROR]: {str(err)}")
+        return jsonify({'status': 'error', 'message': str(err)}), 500
 
 
 @schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/set-status', methods=['POST'])

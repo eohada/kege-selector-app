@@ -1,0 +1,263 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<style>
+    .seg-btn.active {
+        background-color: #FFFFFF;
+        color: #0F172A;
+        font-weight: 800;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .source-card.active {
+        border-color: #6366F1;
+        background-color: #EEF2FF;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
+    }
+</style>
+
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] shadow-sm border border-slate-200/60 p-8 sm:p-10 my-4 relative">
+            
+            <!-- HEADER -->
+            <div class="mb-8 pb-6 border-b border-slate-100">
+                <a href="/sandbox/assignments" class="text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1.5 no-underline mb-3 transition-colors inline-block">
+                    <i class="ph-bold ph-arrow-left text-sm"></i>
+                    <span>Отмена</span>
+                </a>
+                
+                <h1 class="text-3xl font-display font-black text-slate-900 tracking-tight">Создание новой работы</h1>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Единый умный конструктор заданий и назначений</p>
+            </div>
+
+            <!-- BLOCK 1: BASIC INFO (TACTILE 3D CARD) -->
+            <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 mb-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="w-7 h-7 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-xs">1</span>
+                    <h2 class="text-lg font-black text-slate-900">Основная информация</h2>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Название работы</label>
+                        <input type="text" placeholder="Например: ДЗ №15. Графы и динамическое программирование" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3.5 font-extrabold text-slate-800 text-base focus:border-indigo-400 focus:outline-none shadow-2xs">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Тип работы</label>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer">Домашнее задание</button>
+                                <button type="button" class="px-4 py-2 bg-white text-slate-700 border-2 border-slate-200 hover:border-indigo-300 rounded-xl text-xs font-bold transition-all cursor-pointer">Пробник</button>
+                                <button type="button" class="px-4 py-2 bg-white text-slate-700 border-2 border-slate-200 hover:border-indigo-300 rounded-xl text-xs font-bold transition-all cursor-pointer">Контрольная</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Предмет / Курс</label>
+                            <select class="w-full bg-white border-2 border-slate-200 rounded-xl p-3.5 font-extrabold text-slate-800 text-sm focus:border-indigo-400 focus:outline-none shadow-2xs">
+                                <option selected>ЕГЭ Информатика (КЕГЭ 2026)</option>
+                                <option>ОГЭ Математика</option>
+                                <option>Вводный курс</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Описание или инструкция для учеников</label>
+                        <textarea rows="2" placeholder="Напишите важное примечание к выполнению работы..." class="w-full bg-white border-2 border-slate-200 rounded-xl p-3.5 font-semibold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BLOCK 2: TASK SOURCE (TACTILE 3D CARD) -->
+            <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-xs">2</span>
+                        <h2 class="text-lg font-black text-slate-900">Откуда берем задания?</h2>
+                    </div>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">0 задач добавлено</span>
+                </div>
+
+                <!-- 4 Interactive Source Tiles -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                    <!-- Source 1 -->
+                    <div class="source-card bg-white border-2 border-slate-200 rounded-xl p-4 hover:border-indigo-400 hover:shadow-md cursor-pointer transition-all flex flex-col gap-2 shadow-2xs">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-base">
+                            <i class="ph-bold ph-key-return"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">Ввести ID</div>
+                            <div class="text-[10px] font-bold text-slate-400">Номера задач КЕГЭ</div>
+                        </div>
+                    </div>
+
+                    <!-- Source 2 -->
+                    <div class="source-card bg-white border-2 border-slate-200 rounded-xl p-4 hover:border-indigo-400 hover:shadow-md cursor-pointer transition-all flex flex-col gap-2 shadow-2xs">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-base">
+                            <i class="ph-bold ph-magic-wand"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">Генератор</div>
+                            <div class="text-[10px] font-bold text-slate-400">Случайный набор</div>
+                        </div>
+                    </div>
+
+                    <!-- Source 3 -->
+                    <div class="source-card bg-white border-2 border-slate-200 rounded-xl p-4 hover:border-indigo-400 hover:shadow-md cursor-pointer transition-all flex flex-col gap-2 shadow-2xs">
+                        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-base">
+                            <i class="ph-bold ph-folder-open"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">Из шаблона</div>
+                            <div class="text-[10px] font-bold text-slate-400">Мои подборки</div>
+                        </div>
+                    </div>
+
+                    <!-- Source 4 -->
+                    <div class="source-card bg-white border-2 border-slate-200 rounded-xl p-4 hover:border-indigo-400 hover:shadow-md cursor-pointer transition-all flex flex-col gap-2 shadow-2xs">
+                        <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-base">
+                            <i class="ph-bold ph-lightning"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">Быстрый пробник</div>
+                            <div class="text-[10px] font-bold text-slate-400">27 задач КЕГЭ</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State Placeholder -->
+                <div class="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-white/50">
+                    <i class="ph-bold ph-tray text-3xl text-slate-300 mb-2 block"></i>
+                    <p class="text-xs font-bold text-slate-500">Список задач пока пуст. Выберите источник выше, чтобы наполнить работу.</p>
+                </div>
+            </section>
+
+            <!-- BLOCK 3: RULES & DEADLINE (TACTILE 3D CARD) -->
+            <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 mb-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="w-7 h-7 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-xs">3</span>
+                    <h2 class="text-lg font-black text-slate-900">Правила сдачи и дедлайн</h2>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Дедлайн сдачи</label>
+                        <input type="datetime-local" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Ограничение времени</label>
+                        <input type="number" placeholder="Например: 90 мин" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Попыток сдачи</label>
+                        <select class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs">
+                            <option>1 попытка</option>
+                            <option>2 попытки</option>
+                            <option>Без ограничений</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-white border-2 border-slate-200 rounded-2xl p-4 space-y-3 shadow-2xs">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" checked class="w-4 h-4 accent-indigo-600 rounded">
+                        <span class="text-xs font-bold text-slate-800">Запретить отправку ответов после истечения дедлайна</span>
+                    </label>
+
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" checked class="w-4 h-4 accent-indigo-600 rounded">
+                        <span class="text-xs font-bold text-slate-800">Разрешить последовательную сдачу по 1 задаче</span>
+                    </label>
+
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" class="w-4 h-4 accent-indigo-600 rounded">
+                        <span class="text-xs font-bold text-slate-800">Скрывать задания до наступления даты старта</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- BLOCK 4: RECIPIENTS / ROSTER (TACTILE 3D CARD) -->
+            <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 mb-6">
+                <div class="flex items-center justify-between gap-4 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center shadow-xs">4</span>
+                        <h2 class="text-lg font-black text-slate-900">Кому выдаем работу?</h2>
+                    </div>
+
+                    <button type="button" onclick="toggleSelectAllStudents()" class="px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 rounded-xl text-xs font-black transition-all cursor-pointer">
+                        Выбрать всех (37)
+                    </button>
+                </div>
+
+                <!-- Search -->
+                <div class="relative w-full mb-4">
+                    <input type="text" placeholder="Поиск ученика по имени или группе..." class="w-full bg-white border-2 border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-400">
+                    <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                </div>
+
+                <!-- Scrollable Students Roster -->
+                <div class="max-h-[300px] overflow-y-auto pr-1 space-y-2.5 hide-scrollbar">
+                    <!-- Student 1 -->
+                    <label class="bg-white border-2 border-slate-100 rounded-xl p-3 flex items-center justify-between gap-3 cursor-pointer hover:border-indigo-300 transition-colors shadow-2xs">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <input type="checkbox" checked class="w-4 h-4 accent-indigo-600 rounded">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=AlexSmirnov&backgroundColor=c0aede" class="w-8 h-8 rounded-lg border border-slate-200 object-cover shrink-0">
+                            <div class="min-w-0">
+                                <span class="font-extrabold text-slate-900 text-xs block truncate">Александр Смирнов</span>
+                                <span class="text-[10px] font-bold text-slate-400">ЕГЭ Информатика • 11 класс</span>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[10px] font-black">Группа А</span>
+                    </label>
+
+                    <!-- Student 2 -->
+                    <label class="bg-white border-2 border-slate-100 rounded-xl p-3 flex items-center justify-between gap-3 cursor-pointer hover:border-indigo-300 transition-colors shadow-2xs">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <input type="checkbox" checked class="w-4 h-4 accent-indigo-600 rounded">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Ekaterina&backgroundColor=ffdfbf" class="w-8 h-8 rounded-lg border border-slate-200 object-cover shrink-0">
+                            <div class="min-w-0">
+                                <span class="font-extrabold text-slate-900 text-xs block truncate">Екатерина Попова</span>
+                                <span class="text-[10px] font-bold text-slate-400">ОГЭ Математика • 9 класс</span>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[10px] font-black">Группа Б</span>
+                    </label>
+
+                    <!-- Student 3 -->
+                    <label class="bg-white border-2 border-slate-100 rounded-xl p-3 flex items-center justify-between gap-3 cursor-pointer hover:border-indigo-300 transition-colors shadow-2xs">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <input type="checkbox" class="w-4 h-4 accent-indigo-600 rounded">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=MishaDemo&backgroundColor=d1d4f9" class="w-8 h-8 rounded-lg border border-slate-200 object-cover shrink-0">
+                            <div class="min-w-0">
+                                <span class="font-extrabold text-slate-900 text-xs block truncate">Михаил Волков</span>
+                                <span class="text-[10px] font-bold text-slate-400">Вводный курс • 10 класс</span>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-black">Демо</span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- FLOATING STICKY FOOTER -->
+            <div class="sticky bottom-4 bg-white/90 backdrop-blur-md border-2 border-slate-200 rounded-2xl p-4 flex justify-between items-center shadow-lg z-30">
+                <div class="flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></span>
+                    <span class="text-xs font-extrabold text-slate-700">Выбрано: <b class="text-indigo-600">2 ученика</b>, <b class="text-indigo-600">0 задач</b></span>
+                </div>
+
+                <!-- Main Canonical 3D Action Button -->
+                <button class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm px-8 py-3.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center gap-2 cursor-pointer w-auto">
+                    <i class="ph-bold ph-paper-plane-right text-base"></i>
+                    <span>Создать и отправить работу!</span>
+                </button>
+            </div>
+
+        </div>
+    </main>
+{% endblock %}

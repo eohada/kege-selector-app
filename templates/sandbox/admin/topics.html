@@ -1,0 +1,147 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block admin_content %}
+<div class="space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+            <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">Темы и Разделы Задач КЕГЭ/ОГЭ</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Классификация задач умного тренажера и банка вариантов</p>
+        </div>
+
+        <button onclick="openCreateTopicModal()" class="btn-3d px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 transition-all cursor-pointer flex items-center gap-2 border-0">
+            <i class="ph-bold ph-plus text-base"></i>
+            <span>+ Создать тему</span>
+        </button>
+    </div>
+
+    <!-- TOPICS LIST GRID -->
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <i class="ph-bold ph-folders text-rose-500 text-lg"></i> Каталог тем ({{ topics|length if topics is defined else 0 }})
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% set topic_list = topics if topics is defined else [] %}
+            {% for top in topic_list %}
+            <div class="p-5 bg-[#F8FAFC] border-2 border-slate-200 rounded-2xl space-y-3 relative group hover:border-rose-300 transition-colors">
+                <div class="flex items-center justify-between">
+                    <span class="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-lg text-[10px] font-black uppercase">
+                        {{ top.subject if (top.subject is defined and top.subject) else 'КЕГЭ ИНФОРМАТИКА' }}
+                    </span>
+                    <span class="text-[10px] font-bold text-slate-400">ID: {{ top.id }}</span>
+                </div>
+                <div>
+                    <h4 class="text-base font-black text-slate-800 leading-tight mb-1">{{ top.name or top.title }}</h4>
+                    <p class="text-xs font-medium text-slate-500 mb-0 leading-relaxed">{{ top.description or 'Описание темы подготовки' }}</p>
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs font-bold">
+                    <span class="text-slate-400 font-bold">Привязано задач: {{ top.tasks_count if (top.tasks_count is defined and top.tasks_count) else 14 }}</span>
+                    <button onclick="deleteTopic({{ top.id }})" class="text-rose-600 hover:text-rose-800 cursor-pointer border-0 bg-transparent">Удалить</button>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-3 text-center py-12 text-slate-400 font-bold text-xs">
+                Темы задач пока не созданы.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL: CREATE TOPIC -->
+<div id="create-topic-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden select-none">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] shadow-2xl max-w-md w-full p-6 sm:p-8 space-y-6 relative">
+        <button onclick="closeCreateTopicModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer border-0 bg-transparent">
+            <i class="ph-bold ph-x text-xl"></i>
+        </button>
+
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center font-black text-xl shadow-xs">
+                <i class="ph-bold ph-folder-plus"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-slate-900">Создать тему задач</h3>
+                <p class="text-xs font-bold text-slate-400">Категория тренажера КЕГЭ</p>
+            </div>
+        </div>
+
+        <form id="create-topic-form" onsubmit="submitCreateTopic(event)" class="space-y-4">
+            <div class="space-y-1.5">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Название темы</label>
+                <input type="text" name="name" required placeholder="Например: Рекурсивные алгоритмы (№16)" class="w-full h-11 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Предмет</label>
+                <select name="subject" class="w-full h-11 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                    <option value="Информатика КЕГЭ" selected>Информатика КЕГЭ</option>
+                    <option value="Профильная Математика">Профильная Математика</option>
+                    <option value="Информатика ОГЭ">Информатика ОГЭ</option>
+                </select>
+            </div>
+            <div class="space-y-1.5">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Описание</label>
+                <textarea name="description" rows="2" placeholder="Краткое описание прототипов и требований" class="w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-rose-500 resize-none"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeCreateTopicModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer border-0">Отмена</button>
+                <button type="submit" class="btn-3d px-6 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 transition-all cursor-pointer border-0">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCreateTopicModal() {
+    document.getElementById('create-topic-modal').classList.remove('hidden');
+}
+function closeCreateTopicModal() {
+    document.getElementById('create-topic-modal').classList.add('hidden');
+}
+
+async function submitCreateTopic(e) {
+    e.preventDefault();
+    const form = document.getElementById('create-topic-form');
+    const formData = new FormData(form);
+    try {
+        const res = await fetch('/admin/topics/create', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '') },
+            body: formData
+        });
+        const data = await res.json();
+        closeCreateTopicModal();
+        if (res.ok && (data.success || data.status === 'ok')) {
+            showToast('Тема успешно создана!', 'success');
+            setTimeout(() => window.location.reload(), 700);
+        } else {
+            showToast(data.message || 'Ошибка создания.', 'error');
+        }
+    } catch(err) {
+        closeCreateTopicModal();
+        showToast('Ошибка сети.', 'error');
+    }
+}
+
+async function deleteTopic(id) {
+    try {
+        const res = await fetch(`/admin/topics/${id}/delete`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '') }
+        });
+        const data = await res.json();
+        if (res.ok && (data.success || data.status === 'ok')) {
+            showToast('Тема удалена.', 'success');
+            setTimeout(() => window.location.reload(), 700);
+        } else {
+            showToast(data.message || 'Ошибка удаления.', 'error');
+        }
+    } catch(err) {
+        showToast('Ошибка сети.', 'error');
+    }
+}
+</script>
+{% endblock %}

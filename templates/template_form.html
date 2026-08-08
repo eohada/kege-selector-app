@@ -1,138 +1,146 @@
-{% extends 'base.html' %}
-{% set active_page = 'templates' %}
-{% block title %}{% if is_new %}Создать шаблон{% else %}Редактировать шаблон{% endif %}{% endblock %}
+{% extends "sandbox/layout_teacher.html" %}
 
-{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
+{% block sandbox_content %}
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
 
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative flex flex-col min-h-[calc(100vh-4rem)]">
 
-<!-- Custom Styles for JIT Class Elimination -->
-<style>
-    .active-scale-098:active { transform: scale(0.98); }
-    .hover-shadow-0-6px-16px-rgba139-92-246-015:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.15); }
-    .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
-    .shadow-0-4px-12px-rgba139-92-246-006 { box-shadow: 0 4px 12px rgba(139,92,246,0.06); }
-    .hover-shadow-0-6px-16px-rgba139-92-246-012:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.12); }
-</style>
-{% block content %}
-<div class="flex flex-col gap-6 pb-6 w-full">
-<section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 lg:p-6 shadow-sm dark:shadow-glass-dark mb-3">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
-        <a href="{{ url_for('templates.templates_list') }}" class="px-4 py-2 bg-slate-100 dark:bg-white/[0.06] hover:bg-slate-200 dark:hover:bg-white/[0.1] text-secondary dark:text-white rounded-xl font-bold text-xs transition-all no-underline flex items-center gap-1.5 self-start">
-            <i class="ph-bold ph-arrow-left text-sm"></i> К библиотеке
-        </a>
-        {% if is_new %}
-        {% set _m = (mode or '') %}
-        <div class="bg-slate-200/50 dark:bg-white/5 p-1 rounded-xl flex gap-1 self-start sm:self-auto">
-            <a href="{{ url_for('templates.template_new') }}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-all no-underline flex items-center gap-1.5 {{ 'bg-white dark:bg-white/10 text-secondary dark:text-white shadow-sm' if _m != 'manual' else 'text-muted dark:text-dark-muted hover:text-secondary dark:hover:text-slate-200' }}">
-                <i class="ph-bold ph-lightning text-sm"></i> Быстро
-            </a>
-            <a href="{{ url_for('templates.template_new', mode='manual') }}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-all no-underline flex items-center gap-1.5 {{ 'bg-white dark:bg-white/10 text-secondary dark:text-white shadow-sm' if _m == 'manual' else 'text-muted dark:text-dark-muted hover:text-secondary dark:hover:text-slate-200' }}">
-                <i class="ph-bold ph-pencil-simple text-sm"></i> Вручную
-            </a>
-        </div>
-        {% endif %}
-    </div>
-    <div>
-        <p class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-1 flex items-center gap-1.5">
-            {% if is_new %}создание шаблона{% else %}редактирование шаблона{% endif %}
-        </p>
-        <h1 class="text-2xl font-bold text-primary dark:text-white tracking-tight flex items-center gap-2">
+        <!-- HEADER & BACK BUTTON -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100 mb-6">
+            <div>
+                <a href="{{ url_for('main.teacher_templates_library') }}" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 mb-2 transition-colors no-underline">
+                    <i class="ph-bold ph-arrow-left"></i>
+                    <span>К библиотеке шаблонов</span>
+                </a>
+                <h1 class="text-3xl font-black text-slate-800 tracking-tight font-display mb-1">
+                    {% if is_new %}Создать шаблон{% else %}Редактировать шаблон{% endif %}
+                </h1>
+                <p class="text-xs font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-folder-star text-indigo-500"></i> Конструктор вариантов и наборов заданий
+                </p>
+            </div>
+
             {% if is_new %}
-            <i class="ph-bold ph-plus-circle text-2xl text-boo-primary"></i>Создать шаблон
-            {% else %}
-            <i class="ph-bold ph-pencil-line text-2xl text-boo-primary"></i>Редактировать шаблон
+            {% set _m = (mode or '') %}
+            <!-- Mode Switcher Pill-Tabs -->
+            <div class="inline-flex items-center p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] shrink-0 self-start sm:self-auto">
+                <a href="{{ url_for('templates.template_new') }}" class="px-4 py-2 rounded-xl text-xs font-bold transition-all no-underline flex items-center gap-1.5 {{ 'bg-white text-indigo-600 font-extrabold shadow-sm border border-slate-200' if _m != 'manual' else 'text-slate-500 hover:text-slate-800' }}">
+                    <i class="ph-bold ph-lightning text-sm"></i> Быстро
+                </a>
+                <a href="{{ url_for('templates.template_new', mode='manual') }}" class="px-4 py-2 rounded-xl text-xs font-bold transition-all no-underline flex items-center gap-1.5 {{ 'bg-white text-indigo-600 font-extrabold shadow-sm border border-slate-200' if _m == 'manual' else 'text-slate-500 hover:text-slate-800' }}">
+                    <i class="ph-bold ph-pencil-simple text-sm"></i> Вручную
+                </a>
+            </div>
             {% endif %}
-        </h1>
-    </div>
-</section>
-
-<form id="templateForm" class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 lg:p-6 shadow-sm dark:shadow-glass-dark mb-3">
-    <div class="mb-3">
-        <label class="block mb-2 text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest" for="name">Название шаблона *</label>
-        <input type="text" id="name" name="name" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-500/20 transition-all text-sm" 
-               value="{{ template.name if template else '' }}" 
-               placeholder="Например: Базовый набор заданий 1-5" required>
-    </div>
-
-    <div class="mb-3">
-        <label class="block mb-2 text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest" for="description">Описание</label>
-        <textarea id="description" name="description" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-500/20 transition-all text-sm" rows="3" 
-                  placeholder="Краткое описание шаблона (необязательно)">{{ template.description if template else '' }}</textarea>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-3">
-        <div>
-            <label class="block mb-2 text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest" for="template_type">Тип шаблона *</label>
-            <select id="template_type" name="template_type" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-200 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-500/20 transition-all text-sm" required>
-                <option value="homework" {% if (template and template.template_type == 'homework') or (is_new and preset_type == 'homework') %}selected{% endif %}>Домашнее задание</option>
-                <option value="classwork" {% if (template and template.template_type == 'classwork') or (is_new and preset_type == 'classwork') %}selected{% endif %}>Классная работа</option>
-                <option value="exam" {% if (template and template.template_type == 'exam') or (is_new and preset_type == 'exam') %}selected{% endif %}>Проверочная работа</option>
-                <option value="lesson" {% if (template and template.template_type == 'lesson') or (is_new and preset_type == 'lesson') %}selected{% endif %}>Урок</option>
-            </select>
         </div>
 
-        <div>
-            <label class="block mb-2 text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest" for="category">Категория</label>
-            <select id="category" name="category" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-200 focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-500/20 transition-all text-sm">
-                <option value="">Не указана</option>
-                <option value="ЕГЭ" {% if (template and template.category == 'ЕГЭ') or (is_new and preset_category == 'ЕГЭ') %}selected{% endif %}>ЕГЭ</option>
-                <option value="ОГЭ" {% if (template and template.category == 'ОГЭ') or (is_new and preset_category == 'ОГЭ') %}selected{% endif %}>ОГЭ</option>
-                <option value="ЛЕВЕЛАП" {% if (template and template.category == 'ЛЕВЕЛАП') or (is_new and preset_category == 'ЛЕВЕЛАП') %}selected{% endif %}>ЛЕВЕЛАП</option>
-                <option value="ПРОГРАММИРОВАНИЕ" {% if (template and template.category == 'ПРОГРАММИРОВАНИЕ') or (is_new and preset_category == 'ПРОГРАММИРОВАНИЕ') %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
-            </select>
-        </div>
-    </div>
-
-    {% if not is_new and template %}
-    <div class="mb-3 p-6 bg-surface-alt dark:bg-white/[0.02] rounded-2xl border border-slate-100 dark:border-dark-faint">
-        <h3 class="m-0 mb-2 text-base font-black text-secondary dark:text-white tracking-tight flex items-center gap-1.5"><i class="ph-bold ph-cards text-lg text-boo-primary"></i>Задания в шаблоне ({{ template.template_tasks|length }})</h3>
-        <p class="text-muted dark:text-dark-muted text-xs leading-relaxed m-0 mb-3">Для изменения состава или структуры заданий перейдите в интерактивный генератор.</p>
-        <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="h-9 px-3.5 py-1.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-xs transition-all duration-150 active-scale-098 cursor-pointer flex items-center justify-center gap-1.5 no-underline">
-            <i class="ph-bold ph-dice text-sm"></i> Открыть генератор
-        </a>
-    </div>
-    {% endif %}
-
-    {% if is_new and (mode or '') == 'manual' %}
-        <div class="mt-3 mb-3 p-4 border border-dashed border-purple-200 dark:border-purple-900/40 rounded-2xl bg-purple-500/[0.02]">
-            <div class="text-tiny font-extrabold text-purple-500 uppercase tracking-widest mb-1 flex items-center gap-1.5">
-                <i class="ph-fill ph-info text-xs"></i> Конструктор вручную
+        <!-- FORM CARD CONTAINER -->
+        <form id="templateForm" class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-6 sm:p-8 space-y-6">
+            <!-- Title Field -->
+            <div>
+                <label class="block mb-2 text-xs font-black text-slate-700 uppercase tracking-wider" for="name">
+                    Название шаблона *
+                </label>
+                <input type="text" id="name" name="name" 
+                       class="w-full bg-[#F8FAFC] border-2 border-slate-200 rounded-xl py-3 px-4 text-xs font-bold text-slate-800 focus:bg-white focus:border-indigo-400 focus:outline-none transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]"
+                       value="{{ template.name if template else '' }}" 
+                       placeholder="Например: Базовый набор заданий 1-5" required>
             </div>
-            <div class="font-black text-xs text-secondary dark:text-white">Добавьте карточки заданий ниже и заполните их параметры.</div>
-            <div class="text-muted dark:text-dark-muted text-small mt-1 leading-snug">Шаблон будет создан с указанными заданиями в базе.</div>
-        </div>
 
-        {% include '_manual_task_cards.html' %}
-
-        <section class="bg-surface/90 dark:bg-dark-card/90 backdrop-blur border border-slate-200 dark:border-dark-avatar rounded-2xl p-4 sticky bottom-4 mt-3 z-50 shadow-lg dark:shadow-glass-dark">
-            <div class="flex justify-between items-center">
-                <div id="status-text" class="text-sm font-bold text-muted dark:text-dark-muted">Добавлено заданий: <span id="tasks-count" class="text-boo-primary dark:text-purple-300">0</span></div>
-                <button type="button" onclick="saveManualTemplate()" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015 border-0">
-                    <i class="ph-bold ph-cloud-arrow-up text-base"></i> Сохранить шаблон
-                </button>
+            <!-- Description Field -->
+            <div>
+                <label class="block mb-2 text-xs font-black text-slate-700 uppercase tracking-wider" for="description">
+                    Описание
+                </label>
+                <textarea id="description" name="description" 
+                          class="w-full bg-[#F8FAFC] border-2 border-slate-200 rounded-xl py-3 px-4 text-xs font-bold text-slate-800 focus:bg-white focus:border-indigo-400 focus:outline-none transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]" rows="3" 
+                          placeholder="Краткое описание шаблона (необязательно)">{{ template.description if template else '' }}</textarea>
             </div>
-        </section>
 
-        <div class="flex gap-4 justify-end mt-3">
-            <a href="{{ url_for('templates.templates_list') }}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center no-underline">Отмена</a>
-        </div>
-    {% else %}
-        <div class="flex gap-4 justify-end flex-wrap">
-            <a href="{{ url_for('templates.templates_list') }}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center no-underline">Отмена</a>
-            <button type="submit" class="h-9 px-4 py-2.5 bg-white/40 dark:bg-zinc-900/40 border border-purple-200 dark:border-purple-500/20 text-purple-750 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-zinc-800/60 hover:border-purple-300 dark:hover:border-purple-500/40 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-006 hover-shadow-0-6px-16px-rgba139-92-246-012" data-after="generator">
-                <i class="ph-bold ph-dice text-base"></i> {% if is_new %}Создать и открыть генератор{% else %}Сохранить и открыть генератор{% endif %}
-            </button>
-            <button type="submit" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015 border-0" data-after="list">
-                <i class="ph-bold ph-check text-base"></i> {% if is_new %}Создать шаблон{% else %}Сохранить шаблон{% endif %}
-            </button>
-        </div>
-    {% endif %}
-</form>
-</div>
-{% endblock %}
+            <!-- Type and Category Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block mb-2 text-xs font-black text-slate-700 uppercase tracking-wider" for="template_type">
+                        Тип шаблона *
+                    </label>
+                    <select id="template_type" name="template_type" 
+                            class="w-full bg-[#F8FAFC] border-2 border-slate-200 rounded-xl py-3 px-4 text-xs font-extrabold text-slate-800 focus:bg-white focus:border-indigo-400 focus:outline-none transition-all cursor-pointer" required>
+                        <option value="homework" {% if (template and template.template_type == 'homework') or (is_new and preset_type == 'homework') %}selected{% endif %}>Домашняя работа</option>
+                        <option value="classwork" {% if (template and template.template_type == 'classwork') or (is_new and preset_type == 'classwork') %}selected{% endif %}>Классная работа</option>
+                        <option value="exam" {% if (template and template.template_type == 'exam') or (is_new and preset_type == 'exam') %}selected{% endif %}>Проверочная работа</option>
+                        <option value="lesson" {% if (template and template.template_type == 'lesson') or (is_new and preset_type == 'lesson') %}selected{% endif %}>Урок</option>
+                    </select>
+                </div>
 
-{% block scripts_extra %}
-<script src="{{ url_for('static', filename='loading.js') }}"></script>
+                <div>
+                    <label class="block mb-2 text-xs font-black text-slate-700 uppercase tracking-wider" for="category">
+                        Категория
+                    </label>
+                    <select id="category" name="category" 
+                            class="w-full bg-[#F8FAFC] border-2 border-slate-200 rounded-xl py-3 px-4 text-xs font-extrabold text-slate-800 focus:bg-white focus:border-indigo-400 focus:outline-none transition-all cursor-pointer">
+                        <option value="">Не указана</option>
+                        <option value="ЕГЭ" {% if (template and template.category == 'ЕГЭ') or (is_new and preset_category == 'ЕГЭ') %}selected{% endif %}>ЕГЭ</option>
+                        <option value="ОГЭ" {% if (template and template.category == 'ОГЭ') or (is_new and preset_category == 'ОГЭ') %}selected{% endif %}>ОГЭ</option>
+                        <option value="ЛЕВЕЛАП" {% if (template and template.category == 'ЛЕВЕЛАП') or (is_new and preset_category == 'ЛЕВЕЛАП') %}selected{% endif %}>ЛЕВЕЛАП</option>
+                        <option value="ПРОГРАММИРОВАНИЕ" {% if (template and template.category == 'ПРОГРАММИРОВАНИЕ') or (is_new and preset_category == 'ПРОГРАММИРОВАНИЕ') %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
+                    </select>
+                </div>
+            </div>
+
+            {% if not is_new and template %}
+            <div class="p-5 bg-indigo-50/60 border border-indigo-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-sm font-black text-slate-800 tracking-tight flex items-center gap-1.5">
+                        <i class="ph-bold ph-cards text-indigo-500"></i> Задания в шаблоне ({{ template.template_tasks|length }})
+                    </h3>
+                    <p class="text-xs font-semibold text-slate-500 mt-0.5">Для изменения состава или структуры заданий перейдите в генератор.</p>
+                </div>
+                <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer flex items-center gap-1.5 no-underline shrink-0 self-start sm:self-auto">
+                    <i class="ph-bold ph-dice text-sm"></i>
+                    <span>Открыть генератор</span>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if is_new and (mode or '') == 'manual' %}
+                <div class="p-4 border-2 border-dashed border-indigo-200 rounded-2xl bg-indigo-50/40">
+                    <div class="text-xs font-black text-indigo-600 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <i class="ph-bold ph-info text-sm"></i> Конструктор вручную
+                    </div>
+                    <div class="font-bold text-xs text-slate-800">Добавьте карточки заданий ниже и заполните их параметры.</div>
+                </div>
+
+                {% include '_manual_task_cards.html' %}
+
+                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <div id="status-text" class="text-xs font-bold text-slate-500">Добавлено заданий: <span id="tasks-count" class="text-indigo-600 font-extrabold">0</span></div>
+                    <button type="button" onclick="saveManualTemplate()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer flex items-center gap-2">
+                        <i class="ph-bold ph-cloud-arrow-up text-sm"></i>
+                        <span>Сохранить шаблон</span>
+                    </button>
+                </div>
+            {% else %}
+                <!-- ACTION BUTTONS -->
+                <div class="pt-6 border-t border-slate-100 flex items-center justify-end gap-3 flex-wrap">
+                    <a href="{{ url_for('main.teacher_templates_library') }}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-3 rounded-xl transition-all cursor-pointer no-underline">
+                        Отмена
+                    </a>
+                    <button type="submit" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 font-extrabold text-xs px-5 py-3 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-2xs" data-after="generator">
+                        <i class="ph-bold ph-dice text-sm"></i>
+                        <span>{% if is_new %}Создать и открыть генератор{% else %}Сохранить и открыть генератор{% endif %}</span>
+                    </button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-6 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer flex items-center gap-2" data-after="list">
+                        <i class="ph-bold ph-check text-sm"></i>
+                        <span>{% if is_new %}Создать шаблон{% else %}Сохранить шаблон{% endif %}</span>
+                    </button>
+                </div>
+            {% endif %}
+        </form>
+
+    </div>
+</main>
+
 <script>
     {% if not (is_new and (mode or '') == 'manual') %}
     document.getElementById('templateForm').addEventListener('submit', async function(e) {
@@ -153,11 +161,12 @@
         const method = 'POST';
 
         try {
+            const metaCsrf = document.querySelector('meta[name="csrf-token"]');
             const response = await fetch(url, {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': metaCsrf ? metaCsrf.content : ''
                 },
                 body: JSON.stringify(formData)
             });
@@ -165,7 +174,6 @@
             const data = await response.json();
             
             if (data.success) {
-                toast.success('{% if is_new %}Шаблон создан{% else %}Шаблон сохранен{% endif %}');
                 const templateId = data.template_id || {{ template.template_id if template else 'null' }};
                 if (after === 'generator' && templateId) {
                     const params = new URLSearchParams();
@@ -175,21 +183,21 @@
                     return;
                 }
                 setTimeout(() => {
-                    window.location.href = '{% if is_new %}{{ url_for('templates.templates_list') }}{% else %}{{ url_for('templates.template_view', template_id=template.template_id) }}{% endif %}';
-                }, 800);
+                    window.location.href = '{{ url_for('main.teacher_templates_library') }}';
+                }, 400);
             } else {
-                toast.error(data.error || 'Ошибка при сохранении');
+                alert(data.error || 'Ошибка при сохранении');
             }
         } catch (error) {
             console.error('Ошибка:', error);
-            toast.error('Ошибка при сохранении шаблона');
+            alert('Ошибка при сохранении шаблона');
         }
     });
     {% else %}
     async function saveManualTemplate() {
         const name = (document.getElementById('name') || {}).value ? document.getElementById('name').value.trim() : '';
         if (!name) {
-            toast.error('Введите название шаблона');
+            alert('Введите название шаблона');
             document.getElementById('name') && document.getElementById('name').focus();
             return;
         }
@@ -199,7 +207,7 @@
 
         const cards = document.querySelectorAll('.task-card-entry');
         if (!cards || cards.length === 0) {
-            toast.warning('Добавьте хотя бы одно задание');
+            alert('Добавьте хотя бы одно задание');
             return;
         }
 
@@ -210,45 +218,38 @@
             const content = (card.querySelector('.task-content-input') || {}).value || '';
             const answer = (card.querySelector('.task-answer-input') || {}).value || '';
             if (!content.trim()) {
-                try { card.querySelector('.task-content-input').style.borderColor = 'var(--danger-color)'; } catch (e) {}
+                try { card.querySelector('.task-content-input').style.borderColor = '#EF4444'; } catch (e) {}
                 hasError = true;
             } else {
                 tasks.push({ number: parseInt(number, 10) || 1, content, answer });
             }
         });
         if (hasError) {
-            toast.error('Заполните текст всех заданий');
+            alert('Заполните текст всех заданий');
             return;
         }
 
-        const loaderId = (window.loading && typeof loading.show === 'function') ? loading.show(document.body, 'Сохранение шаблона...') : null;
-        const csrfToken = document.querySelector('meta[name="csrf-token"]');
+        const metaCsrf = document.querySelector('meta[name="csrf-token"]');
         try {
             const res = await fetch('{{ url_for('templates.template_new') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken ? csrfToken.content : ''
+                    'X-CSRFToken': metaCsrf ? metaCsrf.content : ''
                 },
                 body: JSON.stringify({ name, description, template_type, category, tasks })
             });
             const data = await res.json();
             if (data && data.success) {
-                toast.success('Шаблон создан');
-                const tid = data.template_id;
                 setTimeout(() => {
-                    window.location.href = tid ? ('{{ url_for('templates.template_view', template_id=0) }}'.replace('/0', '/' + String(tid))) : '{{ url_for('templates.templates_list') }}';
-                }, 800);
+                    window.location.href = '{{ url_for('main.teacher_templates_library') }}';
+                }, 400);
             } else {
-                toast.error((data && data.error) ? data.error : 'Ошибка при сохранении');
+                alert((data && data.error) ? data.error : 'Ошибка при сохранении');
             }
         } catch (e) {
             console.error(e);
-            toast.error('Ошибка сети');
-        } finally {
-            if (loaderId && window.loading && typeof loading.hide === 'function') {
-                loading.hide(loaderId);
-            }
+            alert('Ошибка сети');
         }
     }
     {% endif %}

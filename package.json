@@ -1,7 +1,17 @@
 {
+  "scripts": {
+    "test:e2e": "npx playwright test",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:report": "npx playwright show-report",
+    "test:e2e:audit": "npx playwright test tests/e2e/release-audit.spec.ts --workers=1",
+    "test:e2e:audit:watch": "npx playwright test tests/e2e/release-audit.spec.ts --headed --project=desktop-chromium --workers=1"
+  },
   "dependencies": {
     "@types/uuid": "^10.0.0",
     "lucide-react": "^0.561.0",
     "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
   }
 }

@@ -73,11 +73,17 @@ def _external_base_url() -> str:
 
 
 def _lesson_room_url(lesson_id: int) -> str:
-    path = url_for('lessons.lesson_classwork_view', lesson_id=lesson_id)
+    try:
+        path = url_for('main.lesson_room', lesson_id=lesson_id)
+    except Exception:
+        path = f'/lesson_room/{lesson_id}'
     base = _external_base_url()
     if base:
         return base + path
-    return url_for('lessons.lesson_classwork_view', lesson_id=lesson_id, _external=True)
+    try:
+        return url_for('main.lesson_room', lesson_id=lesson_id, _external=True)
+    except Exception:
+        return f'/lesson_room/{lesson_id}'
 
 
 def _profile_unlink_hint_url() -> str:

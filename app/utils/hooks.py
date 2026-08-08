@@ -5,7 +5,7 @@ import logging
 import base64
 import urllib.parse
 from datetime import timedelta
-from flask import request, redirect, url_for, current_app, g, Response
+from flask import request, redirect, url_for, current_app, g, Response, render_template, jsonify
 from flask_login import current_user
 from sqlalchemy import text
 from datetime import datetime
@@ -501,6 +501,90 @@ def register_hooks(app):
         return None
 
     @app.before_request
+    def check_maintenance_mode():
+        """Проверка режима технических работ (Maintenance Mode V2)"""
+        try:
+            from core.db_models import SystemSetting
+            main_val = SystemSetting.get_value('maintenance_mode', 'false')
+            if main_val and main_val.lower() == 'true':
+                if (request.path.startswith('/static/') or 
+                    request.path in ['/maintenance', '/login', '/logout', '/ready', '/health'] or 
+                    request.path.startswith('/api/webhooks/') or
+                    request.path.startswith('/tma/') or
+                    request.path.startswith('/api/tma/') or
+                    request.path.startswith('/admin') or 
+                    request.path.startswith('/admin-') or
+                    request.endpoint in ['auth.login', 'auth.logout', 'admin.maintenance_page', 'static']):
+                    return None
+                
+                if current_user and current_user.is_authenticated:
+                    user_role = (getattr(current_user, 'role', '') or 'student').lower()
+                    if user_role in ['admin', 'creator', 'tester', 'content_maker', 'tutor', 'teacher']:
+                        return None
+                
+                return render_template('sandbox/maintenance.html')
+        except Exception as e:
+            logger.error(f"Error checking maintenance mode: {e}")
+        return None
+
+    @app.before_request
+    def check_preparation_mode():
+        """Проверка режима подготовки платформы (Preparation / Launch Mode)"""
+        try:
+            from core.db_models import SystemSetting
+            prep_val = SystemSetting.get_value('preparation_mode_enabled', 'false')
+            if prep_val and prep_val.lower() == 'true':
+                # Разрешенные публичные / аутентификационные путь и эндпоинты
+                allowed_paths = (
+                    '/preparation', '/login', '/logout', '/register', '/maintenance', '/ready', '/health',
+                    '/favicon.ico', '/debug/last-email', '/forgot-password', '/reset-password-confirm'
+                )
+                if (request.path.startswith('/static/') or 
+                    request.path.startswith('/font/') or
+                    request.path.startswith('/register/') or
+                    request.path.startswith('/invite/') or
+                    request.path.startswith('/api/webhooks/') or
+                    request.path.startswith('/tma/') or
+                    request.path.startswith('/api/tma/') or
+                    request.path.startswith('/admin') or
+                    request.path.startswith('/admin-') or
+                    request.path in allowed_paths or
+                    request.endpoint in ['auth.login', 'auth.logout', 'auth.register', 
+                                        'auth.register_student_invite', 'auth.register_parent_invite',
+                                        'main.preparation_mode_page', 'static', 'main.favicon']):
+                    return None
+
+                # Преподаватели, администраторы, создатели и тьюторы работают БЕЗ ограничений
+                if current_user and current_user.is_authenticated:
+                    user_role = (getattr(current_user, 'role', '') or 'student').lower()
+                    if (user_role in ['admin', 'creator', 'tester', 'content_maker', 'tutor', 'teacher', 'chief_admin', 'chief_tester', 'designer'] or
+                        (hasattr(current_user, 'is_tutor') and current_user.is_tutor()) or
+                        (hasattr(current_user, 'is_creator') and current_user.is_creator())):
+                        return None
+
+                    # Для зарегистрированных учеников/родителей — доступ к просмотру своего профиля и выходу
+                    if request.path in ['/profile', '/user/profile/update'] or request.endpoint == 'main.universal_profile_view':
+                        return None
+
+                    # Если это AJAX/API запрос от ученика/родителя — возврат 403 JSON
+                    is_json = (request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+                               request.is_json or
+                               'application/json' in (request.headers.get('Accept') or '').lower() or
+                               request.path.startswith('/api/'))
+                    if is_json:
+                        return jsonify({
+                            'status': 'error',
+                            'preparation_mode': True,
+                            'message': 'Платформа находится в режиме финальной настройки. Зайдите позже.'
+                        }), 403
+
+                    # Обычные переходы в веб-интерфейсе -> Редирект на красивую заглушку /preparation
+                    return redirect(url_for('main.preparation_mode_page'))
+        except Exception as e:
+            logger.error(f"Error checking preparation mode: {e}")
+        return None
+
+    @app.before_request
     def require_login():
         """Проверка авторизации для всех маршрутов кроме login, logout и static"""
         if request.path.startswith('/remote-admin/'):
@@ -515,11 +599,16 @@ def register_hooks(app):
         if is_demo and request.path in ('/demo', '/demo/start'):
             return
 
-        excluded_endpoints = ('auth.login', 'auth.logout', 'auth.register', 'auth.forgot_password', 'auth.reset_password_confirm', 'auth.debug_last_email', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.readiness_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
-        excluded_paths = ('/', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public', '/favicon.ico', '/ready', '/register', '/forgot-password', '/reset-password-confirm', '/debug/last-email')
+        if request.path.startswith('/sandbox/') or request.path == '/sandbox' or request.path.startswith('/sandbox_reference/') or request.path == '/sandbox_reference' or request.path.startswith('/u/') or request.path.startswith('/profile') or request.path.startswith('/mentor/') or request.path.startswith('/teacher/'):
+            return
+
+        excluded_endpoints = ('auth.login', 'auth.logout', 'auth.register', 'auth.register_student_invite', 'auth.register_parent_invite', 'auth.forgot_password', 'auth.reset_password_confirm', 'auth.debug_last_email', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.readiness_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
+        excluded_paths = ('/', '/api/qa/desktop-report', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public', '/favicon.ico', '/register', '/forgot-password', '/reset-password-confirm', '/debug/last-email')
         
         if (request.endpoint in excluded_endpoints or 
             request.path in excluded_paths or 
+            request.path.startswith('/register/') or
+            request.path.startswith('/invite/') or
             request.path.startswith('/static/') or 
             request.path.startswith('/font/')):
             return
@@ -542,11 +631,11 @@ def register_hooks(app):
             return
 
         # Telegram Bot API webhook: POST от серверов Telegram без сессии пользователя
-        if request.path.startswith('/webhook/'):
+        if request.path.startswith('/webhook/') or request.path.startswith('/api/webhooks/'):
             return
 
         # Telegram Mini App: HTML + JSON API; доступ по initData (HMAC), не по Flask-login
-        if request.path.startswith('/tg-app/'):
+        if request.path.startswith('/tg-app/') or request.path.startswith('/tma/') or request.path.startswith('/api/tma/'):
             return
         
         # Public uploaded media must stay accessible without a session.

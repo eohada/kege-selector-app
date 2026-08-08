@@ -26,7 +26,7 @@
     {# === РОЛЬ: УЧЕНИК === #}
     {% elif current_user.is_student() %}
         {% if current_student %}
-            <a {{ spa_main_nav_attrs(url_for('main.student_dashboard'), 'student_dashboard') }} class="mobile-tab {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('main.dashboard'), 'student_dashboard') }} class="mobile-tab {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
                 <i class="ph-bold ph-house"></i>
                 <span>Главная</span>
             </a>

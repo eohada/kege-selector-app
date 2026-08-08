@@ -1,0 +1,142 @@
+{% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or session.get('impersonator_id')) %}
+<!-- BENTO MODAL FOR QUICK IMPERSONATION (Alt + I) -->
+<div id="impersonation-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[10000] flex items-center justify-center hidden p-4">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+        
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center font-black text-xl">
+                    <i class="ph-bold ph-user-switch"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-slate-900 font-display">Быстрый Вход под Профилем (Alt + I)</h3>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Выберите профиль для мгновенного входа</p>
+                </div>
+            </div>
+            <button onclick="toggleImpersonationModal()" type="button" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center cursor-pointer border-0">
+                &times;
+            </button>
+        </div>
+
+        {% if session.get('impersonator_id') %}
+        <!-- ACTIVE IMPERSONATION EXIT BAR -->
+        <div class="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl flex items-center justify-between gap-3">
+            <span class="text-xs font-bold text-amber-900 flex items-center gap-2">
+                <i class="ph-bold ph-warning text-lg text-amber-600"></i>
+                Вы находитесь в аккаунте: <strong>{{ current_user.username }}</strong> ({{ current_user.role }})
+            </span>
+            <a href="/admin/impersonate/exit" class="btn-3d px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl border-b-[3px] border-slate-950 no-underline cursor-pointer border-0">
+                ❌ Выйти из имперсонации (Alt+I)
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- CLEAN ACCOUNTS LIST BY ROLE -->
+        <div class="space-y-4">
+            <!-- TESTERS -->
+            <div class="space-y-2">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider block">🛡️ Тестировщики (TESTER)</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <a href="/admin/impersonate/tester_1" class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-emerald-700 transition-all no-underline block">
+                        🎭 tester_1
+                    </a>
+                    <a href="/admin/impersonate/tester_2" class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-emerald-700 transition-all no-underline block">
+                        🎭 tester_2
+                    </a>
+                    <a href="/admin/impersonate/tester_3" class="p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-emerald-700 transition-all no-underline block">
+                        🎭 tester_3
+                    </a>
+                </div>
+            </div>
+
+            <!-- TEACHERS -->
+            <div class="space-y-2">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider block">👨‍🏫 Преподаватели (TEACHER)</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <a href="/admin/impersonate/teacher_1" class="p-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-indigo-700 transition-all no-underline block">
+                        🎭 teacher_1
+                    </a>
+                    <a href="/admin/impersonate/teacher_2" class="p-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-indigo-700 transition-all no-underline block">
+                        🎭 teacher_2
+                    </a>
+                    <a href="/admin/impersonate/teacher_3" class="p-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-indigo-700 transition-all no-underline block">
+                        🎭 teacher_3
+                    </a>
+                </div>
+            </div>
+
+            <!-- STUDENTS -->
+            <div class="space-y-2">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider block">🎓 Ученики (STUDENT)</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <a href="/admin/impersonate/student_1" class="p-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-blue-700 transition-all no-underline block">
+                        🎭 student_1
+                    </a>
+                    <a href="/admin/impersonate/student_2" class="p-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-blue-700 transition-all no-underline block">
+                        🎭 student_2
+                    </a>
+                    <a href="/admin/impersonate/student_3" class="p-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-blue-700 transition-all no-underline block">
+                        🎭 student_3
+                    </a>
+                </div>
+            </div>
+
+            <!-- PARENTS -->
+            <div class="space-y-2">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider block">👨‍👩‍👧 Родители (PARENT)</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <a href="/admin/impersonate/parent_1" class="p-3 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-amber-700 transition-all no-underline block">
+                        🎭 parent_1
+                    </a>
+                    <a href="/admin/impersonate/parent_2" class="p-3 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-amber-700 transition-all no-underline block">
+                        🎭 parent_2
+                    </a>
+                    <a href="/admin/impersonate/parent_3" class="p-3 bg-slate-50 hover:bg-amber-50 border border-slate-200 hover:border-amber-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-amber-700 transition-all no-underline block">
+                        🎭 parent_3
+                    </a>
+                </div>
+            </div>
+
+            <!-- ADMINS -->
+            <div class="space-y-2">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider block">👑 Администраторы (ADMIN)</span>
+                <div class="grid grid-cols-3 gap-2">
+                    <a href="/admin/impersonate/admin_1" class="p-3 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-rose-700 transition-all no-underline block">
+                        🎭 admin_1
+                    </a>
+                    <a href="/admin/impersonate/admin_2" class="p-3 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-rose-700 transition-all no-underline block">
+                        🎭 admin_2
+                    </a>
+                    <a href="/admin/impersonate/admin_3" class="p-3 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 rounded-xl text-center font-bold text-xs text-slate-800 hover:text-rose-700 transition-all no-underline block">
+                        🎭 admin_3
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function toggleImpersonationModal() {
+    const modal = document.getElementById('impersonation-modal');
+    if (modal) {
+        modal.classList.toggle('hidden');
+    }
+}
+
+(function initAltIShortcut() {
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && (e.key === 'i' || e.key === 'I' || e.key === 'ш' || e.key === 'Ш' || e.code === 'KeyI')) {
+            e.preventDefault();
+            const isImpersonating = {{ 'true' if session.get('impersonator_id') else 'false' }};
+            if (isImpersonating) {
+                window.location.href = '/admin/impersonate/exit';
+            } else {
+                toggleImpersonationModal();
+            }
+        }
+    });
+})();
+</script>
+{% endif %}

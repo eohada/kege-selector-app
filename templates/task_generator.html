@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "sandbox/layout_teacher.html" %}
 {% set active_page = 'generator' %}
 {% block title %}Генератор КЕГЭ{% endblock %}
 
@@ -132,7 +132,9 @@
 {% set gen_select_class = 'w-full bg-slate-50 dark:bg-dark-inner border border-slate-200 dark:border-dark-light rounded-xl pl-4 pr-10 py-3.5 font-bold text-slate-800 dark:text-white text-sm focus:outline-none focus:border-boo-primary shadow-inset-0-2px-4px-rgba0-0-0-002 dark:shadow-none appearance-none cursor-pointer' %}
 {% set gen_ref_select_wrap = 'relative' %}
 
-{% block content %}
+{% block sandbox_content %}
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+<div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-200/60 my-4 relative flex flex-col min-h-[calc(100vh-4rem)]">
 {% set is_homework = (assignment_type == 'homework') %}
 {% set is_classwork = (assignment_type == 'classwork') %}
 {% set is_exam = (assignment_type == 'exam') %}
@@ -569,6 +571,8 @@
         {% include '_task_generator_bank_panel.html' %}
     </div>
 </div>
+</div>
+</main>
 {% endblock %}
 
 {% block scripts_extra %}

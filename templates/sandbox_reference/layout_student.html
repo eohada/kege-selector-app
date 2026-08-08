@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BooStudy | Ученик (Student Workspace)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              boo: {
+                primary: '#4f46e5',
+                accent: '#F97316',
+                bgCanvas: '#F8FAFC',
+                bgPlate: '#FFFFFF',
+                bgCard: '#F4F7FA',
+              }
+            },
+            fontFamily: {
+                sans: ['Inter', 'system-ui', 'sans-serif'],
+                display: ['Golos Text', 'system-ui', 'sans-serif'], 
+            }
+          }
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body {
+            background-color: #F8FAFC;
+            color: #0f172a;
+            font-family: 'Inter', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, .font-display {
+            font-family: 'Golos Text', 'Inter', system-ui, sans-serif;
+        }
+
+        .btn-3d {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .btn-3d:active {
+            transform: translateY(4px);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;  
+            scrollbar-width: none;  
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-[#F8FAFC]">
+    {% block sandbox_sidebar %}
+    <!-- Student Centralized Vertical Sidebar Dock -->
+    <nav class="fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex flex-col items-center py-6 shrink-0 z-50">
+        <!-- Logo -->
+        <a href="/sandbox/student_dashboard" class="w-12 h-12 rounded-[1rem] bg-indigo-600 shadow-[0_4px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-8 cursor-pointer hover:-translate-y-1 active:translate-y-[3px] active:shadow-none transition-all" title="Дашборд ученика">
+            <i class="ph-bold ph-graduation-cap text-2xl"></i>
+        </a>
+
+        <!-- Dock Items for Student -->
+        <div class="flex flex-col gap-3 flex-1 w-full px-3">
+            
+            <!-- 1. Главная -->
+            <a href="/sandbox/student_dashboard" class="w-full aspect-square rounded-[1rem] {% if request.path == '/sandbox/student_dashboard' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏠 Главная">
+                <i class="ph-bold ph-house text-xl"></i>
+                {% if request.path == '/sandbox/student_dashboard' %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 2. Мои задания -->
+            <a href="/submissions" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/submissions', '/sandbox/task_detail', '/sandbox/workspace'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📝 Мои задания">
+                <i class="ph-bold ph-books text-xl"></i>
+                {% if request.path in ['/submissions', '/sandbox/task_detail', '/sandbox/workspace'] %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 3. Теория & База знаний -->
+            <a href="/sandbox/theory" class="w-full aspect-square rounded-[1rem] {% if request.path == '/sandbox/theory' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📖 Теория">
+                <i class="ph-bold ph-book-open text-xl"></i>
+                {% if request.path == '/sandbox/theory' %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 4. Тренажёр -->
+            <a href="/sandbox/trainer" class="w-full aspect-square rounded-[1rem] {% if request.path == '/sandbox/trainer' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="⚡ Тренажёр">
+                <i class="ph-bold ph-lightning text-xl"></i>
+                {% if request.path == '/sandbox/trainer' %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+            <!-- 4. Расписание -->
+            <a href="/sandbox/schedule" class="w-full aspect-square rounded-[1rem] {% if '/sandbox/schedule' in request.path %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📅 Расписание">
+                <i class="ph-bold ph-calendar-blank text-xl"></i>
+                {% if '/sandbox/schedule' in request.path %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
+        </div>
+
+        <!-- Student Profile Link -->
+        <div class="mt-auto w-full px-3">
+            <a href="/sandbox/profile" class="w-full aspect-square rounded-[1rem] {% if request.path == '/sandbox/profile' %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль ученика">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=QAStudent&backgroundColor=e0f2fe" class="w-full h-full object-cover">
+                <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+            </a>
+        </div>
+    </nav>
+    {% endblock %}
+
+    {% block sandbox_content %}{% endblock %}
+
+    <!-- Floating Dev-Switcher (Switch to Teacher View) -->
+    <a href="/sandbox/students" class="fixed bottom-6 right-6 z-[100] bg-slate-900/90 hover:bg-slate-900 text-white border border-slate-700 shadow-xl rounded-full px-4 py-2.5 text-xs font-black opacity-60 hover:opacity-100 transition-all flex items-center gap-2 backdrop-blur-md cursor-pointer no-underline group" title="Переключить на вид Преподавателя">
+        <i class="ph-bold ph-eye text-indigo-400 text-sm group-hover:scale-110 transition-transform"></i>
+        <span>👁️ Режим Препода</span>
+    </a>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll("nav a[href]");
+        navLinks.forEach(link => {
+          const href = link.getAttribute("href");
+          if (!href || href === "#") return;
+          const linkPath = href.split('?')[0];
+
+          if (linkPath === currentPath) {
+            link.classList.remove("text-slate-400", "hover:bg-slate-100", "bg-transparent");
+            link.classList.add("bg-indigo-50", "text-indigo-600", "border", "border-indigo-200/60", "shadow-sm", "relative");
+            if (!link.querySelector('.bg-indigo-500')) {
+              const indicator = document.createElement('div');
+              indicator.className = 'absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]';
+              link.appendChild(indicator);
+            }
+          }
+        });
+      });
+    </script>
+</body>
+</html>

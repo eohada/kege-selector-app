@@ -1,0 +1,416 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<style>
+    .seg-btn.active {
+        background-color: #FFFFFF;
+        color: #0F172A;
+        font-weight: 800;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] shadow-sm border border-slate-200/60 p-8 sm:p-10 my-4 relative">
+            
+            <!-- HEADER & QUICK ACTIONS -->
+            <div class="mb-8 pb-6 border-b border-slate-100">
+                <!-- Back Link -->
+                <a href="/sandbox/assignments" class="text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1.5 no-underline mb-3 transition-colors inline-block">
+                    <i class="ph-bold ph-arrow-left text-sm"></i>
+                    <span>Назад к списку работ</span>
+                </a>
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                                КЕГЭ ИНФОРМАТИКА
+                            </span>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                                АКТИВНАЯ
+                            </span>
+                        </div>
+                        <h1 class="text-3xl font-display font-black text-slate-900 tracking-tight">ДЗ №14: Рекурсия и динамическое программирование</h1>
+                    </div>
+
+                    <!-- Quick Action Buttons -->
+                    <div class="flex items-center gap-3 shrink-0">
+                        <button class="bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] shadow-2xs flex items-center gap-2 transition-all cursor-pointer">
+                            <i class="ph-bold ph-copy text-base"></i>
+                            <span>Дублировать</span>
+                        </button>
+                        <button class="bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-xs px-4 py-2.5 rounded-xl border border-rose-200 border-b-[3px] shadow-2xs flex items-center gap-2 transition-all cursor-pointer">
+                            <i class="ph-bold ph-archive text-base"></i>
+                            <span>В архив</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOCK 1: STATS & PROGRESS (No giant solid color boxes) -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between gap-4 mb-3">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <i class="ph-bold ph-chart-bar text-indigo-500"></i> СТАТИСТИКА СДАЧ
+                    </span>
+                    <span class="text-xs font-black text-indigo-600">35 из 37 учеников сдали (94%)</span>
+                </div>
+
+                <!-- Concave Progress Bar (UI Canon) -->
+                <div class="w-full bg-slate-200 rounded-full h-3.5 border border-slate-300 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] relative mb-5">
+                    <div class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="width: 94%;"></div>
+                </div>
+
+                <!-- Compact Stat Cards Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 p-4 rounded-2xl flex items-center justify-between shadow-2xs">
+                        <div>
+                            <span class="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider block">Нужно проверить</span>
+                            <span class="text-2xl font-black text-slate-900 mt-0.5 block">3</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 font-black flex items-center justify-center text-sm border border-amber-200">
+                            ⏳
+                        </div>
+                    </div>
+
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 p-4 rounded-2xl flex items-center justify-between shadow-2xs">
+                        <div>
+                            <span class="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider block">В процессе</span>
+                            <span class="text-2xl font-black text-slate-900 mt-0.5 block">12</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 font-black flex items-center justify-center text-sm border border-blue-200">
+                            ✏️
+                        </div>
+                    </div>
+
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 p-4 rounded-2xl flex items-center justify-between shadow-2xs">
+                        <div>
+                            <span class="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider block">Просрочено</span>
+                            <span class="text-2xl font-black text-rose-700 mt-0.5 block">2</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 font-black flex items-center justify-center text-sm border border-rose-200">
+                            ⚠️
+                        </div>
+                    </div>
+
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 p-4 rounded-2xl flex items-center justify-between shadow-2xs">
+                        <div>
+                            <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block">Сдано вовремя</span>
+                            <span class="text-2xl font-black text-slate-900 mt-0.5 block">18</span>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 font-black flex items-center justify-center text-sm border border-emerald-200">
+                            ✓
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOCK 2: CORE SETTINGS (TACTILE 3D CARD) -->
+            <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 mb-8">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+                    <div>
+                        <span class="text-slate-400 text-[11px] font-extrabold tracking-wider uppercase">ПАРАМЕТРЫ РАБОТЫ</span>
+                        <h2 class="text-xl font-black text-slate-900 mt-0.5">Основные настройки</h2>
+                    </div>
+                    <i class="ph-bold ph-gear text-indigo-600 text-2xl"></i>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Column 1 & 2: Inputs Grid -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Название работы</label>
+                            <input type="text" value="ДЗ №14: Рекурсия и динамическое программирование" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3.5 font-extrabold text-slate-800 text-sm focus:border-indigo-400 focus:outline-none shadow-2xs">
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Дедлайн сдачи</label>
+                                <input type="datetime-local" value="2026-07-28T23:59" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3.5 font-extrabold text-slate-800 text-sm focus:border-indigo-400 focus:outline-none shadow-2xs">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Ограничение времени (мин)</label>
+                                <input type="number" value="90" placeholder="Без ограничений" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3.5 font-extrabold text-slate-800 text-sm focus:border-indigo-400 focus:outline-none shadow-2xs">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Макс. попыток сдачи</label>
+                                <select class="w-full bg-white border-2 border-slate-200 rounded-xl p-3.5 font-extrabold text-slate-800 text-sm focus:border-indigo-400 focus:outline-none shadow-2xs">
+                                    <option selected>1 попытка</option>
+                                    <option>2 попытки</option>
+                                    <option>3 попытки</option>
+                                    <option>Без ограничений</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1.5">Категория курса</label>
+                                <select class="w-full bg-white border-2 border-slate-200 rounded-xl p-3.5 font-extrabold text-slate-800 text-sm focus:border-indigo-400 focus:outline-none shadow-2xs">
+                                    <option selected>ЕГЭ Информатика</option>
+                                    <option>ОГЭ Математика</option>
+                                    <option>Вводный курс</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 3: Checkboxes Panel -->
+                    <div class="bg-white border-2 border-slate-200 rounded-2xl p-5 space-y-4 shadow-2xs flex flex-col justify-between">
+                        <div class="space-y-3.5">
+                            <span class="text-[11px] font-black text-slate-400 uppercase tracking-widest block">Правила проверки</span>
+                            
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" checked class="w-4 h-4 mt-0.5 accent-indigo-600 rounded">
+                                <span class="text-xs font-bold text-slate-800">Запретить сдачу после дедлайна</span>
+                            </label>
+
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" checked class="w-4 h-4 mt-0.5 accent-indigo-600 rounded">
+                                <span class="text-xs font-bold text-slate-800">Автопроверка тестовых ответов</span>
+                            </label>
+
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" checked class="w-4 h-4 mt-0.5 accent-indigo-600 rounded">
+                                <span class="text-xs font-bold text-slate-800">Показывать разбор после сдачи</span>
+                            </label>
+
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" class="w-4 h-4 mt-0.5 accent-indigo-600 rounded">
+                                <span class="text-xs font-bold text-slate-800">Перемешивать варианты заданий</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BLOCK 3: ASSIGNMENT TASKS (TACTILE 3D CARD) -->
+            <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 mb-8">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+                    <div>
+                        <span class="text-slate-400 text-[11px] font-extrabold tracking-wider uppercase">СОСТАВ РАБОТЫ</span>
+                        <h2 class="text-xl font-black text-slate-900 mt-0.5">Задания и эталонные ответы (5 заданий)</h2>
+                    </div>
+                    <button class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 font-black text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2">
+                        <i class="ph-bold ph-plus text-sm"></i>
+                        <span>Добавить задание</span>
+                    </button>
+                </div>
+
+                <!-- Tasks List -->
+                <div class="space-y-3">
+                    <!-- Task 1 -->
+                    <div class="bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 font-black text-xs flex items-center justify-center shrink-0">1</span>
+                            <div>
+                                <h4 class="font-black text-slate-900 text-sm">Задание №14 (КЕГЭ №10452)</h4>
+                                <p class="text-xs font-bold text-slate-400">Рекурсивный алгоритм вычисления функции F(n)</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <div class="w-24 shrink-0">
+                                <label class="block text-[10px] font-extrabold text-slate-400 mb-1">Балл</label>
+                                <input type="number" value="1" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 focus:outline-none">
+                            </div>
+
+                            <div class="flex-1 md:w-64">
+                                <label class="block text-[10px] font-extrabold text-slate-400 mb-1">Эталонный ответ</label>
+                                <input type="text" value="4096" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 focus:outline-none">
+                            </div>
+
+                            <button class="p-2 text-slate-400 hover:text-rose-600 rounded-xl transition-colors cursor-pointer mt-4" title="Удалить задание">
+                                <i class="ph-bold ph-x text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Task 2 -->
+                    <div class="bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 font-black text-xs flex items-center justify-center shrink-0">2</span>
+                            <div>
+                                <h4 class="font-black text-slate-900 text-sm">Задание №14 (КЕГЭ №10453)</h4>
+                                <p class="text-xs font-bold text-slate-400">Динамическое программирование, подсчет путей</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <div class="w-24 shrink-0">
+                                <label class="block text-[10px] font-extrabold text-slate-400 mb-1">Балл</label>
+                                <input type="number" value="1" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 focus:outline-none">
+                            </div>
+
+                            <div class="flex-1 md:w-64">
+                                <label class="block text-[10px] font-extrabold text-slate-400 mb-1">Эталонный ответ</label>
+                                <input type="text" value="128" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 focus:outline-none">
+                            </div>
+
+                            <button class="p-2 text-slate-400 hover:text-rose-600 rounded-xl transition-colors cursor-pointer mt-4" title="Удалить задание">
+                                <i class="ph-bold ph-x text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Task 3 -->
+                    <div class="bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-800 font-black text-xs flex items-center justify-center shrink-0">3</span>
+                            <div>
+                                <h4 class="font-black text-slate-900 text-sm">Задание №14 (КЕГЭ №10454)</h4>
+                                <p class="text-xs font-bold text-slate-400">Поиск кратчайшего пути с ограничениями</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 w-full md:w-auto">
+                            <div class="w-24 shrink-0">
+                                <label class="block text-[10px] font-extrabold text-slate-400 mb-1">Балл</label>
+                                <input type="number" value="2" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 focus:outline-none">
+                            </div>
+
+                            <div class="flex-1 md:w-64">
+                                <label class="block text-[10px] font-extrabold text-slate-400 mb-1">Эталонный ответ</label>
+                                <input type="text" value="340" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 focus:outline-none">
+                            </div>
+
+                            <button class="p-2 text-slate-400 hover:text-rose-600 rounded-xl transition-colors cursor-pointer mt-4" title="Удалить задание">
+                                <i class="ph-bold ph-x text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BLOCK 4: SUBMISSIONS QUEUE (STUDENTS TABLE IN TACTILE 3D CARD) -->
+            <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 mb-8">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+                    <div>
+                        <span class="text-slate-400 text-[11px] font-extrabold tracking-wider uppercase">ОЧЕРЕДЬ ПРОВЕРКИ</span>
+                        <h2 class="text-xl font-black text-slate-900 mt-0.5">Сдачи учеников (37 назначено)</h2>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <a href="/sandbox/mentor_task_check" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-4 py-2.5 rounded-xl border border-emerald-700 border-b-[3px] shadow-2xs active:border-b-[1px] active:translate-y-[2px] transition-all no-underline inline-flex items-center gap-2">
+                            <i class="ph-bold ph-check-square text-base"></i>
+                            <span>Проверить работу</span>
+                        </a>
+
+                        <!-- Search input inside roster -->
+                        <div class="relative w-56">
+                            <input type="text" placeholder="Поиск ученика..." class="w-full bg-white border-2 border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-400">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Students Roster Table -->
+                <div class="overflow-x-auto border-2 border-slate-200 rounded-2xl bg-white shadow-2xs">
+                    <table class="min-w-full text-xs">
+                        <thead class="bg-slate-100 border-b border-slate-200">
+                            <tr>
+                                <th class="text-left px-4 py-3 font-black text-slate-900">Ученик</th>
+                                <th class="text-left px-4 py-3 font-black text-slate-900">Статус</th>
+                                <th class="text-left px-4 py-3 font-black text-slate-900">Время сдачи</th>
+                                <th class="text-left px-4 py-3 font-black text-slate-900">Результат</th>
+                                <th class="text-right px-4 py-3 font-black text-slate-900">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <!-- Student Row 1 (Needs Review) -->
+                            <tr>
+                                <td class="px-4 py-3.5 font-bold text-slate-900 flex items-center gap-3">
+                                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=MishaDemo&backgroundColor=d1d4f9" class="w-9 h-9 rounded-xl border border-slate-200 object-cover">
+                                    <div>
+                                        <div class="font-extrabold text-slate-900 text-sm">Михаил Волков</div>
+                                        <div class="text-[10px] font-bold text-indigo-600">ID: ST-104</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3.5">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                                        <span class="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></span>
+                                        На проверке
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3.5 font-bold text-slate-600">Сегодня, 11:20 (20 мин назад)</td>
+                                <td class="px-4 py-3.5 font-black text-indigo-600 text-sm">4 / 5 баллов</td>
+                                <td class="px-4 py-3.5 text-right">
+                                    <a href="/sandbox/mentor_task_check" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2 rounded-xl border border-indigo-700 border-b-[3px] shadow-2xs active:border-b-[1px] active:translate-y-[2px] transition-all no-underline inline-flex items-center gap-1.5">
+                                        <span>Проверить</span>
+                                        <i class="ph-bold ph-arrow-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+
+                            <!-- Student Row 2 (Overdue) -->
+                            <tr>
+                                <td class="px-4 py-3.5 font-bold text-slate-900 flex items-center gap-3">
+                                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=AlexSmirnov&backgroundColor=c0aede" class="w-9 h-9 rounded-xl border border-slate-200 object-cover">
+                                    <div>
+                                        <div class="font-extrabold text-slate-900 text-sm">Александр Смирнов</div>
+                                        <div class="text-[10px] font-bold text-indigo-600">ID: ST-101</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3.5">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                                        Просрочено
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3.5 font-bold text-slate-400">Не сдано</td>
+                                <td class="px-4 py-3.5 font-bold text-slate-400">—</td>
+                                <td class="px-4 py-3.5 text-right">
+                                    <a href="/sandbox/student_dashboard" class="bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-4 py-2 rounded-xl border border-slate-200 border-b-[3px] shadow-2xs transition-all no-underline inline-flex items-center gap-1.5">
+                                        <span>Напомнить</span>
+                                    </a>
+                                </td>
+                            </tr>
+
+                            <!-- Student Row 3 (Checked) -->
+                            <tr>
+                                <td class="px-4 py-3.5 font-bold text-slate-900 flex items-center gap-3">
+                                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=SofiaKuz&backgroundColor=ffd5dc" class="w-9 h-9 rounded-xl border border-slate-200 object-cover">
+                                    <div>
+                                        <div class="font-extrabold text-slate-900 text-sm">София Кузнецова</div>
+                                        <div class="text-[10px] font-bold text-indigo-600">ID: ST-109</div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3.5">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                                        Проверено
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3.5 font-bold text-slate-600">Вчера, 18:45</td>
+                                <td class="px-4 py-3.5 font-black text-emerald-600 text-sm">5 / 5 баллов (100%)</td>
+                                <td class="px-4 py-3.5 text-right">
+                                    <a href="/sandbox/mentor_task_check" class="bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-4 py-2 rounded-xl border border-slate-200 border-b-[3px] shadow-2xs transition-all no-underline inline-flex items-center gap-1.5">
+                                        <span>Просмотр</span>
+                                    </a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- BLOCK 5: FLOATING STICKY FOOTER (UI CANON 3D SAVE BUTTON) -->
+            <div class="sticky bottom-4 bg-white/90 backdrop-blur-md border-2 border-slate-200 rounded-2xl p-4 flex justify-between items-center shadow-lg z-30">
+                <div class="flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-xs font-extrabold text-slate-700">Параметры работы готовы к сохранению</span>
+                </div>
+
+                <!-- Canonical 3D Save Button (STRICTLY FROM UI CANON) -->
+                <button class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm px-8 py-3.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center gap-2 cursor-pointer w-auto">
+                    <i class="ph-bold ph-floppy-disk text-base"></i>
+                    <span>Сохранить параметры работы</span>
+                </button>
+            </div>
+
+        </div>
+    </main>
+{% endblock %}

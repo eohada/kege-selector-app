@@ -1,0 +1,117 @@
+{% extends layout_template %}
+
+{% block sandbox_content %}
+<div class="w-full max-w-[1400px] mx-auto px-4 py-6 space-y-6">
+    
+    <!-- 1. УПР УГИЙ И ЕДИНООБРАЗНЫЙ БАННЕР ШАПКИ ПРОФИЛЯ -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-2 border-slate-800 rounded-[2rem] p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+        
+        <!-- Левая часть: Аватар и Инфо -->
+        <div class="flex items-center gap-5">
+            <div class="w-16 h-16 rounded-2xl bg-indigo-600 border-2 border-indigo-400 flex items-center justify-center font-black text-2xl text-white shadow-md shrink-0">
+                {{ target_user.username[0]|upper }}
+            </div>
+            <div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h1 class="text-2xl font-black font-display text-white mb-0">
+                        {{ target_user.full_name or target_user.username }}
+                    </h1>
+                    <span class="px-3 py-0.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 font-black text-xs uppercase rounded-full">
+                        {{ target_user.role }}
+                    </span>
+                </div>
+                <p class="text-slate-400 text-xs font-bold mt-1 mb-0">
+                    ID: {{ target_user.id }} • {{ target_user.email or 'Без email' }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Правая часть: Кнопки действий (Без кнопки Пул Аккаунтов) -->
+        <div class="flex items-center gap-3">
+            {% if current_user is defined and current_user and current_user.is_authenticated and (current_user.role|upper in ['CREATOR', 'ADMIN'] or current_user.is_admin() or current_user.is_creator()) %}
+            <a href="/admin/users" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase rounded-xl border-b-2 border-rose-800 shadow-md transition-all flex items-center gap-2 no-underline">
+                <i class="ph-bold ph-shield-check text-base"></i> Панель управления
+            </a>
+            {% endif %}
+            {% if is_owner %}
+            <button onclick="openEditProfileModal()" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/10 transition-all border-0 cursor-pointer flex items-center gap-2">
+                <i class="ph-bold ph-pencil-simple text-base"></i> Редактировать профиль
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 2. МОДУЛЬНАЯ ROLE-SPECIFIC BENTO 3D СЕТКА -->
+    <div class="w-full">
+        {% if target_role in ['tutor', 'teacher'] %}
+            {% include 'sandbox/profile/_teacher_body.html' %}
+        {% elif target_role == 'student' %}
+            {% include 'sandbox/profile/_student_body.html' %}
+        {% elif target_role == 'parent' %}
+            {% include 'sandbox/profile/_parent_body.html' %}
+        {% else %}
+            {% include 'sandbox/profile/_generic_body.html' %}
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- BENTO 3D EDIT PROFILE MODAL -->
+<div id="profile-edit-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all select-none">
+  <div id="profile-edit-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full max-w-lg p-6 sm:p-8 space-y-6 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
+    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xl shadow-xs">
+          <i class="ph-bold ph-user-gear"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-800 font-display mb-0">Редактирование профиля</h3>
+          <p class="text-xs font-medium text-slate-400 mb-0">Персональные данные и отображение</p>
+        </div>
+      </div>
+      <button onclick="closeProfileEditModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+
+    <form id="profile-edit-form" class="space-y-4">
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-600 block">Отображаемое имя (ФИО)</label>
+        <input type="text" name="full_name" value="{{ target_user.full_name or '' }}" placeholder="Иван Иванов" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-600 block">E-mail адрес</label>
+        <input type="email" name="email" value="{{ target_user.email or '' }}" placeholder="student@boostudy.ru" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+      </div>
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button type="button" onclick="closeProfileEditModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer">Отмена</button>
+        <button type="submit" id="save-profile-btn" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl border-b-2 border-indigo-800 border-0 uppercase tracking-wider cursor-pointer">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEditProfileModal() {
+  const modal = document.getElementById('profile-edit-modal');
+  const card = document.getElementById('profile-edit-card');
+  if (!modal || !card) return;
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+  }, 10);
+}
+
+function closeProfileEditModal() {
+  const modal = document.getElementById('profile-edit-modal');
+  const card = document.getElementById('profile-edit-card');
+  if (!modal || !card) return;
+  card.classList.remove('scale-100', 'opacity-100');
+  card.classList.add('scale-95', 'opacity-0');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+</script>
+{% endblock %}

@@ -70,10 +70,10 @@ def _build_request() -> HTTPXRequest:
     proxy = telegram_proxy_parts()
     kwargs = {
         'connection_pool_size': _env_int('TELEGRAM_HTTP_POOL_SIZE', 32),
-        'read_timeout': _env_float('TELEGRAM_HTTP_READ_TIMEOUT', 20.0),
-        'write_timeout': _env_float('TELEGRAM_HTTP_WRITE_TIMEOUT', 20.0),
-        'connect_timeout': _env_float('TELEGRAM_HTTP_CONNECT_TIMEOUT', 10.0),
-        'pool_timeout': _env_float('TELEGRAM_HTTP_POOL_TIMEOUT', 10.0),
+        'read_timeout': _env_float('TELEGRAM_HTTP_READ_TIMEOUT', 30.0),
+        'write_timeout': _env_float('TELEGRAM_HTTP_WRITE_TIMEOUT', 30.0),
+        'connect_timeout': _env_float('TELEGRAM_HTTP_CONNECT_TIMEOUT', 30.0),
+        'pool_timeout': _env_float('TELEGRAM_HTTP_POOL_TIMEOUT', 30.0),
         'media_write_timeout': _env_float('TELEGRAM_HTTP_MEDIA_WRITE_TIMEOUT', 60.0),
     }
     if proxy:

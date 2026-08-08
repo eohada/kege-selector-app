@@ -337,6 +337,22 @@
 
   function getActiveTaskContentRect() {
     let el = null;
+    
+    // Специальный блок для страницы Task Workspace
+    const workspaceShell = document.querySelector('.tw-shell');
+    if (workspaceShell && workspaceShell.dataset) {
+      el = document.querySelector('.tw-task-panel .tw-task-content');
+      if (el && el.getBoundingClientRect) {
+          const rect = el.getBoundingClientRect();
+          const left = rect.left + window.scrollX;
+          const top = rect.top + window.scrollY;
+          const width = Math.max(rect.width, 1);
+          const height = Math.max(rect.height, 1);
+          // В workspace у нас нет карточек задач, мы берем task_id из shell
+          return { left, top, width, height, task_id: workspaceShell.dataset.assignmentTaskId || taskId };
+      }
+    }
+
     const cardId = (document.body && document.body.dataset) ? document.body.dataset.canvasTaskCardId : null;
     if (cardId) {
       const card = document.getElementById(cardId);

@@ -1,0 +1,417 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<!-- Единый холст без внутренних оберток со скроллом (Canvas) -->
+<main class="min-h-screen w-full relative z-10 bg-slate-50/50 p-6 pl-[7.5rem] pb-16">
+  <div class="max-w-[1400px] mx-auto w-full space-y-6">
+    
+    <!-- 1. HERO & PROFILE HEADER (Шапка Эксперта / Преподавателя) -->
+    <div class="w-full bg-white border-2 border-slate-200/80 rounded-[2.5rem] p-3 shadow-sm relative overflow-hidden space-y-4">
+      
+      <!-- 1.1 Компактный тёмный баннер с неоновым подсветом и Glassmorphism кнопками -->
+      <div class="w-full h-48 sm:h-52 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-[2rem] relative overflow-hidden p-6 flex flex-col justify-between shadow-inner">
+        
+        <!-- Неоновые фоновые свечения и сетка -->
+        <div class="absolute -right-16 -top-16 w-64 h-64 bg-indigo-500/25 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none"></div>
+
+        <!-- Верхняя строка баннера: Статус и Кнопки -->
+        <div class="flex items-center justify-between relative z-10">
+          <!-- Левый бэйдж статуса эксперта -->
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-900/50 backdrop-blur-md border border-indigo-500/30 rounded-xl text-white text-xs font-bold shadow-sm">
+            <i class="ph-fill ph-check-seal text-emerald-400 text-base"></i>
+            <span>Сертифицированный Эксперт КЕГЭ</span>
+          </div>
+
+          <!-- Правые кнопки действия -->
+          <div class="flex items-center gap-2.5">
+            <button class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-md rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all active:scale-95 cursor-pointer">
+              <i class="ph-bold ph-calendar-plus text-base drop-shadow-sm"></i> Записаться на занятие
+            </button>
+            <button class="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white shadow-sm rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition-all active:scale-95 cursor-pointer">
+              <i class="ph-bold ph-pencil-simple text-base drop-shadow-sm"></i> Редактировать
+            </button>
+          </div>
+        </div>
+
+        <!-- Нижняя строка баннера: Экспресс-статистика -->
+        <div class="relative z-10 hidden sm:flex items-center gap-4 text-white/90 text-xs font-bold">
+          <span class="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-lg flex items-center gap-1.5">
+            <i class="ph-fill ph-star text-amber-400"></i> Рейтинг 4.98 (48 отзывов)
+          </span>
+          <span class="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-lg flex items-center gap-1.5">
+            <i class="ph-bold ph-users text-indigo-300"></i> 120+ Учеников на бюджете
+          </span>
+        </div>
+      </div>
+
+      <!-- 1.2 Блок Аватара с 3D-перекрытием и мета-информацией -->
+      <div class="px-6 pb-4 pt-0 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6 -mt-16 sm:-mt-20 relative z-20">
+        
+        <!-- Аватар + ФИО и Бэйджи -->
+        <div class="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-left">
+          
+          <!-- 3D Аватар с плашкой "Преподаватель" -->
+          <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-[2rem] border-4 border-white shadow-xl bg-white p-1 shrink-0 relative z-30 group">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=AlexMentor&backgroundColor=c084fc" class="w-full h-full rounded-[1.5rem] object-cover bg-slate-100 shadow-inner group-hover:scale-105 transition-transform duration-300">
+            <span class="bg-indigo-600 text-white font-black text-[9px] uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-white shadow-md absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap">
+              Преподаватель
+            </span>
+          </div>
+
+          <!-- ФИО, Ник и Специализация -->
+          <div class="pb-1 space-y-1.5">
+            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+              <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display">Александр Воронов</h1>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-indigo-50 border border-indigo-200 rounded-lg text-[10px] font-black text-indigo-700 uppercase tracking-wider shadow-xs">
+                <i class="ph-fill ph-seal-check text-indigo-500 text-xs"></i> Ведущий Ментор
+              </span>
+            </div>
+
+            <div class="flex items-center justify-center sm:justify-start gap-3 flex-wrap text-xs font-bold text-slate-500">
+              <span class="text-indigo-600 font-extrabold flex items-center gap-1">
+                <i class="ph-bold ph-at"></i> alex_code_mentor
+              </span>
+              <span class="text-slate-300">•</span>
+              <span class="flex items-center gap-1 text-slate-600">
+                <i class="ph-bold ph-books text-indigo-500"></i> Информатика & Математика
+              </span>
+              <span class="text-slate-300">•</span>
+              <span class="flex items-center gap-1 text-slate-600">
+                <i class="ph-bold ph-clock text-indigo-500"></i> Опыт 6+ лет
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Экспресс-чипы показателей преподавателя -->
+        <div class="flex items-center gap-3 shrink-0">
+          <div class="px-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center gap-3 shadow-xs">
+            <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+              <i class="ph-fill ph-star text-base"></i>
+            </div>
+            <div>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Оценка</p>
+              <p class="text-xs font-black text-slate-800">4.98 / 5.0</p>
+            </div>
+          </div>
+
+          <div class="px-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center gap-3 shadow-xs">
+            <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+              <i class="ph-bold ph-trophy text-base"></i>
+            </div>
+            <div>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">100-балльников</p>
+              <p class="text-xs font-black text-slate-800">14 Человек</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 2. BENTO GRID СЕТКА (12 колонок) -->
+    <div class="grid grid-cols-12 gap-6 w-full mt-8">
+      
+      <!-- ЛЕВАЯ КОЛОНКА (col-span-12 lg:col-span-8) -->
+      <div class="col-span-12 lg:col-span-8 space-y-6">
+        
+        <!-- Плашка 1: Три метрики эксперта -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <!-- Средний балл -->
+            <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-3 relative overflow-hidden group hover:-translate-y-1 transition-transform">
+               <div class="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform"><i class="ph-fill ph-chart-line-up text-[100px]"></i></div>
+               <div class="flex justify-between items-center z-10">
+                   <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ср. балл учеников</p>
+                   <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-500 flex items-center justify-center border border-indigo-200"><i class="ph-bold ph-chart-line-up text-lg"></i></div>
+               </div>
+               <div class="z-10">
+                   <h3 class="text-3xl font-display font-black text-slate-800">87.4</h3>
+                   <p class="text-[10px] font-bold text-emerald-500 mt-1 flex items-center gap-1 uppercase tracking-widest"><i class="ph-bold ph-caret-up"></i> +21.2 к РФ</p>
+               </div>
+            </div>
+
+             <!-- Поступление на бюджет -->
+            <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-3 relative overflow-hidden group hover:-translate-y-1 transition-transform">
+               <div class="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform"><i class="ph-fill ph-graduation-cap text-[100px]"></i></div>
+               <div class="flex justify-between items-center z-10">
+                   <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Бюджет ВУЗов</p>
+                   <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-500 flex items-center justify-center border border-emerald-200"><i class="ph-bold ph-graduation-cap text-lg"></i></div>
+               </div>
+               <div class="z-10">
+                   <h3 class="text-3xl font-display font-black text-slate-800">94%</h3>
+                   <p class="text-[10px] font-bold text-emerald-500 mt-1 uppercase tracking-widest">ВШЭ, МФТИ, МГУ</p>
+               </div>
+            </div>
+
+             <!-- Подготовлено 100-балльников -->
+            <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-3 relative overflow-hidden group hover:-translate-y-1 transition-transform">
+               <div class="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform"><i class="ph-fill ph-trophy text-[100px]"></i></div>
+               <div class="flex justify-between items-center z-10">
+                   <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">100-балльников</p>
+                   <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-500 flex items-center justify-center border border-amber-200"><i class="ph-bold ph-trophy text-lg"></i></div>
+               </div>
+               <div class="z-10">
+                   <h3 class="text-3xl font-display font-black text-slate-800">14</h3>
+                   <p class="text-[10px] font-bold text-amber-500 mt-1 uppercase tracking-widest">5 в 2025 году</p>
+               </div>
+            </div>
+        </div>
+
+        <!-- Плашка 2: «О преподавателе & Методика» -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 p-8 rounded-[2rem] shadow-[0_4px_0_#DAE1E9] space-y-6">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-chalkboard-teacher text-lg text-indigo-500"></i> О преподавателе & Методика
+                </h3>
+                <span class="text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-lg uppercase tracking-wider">МФТИ (ФАКТ)</span>
+            </div>
+
+            <!-- Био и описание подхода -->
+            <p class="text-slate-600 font-medium leading-relaxed text-sm bg-white/70 p-4 rounded-xl border border-slate-200/60 shadow-sm">
+                Выпускник МФТИ. Готовлю школьников к КЕГЭ по Информатике и Профильной Математике с 2020 года. Разработчик интерактивного тренажёра BooStudy и автор алгоритмических методик решения задач 24-27. На уроках учимся мыслить алгоритмически, писать чистый код на Python и сдавать экзамен без стресса.
+            </p>
+
+            <!-- Ключевые фишки методики -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-200/60">
+                        <i class="ph-bold ph-code text-lg"></i>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-slate-800 mb-0.5">Авторские скрипты</h5>
+                        <p class="text-[10px] font-medium text-slate-400">Быстрые шаблоны на Python для КЕГЭ</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-200/60">
+                        <i class="ph-bold ph-target text-lg"></i>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-slate-800 mb-0.5">Персональный трек</h5>
+                        <p class="text-[10px] font-medium text-slate-400">AI-Анализ пробелов в темах</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200/60">
+                        <i class="ph-bold ph-chats-circle text-lg"></i>
+                    </div>
+                    <div>
+                        <h5 class="text-xs font-bold text-slate-800 mb-0.5">Поддержка 24/7</h5>
+                        <p class="text-[10px] font-medium text-slate-400">Проверка ДЗ и ответы куратора</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Объемные 3D-Теги фишек -->
+            <div class="pt-2">
+                <div class="flex flex-wrap gap-2.5">
+                    <span class="px-3.5 py-2 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-[0_2px_0_#cbd5e1] flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform cursor-pointer">
+                        <i class="ph-bold ph-code-simple text-indigo-500"></i> 🐍 Python & C++
+                    </span>
+                    <span class="px-3.5 py-2 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-[0_2px_0_#cbd5e1] flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform cursor-pointer">
+                        <i class="ph-bold ph-file-text text-purple-500"></i> 🎯 Авторские варианты КЕГЭ
+                    </span>
+                    <span class="px-3.5 py-2 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-[0_2px_0_#cbd5e1] flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform cursor-pointer">
+                        <i class="ph-bold ph-clock-afternoon text-emerald-500"></i> ⚡ Проверка ДЗ 24/7
+                    </span>
+                    <span class="px-3.5 py-2 bg-white text-slate-700 rounded-xl text-xs font-bold border border-slate-200 shadow-[0_2px_0_#cbd5e1] flex items-center gap-1.5 hover:-translate-y-0.5 transition-transform cursor-pointer">
+                        <i class="ph-bold ph-graduation-cap text-amber-500"></i> 🎓 Выпускник МФТИ
+                    </span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Плашка 3: «Курсы и программы подготовки» -->
+        <div class="bg-white border-2 border-slate-200/80 p-8 rounded-[2rem] shadow-sm space-y-6">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-books text-lg text-indigo-500"></i> Программы подготовки 2026
+                </h3>
+                <span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg uppercase tracking-wider">Открыт набор</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <!-- Курс 1: Информатика КЕГЭ -->
+                <div class="bg-[#F8FAFC] border-2 border-slate-200/80 p-5 rounded-[1.5rem] flex flex-col justify-between gap-4 group hover:border-indigo-300 transition-colors">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider">Годовой курс</span>
+                            <span class="text-xs font-bold text-slate-400">Группа до 10 чел.</span>
+                        </div>
+                        <h4 class="text-base font-black text-slate-800 leading-snug">Информатика КЕГЭ 2026 (Подготовка с 0 до 90+)</h4>
+                        <p class="text-xs font-medium text-slate-500 leading-relaxed">
+                            Полное освоение всех 27 заданий, от базовых систем счисления до сложных алгоритмов динамического программирования.
+                        </p>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-200/80 flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Места</p>
+                            <p class="text-xs font-black text-amber-600">Осталось 3 места</p>
+                        </div>
+                        <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer">
+                            Записаться →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Курс 2: Профильная Математика -->
+                <div class="bg-[#F8FAFC] border-2 border-slate-200/80 p-5 rounded-[1.5rem] flex flex-col justify-between gap-4 group hover:border-purple-300 transition-colors">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-1 bg-purple-100 text-purple-700 rounded-lg text-[10px] font-black uppercase tracking-wider">Интенсив</span>
+                            <span class="text-xs font-bold text-slate-400">Мини-группа до 6 чел.</span>
+                        </div>
+                        <h4 class="text-base font-black text-slate-800 leading-snug">Профильная Математика (Интенсив 80+)</h4>
+                        <p class="text-xs font-medium text-slate-500 leading-relaxed">
+                            Фокус на Часть 2: Джентльменский набор (13, 15, 16), стереометрия, параметры (18) и олимпиадные задачи (19).
+                        </p>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-200/80 flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Места</p>
+                            <p class="text-xs font-black text-emerald-600">Набор открыт</p>
+                        </div>
+                        <button class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer">
+                            Записаться →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+      </div>
+
+      <!-- ПРАВАЯ КОЛОНКА (col-span-12 lg:col-span-4 space-y-6) -->
+      <div class="col-span-12 lg:col-span-4 space-y-6">
+        
+        <!-- ТЕМНАЯ ВИТРИНА КЕЙСОВ УЧЕНИКОВ (Dark Bento) -->
+        <div class="bg-slate-900 rounded-[2rem] p-6 shadow-lg border border-slate-800 relative overflow-hidden h-max w-full">
+            <!-- Neon glow spheres -->
+            <div class="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/30 blur-[60px] pointer-events-none mix-blend-screen"></div>
+            <div class="absolute -left-10 -bottom-10 w-48 h-48 bg-purple-500/20 blur-[50px] pointer-events-none mix-blend-screen"></div>
+
+            <div class="relative z-10 flex flex-col">
+                <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-700/50">
+                    <h3 class="text-white font-display font-bold mb-0 text-xl flex items-center gap-2 drop-shadow-md">
+                        <i class="ph-fill ph-trophy text-amber-400"></i> Результаты 2025
+                    </h3>
+                    <span class="text-[10px] font-bold text-indigo-400 bg-indigo-900/30 border border-indigo-500/20 px-3 py-1.5 rounded-lg backdrop-blur-sm uppercase tracking-widest shadow-sm">ЕГЭ 2025</span>
+                </div>
+
+                <!-- Карточки результатов учеников -->
+                <div class="space-y-3 relative z-10">
+                    <!-- Case 1 -->
+                    <div class="bg-slate-800/80 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700/80 shadow-[0_8px_20px_rgba(0,0,0,0.5)] flex items-center justify-between group hover:border-amber-500/50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-black text-sm">
+                                100
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white mb-0.5">Арина Т.</h4>
+                                <p class="text-[10px] font-medium text-slate-400">Поступила в НИУ ВШЭ (ФКН)</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded border border-amber-500/20">Информатика</span>
+                    </div>
+
+                    <!-- Case 2 -->
+                    <div class="bg-slate-800/80 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700/80 shadow-[0_8px_20px_rgba(0,0,0,0.5)] flex items-center justify-between group hover:border-indigo-500/50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-black text-sm">
+                                98
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white mb-0.5">Максим К.</h4>
+                                <p class="text-[10px] font-medium text-slate-400">Поступил в МФТИ (ПМИ)</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded border border-indigo-500/20">Информатика</span>
+                    </div>
+
+                    <!-- Case 3 -->
+                    <div class="bg-slate-800/80 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700/80 shadow-[0_8px_20px_rgba(0,0,0,0.5)] flex items-center justify-between group hover:border-purple-500/50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 font-black text-sm">
+                                95
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white mb-0.5">Егор В.</h4>
+                                <p class="text-[10px] font-medium text-slate-400">Поступил в МГУ (ВМК)</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">Математика</span>
+                    </div>
+
+                    <!-- Case 4 -->
+                    <div class="bg-slate-800/80 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700/80 shadow-[0_8px_20px_rgba(0,0,0,0.5)] flex items-center justify-between group hover:border-emerald-500/50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-sm">
+                                92
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white mb-0.5">София М.</h4>
+                                <p class="text-[10px] font-medium text-slate-400">Поступила в ИТМО</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">Информатика</span>
+                    </div>
+                </div>
+
+                <a href="#" class="mt-4 text-center text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors block">
+                    Смотреть все 120+ отзывов учеников →
+                </a>
+            </div>
+        </div>
+
+        <!-- ПЛАШКА: Ближайшие живые уроки / Вебинары -->
+        <div class="bg-white border-2 border-slate-200/80 rounded-[2rem] p-6 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-broadcast text-lg text-indigo-500"></i> Живые вебинары
+                </h3>
+                <span class="px-2.5 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg border border-emerald-200/60 uppercase tracking-wider flex items-center gap-1">
+                    <i class="ph-fill ph-circle text-emerald-500 animate-pulse text-[8px]"></i> Эфир
+                </span>
+            </div>
+
+            <!-- Список вебинаров -->
+            <div class="space-y-3 pt-1">
+                <!-- Вебинар 1 -->
+                <div class="bg-[#F8FAFC] border border-slate-200/80 p-3.5 rounded-xl flex flex-col gap-2 group hover:border-indigo-300 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60 uppercase">Завтра, 18:00</span>
+                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><i class="ph-bold ph-clock"></i> 120 мин</span>
+                    </div>
+                    <h5 class="text-xs font-bold text-slate-800 leading-snug">Разбор задания 27 КЕГЭ: Динамическое программирование и графы</h5>
+                </div>
+
+                <!-- Вебинар 2 -->
+                <div class="bg-[#F8FAFC] border border-slate-200/80 p-3.5 rounded-xl flex flex-col gap-2 group hover:border-purple-300 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[9px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200/60 uppercase">Четверг, 17:30</span>
+                        <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><i class="ph-bold ph-clock"></i> 90 мин</span>
+                    </div>
+                    <h5 class="text-xs font-bold text-slate-800 leading-snug">Параметры с нуля: Графический метод (Задание 18)</h5>
+                </div>
+            </div>
+
+            <!-- Кнопка подключиться -->
+            <button class="w-full py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer">
+                <i class="ph-bold ph-video-camera"></i> Войти в вебинарную комнату
+            </button>
+        </div>
+
+      </div>
+      
+    </div>
+  </div>
+</main>
+{% endblock %}

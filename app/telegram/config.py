@@ -6,16 +6,33 @@ from urllib.parse import urlsplit, urlunsplit
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN') or ''
 BOT_INTERNAL_TOKEN = os.environ.get('BOT_INTERNAL_TOKEN', '').strip()
-APP_URL = (os.environ.get('APP_URL') or 'https://boostudy.ru/').strip()
-APP_OPEN_URL = (os.environ.get('APP_OPEN_URL') or 'https://boostudy.ru/login').strip()
-TELEGRAM_PROXY_URL = (os.environ.get('TELEGRAM_PROXY_URL') or os.environ.get('HTTP_PROXY') or os.environ.get('HTTPS_PROXY') or '').strip()
-BOOTSTRAP_CREATOR_CHAT_ID = int((os.environ.get('BOOTSTRAP_CREATOR_CHAT_ID') or '854161398').strip() or '854161398')
+APP_URL = (os.environ.get('APP_URL') or os.environ.get('BASE_URL') or 'http://127.0.0.1:5000/').strip()
+APP_OPEN_URL = (os.environ.get('APP_OPEN_URL') or f"{APP_URL.rstrip('/')}/login").strip()
+TELEGRAM_PROXY_URL = (os.environ.get('TELEGRAM_PROXY_URL') or '').strip()
+
+def _parse_int_env(key: str, default: int) -> int:
+    raw = (os.environ.get(key) or '').strip()
+    if not raw or raw.startswith('#'):
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+BOOTSTRAP_CREATOR_CHAT_ID = _parse_int_env('BOOTSTRAP_CREATOR_CHAT_ID', 854161398)
 BOOTSTRAP_CREATOR_USERNAME = (os.environ.get('BOOTSTRAP_CREATOR_USERNAME') or 'eohada').strip().lstrip('@').lower()
+if BOOTSTRAP_CREATOR_USERNAME.startswith('#'):
+    BOOTSTRAP_CREATOR_USERNAME = 'eohada'
 BOOTSTRAP_CREATOR_DISPLAY_NAME = (os.environ.get('BOOTSTRAP_CREATOR_DISPLAY_NAME') or 'Eohada').strip()
+if BOOTSTRAP_CREATOR_DISPLAY_NAME.startswith('#'):
+    BOOTSTRAP_CREATOR_DISPLAY_NAME = 'Eohada'
+
+# Режим тестирования (Mock) для QA-инженеров
+TELEGRAM_MOCK_MODE = (os.environ.get('TELEGRAM_MOCK_MODE') or '').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
 def telegram_proxy_parts() -> dict[str, object] | None:
-    raw = TELEGRAM_PROXY_URL.strip()
+    raw = (TELEGRAM_PROXY_URL or '').strip()
     if not raw:
         return None
 

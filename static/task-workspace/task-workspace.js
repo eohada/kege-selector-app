@@ -37,6 +37,16 @@
     const turtle = document.getElementById('tw-turtle');
     const turtleEmpty = document.getElementById('tw-turtle-empty');
     const notes = document.getElementById('tw-notes');
+    const fileList = document.getElementById('tw-file-list');
+    const fileUpload = document.getElementById('tw-file-upload');
+    const fileCreate = document.getElementById('tw-file-create');
+    const fileContent = document.getElementById('tw-file-content');
+    const fileSave = document.getElementById('tw-file-save');
+    const fileDownload = document.getElementById('tw-file-download');
+    const commentsList = document.getElementById('tw-comments-list');
+    const commentText = document.getElementById('tw-comment-text');
+    const commentSend = document.getElementById('tw-comment-send');
+    let selectedWorkspaceFile = null;
     const storageKey = [
         'task-workspace',
         ws.context_type || 'demo',
@@ -1414,24 +1424,102 @@
                     </div>
                     <pre>${escapeHtml(preview.slice(0, 360) || '(пусто)')}</pre>
                     <div class="tw-version-actions">
-                        <button type="button" class="tw-btn tw-btn-ghost" data-restore-version="${item.version_id}">Открыть</button>
+                        <button type="button" class="tw-btn tw-btn-ghost" data-restore-version="${item.version_id}">${ws.can_edit ? 'Восстановить' : 'Открыть'}</button>
                     </div>
                 </div>`;
             }).join('') : '<div class="tw-empty">Пока нет серверных версий. Нажми сохранить или подожди автосохранение.</div>';
             versionList.querySelectorAll('[data-restore-version]').forEach((btn) => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', async () => {
                     const id = Number(btn.dataset.restoreVersion || 0);
                     const item = items.find((x) => Number(x.version_id) === id);
                     if (!item) return;
+                    let restored = item;
+                    if (ws.can_edit && ws.context_type !== 'demo') {
+                        const resp = await fetch(`/task-workspace/api/versions/${id}/restore`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify(payload())
+                        });
+                        const data = await resp.json().catch(() => ({}));
+                        if (!resp.ok || !data.success) { setStatus(data.error || 'Не удалось восстановить версию', 'error'); return; }
+                        restored = { ...item, code: data.code, answer: data.answer };
+                        if (data.versions?.items) versionState.items = data.versions.items.slice();
+                    }
                     const previous = code.value;
-                    code.value = item.code || '';
+                    code.value = restored.code || '';
+                    if (answer) answer.value = restored.answer || '';
                     updateEditorChrome();
                     saveLocal();
                     applyLocalCodeChange(previous, code.value, 'restore-version', { version_id: id });
-                    setStatus('Версия открыта в редакторе', 'ok');
+                    renderVersions();
+                    setStatus(ws.can_edit ? 'Версия восстановлена' : 'Версия открыта в редакторе', 'ok');
                 });
             });
         }
+    }
+
+    function workspaceFileScope() {
+        if (!['submission_task', 'lesson_task'].includes(ws.context_type)) return null;
+        return { context_type: ws.context_type === 'submission_task' ? 'submission' : 'lesson', context_id: ws.context_id, task_id: ws.task_id };
+    }
+
+    async function loadWorkspaceFiles() {
+        const scope = workspaceFileScope();
+        if (!scope || !fileList) return;
+        const params = new URLSearchParams(scope);
+        const resp = await fetch('/workspace/files?' + params.toString());
+        const data = await resp.json().catch(() => ({}));
+        const items = data.files || data.items || [];
+        fileList.innerHTML = items.length ? items.map((item) => `<div class="tw-version-item"><div class="tw-version-item-top"><span>${escapeHtml(item.filename || item.original_filename || 'Файл')}</span><span>${item.size_human || ''}</span></div><div class="tw-version-actions"><button class="tw-btn tw-btn-ghost" type="button" data-file-id="${item.file_id}">Открыть</button></div></div>`).join('') : '<div class="tw-empty">Файлов пока нет.</div>';
+        fileList.querySelectorAll('[data-file-id]').forEach((button) => button.addEventListener('click', () => openWorkspaceFile(Number(button.dataset.fileId))));
+    }
+
+    async function openWorkspaceFile(fileId) {
+        const resp = await fetch(`/workspace/${fileId}/content`);
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success) { setStatus(data.error || 'Не удалось открыть файл', 'error'); return; }
+        selectedWorkspaceFile = fileId;
+        if (fileContent) { fileContent.value = data.content || ''; fileContent.readOnly = !ws.can_edit || !data.is_text; }
+        if (fileSave) fileSave.disabled = !ws.can_edit || !data.is_text;
+        if (fileDownload) { fileDownload.href = data.download_url || `/workspace/${fileId}/download`; fileDownload.hidden = false; }
+    }
+
+    async function createWorkspaceFile() {
+        const name = window.prompt('Имя файла, например solution.py');
+        if (!name) return;
+        const scope = workspaceFileScope();
+        const resp = await fetch('/workspace/create', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify({ ...scope, filename: name }) });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success) { setStatus(data.error || 'Не удалось создать файл', 'error'); return; }
+        await loadWorkspaceFiles();
+    }
+
+    async function saveWorkspaceFile() {
+        if (!selectedWorkspaceFile || !fileContent) return;
+        const resp = await fetch(`/workspace/${selectedWorkspaceFile}/save-content`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify({ content: fileContent.value }) });
+        const data = await resp.json().catch(() => ({}));
+        setStatus(resp.ok && data.success ? 'Файл сохранён' : (data.error || 'Не удалось сохранить файл'), resp.ok && data.success ? 'ok' : 'error');
+    }
+
+    async function uploadWorkspaceFile() {
+        const selected = fileUpload?.files?.[0]; const scope = workspaceFileScope(); if (!selected || !scope) return;
+        const body = new FormData(); body.append('file', selected); Object.entries(scope).forEach(([k, v]) => body.append(k, v));
+        const resp = await fetch('/workspace/upload', { method: 'POST', headers: { 'X-CSRFToken': csrf() }, body });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success) { setStatus(data.error || 'Не удалось загрузить файл', 'error'); return; }
+        fileUpload.value = ''; await loadWorkspaceFiles();
+    }
+
+    async function loadComments() {
+        if (!commentsList || ws.context_type !== 'submission_task') return;
+        const resp = await fetch(`/submissions/${ws.context_id}/comments?assignment_task_id=${ws.assignment_task_id}`);
+        const data = await resp.json().catch(() => ({})); const items = data.comments || [];
+        commentsList.innerHTML = items.length ? items.map((item) => `<div class="tw-version-item"><strong>${escapeHtml(item.author?.name || 'Пользователь')}</strong><div>${escapeHtml(item.text || '')}</div></div>`).join('') : '<div class="tw-empty">Комментариев пока нет.</div>';
+    }
+
+    async function sendComment() {
+        const text = String(commentText?.value || '').trim(); if (!text) return;
+        const resp = await fetch(`/submissions/${ws.context_id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify({ text, assignment_task_id: ws.assignment_task_id }) });
+        const data = await resp.json().catch(() => ({})); if (!resp.ok || !data.success) { setStatus(data.error || 'Не удалось отправить комментарий', 'error'); return; }
+        commentText.value = ''; await loadComments();
     }
 
     code.addEventListener('keydown', (event) => {
@@ -2028,19 +2116,15 @@
 
     runBtn.addEventListener('click', runCode);
     saveBtn.addEventListener('click', saveServer);
+    if (fileUpload) fileUpload.addEventListener('change', uploadWorkspaceFile);
+    if (fileCreate) fileCreate.addEventListener('click', createWorkspaceFile);
+    if (fileSave) fileSave.addEventListener('click', saveWorkspaceFile);
+    if (commentSend) commentSend.addEventListener('click', sendComment);
     
     // Инициализация оконного менеджера
     restoreLocal();
     joinWorkspaceSocket();
-    if (!loadWindowStates()) {
-        resetWindowsToDefault();
-    } else {
-        applyWindowStates();
-    }
-
-    makeWindowInteractive(taskPanel, 'task');
-    makeWindowInteractive(editorPanel, 'editor');
-    makeWindowInteractive(outputPanel, 'output');
+    // The visual V2 uses a stable Bento grid instead of draggable legacy windows.
 
     if (!playback.frames.length) {
         playback.frames.push(sanitizeFrame({ ts: Date.now(), action: 'init', code: code.value, caret: [0, 0], detail: {} }));
@@ -2048,6 +2132,8 @@
     workspaceLocalCode = code.value || '';
     renderPlayback();
     renderVersions();
+    loadWorkspaceFiles();
+    loadComments();
     updateEditorChrome();
     restoreUiState(initialUiState);
     pullServerState(false);

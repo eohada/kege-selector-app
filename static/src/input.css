@@ -11,19 +11,23 @@
 
 /* ── CSS Custom Properties (light = default) ── */
 :root {
-  --color-bg-app: #FFFFFF;
+  --color-bg-app: #EEF2FF;
   --color-bg-surface: #FFFFFF;
-  --color-bg-surface-alt: #F1F5F9;
+  --color-bg-surface-alt: #E0E7FF;
   --color-bg-sidebar: #FFFFFF;
-  --color-accent-soft: #EDE9FF;
-  --color-text-primary: #1E293B;
-  --color-text-secondary: #475569;
-  --color-text-muted: #64748B;
-  --color-stroke: #E2E8F0;
-  --color-stroke-strong: #CBD5E1;
-  --color-shadow-bottom: #CBD5E1;
+  --color-accent-soft: #C7D2FE;
+  --color-text-primary: #1E1B4B;
+  --color-text-secondary: #312E81;
+  --color-text-muted: #6B7280;
+  --color-stroke: #C7D2FE;
+  --color-stroke-strong: #A5B4FC;
+  --color-shadow-bottom: #C7D2FE;
   --color-bg-inset: #F8FAFC;
   color-scheme: light;
+
+  /* True Claymorphism shadows (Light) */
+  --clay-shadow-out: 12px 12px 24px rgba(166, 180, 200, 0.35), -12px -12px 24px rgba(255, 255, 255, 0.8);
+  --clay-shadow-in: inset -8px -8px 16px rgba(166, 180, 200, 0.25), inset 8px 8px 16px rgba(255, 255, 255, 1);
 
   /* Legacy aliases for 65 templates with inline <style> */
   --page-bg: #FFFFFF;
@@ -51,22 +55,23 @@
   --warning: #F97316;
   --warning-1: #F97316;
   --gamification-1: #FBBF24;
-  --radius-sm: 8px;
+  --radius-sm: 12px;
   --radius-md: 16px;
   --radius-lg: 24px;
   --radius-xl: 28px;
   --radius-full: 999px;
-  --shadow-soft: 0 8px 24px -4px rgba(15, 23, 42, 0.05);
-  --shadow-card: 0 8px 24px -4px rgba(15, 23, 42, 0.05);
-  --shadow-hover: 0 20px 40px -8px rgba(139, 92, 246, 0.15);
+  --shadow-soft: var(--clay-shadow-out), var(--clay-shadow-in);
+  --shadow-card: var(--clay-shadow-out), var(--clay-shadow-in);
+  --shadow-hover: 12px 12px 24px rgba(166, 180, 200, 0.5), inset -2px -2px 4px rgba(166, 180, 200, 0.2), inset 6px 6px 12px rgba(255, 255, 255, 1);
   --shadow-1: 0 8px 24px -4px rgba(15, 23, 42, 0.05);
   --shadow-2: 0 4px 20px rgba(15, 23, 42, 0.05);
   --shadow-accent: 0 15px 30px -10px rgba(139, 92, 246, 0.4);
   --focus-ring: 0 0 0 4px rgba(139, 92, 246, 0.2);
   --overlay-hover: rgba(0, 0, 0, 0.04);
   --grid-line: rgba(0, 0, 0, 0.04);
-  --font-base: 'Golos Text', ui-sans-serif, system-ui, sans-serif;
-  --radius-card: 24px;
+  --font-base: 'Nunito', 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Fredoka', 'Golos Text', ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 28px;
   --radius-input: 12px;
   --color-accent: #8B5CF6;
   --color-accent-strong: #6A4CE5;
@@ -89,21 +94,26 @@
 
 /* ── Dark theme ── */
 [data-theme="dark"] {
-  --color-bg-app: #000000;
-  --color-bg-surface: #131316; /* Level 1 */
-  --color-bg-surface-alt: #18181B; /* Level -1 */
-  --color-bg-sidebar: #131316;
-  --color-bg-inset: #18181B;
-  --color-accent-soft: rgba(139, 92, 246, 0.2);
-  --color-text-primary: #FAFAFA;
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #A1A1AA;
+  --color-bg-app: #0F1123;
+  --color-bg-surface: #1C1E3A; /* Level 1 */
+  --color-bg-surface-alt: #2D305A; /* Level -1 */
+  --color-bg-sidebar: #1C1E3A;
+  --color-bg-inset: #131429;
+  --color-accent-soft: rgba(99, 102, 241, 0.2);
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #C7D2FE;
+  --color-text-muted: #9CA3AF;
   /* Базовый текст body в Airy Dark — как в эталоне (muted), заголовки через h1–h6 / .text-primary */
-  --color-text-body: #A1A1AA;
-  --color-stroke: #27272A;
+  --color-text-body: #9CA3AF;
+  --color-stroke: #2D305A;
   --color-stroke-strong: rgba(255, 255, 255, 0.14);
   --color-shadow-bottom: #09090B;
   color-scheme: dark;
+
+  /* True Claymorphism shadows (Dark) */
+  --clay-shadow-out: 10px 10px 20px rgba(0, 0, 0, 0.45), -10px -10px 20px rgba(34, 38, 70, 0.4);
+  --clay-shadow-in: inset -6px -6px 12px rgba(0, 0, 0, 0.3), inset 6px 6px 12px rgba(255, 255, 255, 0.04);
+
   --page-bg: var(--color-bg-app);
   --surface-1: var(--color-bg-surface);
   --surface-2: var(--color-bg-surface-alt);
@@ -115,9 +125,9 @@
   --stroke-1: var(--color-stroke);
   --stroke-2: var(--color-stroke-strong);
   --overlay-hover: rgba(139, 92, 246, 0.10);
-  --shadow-soft: 0 4px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-card: 0 4px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-hover: 0 10px 45px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-soft: var(--clay-shadow-out), var(--clay-shadow-in);
+  --shadow-card: var(--clay-shadow-out), var(--clay-shadow-in);
+  --shadow-hover: 12px 12px 24px rgba(0, 0, 0, 0.6), inset -2px -2px 4px rgba(0, 0, 0, 0.8), inset 4px 4px 8px rgba(255, 255, 255, 0.08);
   --color-warning: #F97316;
   --warning: #F97316;
   --warning-1: #F97316;
@@ -660,13 +670,19 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   body {
     @apply font-sans;
+    font-family: var(--font-base);
     background: var(--color-bg-app);
     color: var(--color-text-primary);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  h1,h2,h3,h4,h5,h6 { @apply font-sans font-bold; color: var(--color-text-primary); line-height: 1.25; }
+  h1,h2,h3,h4,h5,h6 { 
+    @apply font-sans font-bold; 
+    font-family: var(--font-heading);
+    color: var(--color-text-primary); 
+    line-height: 1.25; 
+  }
   code,pre,kbd,samp { @apply font-mono; }
   a { color: var(--color-accent); text-decoration: none; transition: all 0.2s ease; }
   /* Do NOT recolor all links on hover: it breaks “card links” (e.g. purple bento).
@@ -707,6 +723,40 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   @media (min-width: 1024px) {
     .app-content { padding: 2rem 2.5rem; }
+  }
+
+  /* ═══════════════ CLAYMORPHISM GLOBAL CLASSES ═══════════════ */
+
+  .clay-card {
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
+    border-radius: 28px;
+    box-shadow: var(--clay-shadow-out), var(--clay-shadow-in);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: none; 
+  }
+  [data-theme="dark"] .clay-card {
+    border: none;
+  }
+
+  /* Для навигации (Док-панель) - убираем белый ореол, оставляем объем */
+  .dock {
+    box-shadow: 0 10px 30px rgba(166, 180, 200, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.8);
+    border: none;
+  }
+  [data-theme="dark"] .dock {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .clay-interactive {
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .clay-interactive:active {
+    transform: scale(0.97) translateY(2px);
+    box-shadow: inset -6px -6px 10px rgba(0,0,0,0.1), inset 6px 6px 10px rgba(255,255,255,0.1);
+  }
+  [data-theme="dark"] .clay-interactive:active {
+    box-shadow: inset -6px -6px 10px rgba(0,0,0,0.4), inset 4px 4px 8px rgba(255,255,255,0.05);
   }
 
   /* ═══════════════ STUDENT LAYOUT (pixel-perfect like examples) ═══════════════ */
@@ -771,7 +821,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   .dock {
     @apply w-full mx-auto flex items-center justify-between pointer-events-auto;
     max-width: 1400px;
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--color-stroke);
@@ -790,7 +840,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   .layout-student .dock {
     @apply max-w-[1400px];
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border-color: var(--color-stroke);
     border-radius: 1rem; /* rounded-2xl */
     padding: 0.625rem 1rem; /* py-2.5 px-4 */
@@ -805,7 +855,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   }
   .layout-teacher .dock {
     @apply max-w-[1600px];
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border-color: var(--color-stroke);
     border-radius: 1rem; /* rounded-2xl */
     padding: 0.625rem 1rem; /* py-2.5 px-4 */
@@ -850,9 +900,9 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     transition: all 0.15s ease;
     position: relative;
   }
-  .dock-nav-item:hover { color: var(--color-text-primary); background: var(--color-bg-surface); }
+  .dock-nav-item:hover { color: var(--color-text-primary); background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none; }
   .dock-nav-item.active {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     color: var(--color-text-primary);
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
     border: 1px solid var(--color-stroke);
@@ -875,7 +925,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     left: 50%;
     transform: translateX(-50%) translateY(10px);
     min-width: 520px;
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border: 1px solid var(--color-stroke);
     border-radius: 20px;
     padding: 1.25rem;
@@ -1021,7 +1071,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   /* ═══════════════ TACTILE CARDS ═══════════════ */
 
   .tactile-card {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border: 1px solid var(--color-stroke);
     border-bottom-width: 4px;
     border-bottom-color: var(--color-stroke-strong);
@@ -1053,7 +1103,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
 
   /* Backward compat */
   .glass-panel {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border: 1px solid var(--color-stroke);
     border-bottom-width: 4px;
     border-bottom-color: var(--color-stroke-strong);
@@ -1085,7 +1135,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     user-select: none;
   }
   .neo-button:hover {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     color: var(--color-text-primary);
     box-shadow: 0 2px 6px rgba(15,23,42,0.08);
   }
@@ -1197,7 +1247,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     border: 1px solid var(--color-stroke);
     border-bottom-width: 2px;
     border-bottom-color: var(--color-stroke-strong);
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     font-size: 0.875rem;
     color: var(--color-text-primary);
     box-shadow: 0 1px 3px rgba(15,23,42,0.04);
@@ -1241,7 +1291,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
   .student-card {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border: 1px solid #E2E8F0;
     border-bottom-width: 1px;
     border-bottom-color: #E2E8F0;
@@ -1332,7 +1382,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     @apply flex-1 flex items-center justify-center gap-1.5 font-bold cursor-pointer;
     padding: 0.45rem; font-size: 0.78rem;
     border-radius: 10px;
-    background: var(--color-bg-surface); border: 1px solid var(--color-stroke);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none; border: 1px solid var(--color-stroke);
     color: var(--color-text-secondary);
     box-shadow: 0 1px 3px rgba(15,23,42,0.04);
     transition: all 0.12s ease;
@@ -1375,7 +1425,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
 
   .stats-grid { @apply grid gap-4; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
   .stat-card {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border: 1px solid #E2E8F0;
     border-bottom-width: 4px;
     border-bottom-color: #CBD5E1;
@@ -1389,7 +1439,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   /* ═══════════════ FILTERS ═══════════════ */
 
   .filters-panel {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border: 1px solid #E2E8F0;
     border-bottom-width: 4px;
     border-bottom-color: #CBD5E1;
@@ -1402,7 +1452,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   .filters-actions { @apply flex flex-wrap gap-3 items-end; }
   .filters-row { @apply flex flex-wrap gap-4 items-end; }
   .filters-card {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border: 1px solid #E2E8F0;
     border-bottom-width: 4px;
     border-bottom-color: #CBD5E1;
@@ -1606,7 +1656,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
     @apply fixed top-0 right-0 bottom-0 overflow-y-auto;
     z-index: var(--z-mobile-menu);
     width: 300px;
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border-left: 1px solid var(--color-stroke);
     padding: 1.5rem;
     transform: translateX(100%);
@@ -2069,14 +2119,14 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   [data-theme="dark"] .profile-section-title { color: var(--color-text-muted); }
 
   [data-theme="dark"] .tactile-card, [data-theme="dark"] .glass-panel {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border-color: var(--color-stroke);
     border-bottom-width: 1px;
     border-bottom-color: rgba(255,255,255,0.08);
     box-shadow: var(--shadow-card);
   }
   [data-theme="dark"] .student-card {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border-color: var(--color-stroke);
     border-bottom-width: 1px;
     border-bottom-color: rgba(255,255,255,0.08);
@@ -2167,25 +2217,25 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   [data-theme="dark"] .segmented-control { background: rgba(255,255,255,0.06); border-color: rgba(39, 39, 42, 0.95); }
   [data-theme="dark"] .segmented-btn { color: var(--color-text-muted); }
   [data-theme="dark"] .segmented-btn:hover { color: var(--color-text-primary); }
-  [data-theme="dark"] .segmented-btn.active { background: var(--color-bg-surface); color: var(--color-text-primary); }
+  [data-theme="dark"] .segmented-btn.active { background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none; color: var(--color-text-primary); }
 
   [data-theme="dark"] .student-avatar { background: rgba(139,92,246,0.15); border-color: rgba(255,255,255,0.1); }
   [data-theme="dark"] .student-name { color: var(--color-text-primary); }
   [data-theme="dark"] .student-progress { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.06); }
-  [data-theme="dark"] .student-action-btn { background: var(--color-bg-surface); border-color: var(--color-stroke); color: var(--color-text-secondary); }
+  [data-theme="dark"] .student-action-btn { background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none; border-color: var(--color-stroke); color: var(--color-text-secondary); }
   [data-theme="dark"] .student-action-btn:hover { background: var(--color-bg-surface-alt); color: var(--color-text-primary); }
 
-  [data-theme="dark"] .mobile-menu { background: var(--color-bg-surface); border-color: var(--color-stroke); }
-  [data-theme="dark"] .cmd-palette { background: var(--color-bg-surface); border-color: var(--color-stroke); }
+  [data-theme="dark"] .mobile-menu { background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none; border-color: var(--color-stroke); }
+  [data-theme="dark"] .cmd-palette { background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none; border-color: var(--color-stroke); }
   [data-theme="dark"] .cmd-palette-input { color: var(--color-text-primary); border-bottom-color: rgba(255,255,255,0.10); }
   [data-theme="dark"] .cmd-palette-item { color: var(--color-text-secondary); }
   [data-theme="dark"] .cmd-palette-item:hover { background: rgba(255,255,255,0.06); color: var(--color-text-primary); }
 
   [data-theme="dark"] .modal-content, [data-theme="dark"] .confirm-modal {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border-color: var(--color-stroke);
   }
-  [data-theme="dark"] .toast { background: var(--color-bg-surface); border-color: var(--color-stroke); color: var(--color-text-primary); }
+  [data-theme="dark"] .toast { background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none; border-color: var(--color-stroke); color: var(--color-text-primary); }
   [data-theme="dark"] .data-table th, [data-theme="dark"] .audit-table th, [data-theme="dark"] .testers-table th {
     background: rgba(255,255,255,0.04);
     border-bottom-color: rgba(255,255,255,0.08);
@@ -2313,7 +2363,7 @@ html[data-theme="dark"][data-student-theory="1"] .theory-display-math .text-slat
   [data-theme="dark"] .remote-header,
   [data-theme="dark"] .remote-sidebar,
   [data-theme="dark"] .now-playing-panel {
-    background: var(--color-bg-surface);
+    background: var(--color-bg-surface); box-shadow: var(--clay-shadow-out), var(--clay-shadow-in); border: none;
     border-color: var(--color-stroke);
     box-shadow: var(--shadow-card);
   }

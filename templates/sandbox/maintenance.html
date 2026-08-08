@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Технические работы • BooStudy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-display { font-family: 'Outfit', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] min-h-screen flex items-center justify-center p-4 selection:bg-rose-500 selection:text-white">
+
+    <div class="max-w-lg w-full bg-white border-2 border-slate-200/80 rounded-[2.5rem] p-8 sm:p-12 shadow-[0_12px_40px_rgba(0,0,0,0.06)] text-center space-y-6 relative overflow-hidden">
+        
+        <!-- Neon Glow Sphere -->
+        <div class="absolute -right-16 -top-16 w-48 h-48 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-16 -bottom-16 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="w-20 h-20 rounded-3xl bg-amber-50 border-2 border-amber-200 text-amber-500 flex items-center justify-center mx-auto shadow-sm">
+            <i class="ph-bold ph-wrench text-4xl animate-bounce"></i>
+        </div>
+
+        <div class="space-y-2 relative z-10">
+            <span class="px-3 py-1 bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-xs font-black uppercase tracking-wider">
+                Обновление платформы
+            </span>
+            <h1 class="text-3xl font-display font-black text-slate-900 tracking-tight">Ведутся технические работы</h1>
+            <p class="text-xs font-bold text-slate-500 leading-relaxed max-w-sm mx-auto">
+                {{ maintenance_message if maintenance_message is defined and maintenance_message else 'Мы обновляем платформу BooStudy, чтобы добавить новые возможности. Доступ для учеников и родителей будет восстановлен в ближайшее время!' }}
+            </p>
+        </div>
+
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 space-y-1 relative z-10">
+            <p class="text-[10px] uppercase font-black text-slate-400 tracking-widest">Статус системы</p>
+            <p class="text-amber-600 font-black">⚙️ Обновление базы данных & релиз V2</p>
+        </div>
+
+        <div class="pt-2 relative z-10 flex justify-center gap-3">
+            <a href="/login" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl no-underline transition-colors">
+                Войти в аккаунт
+            </a>
+            <a href="/profile" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl no-underline transition-colors border-b-2 border-rose-800">
+                Обновить страницу
+            </a>
+        </div>
+
+    </div>
+
+</body>
+</html>

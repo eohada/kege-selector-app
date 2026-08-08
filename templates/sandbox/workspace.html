@@ -1,0 +1,639 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block sandbox_content %}
+<!-- CSRF Meta Tag -->
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+
+<!-- KaTeX Auto-Render CDN -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initKaTeX()"></script>
+
+<!-- Prism.js Light Theme Syntax Highlighting for Python -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+<style>
+  /* Custom Light Syntax Overlay styles for Textarea */
+  .code-editor-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  .code-editor-wrapper pre,
+  .code-editor-wrapper textarea {
+    margin: 0 !important;
+    padding: 1rem !important;
+    border: none !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    tab-size: 4 !important;
+    box-sizing: border-box !important;
+  }
+  .code-editor-wrapper pre {
+    background: transparent !important;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+  }
+  .code-editor-wrapper textarea {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: transparent !important;
+    caret-color: #4F46E5 !important;
+    background: transparent !important;
+    resize: none;
+    outline: none;
+    z-index: 2;
+  }
+</style>
+
+<!-- Full-Height Light Neo-Bento Canvas (BooStudy UI Canon) -->
+<main class="min-h-screen w-full relative z-10 bg-[#EAEFF5] p-3 sm:p-6 ml-0 lg:ml-24 pl-3 sm:pl-6 lg:pl-6 pb-20 lg:pb-6 flex flex-col justify-between gap-4">
+  <div class="max-w-[1400px] mx-auto w-full flex-1 flex flex-col gap-5">
+    
+    <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ IDE (Light Tactile 3D Header Plate) -->
+    <div class="w-full bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2.2rem] p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shrink-0 transition-all">
+      
+      <!-- Навигация и название сессии -->
+      <div class="flex items-center gap-4">
+        <a id="back-to-task-btn" href="/sandbox/task_detail" class="px-4 py-2.5 bg-[#F4F7FA] hover:bg-slate-200 text-slate-800 font-extrabold text-xs rounded-xl border-2 border-slate-200 border-b-[3px] transition-all shadow-2xs flex items-center gap-2 shrink-0 cursor-pointer no-underline active:translate-y-[1px]">
+          <i class="ph-bold ph-arrow-left"></i> Назад к задаче
+        </a>
+
+        <div class="h-6 w-px bg-slate-300 hidden sm:block"></div>
+
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-md text-[10px] font-black uppercase tracking-wider">
+              BooStudy Python 3.12 IDE
+            </span>
+            <span id="assignment-title-label" class="text-xs font-bold text-slate-400">Домашняя работа</span>
+          </div>
+          <h1 id="task-topic-header" class="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-display mt-0.5">
+            Задание №2: Алгебра логики
+          </h1>
+        </div>
+      </div>
+
+      <!-- Статус автосохранения и Кнопка Запуска -->
+      <div class="flex items-center gap-3 flex-wrap">
+        
+        <!-- Статус фонового автосохранения -->
+        <div class="flex items-center gap-3 text-xs font-bold text-slate-600 bg-[#F4F7FA] px-3.5 py-2 rounded-xl border border-slate-200 shadow-inner">
+          <span id="autosave-status-badge" class="flex items-center gap-1.5 text-emerald-600 font-black">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> 🟢 Автосохранение
+          </span>
+          <span class="text-slate-300">•</span>
+          <span id="saved-time-indicator">Сохранено: --:--</span>
+        </div>
+
+        <!-- Кнопка запуска кода (Ctrl+Enter) -->
+        <div class="flex items-center gap-2">
+          <button onclick="runPythonCode()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl border border-emerald-700 border-b-[4px] shadow-[0_4px_10px_rgba(16,185,129,0.25)] active:border-b-[1px] active:translate-y-[3px] flex items-center gap-2 transition-all cursor-pointer">
+            <i class="ph-fill ph-play text-sm"></i> Запустить (Ctrl+Enter)
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 2. BENTO-СЕТКА РАБОЧЕЙ СРЕДЫ (12 колонок / Full-Height Layout) -->
+    <div class="grid grid-cols-12 gap-5 w-full flex-1 items-stretch">
+      
+      <!-- ЛЕВАЯ КОЛОНКА: УСЛОВИЕ И ФАЙЛЫ (col-span-12 lg:col-span-3 flex flex-col gap-4 justify-between) -->
+      <div class="col-span-12 lg:col-span-3 flex flex-col gap-4 justify-between">
+        
+        <!-- Плита 1: Условие задачи (ЧИСТОЕ УСЛОВИЕ БЕЗ КНОПКИ ТЕОРИИ) -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-5 space-y-3 hover:border-indigo-300 transition-all">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h3 id="task-condition-title" class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <i class="ph-bold ph-file-text text-indigo-500"></i> Условие КЕГЭ №2
+            </h3>
+            <span id="task-number-badge" class="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">#2</span>
+          </div>
+
+          <!-- Чистый текст условия без кнопки теории -->
+          <div id="task-content-container" class="text-xs font-medium text-slate-700 leading-relaxed space-y-2.5 katex-render-target">
+            <p>Загрузка условия задачи...</p>
+          </div>
+        </div>
+
+        <!-- Плита 2: Вложенные файлы датасетов -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-5 space-y-3 hover:border-indigo-300 transition-all">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <i class="ph-bold ph-folder-open text-amber-500"></i> Файлы и Датасеты
+          </h3>
+
+          <div id="dataset-files-container" class="space-y-2 text-xs font-mono">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Плита 3: Быстрый черновик -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-5 space-y-2 hover:border-indigo-300 transition-all flex-1 flex flex-col justify-between">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <i class="ph-bold ph-note-pencil text-purple-500"></i> Быстрый черновик
+          </h3>
+          <textarea id="workspace-notes-input" oninput="triggerAutosave()" placeholder="Ваши личные заметки к решению..." class="w-full bg-[#F8FAFC] border-2 border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white flex-1 min-h-[90px] resize-none leading-relaxed shadow-inner"></textarea>
+        </div>
+
+      </div>
+
+      <!-- ЦЕНТРАЛЬНАЯ КОЛОНКА: СВЕТЛЫЙ РЕДАКТОР С SYNTAX HIGHLIGHTING (col-span-12 lg:col-span-6 flex flex-col h-full) -->
+      <div class="col-span-12 lg:col-span-6 flex flex-col h-full">
+        
+        <!-- Светлая 3D Плита редактора BooStudy UI Canon (БЕЗ ТЁМНЫХ `#0f172a` ЗАЛИВОК) -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-4 flex flex-col flex-1 min-h-[550px]">
+          
+          <!-- Вкладки файлов с CRUD кнопками (+ Новый файл, ✏️, ✕) -->
+          <div class="flex items-center justify-between gap-3 pb-3 border-b-2 border-slate-100 mb-3 shrink-0">
+            <div class="flex items-center gap-2 overflow-x-auto" id="editor-file-tabs">
+              <!-- Rendered dynamically -->
+            </div>
+
+            <button onclick="openCreateFileModal()" class="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-xs rounded-xl border border-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer shrink-0">
+              <i class="ph-bold ph-plus text-sm"></i> Новый файл
+            </button>
+          </div>
+
+          <!-- Контейнер редактора с живой подсветкой Prism.js (Light Theme) -->
+          <div class="code-editor-wrapper relative flex-1 bg-[#F8FAFC] border-2 border-slate-200 rounded-2xl overflow-hidden shadow-inner">
+            <pre id="prism-highlight-box"><code id="prism-code-target" class="language-python"></code></pre>
+            <textarea id="python-code-editor" spellcheck="false" autocomplete="off" autocapitalize="off" oninput="onCodeInput()" onkeydown="handleCodeKeydown(event)"></textarea>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ПРАВАЯ КОЛОНКА: ВЕРСТКА ТЕРМИНАЛА И ИСТОРИЯ ВЕРСИЙ (col-span-12 lg:col-span-3 flex flex-col gap-4 justify-between) -->
+      <div class="col-span-12 lg:col-span-3 flex flex-col gap-4 justify-between">
+        
+        <!-- Консоль терминала вывода (Текст строго от первой строки top-0) -->
+        <div class="bg-slate-900 border-2 border-slate-800 rounded-[2rem] p-5 shadow-xl font-mono flex flex-col justify-start items-start flex-1 min-h-[220px]">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800 text-xs w-full mb-3 shrink-0">
+            <span class="text-slate-400 font-bold flex items-center gap-2">
+              <i class="ph-bold ph-terminal text-emerald-400"></i> Терминал вывода
+            </span>
+            <span id="terminal-exit-code" class="text-[10px] text-emerald-400 font-bold">Exit code: 0</span>
+          </div>
+
+          <!-- Вывод строго от верхнего края (justify-start items-start) -->
+          <div id="terminal-output" class="text-[11px] text-emerald-400 leading-snug w-full flex-1 flex flex-col justify-start items-start overflow-y-auto max-h-[260px] space-y-1">
+            <div class="text-slate-500">>>> Executing main.py...</div>
+          </div>
+        </div>
+
+        <!-- Плита Истории Версий Кода (Динамическое обновление БЕЗ F5) -->
+        <div id="code-versions-history-block" class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-5 space-y-3 hover:border-purple-300 transition-all">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <i class="ph-bold ph-clock-counter-clockwise text-purple-500"></i> История версий кода
+            </h3>
+            <span id="versions-count-badge" class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">0 Версий</span>
+          </div>
+
+          <!-- Список версий кода с динамической перерисовкой -->
+          <div id="versions-list-container" class="space-y-2 text-xs font-medium max-h-[180px] overflow-y-auto">
+            <p class="text-[10px] text-slate-400 font-bold text-center py-2">Контрольные точки создаются автоматически...</p>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<!-- LIGHT 3D MODALS FOR FILES CRUD -->
+
+<!-- Create File Modal -->
+<div id="create-file-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_8px_0_#DAE1E9] rounded-[2rem] p-6 max-w-md w-full mx-4 relative animate-in fade-in zoom-in duration-150">
+    <h3 class="text-base font-black text-slate-900 mb-3 flex items-center gap-2">
+      <i class="ph-bold ph-file-plus text-indigo-600"></i> Создать новый файл
+    </h3>
+    <input type="text" id="new-filename-input" placeholder="Например: solution2.py" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-mono font-bold text-xs text-slate-800 outline-none focus:border-indigo-500 mb-4 shadow-inner">
+    <div class="flex justify-end gap-3">
+      <button onclick="closeCreateFileModal()" class="px-4 py-2 bg-white text-slate-700 font-extrabold text-xs rounded-xl border border-slate-200 border-b-[3px]">Отмена</button>
+      <button onclick="confirmCreateFile()" class="px-4 py-2 bg-indigo-600 text-white font-extrabold text-xs rounded-xl border border-indigo-700 border-b-[3px]">Создать файл</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename File Modal -->
+<div id="rename-file-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 hidden">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_8px_0_#DAE1E9] rounded-[2rem] p-6 max-w-md w-full mx-4 relative animate-in fade-in zoom-in duration-150">
+    <h3 class="text-base font-black text-slate-900 mb-3 flex items-center gap-2">
+      <i class="ph-bold ph-pencil text-indigo-600"></i> Переименовать файл
+    </h3>
+    <input type="text" id="rename-filename-input" placeholder="Новое имя файла" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-mono font-bold text-xs text-slate-800 outline-none focus:border-indigo-500 mb-4 shadow-inner">
+    <div class="flex justify-end gap-3">
+      <button onclick="closeRenameFileModal()" class="px-4 py-2 bg-white text-slate-700 font-extrabold text-xs rounded-xl border border-slate-200 border-b-[3px]">Отмена</button>
+      <button onclick="confirmRenameFile()" class="px-4 py-2 bg-indigo-600 text-white font-extrabold text-xs rounded-xl border border-indigo-700 border-b-[3px]">Переименовать</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAFE JSON DATA CONTAINER -->
+<script id="workspace-data" type="application/json">
+    {{ workspace_data | tojson | safe }}
+</script>
+
+<script>
+let WORKSPACE_DATA = {};
+try {
+  const container = document.getElementById('workspace-data');
+  if (container && container.textContent.trim()) {
+    WORKSPACE_DATA = JSON.parse(container.textContent);
+  }
+} catch(e) {
+  console.error("Error parsing workspace data:", e);
+}
+
+let activeFile = 'main.py';
+let filesDict = {
+  'main.py': WORKSPACE_DATA.code || ''
+};
+let autosaveTimer = null;
+
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta && meta.getAttribute('content')) return meta.getAttribute('content');
+  const match = document.cookie.match(/csrf_access_token=([^;]+)/) || document.cookie.match(/csrf_token=([^;]+)/);
+  return match ? match[1] : '';
+}
+
+function show3DToast(msg) {
+  const toast = document.createElement('div');
+  toast.className = 'fixed top-6 right-6 z-50 bg-slate-900 text-white font-black text-xs px-5 py-3.5 rounded-2xl border-2 border-slate-700 shadow-2xl flex items-center gap-2 transition-all transform animate-in slide-in-from-top-4 duration-200';
+  toast.innerHTML = `<i class="ph-bold ph-check-circle text-emerald-400 text-base"></i><span>${msg}</span>`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 1800);
+}
+
+function initKaTeX() {
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ]
+    });
+  }
+}
+
+function onCodeInput() {
+  const editor = document.getElementById('python-code-editor');
+  const prismTarget = document.getElementById('prism-code-target');
+  if (editor && prismTarget) {
+    prismTarget.textContent = editor.value;
+    if (window.Prism) Prism.highlightElement(prismTarget);
+    filesDict[activeFile] = editor.value;
+  }
+  triggerAutosave();
+}
+
+function renderWorkspace() {
+  if (!WORKSPACE_DATA || !WORKSPACE_DATA.assignment_id) return;
+
+  const backBtn = document.getElementById('back-to-task-btn');
+  if (backBtn) backBtn.href = `/sandbox/task_detail/${WORKSPACE_DATA.assignment_id}`;
+
+  const titleLbl = document.getElementById('assignment-title-label');
+  if (titleLbl) titleLbl.textContent = WORKSPACE_DATA.assignment_title || 'Домашнее задание';
+
+  const topicH = document.getElementById('task-topic-header');
+  if (topicH) topicH.textContent = WORKSPACE_DATA.topic || `Задание №${WORKSPACE_DATA.task_number}`;
+
+  const condTitle = document.getElementById('task-condition-title');
+  if (condTitle) condTitle.innerHTML = `<i class="ph-bold ph-file-text text-indigo-500"></i> Условие КЕГЭ №${WORKSPACE_DATA.task_number}`;
+
+  const numBadge = document.getElementById('task-number-badge');
+  if (numBadge) numBadge.textContent = `#${WORKSPACE_DATA.task_number}`;
+
+  const condCont = document.getElementById('task-content-container');
+  if (condCont && WORKSPACE_DATA.content_html) condCont.innerHTML = WORKSPACE_DATA.content_html;
+
+  // Initial code setup
+  const starter = WORKSPACE_DATA.code || WORKSPACE_DATA.starter_code || '';
+  filesDict['main.py'] = starter;
+
+  renderFileTabs();
+
+  const editor = document.getElementById('python-code-editor');
+  if (editor) {
+    editor.value = starter;
+    onCodeInput();
+  }
+
+  renderDatasetFiles();
+  renderVersionsList(WORKSPACE_DATA.versions || []);
+  setTimeout(initKaTeX, 100);
+}
+
+/* File Tabs CRUD */
+function renderFileTabs() {
+  const container = document.getElementById('editor-file-tabs');
+  if (!container) return;
+
+  let html = '';
+  Object.keys(filesDict).forEach(fname => {
+    const isActive = fname === activeFile;
+    const tabClass = isActive 
+      ? 'bg-[#F4F7FA] text-indigo-700 font-extrabold border-2 border-indigo-500 rounded-xl px-3.5 py-1.5 shadow-xs flex items-center gap-2 cursor-pointer text-xs'
+      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 font-bold rounded-xl px-3.5 py-1.5 border border-slate-200 transition-all flex items-center gap-2 cursor-pointer text-xs';
+
+    let actionBtns = '';
+    if (isActive) {
+      actionBtns = `
+        <span onclick="event.stopPropagation(); openRenameFileModal('${fname}')" class="text-slate-400 hover:text-indigo-600 p-0.5" title="Переименовать">✏️</span>
+        <span onclick="event.stopPropagation(); deleteFile('${fname}')" class="text-slate-400 hover:text-rose-600 p-0.5" title="Удалить">✕</span>
+      `;
+    }
+
+    html += `
+      <div onclick="switchFileTab('${fname}')" class="${tabClass}">
+        <span>🐍 ${fname}</span>
+        ${actionBtns}
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function switchFileTab(fname) {
+  const editor = document.getElementById('python-code-editor');
+  if (editor) filesDict[activeFile] = editor.value;
+
+  activeFile = fname;
+  if (!filesDict[fname]) filesDict[fname] = '';
+
+  renderFileTabs();
+  if (editor) {
+    editor.value = filesDict[fname];
+    onCodeInput();
+  }
+}
+
+function openCreateFileModal() {
+  const modal = document.getElementById('create-file-modal');
+  const input = document.getElementById('new-filename-input');
+  if (input) input.value = '';
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeCreateFileModal() {
+  const modal = document.getElementById('create-file-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function confirmCreateFile() {
+  const input = document.getElementById('new-filename-input');
+  let fname = input ? input.value.trim() : '';
+  if (!fname) return;
+  if (!fname.includes('.')) fname += '.py';
+
+  filesDict[fname] = '# Новый скрипт Python\n';
+  closeCreateFileModal();
+  switchFileTab(fname);
+  show3DToast(`Файл ${fname} успешно создан!`);
+  triggerAutosave();
+}
+
+let fileToRename = '';
+function openRenameFileModal(fname) {
+  fileToRename = fname;
+  const modal = document.getElementById('rename-file-modal');
+  const input = document.getElementById('rename-filename-input');
+  if (input) input.value = fname;
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeRenameFileModal() {
+  const modal = document.getElementById('rename-file-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function confirmRenameFile() {
+  const input = document.getElementById('rename-filename-input');
+  const newName = input ? input.value.trim() : '';
+  if (!newName || !fileToRename) return;
+
+  if (newName !== fileToRename) {
+    filesDict[newName] = filesDict[fileToRename] || '';
+    delete filesDict[fileToRename];
+    activeFile = newName;
+    renderFileTabs();
+    show3DToast(`Файл переименован в ${newName}`);
+    triggerAutosave();
+  }
+  closeRenameFileModal();
+}
+
+function deleteFile(fname) {
+  if (Object.keys(filesDict).length <= 1) {
+    show3DToast('Нельзя удалить единственный файл проекта!');
+    return;
+  }
+  delete filesDict[fname];
+  activeFile = Object.keys(filesDict)[0];
+  switchFileTab(activeFile);
+  show3DToast(`Файл ${fname} удален`);
+  triggerAutosave();
+}
+
+function renderDatasetFiles() {
+  const container = document.getElementById('dataset-files-container');
+  if (!container) return;
+
+  const files = WORKSPACE_DATA.files || [];
+  if (files.length === 0) {
+    container.innerHTML = `<p class="text-[10px] text-slate-400 font-bold">Файлы датасетов отсутствуют</p>`;
+    return;
+  }
+
+  let html = '';
+  files.forEach(f => {
+    html += `
+      <div class="p-2.5 bg-[#F8FAFC] border border-slate-200/80 rounded-xl flex items-center justify-between hover:border-indigo-300 transition-colors group">
+        <div class="flex items-center gap-2 min-w-0">
+          <i class="ph-bold ph-file-text text-amber-500 text-base"></i>
+          <span class="text-slate-800 text-[11px] font-bold truncate">${f.name}</span>
+        </div>
+        <button onclick="copyFilename('${f.name}')" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer shrink-0">
+          Копировать
+        </button>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function copyFilename(filename) {
+  navigator.clipboard.writeText(filename).then(() => {
+    show3DToast(`Имя файла ${filename} скопировано!`);
+  }).catch(() => {
+    show3DToast(`Файл: ${filename}`);
+  });
+}
+
+function handleCodeKeydown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    runPythonCode();
+  }
+}
+
+function triggerAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(autosaveWorkspace, 1000);
+}
+
+async function autosaveWorkspace() {
+  const editor = document.getElementById('python-code-editor');
+  const notesInp = document.getElementById('workspace-notes-input');
+  if (!editor || !WORKSPACE_DATA.assignment_id) return;
+
+  const currentCode = editor.value;
+  filesDict[activeFile] = currentCode;
+
+  const payload = {
+    assignment_id: WORKSPACE_DATA.assignment_id,
+    task_id: WORKSPACE_DATA.task_id,
+    code: filesDict['main.py'] || currentCode,
+    files: filesDict,
+    notes: notesInp ? notesInp.value : ''
+  };
+
+  try {
+    const res = await fetch('/sandbox/api/workspace/autosave', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success) {
+      const timeLbl = document.getElementById('saved-time-indicator');
+      if (timeLbl) timeLbl.textContent = `Сохранено: ${data.saved_at}`;
+
+      // LIVE VERSION HISTORY UPDATE WITHOUT F5 RELOAD
+      if (data.versions && Array.isArray(data.versions)) {
+        WORKSPACE_DATA.versions = data.versions;
+        renderVersionsList(data.versions);
+      }
+    }
+  } catch (e) {
+    console.error("Autosave error:", e);
+  }
+}
+
+async function runPythonCode() {
+  const editor = document.getElementById('python-code-editor');
+  const termOut = document.getElementById('terminal-output');
+  const exitBadge = document.getElementById('terminal-exit-code');
+
+  if (!editor || !termOut) return;
+
+  const code = editor.value;
+  termOut.innerHTML = `<div class="text-slate-500">>>> Executing main.py...</div>`;
+
+  try {
+    const res = await fetch('/sandbox/api/workspace/run_code', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ code: code, task_id: WORKSPACE_DATA.task_id })
+    });
+    const data = await res.json();
+
+    if (data.status === 'ok') {
+      exitBadge.className = 'text-[10px] text-emerald-400 font-bold';
+      exitBadge.textContent = 'Exit code: 0';
+      termOut.innerHTML = `
+        <div class="text-slate-500">>>> Executing main.py...</div>
+        <div class="font-bold text-slate-100 whitespace-pre-wrap">${data.stdout || '(Вывод пустой)'}</div>
+      `;
+    } else {
+      exitBadge.className = 'text-[10px] text-rose-400 font-bold';
+      exitBadge.textContent = 'Exit code: 1 (Error)';
+      termOut.innerHTML = `
+        <div class="text-slate-500">>>> Executing main.py...</div>
+        <div class="font-bold text-rose-400 whitespace-pre-wrap">${data.stderr || data.stdout || 'Ошибка выполнения'}</div>
+      `;
+    }
+  } catch (e) {
+    termOut.innerHTML = `<div class="text-rose-400 font-bold">Ошибка вызова интерпретатора</div>`;
+  }
+
+  autosaveWorkspace();
+}
+
+function renderVersionsList(versionsList) {
+  const container = document.getElementById('versions-list-container');
+  const badge = document.getElementById('versions-count-badge');
+  const versions = versionsList || WORKSPACE_DATA.versions || [];
+
+  if (badge) badge.textContent = `${versions.length} Версий`;
+  if (!container) return;
+
+  if (versions.length === 0) {
+    container.innerHTML = `<p class="text-[10px] text-slate-400 font-bold text-center py-2">История версий пока пуста.</p>`;
+    return;
+  }
+
+  let html = '';
+  versions.forEach(v => {
+    html += `
+      <div onclick="rollbackToVersion('${v.version_id}')" class="p-2.5 bg-slate-50 hover:bg-purple-50 border border-slate-200/80 hover:border-purple-300 rounded-xl flex items-center justify-between transition-colors cursor-pointer group">
+        <div>
+          <p class="text-slate-800 font-bold group-hover:text-purple-700 text-xs">${v.label}</p>
+          <p class="text-[10px] text-slate-400">${v.time_str}</p>
+        </div>
+        <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Откатить</span>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function rollbackToVersion(versionId) {
+  const versions = WORKSPACE_DATA.versions || [];
+  const target = versions.find(v => String(v.version_id) === String(versionId));
+  if (target && target.code) {
+    const editor = document.getElementById('python-code-editor');
+    if (editor) {
+      editor.value = target.code;
+      filesDict[activeFile] = target.code;
+      onCodeInput();
+    }
+    show3DToast(`Код восстановлен из ${target.label}!`);
+    autosaveWorkspace();
+  }
+}
+
+// 10-second background autosave timer
+setInterval(autosaveWorkspace, 10000);
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderWorkspace();
+});
+</script>
+{% endblock %}

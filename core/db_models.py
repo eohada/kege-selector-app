@@ -95,6 +95,71 @@ class QAReportHistory(db.Model):
     report = db.relationship('QAReport', backref=db.backref('history', lazy='dynamic', cascade='all, delete-orphan'))
     author = db.relationship('User', foreign_keys=[author_id])
 
+
+class TestCase(db.Model):
+    """Тест-кейс системы тестирования V2."""
+    __tablename__ = 'test_cases'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(300), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    area = db.Column(db.String(100), nullable=False, default='general', index=True)
+    assigned_to_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True, index=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    status = db.Column(db.String(50), default='DRAFT', nullable=False, index=True)  # DRAFT, ACTIVE, PASSED, FAILED
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    assigned_to = db.relationship('User', foreign_keys=[assigned_to_id], backref=db.backref('assigned_test_cases', lazy='dynamic'))
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+    steps = db.relationship('TestStep', backref='test_case', cascade='all, delete-orphan', lazy='joined', order_by='TestStep.step_number')
+    bug_reports = db.relationship('BugReport', backref='test_case', cascade='all, delete-orphan', lazy='dynamic')
+
+
+class TestStep(db.Model):
+    """Шаг чек-листа проверки для тест-кейса."""
+    __tablename__ = 'test_steps'
+    id = db.Column(db.Integer, primary_key=True)
+    test_case_id = db.Column(db.Integer, db.ForeignKey('test_cases.id', ondelete='CASCADE'), nullable=False, index=True)
+    step_number = db.Column(db.Integer, nullable=False, default=1)
+    action_text = db.Column(db.Text, nullable=False)
+    expected_result = db.Column(db.Text, nullable=True)
+    is_completed = db.Column(db.Boolean, default=False, nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+
+
+class BugReport(db.Model):
+    """Отчет об ошибке / баг-репорт от тестировщика."""
+    __tablename__ = 'bug_reports'
+    id = db.Column(db.Integer, primary_key=True)
+    test_case_id = db.Column(db.Integer, db.ForeignKey('test_cases.id', ondelete='SET NULL'), nullable=True, index=True)
+    test_step_id = db.Column(db.Integer, db.ForeignKey('test_steps.id', ondelete='SET NULL'), nullable=True, index=True)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True, index=True)
+    title = db.Column(db.String(300), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    page_url = db.Column(db.String(500), nullable=True)
+    step_failed = db.Column(db.String(255), nullable=True)
+    expected_vs_actual = db.Column(db.Text, nullable=True)
+    severity = db.Column(db.String(50), default='MAJOR', nullable=False, index=True)  # CRITICAL, MAJOR, MINOR
+    status = db.Column(db.String(50), default='NEW', nullable=False, index=True)        # NEW, IN_PROGRESS, RESOLVED, REJECTED
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    test_step = db.relationship('TestStep', foreign_keys=[test_step_id])
+    reporter = db.relationship('User', foreign_keys=[reporter_id])
+
+
+class BugReportComment(db.Model):
+    """Комментарии / ветка обсуждения в баг-репорте."""
+    __tablename__ = 'bug_report_comments'
+    id = db.Column(db.Integer, primary_key=True)
+    bug_report_id = db.Column(db.Integer, db.ForeignKey('bug_reports.id', ondelete='CASCADE'), nullable=False, index=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True, index=True)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    author = db.relationship('User', foreign_keys=[author_id])
+    bug_report = db.relationship('BugReport', backref=db.backref('comments', cascade='all, delete-orphan', order_by='BugReportComment.id.asc()'))
+
 task_topics = Table('task_topics',
     db.metadata,
     Column('task_id', Integer, ForeignKey('Tasks.task_id'), primary_key=True),
@@ -172,6 +237,7 @@ class Tasks(db.Model):
     kege_source_tag = db.Column(db.String(64), nullable=True, index=True)
     # 1 = базовый, 2 = средний, 3 = сложный (как на сайте); NULL — до синка или не КЕГЭ
     kege_difficulty_tier = db.Column(db.Integer, nullable=True, index=True)
+    max_score = db.Column(db.Integer, default=1, nullable=True)
 
     DIFFICULTY_LEVEL_EASY = 1
     DIFFICULTY_LEVEL_MEDIUM = 2
@@ -303,6 +369,8 @@ class Student(db.Model):
     telegram = db.Column(db.String(100), nullable=True)
     telegram_username = db.Column(db.String(100), nullable=True)
     discord_id = db.Column(db.String(100), nullable=True)
+    mentor_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    lessons_balance = db.Column(db.Integer, default=0, nullable=True)
     
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('student_profile', uselist=False))
 
@@ -334,6 +402,26 @@ class Student(db.Model):
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     is_active = db.Column(db.Boolean, default=True)
+
+    @property
+    def id(self):
+        return self.student_id
+
+    @property
+    def tutor_id(self):
+        return self.mentor_id
+
+    @tutor_id.setter
+    def tutor_id(self, val):
+        self.mentor_id = val
+
+    @property
+    def teacher_id(self):
+        return self.mentor_id
+
+    @teacher_id.setter
+    def teacher_id(self, val):
+        self.mentor_id = val
 
     lessons = db.relationship('Lesson', back_populates='student', lazy=True, cascade='all, delete-orphan')
     task_statistics = db.relationship('StudentTaskStatistics', back_populates='student', lazy=True, cascade='all, delete-orphan')
@@ -434,6 +522,30 @@ class SchoolGroup(db.Model):
     status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|archived
     owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
 
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    tag = db.Column(db.String(100), default='Мини-группа', nullable=True)
+    telegram_chat_link = db.Column(db.String(255), nullable=True)
+
+    @property
+    def id(self):
+        return self.group_id
+
+    @property
+    def name(self):
+        return self.title
+
+    @name.setter
+    def name(self, val):
+        self.title = val
+
+    @property
+    def teacher_id(self):
+        return self.owner_user_id
+
+    @teacher_id.setter
+    def teacher_id(self, val):
+        self.owner_user_id = val
+
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
@@ -502,6 +614,30 @@ class MaterialAsset(db.Model):
     __tablename__ = 'MaterialAssets'
     asset_id = db.Column(db.Integer, primary_key=True)
     owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    tag = db.Column(db.String(100), default='Мини-группа', nullable=True)
+    telegram_chat_link = db.Column(db.String(255), nullable=True)
+
+    @property
+    def id(self):
+        return self.group_id
+
+    @property
+    def name(self):
+        return self.title
+
+    @name.setter
+    def name(self, val):
+        self.title = val
+
+    @property
+    def teacher_id(self):
+        return self.owner_user_id
+
+    @teacher_id.setter
+    def teacher_id(self, val):
+        self.owner_user_id = val
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
     tags = db.Column(db.JSON, nullable=True)  # ["геометрия", "pdf", ...]
@@ -567,6 +703,30 @@ class RecurringLessonSlot(db.Model):
 
     slot_id = db.Column(db.Integer, primary_key=True)
     owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)  # кто создал (обычно тьютор)
+
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    tag = db.Column(db.String(100), default='Мини-группа', nullable=True)
+    telegram_chat_link = db.Column(db.String(255), nullable=True)
+
+    @property
+    def id(self):
+        return self.group_id
+
+    @property
+    def name(self):
+        return self.title
+
+    @name.setter
+    def name(self, val):
+        self.title = val
+
+    @property
+    def teacher_id(self):
+        return self.owner_user_id
+
+    @teacher_id.setter
+    def teacher_id(self, val):
+        self.owner_user_id = val
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
 
     weekday = db.Column(db.Integer, nullable=False, index=True)  # 0=Mon..6=Sun
@@ -594,6 +754,30 @@ class RubricTemplate(db.Model):
 
     rubric_id = db.Column(db.Integer, primary_key=True)
     owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    tag = db.Column(db.String(100), default='Мини-группа', nullable=True)
+    telegram_chat_link = db.Column(db.String(255), nullable=True)
+
+    @property
+    def id(self):
+        return self.group_id
+
+    @property
+    def name(self):
+        return self.title
+
+    @name.setter
+    def name(self, val):
+        self.title = val
+
+    @property
+    def teacher_id(self):
+        return self.owner_user_id
+
+    @teacher_id.setter
+    def teacher_id(self, val):
+        self.owner_user_id = val
 
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -661,6 +845,30 @@ class Lesson(db.Model):
     @property
     def exam_assignments(self):
         return [task for task in self.homework_tasks if (task.assignment_type or 'homework') == 'exam']
+
+    @property
+    def start_dt(self):
+        return self.lesson_date
+
+    @start_dt.setter
+    def start_dt(self, val):
+        self.lesson_date = val
+
+    @property
+    def duration_minutes(self):
+        return self.duration or 60
+
+    @duration_minutes.setter
+    def duration_minutes(self, val):
+        self.duration = val
+
+    @property
+    def teacher_user_id(self):
+        return getattr(self, '_teacher_user_id', None) or getattr(self, 'tutor_id', None) or getattr(self, 'teacher_id', None)
+
+    @teacher_user_id.setter
+    def teacher_user_id(self, val):
+        self._teacher_user_id = val
 
 class LessonTask(db.Model):
     __tablename__ = 'LessonTasks'
@@ -822,7 +1030,15 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=True)  # Email для входа (новое поле)
-    password_hash = db.Column(db.String(255), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)
+
+    def set_password(self, password):
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password) if self.password_hash else False
     
     role = db.Column(db.String(50), default='tester', nullable=False)
     numeric_id = db.Column(db.String(10), nullable=True, index=True)
@@ -847,6 +1063,65 @@ class User(db.Model):
 
     tg_auth_key = db.Column(db.String(120), unique=True, nullable=True)
     tg_id = db.Column(db.BigInteger, nullable=True)
+    telegram_id = db.Column(db.BigInteger, unique=True, nullable=True, index=True)
+    telegram_chat_id = db.Column(db.BigInteger, nullable=True)
+    telegram_linked_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    creator_bot_mode = db.Column(db.String(20), default='ADMIN', nullable=False)
+    parent_link_code = db.Column(db.String(20), nullable=True, unique=True, index=True)
+
+    def get_children(self):
+        """Возвращает список привязанных учеников (User objects)."""
+        ties = FamilyTie.query.filter(
+            FamilyTie.parent_id == self.id,
+            FamilyTie.is_confirmed == True
+        ).all()
+        child_ids = [t.student_id for t in ties]
+        if not child_ids:
+            return []
+        return User.query.filter(User.id.in_(child_ids)).all()
+
+    def get_parents(self):
+        """Возвращает список привязанных родителей (User objects)."""
+        ties = FamilyTie.query.filter(
+            FamilyTie.student_id == self.id,
+            FamilyTie.is_confirmed == True
+        ).all()
+        parent_ids = [t.parent_id for t in ties]
+        if not parent_ids:
+            return []
+        return User.query.filter(User.id.in_(parent_ids)).all()
+
+    def generate_parent_code(self):
+        """Генерирует или возвращает уникальный 6-значный код привязки для родителей (например, BS-893A)."""
+        if getattr(self, 'parent_link_code', None):
+            return self.parent_link_code
+        import random, string
+        chars = string.ascii_uppercase + string.digits
+        for _ in range(20):
+            code = "BS-" + "".join(random.choices(chars, k=4))
+            existing = User.query.filter_by(parent_link_code=code).first()
+            if not existing:
+                self.parent_link_code = code
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                return code
+        fallback = f"BS-{self.id:04d}"
+        self.parent_link_code = fallback
+        return fallback
+
+    @property
+    def link_code(self):
+        return self.generate_parent_code()
+
+    @property
+    def full_name(self):
+        return getattr(self, '_full_name', None) or self.username or ''
+
+    @full_name.setter
+    def full_name(self, val):
+        self._full_name = val
 
     def get_id(self):
         return str(self.id)
@@ -861,9 +1136,39 @@ class User(db.Model):
 
     def roles(self):
         """Список ролей пользователя (объединение из UserRole; при отсутствии записей — [role])."""
-        if self.user_roles:
-            return [ur.role for ur in self.user_roles]
-        return [self.role] if self.role else []
+        # Flask-Login can retain the user object while a nested application
+        # context has already removed its SQLAlchemy session.  Maintenance and
+        # access hooks must still be able to use the primary role in that case.
+        from sqlalchemy.orm.exc import DetachedInstanceError
+
+        try:
+            user_roles = self.user_roles
+        except DetachedInstanceError:
+            state = self._sa_instance_state
+            primary_role = state.dict.get('role')
+            if primary_role:
+                return [primary_role]
+
+            # A detached instance can also have expired scalar attributes.
+            # Use its identity to read only the primary role in the active
+            # request session instead of attempting to reattach the object.
+            identity = state.identity
+            if identity:
+                primary_role = db.session.query(type(self).role).filter_by(id=identity[0]).scalar()
+                return [primary_role] if primary_role else []
+            return []
+
+        roles_set = {ur.role for ur in user_roles} if user_roles else set()
+        if self.role:
+            roles_set.add(self.role)
+        try:
+            from flask import session
+            sandbox_role = session.get('sandbox_role')
+            if sandbox_role:
+                roles_set.add(sandbox_role)
+        except RuntimeError:
+            pass
+        return list(roles_set)
 
     def is_admin(self):
         """Проверка, является ли пользователь администратором или главным администратором"""
@@ -1003,6 +1308,18 @@ class User(db.Model):
 
     # Демо-пользователь (временный)
     is_demo_user = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
+class TelegramAuthCode(db.Model):
+    """Одноразовые 6-8 значные коды для привязки Telegram-аккаунта"""
+    __tablename__ = 'telegram_auth_codes'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    code = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    is_used = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
 
 class RolePermission(db.Model):
     __tablename__ = 'RolePermissions'
@@ -1244,24 +1561,44 @@ class PromoCodeUsage(db.Model):
         return f'<PromoCodeUsage code_id={self.promocode_id} user_id={self.user_id}>'
 
 
+class TeacherStudent(db.Model):
+    """Таблица связи (Many-to-Many) Преподавателя и Ученика"""
+    __tablename__ = 'teacher_students'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    status = db.Column(db.String(30), default='active', nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref='teacher_students')
+    student_user = db.relationship('User', foreign_keys=[student_id], backref='student_teachers')
+
+    __table_args__ = (Index('ix_teacher_student_unique', 'teacher_id', 'student_id', unique=True),)
+
+    def __repr__(self):
+        return f'<TeacherStudent teacher:{self.teacher_id} -> student:{self.student_id}>'
+
+
 class InviteLink(db.Model):
     """
-    Приглашение в систему (онбординг).
+    Приглашение в систему (ученика или родителя).
 
     Flow:
-    - тьютор/админ создаёт invite (email + role + optional student_id)
-    - пользователь открывает /invite/<token> и задаёт пароль
-    - invite становится used
+    - тьютор/система создаёт invite (роль + optional student_id / teacher_id)
+    - пользователь открывает /register/student/<token> или /register/parent/<token>
+    - invite фиксируется как used
     """
     __tablename__ = 'InviteLinks'
 
     invite_id = db.Column(db.Integer, primary_key=True)
     token_hash = db.Column(db.String(128), nullable=False, unique=True, index=True)
 
-    email = db.Column(db.String(200), nullable=False, index=True)
+    email = db.Column(db.String(200), nullable=True, default='', index=True)
     role = db.Column(db.String(50), nullable=False, index=True)  # student|parent|tutor|...
     note = db.Column(db.Text, nullable=True)
 
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
 
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
@@ -1270,10 +1607,31 @@ class InviteLink(db.Model):
 
     used_at = db.Column(db.DateTime, nullable=True, index=True)
     used_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    revoked_at = db.Column(db.DateTime, nullable=True, index=True)
 
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    teacher = db.relationship('User', foreign_keys=[teacher_id])
     used_by = db.relationship('User', foreign_keys=[used_by_user_id])
     student = db.relationship('Student', foreign_keys=[student_id])
+
+    @property
+    def is_valid(self) -> bool:
+        if self.used_at or self.revoked_at:
+            return False
+        if self.expires_at:
+            now_val = moscow_now().replace(tzinfo=None)
+            exp_val = self.expires_at.replace(tzinfo=None) if hasattr(self.expires_at, 'replace') else self.expires_at
+            if now_val > exp_val:
+                return False
+        return True
+
+    def mark_used(self, user_id: int | None = None):
+        self.used_at = moscow_now()
+        if user_id:
+            self.used_by_user_id = user_id
+
+    def revoke(self):
+        self.revoked_at = moscow_now()
 
 
 class Tester(db.Model):
@@ -1377,12 +1735,38 @@ class TaskTemplate(db.Model):
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     is_active = db.Column(db.Boolean, default=True)
+    estimated_time = db.Column(db.Integer, default=45, nullable=True)  # Время выполнения в минутах
+    course_id = db.Column(db.Integer, nullable=True)
     
     template_tasks = db.relationship('TemplateTask', back_populates='template', lazy=True, cascade='all, delete-orphan')
     creator = db.relationship('User', foreign_keys=[created_by])
     
     def __repr__(self):
         return f'<TaskTemplate {self.name} ({self.template_type})>'
+
+    @property
+    def id(self):
+        return self.template_id
+
+    @property
+    def title(self):
+        return self.name
+
+    @title.setter
+    def title(self, val):
+        self.name = val
+
+    @property
+    def teacher_id(self):
+        return self.created_by
+
+    @teacher_id.setter
+    def teacher_id(self, val):
+        self.created_by = val
+
+    @property
+    def tasks_count(self):
+        return len(self.template_tasks) if self.template_tasks else 0
 
 class TemplateTask(db.Model):
     """Связь между шаблоном и заданиями"""
@@ -1606,9 +1990,24 @@ class FamilyTie(db.Model):
     student = db.relationship('User', foreign_keys=[student_id], backref='student_parents')
     
     __table_args__ = (Index('ix_family_tie_unique', 'parent_id', 'student_id', unique=True),)
-    
+
+    @property
+    def id(self):
+        return self.tie_id
+
+    @property
+    def status(self):
+        return 'active' if self.is_confirmed else 'pending'
+
+    @status.setter
+    def status(self, val):
+        self.is_confirmed = (val == 'active')
+
     def __repr__(self):
         return f'<FamilyTie parent:{self.parent_id} -> student:{self.student_id}>'
+
+
+ParentStudentLink = FamilyTie
 
 
 class UserAchievement(db.Model):
@@ -1623,8 +2022,42 @@ class UserAchievement(db.Model):
 
     __table_args__ = (Index('ix_student_achievement_unique', 'student_id', 'achievement_key', unique=True),)
 
+class SystemSetting(db.Model):
+    """Таблица системных настроек платформы (BooStudy V2)"""
+    __tablename__ = 'SystemSettings'
+    id = db.Column(db.Integer, primary_key=True)
+    setting_key = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    setting_value = db.Column(db.Text, nullable=True)
+    description = db.Column(db.String(255), nullable=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    @classmethod
+    def get_value(cls, key: str, default: str = None) -> str:
+        try:
+            row = cls.query.filter_by(setting_key=key).first()
+            return row.setting_value if row and row.setting_value is not None else default
+        except Exception:
+            return default
+
+    @classmethod
+    def set_value(cls, key: str, value: str, description: str = None) -> bool:
+        try:
+            row = cls.query.filter_by(setting_key=key).first()
+            if not row:
+                row = cls(setting_key=key, setting_value=str(value), description=description)
+                db.session.add(row)
+            else:
+                row.setting_value = str(value)
+                if description:
+                    row.description = description
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            return False
+
     def __repr__(self):
-        return f'<UserAchievement student:{self.student_id} -> {self.achievement_key}>'
+        return f'<SystemSetting {self.setting_key}={self.setting_value}>'
 
 
 class Enrollment(db.Model):
@@ -2570,3 +3003,161 @@ class PlatformBugReport(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
     user = db.relationship('User', foreign_keys=[user_id])
+
+
+AssignmentTemplate = TaskTemplate
+ScheduleLesson = Lesson
+
+
+
+class LibraryMaterial(db.Model):
+    """Модель учебного материала в единой библиотеке материалов V2"""
+    __tablename__ = 'LibraryMaterials'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    filename = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    file_size = db.Column(db.BigInteger, nullable=False, default=0)
+    formatted_size = db.Column(db.String(64), nullable=True)
+    file_extension = db.Column(db.String(32), nullable=True)
+    category = db.Column(db.String(64), nullable=False, default='materials')
+    tags = db.Column(db.Text, nullable=True)
+    is_visible_to_students = db.Column(db.Boolean, default=False, nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id])
+
+    def to_dict(self):
+        tags_list = [t.strip() for t in (self.tags or '').split(',') if t.strip()]
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description or '',
+            'filename': self.filename,
+            'original_filename': self.original_filename,
+            'file_path': self.file_path,
+            'file_size': self.file_size,
+            'formatted_size': self.formatted_size or '',
+            'file_extension': (self.file_extension or '').lower(),
+            'category': self.category,
+            'tags': tags_list,
+            'tags_raw': self.tags or '',
+            'is_visible_to_students': self.is_visible_to_students,
+            'teacher_id': self.teacher_id,
+            'created_at': self.created_at.strftime('%d.%m.%Y %H:%M') if self.created_at else ''
+        }
+
+
+# =========================================================================
+# V2 MENTOR / TEACHER PROFILE & SHOWCASE MODELS
+# =========================================================================
+class TeacherProfile(db.Model):
+    __tablename__ = 'TeacherProfiles'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), unique=True, nullable=False, index=True)
+    bio = db.Column(db.Text, nullable=True)
+    university = db.Column(db.String(200), nullable=True)
+    experience_years = db.Column(db.Integer, default=0, nullable=True)
+    specialization = db.Column(db.String(200), nullable=True)
+    tags = db.Column(db.Text, nullable=True)  # JSON-encoded list or comma-separated strings
+    methodology_highlights = db.Column(db.Text, nullable=True)  # JSON-encoded list of dicts [{'title':..., 'description':..., 'icon':...}]
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('teacher_profile', uselist=False))
+
+    def get_tags_list(self):
+        if not self.tags:
+            return []
+        try:
+            val = json.loads(self.tags)
+            if isinstance(val, list):
+                return val
+        except Exception:
+            pass
+        return [t.strip() for t in str(self.tags).split(',') if t.strip()]
+
+    def get_methodology_list(self):
+        if not self.methodology_highlights:
+            return []
+        try:
+            val = json.loads(self.methodology_highlights)
+            if isinstance(val, list):
+                return val
+        except Exception:
+            pass
+        return []
+
+
+class TeacherProgram(db.Model):
+    __tablename__ = 'TeacherPrograms'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    program_type = db.Column(db.String(50), default='ГОДОВОЙ КУРС', nullable=False)
+    group_size_info = db.Column(db.String(100), default='Группа до 10 чел.', nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    seats_left = db.Column(db.Integer, default=5, nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref=db.backref('teacher_programs', lazy='dynamic'))
+
+
+class TeacherResult(db.Model):
+    __tablename__ = 'TeacherResults'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    student_name = db.Column(db.String(150), nullable=False)
+    score = db.Column(db.Integer, nullable=False)
+    target_university = db.Column(db.String(200), nullable=True)
+    subject = db.Column(db.String(100), default='Информатика', nullable=True)
+    year = db.Column(db.Integer, default=2025, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref=db.backref('teacher_results', lazy='dynamic'))
+
+
+class TeacherWebinar(db.Model):
+    __tablename__ = 'TeacherWebinars'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    scheduled_at = db.Column(db.DateTime, nullable=True)
+    duration_minutes = db.Column(db.Integer, default=90, nullable=True)
+    room_id = db.Column(db.String(100), nullable=True)
+    is_live = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref=db.backref('teacher_webinars', lazy='dynamic'))
+
+
+class TeacherReview(db.Model):
+    """Отзыв ученика о преподавателе."""
+    __tablename__ = 'TeacherReviews'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    student_name = db.Column(db.String(120), nullable=False)
+    rating = db.Column(db.Float, nullable=False, default=5.0)
+    text = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    teacher = db.relationship('User', foreign_keys=[teacher_id], backref=db.backref('teacher_reviews', lazy='dynamic'))
+
+
+class CourseTimelineBlock(db.Model):
+    __tablename__ = 'CourseTimelineBlocks'
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=False)
+    lesson_number = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.String(255), nullable=True)
+    content = db.Column(db.Text, nullable=True)
+    pdf_path = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    course = db.relationship('Course', backref=db.backref('timeline_blocks', lazy='dynamic', cascade='all, delete-orphan'))

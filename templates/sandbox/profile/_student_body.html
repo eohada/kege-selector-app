@@ -1,0 +1,211 @@
+<!-- BENTO GRID СЕТКА ДЛЯ УЧЕНИКА -->
+<div class="space-y-6 w-full">
+
+  <!-- РЯД 1: Три метрики успеваемости (3 карточки в ряд) -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Выполнено ДЗ -->
+    <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-3 relative overflow-hidden group hover:-translate-y-1 transition-transform">
+       <div class="flex justify-between items-center z-10">
+           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Выполнено ДЗ</p>
+           <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200"><i class="ph-bold ph-check-circle text-lg"></i></div>
+       </div>
+       <div class="z-10">
+           <h3 class="text-3xl font-display font-black text-slate-800">{{ student_stats.hw_completed if student_stats else 0 }} / {{ student_stats.hw_total if student_stats else 0 }}</h3>
+           <p class="text-[10px] font-bold text-emerald-500 mt-1 flex items-center gap-1 uppercase tracking-widest"><i class="ph-bold ph-caret-up"></i> {{ student_stats.on_time_pct if student_stats else 0 }}% Сдача в срок</p>
+       </div>
+    </div>
+
+    <!-- Решено задач -->
+    <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-3 relative overflow-hidden group hover:-translate-y-1 transition-transform">
+       <div class="flex justify-between items-center z-10">
+           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Решено задач</p>
+           <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center border border-indigo-200"><i class="ph-bold ph-code-block text-lg"></i></div>
+       </div>
+       <div class="z-10">
+           <h3 class="text-3xl font-display font-black text-slate-800">{{ student_stats.tasks_solved if student_stats else 0 }}</h3>
+           <p class="text-[10px] font-bold text-indigo-500 mt-1 uppercase tracking-widest">Практика КЕГЭ</p>
+       </div>
+    </div>
+
+    <!-- Ср. балл пробников -->
+    <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-3 relative overflow-hidden group hover:-translate-y-1 transition-transform">
+       <div class="flex justify-between items-center z-10">
+           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ср. балл пробников</p>
+           <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center border border-amber-200"><i class="ph-bold ph-chart-bar text-lg"></i></div>
+       </div>
+       <div class="z-10">
+           <h3 class="text-3xl font-display font-black text-slate-800">{{ student_stats.avg_score if student_stats else 0 }}</h3>
+           <p class="text-[10px] font-bold text-amber-500 mt-1 uppercase tracking-widest">{% if student_stats and student_stats.target_score %}Цель: {{ student_stats.target_score }}+ баллов{% else %}Цель не задана{% endif %}</p>
+       </div>
+    </div>
+  </div>
+
+  <!-- РЯД 2: Основной контент (2 колонки) + Правый сайдбар (1 колонка) -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      
+      <!-- ЛЕВАЯ ЧАСТЬ (2 колонки) -->
+      <div class="lg:col-span-2 space-y-6">
+          <!-- 1. ИЗУЧАЕМЫЕ ДИСЦИПЛИНЫ -->
+          <div class="bg-white border-2 border-slate-200/80 p-8 rounded-[2rem] shadow-sm space-y-6">
+              <div class="flex items-center justify-between">
+                  <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <i class="ph-bold ph-books text-lg text-emerald-500"></i> Изучаемые дисциплины
+                  </h3>
+                  <span class="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg uppercase tracking-wider">АКТИВНЫЙ КУРС</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {% for subj in active_subjects %}
+                  <div class="bg-[#F8FAFC] border-2 border-slate-200/80 p-5 rounded-[1.5rem] flex flex-col justify-between gap-4 group hover:border-emerald-300 transition-colors">
+                      <div class="space-y-3">
+                          <div class="flex items-center justify-between">
+                              <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider">ЕГЭ 2026</span>
+                              <span class="text-xs font-bold text-slate-400">Ментор: {{ subj.teacher_name }}</span>
+                          </div>
+                          <h4 class="text-base font-black text-slate-800 leading-snug">{{ subj.name }}</h4>
+                          <div class="space-y-1">
+                              <div class="flex items-center justify-between text-xs font-bold text-slate-600">
+                                  <span>Прогресс курса</span>
+                                  <span class="text-emerald-600 font-extrabold">{{ subj.progress }}%</span>
+                              </div>
+                              <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                                  <div class="h-full bg-emerald-500 rounded-full" style="width: {{ subj.progress }}%"></div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  {% else %}
+                  <div class="col-span-2 text-center py-6 text-slate-400 font-bold text-sm">
+                      Предметы пока не подключены.
+                  </div>
+                  {% endfor %}
+              </div>
+          </div>
+
+          <!-- 2. ГЕЙМИФИКАЦИЯ (Прогресс ученика & Уровень) -->
+          <div class="bg-slate-900 rounded-[2rem] p-6 shadow-lg border border-slate-800 relative overflow-hidden h-max w-full">
+              <div class="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/30 blur-[60px] pointer-events-none mix-blend-screen"></div>
+
+              <div class="relative z-10 space-y-4">
+                  <div class="flex items-center justify-between pb-3 border-b border-slate-700/50">
+                      <h3 class="text-white font-display font-bold text-lg flex items-center gap-2">
+                          <i class="ph-fill ph-lightning text-amber-400"></i> Прогресс Ученика
+                      </h3>
+                      <span class="text-[10px] font-black text-emerald-400 bg-emerald-900/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg uppercase">
+                          Уровень {{ student_stats.level if student_stats else 12 }}
+                      </span>
+                  </div>
+
+                  <div class="space-y-2">
+                      <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                          <span>Опыт (XP)</span>
+                          <span>{{ student_stats.xp_points if student_stats else 3450 }} / {{ student_stats.xp_next_level if student_stats else 4000 }} XP</span>
+                      </div>
+                      <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                          <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full" style="width: 86%"></div>
+                      </div>
+                  </div>
+
+                  <div class="p-3.5 bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-700/80 flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-lg">
+                          🔥
+                      </div>
+                      <div>
+                          <h5 class="text-xs font-bold text-white mb-0.5">Ударный режим {{ student_stats.streak_days if student_stats else 5 }} дней подряд!</h5>
+                          <p class="text-[10px] text-slate-400 font-medium">Решайте минимум 1 задачу ежедневно для сохранения серии.</p>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          <!-- 3. ДОСТИЖЕНИЯ И АЧИВКИ -->
+          <div class="bg-white border-2 border-slate-200/80 p-8 rounded-[2rem] shadow-sm space-y-6">
+              <div class="flex items-center justify-between">
+                  <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <i class="ph-bold ph-trophy text-lg text-amber-500"></i> Достижения & Ачивки
+                  </h3>
+                  <button onclick="openAchievementsModal()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-3.5 py-1.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer border-0 flex items-center gap-1.5">
+                      <span>Смотреть все ачивки ({{ all_achievements|length if all_achievements is defined else 6 }}) &rarr;</span>
+                  </button>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {% set ach_list = all_achievements if (all_achievements is defined and all_achievements) else [] %}
+                  {% for a in ach_list[:4] %}
+                  <div onclick="openAchievementsModal()" class="p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col items-center text-center gap-2.5 group hover:-translate-y-1 {% if a.unlocked %}bg-amber-50/40 border-amber-200 shadow-xs hover:border-amber-400{% else %}bg-slate-50 border-slate-200/80 opacity-60 hover:opacity-100{% endif %}">
+                      <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-xs transition-transform group-hover:scale-110 {% if a.unlocked %}bg-amber-500 text-white shadow-[0_4px_0_#D97706]{% else %}bg-slate-200 text-slate-400{% endif %}">
+                          <i class="ph-fill {{ a.icon }}"></i>
+                      </div>
+                      <div>
+                          <h5 class="text-xs font-black text-slate-800 leading-tight mb-0.5">{{ a.title }}</h5>
+                          <span class="text-[9px] font-black {% if a.unlocked %}text-emerald-600 bg-emerald-50 border border-emerald-200{% else %}text-slate-500 bg-slate-100 border border-slate-200{% endif %} px-2 py-0.5 rounded-md uppercase tracking-wider block mt-1">
+                              {{ a.progress if a.progress else ('+ ' ~ a.xp ~ ' XP') }}
+                          </span>
+                      </div>
+                  </div>
+                  {% endfor %}
+              </div>
+          </div>
+      </div>
+
+      <!-- ПРАВАЯ ЧАСТЬ (1 колонка) -->
+      <div class="space-y-6">
+          <!-- 1. ВОССТАНОВЛЕННЫЙ ВИДЖЕТ TELEGRAM & MINI APP -->
+          {% include 'sandbox/profile/_telegram_card.html' %}
+
+          <!-- 2. БЛОК: КОД ПРИВЯЗКИ ДЛЯ РОДИТЕЛЕЙ -->
+          {% if current_user.is_authenticated and current_user.id == target_user.id %}
+          <div class="bg-[#F4F7FA] border-2 border-slate-200 p-6 rounded-[2rem] shadow-[0_4px_0_#DAE1E9] space-y-3">
+              <div class="flex items-center justify-between">
+                  <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <i class="ph-bold ph-key text-indigo-500 text-base"></i> Код для родителей
+                  </h4>
+                  <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg">Контроль</span>
+              </div>
+              <div class="flex items-center gap-2">
+                  <div class="flex-1 bg-white border-2 border-slate-200 rounded-xl px-3.5 py-2 text-center font-mono font-black text-base text-indigo-600 tracking-wider shadow-inner select-all">
+                      {{ target_user.link_code if target_user.link_code else 'BS-7741' }}
+                  </div>
+                  <button onclick="copyParentLinkCode('{{ target_user.link_code if target_user.link_code else 'BS-7741' }}')" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-3.5 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] shadow-[0_3px_0_#3730A3] active:translate-y-[2px] transition-all cursor-pointer flex items-center gap-1 shrink-0" title="Скопировать код">
+                      <i class="ph-bold ph-copy text-sm"></i>
+                      <span>Копия</span>
+                  </button>
+              </div>
+              <p class="text-[10px] font-bold text-slate-400 leading-snug mb-0">
+                  Передайте этот код родителю для привязки аккаунта в родительском кабинете.
+              </p>
+          </div>
+          {% endif %}
+      </div>
+
+  </div>
+
+</div>
+
+<script>
+function copyParentLinkCode(code) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(() => {
+            if (typeof showToast === 'function') {
+                showToast('Код привязки ' + code + ' скопирован в буфер обмена!', 'success');
+            } else {
+                alert('Код ' + code + ' скопирован!');
+            }
+        });
+    } else {
+        alert('Код привязки: ' + code);
+    }
+}
+function generateTgCode() {
+    fetch('/api/telegram/generate_auth_code', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+        if (d.code) {
+            alert('Ваш временный код авторизации в Telegram: ' + d.code);
+        } else {
+            alert('Код сгенерирован! Откройте нашего бота для завершения привязки.');
+        }
+    })
+    .catch(() => alert('Генерация кода возможна через Telegram-бот.'));
+}
+</script>

@@ -1,0 +1,778 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<style>
+    .seg-tab.active {
+        background-color: #EEF2FF;
+        color: #4F46E5;
+        font-weight: 800;
+        border-color: #C7D2FE;
+        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative flex flex-col min-h-[calc(100vh-4rem)]">
+            
+            <!-- HEADER & PILL TABS NAVIGATION -->
+            <div class="mb-8 pb-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 tracking-tight font-display mb-1">Единая база знаний</h1>
+                    <p class="text-xs font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="ph-bold ph-files text-indigo-500"></i> Управляй материалами, шаблонами уроков и теорией в одном месте
+                    </p>
+                </div>
+
+                <!-- Dynamic Pill-Tabs Navigation -->
+                <div class="inline-flex items-center p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] shrink-0 self-start lg:self-auto">
+                    <button type="button" onclick="switchMainTab('materials')" id="tab-materials" class="seg-tab active px-5 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 border border-transparent">
+                        <i class="ph-bold ph-file-text text-sm"></i>
+                        <span>Материалы</span>
+                    </button>
+                    <button type="button" onclick="switchMainTab('lesson_templates')" id="tab-lesson_templates" class="seg-tab px-5 py-2.5 rounded-xl text-xs font-extrabold text-slate-500 hover:text-slate-800 transition-all cursor-pointer flex items-center gap-2 border border-transparent">
+                        <i class="ph-bold ph-folder-star text-sm"></i>
+                        <span>Шаблоны уроков</span>
+                    </button>
+                    <button type="button" onclick="switchMainTab('theory')" id="tab-theory" class="seg-tab px-5 py-2.5 rounded-xl text-xs font-extrabold text-slate-500 hover:text-slate-800 transition-all cursor-pointer flex items-center gap-2 border border-transparent">
+                        <i class="ph-bold ph-book-open text-sm"></i>
+                        <span>Теория</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- MAIN SPLIT LAYOUT (12 Columns Grid: 4 cols Uploader/Action / 8 cols Roster) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-start">
+                
+                <!-- LEFT COLUMN: DYNAMIC BENTO 3D PANELS (lg:col-span-4) -->
+                <div class="lg:col-span-4 space-y-5">
+                    
+                    <!-- PANEL 1: МАТЕРИАЛЫ (Загрузка файла) -->
+                    <form id="panel-materials" onsubmit="uploadMaterial(event)" class="tab-panel bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-7 space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-cloud-arrow-up text-indigo-600 text-xl"></i>
+                                <h3 class="text-base font-black text-slate-900">Загрузка файла</h3>
+                            </div>
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">НОВЫЙ ФАЙЛ</span>
+                        </div>
+
+                        <!-- Concave Dropzone -->
+                        <div id="dropzone" onclick="document.getElementById('file-input').click()" class="bg-white border-2 border-dashed border-indigo-300 rounded-2xl p-6 text-center hover:bg-indigo-50/50 hover:border-indigo-400 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] cursor-pointer group space-y-2 relative">
+                            <input type="file" id="file-input" name="file" class="hidden" onchange="onFileSelected(this)">
+                            <div class="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 mx-auto flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="ph-bold ph-file-arrow-up text-2xl"></i>
+                            </div>
+                            <div id="dropzone-label" class="text-xs font-black text-slate-800 group-hover:text-indigo-600 transition-colors break-all max-w-full px-2 line-clamp-2">
+                                Перетащите файл сюда
+                            </div>
+                            <p id="dropzone-sub" class="text-[11px] font-semibold text-slate-400">
+                                PDF, DOCX, ZIP, PNG или исходники
+                            </p>
+                            <span class="inline-block px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[10px] font-bold">
+                                выберите файл на диске
+                            </span>
+                        </div>
+
+                        <!-- Input Fields -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Название материала</label>
+                                <input type="text" id="mat-title" name="title" placeholder="Например: Шпаргалка по №24" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs">
+                            </div>
+
+                            <input type="hidden" name="category" value="materials">
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Теги (через запятую)</label>
+                                <input type="text" id="mat-tags" name="tags" placeholder="егэ, теория, шпора" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Краткое описание</label>
+                                <textarea id="mat-desc" name="description" rows="3" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-medium text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs" placeholder="Для кого раздатка и в чем ее польза..."></textarea>
+                            </div>
+
+                            <div class="flex items-center gap-2 pt-1">
+                                <input type="checkbox" id="mat-visible" name="is_visible_to_students" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                                <label for="mat-visible" class="text-xs font-extrabold text-slate-700 cursor-pointer select-none">
+                                    Показывать ученикам
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 3D Action Button -->
+                        <button type="submit" id="btn-upload" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm py-3.5 px-6 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-upload-simple text-base"></i>
+                            <span id="btn-upload-text">Загрузить материал</span>
+                        </button>
+                    </form>
+
+                    <!-- PANEL 2: ШАБЛОНЫ УРОКОВ (Форма создания шаблона) -->
+                    <form id="panel-lesson_templates" onsubmit="createTemplate(event)" class="tab-panel hidden bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-7 space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-folder-star text-indigo-600 text-xl"></i>
+                                <h3 class="text-base font-black text-slate-900">Создать шаблон</h3>
+                            </div>
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">ПРЯМОЙ ВВОД</span>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Название шаблона *</label>
+                                <input type="text" id="tpl-name" name="name" required placeholder="Например: Домашняя работа №2 (Графы)" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Тип шаблона</label>
+                                <select id="tpl-type" name="template_type" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs">
+                                    <option value="homework" selected>Домашняя работа</option>
+                                    <option value="classwork">Классная работа</option>
+                                    <option value="mock">Пробный экзамен</option>
+                                    <option value="test">Контрольная</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Категория / Предмет</label>
+                                <select id="tpl-subject" name="subject" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs">
+                                    <option value="Информатика КЕГЭ" selected>Информатика КЕГЭ</option>
+                                    <option value="Математика Профиль">Математика Профиль</option>
+                                    <option value="Математика База">Математика База</option>
+                                    <option value="Информатика ОГЭ">Информатика ОГЭ</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Описание / Заметка</label>
+                                <textarea id="tpl-desc" name="description" rows="3" placeholder="Краткий план шаблона или примечание..." class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-medium text-slate-800 text-xs focus:border-indigo-400 focus:outline-none shadow-2xs"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Bento 3D Action Buttons -->
+                        <div class="space-y-2.5 pt-1">
+                            <button type="submit" onclick="submitTemplateAction('save')" id="btn-tpl-save" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm py-3.5 px-6 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2">
+                                <i class="ph-bold ph-floppy-disk text-base"></i>
+                                <span>Сохранить шаблон</span>
+                            </button>
+
+                            <button type="submit" onclick="submitTemplateAction('generator')" id="btn-tpl-gen" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-sm py-3 px-6 rounded-xl border border-slate-900 border-b-[4px] shadow-[0_4px_10px_rgba(30,41,59,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2">
+                                <i class="ph-bold ph-magic-wand text-base text-amber-400"></i>
+                                <span>Создать и открыть генератор</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- PANEL 3: ТЕОРИЯ (Создание теории с Bento 3D Дропзоной) -->
+                    <form id="panel-theory" onsubmit="uploadTheory(event)" class="tab-panel hidden bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-7 space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-book-open text-purple-600 text-xl"></i>
+                                <h3 class="text-base font-black text-slate-900">Создание теории</h3>
+                            </div>
+                            <span class="text-[10px] font-black text-purple-500 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 uppercase tracking-widest">КОНСПЕКТ</span>
+                        </div>
+
+                        <!-- Bento 3D Concave Dropzone for Theory -->
+                        <div id="theory-dropzone" onclick="document.getElementById('theory-file-input').click()" class="bg-white border-2 border-dashed border-purple-300 rounded-2xl p-5 text-center hover:bg-purple-50/50 hover:border-purple-400 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] cursor-pointer group space-y-2 relative">
+                            <input type="file" id="theory-file-input" name="file" class="hidden" onchange="onTheoryFileSelected(this)">
+                            <div class="w-11 h-11 rounded-2xl bg-purple-100 text-purple-600 mx-auto flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="ph-bold ph-file-arrow-up text-2xl"></i>
+                            </div>
+                            <div id="theory-dropzone-label" class="text-xs font-black text-slate-800 group-hover:text-purple-600 transition-colors break-all max-w-full px-2 line-clamp-2">
+                                Перетащите файл теории сюда
+                            </div>
+                            <p id="theory-dropzone-sub" class="text-[11px] font-semibold text-slate-400">
+                                PDF, DOCX, PNG или конспект (опционально)
+                            </p>
+                            <span class="inline-block px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-[10px] font-bold">
+                                выберите файл на диске
+                            </span>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Тема теории *</label>
+                                <input type="text" name="title" id="theory-title" required placeholder="Например: Разбор динамики №27" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-purple-400 focus:outline-none shadow-2xs">
+                            </div>
+
+                            <input type="hidden" name="category" value="theory">
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Теги (через запятую)</label>
+                                <input type="text" name="tags" id="theory-tags" placeholder="теория, динамика, алгоритмы" class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-extrabold text-slate-800 text-xs focus:border-purple-400 focus:outline-none shadow-2xs">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-slate-700 mb-1">Текстовая заметка / конспект</label>
+                                <textarea name="description" id="theory-desc" rows="4" placeholder="Основные тезисы, формулы и примечания к теме..." class="w-full bg-white border-2 border-slate-200 rounded-xl p-3 font-medium text-slate-800 text-xs focus:border-purple-400 focus:outline-none shadow-2xs"></textarea>
+                            </div>
+
+                            <div class="flex items-center gap-2 pt-1">
+                                <input type="checkbox" id="theory-visible" name="is_visible_to_students" class="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer">
+                                <label for="theory-visible" class="text-xs font-extrabold text-slate-700 cursor-pointer select-none">
+                                    Показывать ученикам
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-theory-save" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-black text-sm py-3.5 px-6 rounded-xl border border-purple-700 border-b-[4px] shadow-[0_4px_10px_rgba(147,51,234,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-floppy-disk text-base"></i>
+                            <span id="btn-theory-text">Сохранить теорию</span>
+                        </button>
+                    </form>
+
+                </div>
+
+                <!-- RIGHT COLUMN: DYNAMIC ROSTERS (lg:col-span-8) -->
+                <div class="lg:col-span-8 space-y-4">
+                    
+                    <!-- Search & Filter Toolbar -->
+                    <div class="bg-white border-2 border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+                        <div class="relative w-full sm:w-80">
+                            <input type="text" id="search-input" oninput="filterRosters()" placeholder="Поиск по названиям и тегам..." class="w-full bg-[#F8FAFC] border-2 border-slate-200 rounded-xl py-2.5 pl-10 pr-3 text-xs font-bold text-slate-800 focus:bg-white focus:border-indigo-400 focus:outline-none transition-all">
+                            <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        </div>
+
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                            <select id="tag-filter" onchange="filterRosters()" class="bg-[#F4F7FA] border border-slate-200 rounded-xl px-3 py-2 text-xs font-extrabold text-slate-800 focus:outline-none cursor-pointer">
+                                <option value="">Все теги</option>
+                                {% for tag in all_tags %}
+                                <option value="{{ tag }}">{{ tag }}</option>
+                                {% endfor %}
+                            </select>
+                            <span id="items-count" class="text-xs font-extrabold text-slate-400">{{ materials|length }} элементов</span>
+                        </div>
+                    </div>
+
+                    <!-- ROSTER 1: МАТЕРИАЛЫ -->
+                    <div id="roster-materials" class="roster-view space-y-3">
+                        {% if not materials %}
+                        <div class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center space-y-3">
+                            <div class="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-500 mx-auto flex items-center justify-center">
+                                <i class="ph-bold ph-folder-open text-3xl"></i>
+                            </div>
+                            <h4 class="text-base font-black text-slate-800">Материалы ещё не загружены</h4>
+                            <p class="text-xs font-semibold text-slate-400 max-w-sm mx-auto">
+                                Воспользуйтесь формой слева, чтобы загрузить первый документ, шпаргалку или конспект.
+                            </p>
+                        </div>
+                        {% else %}
+                        {% for mat in materials %}
+                        <div class="roster-item bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-indigo-300 hover:shadow-md transition-all group"
+                             data-id="{{ mat.id }}"
+                             data-title="{{ mat.title|lower }}"
+                             data-tags="{{ (mat.tags or '')|lower }}">
+                            
+                            <div class="flex items-center gap-4 min-w-0 flex-1">
+                                {% set ext = (mat.file_extension or '').lower() %}
+                                {% if ext == 'pdf' %}
+                                <div class="w-12 h-12 rounded-xl bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <i class="ph-bold ph-file-pdf text-2xl"></i>
+                                </div>
+                                {% elif ext in ['doc', 'docx'] %}
+                                <div class="w-12 h-12 rounded-xl bg-blue-100 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <i class="ph-bold ph-file-doc text-2xl"></i>
+                                </div>
+                                {% elif ext in ['zip', 'rar', '7z'] %}
+                                <div class="w-12 h-12 rounded-xl bg-amber-100 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <i class="ph-bold ph-file-zip text-2xl"></i>
+                                </div>
+                                {% elif ext in ['png', 'jpg', 'jpeg', 'webp', 'svg'] %}
+                                <div class="w-12 h-12 rounded-xl bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <i class="ph-bold ph-file-image text-2xl"></i>
+                                </div>
+                                {% else %}
+                                <div class="w-12 h-12 rounded-xl bg-indigo-100 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <i class="ph-bold ph-file-text text-2xl"></i>
+                                </div>
+                                {% endif %}
+
+                                <div class="min-w-0 space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                                            {{ mat.title }}
+                                        </h4>
+                                        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 uppercase">
+                                            {{ mat.file_extension|upper }}
+                                        </span>
+                                    </div>
+                                    {% if mat.description %}
+                                    <p class="text-xs text-slate-500 truncate max-w-md">{{ mat.description }}</p>
+                                    {% endif %}
+                                    <div class="flex items-center gap-3 text-[11px] font-bold text-slate-400">
+                                        <span>{{ mat.created_at.strftime('%d.%m.%Y') if mat.created_at else '' }}</span>
+                                        <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                                        <span class="text-purple-600 font-mono">{{ mat.formatted_size or '0 Б' }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                                        {% for tag in (mat.tags or '').split(',') %}
+                                        {% if tag.strip() %}
+                                        <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-[10px] font-black">
+                                            #{{ tag.strip().lstrip('#') }}
+                                        </span>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                <button type="button" onclick="toggleVisibility({{ mat.id }}, this)"
+                                        class="visibility-btn px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border border-b-[3px] {% if mat.is_visible_to_students %}bg-emerald-50 text-emerald-700 border-emerald-200{% else %}bg-slate-100 text-slate-400 border-slate-200{% endif %}"
+                                        title="Доступ ученикам">
+                                    <i class="ph-bold {% if mat.is_visible_to_students %}ph-eye{% else %}ph-eye-slash{% endif %} text-sm"></i>
+                                    <span>{% if mat.is_visible_to_students %}Ученикам{% else %}Скрыт{% endif %}</span>
+                                </button>
+                                <a href="/materials/download/{{ mat.id }}" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 border-b-[3px] font-black text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 no-underline">
+                                    <i class="ph-bold ph-download-simple"></i> Скачать
+                                </a>
+                                <button type="button" onclick="confirmDeleteMaterial({{ mat.id }}, '{{ mat.title|escape }}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 border-b-[3px] font-black text-xs px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5" title="Удалить">
+                                    <i class="ph-bold ph-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- ROSTER 2: ШАБЛОНЫ УРОКОВ -->
+                    <div id="roster-lesson_templates" class="roster-view hidden space-y-3">
+                        {% if not templates %}
+                        <div class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center space-y-3">
+                            <div class="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-500 mx-auto flex items-center justify-center">
+                                <i class="ph-bold ph-folder-star text-3xl"></i>
+                            </div>
+                            <h4 class="text-base font-black text-slate-800">Шаблоны уроков пока не созданы</h4>
+                            <p class="text-xs font-semibold text-slate-400 max-w-sm mx-auto">
+                                Воспользуйтесь формой слева, чтобы прямо создать шаблон и перейти в генератор заданий.
+                            </p>
+                        </div>
+                        {% else %}
+                        {% for tpl in templates %}
+                        <div class="roster-item bg-white border-2 border-slate-100 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-indigo-300 hover:shadow-md transition-all group"
+                             data-id="{{ tpl.template_id }}"
+                             data-title="{{ tpl.name|lower }}"
+                             data-tags="">
+                            <div class="flex items-center gap-4 min-w-0 flex-1">
+                                <div class="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <i class="ph-bold ph-notebook text-2xl"></i>
+                                </div>
+                                <div class="min-w-0 space-y-1">
+                                    <h4 class="text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                                        {{ tpl.name }}
+                                    </h4>
+                                    {% if tpl.description %}
+                                    <p class="text-xs text-slate-500 truncate max-w-md">{{ tpl.description }}</p>
+                                    {% endif %}
+                                    <div class="flex items-center gap-3 text-[11px] font-bold text-slate-400">
+                                        <span>{{ tpl.created_at.strftime('%d.%m.%Y') if tpl.created_at else '' }}</span>
+                                        <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                                        <span class="text-indigo-600 font-mono">{{ tpl.tasks_count }} заданий</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                <a href="/task-generator?template_id={{ tpl.template_id }}" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 border-b-[3px] font-black text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 no-underline">
+                                    <i class="ph-bold ph-pencil-simple"></i> Редактировать
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    <!-- ROSTER 3: ТЕОРИЯ -->
+                    <div id="roster-theory" class="roster-view hidden space-y-3">
+                        {% if not theory_materials %}
+                        <div class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center space-y-3">
+                            <div class="w-16 h-16 rounded-2xl bg-purple-50 text-purple-500 mx-auto flex items-center justify-center">
+                                <i class="ph-bold ph-book-open text-3xl"></i>
+                            </div>
+                            <h4 class="text-base font-black text-slate-800">Теоретические блоки ещё не добавлены</h4>
+                            <p class="text-xs font-semibold text-slate-400 max-w-sm mx-auto">
+                                Создавайте текстовые конспекты, разборы алгоритмов и прикрепляйте теории для уроков.
+                            </p>
+                        </div>
+                        {% else %}
+                        {% for th in theory_materials %}
+                        <div class="roster-item bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-purple-300 hover:shadow-md transition-all group"
+                             data-id="{{ th.id }}"
+                             data-title="{{ th.title|lower }}"
+                             data-tags="{{ (th.tags or '')|lower }}">
+                            <div class="flex items-center gap-4 min-w-0 flex-1">
+                                <div class="w-12 h-12 rounded-xl bg-purple-100 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <i class="ph-bold ph-book-bookmark text-2xl"></i>
+                                </div>
+                                <div class="min-w-0 space-y-1">
+                                    <h4 class="text-sm font-black text-slate-900 group-hover:text-purple-600 transition-colors truncate">
+                                        {{ th.title }}
+                                    </h4>
+                                    {% if th.description %}
+                                    <p class="text-xs text-slate-500 truncate max-w-md">{{ th.description }}</p>
+                                    {% endif %}
+                                    <div class="flex items-center gap-3 text-[11px] font-bold text-slate-400">
+                                        <span>{{ th.created_at.strftime('%d.%m.%Y') if th.created_at else '' }}</span>
+                                        {% if th.filename %}
+                                        <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                                        <span class="text-purple-600 font-mono">{{ th.formatted_size or '0 Б' }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                                        {% for tag in (th.tags or '').split(',') %}
+                                        {% if tag.strip() %}
+                                        <span class="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded-md text-[10px] font-black">
+                                            #{{ tag.strip().lstrip('#') }}
+                                        </span>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                <button type="button" onclick="toggleVisibility({{ th.id }}, this)"
+                                        class="visibility-btn px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border border-b-[3px] {% if th.is_visible_to_students %}bg-emerald-50 text-emerald-700 border-emerald-200{% else %}bg-slate-100 text-slate-400 border-slate-200{% endif %}"
+                                        title="Доступ ученикам">
+                                    <i class="ph-bold {% if th.is_visible_to_students %}ph-eye{% else %}ph-eye-slash{% endif %} text-sm"></i>
+                                    <span>{% if th.is_visible_to_students %}Ученикам{% else %}Скрыт{% endif %}</span>
+                                </button>
+                                {% if th.filename %}
+                                <a href="/materials/download/{{ th.id }}" class="bg-purple-50 hover:bg-purple-100 text-purple-600 border border-purple-200 border-b-[3px] font-black text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 no-underline">
+                                    <i class="ph-bold ph-download-simple"></i> Скачать
+                                </a>
+                                {% endif %}
+                                <button type="button" onclick="confirmDeleteMaterial({{ th.id }}, '{{ th.title|escape }}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 border-b-[3px] font-black text-xs px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5" title="Удалить">
+                                    <i class="ph-bold ph-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+<script>
+    let activeTab = 'materials';
+    let templateActionType = 'save';
+
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam === 'templates' || tabParam === 'lesson_templates') {
+            switchMainTab('lesson_templates');
+        } else if (tabParam === 'theory') {
+            switchMainTab('theory');
+        } else if (tabParam === 'materials') {
+            switchMainTab('materials');
+        }
+    });
+
+    function switchMainTab(tabName) {
+        activeTab = tabName;
+
+        ['materials', 'lesson_templates', 'theory'].forEach(t => {
+            const btn = document.getElementById('tab-' + t);
+            const panel = document.getElementById('panel-' + t);
+            const roster = document.getElementById('roster-' + t);
+
+            if (t === tabName) {
+                if (btn) {
+                    btn.classList.add('active');
+                    btn.classList.remove('text-slate-500');
+                }
+                if (panel) panel.classList.remove('hidden');
+                if (roster) roster.classList.remove('hidden');
+            } else {
+                if (btn) {
+                    btn.classList.remove('active');
+                    btn.classList.add('text-slate-500');
+                }
+                if (panel) panel.classList.add('hidden');
+                if (roster) roster.classList.add('hidden');
+            }
+        });
+
+        filterRosters();
+    }
+
+    function submitTemplateAction(action) {
+        templateActionType = action;
+    }
+
+    async function createTemplate(e) {
+        e.preventDefault();
+        const nameInput = document.getElementById('tpl-name');
+        const name = (nameInput ? nameInput.value : '').trim();
+        if (!name) {
+            alert('Укажите название шаблона');
+            return;
+        }
+
+        const payload = {
+            name: name,
+            title: name,
+            description: (document.getElementById('tpl-desc').value || '').trim(),
+            template_type: document.getElementById('tpl-type').value,
+            category: document.getElementById('tpl-subject').value
+        };
+
+        try {
+            const response = await fetch('/api/templates/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                const templateId = data.template_id;
+                if (templateActionType === 'generator') {
+                    window.location.href = '/task-generator?template_id=' + templateId;
+                } else {
+                    window.location.href = '/library?tab=lesson_templates';
+                }
+            } else {
+                alert(data.message || 'Ошибка создания шаблона');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Сетевая ошибка при создании шаблона');
+        }
+    }
+
+    function onFileSelected(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            document.getElementById('dropzone-label').innerText = file.name;
+            document.getElementById('dropzone-sub').innerText = (file.size / (1024 * 1024)).toFixed(2) + ' МБ';
+            const titleInput = document.getElementById('mat-title');
+            if (!titleInput.value) {
+                titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+            }
+        }
+    }
+
+    function onTheoryFileSelected(input) {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            document.getElementById('theory-dropzone-label').innerText = file.name;
+            document.getElementById('theory-dropzone-sub').innerText = (file.size / (1024 * 1024)).toFixed(2) + ' МБ';
+            const titleInput = document.getElementById('theory-title');
+            if (!titleInput.value) {
+                titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+            }
+        }
+    }
+
+    const dropzone = document.getElementById('dropzone');
+    if (dropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.classList.add('bg-indigo-100/70', 'border-indigo-500');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropzone.classList.remove('bg-indigo-100/70', 'border-indigo-500');
+            }, false);
+        });
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length) {
+                document.getElementById('file-input').files = files;
+                onFileSelected(document.getElementById('file-input'));
+            }
+        }, false);
+    }
+
+    const theoryDropzone = document.getElementById('theory-dropzone');
+    if (theoryDropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            theoryDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                theoryDropzone.classList.add('bg-purple-100/70', 'border-purple-500');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            theoryDropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                theoryDropzone.classList.remove('bg-purple-100/70', 'border-purple-500');
+            }, false);
+        });
+        theoryDropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length) {
+                document.getElementById('theory-file-input').files = files;
+                onTheoryFileSelected(document.getElementById('theory-file-input'));
+            }
+        }, false);
+    }
+
+    function filterRosters() {
+        const query = (document.getElementById('search-input').value || '').toLowerCase().trim();
+        const selectedTag = (document.getElementById('tag-filter').value || '').toLowerCase().trim().replace(/^#/, '');
+
+        const activeRoster = document.getElementById('roster-' + activeTab);
+        if (!activeRoster) return;
+
+        const items = activeRoster.querySelectorAll('.roster-item');
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const title = (item.getAttribute('data-title') || '').toLowerCase();
+            const tags = (item.getAttribute('data-tags') || '').toLowerCase();
+
+            const matchesQuery = !query || title.includes(query) || tags.includes(query);
+            const matchesTag = !selectedTag || tags.includes(selectedTag);
+
+            if (matchesQuery && matchesTag) {
+                item.style.display = 'flex';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        const countEl = document.getElementById('items-count');
+        if (countEl) {
+            countEl.innerText = visibleCount + ' элементов';
+        }
+    }
+
+    async function uploadMaterial(e) {
+        e.preventDefault();
+        const form = document.getElementById('panel-materials');
+        const fileInput = document.getElementById('file-input');
+        
+        if (!fileInput.files || !fileInput.files[0]) {
+            alert('Пожалуйста, выберите файл для загрузки');
+            return;
+        }
+
+        const formData = new FormData(form);
+        const btnText = document.getElementById('btn-upload-text');
+        btnText.innerText = 'Загрузка...';
+
+        try {
+            const response = await fetch('/api/teacher/materials/upload', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                window.location.href = '/library?tab=materials';
+            } else {
+                alert(data.message || 'Ошибка загрузки файла');
+                btnText.innerText = 'Загрузить материал';
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Сетевая ошибка при загрузке файла');
+            btnText.innerText = 'Загрузить материал';
+        }
+    }
+
+    async function uploadTheory(e) {
+        e.preventDefault();
+        const form = document.getElementById('panel-theory');
+        const formData = new FormData(form);
+        const btnText = document.getElementById('btn-theory-text');
+        btnText.innerText = 'Сохранение...';
+
+        try {
+            const response = await fetch('/api/teacher/materials/upload', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                window.location.href = '/library?tab=theory';
+            } else {
+                alert(data.message || 'Ошибка сохранения теории');
+                btnText.innerText = 'Сохранить теорию';
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Сетевая ошибка при сохранении теории');
+            btnText.innerText = 'Сохранить теорию';
+        }
+    }
+
+    async function toggleVisibility(materialId, btn) {
+        try {
+            const response = await fetch(`/api/teacher/materials/${materialId}/visibility`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                const isVis = data.is_visible_to_students;
+                if (isVis) {
+                    btn.className = 'visibility-btn px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border border-b-[3px] bg-emerald-50 text-emerald-700 border-emerald-200';
+                    btn.innerHTML = '<i class="ph-bold ph-eye text-sm"></i> <span>Ученикам</span>';
+                } else {
+                    btn.className = 'visibility-btn px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 border border-b-[3px] bg-slate-100 text-slate-400 border-slate-200';
+                    btn.innerHTML = '<i class="ph-bold ph-eye-slash text-sm"></i> <span>Скрыт</span>';
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async function confirmDeleteMaterial(materialId, title) {
+        if (!confirm(`Удалить "${title}"?`)) {
+            return;
+        }
+        try {
+            const response = await fetch(`/api/teacher/materials/${materialId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                const item = document.querySelector(`.roster-item[data-id="${materialId}"]`);
+                if (item) {
+                    item.remove();
+                }
+                filterRosters();
+            } else {
+                alert(data.message || 'Не удалось удалить');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Сетевая ошибка при удалении');
+        }
+    }
+</script>
+{% endblock %}

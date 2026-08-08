@@ -177,7 +177,11 @@ def _require_task_generator_access() -> None:
     Должен быть недоступен ученикам/родителям (и всем без права task.manage).
     """
     try:
-        if current_user and current_user.is_authenticated and has_permission(current_user, 'task.manage'):
+        if current_user and current_user.is_authenticated and (
+            current_user.is_admin()
+            or current_user.is_creator()
+            or has_permission(current_user, 'task.manage')
+        ):
             return
     except Exception:
         pass
@@ -185,8 +189,10 @@ def _require_task_generator_access() -> None:
     abort(403)
 
 
-@task_generator_bp.route('/task-generator', methods=['GET', 'POST'])
+@task_generator_bp.route('/sandbox/task_generator', methods=['GET', 'POST'])
+@task_generator_bp.route('/sandbox/task_generator/<int:lesson_id>', methods=['GET', 'POST'])
 @task_generator_bp.route('/task-generator/<int:lesson_id>', methods=['GET', 'POST'])
+@task_generator_bp.route('/task-generator', methods=['GET', 'POST'])
 @login_required
 def task_generator(lesson_id=None):
     """Генератор заданий (ЕГЭ / ОГЭ)"""
@@ -198,8 +204,9 @@ def task_generator(lesson_id=None):
     
     assignment_type = request.args.get('assignment_type') or request.form.get('assignment_type') or 'homework'
     assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
+    assignment_id = request.args.get('assignment_id', type=int) or request.args.get('assignment', type=int)
     template_id = request.args.get('template_id', type=int)  # Получаем template_id из запроса
-    return_edit = request.args.get('return_edit', type=int)
+    return_edit = request.args.get('return_edit', type=int) or assignment_id
     seed_task_id = request.args.get('seed_task_id', type=int)
     seed_task = None
     
@@ -478,6 +485,14 @@ def task_generator(lesson_id=None):
             ]
         except (TypeError, ValueError):
             current_task_ids = []
+    elif assignment_id:
+        try:
+            from core.db_models import AssignmentTask
+            ats = AssignmentTask.query.filter_by(assignment_id=assignment_id).order_by(AssignmentTask.order_index.asc()).all()
+            current_task_ids = [int(at.task_id) for at in ats if at.task_id]
+        except Exception as ex:
+            logger.warning(f"Failed to load task_ids for assignment_id={assignment_id}: {ex}")
+            current_task_ids = []
     bank_selected_task_meta = []
     if current_task_ids:
         try:
@@ -558,7 +573,7 @@ def task_generator(lesson_id=None):
         except Exception as ex:
             logger.warning(f'assignment target enrichment failed: {ex}')
             assignment_task_ids = set()
-    if bank_panel_open:
+    if bank_panel_open or initial_gen_tab == 'bank':
         try:
             bq = Tasks.query.options(
                 joinedload(Tasks.course),
@@ -568,8 +583,9 @@ def task_generator(lesson_id=None):
             if bank_filter_task_id:
                 bq = bq.filter(Tasks.task_id == bank_filter_task_id)
             else:
-                if bank_filter_course_id:
-                    bq = bq.filter(Tasks.course_id == bank_filter_course_id)
+                target_course_id = bank_filter_course_id or exam_course_id
+                if target_course_id and Tasks.query.filter(Tasks.course_id == target_course_id).first():
+                    bq = bq.filter(Tasks.course_id == target_course_id)
                 if bank_filter_task_number:
                     bq = bq.filter(Tasks.task_number == bank_filter_task_number)
                 if bank_filter_difficulty is not None:
@@ -647,13 +663,14 @@ def task_generator(lesson_id=None):
             bank_total = 0
             bank_pagination = []
 
-    return render_template('task_generator.html',
+    return render_template('sandbox/task_generator.html',
                            selection_form=selection_form,
                            reset_form=reset_form,
                            search_form=search_form,
                            lesson=lesson,
                            student=student,
                            lesson_id=lesson_id,
+                           assignment_id=assignment_id,
                            assignment_type=assignment_type,
                            template_id=template_id,
                            seed_task=seed_task,
@@ -914,14 +931,14 @@ def _stream_accept_tasks_bundle(
     return message, None
 
 
-@task_generator_bp.route('/task-generator/bank/picker/list', methods=['POST'])
+@task_generator_bp.route('/task-generator/bank/picker/list', methods=['POST', 'GET'])
+@task_generator_bp.route('/api/task_generator/bank_list', methods=['POST', 'GET'])
+@task_generator_bp.route('/sandbox/api/task_generator/bank_list', methods=['POST', 'GET'])
 @login_required
 def task_generator_bank_picker_list():
     """Список заданий из банка с пометкой «уже в цели / ещё нет» (урок и/или шаблон)."""
     _require_task_generator_access()
-    data = request.get_json(silent=True) or {}
-    if not isinstance(data, dict):
-        return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
+    data = request.get_json(silent=True) or request.args.to_dict() or {}
 
     assignment_type = (data.get('assignment_type') or 'homework').strip()
     if assignment_type not in ('homework', 'classwork', 'exam'):
@@ -929,39 +946,53 @@ def task_generator_bank_picker_list():
 
     try:
         lesson_id = int(data['lesson_id']) if data.get('lesson_id') not in (None, '', False) else None
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, KeyError):
         lesson_id = None
     try:
         template_id = int(data['template_id']) if data.get('template_id') not in (None, '', False) else None
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, KeyError):
         template_id = None
 
     try:
         exam_course_id = int(data['exam_course_id']) if data.get('exam_course_id') not in (None, '', False) else None
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, KeyError):
         exam_course_id = None
 
-    task_number = data.get('task_number')
+    task_number = data.get('task_number') or data.get('task_type')
     try:
-        task_number = int(task_number) if task_number not in (None, '', False) else None
+        task_number = int(task_number) if task_number not in (None, '', False, 'all') else None
     except (TypeError, ValueError):
         task_number = None
 
+    difficulty = data.get('difficulty') or data.get('bank_difficulty')
+    try:
+        difficulty = int(difficulty) if difficulty not in (None, '', False, 'all') else None
+    except (TypeError, ValueError):
+        difficulty = None
+
+    search_query = (data.get('search_query') or data.get('q') or '').strip()
+    only_my = str(data.get('only_my') or '').lower() in ('true', '1', 'yes')
+
     page = max(1, int(data.get('page', 1) or 1))
-    per_page = min(30, max(5, int(data.get('per_page', 12) or 12)))
+    per_page = min(100, max(5, int(data.get('per_page', 12) or 12)))
     recipient_ids = data.get('recipient_ids') if isinstance(data.get('recipient_ids'), list) else []
     target_user_id = _resolve_target_user_id(lesson_id=lesson_id, recipient_ids=recipient_ids)
-
-    if not lesson_id and not template_id:
-        return jsonify({'success': False, 'error': 'Укажите урок или шаблон'}), 400
 
     lesson_ids, template_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
 
     bq = Tasks.query.options(joinedload(Tasks.course))
     if exam_course_id:
-        bq = bq.filter(Tasks.course_id == exam_course_id)
+        # Check if tasks exist for this course before strict filtering
+        if Tasks.query.filter(Tasks.course_id == exam_course_id).first():
+            bq = bq.filter(Tasks.course_id == exam_course_id)
     if task_number is not None:
         bq = bq.filter(Tasks.task_number == task_number)
+    if difficulty is not None:
+        bq = bq.filter(Tasks.difficulty_level == difficulty)
+    if search_query:
+        bq = bq.filter(Tasks.content_html.ilike(f'%{search_query}%'))
+    if only_my:
+        bq = bq.filter(Tasks.bank_origin == 'manual')
     bq = bq.order_by(Tasks.task_id.desc())
 
     total = bq.count()
@@ -973,21 +1004,30 @@ def task_generator_bank_picker_list():
         fully = _picker_fully_added(tid, lesson_id, template_id, assignment_type, lesson_ids, template_ids)
         items.append({
             'task_id': tid,
-            'task_number': t.task_number,
-            'course_title': (t.course.title if t.course else None),
-            'bank_origin': t.bank_origin,
-            'kege_source_tag': t.kege_source_tag,
-            'kege_difficulty_tier': t.kege_difficulty_tier,
-            'kege_tier_label_ru': t.kege_tier_label_ru,
+            'task_number': getattr(t, 'task_number', 1),
+            'course_title': (t.course.title if getattr(t, 'course', None) else None),
+            'bank_origin': getattr(t, 'bank_origin', None),
+            'kege_source_tag': getattr(t, 'kege_source_tag', None),
+            'kege_difficulty_tier': getattr(t, 'kege_difficulty_tier', None),
+            'kege_tier_label_ru': getattr(t, 'kege_tier_label_ru', None),
             'difficulty_label_ru': _difficulty_label_ru(t),
-            'student_task_mmr': _get_user_task_mmr(target_user_id, t.task_number),
-            'content_html': (normalize_task_content_assets(t.content_html or '', t.attached_files, t.source_url))[:12000],
+            'difficulty_level': getattr(t, 'difficulty_level', 2) or 2,
+            'answer': getattr(t, 'answer', '') or '',
+            'max_score': getattr(t, 'max_score', 1) or 1,
+            'author_name': getattr(t, 'author_name', None) or 'Автор',
+            'source': getattr(t, 'source_url', None) or getattr(t, 'kege_source_tag', None) or 'Банк задач',
+            'topic': getattr(t, 'topic', None) or f"Задание №{getattr(t, 'task_number', 1)}",
+            'attached_files': getattr(t, 'attached_files', []) or [],
+            'can_manage': bool(getattr(current_user, 'is_creator', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)()),
+            'student_task_mmr': _get_user_task_mmr(target_user_id, getattr(t, 'task_number', None)),
+            'content_html': (normalize_task_content_assets(getattr(t, 'content_html', '') or '', getattr(t, 'attached_files', None), getattr(t, 'source_url', None)))[:12000],
             'already_added': fully,
         })
 
     return jsonify({
         'success': True,
         'items': items,
+        'tasks': items,
         'total': total,
         'page': page,
         'per_page': per_page,
@@ -1021,8 +1061,13 @@ def task_generator_bank_picker_add():
     except (TypeError, ValueError):
         template_id = None
 
-    if not lesson_id and not template_id:
-        return jsonify({'success': False, 'error': 'Укажите урок или шаблон'}), 400
+    try:
+        assignment_id = int(data['assignment_id']) if data.get('assignment_id') not in (None, '', False) else (int(data['assignmentId']) if data.get('assignmentId') not in (None, '', False) else None)
+    except (TypeError, ValueError):
+        assignment_id = None
+
+    if not lesson_id and not template_id and not assignment_id:
+        return jsonify({'success': False, 'error': 'Укажите урок, шаблон или работу'}), 400
 
     task = Tasks.query.get(task_id)
     if not task:
@@ -1044,14 +1089,25 @@ def task_generator_bank_picker_add():
         return jsonify({'success': False, 'error': 'Задание (или вся тройка 19–21) уже добавлено по всем целям'}), 400
 
     try:
-        message, err = _stream_accept_tasks_bundle(
-            task_ids_for_action,
-            lesson_id=lesson_id,
-            template_id=template_id,
-            assignment_type=assignment_type,
-        )
-        if err:
-            return err[1], err[0]
+        if assignment_id:
+            from core.db_models import AssignmentTask
+            max_order = db.session.query(db.func.max(AssignmentTask.order_index)).filter_by(assignment_id=assignment_id).scalar() or 0
+            for tid in task_ids_for_action:
+                existing = AssignmentTask.query.filter_by(assignment_id=assignment_id, task_id=tid).first()
+                if not existing:
+                    db.session.add(AssignmentTask(assignment_id=assignment_id, task_id=tid, order_index=max_order + 1))
+                    max_order += 1
+            db.session.commit()
+            message = 'Задание добавлено в создаваемую работу.'
+        else:
+            message, err = _stream_accept_tasks_bundle(
+                task_ids_for_action,
+                lesson_id=lesson_id,
+                template_id=template_id,
+                assignment_type=assignment_type,
+            )
+            if err:
+                return err[1], err[0]
     except Exception as e:
         db.session.rollback()
         logger.exception('task_generator_bank_picker_add failed')
@@ -1144,7 +1200,33 @@ def generator_stream_start():
     return jsonify({'success': True, 'done': False, 'task': _task_to_payload(task, target_user_id=target_user_id)}), 200
 
 
+@task_generator_bp.route('/task-generator/stream/next', methods=['GET'])
+@task_generator_bp.route('/api/task_generator/tinder_next', methods=['GET'])
+@task_generator_bp.route('/sandbox/api/task_generator/tinder_next', methods=['GET'])
+@login_required
+def api_tinder_next_legacy():
+    task_number = request.args.get('task_number', type=int) or 0
+    difficulty = request.args.get('difficulty', type=int) or 0
+    exam_course_id = request.args.get('exam_course_id', type=int) or 1
+    
+    if task_number == 0:
+        task = Tasks.query.filter_by(course_id=exam_course_id, is_active=True).order_by(func.random()).first()
+    else:
+        task = Tasks.query.filter_by(task_number=task_number, course_id=exam_course_id, is_active=True).order_by(func.random()).first()
+        
+    if not task:
+        return jsonify({'success': False, 'message': 'Подходящие задачи по выбранным критериям не найдены.'}), 200
+        
+    return jsonify({
+        'success': True,
+        'task': _task_to_payload(task)
+    }), 200
+
+
 @task_generator_bp.route('/task-generator/stream/act', methods=['POST'])
+@task_generator_bp.route('/api/task_generator/tinder_act', methods=['POST'])
+@task_generator_bp.route('/sandbox/api/task_generator/tinder_act', methods=['POST'])
+@task_generator_bp.route('/sandbox/api/task_generator/tinder_action', methods=['POST'])
 @login_required
 def generator_stream_act():
     """Совершить действие над текущим заданием и получить следующее."""
@@ -1159,9 +1241,10 @@ def generator_stream_act():
 
     try:
         task_id = int(data.get('task_id'))
-        task_type = int(data.get('task_type'))
+        task_obj = Tasks.query.get(task_id)
+        task_type = int(data.get('task_type')) if data.get('task_type') else (task_obj.task_number if task_obj else 1)
     except Exception:
-        return jsonify({'success': False, 'error': 'task_id и task_type обязательны'}), 400
+        return jsonify({'success': False, 'error': 'task_id обязателен'}), 400
 
     lesson_id = data.get('lesson_id')
     template_id = data.get('template_id')
@@ -1200,6 +1283,23 @@ def generator_stream_act():
     message = None
     try:
         if action == 'accept':
+            assignment_id_arg = data.get('assignment_id') or data.get('assignmentId')
+            try:
+                assignment_id_val = int(assignment_id_arg) if assignment_id_arg not in (None, '', False) else None
+            except Exception:
+                assignment_id_val = None
+
+            if assignment_id_val:
+                from core.db_models import AssignmentTask
+                max_order = db.session.query(db.func.max(AssignmentTask.order_index)).filter_by(assignment_id=assignment_id_val).scalar() or 0
+                for tid in task_ids_for_action:
+                    existing = AssignmentTask.query.filter_by(assignment_id=assignment_id_val, task_id=tid).first()
+                    if not existing:
+                        db.session.add(AssignmentTask(assignment_id=assignment_id_val, task_id=tid, order_index=max_order + 1))
+                        max_order += 1
+                db.session.commit()
+                message = 'Задание добавлено в создаваемую работу.' if len(task_ids_for_action) == 1 else 'Задания добавлены в создаваемую работу.'
+
             if template_id:
                 template = TaskTemplate.query.get(template_id)
                 if not template:
@@ -1255,7 +1355,7 @@ def generator_stream_act():
                     except Exception:
                         pass
                 message = f"{'Задание' if len(added_task_ids) == 1 else 'Задания'} добавлено в урок." if added_task_ids else 'Задания уже в уроке.'
-            else:
+            elif not assignment_id_val and not template_id:
                 record_usage(task_ids_for_action)
                 message = 'Задание принято.' if len(task_ids_for_action) == 1 else 'Тройка заданий 19–21 принята.'
 
@@ -1320,12 +1420,19 @@ def generator_stream_act():
     next_task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag, recipient_ids=recipient_ids, course_id=stream_exam_course_id)
     target_user_id = _resolve_target_user_id(lesson_id=lesson_id, recipient_ids=recipient_ids)
 
-    return jsonify({
+    response = {
         'success': True,
         'message': message,
         'done': not bool(next_task),
         'task': _task_to_payload(next_task, target_user_id=target_user_id),
-    }), 200
+    }
+    if action == 'accept' and lesson_id:
+        response['return_url'] = url_for(
+            'lessons.lesson_interactive_room',
+            lesson_id=lesson_id,
+            pane='work',
+        )
+    return jsonify(response), 200
 
 
 def _normalize_manual_content_html(raw: str) -> str:

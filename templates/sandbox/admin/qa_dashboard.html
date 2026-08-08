@@ -1,0 +1,548 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block admin_content %}
+<div class="space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+            <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">Центр Управления Тестированием (QA Center)</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Каталог тест-кейсов, управление тестировщиками, имперсонация и трекер багов</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button onclick="openCreateTestCaseModal()" class="btn-3d px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 transition-all cursor-pointer border-0 flex items-center gap-2">
+                <i class="ph-bold ph-plus text-base"></i>
+                <span>+ Создать Тест-Кейс</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- METRICS GRID -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Всего Тест-Кейсов</span>
+            <span class="text-2xl font-black text-slate-800 block">{{ stats.total_tests if stats is defined else 0 }}</span>
+        </div>
+        <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Успешно Пройдено</span>
+            <span class="text-2xl font-black text-emerald-600 block">{{ stats.passed_tests if stats is defined else 0 }}</span>
+        </div>
+        <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Открытых Багов</span>
+            <span class="text-2xl font-black text-rose-600 block">{{ stats.open_bugs if stats is defined else 0 }}</span>
+        </div>
+        <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Активных Тестировщиков</span>
+            <span class="text-2xl font-black text-indigo-600 block">{{ stats.active_testers if stats is defined else 0 }}</span>
+        </div>
+    </div>
+
+    <!-- TESTERS LIST WITH IMPERSONATION -->
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <i class="ph-bold ph-users text-indigo-600 text-lg"></i> Список Тестировщиков & Быстрая Имперсонация
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {% set tester_items = testers if testers is defined else [] %}
+            {% for t in tester_items %}
+            <div class="p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center font-black text-emerald-800 text-xs">
+                        {{ t.username[0]|upper }}
+                    </div>
+                    <div>
+                        <span class="font-black text-slate-900 block text-xs">{{ t.username }}</span>
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">{{ t.role }}</span>
+                    </div>
+                </div>
+
+                <a href="/admin/impersonate/{{ t.id }}" class="btn-3d px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-[11px] rounded-xl border-b-[3px] border-indigo-800 cursor-pointer border-0 flex items-center gap-1 no-underline">
+                    <i class="ph-bold ph-user-switch"></i>
+                    <span>🎭 Войти под тестером</span>
+                </a>
+            </div>
+            {% else %}
+            <div class="col-span-3 text-center text-slate-400 font-bold py-4">Тестировщики не найдены.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- TEST CASE CATALOG (COMPACT ACCORDIONS) -->
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <i class="ph-bold ph-list-checks text-rose-500 text-lg"></i> Реестр Тест-Кейсов ({{ test_cases|length if test_cases is defined else 0 }})
+            </h3>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <select id="qa-filter-area" onchange="filterQATables()" class="h-10 px-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none">
+                    <option value="all">Все 7 областей</option>
+                    <option value="Авторизация и доступ">Авторизация и доступ</option>
+                    <option value="Каталог курса">Каталог курса</option>
+                    <option value="Тренажер">Тренажер</option>
+                    <option value="Преподаватель">Преподаватель</option>
+                    <option value="Родитель">Родитель</option>
+                    <option value="Админка">Админка</option>
+                    <option value="Общее">Общее</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- COMPACT BENTO CARD GRID (ACTIVE & PASSED TEST CASES ONLY) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+            {% set tc_items = test_cases if test_cases is defined else [] %}
+            {% set active_cases = [] %}
+            {% for tc in tc_items %}
+                {% if tc.status != 'FAILED' %}
+                    {% set _ = active_cases.append(tc) %}
+                {% endif %}
+            {% endfor %}
+
+            {% for tc in active_cases %}
+            <!-- ULTRA-COMPACT BENTO TEST CARD (CLICK OPENS MODAL) -->
+            <div onclick="openTestCaseModal('{{ tc.id }}')" id="admin-tc-card-{{ tc.id }}" class="tc-card-item p-3 rounded-2xl border-2 border-slate-200 hover:border-indigo-300 bg-white hover:bg-slate-50/80 transition-all cursor-pointer shadow-2xs hover:shadow-md flex flex-col justify-between h-[105px]" data-area="{{ tc.area }}">
+                <div class="flex items-center justify-between gap-1.5">
+                    <div class="flex items-center gap-1">
+                        <span class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 font-black text-slate-900 text-[10px] rounded-md">#{{ tc.id }}</span>
+                        <span class="px-1.5 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-[9px] uppercase rounded-md truncate max-w-[80px]">{{ tc.area }}</span>
+                    </div>
+                    <span id="tc-card-status-{{ tc.id }}" class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider
+                        {% if tc.status == 'PASSED' %}bg-emerald-100 text-emerald-800 border border-emerald-200
+                        {% else %}bg-indigo-50 text-indigo-700 border border-indigo-200{% endif %}">
+                        {{ tc.status }}
+                    </span>
+                </div>
+
+                <div>
+                    <h5 class="text-xs font-bold text-slate-900 leading-snug truncate" title="{{ tc.title }}">{{ tc.title }}</h5>
+                </div>
+
+                <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                    <span class="flex items-center gap-1 text-slate-600"><i class="ph-bold ph-list-checks text-emerald-600"></i> {{ tc.steps|length if tc.steps is defined else 0 }} шагов</span>
+                    <span class="text-indigo-600 flex items-center gap-0.5">Инспекция <i class="ph-bold ph-arrow-right"></i></span>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-4 p-8 text-center text-slate-400 font-bold">Активные тест-кейсы отсутствуют.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- BUG REPORTS & FAILED TEST CASES REPOSITORY -->
+    <div class="bg-white border-2 border-rose-200 rounded-[2rem] p-6 shadow-sm space-y-6">
+        <div class="flex items-center justify-between pb-4 border-b border-rose-100">
+            <h3 class="text-base font-black text-rose-950 font-display flex items-center gap-2">
+                <i class="ph-bold ph-bug text-rose-600 text-xl"></i> 🐞 Реестр Баг-Репортов и Сбоев Платформы
+            </h3>
+            <span class="px-3 py-1 bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-black uppercase tracking-wider">
+                Контроль Сбоев
+            </span>
+        </div>
+
+        <!-- FAILED TESTS IN ADMIN DASHBOARD -->
+        {% set failed_cases_admin = [] %}
+        {% for tc in tc_items %}
+            {% if tc.status == 'FAILED' %}
+                {% set _ = failed_cases_admin.append(tc) %}
+            {% endif %}
+        {% endfor %}
+
+        {% if failed_cases_admin|length > 0 %}
+        <div class="space-y-3">
+            <h4 class="text-xs font-black uppercase tracking-widest text-rose-900 font-display flex items-center gap-1.5">
+                <i class="ph-bold ph-warning text-rose-600 text-sm"></i> Тест-Кейсы со статусом FAILED ({{ failed_cases_admin|length }})
+            </h4>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                {% for tc in failed_cases_admin %}
+                <div onclick="openTestCaseModal('{{ tc.id }}')" id="admin-tc-card-{{ tc.id }}" class="tc-card-item p-3 bg-rose-50/70 hover:bg-rose-100/70 border-2 border-rose-300 rounded-2xl transition-all cursor-pointer shadow-2xs hover:shadow-md flex flex-col justify-between h-[105px]" data-area="{{ tc.area }}">
+                    <div class="flex items-center justify-between gap-1.5">
+                        <span class="px-1.5 py-0.5 bg-white border border-rose-200 font-black text-rose-900 text-[10px] rounded-md">#{{ tc.id }}</span>
+                        <span class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white border border-rose-700">
+                            🚨 FAILED
+                        </span>
+                    </div>
+
+                    <div>
+                        <h5 class="text-xs font-bold text-slate-900 leading-snug truncate" title="{{ tc.title }}">{{ tc.title }}</h5>
+                        <span class="text-[9px] font-bold text-rose-600 bg-rose-100 px-1.5 py-0.2 rounded border border-rose-200 inline-block mt-0.5">{{ tc.area }}</span>
+                    </div>
+
+                    <div class="pt-1.5 border-t border-rose-200/80 flex items-center justify-between text-[11px] font-bold text-rose-700">
+                        <span class="flex items-center gap-1"><i class="ph-bold ph-shield-star"></i> Инспекция и детали</span>
+                        <i class="ph-bold ph-arrow-right text-xs"></i>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- AD-HOC BUG REPORTS LIST -->
+        <div class="space-y-3">
+            <h4 class="text-xs font-black uppercase tracking-widest text-slate-700 font-display flex items-center gap-1.5">
+                <i class="ph-bold ph-file-text text-indigo-600 text-sm"></i> Зарегистрированные Баг-Репорты ({{ bug_reports|length if bug_reports is defined else 0 }})
+            </h4>
+
+            <div class="grid grid-cols-1 gap-3">
+                {% set bug_items = bug_reports if bug_reports is defined else [] %}
+                {% for b in bug_items %}
+                <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                    <!-- ACCORDION HEADER -->
+                    <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-100/60" onclick="toggleAdminBugAccordion('{{ b.id }}')">
+                        <div class="flex items-center gap-3">
+                            <span class="px-2.5 py-1 bg-white border border-slate-200 font-black text-slate-900 text-xs rounded-lg">#{{ b.id }}</span>
+                            <div>
+                                <h5 class="text-sm font-black text-slate-900 font-display leading-tight">{{ b.title }}</h5>
+                                <span class="text-[10px] text-slate-400 font-mono block mt-0.5">
+                                    {{ b.created_at.strftime('%d.%m %H:%M') if b.created_at else '' }} &bull; Тестировщик: 👤 {{ b.reporter.username if b.reporter else 'System' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider
+                                {% if b.severity == 'CRITICAL' %}bg-rose-600 text-white
+                                {% elif b.severity == 'MAJOR' %}bg-amber-500 text-white
+                                {% else %}bg-slate-200 text-slate-700{% endif %}">
+                                {{ b.severity }}
+                            </span>
+
+                            <span id="bug-status-badge-{{ b.id }}" class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider
+                                {% if b.status == 'RESOLVED' %}bg-emerald-100 text-emerald-800 border border-emerald-200
+                                {% elif b.status == 'IN_PROGRESS' %}bg-amber-100 text-amber-800 border border-amber-200
+                                {% elif b.status == 'REJECTED' %}bg-slate-100 text-slate-600 border border-slate-200
+                                {% else %}bg-rose-100 text-rose-800 border border-rose-200{% endif %}">
+                                {{ b.status }}
+                            </span>
+
+                            <button type="button" class="btn-3d px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg border-0 cursor-pointer flex items-center gap-1">
+                                <i class="ph-bold ph-chat-circle"></i>
+                                <span>Ответы ({{ b.comments|length if b.comments is defined else 0 }})</span>
+                                <i id="admin-bug-icon-{{ b.id }}" class="ph-bold ph-caret-down text-xs transition-transform ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                <!-- ACCORDION BODY -->
+                <div id="admin-bug-body-{{ b.id }}" class="hidden p-5 bg-white border-t border-slate-200 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                        <div>
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block">URL страницы:</span>
+                            <a href="{{ b.page_url }}" target="_blank" class="text-indigo-600 font-mono font-bold hover:underline truncate block">{{ b.page_url or '—' }}</a>
+                        </div>
+
+                        <!-- STATUS TOGGLES -->
+                        <div class="inline-flex items-center gap-1">
+                            <button onclick="updateBugStatus({{ b.id }}, 'IN_PROGRESS')" type="button" class="btn-3d px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-white text-[10px] font-black rounded cursor-pointer border-0">
+                                В работу
+                            </button>
+                            <button onclick="updateBugStatus({{ b.id }}, 'RESOLVED')" type="button" class="btn-3d px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black rounded cursor-pointer border-0">
+                                OK
+                            </button>
+                            <button onclick="updateBugStatus({{ b.id }}, 'REJECTED')" type="button" class="btn-3d px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-black rounded cursor-pointer border-0">
+                                Отклонить
+                            </button>
+                        </div>
+                    </div>
+
+                    {% if b.expected_vs_actual %}
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Ожидаемый vs Фактический результат:</span>
+                        <p class="text-slate-700 font-medium leading-relaxed">{{ b.expected_vs_actual }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- COMMENTS THREAD -->
+                    <div class="space-y-3 pt-2">
+                        <span class="text-xs font-black uppercase tracking-wider text-slate-700 font-display flex items-center gap-2">
+                            <i class="ph-bold ph-chat-teardrop-dots text-indigo-600 text-base"></i> Ветка ответа Администратора ({{ b.comments|length if b.comments is defined else 0 }})
+                        </span>
+
+                        <div id="admin-bug-comments-list-{{ b.id }}" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                            {% set comments = b.comments if b.comments is defined else [] %}
+                            {% for c in comments %}
+                            <div class="p-3 rounded-xl border text-xs space-y-1 {% if c.author and c.author.role in ['admin', 'creator'] %}bg-indigo-50/70 border-indigo-200 text-indigo-950{% else %}bg-slate-50 border-slate-200 text-slate-800{% endif %}">
+                                <div class="flex items-center justify-between font-bold text-[11px]">
+                                    <span class="flex items-center gap-1.5">
+                                        <i class="ph-bold {% if c.author and c.author.role in ['admin', 'creator'] %}ph-shield-star text-indigo-600{% else %}ph-user text-emerald-600{% endif %}"></i>
+                                        <span>{{ c.author.username if c.author else 'Пользователь' }}</span>
+                                        <span class="text-[9px] uppercase px-1.5 py-0.2 bg-white/80 rounded border border-slate-200">{{ c.author.role if c.author else '' }}</span>
+                                    </span>
+                                    <span class="text-[10px] font-mono text-slate-400">{{ c.created_at.strftime('%d.%m %H:%M') if c.created_at else '' }}</span>
+                                </div>
+                                <p class="font-medium leading-relaxed">{{ c.text }}</p>
+                            </div>
+                            {% else %}
+                            <p class="text-xs text-slate-400 font-bold italic py-2">Комментариев пока нет. Отправьте ответ тестировщику ниже.</p>
+                            {% endfor %}
+                        </div>
+
+                        <!-- ADD COMMENT FORM -->
+                        <div class="flex gap-2 pt-2">
+                            <input type="text" id="admin-bug-comment-input-{{ b.id }}" placeholder="Написать ответ тестировщику..." class="flex-1 h-10 px-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+                            <button onclick="submitAdminBugComment({{ b.id }})" type="button" class="btn-3d px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 cursor-pointer border-0 flex items-center gap-1">
+                                <i class="ph-bold ph-paper-plane-right"></i> Отправить ответ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="p-8 text-center text-slate-400 font-bold">Баг-репорты не найдены.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<!-- CREATE TEST CASE MODAL -->
+<div id="create-test-case-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <h3 class="text-xl font-black text-slate-900 font-display">Создание нового Тест-Кейса</h3>
+            <button onclick="closeCreateTestCaseModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center cursor-pointer border-0">
+                &times;
+            </button>
+        </div>
+
+        <form id="create-tc-form" onsubmit="submitCreateTestCase(event)" class="space-y-4">
+            <div class="space-y-1.5">
+                <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Название Тест-Кейса *</label>
+                <input type="text" id="tc-title" required placeholder="Проверка авторизации через Пароль..." class="w-full h-11 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Область проверки *</label>
+                    <select id="tc-area" required class="w-full h-11 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                        <option value="Авторизация и доступ">Авторизация и доступ</option>
+                        <option value="Каталог курса">Каталог курса</option>
+                        <option value="Тренажер">Тренажер</option>
+                        <option value="Преподаватель">Преподаватель</option>
+                        <option value="Родитель">Родитель</option>
+                        <option value="Админка">Админка</option>
+                        <option value="Общее">Общее</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Назначить на тестировщика</label>
+                    <select id="tc-assigned-to" class="w-full h-11 px-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500">
+                        <option value="">Все тестировщики</option>
+                        {% for t in testers if testers is defined %}
+                        <option value="{{ t.id }}">{{ t.username }} ({{ t.role }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-1.5">
+                <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Описание и предусловия</label>
+                <textarea id="tc-description" rows="2" placeholder="Открыть страницу /login под пользователем..." class="w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500 resize-none"></textarea>
+            </div>
+
+            <!-- DYNAMIC STEPS LIST BUILDER -->
+            <div class="space-y-3 pt-2">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Шаги проверки (Чек-лист)</label>
+                    <button type="button" onclick="addTcStepRow()" class="btn-3d px-3 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold rounded-lg border-0 cursor-pointer">
+                        + Добавить шаг
+                    </button>
+                </div>
+
+                <div id="tc-steps-container" class="space-y-2">
+                    <div class="tc-step-row grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                        <input type="text" placeholder="Действие: Кликнуть Войти..." class="step-action h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none">
+                        <input type="text" placeholder="Ожидаемый результат: Переход на /dashboard..." class="step-expected h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button type="button" onclick="closeCreateTestCaseModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer">
+                    Отмена
+                </button>
+                <button type="submit" class="btn-3d px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 border-0 cursor-pointer">
+                    Сохранить Тест-Кейс
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleAdminTcAccordion(tcId) {
+    const body = document.getElementById(`admin-tc-body-${tcId}`);
+    const icon = document.getElementById(`admin-tc-icon-${tcId}`);
+    if (body) {
+        body.classList.toggle('hidden');
+        if (icon) icon.classList.toggle('rotate-180');
+    }
+}
+
+function toggleAdminBugAccordion(bugId) {
+    const body = document.getElementById(`admin-bug-body-${bugId}`);
+    const icon = document.getElementById(`admin-bug-icon-${bugId}`);
+    if (body) {
+        body.classList.toggle('hidden');
+        if (icon) icon.classList.toggle('rotate-180');
+    }
+}
+
+function openCreateTestCaseModal() {
+    document.getElementById('create-test-case-modal').classList.remove('hidden');
+}
+
+function closeCreateTestCaseModal() {
+    document.getElementById('create-test-case-modal').classList.add('hidden');
+}
+
+function addTcStepRow() {
+    const container = document.getElementById('tc-steps-container');
+    const row = document.createElement('div');
+    row.className = 'tc-step-row grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl';
+    row.innerHTML = `
+        <input type="text" placeholder="Действие..." class="step-action h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none">
+        <input type="text" placeholder="Ожидаемый результат..." class="step-expected h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none">
+    `;
+    container.appendChild(row);
+}
+
+async function submitCreateTestCase(e) {
+    e.preventDefault();
+    const title = document.getElementById('tc-title').value;
+    const area = document.getElementById('tc-area').value;
+    const description = document.getElementById('tc-description').value;
+    const assigned_to_id = document.getElementById('tc-assigned-to').value;
+
+    const steps = [];
+    document.querySelectorAll('.tc-step-row').forEach(row => {
+        const act = row.querySelector('.step-action')?.value || '';
+        const exp = row.querySelector('.step-expected')?.value || '';
+        if (act.trim()) {
+            steps.push({ action_text: act.trim(), expected_result: exp.trim() });
+        }
+    });
+
+    try {
+        const res = await fetch('/admin/qa/test-cases/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                title: title,
+                area: area,
+                description: description,
+                assigned_to_id: assigned_to_id,
+                steps: steps
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(data.message, 'success');
+            closeCreateTestCaseModal();
+            setTimeout(() => window.location.reload(), 600);
+        } else {
+            showToast(data.message || 'Ошибка создания тест-кейса', 'error');
+        }
+    } catch(err) {
+        showToast('Ошибка сети при создании тест-кейса', 'error');
+    }
+}
+
+async function updateBugStatus(bugId, newStatus) {
+    try {
+        const res = await fetch(`/admin/qa/bug-reports/${bugId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ status: newStatus })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(data.message, 'success');
+            const badge = document.getElementById(`bug-status-badge-${bugId}`);
+            if (badge) {
+                badge.textContent = newStatus;
+                badge.className = 'px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ' +
+                    (newStatus === 'RESOLVED' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                    (newStatus === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                    'bg-slate-100 text-slate-600 border border-slate-200'));
+            }
+        } else {
+            showToast(data.message || 'Ошибка обновления статуса баг-репорта', 'error');
+        }
+    } catch(err) {
+        showToast('Ошибка соединения', 'error');
+    }
+}
+
+async function submitAdminBugComment(bugId) {
+    const input = document.getElementById(`admin-bug-comment-input-${bugId}`);
+    if (!input || !input.value.trim()) {
+        showToast('Введите текст ответа', 'error');
+        return;
+    }
+    const text = input.value.trim();
+
+    try {
+        const res = await fetch(`/api/qa/bug-reports/${bugId}/comments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ text: text })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(data.message, 'success');
+            input.value = '';
+            const container = document.getElementById(`admin-bug-comments-list-${bugId}`);
+            if (container) {
+                const cmt = data.comment;
+                const div = document.createElement('div');
+                div.className = 'p-3 rounded-xl border text-xs space-y-1 ' +
+                    (cmt.author_role === 'admin' || cmt.author_role === 'creator' ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950' : 'bg-slate-50 border-slate-200 text-slate-800');
+                div.innerHTML = `
+                    <div class="flex items-center justify-between font-bold text-[11px]">
+                        <span class="flex items-center gap-1.5">
+                            <i class="ph-bold ${cmt.author_role === 'admin' || cmt.author_role === 'creator' ? 'ph-shield-star text-indigo-600' : 'ph-user text-emerald-600'}"></i>
+                            <span>${cmt.author_name}</span>
+                            <span class="text-[9px] uppercase px-1.5 py-0.2 bg-white/80 rounded border border-slate-200">${cmt.author_role}</span>
+                        </span>
+                        <span class="text-[10px] font-mono text-slate-400">${cmt.created_at}</span>
+                    </div>
+                    <p class="font-medium leading-relaxed">${cmt.text}</p>
+                `;
+                container.appendChild(div);
+            }
+        } else {
+            showToast(data.message || 'Ошибка отправки ответа', 'error');
+        }
+    } catch(err) {
+        showToast('Ошибка соединения при отправке ответа', 'error');
+    }
+}
+
+function filterQATables() {
+    const area = document.getElementById('qa-filter-area').value;
+    document.querySelectorAll('.tc-card-item').forEach(card => {
+        const a = card.getAttribute('data-area');
+        if (area === 'all' || a === area) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}

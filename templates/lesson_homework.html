@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends "sandbox/layout_student.html" if (is_student_view or is_parent_view) else "base.html" %}
 {% from '_task_content_block.html' import render_task_content %}
 {% block html_attrs %}data-student-lesson-room="1"{% endblock %}
 {% block title %}{{ lesson.topic or 'Урок' }} · BooStudy{% endblock %}
-{% set active_page = 'student_profile' if (is_student_view or is_parent_view) else 'dashboard' %}
+{% set active_page = 'assignments' if (is_student_view or is_parent_view) else 'dashboard' %}
 {% block body_attrs %}data-cinema-scene="lesson"{% endblock %}
 {% block body_class %}{% if is_student_view or is_parent_view %}layout-student{% else %}layout-teacher teacher-mode{% endif %} min-h-screen{% endblock %}
 
@@ -860,113 +860,87 @@
 <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=6"></script>
 {% endblock %}
 
+{% block sandbox_content %}
 {% block content %}
-        <div class="flex flex-col gap-6 w-full">
+<div class="flex flex-col gap-6 w-full max-w-7xl mx-auto pb-16 px-4 xl:px-8 pl-4 lg:pl-28 pt-4 lg:pt-6">
+    
+    <!-- Кнопка назад -->
+    <div class="flex items-center">
+        {% if is_student_view or is_parent_view %}
+        <a href="{{ url_for('assignments.submissions_list') }}" class="lesson-back-link flex items-center gap-2 font-bold text-sm text-slate-700 hover:text-indigo-600 w-fit transition-colors bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-xs no-underline">
+            <i class="ph-bold ph-arrow-left text-lg"></i> Назад к заданиям
+        </a>
+        {% else %}
+        <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="lesson-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline">
+            <i class="ph-bold ph-arrow-left text-lg"></i> Назад в профиль
+        </a>
+        {% endif %}
+    </div>
 
-        <div class="flex items-center">
-            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="lesson-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline">
-                <i class="ph-bold ph-arrow-left text-lg"></i> Назад в профиль
-            </a>
-        </div>
+    {% set is_tasks_active = (assignment_type in ['classwork', 'homework'] or 'classwork-tasks' in request.path or 'homework-tasks' in request.path) %}
 
-        <header class="lesson-header">
-            <div class="lesson-header__glow" aria-hidden="true"></div>
-            <div class="lesson-header__inner">
-                <div class="flex-1 min-w-0">
-                    <h1>{{ lesson.topic or 'Тема не указана' }}</h1>
-                    <div class="lesson-meta">
-                        <span class="lesson-meta-chip">
-                            <i class="ph-fill ph-calendar-blank" aria-hidden="true"></i> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
-                        </span>
-                        <span class="lesson-meta-chip">
-                            <i class="ph-fill ph-clock" aria-hidden="true"></i> {{ lesson.duration }} мин
-                        </span>
-                        <span class="lesson-meta-chip">
-                            <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="" class="w-5 h-5 rounded-md bg-surface border border-slate-200 shrink-0" width="20" height="20">
-                            {{ student.name }}
-                        </span>
-                        <span class="lesson-meta-chip lesson-meta-chip--badge">Классная работа</span>
-                    </div>
+    <!-- Шапка урока (BooStudy UI Canon 3D Card Plate) -->
+    <header class="w-full bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 relative overflow-hidden space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+            <div class="space-y-1.5">
+                <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display m-0 leading-tight">
+                    {{ lesson.topic or 'Тема урока не указана' }}
+                </h1>
+                <div class="flex items-center gap-2 flex-wrap text-xs font-bold text-slate-500">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <i class="ph-bold ph-calendar-blank text-indigo-500"></i> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата уточняется' }}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-xs">
+                        <i class="ph-bold ph-clock text-indigo-500"></i> {{ lesson.duration or 60 }} мин
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                        <i class="ph-bold ph-books"></i> {{ 'Классная работа' if assignment_type == 'classwork' else 'Домашняя работа' }}
+                    </span>
                 </div>
-                <div class="lesson-header__actions">
-                    {% if not is_student_view and not is_parent_view %}
-                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent sm" style="text-decoration:none;">
-                        <i class="ph-bold ph-house-line"></i> Создать ДЗ
-                    </a>
-                    <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button neo-outline sm" title="Редактировать" style="text-decoration:none; height: 36px; width: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
-                        <i class="ph-bold ph-pencil-simple"></i>
-                    </a>
-                    <button type="button" class="neo-button neo-outline sm text-rose-400 border-rose-500/20 hover:bg-rose-500/10" title="Удалить урок" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})" aria-label="Удалить урок" style="height: 36px; width: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0;">
-                        <i class="ph-bold ph-trash"></i>
-                    </button>
-                    {% endif %}
-                    {% if is_student_view %}
-                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button neo-outline sm" style="text-decoration:none;">
-                        <i class="ph-bold ph-check-square-offset"></i> К заданиям
-                    </a>
-                    {% endif %}
-                </div>
-
             </div>
-        </header>
-
-        <script>
-            async function deleteLesson(lessonId, studentId) {
-                showConfirmDialog(
-                    'Удалить урок? Это действие нельзя отменить.',
-                    async () => {
-                        try {
-                            const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-                            const resp = await fetch(`/schedule/api/lesson/${lessonId}/delete`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRFToken': csrf
-                                },
-                                body: JSON.stringify({})
-                            });
-                            const data = await resp.json().catch(() => ({}));
-                            if (!resp.ok || data.success === false) {
-                                const msg = data.error || `HTTP ${resp.status}`;
-                                if (window.toast) window.toast.error(msg);
-                                else showToast(msg, 'error');
-                                return;
-                            }
-                            if (window.toast) window.toast.success('Урок удалён');
-                            window.location.href = `/student/${studentId}`;
-                        } catch (e) {
-                            const msg = e?.message || 'Ошибка удаления';
-                            if (window.toast) window.toast.error(msg);
-                            else showToast(msg, 'error');
-                        }
-                    },
-                    null,
-                    {
-                        title: 'Удалить урок?',
-                        isDanger: true,
-                        confirmText: 'Удалить',
-                        cancelText: 'Отмена'
-                    }
-                );
-            }
-        </script>
-
-        <div id="lesson-presence-bar" class="lesson-presence-bar" style="display: none;">
-            <span class="presence-label"><i class="fas fa-eye"></i> Сейчас смотрят:</span>
-            <span id="lesson-presence-list" class="presence-list"></span>
+            
+            <div class="flex items-center gap-2 shrink-0">
+                {% if not is_student_view and not is_parent_view %}
+                <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] shadow-xs active:translate-y-[2px] transition-all no-underline flex items-center gap-1.5">
+                    <i class="ph-bold ph-house-line"></i> Создать ДЗ
+                </a>
+                <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs p-2.5 rounded-xl border border-slate-200 border-b-[3px] shadow-xs no-underline flex items-center justify-center">
+                    <i class="ph-bold ph-pencil-simple text-base"></i>
+                </a>
+                <button type="button" class="btn-3d bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs p-2.5 rounded-xl border border-rose-200 border-b-[3px] shadow-xs flex items-center justify-center cursor-pointer" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})" title="Удалить урок">
+                    <i class="ph-bold ph-trash text-base"></i>
+                </button>
+                {% endif %}
+                {% if is_student_view %}
+                <a href="{{ url_for('assignments.submissions_list') }}" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] shadow-xs no-underline flex items-center gap-1.5">
+                    <i class="ph-bold ph-arrow-left"></i> К заданиям
+                </a>
+                {% endif %}
+            </div>
         </div>
-        <div class="lesson-tabs hide-scroll" role="tablist">
-            <button type="button" class="tab-btn active" data-tab="theory" role="tab" aria-selected="true"><i class="ph-bold ph-book-open"></i> Конспект</button>
-            <button type="button" class="tab-btn" data-tab="tasks" role="tab" aria-selected="false"><i class="ph-bold ph-chalkboard-teacher"></i> Классная работа</button>
-            <button type="button" class="tab-btn" data-tab="materials" role="tab" aria-selected="false"><i class="ph-bold ph-paperclip"></i> Материалы</button>
-            <button type="button" class="tab-btn" data-tab="notes" role="tab" aria-selected="false"><i class="ph-bold ph-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
-            <button type="button" class="tab-btn" data-tab="whiteboard" role="tab" aria-selected="false"><i class="ph-bold ph-presentation-chart"></i> Доска</button>
-            <button type="button" class="tab-btn" data-tab="videocall" role="tab" aria-selected="false"><i class="ph-bold ph-video-camera"></i> Звонок</button>
-        </div>
+    </header>
 
-        <div class="lesson-room-workspace">
-            <div class="lesson-room-main-column">
-                <div id="tab-theory" class="tab-pane active">
+    <div id="lesson-presence-bar" class="lesson-presence-bar" style="display: none;">
+        <span class="presence-label"><i class="fas fa-eye"></i> Сейчас смотрят:</span>
+        <span id="lesson-presence-list" class="presence-list"></span>
+    </div>
+
+    <!-- Вкладки (BooStudy UI Canon 3D Tactile Clay Controller) -->
+    <div class="lesson-tabs hide-scroll w-full sm:w-auto flex items-center p-1 sm:p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] overflow-x-auto gap-1" role="tablist">
+        <button type="button" class="tab-btn {% if not is_tasks_active %}active bg-white text-slate-900 shadow-xs border border-slate-200{% else %}text-slate-500 hover:text-slate-800{% endif %} px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0" data-tab="theory" role="tab" aria-selected="{% if not is_tasks_active %}true{% else %}false{% endif %}"><i class="ph-bold ph-book-open"></i> Конспект</button>
+        <button type="button" class="tab-btn {% if is_tasks_active %}active bg-white text-indigo-600 shadow-xs border border-slate-200{% else %}text-slate-500 hover:text-slate-800{% endif %} px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0" data-tab="tasks" role="tab" aria-selected="{% if is_tasks_active %}true{% else %}false{% endif %}"><i class="ph-bold ph-chalkboard-teacher"></i> Задания по занятию</button>
+        <button type="button" class="tab-btn text-slate-500 hover:text-slate-800 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0" data-tab="materials" role="tab" aria-selected="false"><i class="ph-bold ph-paperclip"></i> Материалы</button>
+        <button type="button" class="tab-btn text-slate-500 hover:text-slate-800 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0" data-tab="notes" role="tab" aria-selected="false"><i class="ph-bold ph-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
+        <button type="button" class="tab-btn text-slate-500 hover:text-slate-800 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0" data-tab="whiteboard" role="tab" aria-selected="false"><i class="ph-bold ph-presentation-chart"></i> Доска</button>
+        <button type="button" class="tab-btn text-slate-500 hover:text-slate-800 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0" data-tab="videocall" role="tab" aria-selected="false"><i class="ph-bold ph-video-camera"></i> Звонок</button>
+    </div>
+
+    <!-- НОВЫЙ ДВУХКОЛОНОЧНЫЙ МАКЕТ -->
+    <div class="w-full flex flex-col xl:flex-row gap-8 items-start mt-2">
+        
+        <!-- ЛЕВАЯ КОЛОНКА (Контент) -->
+        <div class="w-full xl:flex-1 min-w-0" style="max-width: 100%;">
+            <div id="tab-theory" class="tab-pane {% if not is_tasks_active %}active{% endif %}">
             <div class="glass-panel">
                 {% if not is_student_view and not is_parent_view %}
                 
@@ -1067,7 +1041,7 @@
         </div>
         {% endif %}
 
-        <div id="tab-tasks" class="tab-pane">
+        <div id="tab-tasks" class="tab-pane {% if is_tasks_active %}active{% endif %}">
             
             <div class="tasks-container">
                  <form id="homework-form" method="POST" data-no-ajax action="{% if is_student_view %}{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_save', lesson_id=lesson.lesson_id) }}{% endif %}{% else %}{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_save', lesson_id=lesson.lesson_id) }}{% endif %}{% endif %}">
@@ -1747,23 +1721,67 @@
                     <div style="margin-top: 2rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
                         <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">
                             <i class="fas fa-lightbulb" style="color: var(--warning);"></i>
-                            <span>Пока можете использовать Zoom, Google Meet или Discord для видеосвязи</span>
+                            <span>Этот раздел пока находится в разработке. Вместо него используйте Zoom, Google Meet или Discord для видеозвонков.</span>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        </div>
-            </div> <!-- end of lesson-room-main-column -->
+        </div> <!-- end of left flex-1 column -->
+        
+        <!-- ПРАВАЯ КОЛОНКА (Сайдбар) -->
+        <aside class="w-full xl:w-[340px] shrink-0 xl:sticky xl:top-24 flex flex-col gap-6" id="lesson-sidebar">
+            <div class="glass-panel" style="padding: 1.5rem; position: relative; overflow: hidden; border-radius: 20px;">
+                <div style="position: absolute; right: -2rem; top: -2rem; width: 6rem; height: 6rem; background: rgba(123, 92, 255, 0.15); filter: blur(20px); border-radius: 50%; pointer-events: none;"></div>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Длительность</span>
+                    <span style="background: rgba(123, 92, 255, 0.1); color: var(--boo-primary, #4f46e5); padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 800;">
+                        <i class="ph-bold ph-hourglass"></i> {{ lesson.duration if lesson else 90 }} мин
+                    </span>
+                </div>
 
-        </div> <!-- end of lesson-room-workspace -->
+                <div style="height: 1px; width: 100%; background: var(--stroke-1); margin: 0.75rem 0;"></div>
 
-    {% for hw_task in homework_tasks %}
-    <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
-        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-    </form>
-    {% endfor %}
+                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                    <div style="width: 3.5rem; height: 3.5rem; border-radius: 12px; overflow: hidden; background: var(--surface-2); border: 2px solid var(--stroke-1); flex-shrink: 0;">
+                        {% if lesson and lesson.author and lesson.author.avatar_url %}
+                        <img src="{{ url_for('static', filename='uploads/avatars/' + lesson.author.avatar_url) }}" alt="teacher" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                        <img src="https://api.dicebear.com/7.x/shapes/svg?seed={{ lesson.author_id if (lesson and lesson.author) else 'teacher_pro' }}&backgroundColor=F3F0FF" alt="teacher" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% endif %}
+                    </div>
+                    <div style="min-width: 0;">
+                        <div style="font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--boo-primary, #4f46e5); margin-bottom: 0.15rem;">Преподаватель</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ lesson.author.name if (lesson and lesson.author) else 'Преподаватель' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Мини-карта задач -->
+            {% if class_tasks %}
+            <div class="glass-panel" style="padding: 1.25rem; border-radius: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span style="font-size: 1.1rem; font-weight: 900; color: var(--text-primary);">Задания</span>
+                    <span style="font-size: 0.7rem; font-weight: 800; background: var(--surface-2); padding: 0.25rem 0.5rem; border-radius: 0.5rem; border: 1px solid var(--stroke-1); color: var(--text-muted);">{{ class_tasks|length }} ЗАДАЧ</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;">
+                    {% for lt in class_tasks %}
+                        {% set sub_ans = student_submissions.get(lt.lesson_task_id) %}
+                        {% set sub_status = (sub_ans.status or 'pending')|lower if sub_ans else 'pending' %}
+                        
+                        <a href="#task-{{ lt.lesson_task_id }}" class="task-nav-btn {% if sub_status == 'correct' or sub_status == 'graded' %}nav-correct{% elif sub_status == 'incorrect' %}nav-incorrect{% elif sub_status == 'returned' %}nav-returned{% endif %}" style="width: 100%; aspect-ratio: 1; border-radius: 10px;" onclick="switchLessonTab('tasks'); document.getElementById('task-{{ lt.lesson_task_id }}').scrollIntoView({behavior: 'smooth', block: 'start'});" title="Перейти к заданию {{ loop.index }}">
+                            {{ loop.index }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </aside>
 
+    </div> <!-- END TWO-COLUMN LAYOUT -->
+{% endblock %}
 {% endblock %}
 
 {% block scripts_extra %}

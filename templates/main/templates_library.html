@@ -1,0 +1,422 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+
+<style>
+    .seg-btn.active {
+        background-color: #EEF2FF;
+        color: #4F46E5;
+        font-weight: 800;
+        border-color: #C7D2FE;
+        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative flex flex-col min-h-[calc(100vh-4rem)]">
+
+        <!-- HEADER & PRIMARY ACTION BUTTON -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100 mb-6">
+            <div>
+                <span class="text-xs font-black text-indigo-500 uppercase tracking-widest block mb-1">МАТЕРИАЛЫ</span>
+                <h1 class="text-3xl font-black text-slate-800 tracking-tight font-display mb-1">Библиотека шаблонов</h1>
+                <p class="text-xs font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <i class="ph-bold ph-folder-star text-indigo-500"></i> Готовые наборы заданий и авторские сборники
+                </p>
+            </div>
+
+            <!-- Primary 3D Action Button -->
+            <a href="{{ url_for('main.create_template_view') }}" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm px-6 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto no-underline">
+                <i class="ph-bold ph-plus text-base"></i>
+                <span>Создать шаблон</span>
+            </a>
+        </div>
+
+        <!-- SMART TOOLBAR (Search & Pill-Tabs Filter) -->
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+            <div class="flex items-center gap-4 w-full md:w-auto flex-wrap">
+                <!-- Search Input -->
+                <div class="relative w-full sm:w-72">
+                    <input type="text" id="template-search-input" oninput="applyTemplateFilters()" placeholder="Поиск по шаблонам..." class="w-full bg-[#F8FAFC] border-2 border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-xs font-bold text-slate-800 focus:bg-white focus:border-indigo-400 focus:outline-none transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                    <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                </div>
+
+                <!-- Pill-Tabs Filter Navigation -->
+                <div class="inline-flex items-center p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] overflow-x-auto hide-scrollbar shrink-0">
+                    <button type="button" onclick="setCategoryFilter('all', this)" class="seg-btn active px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                        Все шаблоны ({{ count_all }})
+                    </button>
+                    <button type="button" onclick="setCategoryFilter('homework', this)" class="seg-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer">
+                        Домашние ({{ count_hw }})
+                    </button>
+                    <button type="button" onclick="setCategoryFilter('classwork', this)" class="seg-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer">
+                        Классные ({{ count_cw }})
+                    </button>
+                    <button type="button" onclick="setCategoryFilter('mock_exam', this)" class="seg-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer">
+                        Пробники ({{ count_mock }})
+                    </button>
+                    <button type="button" onclick="setCategoryFilter('quiz', this)" class="seg-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition-all cursor-pointer">
+                        Проверочные ({{ count_quiz }})
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sorting Select -->
+            <select id="template-sort-select" onchange="applySorting(this.value)" class="bg-[#F8FAFC] border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-extrabold text-slate-800 focus:outline-none cursor-pointer self-end md:self-auto">
+                <option value="date_desc" selected>По дате добавления</option>
+                <option value="tasks_desc">По количеству задач</option>
+                <option value="time_asc">По времени выполнения</option>
+            </select>
+        </div>
+
+        <!-- TEMPLATES GRID -->
+        <div id="templates-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-2">
+            {% if templates|length == 0 %}
+            <div id="empty-state-card" class="col-span-full bg-white border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center flex flex-col items-center justify-center gap-4 my-8">
+                <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shadow-xs">
+                    <i class="ph-bold ph-folder-star text-3xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-slate-900">Шаблонов пока нет</h3>
+                    <p class="text-xs font-semibold text-slate-500 max-w-md mx-auto mt-1">
+                        Создавайте готовые подборки заданий, чтобы моментально собирать варианты ДЗ и проверочных работ.
+                    </p>
+                </div>
+                <a href="{{ url_for('main.create_template_view') }}" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-sm active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer flex items-center gap-2 no-underline">
+                    <i class="ph-bold ph-plus text-sm"></i>
+                    <span>Создать первый шаблон</span>
+                </a>
+            </div>
+            {% else %}
+                {% for template in templates %}
+                {% set t_type = template.template_type %}
+                <div class="template-card bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-5 flex flex-col justify-between hover:-translate-y-1 hover:shadow-[0_6px_0_#C3D0E0] transition-all group relative"
+                     data-type="{{ t_type }}"
+                     data-search="{{ (template.name + ' ' + (template.description or ''))|lower }}"
+                     data-tasks="{{ template.tasks_count }}"
+                     data-time="{{ template.estimated_time or 45 }}"
+                     data-date="{{ template.created_at.timestamp() if template.created_at else 0 }}">
+                    
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <!-- Type Badge -->
+                            {% if t_type == 'homework' %}
+                            <span class="bg-amber-100 text-amber-800 border border-amber-200 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                                ДОМАШНЯЯ
+                            </span>
+                            {% elif t_type == 'classwork' %}
+                            <span class="bg-blue-100 text-blue-800 border border-blue-200 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                                КЛАССНАЯ
+                            </span>
+                            {% elif t_type in ['mock_exam', 'exam'] %}
+                            <span class="bg-purple-100 text-purple-800 border border-purple-200 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                                ПРОБНИК
+                            </span>
+                            {% elif t_type == 'quiz' %}
+                            <span class="bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                                ПРОВЕРОЧНАЯ
+                            </span>
+                            {% else %}
+                            <span class="bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider shadow-2xs">
+                                ШАБЛОН
+                            </span>
+                            {% endif %}
+
+                            <!-- Dropdown 3-dots Menu -->
+                            <div class="relative template-menu-container">
+                                <button type="button" onclick="toggleTemplateMenu(event, 'menu-{{ template.template_id }}')" class="p-1 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer">
+                                    <i class="ph-bold ph-dots-three-vertical text-base"></i>
+                                </button>
+                                <div id="menu-{{ template.template_id }}" class="template-dropdown-menu absolute right-0 top-full mt-1 w-36 bg-white border-2 border-slate-200 shadow-xl rounded-xl p-1 hidden z-50 pointer-events-auto">
+                                    <a href="{{ url_for('main.edit_template_view', template_id=template.template_id) }}" class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors no-underline">
+                                        <i class="ph-bold ph-pencil"></i>
+                                        <span>Изменить</span>
+                                    </a>
+                                    <button type="button" onclick="openDeleteModal({{ template.template_id }}, '{{ template.name|escape }}')" class="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer text-left">
+                                        <i class="ph-bold ph-trash"></i>
+                                        <span>Удалить</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Header & Description -->
+                        <div class="flex items-start gap-3">
+                            <span class="text-3xl shrink-0 p-2 bg-slate-50 border border-slate-200 rounded-2xl">📋</span>
+                            <div>
+                                <h3 class="text-base font-black text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors">
+                                    {{ template.name }}
+                                </h3>
+                                <p class="text-xs font-semibold text-slate-500 line-clamp-2 mt-1 leading-relaxed">
+                                    {{ template.description or 'Описание шаблона не указано.' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meta info & Preview Button -->
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3 text-xs font-bold text-slate-500">
+                            <span class="flex items-center gap-1">
+                                <i class="ph-bold ph-check-square text-indigo-500"></i>
+                                <span>{{ template.tasks_count }} задач</span>
+                            </span>
+                            <span>•</span>
+                            <span class="flex items-center gap-1">
+                                <i class="ph-bold ph-clock text-indigo-500"></i>
+                                <span>{{ template.estimated_time or 45 }} мин</span>
+                            </span>
+                        </div>
+
+                        <!-- Preview Action Only (NO 'Issue work' button) -->
+                        <button type="button" onclick="openPreviewModal({{ template.template_id }})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs">
+                            <i class="ph-bold ph-eye text-sm"></i>
+                            <span>Предпросмотр</span>
+                        </button>
+                    </div>
+
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+    </div>
+</main>
+
+<!-- TASK PREVIEW MODAL -->
+<div id="preview-modal" class="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-[2.5rem] border-2 border-slate-200 shadow-2xl max-w-3xl w-full p-6 sm:p-8 space-y-5 relative max-h-[90vh] flex flex-col">
+        
+        <button type="button" onclick="closePreviewModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 text-lg p-1 cursor-pointer">
+            <i class="ph-bold ph-x text-xl"></i>
+        </button>
+
+        <div class="space-y-1 pb-3 border-b border-slate-100 shrink-0">
+            <span class="text-[10px] font-black text-indigo-500 uppercase tracking-wider block">ПРЕДПРОСМОТР ШАБЛОНА</span>
+            <h3 id="preview-modal-title" class="text-2xl font-black text-slate-900">Загрузка...</h3>
+            <p id="preview-modal-desc" class="text-xs font-semibold text-slate-500"></p>
+        </div>
+
+        <div id="preview-tasks-container" class="flex-1 overflow-y-auto space-y-4 pr-1">
+            <div class="text-center py-12 text-slate-400 font-bold text-xs animate-pulse">
+                <i class="ph-bold ph-circle-notch animate-spin text-2xl text-indigo-500 mb-2 block"></i>
+                Загружаем список задач шаблона...
+            </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end shrink-0">
+            <button type="button" onclick="closePreviewModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer">
+                Закрыть
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div id="delete-modal" class="fixed inset-0 z-[130] bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-[2rem] border-2 border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center mx-auto text-2xl">
+            <i class="ph-bold ph-trash"></i>
+        </div>
+        <div>
+            <h3 class="text-xl font-black text-slate-900">Удаление шаблона</h3>
+            <p class="text-xs font-semibold text-slate-500 mt-1" id="delete-modal-text">
+                Вы действительно хотите удалить выбранный шаблон?
+            </p>
+        </div>
+        <input type="hidden" id="delete-template-id" value="">
+        <div class="flex items-center justify-center gap-3 pt-2">
+            <button type="button" onclick="closeDeleteModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer">
+                Отмена
+            </button>
+            <button type="button" onclick="confirmDeleteTemplate()" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 active:border-b-[1px] active:translate-y-[2px] cursor-pointer">
+                Удалить шаблон
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeCategory = 'all';
+
+    function toggleTemplateMenu(event, menuId) {
+        event.stopPropagation();
+        const targetMenu = document.getElementById(menuId);
+        const allMenus = document.querySelectorAll('.template-dropdown-menu');
+        allMenus.forEach(m => {
+            if (m.id !== menuId) m.classList.add('hidden');
+        });
+        if (targetMenu) {
+            targetMenu.classList.toggle('hidden');
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.template-menu-container')) {
+            document.querySelectorAll('.template-dropdown-menu').forEach(m => m.classList.add('hidden'));
+        }
+    });
+
+
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function setCategoryFilter(category, btnEl) {
+        activeCategory = category;
+
+        document.querySelectorAll('.seg-btn').forEach(b => {
+            b.classList.remove('active', 'bg-[#EEF2FF]', 'text-[#4F46E5]');
+            b.classList.add('text-slate-500');
+        });
+        btnEl.classList.add('active');
+
+        applyTemplateFilters();
+    }
+
+    function applyTemplateFilters() {
+        const query = (document.getElementById('template-search-input').value || '').toLowerCase().trim();
+        const cards = document.querySelectorAll('.template-card');
+
+        cards.forEach(card => {
+            const cardType = card.getAttribute('data-type') || '';
+            const cardSearch = card.getAttribute('data-search') || '';
+
+            const matchesSearch = !query || cardSearch.includes(query);
+            let matchesCategory = true;
+            if (activeCategory === 'homework') matchesCategory = (cardType === 'homework');
+            else if (activeCategory === 'classwork') matchesCategory = (cardType === 'classwork');
+            else if (activeCategory === 'mock_exam') matchesCategory = (cardType === 'mock_exam' || cardType === 'exam');
+            else if (activeCategory === 'quiz') matchesCategory = (cardType === 'quiz');
+
+            if (matchesSearch && matchesCategory) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    function applySorting(sortVal) {
+        const grid = document.getElementById('templates-grid');
+        const cards = Array.from(document.querySelectorAll('.template-card'));
+
+        cards.sort((a, b) => {
+            if (sortVal === 'tasks_desc') {
+                return parseInt(b.getAttribute('data-tasks') || 0) - parseInt(a.getAttribute('data-tasks') || 0);
+            } else if (sortVal === 'time_asc') {
+                return parseInt(a.getAttribute('data-time') || 0) - parseInt(b.getAttribute('data-time') || 0);
+            } else {
+                return parseFloat(b.getAttribute('data-date') || 0) - parseFloat(a.getAttribute('data-date') || 0);
+            }
+        });
+
+        cards.forEach(c => grid.appendChild(c));
+    }
+
+    async function openPreviewModal(templateId) {
+        const modal = document.getElementById('preview-modal');
+        const titleEl = document.getElementById('preview-modal-title');
+        const descEl = document.getElementById('preview-modal-desc');
+        const container = document.getElementById('preview-tasks-container');
+
+        titleEl.textContent = 'Загрузка...';
+        descEl.textContent = '';
+        container.innerHTML = `
+            <div class="text-center py-12 text-slate-400 font-bold text-xs animate-pulse">
+                <i class="ph-bold ph-circle-notch animate-spin text-2xl text-indigo-500 mb-2 block"></i>
+                Загружаем список задач шаблона...
+            </div>
+        `;
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        try {
+            const res = await fetch(`/api/teacher/templates/${templateId}/preview`);
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                titleEl.textContent = data.title;
+                descEl.textContent = `${data.tasks_count} задач • Примерно ${data.estimated_time} минут`;
+
+                if (!data.tasks || data.tasks.length === 0) {
+                    container.innerHTML = `<div class="text-center py-8 text-slate-400 font-bold text-xs">В этом шаблоне пока нет задач</div>`;
+                    return;
+                }
+
+                container.innerHTML = data.tasks.map((t, idx) => `
+                    <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-md px-2 py-0.5 text-[10px] font-black uppercase">
+                                Задание №${t.task_number || (idx + 1)}
+                            </span>
+                            <span class="text-[10px] font-bold text-slate-400">${t.topic || 'Задание'}</span>
+                        </div>
+                        <div class="text-xs font-semibold text-slate-800 leading-relaxed max-w-none">
+                            ${t.content}
+                        </div>
+                        ${t.image_url ? `<img src="${t.image_url}" class="max-h-48 rounded-lg border border-slate-200 mt-2">` : ''}
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `<div class="text-center py-8 text-rose-500 font-bold text-xs">${data.message || 'Ошибка загрузки'}</div>`;
+            }
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = `<div class="text-center py-8 text-rose-500 font-bold text-xs"> Ошибка соединения </div>`;
+        }
+    }
+
+    function closePreviewModal() {
+        const modal = document.getElementById('preview-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function openDeleteModal(id, name) {
+        document.getElementById('delete-template-id').value = id;
+        document.getElementById('delete-modal-text').textContent = `Вы действительно хотите удалить шаблон "${name}"?`;
+
+        const modal = document.getElementById('delete-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('delete-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    async function confirmDeleteTemplate() {
+        const id = document.getElementById('delete-template-id').value;
+        if (!id) return;
+
+        try {
+            const res = await fetch(`/api/teacher/templates/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+
+            const data = await res.json();
+            if (res.ok && data.status === 'success') {
+                closeDeleteModal();
+                window.location.reload();
+            } else {
+                alert(data.message || 'Ошибка удаления шаблона');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Ошибка сети при удалении');
+        }
+    }
+</script>
+{% endblock %}

@@ -24,6 +24,13 @@ def _b64url_decode(s: str) -> bytes:
 
 def _get_secret() -> bytes:
     secret = (os.environ.get('TRAINER_SHARED_SECRET') or '').strip()
+    if not secret:
+        try:
+            from flask import current_app, has_app_context
+            if has_app_context() and (current_app.debug or current_app.testing):
+                secret = str(current_app.config.get('SECRET_KEY') or '').strip()
+        except Exception:
+            secret = ''
     if not secret or len(secret) < 16:
         raise TrainerTokenError('TRAINER_SHARED_SECRET is missing or too short')
     return secret.encode('utf-8')
@@ -82,4 +89,3 @@ def verify_trainer_token(token: str, *, audience: str = 'trainer') -> dict[str, 
         raise
     except Exception as e:
         raise TrainerTokenError(str(e))
-

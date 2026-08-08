@@ -185,7 +185,7 @@
         <div class="flex justify-between items-center mb-3">
             <h2 class="text-2xl font-bold text-primary tracking-tight">Доска задач</h2>
             <div class="flex gap-2">
-                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2" type="button" data-href="{{ url_for('qa_tester.tester.board', return_to=url_for('chief_tester.dashboard', tab='tasks')) }}" onclick="location.href=this.dataset.href">
+                <button class="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm shadow-sm dark:shadow-none dark:shadow-none flex items-center gap-2" type="button" data-href="{{ url_for('qa_tester.index') }}" onclick="location.href=this.dataset.href">
                     <i class="ph-bold ph-funnel"></i> Открыть full board
                 </button>
             </div>
@@ -241,7 +241,7 @@
                 <h2 class="text-2xl font-bold text-primary tracking-tight">QA Отдел</h2>
                 <p class="text-muted font-medium">Управление доступом и распределение нагрузки на тестировщиков.</p>
             </div>
-            <button class="px-4 py-2.5 bg-surface border border-slate-200 text-secondary rounded-xl font-bold shadow-sm dark:shadow-none dark:shadow-none hover:bg-surface-alt transition-colors flex items-center gap-2" data-href="{{ url_for('qa_tester.testers', return_to=url_for('chief_tester.dashboard', tab='team')) }}" onclick="location.href=this.dataset.href" type="button">
+            <button class="px-4 py-2.5 bg-surface border border-slate-200 text-secondary rounded-xl font-bold shadow-sm dark:shadow-none dark:shadow-none hover:bg-surface-alt transition-colors flex items-center gap-2" data-href="{{ url_for('qa_tester.index') }}" onclick="location.href=this.dataset.href">
                 <i class="ph-bold ph-user-plus"></i> Управление
             </button>
         </div>
@@ -405,7 +405,7 @@
             </div>
 
             {% if session.get('impersonator_id') %}
-            <form method="POST" action="{{ url_for('qa_tester.revert_impersonation') }}" data-no-ajax>
+            <form method="POST" action="{{ url_for('admin.revert_impersonation') }}" data-no-ajax>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="px-3 py-1.5 bg-red-100 text-red-700 rounded-xl text-xs font-bold border border-red-200" type="submit">Выйти из симуляции</button>
             </form>

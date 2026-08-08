@@ -42,7 +42,8 @@ def create_app(config_name=None):
     from app.json_provider import BooJSONProvider
     app.json = BooJSONProvider(app)
     
-    db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
+    db_path = os.environ.get('SQLITE_DB_PATH') or os.path.abspath(os.path.join(base_dir, 'instance', 'boostudy_dev.db'))
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
     
     database_url = os.environ.get('DATABASE_URL')
     database_url_source = None
@@ -50,6 +51,9 @@ def create_app(config_name=None):
     postgres_alt_url = os.environ.get('POSTGRES_URL')
 
     def _normalize_db_url(url: str | None) -> str | None:
+        if not url:
+            return None
+        url = url.strip()
         if not url:
             return None
         if url.startswith('postgres://'):
@@ -124,6 +128,8 @@ def create_app(config_name=None):
     app.config['AVATAR_UPLOAD_ROOT'] = (os.environ.get('AVATAR_UPLOAD_ROOT') or '').strip() or None
     app.config['COVER_UPLOAD_ROOT'] = (os.environ.get('COVER_UPLOAD_ROOT') or '').strip() or None
     app.config['THEORY_UPLOAD_ROOT'] = (os.environ.get('THEORY_UPLOAD_ROOT') or '').strip() or None
+    # Материалы уроков должны жить в persistent volume, а не внутри образа web-приложения.
+    app.config['LESSON_UPLOAD_ROOT'] = (os.environ.get('LESSON_UPLOAD_ROOT') or '').strip().rstrip(os.sep) or None
     # Корень папки вложений заданий (uploads/task_attachments). На Timeweb можно задать путь к volume.
     app.config['TASK_ATTACHMENTS_ROOT'] = (os.environ.get('TASK_ATTACHMENTS_ROOT') or '').strip().rstrip(os.sep) or None
     # Корень папки вложений ответов учеников (uploads/answer_attachments).
@@ -155,9 +161,7 @@ def create_app(config_name=None):
     if app.config['DEMO_SITE']:
         app.config['DEMO_CREATOR_AVATAR_URL'] = (os.environ.get('DEMO_CREATOR_AVATAR_URL') or '').strip() or None
         app.config['DEMO_CREATOR_COVER_URL'] = (os.environ.get('DEMO_CREATOR_COVER_URL') or '').strip() or None
-        demo_db_url = os.environ.get('DEMO_DATABASE_URL') or os.environ.get('DATABASE_URL')
-        if demo_db_url and demo_db_url.startswith('postgres://'):
-            demo_db_url = demo_db_url.replace('postgres://', 'postgresql://', 1)
+        demo_db_url = _normalize_db_url(os.environ.get('DEMO_DATABASE_URL') or os.environ.get('DATABASE_URL'))
         if demo_db_url:
             app.config['SQLALCHEMY_DATABASE_URI'] = demo_db_url
         # иначе оставляем уже установленный DATABASE_URL выше
@@ -232,6 +236,34 @@ def create_app(config_name=None):
                 value = value.replace(tzinfo=MOSCOW_TZ)  # comment
             return value.astimezone(tz)  # comment
         return dt  # comment
+
+    @app.template_filter('user_dt')
+    def user_dt(dt, format_string='%H:%M'):
+        """
+        Новый стандарт: переводит UTC datetime в локальное время пользователя и форматирует.
+        """
+        if not dt:
+            return ''
+        from flask_login import current_user
+        try:
+            # Получаем IANA-таймзону, по умолчанию Europe/Moscow
+            tz_name = getattr(current_user, 'timezone_iana', None)
+            if not tz_name:
+                profile = getattr(current_user, 'profile', None)
+                if profile:
+                    tz_name = getattr(profile, 'timezone', None)
+            tz = ZoneInfo(tz_name or 'Europe/Moscow')
+        except Exception:
+            tz = ZoneInfo('Europe/Moscow')
+        
+        value = dt
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                # Согласно новому стандарту БД, naive это UTC
+                value = value.replace(tzinfo=timezone.utc)
+            value_local = value.astimezone(tz)
+            return value_local.strftime(format_string)
+        return str(value)
     
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     logger.info(f"=== Application Initialization ===")
@@ -281,6 +313,18 @@ def create_app(config_name=None):
                 # Локальная sqlite-сборка должна подхватывать новые таблицы автоматически,
                 # иначе свежие модели вроде CodePlaybackTrace ломают workspace на старте.
                 db.create_all()
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(db.text("ALTER TABLE Students ADD COLUMN mentor_id INTEGER REFERENCES Users(id)"))
+                        conn.commit()
+                except Exception:
+                    pass
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(db.text("ALTER TABLE Assignments ADD COLUMN status VARCHAR(30) DEFAULT 'active'"))
+                        conn.commit()
+                except Exception:
+                    pass
                 logger.info("✓ Local SQLite schema ensured via db.create_all()")
         except Exception as schema_error:
             logger.warning("⚠ Local SQLite schema bootstrap failed: %s", schema_error)
@@ -358,7 +402,8 @@ def create_app(config_name=None):
     from app.lessons import lessons_bp
     from app.admin import admin_bp
     from app.admin.qa_management import qa_bp as qa_admin_bp
-    from app.qa import qa_tester_bp
+    from app.qa.routes import qa_tester_bp
+    from app.qa.api import qa_api_bp
     from app.task_generator import task_generator_bp
     from app.api import api_bp
     from app.schedule import schedule_bp
@@ -374,32 +419,71 @@ def create_app(config_name=None):
     from app.trainer import trainer_bp
     from app.uploads import uploads_bp
     from app.storage.routes import storage_bp
-    from app.qa import qa_tester_bp
     from app.chief_tester import chief_tester_bp
     from app.theory import theory_bp
     from app.reminders import reminders_bp
     from app.telegram.webhook import telegram_bp
     from app.telegram.mini_app import tg_app_bp
+    from app.routes.webhooks import webhooks_bp
+    from app.routes.tma import tma_bp
     from app.workspace import workspace_bp
     from app.task_workspace import task_workspace_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(webhooks_bp)
+    app.register_blueprint(tma_bp)
     from app.main.routes import presence_ping as _presence_ping_view
     csrf.exempt(_presence_ping_view)
     app.register_blueprint(students_bp)
     app.register_blueprint(lessons_bp)
     app.register_blueprint(admin_bp)
-    from app.qa import qa_tester_bp
+    from app.admin.impersonate import admin_impersonate_bp
+    app.register_blueprint(admin_impersonate_bp)
     
     app.register_blueprint(qa_admin_bp)
+    app.register_blueprint(qa_api_bp)
     app.register_blueprint(qa_tester_bp)
 
+    from app.qa.routes import (
+        index as qa_tester_index_view,
+        get_assigned_test_cases,
+        get_test_case_detail,
+        get_test_case_steps,
+        toggle_test_step,
+        fail_test_case_with_report,
+        create_bug_report_api,
+        get_bug_report_comments,
+        add_bug_report_comment,
+        update_test_case_status
+    )
+    app.add_url_rule('/tester', endpoint='tester_workspace_v2', view_func=qa_tester_index_view)
+    app.add_url_rule('/api/qa/assigned-test-cases', endpoint='api_qa_assigned_test_cases', view_func=get_assigned_test_cases)
+    app.add_url_rule('/api/qa/test-cases/<int:tc_id>', endpoint='api_qa_test_case_detail', view_func=get_test_case_detail, methods=['GET'])
+    app.add_url_rule('/api/qa/test-cases/<int:tc_id>/steps', endpoint='api_qa_test_case_steps', view_func=get_test_case_steps)
+    app.add_url_rule('/api/qa/test-steps/<int:step_id>/toggle', endpoint='api_qa_test_step_toggle', view_func=toggle_test_step, methods=['POST'])
+    app.add_url_rule('/api/qa/test-cases/<int:tc_id>/fail-with-report', endpoint='api_qa_test_case_fail_with_report', view_func=fail_test_case_with_report, methods=['POST'])
+    app.add_url_rule('/api/qa/test-cases/<int:tc_id>/status', endpoint='api_qa_test_case_status_post', view_func=update_test_case_status, methods=['POST'])
+    app.add_url_rule('/tester/test-cases/<int:tc_id>/status', endpoint='tester_test_case_status_post', view_func=update_test_case_status, methods=['POST'])
+    app.add_url_rule('/api/qa/bug-reports/create', endpoint='api_qa_bug_reports_create', view_func=create_bug_report_api, methods=['POST'])
+    app.add_url_rule('/api/qa/bug-reports/<int:bug_id>/comments', endpoint='api_qa_bug_report_comments_get', view_func=get_bug_report_comments, methods=['GET'])
+    app.add_url_rule('/api/qa/bug-reports/<int:bug_id>/comments', endpoint='api_qa_bug_report_comments_add', view_func=add_bug_report_comment, methods=['POST'])
+
     # CSRF exceptions for QA AJAX APIs
-    from app.qa.routes import api_quick_bug, upload_video, upload_screenshot
-    csrf.exempt(api_quick_bug)
+    csrf.exempt(create_bug_report_api)
+    csrf.exempt(add_bug_report_comment)
+    csrf.exempt(update_test_case_status)
+    csrf.exempt(toggle_test_step)
+    csrf.exempt(fail_test_case_with_report)
+
+    # CSRF exceptions for QA AJAX APIs
+    from app.qa.routes import upload_video, upload_screenshot
     csrf.exempt(upload_video)
     csrf.exempt(upload_screenshot)
+
+    # Исключаем десктопный API из CSRF проверки
+    from app.qa.api import desktop_report
+    csrf.exempt(desktop_report)
     app.register_blueprint(task_generator_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(schedule_bp)
@@ -425,6 +509,12 @@ def create_app(config_name=None):
     app.register_blueprint(task_workspace_bp)
 
     try:
+        from app.utils.dev_logger import init_dev_logger
+        init_dev_logger(app)
+    except Exception as dev_err:
+        logger.warning(f"Could not init dev_logger: {dev_err}")
+
+    try:
         from flask_socketio import SocketIO
         
         # Select async mode dynamically: 'eventlet' only if eventlet monkey patching is active, otherwise 'threading'
@@ -444,6 +534,8 @@ def create_app(config_name=None):
             engineio_logger=False,
         )
         app.socketio = socketio
+        from app.main.sandbox_socket import register_sandbox_socket
+        register_sandbox_socket(socketio)
         from app.lessons.lesson_socket import register_lesson_socket
         register_lesson_socket(socketio)
         from app.task_workspace.socket import register_task_workspace_socket
@@ -477,7 +569,9 @@ def create_app(config_name=None):
         t.start()
         app.config['_ASSIGNMENT_NOTIFY_WORKER_STARTED'] = True
 
-    _start_assignment_notification_worker()
+    background_workers_enabled = str(os.environ.get('DISABLE_BACKGROUND_WORKERS', '')).strip().lower() not in {'1', 'true', 'yes', 'on'}
+    if background_workers_enabled:
+        _start_assignment_notification_worker()
 
     def _start_lesson_auto_complete_worker() -> None:
         if app.config.get('_LESSON_AUTO_COMPLETE_WORKER_STARTED'):
@@ -503,7 +597,8 @@ def create_app(config_name=None):
         t.start()
         app.config['_LESSON_AUTO_COMPLETE_WORKER_STARTED'] = True
 
-    _start_lesson_auto_complete_worker()
+    if background_workers_enabled:
+        _start_lesson_auto_complete_worker()
 
     from app.auth.routes import logout
     csrf.exempt(logout)
@@ -518,6 +613,8 @@ def create_app(config_name=None):
     from app.telegram.webhook import telegram_webhook, set_webhook
     csrf.exempt(telegram_webhook)
     csrf.exempt(set_webhook)
+    csrf.exempt(webhooks_bp)
+    csrf.exempt(tma_bp)
 
     from app.telegram.mini_app import (
         mini_app_api_dashboard,
@@ -561,12 +658,17 @@ def create_app(config_name=None):
     @app.context_processor
     def inject_user_data():
         from flask_login import current_user
-        from app.models import Student
+        from app.models import Student, User
         from app.auth.rbac_utils import has_permission
+        template_user = current_user
+        state = getattr(current_user, '_sa_instance_state', None)
+        if state is not None and state.detached and state.identity:
+            template_user = db.session.get(User, state.identity[0])
+
         student_data = None
-        if current_user.is_authenticated and current_user.is_student():
+        if template_user and template_user.is_authenticated and template_user.is_student():
             try:
-                student = Student.query.filter_by(user_id=current_user.id).first()
+                student = Student.query.filter_by(user_id=template_user.id).first()
                 if student:
                     student_data = {'student_id': student.student_id}
             except Exception:
@@ -576,14 +678,14 @@ def create_app(config_name=None):
                     pass
                 student_data = None
         cinema_demo_ids = None
-        if current_user.is_authenticated and getattr(current_user, 'is_demo_user', False):
+        if template_user and template_user.is_authenticated and getattr(template_user, 'is_demo_user', False):
             from flask import session as flask_session
             cinema_demo_ids = flask_session.get('cinema_demo_ids')
         tz_eff = 'Europe/Moscow'
-        if current_user.is_authenticated:
+        if template_user and template_user.is_authenticated:
             try:
                 from app.utils.datetime_utc import effective_timezone_name
-                tz_eff = effective_timezone_name(current_user)
+                tz_eff = effective_timezone_name(template_user)
             except Exception:
                 tz_eff = 'Europe/Moscow'
         from app.utils.release_notes import build_release_notes_text, RELEASE_VERSION
@@ -596,13 +698,14 @@ def create_app(config_name=None):
         ]
 
         return dict(
+            current_user=template_user,
             current_student=student_data,
             has_permission=has_permission,
             custom_theme_user_id=int(app.config.get('CUSTOM_THEME_USER_ID', 999)),
             cinema_demo_ids=cinema_demo_ids,
             user_timezone_effective=tz_eff,
-            user_timezone_mode=(getattr(current_user, 'timezone_mode', 'auto') if current_user.is_authenticated else 'auto'),
-            user_timezone_iana=(getattr(current_user, 'timezone_iana', None) if current_user.is_authenticated else None),
+            user_timezone_mode=(getattr(template_user, 'timezone_mode', 'auto') if template_user and template_user.is_authenticated else 'auto'),
+            user_timezone_iana=(getattr(template_user, 'timezone_iana', None) if template_user and template_user.is_authenticated else None),
             release_notes=build_release_notes_text(),
             release_version=RELEASE_VERSION,
             qa_widget_areas=qa_widget_areas,
@@ -618,6 +721,10 @@ def create_app(config_name=None):
         sandbox_internal_tester_entity_toggle_active,
         sandbox_internal_tester_entity_delete,
     )
+    from app.main.routes import (
+        api_parent_link_child,
+        api_parent_unlink_child,
+    )
     csrf.exempt(sandbox_internal_summary)
     csrf.exempt(sandbox_internal_user_tester_create)
     csrf.exempt(sandbox_internal_user_set_password)
@@ -626,6 +733,8 @@ def create_app(config_name=None):
     csrf.exempt(sandbox_internal_tester_entity_create)
     csrf.exempt(sandbox_internal_tester_entity_toggle_active)
     csrf.exempt(sandbox_internal_tester_entity_delete)
+    csrf.exempt(api_parent_link_child)
+    csrf.exempt(api_parent_unlink_child)
     
     
     from app.utils.hooks import register_hooks
@@ -658,6 +767,16 @@ def create_app(config_name=None):
             except Exception:
                 return []
     
+
+    @app.template_filter('fromjson')
+    def fromjson_filter_final(value):
+        import json
+        if not value: return []
+        if isinstance(value, str):
+            try: return json.loads(value)
+            except: return []
+        return value
+
     from app.utils.jinja_filters import init_jinja_filters
     init_jinja_filters(app)
 
@@ -729,6 +848,8 @@ def create_app(config_name=None):
 
     @app.errorhandler(403)
     def forbidden(error):
+        if request.path.startswith('/api/') or request.path.startswith('/sandbox/api/') or request.is_json:
+            return jsonify({'error': 'Доступ запрещен'}), 403
         return _render_error(
             403,
             'ТЕБЕ СЮДА НЕЛЬЗЯ',
@@ -797,6 +918,8 @@ def create_app(config_name=None):
                 'csrf_error',
                 {'error_type': type(e).__name__, 'description': str(e)[:200]}
             )
+            if request.path.startswith('/api/') or request.path.startswith('/sandbox/api/') or request.is_json:
+                return jsonify({'error': 'Сессия устарела или токен безопасности неверный.'}), 403
             return _render_error(
                 403,
                 'ТЕБЕ СЮДА НЕЛЬЗЯ',
@@ -1002,5 +1125,9 @@ def create_app(config_name=None):
     from app.utils.markdown_helper import render_qa_comment
     app.jinja_env.filters['render_qa_comment'] = render_qa_comment
 
+    
+    # Safe JSON filter
+    
+    
     return app
 

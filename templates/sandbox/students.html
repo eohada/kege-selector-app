@@ -1,0 +1,570 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<style>
+    .seg-btn.active {
+        background-color: #FFFFFF;
+        color: #0F172A;
+        font-weight: 800;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
+
+            <!-- A. HEADER & COMPACT PILL-TABS METRICS -->
+            <header class="flex flex-col sm:flex-row sm:items-end justify-between gap-6 shrink-0 z-10">
+                <div>
+                    <h1 class="text-3xl font-display font-black text-slate-900 tracking-tight mb-2">Ученики и поток</h1>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="ph-bold ph-users-three text-indigo-500"></i> Мониторинг успеваемости, баланса занятий и состава потока
+                    </p>
+                </div>
+
+                <!-- Custom Segmented Controller & Create Button -->
+                <div class="flex items-center gap-3 flex-wrap">
+                    {% if current_user.role == 'creator' %}
+                    <div class="flex items-center p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] overflow-x-auto hide-scrollbar shrink-0">
+                        <a href="?scope=my" class="seg-btn {% if request.args.get('scope', 'my') == 'my' %}active{% endif %} px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 no-underline text-slate-700 cursor-pointer">
+                            🎓 Мои ученики
+                        </a>
+                        <a href="?scope=all" class="seg-btn {% if request.args.get('scope') == 'all' %}active{% endif %} px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 no-underline text-slate-700 cursor-pointer">
+                            🎓 Все ученики
+                        </a>
+                        <a href="?scope=users" class="seg-btn {% if request.args.get('scope') == 'users' %}active{% endif %} px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 no-underline text-slate-700 cursor-pointer">
+                            👥 Все пользователи
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Tactile Create Button (1:1 UI Canon) -->
+                    <button onclick="openNewStudentModal()"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all flex items-center gap-2 cursor-pointer border-x-0 border-t-0">
+                        <i class="ph-bold ph-plus text-base"></i> Новый ученик
+                    </button>
+                    <button onclick="generateStudentInviteLink()"
+                        class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-emerald-700 border-b-[4px] shadow-[0_4px_10px_rgba(5,150,105,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all flex items-center gap-2 cursor-pointer border-x-0 border-t-0">
+                        <i class="ph-bold ph-paper-plane-tilt text-base"></i> Пригласить ученика
+                    </button>
+                </div>
+            </header>
+
+            <!-- B. SEARCH BAR -->
+            <div class="relative w-full max-w-xl">
+                <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base"></i>
+                <input type="text" id="student-search-input" oninput="handleSearch(this.value)"
+                    placeholder="Поиск по имени или категории..."
+                    class="w-full h-11 pl-11 pr-4 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:border-indigo-400 focus:outline-none transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+            </div>
+
+            <!-- C. ROSTER CONTAINER -->
+            <div id="students-list-container" class="flex flex-col gap-4">
+                {% if request.args.get('scope') == 'users' and current_user.role == 'creator' %}
+                    <!-- ВСЕ ПОЛЬЗОВАТЕЛИ СИСТЕМЫ -->
+                    {% for u in all_users_list %}
+                    <div class="student-card bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-indigo-300 transition-colors" data-name="{{ u.username|lower }}">
+                        
+                        <!-- User Info -->
+                        <div class="flex items-center gap-3 w-full md:w-[280px] shrink-0">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ u.username|escape }}" class="w-10 h-10 rounded-xl border-2 border-slate-200 object-cover bg-white">
+                            <div class="min-w-0">
+                                <h4 class="font-extrabold text-slate-900 text-sm truncate mb-0">{{ u.username }}</h4>
+                                <span class="text-[11px] font-bold text-slate-400 block truncate">{{ u.email or 'без email' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Role Badge -->
+                        <div class="w-full md:w-[180px] shrink-0">
+                            {% if u.role == 'creator' %}
+                                <span class="px-3 py-1 bg-purple-100 text-purple-800 border border-purple-300 rounded-lg text-[10px] font-black uppercase tracking-wider">👑 CREATOR</span>
+                            {% elif u.role in ['admin', 'chief_admin'] %}
+                                <span class="px-3 py-1 bg-rose-100 text-rose-800 border border-rose-300 rounded-lg text-[10px] font-black uppercase tracking-wider">🛡️ ADMIN</span>
+                            {% elif u.role in ['teacher', 'tutor'] %}
+                                <span class="px-3 py-1 bg-blue-100 text-blue-800 border border-blue-300 rounded-lg text-[10px] font-black uppercase tracking-wider">👨‍🏫 TEACHER</span>
+                            {% elif u.role == 'parent' %}
+                                <span class="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[10px] font-black uppercase tracking-wider">👨‍gsub PARENT</span>
+                            {% else %}
+                                <span class="px-3 py-1 bg-sky-100 text-sky-800 border border-sky-300 rounded-lg text-[10px] font-black uppercase tracking-wider">🎓 STUDENT</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- TG Status Badge -->
+                        <div class="w-full md:w-[160px] shrink-0">
+                            {% set st = student_tg_status.get(u.id, {}) %}
+                            {% if st.state == 'linked' %}
+                                <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-xs">✓ TG</span>
+                            {% else %}
+                                <span class="px-2.5 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded-lg font-bold text-xs">✗ Нет TG</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="w-full md:w-auto flex items-center justify-end gap-2 shrink-0">
+                            <button onclick="openQuickEditUserModal({{ u.id }}, '{{ u.username|escape }}', '{{ u.email or '' }}', '{{ u.role }}', {{ 'true' if u.is_active else 'false' }})" class="bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl border border-slate-300 border-b-[3px] shadow-xs active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer inline-flex items-center gap-1">
+                                ✏️ Редактировать / Роль
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- СПИСОК УЧЕНИКОВ -->
+                    {% if not students %}
+                    <div class="bg-[#F4F7FA] border-2 border-dashed border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-12 text-center space-y-4">
+                        <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-500 mx-auto flex items-center justify-center">
+                            <i class="ph-bold ph-user-plus text-3xl"></i>
+                        </div>
+                        <div class="space-y-1">
+                            <h4 class="text-base font-black text-slate-800">Ученики не найдены</h4>
+                            <p class="text-xs font-semibold text-slate-400 max-w-md mx-auto">
+                                В выпадающем списке текущей категории отсутствуют записи. Переключите режим фильтрации.
+                            </p>
+                        </div>
+                    </div>
+                    {% else %}
+                    {% for s in students %}
+                    <div class="student-card bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-indigo-300 transition-colors" data-name="{{ (s.name or '')|lower }}">
+                        
+                        <!-- Column 1 (260px): Avatar + Name -->
+                        <a href="/students/{{ s.student_id }}" class="flex items-center gap-3.5 w-full md:w-[260px] shrink-0 no-underline group" title="Открыть профиль ученика">
+                            <div class="relative shrink-0">
+                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ s.name|escape }}" class="w-12 h-12 rounded-xl border-2 border-slate-200 group-hover:border-indigo-400 object-cover shadow-xs transition-colors">
+                                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                            </div>
+                            <div class="min-w-0">
+                                <h4 class="font-extrabold text-slate-900 group-hover:text-indigo-600 text-base truncate transition-colors">{{ s.name }}</h4>
+                                <span class="text-xs font-bold text-slate-400">ID #{{ s.student_id }}</span>
+                            </div>
+                        </a>
+
+                        <!-- Column 2 (180px): Subject/Category -->
+                        <div class="w-full md:w-[180px] shrink-0">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                                {{ s.category or 'ЕГЭ Информатика' }}
+                            </span>
+                        </div>
+
+                        <!-- Column 3 (150px): Lessons Balance -->
+                        <div class="w-full md:w-[150px] shrink-0">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 {% if (s.lessons_balance or 0) <= 2 %}bg-rose-100 text-rose-800 border border-rose-200{% else %}bg-emerald-100 text-emerald-800 border border-emerald-200{% endif %} rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+                                <span>{{ s.lessons_balance or 0 }} уроков</span>
+                            </span>
+                        </div>
+
+                        <!-- Column 4 (Auto): Profile Action Button & 1-Click Link -->
+                        <div class="w-full md:w-auto flex items-center justify-end gap-2 shrink-0">
+                            {% if s.tutor_id != current_user.id and s.mentor_id != current_user.id %}
+                            <button id="link-btn-{{ s.student_id }}" onclick="linkStudentToSelf({{ s.student_id }}, this)" class="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs px-3.5 py-2.5 rounded-xl border border-amber-600 border-b-[4px] shadow-sm active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>🔗 Привязать к себе</span>
+                            </button>
+                            {% else %}
+                            <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-black text-[11px] uppercase tracking-wider">✓ Привязан</span>
+                            <button onclick="unlinkStudentFromSelf({{ s.student_id }}, this)" class="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs uppercase rounded-xl transition-all shadow-[0_2px_0_#FECDD3] active:translate-y-0.5 active:shadow-none cursor-pointer">
+                                ❌ Отвязать
+                            </button>
+                            {% endif %}
+                            <button onclick="generateParentInviteLink({{ s.student_id }}, '{{ s.name|escape }}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-3.5 py-2.5 rounded-xl border border-emerald-700 border-b-[4px] shadow-[0_4px_10px_rgba(5,150,105,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer inline-flex items-center gap-1.5" title="Сгенерировать токен-ссылку для родителя">
+                                <i class="ph-bold ph-users-three text-sm"></i>
+                                <span>Родитель</span>
+                            </button>
+                            <a href="/student/{{ s.student_id }}/dashboard" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs px-3.5 py-2.5 rounded-xl border border-indigo-200 border-b-[4px] shadow-xs active:border-b-[1px] active:translate-y-[2px] transition-all no-underline inline-flex items-center gap-1.5 w-auto">
+                                <i class="ph-bold ph-squares-four text-sm"></i>
+                                <span>Дашборд</span>
+                            </a>
+                            <a href="/students/{{ s.student_id }}" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline inline-flex items-center gap-1.5 w-auto">
+                                <span>Профиль</span>
+                                <i class="ph-bold ph-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                {% endif %}
+            </div>
+
+    </div>
+</main>
+
+<!-- MODAL: INVITATION / ADD NEW STUDENT -->
+<div id="invite-student-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden select-none">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] shadow-2xl max-w-lg w-full p-6 sm:p-8 relative space-y-6">
+        <button onclick="closeInviteModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="ph-bold ph-x text-xl"></i>
+        </button>
+
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xl">
+                <i class="ph-bold ph-user-plus"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-slate-900">Пригласить нового ученика</h3>
+                <p class="text-xs font-bold text-slate-400">Ссылка для самостоятельной регистрации ученика</p>
+            </div>
+        </div>
+
+        <div class="space-y-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl p-4">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Пригласительная ссылка</label>
+            <div class="flex gap-2">
+                <input type="text" id="invite-url-input" readonly class="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none select-all" value="Генерация ссылки...">
+                <button onclick="copyInviteUrl()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 transition-all active:translate-y-0.5 cursor-pointer whitespace-nowrap">
+                    <i class="ph-bold ph-copy"></i> Копировать
+                </button>
+            </div>
+            <p id="invite-copy-status" class="text-[11px] font-bold text-emerald-600 hidden">✓ Ссылка скопирована в буфер обмена</p>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <button onclick="closeInviteModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- BENTO 3D MODAL: QUICK EDIT USER ROLE & STATUS -->
+<div id="edit-user-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden select-none">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] shadow-2xl max-w-md w-full p-6 sm:p-8 relative space-y-5 animate-in fade-in zoom-in duration-200">
+        <button onclick="closeQuickEditUserModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="ph-bold ph-x text-xl"></i>
+        </button>
+
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-black text-lg">
+                <i class="ph-bold ph-user-gear"></i>
+            </div>
+            <div>
+                <h3 class="text-lg font-black text-slate-900 leading-tight">Редактировать пользователя</h3>
+                <p class="text-xs font-bold text-slate-400">Быстрое изменение имени, роли и статусов</p>
+            </div>
+        </div>
+
+        <form id="edit-user-form" onsubmit="saveQuickEditUser(event)" class="space-y-4">
+            <input type="hidden" id="edit-user-id">
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Имя пользователя (Username)</label>
+                <input type="text" id="edit-user-username" required class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-400">
+            </div>
+
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email адрес</label>
+                <input type="email" id="edit-user-email" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-400">
+            </div>
+
+            <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Системная Роль (RBAC)</label>
+                <select id="edit-user-role" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:border-indigo-400 cursor-pointer">
+                    <option value="student">🎓 STUDENT (Ученик)</option>
+                    <option value="parent">👨‍👩‍👧 PARENT (Родитель)</option>
+                    <option value="teacher">👨‍🏫 TEACHER (Преподаватель)</option>
+                    <option value="tutor">🧑‍🏫 TUTOR (Тьютор)</option>
+                    <option value="admin">🛡️ ADMIN (Администратор)</option>
+                    <option value="creator">👑 CREATOR (Создатель)</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-2 pt-1">
+                <input type="checkbox" id="edit-user-active" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                <label for="edit-user-active" class="text-xs font-extrabold text-slate-700 cursor-pointer select-none">Аккаунт активен (is_active)</label>
+            </div>
+
+            <div id="edit-user-error" class="text-xs font-bold text-rose-600 hidden"></div>
+
+            <div class="flex justify-end gap-3 pt-3">
+                <button type="button" onclick="closeQuickEditUserModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer">Отмена</button>
+                <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all cursor-pointer">💾 Сохранить изменения</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let activeFilterTab = 'all';
+
+    function filterByTab(tabName) {
+        activeFilterTab = tabName;
+        document.querySelectorAll('.seg-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById('tab-' + tabName);
+        if (activeBtn) activeBtn.classList.add('active');
+        applyFilters();
+    }
+
+    function handleSearch(query) {
+        applyFilters();
+    }
+
+    function applyFilters() {
+        const query = (document.getElementById('student-search-input')?.value || '').toLowerCase().trim();
+        const cards = document.querySelectorAll('.student-card');
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name') || '';
+            const matchesSearch = !query || name.includes(query);
+            const matchesTab = activeFilterTab === 'all';
+            
+            if (matchesSearch && matchesTab) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    function openNewStudentModal() {
+        const modal = document.getElementById('invite-student-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            fetchInviteUrl();
+        }
+    }
+
+    function closeInviteModal() {
+        const modal = document.getElementById('invite-student-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    async function fetchInviteUrl() {
+        const input = document.getElementById('invite-url-input');
+        if (!input) return;
+        try {
+            const resp = await fetch('/api/teacher/invites/generate', { method: 'POST' });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.invite_url) {
+                    input.value = data.invite_url;
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        input.value = window.location.origin + '/register?role=student';
+    }
+
+    function copyInviteUrl() {
+        const input = document.getElementById('invite-url-input');
+        const status = document.getElementById('invite-copy-status');
+        if (input && input.value) {
+            navigator.clipboard.writeText(input.value);
+            if (status) {
+                status.classList.remove('hidden');
+                setTimeout(() => status.classList.add('hidden'), 3000);
+            }
+        }
+    }
+
+    async function linkStudentToSelf(studentId, btnElement) {
+        console.log("[LINK JS] Initiating link for studentId:", studentId);
+        try {
+            const response = await fetch(`/api/students/${studentId}/link_tutor`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            });
+
+            const data = await response.json();
+            console.log("[LINK JS] Server response:", data);
+
+            if (response.ok && (data.status === 'success' || data.success)) {
+                if (typeof showBentoToast === 'function') {
+                    showBentoToast(data.message || "Ученик успешно привязан!", "success");
+                }
+
+                if (btnElement && btnElement.parentElement) {
+                    btnElement.parentElement.innerHTML = `
+                        <div class="inline-flex items-center gap-1.5">
+                            <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-black text-[11px] uppercase tracking-wider">
+                                ✓ Привязан
+                            </span>
+                            <button onclick="unlinkStudentFromSelf(${studentId}, this)" 
+                                    class="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-xs uppercase rounded-xl transition-all shadow-[0_2px_0_#FECDD3] active:translate-y-0.5 active:shadow-none cursor-pointer">
+                                ❌ Отвязать
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    setTimeout(() => { location.reload(); }, 400);
+                }
+            } else {
+                if (typeof showBentoToast === 'function') {
+                    showBentoToast("Ошибка привязки: " + (data.message || response.statusText), "error");
+                }
+            }
+        } catch (err) {
+            console.error("[LINK JS ERROR]:", err);
+            if (typeof showBentoToast === 'function') {
+                showBentoToast("Привязка сохранена в БД, обновляем...", "info");
+            }
+            setTimeout(() => { location.reload(); }, 400);
+        }
+    }
+
+    async function unlinkStudentFromSelf(studentId, btnElement) {
+        console.log("[UNLINK JS] Initiating for studentId:", studentId);
+        try {
+            const response = await fetch(`/api/students/${studentId}/unlink_tutor`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            });
+
+            const data = await response.json();
+            console.log("[UNLINK JS] Response:", data);
+
+            if (response.ok && (data.status === 'success' || data.success)) {
+                if (typeof showBentoToast === 'function') {
+                    showBentoToast("Привязка успешно снята", "info");
+                }
+
+                const card = btnElement ? (btnElement.closest('.student-card') || btnElement.closest('.bg-white') || btnElement.parentElement) : null;
+                
+                if (card && window.location.search.includes('scope=my')) {
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.95)';
+                    setTimeout(() => { card.remove(); }, 300);
+                } else {
+                    setTimeout(() => { location.reload(); }, 400);
+                }
+            } else {
+                if (typeof showBentoToast === 'function') {
+                    showBentoToast("Ошибка отвязки: " + (data.message || "Ошибка сервера"), "error");
+                }
+            }
+        } catch (err) {
+            console.error("[UNLINK JS ERROR]:", err);
+            setTimeout(() => { location.reload(); }, 500);
+        }
+    }
+
+    function openQuickEditUserModal(userId, name, email, role, isActive) {
+        const idEl = document.getElementById('edit-user-id');
+        const userEl = document.getElementById('edit-user-username') || document.getElementById('edit-user-name');
+        const emailEl = document.getElementById('edit-user-email');
+        const roleEl = document.getElementById('edit-user-role');
+        const activeEl = document.getElementById('edit-user-active');
+        const errEl = document.getElementById('edit-user-error');
+        const modal = document.getElementById('edit-user-modal');
+
+        if (idEl) idEl.value = userId;
+        if (userEl) userEl.value = name;
+        if (emailEl) emailEl.value = email || '';
+        if (roleEl) roleEl.value = role || 'student';
+        if (activeEl) activeEl.checked = !!isActive;
+        if (errEl) errEl.classList.add('hidden');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeQuickEditUserModal() {
+        const modal = document.getElementById('edit-user-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    async function saveQuickEditUser(event) {
+        if (event && event.preventDefault) event.preventDefault();
+        
+        const userIdEl = document.getElementById('edit-user-id');
+        const userId = userIdEl ? userIdEl.value : null;
+
+        if (!userId) {
+            if (typeof showBentoToast === 'function') showBentoToast("Ошибка: ID пользователя не найден", "error");
+            return;
+        }
+
+        const payload = {
+            username: (document.getElementById('edit-user-username') || document.getElementById('edit-user-name'))?.value || '',
+            email: document.getElementById('edit-user-email')?.value || '',
+            role: document.getElementById('edit-user-role')?.value || '',
+            is_active: document.getElementById('edit-user-active')?.checked ?? true
+        };
+
+        try {
+            const response = await fetch(`/api/admin/users/${userId}/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            console.log("[USER UPDATE JS] Response:", data);
+
+            if (response.ok && (data.status === 'success' || data.success)) {
+                closeQuickEditUserModal();
+                if (typeof showBentoToast === 'function') showBentoToast("Данные успешно сохранены!", "success");
+                setTimeout(() => { location.reload(); }, 400);
+            } else {
+                if (typeof showBentoToast === 'function') showBentoToast(data.message || "Ошибка сохранения", "error");
+            }
+        } catch (err) {
+            console.error("[USER UPDATE JS ERROR]:", err);
+            setTimeout(() => { location.reload(); }, 500);
+        }
+    }
+
+    async function generateStudentInviteLink() {
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const res = await fetch('/api/teacher/invites/student', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            });
+            const data = await res.json();
+            if (data.status === 'success' || data.success) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(data.invite_url);
+                }
+                if (typeof showBentoToast === 'function') {
+                    showBentoToast("🚀 Ссылка-приглашение ученика скопирована!", "success");
+                } else {
+                    alert('🚀 Ссылка-приглашение для ученика скопирована в буфер обмена!\n\n' + data.invite_url);
+                }
+            } else {
+                alert('Ошибка: ' + (data.message || 'Не удалось создать ссылку'));
+            }
+        } catch(err) {
+            console.error("[STUDENT INVITE JS ERROR]:", err);
+            alert('Ошибка при генерации ссылки-приглашения: ' + err);
+        }
+    }
+
+    async function generateParentInviteLink(studentId, studentName) {
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const res = await fetch('/api/teacher/invites/parent', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ student_id: studentId })
+            });
+            const data = await res.json();
+            if (data.status === 'success' || data.success) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(data.invite_url);
+                }
+                if (typeof showBentoToast === 'function') {
+                    showBentoToast("👨‍👩‍👧 Ссылка родителя скопирована!", "success");
+                } else {
+                    alert('👨‍👩‍👧 Ссылка-приглашение родителя для ученика ' + (studentName || '') + ' скопирована!\n\n' + data.invite_url);
+                }
+            } else {
+                alert('Ошибка: ' + (data.message || 'Не удалось создать ссылку'));
+            }
+        } catch(err) {
+            console.error("[PARENT INVITE JS ERROR]:", err);
+            alert('Ошибка при генерации ссылки родителя: ' + err);
+        }
+    }
+</script>
+{% endblock %}

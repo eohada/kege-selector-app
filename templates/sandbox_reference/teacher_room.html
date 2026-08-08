@@ -1,0 +1,525 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<!-- KATEX CDN FOR FORMULAS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<style>
+    .ping-dot { position: absolute; top: -0.25rem; right: -0.25rem; display: flex; height: 0.75rem; width: 0.75rem; }
+    .ping-dot .ping-anim { position: absolute; display: inline-flex; height: 100%; width: 100%; border-radius: 9999px; background-color: #818cf8; opacity: 0.75; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite; }
+    .ping-dot .ping-core { position: relative; display: inline-flex; border-radius: 9999px; height: 0.75rem; width: 0.75rem; background-color: #6366f1; border: 1px solid white; }
+    .sync-active { background-color: #4f46e5 !important; border-color: #3730A3 !important; color: white !important; box-shadow: 0 4px 0 #3730A3 !important; }
+    .color-btn.active { box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.3); transform: scale(1.1); }
+</style>
+
+<!-- FULLSCREEN BENTO STUDIO CONTAINER -->
+<main class="flex-1 min-h-screen bg-[#F8FAFC] pl-24 pr-6 py-6">
+    <!-- CANONICAL PLATFORM MAX-WIDTH CONTAINER (1400px) -->
+    <div class="max-w-[1400px] mx-auto flex flex-col gap-6 w-full">
+
+        <!-- 1. BENTO STUDIO HEADER -->
+        <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <a href="/sandbox/teacher_schedule" class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors bg-[#F4F7FA] px-4 py-2.5 rounded-xl border border-slate-200 shadow-xs hover:-translate-y-0.5 no-underline">
+                    <i class="ph-bold ph-arrow-left text-base"></i> К расписанию
+                </a>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-md text-[10px] font-black uppercase tracking-wider">УРОК 14</span>
+                        <h1 class="text-xl sm:text-2xl font-black text-slate-900 font-display tracking-tight">Производная и первообразная</h1>
+                    </div>
+                    <p class="text-xs font-bold text-slate-400 mt-0.5 flex items-center gap-3">
+                        <span><i class="ph-bold ph-chalkboard-teacher text-indigo-500"></i> Студия преподавателя</span>
+                        <span>•</span>
+                        <span class="text-emerald-600 font-bold"><i class="ph-bold ph-hourglass-medium"></i> Осталось: 42 мин</span>
+                    </p>
+                </div>
+            </div>
+
+            <button id="sync-btn" class="bg-white hover:bg-slate-50 text-slate-700 font-bold border-2 border-slate-200 border-b-[4px] shadow-[0_2px_0_#DAE1E9] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center gap-3 px-5 py-2.5 rounded-xl text-xs cursor-pointer">
+                <div class="relative flex items-center justify-center w-5 h-5"><i class="ph-bold ph-plugs-connected text-lg transition-colors" id="sync-icon"></i></div>
+                <span>Синхронизация экранов: <strong id="sync-text" class="text-slate-400">ВЫКЛ</strong></span>
+            </button>
+        </div>
+
+        <!-- 2. WORKSPACE BENTO GRID (3/4 LEFT STACK, 1/4 RIGHT SIDEBAR) -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+            
+            <!-- LEFT WORK AREA (Col 3 Bento Stack) -->
+            <div class="lg:col-span-3 flex flex-col gap-6 min-w-0">
+                
+                <!-- Compact Tabs Switcher Bar -->
+                <div class="bg-slate-200/60 p-1.5 rounded-2xl flex gap-2 shadow-inner w-fit">
+                    <button class="neo-tab px-5 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:text-slate-900 flex items-center gap-2 cursor-pointer transition-all" data-target="content-theory">
+                        <i class="ph-bold ph-book-open text-base"></i> Теория
+                    </button>
+                    <button class="neo-tab active px-5 py-2.5 rounded-xl font-black text-xs bg-white text-indigo-600 shadow-[0_2px_0_#DAE1E9] border border-slate-200/60 flex items-center gap-2 cursor-pointer transition-all" data-target="content-solution">
+                        <i class="ph-bold ph-code-block text-base"></i> Практика и задачи
+                    </button>
+                    <button class="neo-tab px-5 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:text-slate-900 flex items-center gap-2 cursor-pointer transition-all" data-target="content-notes">
+                        <i class="ph-bold ph-notebook text-base"></i> Конспект
+                    </button>
+                    <button class="neo-tab px-5 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:text-slate-900 flex items-center gap-2 cursor-pointer transition-all" data-target="content-whiteboard">
+                        <i class="ph-bold ph-blackboard text-base"></i> Интерактивная доска
+                    </button>
+                </div>
+
+                <!-- TAB 0: THEORY BENTO BLOCK -->
+                <div id="content-theory" class="tab-pane hidden flex flex-col gap-6 w-full">
+                    <!-- BENTO CARD 1: VIDEO LESSON PLAYER -->
+                    <div class="bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="ph-bold ph-play-circle text-indigo-600 text-xl"></i>
+                                <h2 class="text-xl font-black text-slate-900 font-display">Видеоурок: Геометрический смысл производной</h2>
+                            </div>
+                            <span class="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                                <i class="ph-bold ph-video text-sm"></i> 1080p Full HD
+                            </span>
+                        </div>
+
+                        <!-- Video Player Placeholder -->
+                        <div class="aspect-video bg-slate-900 rounded-2xl flex flex-col items-center justify-center relative overflow-hidden group shadow-inner border border-slate-800">
+                            <div class="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-50 transition-opacity" style="background-image: url('https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=1200&q=80');"></div>
+                            <div class="relative z-10 flex flex-col items-center gap-3">
+                                <button class="w-16 h-16 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center border-b-[4px] border-indigo-800 active:translate-y-0.5 transition-all shadow-lg cursor-pointer">
+                                    <i class="ph-fill ph-play text-2xl ml-1"></i>
+                                </button>
+                                <span class="text-xs font-bold text-white/90 bg-slate-900/80 px-3 py-1 rounded-lg backdrop-blur-sm">Длительность: 24:15</span>
+                            </div>
+                        </div>
+
+                        <!-- Timestamps Row -->
+                        <div class="flex flex-wrap items-center gap-2 pt-2">
+                            <span class="text-xs font-black text-slate-400 uppercase tracking-wider mr-1">Таймкоды:</span>
+                            <button class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-200 cursor-pointer">00:00 — Определение</button>
+                            <button class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-200 cursor-pointer">05:20 — Касательная к графику</button>
+                            <button class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-200 cursor-pointer">14:45 — Разбор Задания №14</button>
+                        </div>
+                    </div>
+
+                    <!-- BENTO CARD 2: ESSENTIAL FORMULAS & ALGORITHM -->
+                    <div class="bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-function text-indigo-600 text-xl"></i>
+                            <h2 class="text-xl font-black text-slate-900 font-display">Ключевые формулы и правила №14 КЕГЭ</h2>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl flex flex-col gap-2">
+                                <span class="text-xs font-black text-indigo-800 uppercase tracking-wider">Геометрический смысл</span>
+                                <p class="text-xs text-slate-600 font-medium">Угловой коэффициент касательной равен производной функции в точке касания:</p>
+                                <div class="p-3 bg-white rounded-xl border border-indigo-200 text-center font-mono font-bold text-indigo-900 shadow-2xs text-sm">
+                                    k = tg(α) = f '(x₀)
+                                </div>
+                            </div>
+
+                            <div class="p-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl flex flex-col gap-2">
+                                <span class="text-xs font-black text-emerald-800 uppercase tracking-wider">Правило степенной функции</span>
+                                <p class="text-xs text-slate-600 font-medium">Производная степенной функции с выносом показателя степени:</p>
+                                <div class="p-3 bg-white rounded-xl border border-emerald-200 text-center font-mono font-bold text-emerald-900 shadow-2xs text-sm">
+                                    (xⁿ)' = n · xⁿ⁻¹
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 font-medium leading-relaxed">
+                            <strong>💡 Алгоритм решения:</strong> Для нахождения максимумов и минимумов найдите точки, в которых \(f'(x) = 0\), и определите знак производной на полученных интервалах.
+                        </div>
+                    </div>
+
+                    <!-- BENTO CARD 3: DOWNLOADABLE PDF MATERIALS -->
+                    <div class="bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-500 flex items-center justify-center shrink-0 shadow-xs">
+                                <i class="ph-bold ph-file-pdf text-2xl"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-black text-slate-900 text-base font-display">Шпаргалка_Производная_КЕГЭ.pdf</h4>
+                                <p class="text-xs font-bold text-slate-400 mt-0.5">Размер: 1.4 MB • Полный конспект темы №14</p>
+                            </div>
+                        </div>
+
+                        <button onclick="alert('Скачивание методички начато!');" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-3 px-5 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center gap-2 cursor-pointer uppercase tracking-wider shrink-0">
+                            <i class="ph-bold ph-download-simple text-base"></i> Скачать PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 1: SOLUTION CHECKING (BENTO CARDS STACK) -->
+                <div id="content-solution" class="tab-pane flex flex-col gap-6 w-full">
+                    
+                    <!-- BENTO CARD 1: QUESTION CONDITION -->
+                    <div class="bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
+                                <h2 class="text-xl font-black text-slate-900 font-display">Проверка: Задача №<span id="current-eval-task">4</span></h2>
+                            </div>
+                            <span class="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-2">
+                                <i class="ph-bold ph-eye text-base"></i> Live Трансляция
+                            </span>
+                        </div>
+                        
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 text-slate-800 text-sm font-medium flex flex-col gap-1.5">
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Условие задачи</span>
+                            <p class="leading-relaxed">
+                                Найдите значение производной функции 
+                                <span class="font-mono font-bold bg-white text-indigo-700 px-2.5 py-0.5 rounded-lg border border-slate-200 inline-block my-0.5 shadow-2xs">f(x) = x³ + 2x²</span> 
+                                в точке 
+                                <span class="font-mono font-bold bg-white text-indigo-700 px-2.5 py-0.5 rounded-lg border border-slate-200 inline-block my-0.5 shadow-2xs">x₀ = 1</span>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- BENTO CARD 2: STUDENT LIVE ANSWER & VERDICT ACTIONS -->
+                    <div class="bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-2"><i class="ph-bold ph-keyboard text-indigo-500"></i> Ввод ученика</span>
+                            <div class="flex items-center gap-2 px-2.5 py-1 bg-rose-50 border border-rose-200 rounded-lg text-[10px] font-bold text-rose-600">
+                                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span></span> Live Typing
+                            </div>
+                        </div>
+
+                        <!-- Answer Box with Natural Height -->
+                        <div class="p-5 text-base font-mono text-slate-800 font-bold bg-[#F8FAFC] border border-slate-200/80 rounded-2xl min-h-[100px] max-h-[180px] overflow-y-auto" id="student-live-input">
+                            Ожидание ввода... <span class="animate-pulse text-indigo-500">|</span>
+                        </div>
+
+                        <!-- Verdict Action Buttons Attached Right Under Answer -->
+                        <div class="pt-4 border-t border-slate-100 flex justify-end items-center gap-3">
+                            <button id="btn-reject" class="bg-rose-500 hover:bg-rose-600 text-white font-black text-xs px-6 py-3 rounded-xl border-b-[3px] border-rose-700 active:translate-y-0.5 active:border-b-[1px] transition-all shadow-xs flex items-center gap-2 cursor-pointer uppercase tracking-wider">
+                                <i class="ph-bold ph-x-circle text-lg"></i> Отклонить
+                            </button>
+                            <button id="btn-approve" class="bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs px-6 py-3 rounded-xl border-b-[3px] border-emerald-700 active:translate-y-0.5 active:border-b-[1px] transition-all shadow-xs flex items-center gap-2 cursor-pointer uppercase tracking-wider">
+                                <i class="ph-bold ph-check-circle text-lg"></i> Зачесть
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- TAB 2: NOTES (BENTO CARD) -->
+                <div id="content-notes" class="tab-pane hidden bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4 text-slate-700 text-base leading-relaxed">
+                    <h2 class="text-xl font-black text-slate-900 font-display">Определение производной</h2>
+                    <p class="text-sm font-medium text-slate-600">Здесь отображается полная теория, которую в данный момент изучает ученик.</p>
+                </div>
+
+                <!-- TAB 3: INTERACTIVE WHITEBOARD (BENTO CARD) -->
+                <div id="content-whiteboard" class="tab-pane hidden bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4 min-h-[480px]">
+                    <div class="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-2xl shadow-xs w-fit">
+                        <button class="w-9 h-9 rounded-xl border-2 border-slate-300 bg-slate-800 color-btn active cursor-pointer" data-color="#1e293b"></button>
+                        <button class="w-9 h-9 rounded-xl border-2 border-orange-300 bg-[#F97316] color-btn cursor-pointer" data-color="#F97316"></button>
+                        <button class="w-9 h-9 rounded-xl border-2 border-indigo-300 bg-[#4f46e5] color-btn cursor-pointer" data-color="#4f46e5"></button>
+                        <div class="w-px bg-slate-200 my-1 mx-1"></div>
+                        <button class="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 bg-slate-50 hover:border-rose-200 cursor-pointer" id="eraser-btn"><i class="ph-bold ph-eraser text-lg"></i></button>
+                        <button class="w-9 h-9 rounded-xl border border-slate-200 text-slate-500 bg-slate-50 hover:text-rose-500 cursor-pointer" id="clear-btn"><i class="ph-bold ph-trash text-lg"></i></button>
+                    </div>
+                    <div class="w-full flex-1 rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] shadow-inner relative overflow-hidden min-h-[360px]" id="canvas-container">
+                        <div class="absolute inset-0 pointer-events-none opacity-50" style="background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px); background-size: 24px 24px;"></div>
+                        <canvas id="whiteboard-canvas" class="w-full h-full cursor-crosshair relative z-10 touch-none block"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT SIDEBAR (Col 1 Bento Stack) -->
+            <div class="lg:col-span-1 flex flex-col gap-6 pb-24">
+                
+                <!-- Student Bento Card -->
+                <div class="bg-white rounded-[2rem] p-5 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4 relative">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ученик</span>
+                        <div class="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold shadow-xs">
+                            <i class="ph-fill ph-circle text-emerald-500 animate-pulse text-[8px]"></i> В сети
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex&backgroundColor=e0f2fe" class="w-12 h-12 rounded-2xl border-2 border-slate-200 object-cover bg-slate-50">
+                        <div>
+                            <h3 class="text-base font-black text-slate-900 font-display">Александр С.</h3>
+                            <p class="text-[11px] font-bold text-slate-400">Группа 11А КЕГЭ</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Bento Card -->
+                <div class="bg-white rounded-[2rem] p-5 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-3">
+                    <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <i class="ph-bold ph-chat-teardrop-dots text-indigo-500 text-base"></i>
+                        <span class="text-xs font-black text-slate-700 uppercase tracking-wider">Личный чат</span>
+                    </div>
+                    
+                    <div class="overflow-y-auto flex flex-col gap-2 h-44 text-left relative scrollbar-hide" id="teacher-chat-messages"></div>
+                    
+                    <form id="teacher-chat-form" class="mt-auto flex gap-2 w-full pt-2">
+                        <input id="teacher-chat-input" type="text" placeholder="Написать..." class="flex-1 px-3 py-2 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-colors">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl w-10 h-10 flex items-center justify-center border-b-[3px] border-indigo-800 active:translate-y-0.5 shadow-xs shrink-0 cursor-pointer">
+                            <i class="ph-bold ph-paper-plane-right text-sm"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Task Progress Grid Bento Card (1-10) -->
+                <div class="bg-white rounded-[2rem] p-5 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider">Прогресс урока</h3>
+                        <span id="score-counter" class="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-lg">0/10</span>
+                    </div>
+                    <div class="grid grid-cols-5 gap-2.5" id="teacher-task-grid"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    try {
+        console.log("[Socket ВЫЗОВ] Преподаватель: Начинаем инициализацию...");
+        const ROOM_ID = 'demo_lesson_1';
+        const ROLE = 'teacher';
+        const socket = io('/sandbox');
+
+        let isSynced = false;
+        let taskState = {1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0,10:0};
+        let currentLiveTask = 4; 
+
+        socket.on('connect', () => {
+            console.log('[Socket ВЫЗОВ] Коннект установлен учителем.');
+            socket.emit('join', { room_id: ROOM_ID, role: ROLE });
+        });
+
+        // --- Табы ---
+        const tabs = document.querySelectorAll('.neo-tab');
+        const tabPanes = document.querySelectorAll('.tab-pane');
+
+        function switchTab(targetId) {
+            tabs.forEach(t => {
+                t.classList.remove('active', 'bg-white', 'text-indigo-600', 'shadow-[0_2px_0_#DAE1E9]', 'border', 'border-slate-200/60', 'font-black');
+                t.classList.add('text-slate-600', 'font-bold');
+            });
+            tabPanes.forEach(pane => pane.classList.add('hidden'));
+
+            const tab = document.querySelector(`.neo-tab[data-target="${targetId}"]`);
+            if (tab) {
+                tab.classList.add('active', 'bg-white', 'text-indigo-600', 'shadow-[0_2px_0_#DAE1E9]', 'border', 'border-slate-200/60', 'font-black');
+                tab.classList.remove('text-slate-600');
+            }
+            const targetPane = document.getElementById(targetId);
+            if (targetPane) targetPane.classList.remove('hidden');
+        }
+
+        tabs.forEach(t => t.addEventListener('click', () => switchTab(t.dataset.target)));
+
+        // --- Синхронизация ---
+        const syncBtn = document.getElementById('sync-btn');
+        const syncIcon = document.getElementById('sync-icon');
+        const syncText = document.getElementById('sync-text');
+
+        syncBtn.addEventListener('click', () => {
+            isSynced = !isSynced;
+            if (isSynced) {
+                syncBtn.classList.add('sync-active');
+                syncIcon.classList.remove('text-slate-500');
+                syncText.innerText = 'ВКЛ';
+                syncText.classList.remove('text-slate-400');
+                syncText.classList.add('text-white');
+            } else {
+                syncBtn.classList.remove('sync-active');
+                syncText.innerText = 'ВЫКЛ';
+                syncText.classList.remove('text-white');
+                syncText.classList.add('text-slate-400');
+            }
+            socket.emit('sync_toggle', { room_id: ROOM_ID, sync_enabled: isSynced });
+        });
+
+        // --- Состояние комнаты от сервера ---
+        socket.on('room_state', (data) => {
+            console.log('[Socket УСПЕХ] Учитель получил room_state:', data);
+            isSynced = data.sync_enabled;
+            if (isSynced) {
+                syncBtn.classList.add('sync-active');
+                syncText.innerText = 'ВКЛ';
+            } else {
+                syncBtn.classList.remove('sync-active');
+                syncText.innerText = 'ВЫКЛ';
+            }
+            if (data.task_states) {
+                taskState = data.task_states;
+                renderTaskGrid();
+            }
+            if (data.current_task) {
+                currentLiveTask = data.current_task;
+                document.getElementById('current-eval-task').innerText = currentLiveTask;
+            }
+            if (data.live_input !== undefined) {
+                const liveEl = document.getElementById('student-live-input');
+                liveEl.innerHTML = data.live_input ? `${data.live_input} <span class="animate-pulse text-indigo-500">|</span>` : 'Ожидание ввода... <span class="animate-pulse text-indigo-500">|</span>';
+            }
+        });
+
+        // --- Обновления ввода ученика ---
+        socket.on('live_input_update', (data) => {
+            const liveEl = document.getElementById('student-live-input');
+            liveEl.innerHTML = data.input ? `${data.input} <span class="animate-pulse text-indigo-500">|</span>` : 'Ожидание ввода... <span class="animate-pulse text-indigo-500">|</span>';
+        });
+
+        // --- Сетка задач 3D-кнопок (1-10) ---
+        function renderTaskGrid() {
+            const grid = document.getElementById('teacher-task-grid');
+            grid.innerHTML = '';
+            let score = 0;
+
+            for (let i = 1; i <= 10; i++) {
+                const btn = document.createElement('button');
+                btn.innerText = i;
+                const state = taskState[i] || 0;
+
+                // Tactile 3D styling for task pills
+                btn.className = 'w-10 h-10 rounded-xl font-black text-xs border-b-[3px] shadow-2xs flex items-center justify-center transition-all cursor-pointer ';
+
+                if (state === 1) {
+                    btn.className += 'bg-emerald-500 text-white border-emerald-700 shadow-emerald-200';
+                    score++;
+                } else if (state === 2) {
+                    btn.className += 'bg-rose-500 text-white border-rose-700 shadow-rose-200';
+                } else if (i === currentLiveTask) {
+                    btn.className += 'bg-indigo-600 text-white border-indigo-800 shadow-[0_4px_0_#3730A3]';
+                } else {
+                    btn.className += 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200';
+                }
+
+                btn.addEventListener('click', () => {
+                    currentLiveTask = i;
+                    document.getElementById('current-eval-task').innerText = i;
+                    socket.emit('select_task', { room_id: ROOM_ID, task_id: i });
+                    renderTaskGrid();
+                });
+
+                grid.appendChild(btn);
+            }
+
+            document.getElementById('score-counter').innerText = `${score}/10`;
+        }
+
+        // --- Кнопки Зачесть / Отклонить ---
+        document.getElementById('btn-approve').addEventListener('click', () => {
+            taskState[currentLiveTask] = 1;
+            socket.emit('evaluate_task', { room_id: ROOM_ID, task_id: currentLiveTask, status: 1 });
+            renderTaskGrid();
+        });
+
+        document.getElementById('btn-reject').addEventListener('click', () => {
+            taskState[currentLiveTask] = 2;
+            socket.emit('evaluate_task', { room_id: ROOM_ID, task_id: currentLiveTask, status: 2 });
+            renderTaskGrid();
+        });
+
+        socket.on('task_evaluated', (data) => {
+            taskState[data.task_id] = data.status;
+            renderTaskGrid();
+        });
+
+        // --- Чат ---
+        const chatForm = document.getElementById('teacher-chat-form');
+        const chatInput = document.getElementById('teacher-chat-input');
+        const chatMessages = document.getElementById('teacher-chat-messages');
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text) return;
+            socket.emit('chat_message', { room_id: ROOM_ID, role: 'Преподаватель', text });
+            chatInput.value = '';
+        });
+
+        socket.on('chat_message', (data) => {
+            const msg = document.createElement('div');
+            const isMe = data.role === 'Преподаватель';
+            msg.className = `p-2.5 rounded-xl text-xs font-medium max-w-[85%] ${isMe ? 'bg-indigo-600 text-white self-end rounded-br-none shadow-xs' : 'bg-slate-100 text-slate-800 self-start rounded-bl-none border border-slate-200'}`;
+            msg.innerHTML = `<span class="block text-[9px] font-black opacity-75 mb-0.5">${data.role}</span>${data.text}`;
+            chatMessages.appendChild(msg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        // --- Интерактивная доска ---
+        const canvas = document.getElementById('whiteboard-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+
+        function resizeCanvas() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 200);
+
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+        let currentColor = '#1e293b';
+        let isEraser = false;
+
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentColor = btn.dataset.color;
+                isEraser = false;
+            });
+        });
+
+        document.getElementById('eraser-btn').addEventListener('click', () => isEraser = true);
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            socket.emit('clear_canvas', { room_id: ROOM_ID });
+        });
+
+        socket.on('clear_canvas', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+
+        function drawLine(x0, y0, x1, y1, color, erase) {
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y1);
+            ctx.strokeStyle = erase ? '#F8FAFC' : color;
+            ctx.lineWidth = erase ? 24 : 3;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+
+        socket.on('draw_event', (data) => {
+            drawLine(data.x0, data.y0, data.x1, data.y1, data.color, data.erase);
+        });
+
+        function getCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return [clientX - rect.left, clientY - rect.top];
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            [lastX, lastY] = getCoords(e);
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const [x, y] = getCoords(e);
+            drawLine(lastX, lastY, x, y, currentColor, isEraser);
+            socket.emit('draw_event', { room_id: ROOM_ID, x0: lastX, y0: lastY, x1: x, y1: y, color: currentColor, erase: isEraser });
+            [lastX, lastY] = [x, y];
+        });
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+    } catch (e) {
+        console.error("Critical Error in Teacher Workspace:", e);
+    }
+});
+</script>
+{% endblock %}

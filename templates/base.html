@@ -6,7 +6,7 @@
     <title>{% block title %}BooStudy{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700&family=Golos+Text:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="icon" href="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}">
     {% include '_boo_select_head.html' %}
     <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20260604-v29">
@@ -95,7 +95,7 @@
     </style>
     {% block head_extra %}{% endblock %}
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen font-sans overflow-x-hidden {% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student{% endif %} {% block body_class %}{% endblock %}"
+<body class="min-h-screen font-sans overflow-x-hidden {% if current_user is defined and current_user.is_authenticated and current_user.is_student() %}layout-student{% endif %} {% block body_class %}{% endblock %}"
       hx-boost="true"
       hx-indicator=".htmx-indicator"
       {% block body_attrs %}{% endblock %}>
@@ -119,6 +119,13 @@
         {% block content %}{% endblock %}
     </main>
     {% endblock %}
+
+    {% if current_user is defined and current_user.is_authenticated %}
+        {% set _is_qa_role = current_user.role in ['tester', 'chief_tester', 'admin', 'creator', 'chief_admin'] %}
+        {% if _is_qa_role or session.get('impersonator_id') is not none %}
+            {% include 'qa/_QA_Companion_Widget.html' %}
+        {% endif %}
+    {% endif %}
 
     <script src="{{ url_for('static', filename='toast.js') }}?v=20260528-v26"></script>
     <script src="{{ url_for('static', filename='theme-switcher.js') }}?v=20260528-v26"></script>
@@ -158,21 +165,6 @@
     </script>
     {% endif %}
     {% endwith %}
-
-    {% if current_user is defined and current_user.is_authenticated %}
-        {% set _qa_widget_allowed = (
-            (session.get('impersonator_id') is not none)
-        ) %}
-
-        {% set _is_qa_role = current_user.role in ['tester', 'chief_tester', 'admin', 'creator', 'chief_admin'] %}
-        {% if _is_qa_role %}
-            {% include 'qa/_qa_widget.html' %}
-        {% endif %}
-
-        {% if session.get('impersonator_id') is not none %}
-            {% include 'qa/_floating_widget.html' %}
-        {% endif %}
-    {% endif %}
 
     {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/demo_cinema.css') }}">
@@ -327,5 +319,28 @@
 
     {% include '_mobile_menu.html' %}
     {% include '_partials/canvas_overlay.html' %}
+    
+    {% include 'sandbox/components/dev_switcher.html' %}
+
+    <script>
+    function showBentoToast(message, type = 'info') {
+        let toast = document.getElementById('bento-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'bento-toast';
+            toast.className = 'fixed bottom-6 right-6 z-[99999] px-6 py-4 rounded-2xl border-2 font-black text-xs uppercase shadow-[0_8px_25px_rgba(0,0,0,0.15)] transition-all transform translate-y-10 opacity-0 pointer-events-none';
+            document.body.appendChild(toast);
+        }
+
+        const bgClass = type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-600 shadow-[0_4px_0_#FECDD3]' : 'bg-emerald-50 border-emerald-200 text-emerald-600 shadow-[0_4px_0_#A7F3D0]';
+        toast.className = `fixed bottom-6 right-6 z-[99999] px-6 py-4 rounded-2xl border-2 font-black text-xs uppercase transition-all duration-300 ${bgClass}`;
+        toast.innerText = message;
+
+        setTimeout(() => { toast.classList.add('opacity-100', 'translate-y-0'); }, 10);
+        setTimeout(() => { toast.classList.remove('opacity-100', 'translate-y-0'); toast.classList.add('opacity-0', 'translate-y-10'); }, 3500);
+    }
+    </script>
 </body>
+
+
 </html>

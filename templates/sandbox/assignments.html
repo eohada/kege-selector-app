@@ -1,0 +1,349 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<style>
+    .seg-btn.active {
+        background-color: #FFFFFF;
+        color: #0F172A;
+        font-weight: 800;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative flex flex-col min-h-[calc(100vh-4rem)]">
+            
+            <!-- Header & Integrated Filter Bar -->
+            <header class="flex flex-col xl:flex-row xl:items-center justify-between gap-6 shrink-0 z-10 mb-8 pb-6 border-b border-slate-100">
+                <div>
+                    <h1 class="text-3xl font-display font-black text-slate-900 tracking-tight mb-1.5">Работы преподавателя</h1>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="ph-bold ph-books"></i> Управление заданиями и проверкой
+                    </p>
+                </div>
+
+                <!-- Custom Segmented Controller, Integrated Search & Create Button -->
+                <div class="flex items-center gap-3 flex-wrap">
+                    <!-- Segmented Tabs Filter -->
+                    <div class="flex items-center p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] overflow-x-auto hide-scrollbar shrink-0">
+                        <button onclick="filterByTab('all')" id="tab-all" class="seg-btn active px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 whitespace-nowrap cursor-pointer transition-all">
+                            Все работы
+                            <span class="tab-badge w-5 h-5 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-700 flex justify-center items-center text-[10px] font-black">{{ count_all }}</span>
+                        </button>
+                        <button onclick="filterByTab('active')" id="tab-active" class="seg-btn font-bold text-xs text-slate-500 hover:text-slate-800 px-4 py-2 rounded-xl whitespace-nowrap flex items-center gap-2 cursor-pointer transition-all">
+                            Активные
+                            <span class="tab-badge w-5 h-5 rounded-full bg-slate-200/50 border border-slate-200 text-slate-500 flex justify-center items-center text-[10px] font-black">{{ count_active }}</span>
+                        </button>
+                        <button onclick="filterByTab('overdue')" id="tab-overdue" class="seg-btn font-bold text-xs text-slate-500 hover:text-slate-800 px-4 py-2 rounded-xl whitespace-nowrap flex items-center gap-2 cursor-pointer transition-all">
+                            Просрочено
+                            <span class="tab-badge w-5 h-5 rounded-full bg-rose-100 border border-rose-200 text-rose-700 flex justify-center items-center text-[10px] font-black">{{ count_overdue }}</span>
+                        </button>
+                        <button onclick="filterByTab('completed')" id="tab-completed" class="seg-btn font-bold text-xs text-slate-500 hover:text-slate-800 px-4 py-2 rounded-xl whitespace-nowrap flex items-center gap-2 cursor-pointer transition-all">
+                            Завершенные
+                            <span class="tab-badge w-5 h-5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-700 flex justify-center items-center text-[10px] font-black">{{ count_completed }}</span>
+                        </button>
+                        <button onclick="filterByTab('archived')" id="tab-archived" class="seg-btn font-bold text-xs text-slate-500 hover:text-slate-800 px-4 py-2 rounded-xl whitespace-nowrap flex items-center gap-2 cursor-pointer transition-all">
+                            Архив
+                            <span class="tab-badge w-5 h-5 rounded-full bg-slate-200/60 border border-slate-300 text-slate-600 flex justify-center items-center text-[10px] font-black">{{ count_archived }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Integrated Search Input -->
+                    <div class="relative w-56 shrink-0">
+                        <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" oninput="handleSearch(this.value)" placeholder="Поиск по названию..." class="w-full h-10 pl-9 pr-3 bg-[#F4F7FA] border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:border-indigo-400 focus:outline-none transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                    </div>
+
+                    <!-- Tactile Create Button -->
+                    <a href="/assignments/create"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-2 cursor-pointer no-underline shrink-0">
+                        <i class="ph-bold ph-plus text-sm"></i> Создать работу
+                    </a>
+                </div>
+            </header>
+
+            <!-- 3. Asymmetric Task Split Grid (2/3 + 1/3) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 items-start">
+
+                <!-- MAIN HUB: Assignments List (2/3) -->
+                <div class="lg:col-span-2 flex flex-col gap-6" id="works-grid-container">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+                        <div class="w-2 h-2 rounded-full bg-amber-400"></div> Работы с дедлайном
+                    </h2>
+
+                    <!-- Loop through dynamic assignments -->
+                    {% if assignments %}
+                      {% for card in assignments %}
+                      <div class="work-card bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-6 sm:p-8 rounded-[2rem] flex flex-col relative group hover:border-indigo-300 transition-colors" data-status="{{ card.card_status }}">
+                          <div class="flex flex-col sm:flex-row justify-between items-start gap-4 mb-5 relative z-10 w-full">
+                              <div>
+                                  <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest mb-3 shadow-xs">
+                                      {{ 'Домашнее задание' if card.assignment_type == 'homework' else 'Проверочная работа' }}
+                                  </div>
+                                  <h3 class="card-title text-2xl font-display font-black text-slate-900 leading-tight">{{ card.title }}</h3>
+                              </div>
+                              
+                              <div class="flex items-center gap-3">
+                                  <!-- Deadline status badge -->
+                                  {% if card.card_status == 'archived' %}
+                                  <div class="flex items-center gap-2 px-3 py-2 bg-slate-200 border-2 border-slate-300 rounded-xl text-xs font-bold text-slate-600 shrink-0">
+                                      <i class="ph-bold ph-archive"></i> В архиве
+                                  </div>
+                                  {% elif card.is_urgent or card.card_status == 'overdue' %}
+                                  <div class="flex items-center gap-2 px-3 py-2 bg-rose-100 border-2 border-rose-200 rounded-xl text-xs font-bold text-rose-700 shrink-0 shadow-[0_2px_0_#FDA4AF]">
+                                      <i class="ph-bold ph-fire"></i> {{ card.formatted_deadline }}
+                                  </div>
+                                  {% else %}
+                                  <div class="flex items-center gap-2 px-3 py-2 bg-emerald-100 border-2 border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 shrink-0 shadow-[0_2px_0_#A7F3D0]">
+                                      <i class="ph-bold ph-clock"></i> {{ card.formatted_deadline }}
+                                  </div>
+                                  {% endif %}
+                                  
+                                  <!-- JS-Click Dropdown Menu (Three dots button) -->
+                                  <div class="relative">
+                                      <button onclick="toggleMenu(event, 'menu-{{ card.assignment_id }}')" class="w-9 h-9 rounded-xl bg-white border-2 border-slate-200 text-slate-500 hover:text-slate-800 hover:border-indigo-300 flex items-center justify-center cursor-pointer transition-all shadow-[0_2px_0_#E2E8F0]">
+                                          <i class="ph-bold ph-dots-three-vertical text-lg pointer-events-none"></i>
+                                      </button>
+                                      
+                                      <div id="menu-{{ card.assignment_id }}" class="card-dropdown-menu hidden absolute right-0 top-11 w-44 bg-white rounded-xl shadow-xl border-2 border-slate-200 p-1.5 z-30 space-y-1">
+                                          <a href="/assignments/{{ card.assignment_id }}/edit" class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg no-underline">
+                                              <i class="ph-bold ph-gear text-indigo-500"></i> Настройки
+                                          </a>
+                                          <button onclick="duplicateAssignment('{{ card.assignment_id }}')" class="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg border-none bg-transparent cursor-pointer text-left">
+                                              <i class="ph-bold ph-copy text-indigo-500"></i> Сделать копию
+                                          </button>
+                                          <button onclick="archiveAssignment('{{ card.assignment_id }}')" class="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg border-none bg-transparent cursor-pointer text-left">
+                                              <i class="ph-bold ph-archive text-rose-500"></i> В архив
+                                          </button>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div class="flex items-center gap-6 text-xs font-bold text-slate-500 mb-6 flex-wrap">
+                              <span class="flex items-center gap-1.5"><i class="ph-bold ph-users text-indigo-500 text-sm"></i>{{ card.total_assigned }} учеников</span>
+                              <span class="flex items-center gap-1.5"><i class="ph-bold ph-list-numbers text-indigo-500 text-sm"></i>{{ card.task_count }} задач</span>
+                              <span class="flex items-center gap-1.5"><i class="ph-bold ph-calendar text-indigo-500 text-sm"></i>{{ card.created_at_str }}</span>
+                          </div>
+
+                          <div class="mb-8 relative z-10">
+                              <div class="flex justify-between items-end mb-2 px-1">
+                                  <span class="text-xs font-bold text-slate-500">Прогресс сдачи учеников</span>
+                                  <span class="text-lg font-black text-slate-800">{{ card.completed_subs }}<span class="text-sm text-slate-400">/{{ card.total_assigned }}</span> <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Сдано</span></span>
+                              </div>
+                              <div class="w-full bg-slate-200 rounded-full h-3 border border-slate-300 overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
+                                  <div class="bg-indigo-500 h-full rounded-full transition-all duration-500" style="--submitted-pct: {{ card.submitted_pct }}%; width: var(--submitted-pct);"></div>
+                              </div>
+                          </div>
+
+                          <!-- Action Buttons -->
+                          <div class="flex items-center gap-3 flex-wrap">
+                              <a href="/assignments/{{ card.assignment_id }}" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm px-6 py-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all flex items-center justify-center gap-2 no-underline">
+                                  Открыть работу <i class="ph-bold ph-arrow-right text-lg"></i>
+                              </a>
+                              <a href="/assignments/{{ card.assignment_id }}/edit" class="btn-3d bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-sm px-4 py-4 rounded-xl border border-slate-300 border-b-[4px] shadow-2xs active:translate-y-[2px] transition-all flex items-center justify-center gap-2 no-underline" title="Настройки работы">
+                                  <i class="ph-bold ph-gear text-lg text-slate-600"></i> Настройки
+                              </a>
+                          </div>
+                      </div>
+                      {% endfor %}
+                    {% else %}
+                      <!-- Empty assignments list for current teacher -->
+                      <div class="bg-slate-100/80 rounded-[2.5rem] border-2 border-dashed border-slate-200 shadow-[inset_0_4px_12px_rgba(15,23,42,0.06)] flex flex-col items-center justify-center text-center p-8 min-h-[300px] w-full">
+                          <div class="w-20 h-20 bg-white rounded-[1.5rem] border-2 border-slate-200 shadow-sm flex items-center justify-center text-slate-300 mb-4">
+                              <i class="ph-bold ph-ghost text-4xl"></i>
+                          </div>
+                          <h3 class="text-base font-display font-black text-slate-700 mb-1">У вас пока нет работ!</h3>
+                          <p class="text-xs font-bold text-slate-400 leading-relaxed mb-4">Создайте свою первую домашнюю или проверочную работу.</p>
+                          <a href="/assignments/create" class="px-5 py-3 bg-indigo-600 text-white font-black text-xs rounded-xl no-underline">
+                              + Создать работу
+                          </a>
+                      </div>
+                    {% endif %}
+
+                    <!-- Empty Filter Results Ghost -->
+                    <div id="empty-filter-ghost" class="bg-slate-100/80 rounded-[2.5rem] border-2 border-dashed border-slate-200 shadow-[inset_0_4px_12px_rgba(15,23,42,0.06)] flex flex-col items-center justify-center text-center p-8 min-h-[300px] w-full hidden">
+                        <div class="w-20 h-20 bg-white rounded-[1.5rem] border-2 border-slate-200 shadow-sm flex items-center justify-center text-slate-300 mb-4">
+                            <i class="ph-bold ph-ghost text-4xl"></i>
+                        </div>
+                        <h3 class="text-base font-display font-black text-slate-700 mb-1">Ничего не найдено!</h3>
+                        <p class="text-xs font-bold text-slate-400 leading-relaxed">По вашему запросу нет соответствующих работ.</p>
+                    </div>
+
+                </div>
+
+                <!-- CONTEXT STREAM: Quick Tools (1/3) -->
+                <div class="w-full flex flex-col gap-6 h-full">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2 ml-1">
+                        <div class="w-2 h-2 rounded-full bg-indigo-400"></div> Быстрый доступ
+                    </h2>
+
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-6 rounded-[2rem] flex flex-col gap-4">
+                        <h3 class="text-base font-display font-black text-slate-800">Инструменты</h3>
+
+                        <a href="/task-generator" class="flex items-center gap-3 p-3.5 bg-white border-2 border-slate-200 rounded-xl hover:border-indigo-300 transition-all no-underline shadow-xs group">
+                            <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                <i class="ph-bold ph-magic-wand"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-black text-slate-800 group-hover:text-indigo-600 transition-colors">Генератор задач</div>
+                                <div class="text-[11px] font-bold text-slate-400">Собрать новый вариант</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+<!-- Toast Notification -->
+<div id="toast-notification" class="hidden fixed bottom-6 right-6 bg-slate-900 text-white px-5 py-3.5 rounded-2xl flex items-center gap-3 z-50 text-xs font-bold shadow-2xl transition-all">
+    <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">✓</div>
+    <div>
+        <div id="toast-title" class="font-extrabold text-white">Успешно!</div>
+        <div id="toast-message" class="text-slate-300">Сообщение полученного действия</div>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'all';
+    let currentQuery = '';
+
+    function toggleMenu(event, menuId) {
+        event.stopPropagation();
+        const targetMenu = document.getElementById(menuId);
+        
+        // Close all other open dropdown menus first
+        document.querySelectorAll('.card-dropdown-menu').forEach(m => {
+            if (m.id !== menuId) {
+                m.classList.add('hidden');
+            }
+        });
+
+        if (targetMenu) {
+            targetMenu.classList.toggle('hidden');
+        }
+    }
+
+    // Close any open dropdown menu on click outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.card-dropdown-menu')) {
+            document.querySelectorAll('.card-dropdown-menu').forEach(m => {
+                m.classList.add('hidden');
+            });
+        }
+    });
+
+    function filterByTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.seg-btn').forEach(b => {
+            b.classList.remove('active', 'bg-white', 'shadow-sm', 'text-slate-900');
+            b.classList.add('text-slate-500');
+            const badge = b.querySelector('.tab-badge');
+            if (badge) {
+                badge.classList.remove('bg-indigo-100', 'text-indigo-700');
+                badge.classList.add('bg-slate-200/50', 'text-slate-500');
+            }
+        });
+
+        const activeTab = document.getElementById(`tab-${tab}`);
+        if (activeTab) {
+            activeTab.classList.add('active', 'bg-white', 'shadow-sm', 'text-slate-900');
+            activeTab.classList.remove('text-slate-500');
+            const badge = activeTab.querySelector('.tab-badge');
+            if (badge) {
+                badge.classList.add('bg-indigo-100', 'text-indigo-700');
+                badge.classList.remove('bg-slate-200/50', 'text-slate-500');
+            }
+        }
+
+        applyFilters();
+    }
+
+    function handleSearch(q) {
+        currentQuery = q.toLowerCase().trim();
+        applyFilters();
+    }
+
+    function applyFilters() {
+        let visibleCount = 0;
+        const cards = document.querySelectorAll('.work-card');
+        
+        cards.forEach(card => {
+            const st = card.getAttribute('data-status');
+            const titleEl = card.querySelector('.card-title');
+            const titleText = titleEl ? titleEl.innerText.toLowerCase() : card.innerText.toLowerCase();
+
+            const matchesTab = (currentTab === 'all' && st !== 'archived') || (currentTab === 'archived' ? st === 'archived' : st === currentTab);
+            const matchesQuery = !currentQuery || titleText.includes(currentQuery);
+
+            if (matchesTab && matchesQuery) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        const emptyGhost = document.getElementById('empty-filter-ghost');
+        if (emptyGhost) {
+            if (visibleCount === 0 && cards.length > 0) {
+                emptyGhost.classList.remove('hidden');
+            } else {
+                emptyGhost.classList.add('hidden');
+            }
+        }
+    }
+
+    function archiveAssignment(id) {
+        fetch(`/assignments/${id}/archive`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                showToast('В архив', data.message);
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        })
+        .catch(err => console.error(err));
+    }
+
+    function duplicateAssignment(id) {
+        fetch(`/assignments/${id}/duplicate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                showToast('Сделана копия', data.message);
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        })
+        .catch(err => console.error(err));
+    }
+
+    function showToast(title, message) {
+        const toast = document.getElementById('toast-notification');
+        const tTitle = document.getElementById('toast-title');
+        const tMsg = document.getElementById('toast-message');
+        if (toast && tTitle && tMsg) {
+            tTitle.innerText = title;
+            tMsg.innerText = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        filterByTab('all');
+    });
+</script>
+{% endblock %}

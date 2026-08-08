@@ -5,7 +5,7 @@
 {% block body_class %}tw-page-workspace{% endblock %}
 
 {% block head_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260715-mobile-v1">
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260803-bento-v2">
 {% endblock %}
 
 {% block content %}
@@ -143,6 +143,12 @@
                 <button class="tw-tab" type="button" data-tab="playback">Ход</button>
                 {% endif %}
                 <button class="tw-tab" type="button" data-tab="versions">Версии</button>
+                {% if workspace.context_type in ['submission_task', 'lesson_task'] %}
+                <button class="tw-tab" type="button" data-tab="files">Файлы</button>
+                {% endif %}
+                {% if workspace.context_type == 'submission_task' %}
+                <button class="tw-tab" type="button" data-tab="comments">Комментарии</button>
+                {% endif %}
                 <button class="tw-tab" type="button" data-tab="notes">Заметки</button>
             </div>
             <div class="tw-tab-pane is-active" data-pane="output">
@@ -194,6 +200,30 @@
                 </div>
                 <div id="tw-version-list" class="tw-version-list"></div>
             </div>
+            {% if workspace.context_type in ['submission_task', 'lesson_task'] %}
+            <div class="tw-tab-pane" data-pane="files">
+                <div class="tw-files-actions">
+                    <label class="tw-btn tw-btn-ghost {% if not workspace.can_edit %}is-disabled{% endif %}">
+                        <input id="tw-file-upload" type="file" hidden {% if not workspace.can_edit %}disabled{% endif %}>
+                        Загрузить файл
+                    </label>
+                    <button id="tw-file-create" class="tw-btn tw-btn-ghost" type="button" {% if not workspace.can_edit %}disabled{% endif %}>Новый файл</button>
+                </div>
+                <div id="tw-file-list" class="tw-version-list"></div>
+                <textarea id="tw-file-content" class="tw-notes" placeholder="Выберите текстовый файл для просмотра" readonly></textarea>
+                <div class="tw-files-actions">
+                    <a id="tw-file-download" class="tw-btn tw-btn-ghost" hidden>Скачать</a>
+                    <button id="tw-file-save" class="tw-btn tw-btn-primary" type="button" disabled>Сохранить файл</button>
+                </div>
+            </div>
+            {% endif %}
+            {% if workspace.context_type == 'submission_task' %}
+            <div class="tw-tab-pane" data-pane="comments">
+                <div id="tw-comments-list" class="tw-version-list"></div>
+                <textarea id="tw-comment-text" class="tw-notes" placeholder="Комментарий к этой задаче"></textarea>
+                <div class="tw-files-actions"><button id="tw-comment-send" class="tw-btn tw-btn-primary" type="button">Отправить комментарий</button></div>
+            </div>
+            {% endif %}
         </aside>
     </section>
 </main>
@@ -207,5 +237,5 @@ window.TASK_WORKSPACE_USER_ID = {{ current_user.id if current_user.is_authentica
 
 {% block scripts_extra %}
 {{ super() }}
-<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260618-live-9"></script>
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260803-bento-v2"></script>
 {% endblock %}

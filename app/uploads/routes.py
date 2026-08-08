@@ -16,6 +16,13 @@ logger = logging.getLogger(__name__)
 AVATAR_FILENAME_RE = re.compile(r'^avatar_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 COVER_FILENAME_RE = re.compile(r'^cover_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 
+
+def _lesson_material_root(lesson_id: int) -> str:
+    configured_root = (current_app.config.get('LESSON_UPLOAD_ROOT') or '').strip()
+    # docker-compose монтирует /app/uploads как persistent volume.
+    base_root = configured_root or os.path.join(os.path.dirname(current_app.root_path), 'uploads', 'lessons')
+    return os.path.join(base_root, str(int(lesson_id)))
+
 def _resolve_uploaded_asset(base_name: str, roots: list[str], allowed_prefix: str) -> str | None:
     """
     Resolve uploaded asset path with a tolerant fallback:
@@ -152,7 +159,11 @@ def lesson_file(lesson_id: int, stored_name: str):
     if not _can_access_lesson(lesson):
         abort(403)
 
-    abs_path = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id), stored_name)
+    abs_path = os.path.join(_lesson_material_root(lesson_id), stored_name)
+    if not os.path.exists(abs_path):
+        legacy_path = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id), stored_name)
+        if os.path.exists(legacy_path):
+            abs_path = legacy_path
     if not os.path.exists(abs_path):
         abort(404)
 

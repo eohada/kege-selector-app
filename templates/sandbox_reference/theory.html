@@ -1,0 +1,261 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block sandbox_content %}
+<!-- KATEX CDN FOR FORMULAS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+<main class="flex-1 min-h-screen bg-[#F8FAFC] pl-24 pr-6 py-6 pb-24">
+    <!-- CANONICAL PLATFORM MAX-WIDTH CONTAINER (1400px) -->
+    <div class="max-w-[1400px] mx-auto flex flex-col gap-6 w-full">
+
+        <!-- 1. BENTO HEADER CARD -->
+        <div class="bg-white rounded-[2rem] p-6 sm:p-8 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-6 relative overflow-hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="ph-bold ph-book-open text-sm"></i> База знаний BooStudy
+                        </span>
+                    </div>
+                    <h1 class="text-2xl sm:text-4xl font-black text-slate-900 font-display tracking-tight">Теория & Методические материалы КЕГЭ</h1>
+                    <p class="text-xs sm:text-sm font-bold text-slate-400 mt-1">Видеолекции, конспекты, шпаргалки и авторские алгоритмы по всем заданиям №1–27</p>
+                </div>
+
+                <a href="/sandbox/student_dashboard" class="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors bg-[#F4F7FA] px-4 py-2.5 rounded-xl border border-slate-200 shadow-xs hover:-translate-y-0.5 no-underline shrink-0">
+                    <i class="ph-bold ph-arrow-left text-base"></i> В дашборд
+                </a>
+            </div>
+
+            <!-- Search and Filter Bar -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-2 relative z-10">
+                <div class="relative flex-1">
+                    <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                    <input type="text" id="search-theory" placeholder="Поиск по темам, формулам или номерам КЕГЭ (например: Производная, №14, Рекурсия)..." class="w-full pl-11 pr-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-2xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner">
+                </div>
+
+                <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide shrink-0">
+                    <button class="px-4 py-3 rounded-2xl text-xs font-black bg-indigo-600 text-white shadow-[0_2px_0_#3730A3] border border-indigo-700 cursor-pointer">Все темы</button>
+                    <button class="px-4 py-3 rounded-2xl text-xs font-bold bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 cursor-pointer">№1–5 Базовые</button>
+                    <button class="px-4 py-3 rounded-2xl text-xs font-bold bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 cursor-pointer">№6–12 Код & Алгоритмы</button>
+                    <button class="px-4 py-3 rounded-2xl text-xs font-bold bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 cursor-pointer">№13–18 Анализ & Математика</button>
+                    <button class="px-4 py-3 rounded-2xl text-xs font-bold bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 cursor-pointer">№19–27 Хардкор</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. QUICK CHEAT-SHEET PDF DOWNLOADS BENTO GRID -->
+        <div class="flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="ph-bold ph-file-pdf text-rose-500 text-xl"></i>
+                    <h2 class="text-xl font-black text-slate-900 font-display">Быстрый доступ к шпаргалкам</h2>
+                </div>
+                <span class="text-xs font-bold text-slate-400">4 файла доступно</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- PDF Card 1 -->
+                <div class="bg-white rounded-[1.5rem] p-5 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-4 hover:-translate-y-1 transition-all">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-500 flex items-center justify-center shrink-0 shadow-xs">
+                            <i class="ph-bold ph-file-pdf text-2xl"></i>
+                        </div>
+                        <span class="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-black uppercase">Задание №14</span>
+                    </div>
+
+                    <div>
+                        <h3 class="font-black text-slate-900 text-sm font-display line-clamp-2">Шпаргалка_Производная_КЕГЭ.pdf</h3>
+                        <p class="text-[11px] font-bold text-slate-400 mt-1">1.4 MB • Геометрический смысл и правила</p>
+                    </div>
+
+                    <button onclick="alert('Скачивание методички №14 начато!');" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2.5 px-4 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider">
+                        <i class="ph-bold ph-download-simple text-sm"></i> Скачать PDF
+                    </button>
+                </div>
+
+                <!-- PDF Card 2 -->
+                <div class="bg-white rounded-[1.5rem] p-5 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-4 hover:-translate-y-1 transition-all">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-500 flex items-center justify-center shrink-0 shadow-xs">
+                            <i class="ph-bold ph-code text-2xl"></i>
+                        </div>
+                        <span class="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-black uppercase">Задание №16</span>
+                    </div>
+
+                    <div>
+                        <h3 class="font-black text-slate-900 text-sm font-display line-clamp-2">Рекурсия_и_Мемоизация_Python.pdf</h3>
+                        <p class="text-[11px] font-bold text-slate-400 mt-1">2.1 MB • Шаблоны sys.setrecursionlimit</p>
+                    </div>
+
+                    <button onclick="alert('Скачивание методички №16 начато!');" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2.5 px-4 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider">
+                        <i class="ph-bold ph-download-simple text-sm"></i> Скачать PDF
+                    </button>
+                </div>
+
+                <!-- PDF Card 3 -->
+                <div class="bg-white rounded-[1.5rem] p-5 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-4 hover:-translate-y-1 transition-all">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-500 flex items-center justify-center shrink-0 shadow-xs">
+                            <i class="ph-bold ph-share-network text-2xl"></i>
+                        </div>
+                        <span class="px-2.5 py-0.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-lg text-[10px] font-black uppercase">Задание №1</span>
+                    </div>
+
+                    <div>
+                        <h3 class="font-black text-slate-900 text-sm font-display line-clamp-2">Графы_и_Таблицы_Соответствия.pdf</h3>
+                        <p class="text-[11px] font-bold text-slate-400 mt-1">980 KB • Быстрое сопоставление вертексов</p>
+                    </div>
+
+                    <button onclick="alert('Скачивание методички №1 начато!');" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2.5 px-4 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider">
+                        <i class="ph-bold ph-download-simple text-sm"></i> Скачать PDF
+                    </button>
+                </div>
+
+                <!-- PDF Card 4 -->
+                <div class="bg-white rounded-[1.5rem] p-5 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-4 hover:-translate-y-1 transition-all">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-200 text-purple-500 flex items-center justify-center shrink-0 shadow-xs">
+                            <i class="ph-bold ph-database text-2xl"></i>
+                        </div>
+                        <span class="px-2.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-[10px] font-black uppercase">Задание №26</span>
+                    </div>
+
+                    <div>
+                        <h3 class="font-black text-slate-900 text-sm font-display line-clamp-2">Обработка_Больших_Данных.pdf</h3>
+                        <p class="text-[11px] font-bold text-slate-400 mt-1">3.4 MB • Сортировки и два указателя</p>
+                    </div>
+
+                    <button onclick="alert('Скачивание методички №26 начато!');" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2.5 px-4 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider">
+                        <i class="ph-bold ph-download-simple text-sm"></i> Скачать PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. VIDEO COURSES & LECTURES BENTO GRID -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Video Course Card 1 -->
+            <div class="bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <span class="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black uppercase">Урок 14 • Производная</span>
+                    <span class="text-xs font-bold text-emerald-600 flex items-center gap-1"><i class="ph-bold ph-check-circle"></i> Изучено</span>
+                </div>
+
+                <div class="aspect-video bg-slate-900 rounded-2xl flex items-center justify-center relative overflow-hidden group shadow-inner border border-slate-800">
+                    <div class="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-60 transition-opacity" style="background-image: url('https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80');"></div>
+                    <a href="/sandbox/lesson_room" class="relative z-10 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center border-b-[4px] border-indigo-800 active:translate-y-0.5 transition-all shadow-lg no-underline">
+                        <i class="ph-fill ph-play text-xl ml-1"></i>
+                    </a>
+                    <span class="absolute bottom-3 right-3 text-[10px] font-bold text-white bg-slate-900/90 px-2 py-1 rounded-md backdrop-blur-sm">24:15</span>
+                </div>
+
+                <div>
+                    <h3 class="text-base font-black text-slate-900 font-display">Геометрический смысл производной и касательная</h3>
+                    <p class="text-xs font-medium text-slate-500 mt-1 line-clamp-2">Разбор физического и геометрического смысла, угловой коэффициент касательной k = tg(α).</p>
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-bold text-slate-500">
+                    <span>Смотреть лекцию</span>
+                    <a href="/sandbox/lesson_room" class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 no-underline">Открыть урок <i class="ph-bold ph-arrow-right"></i></a>
+                </div>
+            </div>
+
+            <!-- Video Course Card 2 -->
+            <div class="bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <span class="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-black uppercase">Урок 16 • Рекурсия</span>
+                    <span class="text-xs font-bold text-amber-600 flex items-center gap-1"><i class="ph-bold ph-clock"></i> В процессе</span>
+                </div>
+
+                <div class="aspect-video bg-slate-900 rounded-2xl flex items-center justify-center relative overflow-hidden group shadow-inner border border-slate-800">
+                    <div class="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-60 transition-opacity" style="background-image: url('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80');"></div>
+                    <a href="/sandbox/lesson_room" class="relative z-10 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center border-b-[4px] border-indigo-800 active:translate-y-0.5 transition-all shadow-lg no-underline">
+                        <i class="ph-fill ph-play text-xl ml-1"></i>
+                    </a>
+                    <span class="absolute bottom-3 right-3 text-[10px] font-bold text-white bg-slate-900/90 px-2 py-1 rounded-md backdrop-blur-sm">31:40</span>
+                </div>
+
+                <div>
+                    <h3 class="text-base font-black text-slate-900 font-display">Рекурсивные алгоритмы и lru_cache</h3>
+                    <p class="text-xs font-medium text-slate-500 mt-1 line-clamp-2">Как обходить ограничение глубокой рекурсии в Python и предотвратить зависание вычислений.</p>
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-bold text-slate-500">
+                    <span>Прогресс: 65%</span>
+                    <a href="/sandbox/lesson_room" class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 no-underline">Продолжить <i class="ph-bold ph-arrow-right"></i></a>
+                </div>
+            </div>
+
+            <!-- Video Course Card 3 -->
+            <div class="bg-white rounded-[2rem] p-6 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <span class="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-xs font-black uppercase">Урок 27 • Файлы</span>
+                    <span class="text-xs font-bold text-slate-400">Новый материал</span>
+                </div>
+
+                <div class="aspect-video bg-slate-900 rounded-2xl flex items-center justify-center relative overflow-hidden group shadow-inner border border-slate-800">
+                    <div class="absolute inset-0 bg-cover bg-center opacity-40 group-hover:opacity-60 transition-opacity" style="background-image: url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80');"></div>
+                    <a href="/sandbox/lesson_room" class="relative z-10 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center border-b-[4px] border-indigo-800 active:translate-y-0.5 transition-all shadow-lg no-underline">
+                        <i class="ph-fill ph-play text-xl ml-1"></i>
+                    </a>
+                    <span class="absolute bottom-3 right-3 text-[10px] font-bold text-white bg-slate-900/90 px-2 py-1 rounded-md backdrop-blur-sm">45:10</span>
+                </div>
+
+                <div>
+                    <h3 class="text-base font-black text-slate-900 font-display">Кластерный анализ и декомпозиция данных</h3>
+                    <p class="text-xs font-medium text-slate-500 mt-1 line-clamp-2">Алгоритм K-Means и поиск центроидов кластеров для Задания №27B КЕГЭ.</p>
+                </div>
+
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-bold text-slate-500">
+                    <span>Смотреть лекцию</span>
+                    <a href="/sandbox/lesson_room" class="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 no-underline">Начать <i class="ph-bold ph-arrow-right"></i></a>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 4. INTERACTIVE FORMULA CHEAT SHEET CARD -->
+        <div class="bg-white rounded-[2rem] p-6 sm:p-8 border border-slate-200/80 shadow-[0_4px_0_#DAE1E9] flex flex-col gap-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="ph-bold ph-function text-indigo-600 text-xl"></i>
+                    <h2 class="text-xl font-black text-slate-900 font-display">Интерактивный справочник формул КЕГЭ</h2>
+                </div>
+                <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-xl border border-indigo-200">Обновлено к ЕГЭ 2026</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Formula Box 1 -->
+                <div class="p-5 bg-[#F8FAFC] border-2 border-slate-200/80 rounded-2xl flex flex-col gap-3">
+                    <span class="text-xs font-black text-slate-800 uppercase tracking-wider">Формула Бернулли (Теория вер.)</span>
+                    <p class="text-xs font-medium text-slate-500">Для схемы независимых испытаний с вероятностью успеха p:</p>
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 text-center font-mono font-bold text-indigo-900 shadow-2xs text-sm">
+                        Pₙ(k) = Cₙᵏ · pᵏ · qⁿ⁻ᵏ
+                    </div>
+                </div>
+
+                <!-- Formula Box 2 -->
+                <div class="p-5 bg-[#F8FAFC] border-2 border-slate-200/80 rounded-2xl flex flex-col gap-3">
+                    <span class="text-xs font-black text-slate-800 uppercase tracking-wider">Формула Хартли (Информация)</span>
+                    <p class="text-xs font-medium text-slate-500">Количество информации в сообщении о событии из N равновероятных:</p>
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 text-center font-mono font-bold text-emerald-900 shadow-2xs text-sm">
+                        N = 2ⁱ  ⇒  i = log₂(N)
+                    </div>
+                </div>
+
+                <!-- Formula Box 3 -->
+                <div class="p-5 bg-[#F8FAFC] border-2 border-slate-200/80 rounded-2xl flex flex-col gap-3">
+                    <span class="text-xs font-black text-slate-800 uppercase tracking-wider">Количество комбинаций (Слов)</span>
+                    <p class="text-xs font-medium text-slate-500">Количество n-буквенных слов из алфавита мощностью M:</p>
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 text-center font-mono font-bold text-purple-900 shadow-2xs text-sm">
+                        Q = Mⁿ
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+{% endblock %}

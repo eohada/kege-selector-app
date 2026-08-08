@@ -1,19 +1,20 @@
-{% extends 'base.html' %}
-{% block title %}Управление темами · Админ-панель{% endblock %}
+{% extends "sandbox/layout_admin.html" %}
 
-{% set active_page = 'admin' %}
+{% block admin_content %}
+<div class="space-y-6">
 
-{% block content %}
-<section class="glass-panel mb-3 w-full">
-    <div class="flex items-center gap-4 mb-5">
-        <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
-            ← На главную
-        </a>
-        <h1 class="m-0">Панель управления</h1>
+    <!-- HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+            <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">Темы и Разделы Задач КЕГЭ/ОГЭ</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Классификация задач умного тренажера и банка вариантов</p>
+        </div>
+
+        <button onclick="openCreateTopicModal()" class="btn-3d px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 transition-all cursor-pointer flex items-center gap-2 border-0">
+            <i class="ph-bold ph-plus text-base"></i>
+            <span>+ Создать тему</span>
+        </button>
     </div>
-
-    {% include 'admin/_admin_nav.html' %}
-</section>
 
 <section class="glass-panel mb-3">
     <div class="panel-head">

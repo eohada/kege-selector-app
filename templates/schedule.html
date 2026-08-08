@@ -806,11 +806,13 @@
             </div>
             
             <div>
-                <label class="inspector-label" for="modalStudent">Ученик *</label>
                 <select class="inspector-input" name="student_id" id="modalStudent" required>
-                    <option value="">Выберите ученика</option>
+                    <option value="">-- Выберите ученика --</option>
                     {% for student in students %}
-                    <option value="{{ student.student_id }}">{{ student.name }}{% if student.platform_id %} (ID: {{ student.platform_id }}){% endif %}</option>
+                    <option value="{{ student.student_id }}">
+                        🎓 {{ student.name or (student.user.username if student.user else 'Ученик #' ~ student.student_id) }} 
+                        {% if student.user and (student.user.telegram_id or student.user.profile and student.user.profile.telegram_chat_id) %}(✅ TG){% else %}(❌ Нет TG){% endif %}
+                    </option>
                     {% endfor %}
                 </select>
             </div>

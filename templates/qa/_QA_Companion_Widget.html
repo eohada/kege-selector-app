@@ -1,0 +1,325 @@
+<!-- QA Companion Floating Widget (Drag & Drop, Impersonation, Bug Reporter) -->
+<div x-data="qaCompanionWidget()"
+     x-show="true"
+     x-ref="widgetRoot"
+     :style="`top: ${position.y}px; left: ${position.x}px;`"
+     class="fixed z-[99999] isolate pointer-events-none"
+     @mousedown.window="onDragStart($event)"
+     @mousemove.window="onDragMove($event)"
+     @mouseup.window="onDragEnd($event)"
+     @touchstart.window="onDragStart($event)"
+     @touchmove.window="onDragMove($event)"
+     @touchend.window="onDragEnd($event)">
+    
+    <!-- Widget Body -->
+    <div class="pointer-events-auto bg-zinc-900 border border-zinc-700/50 shadow-2xl rounded-2xl w-[380px] overflow-hidden flex flex-col transition-all duration-200"
+         :class="isOpen ? 'opacity-100 scale-100' : 'opacity-80 scale-95 hover:opacity-100'">
+        
+        <!-- Drag Handle / Header -->
+        <div x-ref="dragHandle"
+             class="flex items-center justify-between px-4 py-3 bg-zinc-800/80 cursor-move rounded-t-2xl border-b border-zinc-700/50 select-none">
+            <div class="flex items-center gap-2">
+                <i class="ph-fill ph-bug text-rose-500 text-lg"></i>
+                <span class="font-bold text-sm text-zinc-200">QA Companion</span>
+            </div>
+            <button @click="isOpen = !isOpen" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors cursor-pointer select-none">
+                <i class="ph-bold" :class="isOpen ? 'ph-caret-down' : 'ph-caret-up'"></i>
+            </button>
+        </div>
+
+        <!-- Content Area -->
+        <div x-show="isOpen" class="flex flex-col max-h-[80vh] overflow-hidden bg-zinc-900/95">
+            <!-- Tabs -->
+            <div class="flex p-2 bg-zinc-900/50">
+                <button @click="switchTab('impersonate')"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+                        :class="activeTab === 'impersonate' ? 'bg-indigo-500 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'">
+                    Имперсонация
+                </button>
+                <button @click="switchTab('bug')"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all"
+                        :class="activeTab === 'bug' ? 'bg-rose-500 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'">
+                    Баг-репорт
+                </button>
+            </div>
+
+            <!-- Tab 1: Impersonate -->
+            <div x-show="activeTab === 'impersonate'" class="p-4 overflow-y-auto custom-qa-scroll">
+                {% if session.get('impersonator_id') is not none %}
+                    <!-- User is impersonating someone else -->
+                    <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 text-center">
+                        <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="ph-fill ph-mask-happy text-2xl"></i>
+                        </div>
+                        <h4 class="font-bold text-white mb-1">Режим имперсонации</h4>
+                        <p class="text-xs text-indigo-300 mb-4">Вы находитесь в аккаунте пользователя.</p>
+                        <form action="{{ url_for('admin_impersonate.stop_impersonating') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="w-full py-2 bg-indigo-500 hover:bg-indigo-600 text-white items-center justify-center font-bold text-sm rounded-lg shadow-lg shadow-indigo-500/20 transition-colors">
+                                Выйти из режима
+                            </button>
+                        </form>
+                    </div>
+                {% else %}
+                    <!-- Normal User, show pool -->
+                    <div class="grid grid-cols-2 gap-2">
+                        {% set pool = [
+                            'qa_student_1', 'qa_student_2', 'qa_student_3',
+                            'qa_tutor_1', 'qa_tutor_2', 'qa_tutor_3',
+                            'qa_parent_1', 'qa_parent_2', 'qa_parent_3',
+                            'qa_admin_1', 'qa_admin_2', 'qa_admin_3'
+                        ] %}
+                        {% for username in pool %}
+                        <form action="{{ url_for('admin_impersonate.start_impersonating') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="username" value="{{ username }}">
+                            <button type="submit" class="w-full text-left p-3 rounded-xl border border-zinc-700/50 bg-zinc-800/30 hover:bg-zinc-800 hover:border-zinc-500 transition-all group">
+                                <div class="text-xs font-bold text-zinc-300 group-hover:text-white truncate">
+                                    {{ username }}
+                                </div>
+                                <div class="text-[10px] text-zinc-500 mt-0.5">Вход в один клик</div>
+                            </button>
+                        </form>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Tab 2: Bug Report -->
+            <div x-show="activeTab === 'bug'" class="p-4 overflow-y-auto custom-qa-scroll bg-zinc-900 border-t border-zinc-800">
+                <form @submit.prevent="submitBugReport" class="flex flex-col gap-4">
+                    
+                    <!-- Verdict & Area -->
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Критичность</label>
+                            <select x-model="bug.verdict" class="w-full bg-zinc-800 border-zinc-700 rounded-lg text-sm text-zinc-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 py-1.5 px-3">
+                                <option value="minor">Minor (Незначительный)</option>
+                                <option value="critical">Critical (Критичный)</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Раздел</label>
+                            <input type="text" x-model="bug.area" placeholder="Например: Плеер" class="w-full bg-zinc-800 border-zinc-700 rounded-lg text-sm text-zinc-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 py-1.5 px-3 placeholder-zinc-600">
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Описание баги (Шаги + ОР/ФР)</label>
+                        <textarea x-model="bug.description" required rows="4" class="w-full bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 p-3 placeholder-zinc-600 resize-none custom-qa-scroll" placeholder="1. Нажал на кнопку X...&#10;2. Ожидал Y...&#10;3. Получил ошибку 500"></textarea>
+                    </div>
+
+                    <!-- Status Panel -->
+                    <div class="bg-zinc-800 rounded-xl p-3 border border-zinc-700/50">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-zinc-300">Сбор контекста:</span>
+                            <button type="button" @click="fetchDaemonVideo" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1">
+                                <i class="ph-bold ph-arrows-clockwise" :class="isCapturing ? 'animate-spin' : ''"></i>
+                                Обновить
+                            </button>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <!-- Daemon status -->
+                            <div class="flex items-center gap-2 text-xs">
+                                <i class="ph-fill" :class="daemonStatus === 'ok' ? 'ph-check-circle text-emerald-500' : (daemonStatus === 'error' ? 'ph-warning-circle text-amber-500' : 'ph-spinner animate-spin text-indigo-500')"></i>
+                                <span :class="daemonStatus === 'ok' ? 'text-emerald-400' : 'text-zinc-400'">
+                                    Видео Daemon (15s): <span x-text="daemonStatus === 'ok' ? 'Захвачено' : (daemonStatus === 'error' ? 'Отключен' : 'Опрос...')"></span>
+                                </span>
+                            </div>
+                            <!-- Logs status -->
+                            <div class="flex items-center gap-2 text-xs">
+                                <i class="ph-fill ph-check-circle text-emerald-500"></i>
+                                <span class="text-emerald-400">Логи консоли: собран массив из <span x-text="window.__qaLogs ? window.__qaLogs.length : 0">0</span> записей</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            :disabled="isSubmitting"
+                            class="w-full py-2.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 disabled:cursor-not-allowed text-white items-center justify-center font-bold text-sm rounded-xl shadow-lg shadow-rose-500/20 transition-all flex gap-2">
+                        <i x-show="!isSubmitting" class="ph-bold ph-paper-plane-tilt"></i>
+                        <i x-show="isSubmitting" class="ph-bold ph-spinner animate-spin"></i>
+                        <span x-text="isSubmitting ? 'Отправка...' : 'Отправить репорт'"></span>
+                    </button>
+                    
+                    <div x-show="submitError" x-text="submitError" class="text-xs text-rose-400 text-center font-bold px-2"></div>
+                    <div x-show="submitSuccess" class="text-xs text-emerald-400 text-center font-bold px-2">Баг успешно зарегистрирован!</div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+.custom-qa-scroll::-webkit-scrollbar { width: 4px; }
+.custom-qa-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-qa-scroll::-webkit-scrollbar-thumb { background-color: #3f3f46; border-radius: 4px; }
+</style>
+
+<script>
+// --- LOG INTERCEPTOR ---
+if (!window.__qaLogsActive) {
+    window.__qaLogsActive = true;
+    window.__qaLogs = [];
+    const _origErr = console.error;
+    const _origWarn = console.warn;
+    
+    function pushLog(type, args) {
+        try {
+            const raw = Array.from(args).map(e => (typeof e === 'object' ? JSON.stringify(e) : String(e))).join(' ');
+            window.__qaLogs.push({ ts: new Date().toISOString(), type: type, msg: raw });
+            if (window.__qaLogs.length > 50) window.__qaLogs.shift();
+        } catch (e) {}
+    }
+    
+    console.error = function() { _origErr.apply(console, arguments); pushLog('error', arguments); };
+    console.warn = function() { _origWarn.apply(console, arguments); pushLog('warn', arguments); };
+}
+
+document.addEventListener('alpine:init', () => {
+    Alpine.data('qaCompanionWidget', () => ({
+        isOpen: false,
+        activeTab: 'impersonate',
+        
+        // Drag logic
+        isDragging: false,
+        dragOffset: { x: 0, y: 0 },
+        position: { x: window.innerWidth - 400, y: window.innerHeight - 500 }, // Default bottom right
+
+        // Bug Form
+        bug: { verdict: 'minor', description: '', area: '' },
+        videoBlob: null,
+        
+        // Statuses
+        daemonStatus: 'loading', // loading, ok, error
+        isCapturing: false,
+        isSubmitting: false,
+        submitError: '',
+        submitSuccess: false,
+        
+        init() {
+            // Watch for resize purely to keep in bounds
+            window.addEventListener('resize', () => this.enforceBounds());
+        },
+        
+        switchTab(tab) {
+            this.activeTab = tab;
+            if (tab === 'bug') {
+                this.fetchDaemonVideo(); // Auto grab when opening tab
+            }
+        },
+
+        // --- DRAG LOGIC ---
+        onDragStart(e) {
+            const path = e.composedPath ? e.composedPath() : [];
+            // Target MUST be inside the drag handle, but NOT a button
+            if (this.$refs.dragHandle && this.$refs.dragHandle.contains(e.target) && e.target.tagName !== 'BUTTON') {
+                this.isDragging = true;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                this.dragOffset.x = clientX - this.position.x;
+                this.dragOffset.y = clientY - this.position.y;
+                document.body.style.userSelect = 'none'; // Prevent selection
+            }
+        },
+        onDragMove(e) {
+            if (!this.isDragging) return;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            this.position.x = clientX - this.dragOffset.x;
+            this.position.y = clientY - this.dragOffset.y;
+            this.enforceBounds();
+        },
+        onDragEnd(e) {
+            this.isDragging = false;
+            document.body.style.userSelect = '';
+        },
+        enforceBounds() {
+            if (!this.$refs.widgetRoot) return;
+            const maxX = window.innerWidth - 380; // width
+            const maxY = window.innerHeight - 50; // min height
+            
+            if (this.position.x < 0) this.position.x = 0;
+            if (this.position.x > maxX) this.position.x = maxX;
+            if (this.position.y < 0) this.position.y = 0;
+            if (this.position.y > maxY) this.position.y = maxY;
+        },
+
+        // --- DAEMON API ---
+        async fetchDaemonVideo() {
+            this.isCapturing = true;
+            this.daemonStatus = 'loading';
+            try {
+                // Fetching the last 15s from local desktop companion
+                const res = await fetch('http://127.0.0.1:4444/capture', { method: 'POST' });
+                if (res.ok) {
+                    this.videoBlob = await res.blob();
+                    this.daemonStatus = 'ok';
+                } else {
+                    this.daemonStatus = 'error';
+                }
+            } catch (err) {
+                console.log("Daemon fetch error:", err);
+                this.daemonStatus = 'error';
+            } finally {
+                this.isCapturing = false;
+            }
+        },
+
+        // --- SUBMIT BUG ---
+        async submitBugReport() {
+            if (!this.bug.description) return;
+            this.isSubmitting = true;
+            this.submitError = '';
+            this.submitSuccess = false;
+
+            try {
+                const formData = new FormData();
+                formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+                formData.append('area', this.bug.area || 'UI/Виджет');
+                formData.append('verdict', this.bug.verdict);
+                formData.append('description', this.bug.description);
+                
+                // We send logs as string explicitly so you don't have to change backend immediately
+                formData.append('logs', JSON.stringify(window.__qaLogs || []));
+
+                // Append video if daemon caught it
+                if (this.videoBlob && this.daemonStatus === 'ok') {
+                    formData.append('video', this.videoBlob, 'instant_replay.mp4');
+                }
+
+                // Send to our regular flask endpoint for ad-hoc / desktop bugs
+                // We use desktop-report if it supports session/auth, otherwise we can use ad-hoc logic.
+                const res = await fetch('/api/qa/desktop-report', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer QA_COMPANION_SECRET_TOKEN_2026'
+                    },
+                    body: formData
+                });
+
+                if (res.ok) {
+                    this.submitSuccess = true;
+                    this.bug.description = ''; 
+                    this.videoBlob = null;
+                    this.daemonStatus = 'loading';
+                    setTimeout(() => { this.isOpen = false; this.submitSuccess = false; }, 2000);
+                } else {
+                    const data = await res.json().catch(()=>({}));
+                    this.submitError = data.error || 'Ошибка сохранения баг-репорта';
+                }
+
+            } catch (err) {
+                console.log(err);
+                this.submitError = 'Ошибка сети. Проверьте соединение.';
+            } finally {
+                this.isSubmitting = false;
+            }
+        }
+    }));
+});
+</script>

@@ -1,0 +1,290 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+  <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
+    
+    <!-- 1. HERO BANNER & HEADER -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+      <div>
+        <span class="text-xs font-black text-indigo-500 uppercase tracking-widest block mb-1">📊 АНАЛИТИКА ПОТОКА И ГРУПП</span>
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight font-display">Аналитика группы и потоков</h1>
+        <p class="text-xs font-extrabold text-slate-400 mt-1">Сводные результаты успеваемости, сдачи ДЗ и проблемные темы учеников</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Group Filter Pill-Tabs -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 p-1.5 rounded-2xl flex items-center gap-1 shadow-inner overflow-x-auto max-w-full">
+          <a href="/analytics?group_id=all" class="px-4 py-2 rounded-xl text-xs font-extrabold transition-all no-underline shrink-0 {% if selected_group_id == 'all' %}bg-white text-indigo-600 shadow-xs border border-slate-200/60{% else %}text-slate-500 hover:text-slate-800{% endif %}">
+            Все группы ({{ groups|length }})
+          </a>
+          {% for g in groups %}
+          <a href="/analytics?group_id={{ g.group_id }}" class="px-4 py-2 rounded-xl text-xs font-extrabold transition-all no-underline shrink-0 {% if selected_group_id == g.group_id|string %}bg-white text-indigo-600 shadow-xs border border-slate-200/60{% else %}text-slate-500 hover:text-slate-800{% endif %}">
+            {{ g.title }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. TOP METRICS (4 Bento-cards) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- Metric 1: Average Score -->
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-center z-10">
+          <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Средний балл КЕГЭ</span>
+          <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center border border-indigo-200"><i class="ph-bold ph-trophy text-lg"></i></div>
+        </div>
+        <div class="mt-4 z-10">
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-3xl font-black text-slate-900 font-display">{{ avg_score }}</h3>
+            <span class="text-xs font-bold text-slate-400">/ 100 б</span>
+          </div>
+          <p class="text-[11px] font-extrabold text-emerald-600 mt-1 flex items-center gap-1"><i class="ph-bold ph-trend-up"></i> динамика успеваемости</p>
+        </div>
+      </div>
+
+      <!-- Metric 2: HW Completion Rate -->
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-center z-10">
+          <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Сдача ДЗ в срок</span>
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200"><i class="ph-bold ph-check-square-offset text-lg"></i></div>
+        </div>
+        <div class="mt-4 z-10">
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-3xl font-black text-slate-900 font-display">{{ hw_on_time_pct }}%</h3>
+          </div>
+          <p class="text-[11px] font-extrabold text-slate-500 mt-1">показатель срока</p>
+        </div>
+      </div>
+
+      <!-- Metric 3: Problematic Topics -->
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-center z-10">
+          <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Проблемные темы</span>
+          <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center border border-amber-200"><i class="ph-bold ph-warning-octagon text-lg"></i></div>
+        </div>
+        <div class="mt-4 z-10">
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-3xl font-black text-amber-600 font-display">{{ problem_topics_count }} темы</h3>
+          </div>
+          <p class="text-[11px] font-extrabold text-amber-700 mt-1">требуют проработки</p>
+        </div>
+      </div>
+
+      <!-- Metric 4: Attendance Rate -->
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between relative overflow-hidden group hover:-translate-y-1 transition-transform">
+        <div class="flex justify-between items-center z-10">
+          <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Посещаемость</span>
+          <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center border border-purple-200"><i class="ph-bold ph-video-camera text-lg"></i></div>
+        </div>
+        <div class="mt-4 z-10">
+          <div class="flex items-baseline gap-2">
+            <h3 class="text-3xl font-black text-slate-900 font-display">{{ attendance_pct }}%</h3>
+          </div>
+          <p class="text-[11px] font-extrabold text-purple-600 mt-1">активность онлайн</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3. MAIN ANALYTICS GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- LEFT COLUMN: GROUP SCORES & PROBLEMATIC TOPICS (Col 7) -->
+      <div class="lg:col-span-7 flex flex-col gap-8">
+        
+        <!-- SECTION: GROUP PERFORMANCE -->
+        <div class="bg-[#F8FAFC] border-2 border-slate-200 rounded-[2rem] p-6 shadow-xs flex flex-col gap-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-chart-bar text-indigo-600 text-lg"></i>
+              <span>Успеваемость учебных групп</span>
+            </h2>
+            <span class="text-xs font-bold text-slate-400">{{ groups_stats|length }} группы</span>
+          </div>
+
+          {% if not groups_stats %}
+          <div class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center space-y-2">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 mx-auto flex items-center justify-center">
+              <i class="ph-bold ph-users text-2xl"></i>
+            </div>
+            <h4 class="text-xs font-black text-slate-700">У вас пока нет активных групп</h4>
+            <p class="text-[11px] font-semibold text-slate-400">Создайте учебную группу для сбора детальной статистики</p>
+          </div>
+          {% else %}
+          {% for g in groups_stats %}
+          <div class="bg-white border-2 border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs hover:border-indigo-300 transition-colors">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 font-black text-[10px] rounded-md uppercase">{{ g.title }}</span>
+                <h3 class="text-sm font-black text-slate-800">{{ g.subject }}</h3>
+              </div>
+              <p class="text-xs font-bold text-slate-400">{{ g.students_count }} учеников • {{ g.tag }}</p>
+            </div>
+            <div class="flex items-center gap-4 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100">
+              <div class="text-right">
+                <span class="text-xs font-extrabold text-slate-400 block">Ср. балл</span>
+                <span class="text-lg font-black text-indigo-600">{{ g.avg_score }} б</span>
+              </div>
+              <div class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-black text-indigo-600 text-sm">
+                {{ g.hw_pct }}%
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          {% endif %}
+
+        </div>
+
+        <!-- SECTION: PROBLEMATIC TOPICS -->
+        <div class="bg-[#F8FAFC] border-2 border-slate-200 rounded-[2rem] p-6 shadow-xs flex flex-col gap-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-warning-octagon text-amber-500 text-lg"></i>
+              <span>Проблемные темы и номера КЕГЭ</span>
+            </h2>
+            <span class="text-xs font-bold text-slate-400">% успешности решений</span>
+          </div>
+
+          <div class="space-y-4">
+            {% if not problem_topics %}
+            <div class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center space-y-2">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-500 mx-auto flex items-center justify-center">
+                <i class="ph-bold ph-check-circle text-2xl"></i>
+              </div>
+              <h4 class="text-xs font-black text-slate-700">Проблема критических тем не обнаружена</h4>
+              <p class="text-[11px] font-semibold text-slate-400">Ученики справляются с заданиями со средней успеваемостью выше 60%</p>
+            </div>
+            {% else %}
+            {% for pt in problem_topics %}
+            <div class="bg-white border-2 border-slate-200 rounded-2xl p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 {% if pt.is_critical %}bg-rose-100 text-rose-700{% else %}bg-amber-100 text-amber-700{% endif %} font-black text-[11px] rounded-md">
+                    {{ pt.task_number }}
+                  </span>
+                  <h4 class="text-xs font-black text-slate-800">{{ pt.title }}</h4>
+                </div>
+                <span class="text-xs font-black {% if pt.is_critical %}text-rose-600{% else %}text-amber-600{% endif %}">
+                  {{ pt.pct }}% успешности {% if pt.is_critical %}🔴{% else %}🟡{% endif %}
+                </span>
+              </div>
+              <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+                <div class="{% if pt.is_critical %}bg-rose-500{% else %}bg-amber-500{% endif %} h-full rounded-full" style="width: {{ pt.pct }}%;"></div>
+              </div>
+              <p class="text-[11px] font-bold text-slate-400">{{ pt.recommendation }}</p>
+            </div>
+            {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: LAGGING STUDENTS & ATTENDANCE (Col 5) -->
+      <div class="lg:col-span-5 flex flex-col gap-8">
+        
+        <!-- SECTION: LAGGING STUDENTS -->
+        <div class="bg-[#F8FAFC] border-2 border-slate-200 rounded-[2rem] p-6 shadow-xs flex flex-col gap-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-user-minus text-rose-500 text-lg"></i>
+              <span>Требуют внимания (ДЗ)</span>
+            </h2>
+            <span class="text-xs font-bold text-rose-600 font-black">{{ debtors|length }} ученика</span>
+          </div>
+
+          <div class="space-y-3">
+            {% if not debtors %}
+            <div class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-2">
+              <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-500 mx-auto flex items-center justify-center">
+                <i class="ph-bold ph-thumbs-up text-xl"></i>
+              </div>
+              <h4 class="text-xs font-black text-slate-700">Просроченных ДЗ нет</h4>
+              <p class="text-[11px] font-semibold text-slate-400">Все ученики сдают домашние задания вовремя!</p>
+            </div>
+            {% else %}
+            {% for d in debtors %}
+            <div class="bg-white border-2 border-slate-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs">
+              <div class="flex items-center gap-3">
+                <img src="{{ d.avatar }}" class="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50">
+                <div>
+                  <h4 class="text-xs font-black text-slate-800">{{ d.name }}</h4>
+                  <span class="text-[10px] font-extrabold text-slate-400">{{ d.group_name }} • {{ d.overdue_count }} просроченных ДЗ</span>
+                </div>
+              </div>
+              <button type="button" onclick="sendTelegramReminder({{ d.student_id }}, '{{ d.name|escape }}')" class="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl transition-colors border border-indigo-200 cursor-pointer" title="Отправить напоминание в Telegram">
+                <i class="ph-bold ph-paper-plane-tilt text-base"></i>
+              </button>
+            </div>
+            {% endfor %}
+            {% endif %}
+          </div>
+
+          <a href="/students" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs rounded-xl text-center no-underline transition-colors block">
+            Открыть полный список в CRM
+          </a>
+        </div>
+
+        <!-- SECTION: ATTENDANCE STATS -->
+        <div class="bg-[#F8FAFC] border-2 border-slate-200 rounded-[2rem] p-6 shadow-xs flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-black text-slate-900 flex items-center gap-2">
+              <i class="ph-bold ph-calendar-check text-purple-600 text-lg"></i>
+              <span>Посещаемость вебинаров</span>
+            </h2>
+            <span class="text-xs font-black text-purple-600">{{ attendance_pct }}%</span>
+          </div>
+
+          <div class="bg-white border-2 border-slate-200 rounded-2xl p-4 space-y-3">
+            <div class="flex justify-between items-center text-xs font-bold">
+              <span class="text-slate-500">Присутствовали онлайн</span>
+              <span class="text-slate-800">132 ч</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
+              <div class="bg-purple-600 h-full rounded-full" style="width: {{ attendance_pct }}%;"></div>
+            </div>
+            <div class="flex justify-between items-center text-[11px] font-bold text-slate-400 pt-1">
+              <span>Просмотрено в записи: 10 ч</span>
+              <span>Пропущено: 4 ч</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+    function getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    async function sendTelegramReminder(studentId, name) {
+        try {
+            const response = await fetch(`/api/teacher/students/${studentId}/remind`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+            const data = await response.json();
+            if (response.ok && data.status === 'success') {
+                alert(`🚀 ${data.message || 'Напоминание отправлено'}`);
+            } else {
+                alert(`⚠️ ${data.message || 'Ошибка отправки напоминания'}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Сетевая ошибка при отправке напоминания');
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "sandbox/layout_teacher.html" %}
+{% block sandbox_content %}
+<div class="ml-24 max-w-[1400px] mx-auto p-8 relative">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-bold font-display text-slate-800 tracking-tight">Карта курса</h1>
+            <p class="text-slate-500 mt-2">Интерактивный граф модулей и заданий.</p>
+        </div>
+        
+        <!-- Upload Action -->
+        <label class="btn-3d px-6 py-3 bg-indigo-600 text-white rounded-2xl cursor-pointer hover:bg-indigo-700 shadow-[0_4px_0_#4338CA,inset_0_2px_4px_rgba(255,255,255,0.3)] border-b-[4px] border-indigo-700">
+            <i class="ph-bold ph-upload-simple"></i>
+            Загрузить ZIP архив
+            <input type="file" id="zip-upload" class="hidden" accept=".zip">
+        </label>
+    </div>
+
+    <!-- Map Container -->
+    <div class="relative bg-white border-2 border-slate-200 rounded-[2rem] p-8 min-h-[600px] shadow-sm">
+        
+        <div id="upload-overlay" class="hidden absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-[2rem]">
+            <div class="text-center">
+                <i class="ph-duotone ph-spinner animate-spin text-indigo-600 text-6xl mb-4"></i>
+                <h3 class="text-xl font-bold text-slate-800">Распаковка архива...</h3>
+                <p class="text-slate-500">Это может занять несколько секунд</p>
+            </div>
+        </div>
+
+        <!-- The Map Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            {% for block in blocks %}
+            <div class="hidden" id="content-{{ block.id }}">{{ block.content or 'Нет описания' }}</div>
+            <div class="relative group cursor-pointer" onclick="openContentModal('{{ block.title | escape }}', 'content-{{ block.id }}')">
+                
+                <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-5 h-full flex flex-col transition-transform group-hover:-translate-y-1 group-hover:shadow-[0_6px_0_#DAE1E9] active:translate-y-[2px] active:shadow-[0_2px_0_#DAE1E9]">
+                    
+                    <div class="w-14 h-14 bg-white rounded-2xl shadow-sm flex flex-col items-center justify-center mb-4 border border-slate-200">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Блок</span>
+                        <span class="text-indigo-600 font-bold text-xl leading-none">{{ block.lesson_number }}</span>
+                    </div>
+                    
+                    <h3 class="font-bold text-slate-800 text-lg leading-tight mb-2 flex-1">{{ block.title or 'Без названия' }}</h3>
+                    
+                    <div class="flex items-center justify-between mt-4">
+                        {% if block.content %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-medium text-sm border border-emerald-200">
+                            <i class="ph-bold ph-text-align-left"></i> Материалы
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 font-medium text-sm border border-amber-200">
+                            <i class="ph-bold ph-warning-circle"></i> Пусто
+                        </span>
+                        {% endif %}
+                        
+                        <i class="ph-bold ph-arrow-right text-slate-300 group-hover:text-indigo-500 transition-colors"></i>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-full flex flex-col items-center justify-center py-20 text-center">
+                <div class="w-24 h-24 bg-slate-50 rounded-[2rem] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] flex items-center justify-center mb-6">
+                    <i class="ph-duotone ph-map-trifold text-4xl text-slate-400"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-700 mb-2">Карта пуста</h2>
+                <p class="text-slate-500 max-w-sm">Загрузите ZIP архив с PDF файлами, чтобы автоматически построить карту курса.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Content Modal -->
+<div id="content-modal" class="hidden fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col transform scale-95 transition-transform duration-300 relative" id="content-modal-box">
+        
+        <div class="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
+            <h3 class="font-bold text-2xl text-slate-800" id="content-modal-title">Просмотр</h3>
+            <button onclick="closeContentModal()" class="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 hover:text-slate-700 transition-colors shadow-sm">
+                <i class="ph-bold ph-x"></i>
+            </button>
+        </div>
+        
+        <div class="flex-1 bg-[#F4F7FA] overflow-y-auto rounded-b-[2rem] p-8">
+            <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-8">
+                <div id="content-modal-body" class="whitespace-pre-wrap text-slate-700 text-lg leading-relaxed font-medium"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openContentModal(title, contentId) {
+        const modal = document.getElementById('content-modal');
+        const box = document.getElementById('content-modal-box');
+        
+        document.getElementById('content-modal-title').textContent = title || 'Описание урока';
+        document.getElementById('content-modal-body').textContent = document.getElementById(contentId).textContent.trim();
+        
+        modal.classList.remove('hidden');
+        // Trigger reflow
+        void modal.offsetWidth;
+        modal.classList.remove('opacity-0');
+        box.classList.remove('scale-95');
+    }
+    
+    function closeContentModal() {
+        const modal = document.getElementById('content-modal');
+        const box = document.getElementById('content-modal-box');
+        
+        modal.classList.add('opacity-0');
+        box.classList.add('scale-95');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.getElementById('content-modal-body').textContent = '';
+        }, 300);
+    }
+    
+    document.getElementById('zip-upload').addEventListener('change', async function(e) {
+        if (!this.files || !this.files[0]) return;
+        
+        const file = this.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('course_id', '{{ course_id }}');
+        
+        const overlay = document.getElementById('upload-overlay');
+        overlay.classList.remove('hidden');
+        
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const res = await fetch('/theory/api/upload-map-archive', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                overlay.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Ошибка сети при загрузке');
+            overlay.classList.add('hidden');
+        }
+        
+        this.value = ''; // Reset
+    });
+</script>
+{% endblock %}

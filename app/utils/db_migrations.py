@@ -1427,6 +1427,18 @@ def ensure_schema_columns(app):
                     except Exception as e:
                         logger.warning(f"Could not add numeric_id to Users: {e}")
                         db.session.rollback()
+
+                if 'parent_link_code' not in users_columns:
+                    try:
+                        if _is_postgres(app):
+                            db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN parent_link_code VARCHAR(20)'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN parent_link_code VARCHAR(20)'))
+                        db.session.commit()
+                        logger.info("Added parent_link_code column to Users table")
+                    except Exception as e:
+                        logger.warning(f"Could not add parent_link_code to Users: {e}")
+                        db.session.rollback()
             
             user_roles_table = _resolve_table_name(table_names, 'UserRoles')
             if not user_roles_table:
@@ -2055,6 +2067,9 @@ def ensure_schema_columns(app):
             # ===== Многокурсовая архитектура (ExamCourses, CourseTaskTemplates, etc.) =====
             _migrate_multi_course(app, inspector, table_names, is_postgres)
 
+            # ===== Связи Преподаватель-Ученик и Приглашения =====
+            _migrate_teacher_students_and_invites(app, inspector, table_names, is_postgres)
+
             # ===== Сидирование промокодов =====
             _seed_promo_codes(app)
 
@@ -2474,4 +2489,71 @@ def _seed_promo_codes(app):
     except Exception as e:
         db.session.rollback()
         logger.warning(f"Could not seed promo codes: {e}")
+
+
+def _migrate_teacher_students_and_invites(app, inspector, table_names, is_postgres):
+    """Миграция для таблиц teacher_students и полей InviteLinks."""
+    try:
+        from core.db_models import TeacherStudent, Student, Enrollment, InviteLink
+        
+        # 1. ensure columns in InviteLinks
+        if 'InviteLinks' in table_names or 'invitelinks' in table_names:
+            inv_table = 'InviteLinks' if 'InviteLinks' in table_names else 'invitelinks'
+            cols = {c['name'] for c in inspector.get_columns(inv_table)}
+            if 'teacher_id' not in cols:
+                try:
+                    db.session.execute(text(f'ALTER TABLE "{inv_table}" ADD COLUMN teacher_id INTEGER'))
+                    db.session.commit()
+                    logger.info(f"Added teacher_id to {inv_table}")
+                except Exception as e:
+                    logger.warning(f"Could not add teacher_id to {inv_table}: {e}")
+                    db.session.rollback()
+            if 'student_id' not in cols:
+                try:
+                    db.session.execute(text(f'ALTER TABLE "{inv_table}" ADD COLUMN student_id INTEGER'))
+                    db.session.commit()
+                    logger.info(f"Added student_id to {inv_table}")
+                except Exception as e:
+                    logger.warning(f"Could not add student_id to {inv_table}: {e}")
+                    db.session.rollback()
+            if 'revoked_at' not in cols:
+                try:
+                    col_type = 'TIMESTAMP' if is_postgres else 'DATETIME'
+                    db.session.execute(text(f'ALTER TABLE "{inv_table}" ADD COLUMN revoked_at {col_type}'))
+                    db.session.commit()
+                    logger.info(f"Added revoked_at to {inv_table}")
+                except Exception as e:
+                    logger.warning(f"Could not add revoked_at to {inv_table}: {e}")
+                    db.session.rollback()
+
+        # 2. Ensure tables created
+        db.create_all()
+
+        # 3. Backfill teacher_students from Student.mentor_id and Enrollment
+        students = Student.query.filter(Student.mentor_id.isnot(None)).all()
+        created_count = 0
+        for s in students:
+            if not s.user_id or not s.mentor_id:
+                continue
+            existing = TeacherStudent.query.filter_by(teacher_id=s.mentor_id, student_id=s.user_id).first()
+            if not existing:
+                ts = TeacherStudent(teacher_id=s.mentor_id, student_id=s.user_id, status='active')
+                db.session.add(ts)
+                created_count += 1
+
+        enrollments = Enrollment.query.filter(Enrollment.tutor_id.isnot(None), Enrollment.student_id.isnot(None)).all()
+        for e in enrollments:
+            existing = TeacherStudent.query.filter_by(teacher_id=e.tutor_id, student_id=e.student_id).first()
+            if not existing:
+                ts = TeacherStudent(teacher_id=e.tutor_id, student_id=e.student_id, status='active')
+                db.session.add(ts)
+                created_count += 1
+
+        if created_count > 0:
+            db.session.commit()
+            logger.info(f"Backfilled {created_count} TeacherStudent records")
+    except Exception as ex:
+        db.session.rollback()
+        logger.warning(f"TeacherStudent migration warning: {ex}")
+
 

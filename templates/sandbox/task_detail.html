@@ -1,0 +1,837 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block sandbox_content %}
+<!-- CSRF Meta Token for AJAX requests -->
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token else '' }}">
+
+<!-- KaTeX CDN Integration -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initKaTeX()"></script>
+
+<!-- Единый каноничный холст открытой работы (Master Canvas max-w-[1400px]) -->
+<main class="min-h-screen w-full relative z-10 bg-slate-50/50 p-3 sm:p-6 ml-0 lg:ml-24 pl-3 sm:pl-6 lg:pl-6 pb-20 lg:pb-28">
+  <div class="max-w-[1400px] mx-auto w-full space-y-4 sm:space-y-6 pt-4 lg:pt-0">
+    
+    <!-- 1. ИНФО-ШАПКА РАБОТЫ (Tactile 3D Card Header Plate) -->
+    <div class="w-full bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 relative overflow-hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="space-y-1.5">
+          <a href="{{ url_for('assignments.submissions_list') }}" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors no-underline">
+            <i class="ph-bold ph-arrow-left"></i> К списку заданий
+          </a>
+          <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display">
+            {{ assignment.title if assignment else "" }}
+          </h1>
+        </div>
+
+        <!-- 4 Метаданных чипа & Живой Таймер -->
+        <div class="flex items-center gap-2 flex-wrap">
+          {% if submission and submission.status in ['COMPLETED', 'CHECKED', 'GRADED'] %}
+          <span id="header-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+            <i class="ph-bold ph-check-circle text-emerald-600 text-sm"></i> Завершено
+          </span>
+          {% elif submission and submission.status in ['SUBMITTED', 'UNDER_REVIEW'] %}
+          <span id="header-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+            <i class="ph-fill ph-clock text-amber-500 animate-pulse text-[10px]"></i> Сдано на проверку
+          </span>
+          {% else %}
+          <span id="header-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+            <i class="ph-fill ph-circle text-purple-500 animate-pulse text-[8px]"></i> В процессе
+          </span>
+          {% endif %}
+
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
+            <i class="ph-bold ph-clock text-indigo-500"></i> Дедлайн: {{ deadline_display or (assignment.deadline.strftime('%d.%m %H:%M') if (assignment and assignment.deadline) else 'Без дедлайна') }}
+          </span>
+
+          {% if assignment and assignment.time_limit_minutes %}
+          <span id="live-timer-badge" class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-rose-500 text-white border border-rose-600 rounded-lg text-xs font-mono font-black shadow-xs">
+            <i class="ph-bold ph-timer text-sm animate-spin"></i> Таймер: <span id="live-timer-text">--:--</span>
+          </span>
+          {% endif %}
+          
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
+            <i class="ph-bold ph-arrow-counter-clockwise text-indigo-500"></i> Попытки: {{ submission.attempt_count or attempts_used or 0 if submission else 0 }}/{{ effective_max_attempts or (assignment.max_attempts_default if assignment else 3) }}
+          </span>
+
+          <span id="header-progress-badge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
+            <i class="ph-bold ph-check-circle text-indigo-600"></i> Задач: {{ tasks_data|length }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- СТАРТОВЫЙ ЭКРАН РАБОТЫ (Для работ с таймером time_limit_minutes > 0) -->
+    <div id="start-screen-container" class="hidden bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-8 text-center space-y-6 max-w-2xl mx-auto my-12">
+      <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto text-3xl shadow-sm border border-indigo-200">
+        <i class="ph-bold ph-timer"></i>
+      </div>
+      <div class="space-y-2">
+        <h2 class="text-2xl font-black text-slate-800 font-display">
+          Готовы начать выполнение работы?
+        </h2>
+        <p class="text-xs font-medium text-slate-600 max-w-md mx-auto leading-relaxed">
+          У вас установлено ограничение по времени: <strong class="text-indigo-600 font-bold" id="start-screen-time-text">{{ assignment.time_limit_minutes if assignment else 0 }} минут</strong>. Таймер запустится сразу после нажатия кнопки ниже.
+        </p>
+      </div>
+      
+      <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl text-left space-y-2 text-xs text-slate-700">
+        <p class="font-black text-slate-800 flex items-center gap-2">
+          <i class="ph-bold ph-info text-indigo-600"></i> Правила прохождения:
+        </p>
+        <ul class="list-disc pl-5 space-y-1 text-slate-600">
+          <li>Таймер нельзя поставить на паузу.</li>
+          <li>По истечении времени введенные ответы автоматически отправятся на проверку.</li>
+          <li>Для отправки решений используйте кнопку «Завершить и сдать работу».</li>
+        </ul>
+      </div>
+
+      <button onclick="startTimedAssignment()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer inline-flex items-center justify-center gap-2 text-base border-none">
+        <i class="ph-bold ph-rocket-launch text-xl"></i> 🚀 Начать выполнение работы!
+      </button>
+    </div>
+
+    <!-- 2. ПАНЕЛЬ ПЕРЕКЛЮЧЕНИЯ ЗАДАЧ (Stepper Bar Pill-Tabs) -->
+    <div id="task-stepper-container" class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-3 flex items-center justify-between gap-4 overflow-x-auto">
+      <div class="flex items-center gap-2.5" id="task-stepper-tabs">
+        <span class="text-xs font-black text-slate-400 uppercase tracking-widest px-2 shrink-0">Задания:</span>
+        
+        {% for t in tasks_data %}
+        <button id="tab-btn-{{ t.order_index }}"
+                data-task-tab="{{ t.order_index }}"
+                onclick="switchTask(this)"
+                class="task-tab-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border
+                {% if loop.first %}
+                  active bg-indigo-600 text-white border-indigo-700 shadow-md font-black
+                {% elif t.is_correct == True %}
+                  bg-emerald-500 text-white border-emerald-600
+                {% elif t.is_correct == False %}
+                  bg-rose-500 text-white border-rose-600
+                {% else %}
+                  bg-white text-slate-700 hover:bg-slate-50 border-slate-200
+                {% endif %}">
+          <span>№ {{ t.order_index }}</span>
+          {% if t.is_correct == True %}
+            <i class="ph-bold ph-check text-white text-sm"></i>
+          {% elif t.is_correct == False %}
+            <i class="ph-bold ph-x text-white text-sm"></i>
+          {% else %}
+            <i class="ph-bold ph-circle text-slate-300 text-sm"></i>
+          {% endif %}
+        </button>
+        {% endfor %}
+      </div>
+
+      <div id="task-indicator-text" class="text-xs font-bold text-slate-500 px-2 shrink-0 hidden sm:block">
+        Задача 1 из {{ tasks_data|length }}
+      </div>
+    </div>
+
+    <!-- 3. BENTO-СЕТКА АКТИВНОЙ ЗАДАЧИ (12 колонок) -->
+    <div id="bento-main-tasks-grid" class="grid grid-cols-12 gap-6 w-full">
+      
+      <!-- ЛЕВАЯ КОЛОНКА / УСЛОВИЕ И ИНСТРУМЕНТЫ (col-span-12 lg:col-span-8 space-y-6) -->
+      <div id="task-content-area" class="col-span-12 lg:col-span-8 space-y-6">
+        
+        {% for t in tasks_data %}
+        <!-- Контейнер задачи {{ t.order_index }} -->
+        <div id="task-card-{{ t.order_index }}" class="task-card-container {% if not loop.first %}hidden{% endif %} space-y-6">
+          
+          <!-- Карточка Условия Задачи (Tactile 3D Card) -->
+          <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-6">
+            
+            <!-- Бейджи и ID задачи -->
+            <div class="flex items-center justify-between flex-wrap gap-3 pb-4 border-b-2 border-slate-200/80">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-black uppercase">
+                  № {{ t.task_number }}
+                </span>
+                <span class="inline-flex items-center px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold">
+                  {{ t.max_score }} Балл
+                </span>
+                <span class="inline-flex items-center px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold">
+                  Уровень: {{ t.difficulty_str }}
+                </span>
+                <span id="attempts-badge-{{ t.order_index }}" class="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold">
+                  Попытки: <span class="used-attempts">{{ t.attempts_used if t.attempts_used is not none else 0 }}</span> / {{ t.max_attempts or effective_max_attempts or (assignment.max_attempts_default if assignment else 3) }}
+                </span>
+              </div>
+              <span class="text-xs font-mono font-bold text-slate-400">ID #task-{{ t.assignment_task_id }}</span>
+            </div>
+
+            <!-- Текст Условия с KaTeX формулами -->
+            <div class="space-y-4 text-slate-800 text-sm font-medium leading-relaxed math-content bg-white p-5 rounded-2xl border-2 border-slate-200 shadow-[0_2px_0_#DAE1E9]">
+              {{ t.content_html | safe }}
+            </div>
+
+            <!-- Быстрые утилиты -->
+            <div class="flex items-center gap-3 pt-2">
+              <a href="/sandbox/workspace/{{ assignment.assignment_id if assignment else 0 }}/{{ t.task_number }}" class="bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline flex items-center gap-1.5 text-xs">
+                <i class="ph-bold ph-lightning text-amber-500"></i> Открыть черновик в IDE
+              </a>
+            </div>
+          </div>
+
+          <!-- Блок Ввода Ответа и Автопроверки (Tactile 3D Card) -->
+          <div class="bg-[#F4F7FA] border-2 border-slate-200 p-6 rounded-[2rem] shadow-[0_4px_0_#DAE1E9] space-y-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <i class="ph-bold ph-check-square-offset text-indigo-600 text-lg"></i> Ваш ответ на задачу
+              </h4>
+              <span class="text-xs font-bold text-slate-400">Число или символы без пробелов</span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+              <input type="text" 
+                     id="answer-input-{{ t.order_index }}"
+                     placeholder="Введите ответ..." 
+                     value="{{ t.user_answer }}"
+                     {% if t.is_locked or is_assignment_submitted %}readonly disabled{% endif %}
+                     class="flex-1 bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-lg font-mono font-black text-slate-800 tracking-widest placeholder-slate-400 outline-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] disabled:bg-slate-100 disabled:text-slate-500">
+              
+              {% if allow_separate_submission or (assignment_meta is defined and assignment_meta.allow_separate_submission) %}
+              <button id="submit-btn-{{ t.order_index }}"
+                      data-order-index="{{ t.order_index }}"
+                      data-ass-task-id="{{ t.assignment_task_id }}"
+                      onclick="submitSingleTask(this)"
+                      {% if t.is_locked or is_assignment_submitted %}disabled{% endif %}
+                      class="single-task-submit-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-3.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer shrink-0 disabled:bg-slate-300 disabled:cursor-not-allowed border-none text-xs">
+                Проверить ответ
+              </button>
+              {% endif %}
+            </div>
+
+            <!-- Обратная связь по проверке -->
+            <div id="feedback-box-{{ t.order_index }}" class="{% if not t.user_answer and t.is_correct == None %}hidden{% endif %}">
+              {% if t.is_correct == True %}
+              <div class="p-3.5 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-black flex items-center gap-2">
+                <i class="ph-bold ph-check-circle text-emerald-600 text-lg"></i> Потрясающе! Ответ верный!
+              </div>
+              {% elif t.is_correct == False %}
+              <div class="p-3.5 bg-rose-100 border border-rose-300 text-rose-900 rounded-xl text-xs font-black flex items-center gap-2">
+                <i class="ph-bold ph-x-circle text-rose-600 text-lg"></i> Неверный ответ.
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Блок раскрытия правильного ответа (при сдаче или показах) -->
+            <div id="reveal-box-{{ t.order_index }}" class="{% if not t.correct_answer %}hidden{% endif %} p-4 bg-amber-50 border-2 border-amber-300 text-amber-900 rounded-xl text-xs font-bold space-y-1">
+              <div class="flex items-center gap-2 text-amber-800 font-black">
+                <i class="ph-bold ph-key text-base"></i> Правильный ответ на задачу:
+              </div>
+              <p class="font-mono text-sm font-black text-amber-950">
+                <span class="correct-val">{{ t.correct_answer }}</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Виджет Встроенной IDE (Python Workspace Plate) -->
+          <div class="bg-slate-900 border-2 border-slate-800 rounded-[2rem] p-6 text-white relative overflow-hidden space-y-4 shadow-xl">
+            <div class="absolute -right-20 -top-20 w-64 h-64 bg-indigo-500/20 blur-[60px] pointer-events-none"></div>
+
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+              <div>
+                <span class="px-3 py-1 bg-indigo-900/50 text-indigo-300 border border-indigo-500/30 rounded-xl text-[10px] font-bold uppercase tracking-wider">
+                  Встроенная Среда IDE
+                </span>
+                <h3 class="text-lg font-black font-display tracking-tight mt-1.5">
+                  🚀 Python Workspace для задачи №{{ t.order_index }}
+                </h3>
+              </div>
+
+              <a href="/sandbox/workspace/{{ assignment.assignment_id if assignment else 0 }}/{{ t.task_number }}" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-black px-5 py-3 rounded-xl border-b-[4px] border-indigo-800 shadow-md active:translate-y-[2px] transition-all no-underline flex items-center justify-center gap-2 text-xs">
+                <i class="ph-bold ph-code text-base"></i> Решать в Workspace
+              </a>
+            </div>
+
+            <!-- Превью кода задачи -->
+            <div class="bg-slate-950 p-4 rounded-xl font-mono text-xs text-emerald-400 border border-slate-800/80 overflow-x-auto relative z-10">
+              <pre><code>{{ t.starter_code or '# Редактор кода доступен в Workspace' }}</code></pre>
+            </div>
+          </div>
+
+        </div>
+        {% endfor %}
+
+      </div>
+
+      <!-- ПРАВАЯ КОЛОНКА / ВЛОЖЕНИЯ И ОБСУЖДЕНИЕ (col-span-12 lg:col-span-4 space-y-6) -->
+      <div class="col-span-12 lg:col-span-4 space-y-6">
+        
+        <!-- Плашка 1: Файлы и вложения к активной задаче (Tactile 3D Card) -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 space-y-4">
+          <h3 class="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
+            <i class="ph-bold ph-paperclip text-indigo-600 text-base"></i> Вложения к задаче
+          </h3>
+
+          <div id="attachments-container" class="space-y-2.5">
+            <!-- Динамически заполняется через JS switchTask() -->
+          </div>
+        </div>
+
+        <!-- Плашка 2: Обсуждение и вопросы куратору (Tactile 3D Card) -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
+            <h3 class="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
+              <i class="ph-bold ph-chats-circle text-indigo-600 text-base"></i> Вопросы куратору (<span id="chat-task-title">к №1</span>)
+            </h3>
+            <span class="inline-flex items-center px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-[10px] font-black">
+              Онлайн
+            </span>
+          </div>
+
+          <!-- Чат сообщений текущей задачи -->
+          <div id="chat-messages-box" class="space-y-3 max-h-72 overflow-y-auto pr-1">
+            <!-- Заполняется динамически по активному task_id -->
+          </div>
+
+          <!-- Инпут ввода комментария -->
+          <div class="pt-2">
+            <div class="flex gap-2">
+              <input type="text" 
+                     id="chat-input" 
+                     placeholder="Задать вопрос по задаче..." 
+                     class="flex-1 bg-white border-2 border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
+              <button onclick="sendChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-sm active:translate-y-[2px] transition-all cursor-pointer border-none text-xs">
+                <i class="ph-bold ph-paper-plane-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<!-- 4. НИЖНИЙ ПЛАВАЮЩИЙ ФУТЕР (Tactile 3D Floating Footer) -->
+<div id="floating-footer" class="fixed bottom-4 right-4 sm:right-8 z-40 bg-white/95 backdrop-blur-md border-2 border-slate-200 p-3 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.1)] flex items-center gap-3">
+  <button onclick="saveDraft()" 
+          {% if is_assignment_submitted %}disabled{% endif %}
+          class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs disabled:opacity-40">
+    💾 Сохранить черновик
+  </button>
+  
+  <button id="submit-entire-assignment-btn"
+          onclick="submitEntireAssignment()" 
+          {% if is_assignment_submitted %}disabled{% endif %}
+          class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center gap-2 text-xs border-none disabled:bg-slate-300 disabled:cursor-not-allowed">
+    <i class="ph-fill ph-check-circle text-base"></i> Завершить и сдать работу
+  </button>
+</div>
+
+<!-- CANONICAL BOOSTUDY 3D SUBMIT CONFIRMATION MODAL -->
+<div id="submit-confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 hidden">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_8px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-md w-full mx-4 space-y-4">
+    <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl font-black border border-indigo-200">
+      <i class="ph-bold ph-rocket-launch"></i>
+    </div>
+    <h3 class="text-xl font-black text-slate-800 font-display">🚀 Завершить работу?</h3>
+    <p class="text-slate-600 font-medium text-sm leading-relaxed">
+      Все введенные ответы будут зафиксированы. Вы не сможете изменить решение в этой попытке.
+    </p>
+    <div class="flex items-center gap-3 justify-end pt-2">
+      <button id="cancel-submit-btn" onclick="closeSubmitModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] active:translate-y-[2px] cursor-pointer text-xs">
+        Отмена
+      </button>
+      <button id="confirm-submit-btn" onclick="confirmSubmitEntireAssignment()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] active:translate-y-[2px] cursor-pointer border-none text-xs">
+        Да, сдать
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- DATA CONTAINER FOR JINJA STRUCTURES (NON-EXECUTABLE JSON) -->
+<script id="task-page-data" type="application/json">
+{
+  "assignmentId": {{ (assignment.assignment_id if assignment else (assignment_id if assignment_id is defined else None)) | tojson | safe }},
+  "assignmentMeta": {{ (assignment_meta if assignment_meta is defined else {}) | tojson | safe }},
+  "tasksData": {{ tasks_data | tojson | safe }},
+  "messagesByTask": {{ (messages_by_task if messages_by_task is defined else {}) | tojson | safe }}
+}
+</script>
+
+<!-- CLIENT JAVASCRIPT LOGIC (100% CLEAN FOR VS CODE LINTER) -->
+<script>
+const rawDataEl = document.getElementById('task-page-data');
+const pageData = rawDataEl ? JSON.parse(rawDataEl.textContent) : {};
+
+const ASSIGNMENT_ID = pageData.assignmentId;
+const ASSIGNMENT_META = pageData.assignmentMeta || {};
+const TASKS_DATA = pageData.tasksData || [];
+const MESSAGES_BY_TASK = pageData.messagesByTask || {};
+
+let currentTaskIndex = 1;
+let liveTimerInterval = null;
+let currentRemainingSeconds = ASSIGNMENT_META.remaining_seconds || 0;
+
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? (meta.getAttribute('content') || '') : '';
+}
+
+/* --- 3D TOAST HELPER (BOOSTUDY UI CANON) --- */
+function show3DToast(message, redirectUrl = null) {
+  let toast = document.getElementById('boostudy-3d-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'boostudy-3d-toast';
+    toast.className = 'bg-emerald-500 text-white border-2 border-emerald-700 shadow-[0_4px_0_#047857] rounded-2xl p-4 font-black flex items-center gap-3 fixed bottom-6 right-6 z-50 transition-all transform duration-300';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<i class="ph-bold ph-check-circle text-xl"></i> <span>${message}</span>`;
+  toast.classList.remove('hidden', 'opacity-0', 'translate-y-4');
+
+  setTimeout(() => {
+    if (redirectUrl) {
+      window.location.href = redirectUrl;
+    } else {
+      toast.classList.add('opacity-0', 'translate-y-4');
+      setTimeout(() => toast.classList.add('hidden'), 300);
+    }
+  }, 1500);
+}
+
+/* --- KATEX LOGIC ($ ... $) --- */
+function renderKaTeXNow() {
+  const target = document.getElementById('task-content-area') || document.body;
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(target, {
+      delimiters: [
+        {left: "$$", right: "$$", display: true},
+        {left: "$", right: "$", display: false},
+        {left: "\\(", right: "\\)", display: false},
+        {left: "\\[", right: "\\]", display: true}
+      ],
+      ignoredTags: ["script", "noscript", "style", "textarea", "pre"],
+      throwOnError: false
+    });
+  }
+}
+
+function initKaTeX() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderKaTeXNow);
+  } else {
+    renderKaTeXNow();
+  }
+}
+
+/* --- TIMED ASSIGNMENT & START SCREEN --- */
+async function startTimedAssignment() {
+  try {
+    const res = await fetch(`/sandbox/api/assignment/${ASSIGNMENT_ID}/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      ASSIGNMENT_META.started_at = data.started_at;
+      ASSIGNMENT_META.status = 'IN_PROGRESS';
+      currentRemainingSeconds = data.remaining_seconds;
+
+      document.getElementById('start-screen-container').classList.add('hidden');
+      document.getElementById('task-stepper-container').classList.remove('hidden');
+      document.getElementById('bento-main-tasks-grid').classList.remove('hidden');
+      document.getElementById('floating-footer').classList.remove('hidden');
+
+      const statusBadge = document.getElementById('header-status-badge');
+      if (statusBadge) {
+        statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs';
+        statusBadge.innerHTML = '<i class="ph-fill ph-circle text-purple-500 animate-pulse text-[8px]"></i> В процессе';
+      }
+
+      startLiveTimer();
+      show3DToast('Таймер запущен! Удачи в решении работы!');
+    }
+  } catch (e) {
+    show3DToast('Ошибка старта работы');
+  }
+}
+
+function startLiveTimer() {
+  const limitMins = ASSIGNMENT_META.time_limit_minutes;
+  if (!limitMins || ASSIGNMENT_META.is_submitted) return;
+
+  const timerText = document.getElementById('live-timer-text');
+  if (!timerText) return;
+
+  if (liveTimerInterval) clearInterval(liveTimerInterval);
+
+  function updateTimerUI() {
+    if (currentRemainingSeconds <= 0) {
+      clearInterval(liveTimerInterval);
+      timerText.textContent = '00:00';
+      show3DToast('Время на выполнение работы истекло! Ответы отправляются...');
+      performSubmitEntireAssignment(true);
+      return;
+    }
+
+    const hrs = Math.floor(currentRemainingSeconds / 3600);
+    const mins = Math.floor((currentRemainingSeconds % 3600) / 60);
+    const secs = currentRemainingSeconds % 60;
+
+    if (hrs > 0) {
+      timerText.textContent = `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    } else {
+      timerText.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    currentRemainingSeconds--;
+  }
+
+  updateTimerUI();
+  liveTimerInterval = setInterval(updateTimerUI, 1000);
+}
+
+/* --- SWITCH TASK --- */
+function switchTask(targetArg) {
+  let orderIndex = 1;
+  if (typeof targetArg === 'number') {
+    orderIndex = targetArg;
+  } else if (targetArg && targetArg.dataset && targetArg.dataset.taskTab) {
+    orderIndex = Number(targetArg.dataset.taskTab);
+  }
+
+  currentTaskIndex = orderIndex;
+
+  document.querySelectorAll('.task-card-container').forEach(el => el.classList.add('hidden'));
+  const activeCard = document.getElementById(`task-card-${orderIndex}`);
+  if (activeCard) activeCard.classList.remove('hidden');
+
+  document.querySelectorAll('.task-tab-btn').forEach((btn, i) => {
+    const idx = i + 1;
+    if (idx === orderIndex) {
+      btn.classList.add('active', 'bg-indigo-600', 'text-white', 'border-indigo-700', 'shadow-md', 'font-black');
+      btn.classList.remove('bg-white', 'text-slate-700', 'hover:bg-slate-50');
+    } else {
+      if (!btn.classList.contains('bg-emerald-500') && !btn.classList.contains('bg-rose-500')) {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-700', 'shadow-md', 'font-black');
+        btn.classList.add('bg-white', 'text-slate-700', 'hover:bg-slate-50');
+      }
+    }
+  });
+
+  const indicator = document.getElementById('task-indicator-text');
+  if (indicator) {
+    indicator.textContent = `Задача ${orderIndex} из ${TASKS_DATA.length}`;
+  }
+
+  renderAttachments(orderIndex);
+  renderChat(orderIndex);
+
+  setTimeout(() => {
+    renderKaTeXNow();
+  }, 50);
+}
+
+function renderAttachments(orderIndex) {
+  const container = document.getElementById('attachments-container');
+  if (!container) return;
+
+  const tData = TASKS_DATA[orderIndex - 1];
+  const files = tData ? (tData.attached_files || []) : [];
+
+  if (files.length === 0) {
+    container.innerHTML = `<p class="text-xs font-medium text-slate-400 py-2">К этой задаче нет прикрепленных файлов.</p>`;
+    return;
+  }
+
+  let html = '';
+  files.forEach(f => {
+    const isXls = f.name.endsWith('.xlsx') || f.name.endsWith('.xls');
+    const iconClass = isXls ? 'ph-file-xls text-emerald-600 bg-emerald-50 border-emerald-200' : 'ph-file-text text-indigo-600 bg-indigo-50 border-indigo-200';
+    const downloadUrl = f.url || `/sandbox/download_attachment/${f.name}`;
+
+    html += `
+      <a href="${downloadUrl}" download class="p-3 bg-white border-2 border-slate-200 rounded-xl flex items-center justify-between hover:border-indigo-300 transition-all group no-underline shadow-xs">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-lg ${iconClass} flex items-center justify-center shrink-0 border">
+            <i class="ph-bold ${iconClass.split(' ')[0]} text-lg"></i>
+          </div>
+          <div class="min-w-0">
+            <h5 class="text-xs font-bold text-slate-800 truncate">${f.name}</h5>
+            <p class="text-[10px] font-medium text-slate-400">${f.size || 'Файл'} • Скачать</p>
+          </div>
+        </div>
+        <i class="ph-bold ph-download-simple text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+      </a>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+function renderChat(orderIndex) {
+  const box = document.getElementById('chat-messages-box');
+  const titleSpan = document.getElementById('chat-task-title');
+  if (titleSpan) titleSpan.textContent = `к №${orderIndex}`;
+
+  if (!box) return;
+
+  const msgs = MESSAGES_BY_TASK[orderIndex] || [];
+  if (msgs.length === 0) {
+    box.innerHTML = `<p class="text-xs font-medium text-slate-400 py-4 text-center">Задайте первый вопрос куратору по задаче №${orderIndex}.</p>`;
+    return;
+  }
+
+  let html = '';
+  msgs.forEach(m => {
+    const isTeacher = m.user_role === 'tutor' || m.user_role === 'teacher';
+    const bgClass = isTeacher ? 'bg-white border-slate-200 text-slate-700' : 'bg-indigo-50 border-indigo-200 text-indigo-950';
+    const authorClass = isTeacher ? 'text-indigo-600' : 'text-indigo-800';
+
+    html += `
+      <div class="${bgClass} p-3 rounded-xl border-2 space-y-1 shadow-xs">
+        <div class="flex items-center justify-between text-[10px] font-bold">
+          <span class="${authorClass}">${m.user_name}</span>
+          <span class="text-slate-400">${m.time_str}</span>
+        </div>
+        <p class="text-xs font-medium">${m.message}</p>
+      </div>
+    `;
+  });
+
+  box.innerHTML = html;
+  box.scrollTop = box.scrollHeight;
+}
+
+async function submitSingleTask(btnArg) {
+  let orderIndex = 1;
+  let assTaskId = 1;
+
+  if (typeof btnArg === 'number') {
+    orderIndex = btnArg;
+  } else if (btnArg && btnArg.dataset) {
+    orderIndex = Number(btnArg.dataset.orderIndex || 1);
+    assTaskId = Number(btnArg.dataset.assTaskId || 1);
+  }
+
+  const input = document.getElementById(`answer-input-${orderIndex}`);
+  if (!input) return;
+
+  const answerVal = input.value.trim();
+  if (!answerVal) {
+    show3DToast('Пожалуйста, введите ответ!');
+    return;
+  }
+
+  try {
+    const response = await fetch(`/sandbox/api/task_detail/${ASSIGNMENT_ID}/submit_task`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({
+        assignment_task_id: assTaskId,
+        answer: answerVal
+      })
+    });
+
+    const res = await response.json();
+
+    const feedbackBox = document.getElementById(`feedback-box-${orderIndex}`);
+    const attemptsSpan = document.querySelector(`#attempts-badge-${orderIndex} .used-attempts`);
+    const revealBox = document.getElementById(`reveal-box-${orderIndex}`);
+    const tabBtn = document.getElementById(`tab-btn-${orderIndex}`);
+    const submitBtn = document.getElementById(`submit-btn-${orderIndex}`);
+
+    if (res.attempts_used !== undefined && res.attempts_used !== null) {
+      if (attemptsSpan) attemptsSpan.textContent = res.attempts_used;
+      if (TASKS_DATA[orderIndex - 1]) TASKS_DATA[orderIndex - 1].attempts_used = res.attempts_used;
+    }
+
+    if (res.is_correct) {
+      if (feedbackBox) {
+        feedbackBox.classList.remove('hidden');
+        feedbackBox.innerHTML = `
+          <div class="p-3.5 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-black flex items-center gap-2">
+            <i class="ph-bold ph-check-circle text-emerald-600 text-lg"></i> ${res.message}
+          </div>
+        `;
+      }
+      if (tabBtn) {
+        tabBtn.className = 'task-tab-btn active px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border bg-emerald-500 text-white border-emerald-600';
+      }
+    } else {
+      if (feedbackBox) {
+        feedbackBox.classList.remove('hidden');
+        feedbackBox.innerHTML = `
+          <div class="p-3.5 bg-rose-100 border border-rose-300 text-rose-900 rounded-xl text-xs font-black flex items-center gap-2">
+            <i class="ph-bold ph-x-circle text-rose-600 text-lg"></i> ${res.message}
+          </div>
+        `;
+      }
+      if (tabBtn) {
+        tabBtn.className = 'task-tab-btn active px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border bg-rose-500 text-white border-rose-600';
+      }
+    }
+
+    if (res.is_locked) {
+      input.disabled = true;
+      input.readOnly = true;
+      if (submitBtn) submitBtn.disabled = true;
+
+      if (res.correct_answer && revealBox) {
+        revealBox.classList.remove('hidden');
+        const correctValSpan = revealBox.querySelector('.correct-val');
+        if (correctValSpan) correctValSpan.textContent = res.correct_answer;
+      }
+    }
+  } catch (err) {
+    show3DToast('Ошибка соединения при отправке ответа');
+  }
+}
+
+async function saveDraft(silent = false) {
+  if (ASSIGNMENT_META.is_submitted) return;
+
+  const answers = {};
+  TASKS_DATA.forEach(t => {
+    const input = document.getElementById(`answer-input-${t.order_index}`);
+    if (input) {
+      answers[t.assignment_task_id] = input.value.trim();
+    }
+  });
+
+  try {
+    const res = await fetch(`/sandbox/api/task_detail/${ASSIGNMENT_ID}/save_draft`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ answers })
+    });
+    const data = await res.json();
+    if (!silent) {
+      show3DToast(data.message || 'Черновик сохранён!');
+    }
+  } catch (e) {
+    if (!silent) {
+      show3DToast('Ошибка при сохранении черновика');
+    }
+  }
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  try {
+    const res = await fetch(`/sandbox/api/task_detail/${ASSIGNMENT_ID}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({
+        task_id: currentTaskIndex,
+        message: msg
+      })
+    });
+    const data = await res.json();
+    if (data.success && data.chat_message) {
+      if (!MESSAGES_BY_TASK[currentTaskIndex]) MESSAGES_BY_TASK[currentTaskIndex] = [];
+      MESSAGES_BY_TASK[currentTaskIndex].push(data.chat_message);
+      renderChat(currentTaskIndex);
+      input.value = '';
+    }
+  } catch (e) {
+    show3DToast('Ошибка при отправке сообщения');
+  }
+}
+
+/* --- 3D MODAL SUBMISSION LOGIC --- */
+function submitEntireAssignment(forced = false) {
+  if (forced) {
+    performSubmitEntireAssignment(true);
+    return;
+  }
+  const modal = document.getElementById('submit-confirm-modal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeSubmitModal() {
+  const modal = document.getElementById('submit-confirm-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function confirmSubmitEntireAssignment() {
+  closeSubmitModal();
+  await performSubmitEntireAssignment(false);
+}
+
+async function performSubmitEntireAssignment(forced = false) {
+  const answers = {};
+  TASKS_DATA.forEach(t => {
+    const input = document.getElementById(`answer-input-${t.order_index}`);
+    if (input) {
+      answers[t.assignment_task_id] = input.value.trim();
+    }
+  });
+
+  try {
+    const res = await fetch(`/sandbox/api/task_detail/${ASSIGNMENT_ID}/submit_assignment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ answers, is_auto_submit: forced })
+    });
+    const data = await res.json();
+    if (forced || data.is_auto_submit) {
+      show3DToast('⏰ Время вышло! Ваши ответы были автоматически сохранены и отправлены на проверку', '/sandbox/tasks');
+    } else {
+      show3DToast(data.message || 'Работа сдана!', '/sandbox/tasks');
+    }
+  } catch (e) {
+    show3DToast('Ошибка при сдаче работы');
+  }
+}
+
+/* --- INITIALIZATION --- */
+document.addEventListener('DOMContentLoaded', () => {
+  initKaTeX();
+
+  const timed = ASSIGNMENT_META.time_limit_minutes && ASSIGNMENT_META.time_limit_minutes > 0;
+  const started = !!ASSIGNMENT_META.started_at;
+  const submitted = !!ASSIGNMENT_META.is_submitted;
+
+  if (timed && !started && !submitted) {
+    document.getElementById('start-screen-container').classList.remove('hidden');
+    document.getElementById('task-stepper-container').classList.add('hidden');
+    document.getElementById('bento-main-tasks-grid').classList.add('hidden');
+    document.getElementById('floating-footer').classList.add('hidden');
+  } else {
+    document.getElementById('start-screen-container').classList.add('hidden');
+    document.getElementById('task-stepper-container').classList.remove('hidden');
+    document.getElementById('bento-main-tasks-grid').classList.remove('hidden');
+    document.getElementById('floating-footer').classList.remove('hidden');
+    if (timed && started && !submitted) {
+      startLiveTimer();
+    }
+  }
+
+  // Set up draft auto-save timer and blur handlers
+  if (!submitted) {
+    setInterval(() => saveDraft(true), 30000);
+    document.querySelectorAll('input[id^="answer-input-"]').forEach(inp => {
+      inp.addEventListener('blur', () => saveDraft(true));
+    });
+  }
+
+  switchTask(1);
+});
+</script>
+{% endblock %}

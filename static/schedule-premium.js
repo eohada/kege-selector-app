@@ -570,19 +570,14 @@ window.initPremiumSchedule = () => {
         if (!resp.ok || data?.success === false) throw new Error(data?.error || `HTTP ${resp.status}`);
 
         closeInspector();
-        if (window.toast) window.toast.success(data.message || 'Урок создан');
-
-        const mode = fd.get('lesson_mode');
-        if (mode === 'recurring') {
-          setTimeout(() => window.location.reload(), 250);
-        } else {
-          const created = Array.isArray(data.created_lessons) ? data.created_lessons : [];
-          created.forEach((ev) => {
-            const dayIso = fd.get('lesson_date');
-            const dayCol = qs(`.day-col[data-day="${dayIso}"]`);
-            if (dayCol) renderLessonChip(dayCol, ev);
-          });
+        if (typeof window.showBentoToast === 'function') {
+          window.showBentoToast(data.message || 'Урок успешно сохранен в БД!', 'success');
+        } else if (window.toast) {
+          window.toast.success(data.message || 'Урок создан');
         }
+
+        // Перезагрузка страницы строго после сохранения уроков на сервере для исключения несовпадений UI и БД
+        setTimeout(() => window.location.reload(), 400);
       } catch (err) {
         if (window.toast) window.toast.error(err.message || 'Ошибка создания урока');
       } finally {

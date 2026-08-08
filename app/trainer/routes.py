@@ -217,7 +217,7 @@ def trainer_v2():
     try:
         token = issue_trainer_token(user_id=current_user.id, ttl_seconds=10 * 60)
     except Exception as e:
-        return render_template('trainer_v2.html', trainer_token=None, config_error=str(e), zen_mode=False, passthrough={}, task_numbers=get_task_numbers(None))
+        return render_template('sandbox/trainer.html', trainer_token=None, config_error=str(e), zen_mode=False, passthrough={}, task_numbers=get_task_numbers(None))
 
     passthrough = {}
     for k in ('lesson_id', 'task_id', 'task_type', 'template_id', 'assignment_type', 'course_id'):
@@ -234,7 +234,7 @@ def trainer_v2():
 
     task_numbers = get_task_numbers(request.args.get('course_id', type=int))
     return render_template(
-        'trainer_v2.html',
+        'sandbox/trainer.html',
         trainer_token=token,
         config_error=None,
         zen_mode=zen_mode,

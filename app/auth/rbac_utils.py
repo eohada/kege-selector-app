@@ -1,3 +1,12 @@
+from flask import session, current_app
+
+def get_active_role():
+    if not current_user or not current_user.is_authenticated:
+        return None
+    if (current_app.config.get('DEBUG') or current_app.config.get('TESTING')) and 'sandbox_role' in session:
+        return session['sandbox_role']
+    return getattr(current_user, 'role', 'student')
+
 """
 Утилиты для реализации Role-Based Access Control (RBAC) и Data Scoping
 Обеспечивает автоматическую фильтрацию данных в зависимости от роли пользователя
@@ -45,8 +54,12 @@ def has_permission(user, permission_name):
             continue
         try:
             role_perm = RolePermission.query.filter_by(role=role, permission_name=permission_name).first()
-            if role_perm and role_perm.is_enabled:
-                return True
+            # An explicit matrix record overrides the role default. Without this,
+            # a disabled default permission continued to grant access.
+            if role_perm is not None:
+                if role_perm.is_enabled:
+                    return True
+                continue
         except Exception as e:
             logger.error(f"Error checking DB permissions: {e}")
         if permission_name in DEFAULT_ROLE_PERMISSIONS.get(role, []):
@@ -70,14 +83,24 @@ def get_user_scope(user):
     """
     Возвращает область видимости данных для пользователя (объединение по всем ролям).
     """
+    if not user or not user.is_authenticated:
+        return {'role': None, 'user_id': None, 'can_see_all': False, 'student_ids': []}
+
+    # Celery eager mode and nested app initialization can remove the scoped
+    # SQLAlchemy session after Flask-Login has loaded its user. Re-resolve that
+    # identity before reading scalar fields or relationship-based roles.
+    state = getattr(user, '_sa_instance_state', None)
+    if state is not None and state.detached and state.identity:
+        user = db.session.get(User, state.identity[0])
+        if user is None:
+            return {'role': None, 'user_id': None, 'can_see_all': False, 'student_ids': []}
+
     scope = {
-        'role': user.role if user and user.is_authenticated else None,
+        'role': user.role,
+        'user_id': user.id,
         'can_see_all': False,
         'student_ids': []
     }
-
-    if not user or not user.is_authenticated:
-         return scope
     
     if is_creator_or_admin(user) or user.is_chief_tester():
         scope['can_see_all'] = True
@@ -142,7 +165,11 @@ def require_role(*allowed_roles):
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 abort(403)
-            
+
+            # 👑 CREATOR GOD-MODE BYPASS
+            if getattr(current_user, 'role', '') == 'creator' or current_user.is_creator() or session.get('sandbox_role') == 'creator':
+                return f(*args, **kwargs)
+
             allowed = set(allowed_roles)
             user_roles = current_user.roles() if hasattr(current_user, 'roles') and callable(getattr(current_user, 'roles')) else [getattr(current_user, 'role', '')]
             if not (allowed & set(user_roles)):
@@ -158,7 +185,11 @@ def require_admin(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin():
+        if not current_user.is_authenticated:
+            abort(403)
+        if getattr(current_user, 'role', '') == 'creator' or current_user.is_creator() or session.get('sandbox_role') == 'creator':
+            return f(*args, **kwargs)
+        if not current_user.is_admin():
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -169,7 +200,11 @@ def require_tutor(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_tutor():
+        if not current_user.is_authenticated:
+            abort(403)
+        if getattr(current_user, 'role', '') == 'creator' or current_user.is_creator() or session.get('sandbox_role') == 'creator':
+            return f(*args, **kwargs)
+        if not current_user.is_tutor():
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -180,7 +215,11 @@ def require_student(f):
     @wraps(f)
     @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_student():
+        if not current_user.is_authenticated:
+            abort(403)
+        if getattr(current_user, 'role', '') == 'creator' or current_user.is_creator() or session.get('sandbox_role') == 'creator':
+            return f(*args, **kwargs)
+        if not current_user.is_student():
             abort(403)
         return f(*args, **kwargs)
     return decorated_function

@@ -1,0 +1,74 @@
+{% extends "sandbox/layout_parent.html" %}
+
+{% block sandbox_content %}
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
+
+        <!-- HEADER -->
+        <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+            <div>
+                <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-xs font-black uppercase tracking-wider mb-2">
+                    <i class="ph-bold ph-calendar-blank text-sm"></i> Расписание занятий
+                </div>
+                <h1 class="text-3xl font-display font-black text-slate-900 tracking-tight">Расписание уроков детей</h1>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    Сводка всех онлайн-уроков и консультаций ваших детей
+                </p>
+            </div>
+            <a href="/parents/dashboard" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer no-underline inline-flex items-center gap-2 self-start sm:self-auto">
+                <i class="ph-bold ph-arrow-left text-sm"></i>
+                <span>В кабинет</span>
+            </a>
+        </header>
+
+        <!-- SCHEDULE CONTENT -->
+        <div class="space-y-6 flex-1">
+            {% if upcoming_lessons %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for item in upcoming_lessons %}
+                <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 space-y-4 hover:border-amber-400 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <span class="px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-black uppercase">
+                            {{ item.child_name }}
+                        </span>
+                        <span class="text-xs font-bold text-slate-400">
+                            {{ item.lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if item.lesson.lesson_date else 'Запланировано' }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <h4 class="text-base font-black text-slate-800 leading-snug">
+                            Урок #{{ item.lesson.lesson_id }}: {{ item.lesson.topic or 'Занятие КЕГЭ Информатика' }}
+                        </h4>
+                        <p class="text-xs text-slate-500 font-medium mt-1">
+                            {{ item.lesson.description or 'Онлайн вебинар с разбором практических задач' }}
+                        </p>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs font-bold">
+                        <span class="text-emerald-600 flex items-center gap-1">
+                            <i class="ph-bold ph-check-circle"></i> Запланирован
+                        </span>
+                        <span class="text-slate-400">Длительность: 90 мин</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-[#F4F7FA] border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center flex flex-col items-center justify-center space-y-4 my-auto">
+                <div class="w-20 h-20 rounded-3xl bg-amber-50 border-2 border-amber-100 text-amber-500 flex items-center justify-center shadow-xs">
+                    <i class="ph-bold ph-calendar-blank text-4xl"></i>
+                </div>
+                <div class="space-y-1">
+                    <h4 class="text-lg font-black text-slate-800">Предстоящих уроков не найдено</h4>
+                    <p class="text-xs font-bold text-slate-400 max-w-md mx-auto leading-relaxed">
+                        Все запланированные вебинары и персональные консультации привязанных детей будут отображаться на этой странице.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</main>
+{% endblock %}

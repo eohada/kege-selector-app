@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% set active_page = 'dashboard' %}
+{% set active_page = 'students' %}
 {% block title %}{{ student.name }} · Ученик · BooStudy{% endblock %}
 {% block body_class %}layout-teacher bg-zinc-950 text-zinc-100 min-h-screen font-sans antialiased transition-colors duration-300 overflow-x-hidden{% endblock %}
 {% set student_view_tz = current_user.timezone_iana or (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
@@ -310,8 +310,13 @@
                                                 {% else %}{{ lesson.status }}{% endif %}
                                             </span>
                                         </div>
-                                        <h3 class="text-sm font-bold text-white mb-3">{{ lesson.topic or ('Урок #' ~ lesson.lesson_id) }}</h3>
-                                        <div class="flex gap-2 pt-3 border-t border-white/5 justify-end">
+                                        <a href="{{ url_for('lessons.lesson_view', lesson_id=lesson.lesson_id) }}" class="inline-flex items-center gap-1.5 text-sm font-bold text-white hover:text-indigo-400 transition-colors mb-3 no-underline group block w-full truncate">
+                                            {{ lesson.topic or ('Урок #' ~ lesson.lesson_id) }} <i class="ph-bold ph-arrow-right text-xs opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all"></i>
+                                        </a>
+                                        <div class="flex gap-2 pt-3 border-t border-white/5 justify-end flex-wrap items-center">
+                                            <a href="{{ url_for('lessons.lesson_view', lesson_id=lesson.lesson_id, student_id=student.student_id) }}" class="mr-auto px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 font-bold rounded-lg text-[10px] transition-colors flex items-center gap-1.5 no-underline">
+                                                <i class="ph-bold ph-sign-in text-xs"></i> Комната
+                                            </a>
                                             {% if _ls == 'planned' %}
                                                 <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" class="inline">
                                                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}

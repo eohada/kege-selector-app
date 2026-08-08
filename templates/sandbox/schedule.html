@@ -1,0 +1,172 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block sandbox_content %}
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-3 sm:p-6 pl-3 sm:pl-6 lg:pl-[6.5rem] pb-20 lg:pb-6">
+  <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
+    
+    <!-- HEADER -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+      <div>
+        <span class="text-xs font-black text-indigo-500 uppercase tracking-widest block mb-1">📅 ЛИЧНЫЙ КАЛЕНДАРЬ</span>
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight font-display">Моё расписание занятий</h1>
+        <p class="text-xs font-extrabold text-slate-400 mt-1">Октябрь 2026 • Уроки, дедлайны ДЗ и онлайн-вебинары</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="inline-flex p-1 bg-slate-100 border-2 border-slate-200 rounded-2xl shadow-inner gap-1">
+          <a href="?view=my" class="px-4 py-2 font-black text-xs uppercase rounded-xl transition-all no-underline {{ 'bg-sky-500 text-white shadow-[0_2px_0_#0284C7]' if request.args.get('view', 'my') == 'my' else 'text-slate-600 hover:text-slate-900' }}">
+            📅 Моё расписание
+          </a>
+          <a href="?view=all" class="px-4 py-2 font-black text-xs uppercase rounded-xl transition-all no-underline {{ 'bg-sky-500 text-white shadow-[0_2px_0_#0284C7]' if request.args.get('view') == 'all' else 'text-slate-600 hover:text-slate-900' }}">
+            🌐 Все уроки платформы
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- ASYMMETRIC SPLIT LAYOUT -->
+    <div class="flex flex-col lg:flex-row gap-6 h-full flex-1 min-h-0 relative">
+
+      <!-- LEFT SIDEBAR: STUDENT COMPACT FILTER WIDGET (1/4) -->
+      <div class="w-full lg:w-[25%] flex flex-col gap-6 shrink-0">
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] p-6 flex flex-col gap-5">
+          
+          <!-- Mini Month Picker -->
+          <div class="flex items-center justify-between">
+            <button class="w-8 h-8 rounded-lg bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"><i class="ph-bold ph-caret-left"></i></button>
+            <span class="font-display font-black text-slate-800 text-sm">Октябрь 2026</span>
+            <button class="w-8 h-8 rounded-lg bg-white border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"><i class="ph-bold ph-caret-right"></i></button>
+          </div>
+
+          <!-- Timezone Card -->
+          <div class="bg-white border-2 border-slate-200 rounded-xl p-4 flex flex-col gap-2 shadow-xs">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+              <i class="ph-bold ph-globe-hemisphere-west"></i> Часовой пояс
+            </span>
+            <select class="w-full bg-[#F8FAFC] border border-slate-200 rounded-lg text-xs font-bold text-slate-700 px-3 py-2 outline-none focus:border-indigo-400 cursor-pointer">
+              <option>Московское время (UTC+3)</option>
+              <option>Местное время (+4)</option>
+            </select>
+          </div>
+
+          <!-- Upcoming Classes Summary -->
+          <div class="bg-white border-2 border-slate-200 rounded-xl p-4 flex flex-col gap-3 shadow-xs">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ближайший онлайн</span>
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-base border border-indigo-100 shrink-0">
+                14
+              </div>
+              <div>
+                <h4 class="text-xs font-black text-slate-800">Производная и первообразная</h4>
+                <p class="text-[10px] font-bold text-indigo-600">Сегодня в 17:33 MSK</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- RIGHT MAIN: CALENDAR MATRIX (3/4) -->
+      <div class="flex flex-col h-full bg-white rounded-[2rem] border-2 border-slate-200/80 shadow-xs overflow-hidden flex-1 min-h-0 w-full lg:w-[75%]">
+        <div class="overflow-x-auto hide-scrollbar w-full flex flex-col min-w-full">
+          <div class="min-w-[680px] lg:min-w-0 flex flex-col w-full">
+
+        <!-- 1. FIXED DAYS HEADER -->
+        <div class="flex border-b border-slate-200 bg-slate-50/80 shrink-0">
+          <div class="w-20 shrink-0 border-r border-slate-200 bg-slate-100/50 flex items-center justify-center text-[10px] font-black text-slate-400 uppercase">
+            Время
+          </div> 
+          <div class="flex-1 grid grid-cols-7 w-full">
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-slate-500">ПН<br><span class="text-base font-black text-slate-800">12</span></div>
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-slate-500">ВТ<br><span class="text-base font-black text-slate-800">13</span></div>
+            <div class="border-r border-indigo-200 bg-indigo-50/60 p-3 text-center text-xs font-bold text-indigo-600 relative border-t-4 border-t-indigo-600">СР<br><span class="text-base font-black text-indigo-950">14</span></div>
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-slate-500">ЧТ<br><span class="text-base font-black text-slate-800">15</span></div>
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-slate-500">ПТ<br><span class="text-base font-black text-slate-800">16</span></div>
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-rose-400">СБ<br><span class="text-base font-black text-rose-600">17</span></div>
+            <div class="p-3 text-center text-xs font-bold text-rose-400">ВС<br><span class="text-base font-black text-rose-600">18</span></div>
+          </div>
+        </div>
+
+        <!-- 2. SCROLLABLE TIMELINE GRID -->
+        <div class="flex-1 overflow-y-auto relative bg-slate-50/30" id="calendar-scroll">
+          
+          <!-- Current Time Marker Line (17:33) -->
+          <div id="time-marker" class="absolute w-full flex items-center z-30 pointer-events-none" style="display:none;"></div>
+
+          <!-- 24 HOURLY ROWS -->
+          {% for hour in range(24) %}
+          <div class="flex h-[100px] border-b border-slate-100">
+            <div class="w-20 shrink-0 border-r border-slate-200 text-xs text-slate-400 pr-3 pt-2 text-right font-bold bg-white select-none">
+              {{ "%02d:00"|format(hour) }}
+            </div>
+            <div class="flex-1 grid grid-cols-7 relative group">
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors"></div>
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors"></div>
+              <div class="border-r border-indigo-200/80 bg-indigo-50/20 hover:bg-indigo-50/40 cursor-pointer transition-colors"></div>
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors"></div>
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors"></div>
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors"></div>
+              <div class="hover:bg-indigo-50/40 cursor-pointer transition-colors"></div>
+            </div>
+          </div>
+          {% endfor %}
+
+          <!-- LESSON CARDS OVERLAY (ABSOLUTE) -->
+          <div class="absolute inset-0 w-full h-full pointer-events-none z-10 flex">
+            <div class="w-20 shrink-0 border-r border-transparent"></div>
+            <div class="flex-1 grid grid-cols-7 px-[2px] pointer-events-auto">
+              
+              <!-- Mon --> <div></div>
+              
+              <!-- Tue -->
+              <div class="relative w-full border-r border-transparent">
+                <div class="absolute top-[1650px] w-full bg-emerald-50 border-2 border-emerald-200 rounded-xl p-2.5 shadow-sm cursor-pointer hover:shadow-md transition-shadow z-10" style="width: calc(100% - 4px);">
+                  <p class="text-[9px] font-black text-emerald-600 mb-0.5 flex justify-between">16:30 - 18:00 <i class="ph-bold ph-check"></i></p>
+                  <h4 class="text-xs font-black text-slate-800 leading-tight">Алгебра логики</h4>
+                  <span class="text-[9px] font-bold text-emerald-700 mt-1 block">Завершено</span>
+                </div>
+              </div>
+              
+              <!-- Wed -->
+              <div class="relative w-full border-r border-transparent">
+                <div class="absolute top-[1755px] h-[150px] bg-indigo-600 border-2 border-indigo-700 rounded-2xl p-3 shadow-lg cursor-pointer hover:shadow-xl transition-shadow z-20 text-white flex flex-col justify-between" style="width: calc(100% - 4px);">
+                  <div>
+                    <p class="text-[10px] font-bold text-indigo-200 mb-1 flex items-center justify-between">
+                      <span>17:33 - 19:00</span>
+                      <span class="px-1.5 py-0.5 bg-indigo-500 rounded text-[9px] font-black uppercase">LIVE</span>
+                    </p>
+                    <h4 class="text-xs font-black text-white leading-tight">Производная и первообразная</h4>
+                    <p class="text-[10px] text-indigo-200 mt-1 font-bold">Преподаватель: Александр С.</p>
+                  </div>
+                  <a href="/sandbox/trainer" class="bg-white hover:bg-slate-50 text-indigo-700 text-xs font-black py-2 rounded-xl w-full text-center transition-colors no-underline block">
+                    В КОМНАТУ УРОКА
+                  </a>
+                </div>
+              </div>
+              
+              <!-- Thu --> <div></div>
+              <!-- Fri --> <div></div>
+              <!-- Sat --> <div></div>
+              <!-- Sun --> <div></div>
+
+            </div>
+          </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const calendarScroll = document.getElementById('calendar-scroll');
+    if (calendarScroll) {
+      calendarScroll.scrollTop = 1600; // Auto-scroll to 16:00
+    }
+  });
+</script>
+{% endblock %}

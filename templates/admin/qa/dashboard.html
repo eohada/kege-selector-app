@@ -4,189 +4,216 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style="padding-top: 8rem; padding-bottom: 3rem; position: relative; z-index: 1;">
 
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
-            <h1 style="font-size: 1.75rem; font-weight: 800; color: var(--color-text-primary); margin: 0;">QA Control Room</h1>
-            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin: 0.3rem 0 0;">Центр управления тестированием и качеством</p>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <i class="ph-bold ph-shield-check"></i>
+                </div>
+                QA Control Room
+            </h1>
+            <p class="text-slate-400 text-sm mt-2">Центр управления тестированием и качеством платформы BooStudy</p>
         </div>
-        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            <a href="{{ url_for('qa_tester.admin.manage_tests') }}"
-                style="border: 1px solid var(--color-stroke); color: var(--color-text-primary); text-decoration: none; padding: 0.5rem 1.125rem; border-radius: 12px; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem; background: var(--color-bg-surface);">
-                <i class="ph-bold ph-list-checks"></i> База тестов
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ url_for('qa_admin.manage_tests') }}"
+                class="flex items-center gap-2 px-4 py-2 border border-slate-700 bg-slate-800/50 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition-colors">
+                <i class="ph-bold ph-list-checks"></i> Тест-Кейсы
             </a>
             <a href="/qa" target="_blank"
-                style="background: var(--color-accent); color: white; padding: 0.5rem 1.125rem; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
+                class="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 shadow-lg shadow-indigo-500/30 text-white rounded-xl font-bold text-sm transition-all focus:ring-2 focus:ring-indigo-400">
                 <i class="ph-bold ph-bug"></i> Интерфейс тестера
             </a>
         </div>
     </div>
 
-    <!-- Статистика -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-        <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; padding: 1.25rem 1.5rem;">
-            <div style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em;">Тест-кейсов</div>
-            <div style="font-size: 2rem; font-weight: 800; color: var(--color-text-primary);">{{ total_tests }}</div>
+    <!-- Статистика в стиле BooStudy Tailwind -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 flex justify-between items-center relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl -mr-10 -mt-10"></div>
+            <div>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Всего отчетов</div>
+                <div class="text-3xl font-black text-white">{{ all_reports_count }}</div>
+            </div>
+            <div class="text-4xl text-indigo-500/40 relative z-10"><i class="ph-fill ph-files"></i></div>
         </div>
-        <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; padding: 1.25rem 1.5rem;">
-            <div style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em;">Всего репортов</div>
-            <div style="font-size: 2rem; font-weight: 800; color: var(--color-text-primary);">{{ all_reports_count }}</div>
+        
+        <div class="bg-slate-800/50 border border-rose-500/30 rounded-2xl p-5 flex justify-between items-center relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-rose-500/10 rounded-full blur-xl -mr-10 -mt-10"></div>
+            <div>
+                <div class="text-xs font-bold text-rose-500 uppercase tracking-wider mb-1">Открытые баги</div>
+                <div class="text-3xl font-black text-rose-500">{{ active_reports }}</div>
+            </div>
+            <div class="text-4xl text-rose-500/40 relative z-10"><i class="ph-fill ph-warning-circle"></i></div>
         </div>
-        <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; padding: 1.25rem 1.5rem;">
-            <div style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em;">Открытых багов</div>
-            <div style="font-size: 2rem; font-weight: 800; color: #f43f5e;">{{ active_reports }}</div>
+
+        <div class="bg-slate-800/50 border border-purple-500/30 rounded-2xl p-5 flex justify-between items-center relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-purple-500/10 rounded-full blur-xl -mr-10 -mt-10"></div>
+            <div>
+                <div class="text-xs font-bold text-purple-400 uppercase tracking-wider mb-1">На ретесте</div>
+                <div class="text-3xl font-black text-purple-400">{{ retest_reports }}</div>
+            </div>
+            <div class="text-4xl text-purple-500/40 relative z-10"><i class="ph-fill ph-arrows-clockwise"></i></div>
         </div>
-        <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; padding: 1.25rem 1.5rem;">
-            <div style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.06em;">На ретесте</div>
-            <div style="font-size: 2rem; font-weight: 800; color: #f59e0b;">{{ retest_reports }}</div>
+
+        <div class="bg-slate-800/50 border border-emerald-500/30 rounded-2xl p-5 flex justify-between items-center relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl -mr-10 -mt-10"></div>
+            <div>
+                <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Тест-кейсов</div>
+                <div class="text-3xl font-black text-emerald-400">{{ total_tests }}</div>
+            </div>
+            <div class="text-4xl text-emerald-500/40 relative z-10"><i class="ph-fill ph-check-square-offset"></i></div>
         </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; align-items: start;">
-        <div>
+    <div class="grid lg:grid-cols-4 gap-6 items-start">
+        <div class="lg:col-span-3 flex flex-col gap-6">
+            
             <!-- Фильтры -->
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.25rem;">
-                <form method="GET" action="{{ url_for('qa_tester.admin.dashboard') }}" style="display: flex; flex-wrap: wrap; gap: 0.875rem; align-items: flex-end;">
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); margin-bottom: 0.35rem;">Статус</label>
-                        <select name="status" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-size: 0.875rem; font-weight: 600; outline: none;">
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-5">
+                <form method="GET" action="{{ url_for('qa_admin.dashboard') }}" class="flex flex-wrap items-end gap-4">
+                    <div class="flex-1 min-w-[140px]">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Статус</label>
+                        <select name="status" class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
                             <option value="">Все статусы</option>
-                            <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Ожидают</option>
+                            <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Ожидает</option>
                             <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>В работе</option>
                             <option value="retest" {% if request.args.get('status') == 'retest' %}selected{% endif %}>На ретесте</option>
-                            <option value="resolved" {% if request.args.get('status') == 'resolved' %}selected{% endif %}>Решены</option>
+                            <option value="resolved" {% if request.args.get('status') == 'resolved' %}selected{% endif %}>Решён</option>
+                            <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>Отклонён</option>
                         </select>
                     </div>
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); margin-bottom: 0.35rem;">Зона</label>
-                        <select name="area" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-size: 0.875rem; font-weight: 600; outline: none;">
-                            <option value="">Все зоны</option>
-                            {% for a in all_areas %}
-                            <option value="{{ a }}" {% if request.args.get('area') == a %}selected{% endif %}>{{ a }}</option>
+                    <div class="flex-1 min-w-[140px]">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Секция</label>
+                        <select name="area" class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                            <option value="">Все секции</option>
+                            {% set areas_dict = all_areas if all_areas is mapping else {} %}
+                            {% for key, name in areas_dict.items() %}
+                                <option value="{{ key }}" {% if request.args.get('area') == key %}selected{% endif %}>{{ name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); margin-bottom: 0.35rem;">Итерация</label>
-                        <select name="cycle_id" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-size: 0.875rem; font-weight: 600; outline: none;">
-                            <option value="">Все спринты</option>
-                            {% for cycle_id, cycle_name in qa_cycles %}
-                            <option value="{{ cycle_id }}" {% if request.args.get('cycle_id') == cycle_id|string %}selected{% endif %}>{{ cycle_name }}</option>
+                    <div class="flex-1 min-w-[140px]">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Репортер</label>
+                        <select name="reporter_id" class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                            <option value="">Любой</option>
+                            {% for t in testers %}
+                                <option value="{{ t.id }}" {% if request.args.get('reporter_id') == t.id|string %}selected{% endif %}>{{ t.username }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); margin-bottom: 0.35rem;">Тестировщик</label>
-                        <select name="reporter_id" style="width: 100%; padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--color-bg-surface-alt); border: 1px solid var(--color-stroke); color: var(--color-text-primary); font-size: 0.875rem; font-weight: 600; outline: none;">
-                            <option value="">Все тестировщики</option>
-                            {% for tester in testers %}
-                            <option value="{{ tester.id }}" {% if request.args.get('reporter_id') == tester.id|string %}selected{% endif %}>{{ tester.username }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                        <button type="submit" style="padding: 0.5rem 1rem; background: var(--color-accent); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.875rem; cursor: pointer; white-space: nowrap;">Фильтровать</button>
-                        <a href="{{ url_for('qa_tester.admin.dashboard') }}" style="padding: 0.5rem 1rem; background: var(--color-bg-surface-alt); color: var(--color-text-primary); border: 1px solid var(--color-stroke); border-radius: 8px; font-weight: 700; font-size: 0.875rem; text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center;">Сброс</a>
+                    <div class="flex items-center gap-3">
+                        <button type="submit" class="bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors">Проверить</button>
+                        {% if request.args %}
+                        <a href="{{ url_for('qa_admin.dashboard') }}" class="text-sm text-slate-400 hover:text-white font-bold transition-colors">Сброс</a>
+                        {% endif %}
                     </div>
                 </form>
             </div>
 
-            <!-- Список репортов -->
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; overflow: hidden;">
-                <div style="padding: 0.875rem 1.5rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke); display: flex; align-items: center; justify-content: space-between;">
-                    <span style="font-weight: 700; color: var(--color-text-primary); font-size: 0.9rem;">Баг-репорты ({{ reports|length }})</span>
+            <!-- Таблица багов -->
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/50 border-b border-slate-700">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">ID / Баг</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Статус</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Автор</th>
+                                <th class="p-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700/50">
+                            {% for report in reports %}
+                            <tr class="hover:bg-slate-800/80 transition-colors group">
+                                <td class="p-4">
+                                    <div class="flex flex-col gap-1">
+                                        <a href="{{ url_for('qa_admin.view_report', report_id=report.id) }}" class="font-bold text-white text-sm hover:text-indigo-400 transition-colors">
+                                            <span class="text-indigo-500 font-mono text-xs mr-1">#{{ report.id }}</span>
+                                            {% if report.test_case %}{{ report.test_case.title }}{% else %}Спонтанный баг (Ad-Hoc){% endif %}
+                                        </a>
+                                        <div class="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                                            <span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{{ report.area }}</span>
+                                            <span>{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-4">
+                                    <div class="flex flex-col gap-2 items-start">
+                                        {% set st = report.status %}
+                                        {% if st == 'pending' %}<span class="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2.5 py-1 rounded-lg text-xs font-bold">Ожидает</span>
+                                        {% elif st == 'in_progress' %}<span class="bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2.5 py-1 rounded-lg text-xs font-bold">В работе</span>
+                                        {% elif st == 'retest' %}<span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2.5 py-1 rounded-lg text-xs font-bold">На ретесте</span>
+                                        {% elif st == 'resolved' %}<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-lg text-xs font-bold">Решен</span>
+                                        {% elif st == 'rejected' %}<span class="bg-rose-500/10 text-rose-500 border border-rose-500/20 px-2.5 py-1 rounded-lg text-xs font-bold">Отклонен</span>
+                                        {% endif %}
+                                        
+                                        {% if report.verdict == 'critical' %}
+                                            <span class="text-rose-500 text-xs font-bold flex items-center gap-1"><i class="ph-fill ph-fire"></i> Крит</span>
+                                        {% elif report.verdict == 'minor' %}
+                                            <span class="text-amber-500 text-xs font-bold flex items-center gap-1"><i class="ph-fill ph-warning"></i> Минор</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="p-4">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+                                            {{ report.reporter.username[:2] | upper if report.reporter else '?' }}
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-200">{{ report.reporter.username if report.reporter else 'Неизвестно' }}</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <a href="{{ url_for('qa_admin.view_report', report_id=report.id) }}" class="inline-flex w-9 h-9 items-center justify-center bg-slate-900 border border-slate-700 text-slate-400 rounded-xl hover:bg-indigo-500 hover:border-indigo-500 hover:text-white transition-all group-hover:-translate-x-1">
+                                        <i class="ph-bold ph-arrow-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="p-16 text-center">
+                                    <i class="ph-thin ph-ghost text-5xl text-slate-600 mb-4 inline-block"></i>
+                                    <div class="text-lg font-bold text-white mb-1">Чисто!</div>
+                                    <div class="text-sm text-slate-400">По выбранным фильтрам багов не найдено.</div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-
-                {% for report in reports %}
-                <div style="padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.375rem; border-bottom: 1px solid var(--color-stroke); transition: background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.06)'" onmouseout="this.style.background=''">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                        <span style="background: var(--color-bg-surface-alt); color: var(--color-text-muted); border: 1px solid var(--color-stroke); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 800;">#{{ report.id }}</span>
-
-                        {% if report.status == 'pending' %}
-                        <span style="background: rgba(245,158,11,0.1); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 700;">Ожидает</span>
-                        {% elif report.status == 'in_progress' %}
-                        <span style="background: rgba(59,130,246,0.1); color: #3b82f6; border: 1px solid rgba(59,130,246,0.2); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 700;">В работе</span>
-                        {% elif report.status == 'retest' %}
-                        <span style="background: rgba(168,85,247,0.1); color: #a855f7; border: 1px solid rgba(168,85,247,0.2); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 700;">Ретест</span>
-                        {% elif report.status == 'resolved' %}
-                        <span style="background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 700;">Решён</span>
-                        {% elif report.status == 'rejected' %}
-                        <span style="background: rgba(244,63,94,0.1); color: #f43f5e; border: 1px solid rgba(244,63,94,0.2); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 700;">Отклонён</span>
-                        {% endif %}
-
-                        {% if report.verdict == 'critical' %}
-                        <span style="background: rgba(244,63,94,0.1); color: #f43f5e; border: 1px solid rgba(244,63,94,0.2); border-radius: 6px; padding: 0.1rem 0.5rem; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;">Критичный</span>
-                        {% endif %}
-
-                        <span style="font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted);">{{ report.area }}</span>
-
-                        {% if report.attachments and report.attachments|length > 0 %}
-                        <span style="color: #6366f1; font-size: 0.75rem;" title="Есть вложения"><i class="ph-bold ph-paperclip"></i></span>
-                        {% endif %}
-
-                        {% if report.cycle_id %}
-                        <span style="color: var(--color-text-muted); font-size: 0.7rem; font-weight: 600;">Итер.{{ report.cycle_id }}</span>
-                        {% endif %}
-                    </div>
-
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-weight: 700; font-size: 0.9rem; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                {% if report.test_case %}[Тест] {{ report.test_case.title }}
-                                {% else %}[Ad-hoc] {{ (report.description or report.comment or '')[:70] }}{% if (report.description or report.comment or '')|length > 70 %}...{% endif %}
-                                {% endif %}
-                            </div>
-                            <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.15rem;">
-                                {{ report.reporter.username if report.reporter else 'Аноним' }} · {{ report.created_at.strftime('%d.%m.%Y %H:%M') }}
-                            </div>
-                        </div>
-                        <a href="{{ url_for('qa_tester.admin.view_report', report_id=report.id) }}"
-                            style="padding: 0.4rem 0.875rem; border: 1px solid var(--color-stroke); color: var(--color-text-primary); border-radius: 8px; font-weight: 700; font-size: 0.8rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; background: var(--color-bg-surface-alt);">Открыть</a>
-                    </div>
-                </div>
-                {% else %}
-                <div style="padding: 3rem; text-align: center;">
-                    <i class="ph-bold ph-check-circle" style="font-size: 3rem; color: #10b981; display: block; margin-bottom: 0.875rem;"></i>
-                    <h3 style="font-size: 1.125rem; font-weight: 700; color: var(--color-text-primary); margin: 0 0 0.375rem;">Баг-репортов не найдено</h3>
-                    <p style="color: var(--color-text-muted); margin: 0; font-size: 0.875rem;">Либо всё чисто, либо измените фильтры.</p>
-                </div>
-                {% endfor %}
             </div>
         </div>
 
-        <!-- САЙДБАР: Лидерборд -->
-        <div>
-            {% if leaderboard %}
-            <div style="background: var(--color-bg-surface); border: 1px solid var(--color-stroke); border-radius: 14px; overflow: hidden; position: sticky; top: 9rem;">
-                <div style="padding: 0.875rem 1.25rem; background: var(--color-bg-surface-alt); border-bottom: 1px solid var(--color-stroke);">
-                    <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted);">
-                        <i class="ph-bold ph-trophy" style="color: #f59e0b;"></i> Топ багхантеров
-                    </div>
-                </div>
-                <div style="padding: 0.75rem;">
-                    {% for entry in leaderboard %}
-                    {% set rank = loop.index %}
-                    <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0.5rem; border-radius: 8px; {% if rank == 1 %}background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); margin-bottom: 0.375rem;{% else %}margin-bottom: 0.25rem;{% endif %}">
-                        <div style="width: 1.75rem; height: 1.75rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 900; flex-shrink: 0;
-                            {% if rank == 1 %}background: rgba(245,158,11,0.2); color: #f59e0b;
-                            {% elif rank == 2 %}background: rgba(148,163,184,0.2); color: #94a3b8;
-                            {% elif rank == 3 %}background: rgba(180,120,60,0.2); color: #b47c3c;
-                            {% else %}background: var(--color-bg-surface-alt); color: var(--color-text-muted);{% endif %}">
-                            {% if rank == 1 %}🥇{% elif rank == 2 %}🥈{% elif rank == 3 %}🥉{% else %}{{ rank }}{% endif %}
+        <!-- Сайдбар Лидерборд -->
+        <div class="lg:col-span-1">
+            <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-5 sticky top-24">
+                <h3 class="text-lg font-extrabold text-white mb-5 flex items-center gap-2">
+                    <i class="ph-fill ph-trophy text-amber-400"></i> Топ Багхантеров
+                </h3>
+                
+                <div class="flex flex-col gap-3">
+                    {% for rank in leaderboard %}
+                    <div class="p-3 bg-slate-900/50 border border-slate-700/50 rounded-xl flex items-center gap-3">
+                        <div class="w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center text-xs font-black
+                            {% if loop.index == 1 %}bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/20
+                            {% elif loop.index == 2 %}bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-lg shadow-slate-400/20
+                            {% elif loop.index == 3 %}bg-gradient-to-br from-amber-700 to-amber-900 text-white shadow-lg shadow-amber-800/20
+                            {% else %}bg-slate-800 border border-slate-600 text-slate-400
+                            {% endif %}">
+                            {{ loop.index }}
                         </div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-weight: 800; font-size: 0.875rem; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ entry.user.username }}</div>
-                            <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.1rem;">
-                                {{ entry.total }} репорт{{ 'ов' if entry.total % 10 in [0,5,6,7,8,9] or entry.total % 100 in range(11,20) else ('а' if entry.total % 10 in [2,3,4] else '') }}
-                                {% if entry.critical_count > 0 %}
-                                · <span style="color: #f43f5e; font-weight: 700;">{{ entry.critical_count }} критичных</span>
-                                {% endif %}
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-bold text-white truncate">{{ rank.user.username }}</div>
+                            <div class="flex gap-2 text-[11px] font-bold text-slate-500 mt-0.5">
+                                <span class="text-emerald-400">{{ rank.total }} всего</span>
+                                {% if rank.critical_count > 0 %}<span class="text-rose-500"><i class="ph-fill ph-fire"></i> {{ rank.critical_count }} крит.</span>{% endif %}
                             </div>
                         </div>
                     </div>
+                    {% else %}
+                    <div class="text-center text-slate-500 text-sm py-4">Рейтинг пуст</div>
                     {% endfor %}
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>

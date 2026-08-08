@@ -1,0 +1,230 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block admin_content %}
+<div class="space-y-6">
+
+    <!-- HEADER -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+            <h2 class="text-2xl font-display font-black text-slate-900 tracking-tight">Обслуживание & Инспекция Окружения</h2>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Технические работы, экспорты дампов БД и диагностика сервера</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- 1. MAINTENANCE MODE CONTROL BOX -->
+        <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 sm:p-8 shadow-sm space-y-6">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center font-black text-xl shadow-xs">
+                    <i class="ph-bold ph-wrench"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-black text-slate-900">Режим Технических Работ</h3>
+                    <p class="text-xs font-bold text-slate-400">Полное ограничение доступа для всех пользователей</p>
+                </div>
+            </div>
+
+            {% set is_maint = is_maint if is_maint is defined else (get_system_setting('maintenance_mode', 'false') == 'true' if get_system_setting is defined else false) %}
+            <div id="maint-card-container" class="p-5 rounded-2xl border-2 space-y-3 transition-all {% if is_maint %}bg-rose-50 border-rose-200{% else %}bg-slate-50 border-slate-200{% endif %}">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-700">Текущий статус:</span>
+                    <span id="maint-status-badge" class="px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all {% if is_maint %}bg-rose-600 text-white{% else %}bg-emerald-600 text-white{% endif %}">
+                        {% if is_maint %}🚨 РЕЖИМ ТЕХРАБОТ АКТИВЕН{% else %}✅ ШТАТНЫЙ РЕЖИМ{% endif %}
+                    </span>
+                </div>
+                <p class="text-xs font-bold text-slate-600 leading-relaxed">
+                    В включенном режиме ученики и родители перенаправляются на страницу `/maintenance`. Администраторы, создатели и преподаватели сохраняют доступ.
+                </p>
+            </div>
+
+            <button id="maint-toggle-btn" onclick="toggleMaintenanceMode()" class="btn-3d w-full py-3.5 {% if is_maint %}bg-emerald-600 hover:bg-emerald-500 border-emerald-800{% else %}bg-rose-600 hover:bg-rose-500 border-rose-800{% endif %} text-white font-black text-xs rounded-xl border-b-[4px] shadow-md transition-all cursor-pointer border-0 uppercase tracking-wider flex items-center justify-center gap-2">
+                <i class="ph-bold ph-power text-base"></i>
+                <span id="maint-btn-text">{% if is_maint %}Выключить технические работы{% else %}Включить режим технических работ{% endif %}</span>
+            </button>
+        </div>
+
+        <!-- 2. PREPARATION / LAUNCH MODE CONTROL BOX -->
+        <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 sm:p-8 shadow-sm space-y-6">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center font-black text-xl shadow-xs">
+                    <i class="ph-bold ph-rocket-launch"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-black text-slate-900">Режим Подготовки (Launch Mode)</h3>
+                    <p class="text-xs font-bold text-slate-400">Заглушка для учеников и родителей перед запуском</p>
+                </div>
+            </div>
+
+            {% set is_prep = (get_system_setting('preparation_mode_enabled', 'false') == 'true' if get_system_setting is defined else false) %}
+            <div id="prep-card-container" class="p-5 rounded-2xl border-2 space-y-3 transition-all {% if is_prep %}bg-purple-50 border-purple-200{% else %}bg-slate-50 border-slate-200{% endif %}">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-black uppercase tracking-wider text-slate-700">Текущий статус:</span>
+                    <span id="prep-status-badge" class="px-3 py-1 rounded-xl text-xs font-black uppercase tracking-wider transition-all {% if is_prep %}bg-purple-600 text-white{% else %}bg-emerald-600 text-white{% endif %}">
+                        {% if is_prep %}🚀 РЕЖИМ ПОДГОТОВКИ ВКЛЮЧЁН{% else %}✅ ВЫКЛЮЧЕН (ОБЫЧНЫЙ ДОСТУП){% endif %}
+                    </span>
+                </div>
+                <p class="text-xs font-bold text-slate-600 leading-relaxed">
+                    Ученики и родители видят красивый экран финальной настройки. Регистрация, авторизация и привязка связей продолжают работать. Преподаватели работают без ограничений.
+                </p>
+            </div>
+
+            <button id="prep-toggle-btn" onclick="togglePreparationMode()" class="btn-3d w-full py-3.5 {% if is_prep %}bg-emerald-600 hover:bg-emerald-500 border-emerald-800{% else %}bg-purple-600 hover:bg-purple-500 border-purple-800{% endif %} text-white font-black text-xs rounded-xl border-b-[4px] shadow-md transition-all cursor-pointer border-0 uppercase tracking-wider flex items-center justify-center gap-2">
+                <i class="ph-bold ph-power text-base"></i>
+                <span id="prep-btn-text">{% if is_prep %}Выключить режим подготовки{% else %}Включить режим подготовки{% endif %}</span>
+            </button>
+
+            <!-- Optional Custom Text Fields -->
+            <div class="pt-3 border-t border-slate-200 space-y-3">
+                <label class="text-[11px] font-black uppercase tracking-wider text-slate-500 block">Кастомные тексты заглушки (опционально):</label>
+                <input type="text" id="prep-title-input" placeholder="Заголовок (например: Почти всё готово!)" value="{{ get_system_setting('preparation_mode_title', '') if get_system_setting is defined else '' }}" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none">
+                <textarea id="prep-msg-input" rows="2" placeholder="Сообщение для заглушки..." class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none">{{ get_system_setting('preparation_mode_message', '') if get_system_setting is defined else '' }}</textarea>
+                <button onclick="savePreparationSettings()" class="btn-3d px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-black text-xs rounded-xl border-b-[3px] border-slate-900 transition-all cursor-pointer">
+                    💾 Сохранить тексты
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. DATABASE BACKUP & EXPORT -->
+        <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 sm:p-8 shadow-sm space-y-6">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xl shadow-xs">
+                    <i class="ph-bold ph-database"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-black text-slate-900">Бэкап & Экспорт Дампов БД</h3>
+                    <p class="text-xs font-bold text-slate-400">Скачивание полной снимка базы данных в .json</p>
+                </div>
+            </div>
+
+            <p class="text-xs font-bold text-slate-600 leading-relaxed">
+                Выгрузка структуры и данных сущностей <code>User</code>, <code>Course</code>, <code>Lesson</code>, <code>Tasks</code> в единый локальный JSON-архив.
+            </p>
+
+            <a href="/admin/export_db_json" download class="btn-3d w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl border-b-[4px] border-indigo-800 shadow-md transition-all cursor-pointer border-0 uppercase tracking-wider flex items-center justify-center gap-2 no-underline">
+                <i class="ph-bold ph-download-simple text-base"></i>
+                <span>Экспортировать дампы базы данных (.json)</span>
+            </a>
+        </div>
+
+    </div>
+
+    <!-- SYSTEM METRICS -->
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] p-6 sm:p-8 shadow-sm space-y-4">
+        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <i class="ph-bold ph-cpu text-rose-500 text-lg"></i> Системная спецификация платформы
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono text-xs">
+            <div class="p-4 bg-[#F8FAFC] border border-slate-200 rounded-2xl space-y-1">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Окружение</span>
+                <span class="text-indigo-600 font-black text-sm block">{{ env_info.environment if env_info is defined else 'local' }}</span>
+            </div>
+            <div class="p-4 bg-[#F8FAFC] border border-slate-200 rounded-2xl space-y-1">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Версия Python</span>
+                <span class="text-slate-800 font-black text-sm block">{{ env_info.python_version if env_info is defined else 'Python 3.12' }}</span>
+            </div>
+            <div class="p-4 bg-[#F8FAFC] border border-slate-200 rounded-2xl space-y-1">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider block">База Данных</span>
+                <span class="text-emerald-600 font-black text-sm block">{{ env_info.db_engine if env_info is defined else 'SQLite 3.x (OK)' }}</span>
+            </div>
+            <div class="p-4 bg-[#F8FAFC] border border-slate-200 rounded-2xl space-y-1">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider block">Версия API</span>
+                <span class="text-slate-800 font-black text-sm block">{{ env_info.api_version if env_info is defined else 'BooStudy V2.4.0' }}</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function toggleMaintenanceMode() {
+    const btn = document.getElementById('maint-toggle-btn');
+    if (btn) btn.disabled = true;
+
+    fetch('/admin/maintenance/toggle', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success || data.enabled !== undefined) {
+            showToast(data.message || 'Статус техработ обновлен!', 'success');
+            setTimeout(() => { window.location.reload(); }, 500);
+        } else {
+            showToast(data.message || 'Не удалось изменить режим', 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Maintenance toggle error:', err);
+        showToast('Ошибка сети при переключении режима', 'error');
+    })
+    .finally(() => {
+        if (btn) btn.disabled = false;
+    });
+}
+
+function togglePreparationMode() {
+    const btn = document.getElementById('prep-toggle-btn');
+    if (btn) btn.disabled = true;
+
+    fetch('/admin/preparation/toggle', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success || data.enabled !== undefined) {
+            showToast(data.message || 'Статус режима подготовки обновлен!', 'success');
+            setTimeout(() => { window.location.reload(); }, 500);
+        } else {
+            showToast(data.message || 'Не удалось изменить режим подготовки', 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Preparation mode toggle error:', err);
+        showToast('Ошибка сети при переключении режима подготовки', 'error');
+    })
+    .finally(() => {
+        if (btn) btn.disabled = false;
+    });
+}
+
+function savePreparationSettings() {
+    const title = document.getElementById('prep-title-input')?.value || '';
+    const message = document.getElementById('prep-msg-input')?.value || '';
+
+    fetch('/admin/preparation/update-settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            preparation_mode_title: title,
+            preparation_mode_message: message
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Настройки сохранены!', 'success');
+        } else {
+            showToast(data.message || 'Не удалось сохранить настройки', 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Save preparation settings error:', err);
+        showToast('Ошибка сети при сохранении настроек', 'error');
+    });
+}
+</script>
+{% endblock %}

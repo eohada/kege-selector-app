@@ -1,0 +1,211 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+  <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-8 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
+    
+    <!-- HEADER & MAIN TEACHER ACTIONS -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+      <div>
+        <span class="text-xs font-black text-indigo-500 uppercase tracking-widest block mb-1">👨‍🏫 КАБИНЕТ ПРЕПОДАВАТЕЛЯ</span>
+        <h1 class="text-3xl font-black text-slate-900 tracking-tight font-display">Расписание занятий и вебинаров</h1>
+        <p class="text-xs font-extrabold text-slate-400 mt-1">Октябрь 2026 • Управление уроками групп, индивидуальными консультациями и вебинарами</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="flex items-center p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-inner mr-2">
+          <button class="px-4 py-2 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-xl transition-all">День</button>
+          <button class="px-4 py-2 bg-white text-indigo-600 font-extrabold text-xs rounded-xl shadow-xs border border-slate-200/60">Неделя</button>
+          <button class="px-4 py-2 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-xl transition-all">Месяц</button>
+        </div>
+
+        <button class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center gap-2 cursor-pointer uppercase tracking-wider">
+          <i class="ph-bold ph-plus text-base"></i>
+          <span>Новый урок</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ASYMMETRIC SPLIT LAYOUT -->
+    <div class="flex flex-col lg:flex-row gap-6 h-full flex-1 min-h-0 relative">
+
+      <!-- LEFT SIDEBAR: TEACHER CONTROL CONSOLE (1/4) -->
+      <div class="w-full lg:w-[25%] flex flex-col gap-6 shrink-0">
+        
+        <!-- Timezone Deep Inset -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] p-5 flex flex-col gap-3">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+              <i class="ph-bold ph-globe-hemisphere-west"></i> Часовой пояс
+            </span>
+            <span class="text-xs font-black text-slate-700">MSK (+3)</span>
+          </div>
+          <select class="w-full bg-white border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-700 px-3 py-2.5 outline-none focus:border-indigo-400 cursor-pointer shadow-xs">
+            <option>Московское время (UTC+3)</option>
+            <option>Екатеринбург (+5)</option>
+          </select>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] p-5 flex flex-col gap-4">
+          <h3 class="text-xs font-black text-slate-800 uppercase tracking-wider">Фильтры показа</h3>
+          
+          <div class="space-y-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Группа / Поток</label>
+              <select class="w-full bg-white border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none focus:border-indigo-400">
+                <option>Все группы (3 группы)</option>
+                <option>11А — КЕГЭ Информатика</option>
+                <option>10Б — КЕГЭ Информатика</option>
+                <option>9А — ОГЭ Математика</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Статус занятия</label>
+              <select class="w-full bg-white border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none focus:border-indigo-400">
+                <option>Все статусы</option>
+                <option>Предстоящие</option>
+                <option>Идёт сейчас (LIVE)</option>
+                <option>Завершенные</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Tools -->
+        <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] p-5 flex flex-col gap-3">
+          <button class="w-full bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 shadow-xs py-2.5 px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer">
+            <i class="ph-bold ph-copy text-indigo-500 text-base"></i>
+            <span>Шаблоны расписания</span>
+          </button>
+          <button class="w-full bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 shadow-xs py-2.5 px-4 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer">
+            <i class="ph-bold ph-magic-wand text-amber-500 text-base"></i>
+            <span>Автопланировщик</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- RIGHT MAIN: CALENDAR MATRIX (3/4) -->
+      <div class="flex flex-col h-full bg-white rounded-[2rem] border-2 border-slate-200/80 shadow-xs overflow-hidden flex-1 min-h-0 w-full lg:w-[75%]">
+
+        <!-- 1. FIXED DAYS HEADER -->
+        <div class="flex border-b border-slate-200 bg-slate-50/80 shrink-0">
+          <div class="w-20 shrink-0 border-r border-slate-200 bg-slate-100/50 flex items-center justify-center text-[10px] font-black text-slate-400 uppercase">
+            Время
+          </div> 
+          <div class="flex-1 grid grid-cols-7 w-full">
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-slate-500">ПН<br><span class="text-base font-black text-slate-800">12</span></div>
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-slate-500">ВТ<br><span class="text-base font-black text-slate-800">13</span></div>
+            <div class="border-r border-indigo-200 bg-indigo-50/60 p-3 text-center text-xs font-bold text-indigo-600 relative border-t-4 border-t-indigo-600">СР<br><span class="text-base font-black text-indigo-950">14</span></div>
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-slate-500">ЧТ<br><span class="text-base font-black text-slate-800">15</span></div>
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-slate-500">ПТ<br><span class="text-base font-black text-slate-800">16</span></div>
+            <div class="border-r border-slate-200 p-3 text-center text-xs font-bold text-rose-400">СБ<br><span class="text-base font-black text-rose-600">17</span></div>
+            <div class="p-3 text-center text-xs font-bold text-rose-400">ВС<br><span class="text-base font-black text-rose-600">18</span></div>
+          </div>
+        </div>
+
+        <!-- 2. SCROLLABLE TIMELINE GRID -->
+        <div class="flex-1 overflow-y-auto relative bg-slate-50/30" id="calendar-scroll-teacher">
+          
+          <!-- Current Time Marker Line (17:33) -->
+          <div class="absolute w-full flex items-center z-30 pointer-events-none" style="top: 1755px;">
+            <div class="w-20 shrink-0 flex justify-end pr-2 text-rose-600 font-black text-[11px]">17:33</div>
+            <div class="flex-1 h-[2px] bg-rose-500 relative">
+              <div class="absolute -left-1 -top-[3px] w-2.5 h-2.5 rounded-full bg-rose-500 shadow-xs"></div>
+            </div>
+          </div>
+
+          <!-- 24 HOURLY ROWS -->
+          {% for hour in range(24) %}
+          <div class="flex h-[100px] border-b border-slate-100">
+            <div class="w-20 shrink-0 border-r border-slate-200 text-xs text-slate-400 pr-3 pt-2 text-right font-bold bg-white select-none">
+              {{ "%02d:00"|format(hour) }}
+            </div>
+            <div class="flex-1 grid grid-cols-7 relative group">
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"><i class="ph-bold ph-plus text-indigo-400"></i></div>
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"><i class="ph-bold ph-plus text-indigo-400"></i></div>
+              <div class="border-r border-indigo-200/80 bg-indigo-50/20 hover:bg-indigo-50/40 cursor-pointer transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"><i class="ph-bold ph-plus text-indigo-500"></i></div>
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"><i class="ph-bold ph-plus text-indigo-400"></i></div>
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"><i class="ph-bold ph-plus text-indigo-400"></i></div>
+              <div class="border-r border-slate-200/80 hover:bg-indigo-50/40 cursor-pointer transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"><i class="ph-bold ph-plus text-indigo-400"></i></div>
+              <div class="hover:bg-indigo-50/40 cursor-pointer transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100"><i class="ph-bold ph-plus text-indigo-400"></i></div>
+            </div>
+          </div>
+          {% endfor %}
+
+          <!-- LESSON CARDS OVERLAY (ABSOLUTE) -->
+          <div class="absolute inset-0 w-full h-full pointer-events-none z-10 flex">
+            <div class="w-20 shrink-0 border-r border-transparent"></div>
+            <div class="flex-1 grid grid-cols-7 px-[2px] pointer-events-auto">
+              
+              <!-- Mon --> <div></div>
+              
+              <!-- Tue -->
+              <div class="relative w-full border-r border-transparent">
+                <div class="absolute top-[1650px] w-full bg-emerald-50 border-2 border-emerald-200 rounded-xl p-2.5 shadow-sm cursor-pointer hover:shadow-md transition-shadow z-10" style="width: calc(100% - 4px);">
+                  <div class="flex justify-between items-center mb-0.5">
+                    <span class="text-[9px] font-black text-emerald-700 uppercase">11А КЕГЭ</span>
+                    <i class="ph-bold ph-check text-emerald-600"></i>
+                  </div>
+                  <h4 class="text-xs font-black text-slate-800 leading-tight">Алгебра логики</h4>
+                  <p class="text-[10px] font-bold text-slate-500 mt-1">16 учеников • Завершено</p>
+                </div>
+              </div>
+              
+              <!-- Wed -->
+              <div class="relative w-full border-r border-transparent">
+                <div class="absolute top-[1755px] h-[150px] bg-indigo-600 border-2 border-indigo-700 rounded-2xl p-3 shadow-lg cursor-pointer hover:shadow-xl transition-shadow z-20 text-white flex flex-col justify-between" style="width: calc(100% - 4px);">
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="px-1.5 py-0.5 bg-indigo-500 rounded text-[9px] font-black uppercase">11А КЕГЭ (LIVE)</span>
+                      <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+                    </div>
+                    <h4 class="text-xs font-black text-white leading-tight">Производная и первообразная</h4>
+                    <p class="text-[10px] text-indigo-200 mt-1 font-bold">Участников: 15 / 16</p>
+                  </div>
+                  <a href="/sandbox/trainer" class="bg-white hover:bg-slate-50 text-indigo-700 text-xs font-black py-2 rounded-xl w-full text-center transition-colors no-underline block">
+                    ЗАПУСТИТЬ ВЕБИНАР
+                  </a>
+                </div>
+              </div>
+              
+              <!-- Thu --> <div></div>
+              
+              <!-- Fri -->
+              <div class="relative w-full border-r border-transparent">
+                <div class="absolute top-[1800px] w-full bg-amber-50 border-2 border-amber-200 rounded-xl p-2.5 shadow-sm cursor-pointer hover:shadow-md transition-shadow z-10" style="width: calc(100% - 4px);">
+                  <div class="flex justify-between items-center mb-0.5">
+                    <span class="text-[9px] font-black text-amber-700 uppercase">10Б КЕГЭ</span>
+                    <span class="text-[9px] font-bold text-amber-700">18:00</span>
+                  </div>
+                  <h4 class="text-xs font-black text-slate-800 leading-tight">Строковые алгоритмы №24</h4>
+                  <p class="text-[10px] font-bold text-slate-500 mt-1">14 учеников • Запланировано</p>
+                </div>
+              </div>
+              
+              <!-- Sat --> <div></div>
+              <!-- Sun --> <div></div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const calendarScroll = document.getElementById('calendar-scroll-teacher');
+    if (calendarScroll) {
+      calendarScroll.scrollTop = 1600; // Auto-scroll to 16:00
+    }
+  });
+</script>
+{% endblock %}

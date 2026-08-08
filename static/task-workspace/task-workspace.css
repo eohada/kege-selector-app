@@ -1077,25 +1077,132 @@ body.dark .tw-topbar .tw-btn-primary {
 
 @media (max-width: 880px) {
     .tw-shell {
-        max-width: calc(100vw - 20px);
-        margin-top: 12px;
+        max-width: 100%;
+        margin: 0 auto 24px;
     }
     .tw-topbar {
         display: block;
+        padding: 14px 14px;
+    }
+    .tw-topbar h1 {
+        font-size: 1.2rem;
+        word-break: break-word;
     }
     .tw-top-actions {
-        margin-top: 14px;
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+    .tw-top-actions .tw-btn,
+    .tw-top-actions .tw-pill,
+    .tw-top-actions .tw-timer-container {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .tw-top-actions .tw-btn {
+        font-size: 0.78rem;
+        padding: 8px 10px;
+    }
+    .tw-top-actions .tw-pill {
+        width: 100%;
+        text-align: center;
+        font-size: 0.75rem;
     }
     .tw-grid {
         display: block;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+        padding: 8px;
+        background: transparent;
+        border: none;
     }
     .tw-panel {
-        margin-top: 14px;
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        width: 100% !important;
+        height: auto !important;
+        min-width: 0 !important;
+        min-height: 280px;
+        margin-top: 12px;
+        transform: none !important;
+    }
+    .tw-task-panel {
+        min-height: 220px;
+        max-height: 50vh;
+    }
+    .tw-editor-panel {
+        min-height: 360px;
+    }
+    .tw-output-panel {
+        min-height: 240px;
+    }
+    .tw-panel-head {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .tw-head-note {
+        display: none;
+    }
+    .tw-editor-tools {
+        flex-wrap: wrap;
+        gap: 6px;
     }
     .tw-ide {
-        grid-template-columns: 42px minmax(0, 1fr);
+        grid-template-columns: 36px minmax(0, 1fr);
+        min-height: 280px;
     }
     .tw-suggestions {
         grid-template-columns: 1fr;
     }
+    .tw-imports-menu {
+        min-width: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+    }
 }
+
+@media (max-width: 480px) {
+    .tw-top-actions .tw-btn span,
+    .tw-top-actions .tw-btn i + span {
+        display: none;
+    }
+    .tw-top-actions .tw-btn {
+        min-width: 40px;
+        justify-content: center;
+    }
+    #tw-toggle-panel-task::after {
+        content: '';
+    }
+}
+
+/* Workspace V2: светлый Bento-слой вместо legacy оконного менеджера. */
+.tw-page-workspace { background: #eef3f8 !important; }
+.tw-shell { max-width: 1400px !important; margin: 0 auto 48px !important; padding: 0 16px; }
+.tw-topbar, .tw-panel { background: #f4f7fa !important; border: 2px solid #e2e8f0 !important; border-radius: 2rem !important; box-shadow: 0 4px 0 #dae1e9 !important; }
+.tw-topbar { margin: 0 0 18px !important; padding: 22px 26px !important; }
+.tw-grid { display: grid !important; grid-template-columns: minmax(270px, .78fr) minmax(440px, 1.55fr) minmax(300px, .9fr) !important; align-items: stretch; gap: 16px; height: auto !important; min-height: 720px; padding: 0 !important; overflow: visible !important; background: transparent !important; border: 0 !important; }
+.tw-grid > .tw-panel { position: relative !important; inset: auto !important; width: auto !important; height: auto !important; min-height: 0 !important; display: flex !important; }
+.tw-task-panel { grid-column: 1; }
+.tw-editor-panel { grid-column: 2; }
+.tw-output-panel { grid-column: 3; }
+.tw-panel-head { cursor: default !important; }
+.tw-drag-grip, .tw-panel-resizer { display: none !important; }
+.tw-ide, .tw-code, .tw-highlight, .tw-gutter, .tw-output { background: #fff !important; color: #1e293b !important; }
+.tw-code, .tw-highlight { font-size: 14px; }
+.tw-tabs { background: #e8edf3; border: 1px solid #d5dee8; border-radius: 1.25rem; margin: 12px; padding: 5px; }
+.tw-tab { border-radius: .9rem !important; }
+.tw-tab.is-active { background: #fff !important; box-shadow: 0 2px 0 #d5dee8 !important; }
+.tw-btn { border-bottom-width: 4px !important; border-radius: .85rem !important; font-weight: 800 !important; }
+.tw-btn-primary { background: #4f46e5 !important; border-color: #3730a3 !important; }
+.tw-btn-ghost { background: #fff !important; border-color: #dbe3ed !important; }
+.tw-top-actions #tw-toggle-panel-task,
+.tw-top-actions #tw-toggle-panel-output,
+.tw-top-actions #tw-change-layout { display: none !important; }
+
+@media (max-width: 1180px) { .tw-grid { grid-template-columns: minmax(280px, .8fr) minmax(420px, 1.3fr) !important; } .tw-output-panel { grid-column: 1 / -1; min-height: 360px !important; } }
+@media (max-width: 760px) { .tw-shell { padding: 0 10px; } .tw-grid { display: flex !important; flex-direction: column; min-height: 0; } .tw-grid > .tw-panel { min-height: 320px !important; } .tw-editor-panel { min-height: 560px !important; } }

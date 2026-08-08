@@ -4,7 +4,7 @@
 {# ── Компактная мобильная шапка (десктопный dock скрыт) ── #}
 {% if current_user and current_user.is_authenticated %}
 <div class="mobile-topbar md:hidden">
-    <a {{ spa_main_nav_attrs(url_for('main.index'), '', false) }} class="mobile-topbar-brand">
+    <a {{ spa_main_nav_attrs(url_for('main.dashboard'), '', false) }} class="mobile-topbar-brand">
         <i class="ph-fill ph-ghost"></i>
         <span>BooStudy</span>
     </a>
@@ -26,7 +26,7 @@
         <header class="w-full bg-zinc-950/90 backdrop-blur-xl border border-white/10 rounded-2xl h-16 px-6 flex items-center justify-between shadow-2xl">
 
         {# ── Brand ── #}
-        <a {{ spa_main_nav_attrs(url_for('main.index'), '', false) }} class="dock-brand pl-0">
+        <a {{ spa_main_nav_attrs(url_for('main.dashboard'), '', false) }} class="dock-brand pl-0">
             <div class="dock-brand-icon">
                 <i class="ph-fill ph-ghost text-xl"></i>
             </div>
@@ -58,7 +58,7 @@
             {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
             {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
             {% if current_student %}
-            <a {{ spa_main_nav_attrs(url_for('main.student_dashboard'), 'student_dashboard') }} class="dock-nav-item {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
+            <a {{ spa_main_nav_attrs(url_for('main.dashboard'), 'student_dashboard') }} class="dock-nav-item {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
                 <i class="ph-bold ph-house text-lg"></i> Главная
             </a>
             {% if sub_allow_lessons %}

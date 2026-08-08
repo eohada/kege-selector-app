@@ -444,9 +444,8 @@ def _delete_user_related_rows(user_id: int) -> None:
 @students_bp.route('/students')
 @login_required
 def students_list():
-    """Legacy route kept for compatibility; canonical list is main.dashboard."""
-    params = request.args.to_dict(flat=True)
-    return redirect(url_for('main.dashboard', **params))
+    """V2 Route for student list rendering sandbox/students.html layout."""
+    return redirect(url_for('main.dashboard', **request.args))
 
 
 @students_bp.route('/student/<int:student_id>/telegram/link-request', methods=['POST'])
@@ -649,230 +648,283 @@ def student_new():
 
     return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
 
+import hashlib
+import secrets
+from datetime import timedelta
+from core.db_models import InviteLink, TeacherStudent, moscow_now
+
+def ensure_invitelinks_schema():
+    """Фоновая проверка и добавление полей teacher_id, student_id, revoked_at в InviteLinks при необходимости."""
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        table_names = inspector.get_table_names()
+        inv_table = 'InviteLinks' if 'InviteLinks' in table_names else ('invitelinks' if 'invitelinks' in table_names else None)
+        if inv_table:
+            cols = {c['name'] for c in inspector.get_columns(inv_table)}
+            if 'teacher_id' not in cols:
+                db.session.execute(text(f'ALTER TABLE "{inv_table}" ADD COLUMN teacher_id INTEGER'))
+                db.session.commit()
+            if 'student_id' not in cols:
+                db.session.execute(text(f'ALTER TABLE "{inv_table}" ADD COLUMN student_id INTEGER'))
+                db.session.commit()
+            if 'revoked_at' not in cols:
+                col_type = 'TIMESTAMP' if db.engine.name == 'postgresql' else 'DATETIME'
+                db.session.execute(text(f'ALTER TABLE "{inv_table}" ADD COLUMN revoked_at {col_type}'))
+                db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+@students_bp.route('/api/teacher/invites/student', methods=['POST'])
+@students_bp.route('/api/teacher/invites/generate', methods=['POST'])
+@students_bp.route('/api/teacher/generate_invite', methods=['POST'])
+@login_required
+def generate_student_invite_api():
+    """Генерация безопасной токен-ссылки приглашения для нового ученика"""
+    if not (current_user.is_tutor() or current_user.is_admin()):
+        return jsonify({'status': 'error', 'message': 'Доступ запрещён'}), 403
+
+    ensure_invitelinks_schema()
+
+    try:
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+        expires_at = moscow_now() + timedelta(days=7)
+
+        invite = InviteLink(
+            token_hash=token_hash,
+            email='',
+            role='student',
+            teacher_id=current_user.id,
+            created_by_user_id=current_user.id,
+            expires_at=expires_at
+        )
+        db.session.add(invite)
+        db.session.commit()
+
+        host = request.host_url.rstrip('/')
+        invite_url = f"{host}/register/student/{raw_token}"
+
+        return jsonify({
+            'status': 'success',
+            'success': True,
+            'token': raw_token,
+            'invite_code': raw_token,
+            'invite_url': invite_url,
+            'expires_at': expires_at.strftime('%d.%m.%Y %H:%M'),
+            'message': 'Ссылка-приглашение для ученика успешно создана'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error generating student invite: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@students_bp.route('/api/teacher/invites/parent', methods=['POST'])
+@login_required
+def generate_parent_invite_api():
+    """Генерация безопасной токен-ссылки приглашения для родителя конкретного ученика"""
+    if not (current_user.is_tutor() or current_user.is_admin()):
+        return jsonify({'status': 'error', 'message': 'Доступ запрещён'}), 403
+
+    data = request.get_json(silent=True) or request.form or {}
+    student_param = data.get('student_id')
+    if not student_param:
+        return jsonify({'status': 'error', 'message': 'Укажите ID ученика'}), 400
+
+    student = Student.query.get(student_param)
+    if not student:
+        student = Student.query.filter_by(user_id=student_param).first()
+    if not student:
+        return jsonify({'status': 'error', 'message': 'Ученик не найден'}), 404
+
+    from app.utils.relationship_scope import can_user_access_student
+    if not can_user_access_student(current_user, student_user_id=student.user_id, student_platform_id=student.student_id):
+        return jsonify({'status': 'error', 'message': 'У вас нет доступа к этому ученику'}), 403
+
+    ensure_invitelinks_schema()
+
+    try:
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode('utf-8')).hexdigest()
+        expires_at = moscow_now() + timedelta(days=7)
+
+        invite = InviteLink(
+            token_hash=token_hash,
+            email='',
+            role='parent',
+            student_id=student.student_id,
+            teacher_id=current_user.id,
+            created_by_user_id=current_user.id,
+            expires_at=expires_at
+        )
+        db.session.add(invite)
+        db.session.commit()
+
+        host = request.host_url.rstrip('/')
+        invite_url = f"{host}/register/parent/{raw_token}"
+
+        return jsonify({
+            'status': 'success',
+            'success': True,
+            'token': raw_token,
+            'invite_url': invite_url,
+            'student_name': student.name,
+            'expires_at': expires_at.strftime('%d.%m.%Y %H:%M'),
+            'message': f'Ссылка-приглашение для родителя ученика {student.name} создана'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error generating parent invite: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@students_bp.route('/api/teacher/invites/revoke', methods=['POST'])
+@login_required
+def revoke_invite_api():
+    """Отзыв токена приглашения"""
+    data = request.get_json(silent=True) or request.form or {}
+    invite_id = data.get('invite_id')
+    token = data.get('token')
+
+    invite = None
+    if invite_id:
+        invite = InviteLink.query.get(invite_id)
+    elif token:
+        token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+        invite = InviteLink.query.filter_by(token_hash=token_hash).first()
+
+    if not invite:
+        return jsonify({'status': 'error', 'message': 'Приглашение не найдено'}), 404
+
+    if invite.created_by_user_id != current_user.id and not current_user.is_admin():
+        return jsonify({'status': 'error', 'message': 'Отказать в доступе'}), 403
+
+    invite.revoke()
+    db.session.commit()
+    return jsonify({'status': 'success', 'success': True, 'message': 'Приглашение успешно отозвано'}), 200
+
+
+@students_bp.route('/api/teacher/invites/list', methods=['GET'])
+@login_required
+def list_invites_api():
+    """Список приглашений, созданных преподавателем"""
+    if not (current_user.is_tutor() or current_user.is_admin()):
+        return jsonify({'status': 'error', 'message': 'Доступ запрещён'}), 403
+
+    invites = InviteLink.query.filter_by(created_by_user_id=current_user.id).order_by(InviteLink.created_at.desc()).limit(100).all()
+    result = []
+    for inv in invites:
+        st_name = inv.student.name if inv.student else None
+        result.append({
+            'invite_id': inv.invite_id,
+            'role': inv.role,
+            'student_name': st_name,
+            'is_valid': inv.is_valid,
+            'used_at': inv.used_at.isoformat() if inv.used_at else None,
+            'revoked_at': inv.revoked_at.isoformat() if inv.revoked_at else None,
+            'expires_at': inv.expires_at.isoformat() if inv.expires_at else None,
+            'created_at': inv.created_at.isoformat() if inv.created_at else None,
+        })
+
+    return jsonify({'status': 'success', 'invites': result}), 200
+
+
 @students_bp.route('/student/<int:student_id>')
+@students_bp.route('/students/<int:student_id>')
+@students_bp.route('/teacher/students/<int:student_id>')
 @login_required
 def student_profile(student_id):
-    """Профиль студента с уроками"""
+    """Профиль студента (V2 Sandbox Universal Profile)"""
+    student = Student.query.get(student_id)
+    if not student:
+        student = Student.query.filter_by(user_id=student_id).first()
+    
+    if student and student.user_id:
+        return redirect(url_for('main.universal_profile_view', user_id=student.user_id))
+    
+    if student:
+        return redirect(url_for('students.teacher_student_dashboard', student_id=student.student_id))
+        
+    return redirect(url_for('main.universal_profile_view', user_id=student_id))
+
+
+@students_bp.route('/student/<int:student_id>/dashboard')
+@students_bp.route('/students/<int:student_id>/dashboard')
+@login_required
+def teacher_student_dashboard(student_id: int):
+    """Дашборд ученика со стороны преподавателя/создателя."""
+    student = _guard_student_access(student_id)
+    student_user = _get_student_user_for_scope(student)
+    
+    now = moscow_now()
+    active_lesson = Lesson.query.filter_by(student_id=student.student_id, status='in_progress').order_by(Lesson.lesson_date.desc()).first()
+    upcoming_lesson = (
+        Lesson.query
+        .filter(Lesson.student_id == student.student_id, Lesson.status == 'planned', Lesson.lesson_date >= now)
+        .order_by(Lesson.lesson_date.asc())
+        .first()
+    )
+
+    recent_lessons = Lesson.query.filter_by(student_id=student.student_id).order_by(Lesson.lesson_date.desc()).limit(10).all()
+    recent_submissions = Submission.query.filter_by(student_id=student.student_id).order_by(Submission.submitted_at.desc()).limit(10).all()
+
+    family_ties = FamilyTie.query.filter_by(student_id=student_user.id).all() if student_user else []
+    parents_count = len(family_ties)
+
+    tutor_user = User.query.get(student.tutor_id) if getattr(student, 'tutor_id', None) else None
+    student_profile_obj = UserProfile.query.filter_by(user_id=student_user.id).first() if student_user else None
+
+    return render_template(
+        'sandbox/teacher_dashboard.html',
+        student=student,
+        user=student_user,
+        student_profile=student_profile_obj,
+        active_lesson=active_lesson,
+        upcoming_lesson=upcoming_lesson,
+        recent_lessons=recent_lessons,
+        recent_submissions=recent_submissions,
+        parents_count=parents_count,
+        tutor_user=tutor_user,
+        active_page='student_dashboard'
+    )
+
+
+@students_bp.route('/student/<int:student_id>/balance', methods=['POST'])
+@login_required
+def student_update_balance(student_id: int):
+    """Обновление баланса оплаченных уроков ученика из дашборда преподавателя."""
+    if not (current_user.is_admin() or current_user.is_creator() or current_user.is_tutor() or current_user.role in ('teacher', 'tutor')):
+        from flask import abort
+        abort(403)
+
+    student = _guard_student_access(student_id)
     try:
-        from app.auth.rbac_utils import get_user_scope
+        new_balance = int(request.form.get('lessons_balance', 0))
+        old_balance = student.lessons_balance or 0
+        student.lessons_balance = new_balance
+        db.session.commit()
 
-        try:
-            student = Student.query.get_or_404(student_id)
-        except Exception as e:
-            logger.error(f"Error loading student {student_id}: {e}", exc_info=True)
-            flash('Ошибка при загрузке профиля ученика.', 'danger')
-            return redirect(url_for('main.dashboard'))
-        
-        if current_user.is_student():
-            try:
-                me_student = Student.query.filter_by(user_id=current_user.id).first()
-                if not me_student:
-                    cand = Student.query.get(current_user.id)
-                    if cand and getattr(cand, 'user_id', None) is None:
-                        me_student = cand
-                if me_student and me_student.student_id != student_id:
-                    return redirect(url_for('students.student_profile', student_id=me_student.student_id))
-            except Exception:
-                pass
-
-        try:
-            if current_user.is_student():
-                if getattr(student, 'user_id', None) == current_user.id:
-                    scope = {'can_see_all': False, 'student_ids': [current_user.id]}
-                elif student.student_id == current_user.id:
-                    scope = {'can_see_all': False, 'student_ids': [current_user.id]}
-                else:
-                    scope = get_user_scope(current_user)
-            else:
-                scope = get_user_scope(current_user)
-            if not scope['can_see_all']:
-                student_user_id = getattr(student, 'user_id', None)
-                if student_user_id is not None:
-                    if student_user_id not in scope['student_ids']:
-                        flash('У вас нет доступа к этому ученику.', 'danger')
-                        return redirect(url_for('main.dashboard'))
-                elif not scope['student_ids']:
-                    flash('У вас нет доступа к этому ученику.', 'danger')
-                    return redirect(url_for('main.dashboard'))
-        except Exception as e:
-            logger.error(f"Error checking access scope: {e}", exc_info=True)
-            flash('Ошибка при проверке доступа.', 'danger')
-            return redirect(url_for('main.dashboard'))
-        
-        now = moscow_now()
-        
-        active_submissions = []
-        try:
-            active_submissions = Submission.query.join(
-                Assignment, Submission.assignment_id == Assignment.assignment_id
-            ).filter(
-                Submission.student_id == student_id,
-                Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED']),
-                Assignment.is_active == True,  # noqa: E712  скрываем архивные
-            ).options(
-                db.contains_eager(Submission.assignment).joinedload(Assignment.created_by)
-            ).order_by(Submission.assigned_at.desc()).all()
-        except Exception as e:
-            logger.error(f"Error loading active submissions: {e}")
-        
-        all_lessons = []
-        max_retries = 2
-        for attempt in range(max_retries):
-            try:
-                all_lessons = Lesson.query.filter_by(student_id=student_id).options(
-                    db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
-                ).order_by(Lesson.lesson_date.desc()).all()
-                break # Success
-            except (OperationalError, ProgrammingError) as e:
-                db.session.rollback()
-                if attempt < max_retries - 1 and ('column' in str(e).lower() or 'does not exist' in str(e).lower()):
-                    logger.warning(f"Database schema issue detected ({e}). Attempting auto-fix...")
-                    try:
-                        ensure_schema_columns(current_app)
-                        logger.info("Schema fix applied. Retrying query...")
-                        continue
-                    except Exception as fix_err:
-                        logger.error(f"Failed to auto-fix schema: {fix_err}")
-                        all_lessons = []
-                        break
-                else:
-                    logger.error(f"Error loading lessons for student {student_id} (attempt {attempt+1}): {e}", exc_info=True)
-                    all_lessons = []
-                    break
-        
-        try:
-            completed_lessons = [l for l in all_lessons if l.status == 'completed']
-            planned_lessons = [l for l in all_lessons if l.status == 'planned']
-            in_progress_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
-            
-            last_completed = completed_lessons[0] if completed_lessons else None
-            
-            try:
-                upcoming_lessons = sorted(planned_lessons, key=lambda x: x.lesson_date if x.lesson_date else now)[:2]
-            except Exception as e:
-                logger.warning(f"Error sorting planned lessons: {e}")
-                upcoming_lessons = planned_lessons[:2] if planned_lessons else []
-            
-            other_lessons = all_lessons
-        except Exception as e:
-            logger.error(f"Error processing lessons: {e}", exc_info=True)
-            completed_lessons = []
-            planned_lessons = []
-            in_progress_lesson = None
-            last_completed = None
-            upcoming_lessons = []
-            other_lessons = all_lessons
-        
-        student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
-        student_profile_obj = UserProfile.query.filter_by(user_id=student_user_obj.id).first() if student_user_obj else None
-        student_subscription = None
-        try:
-            if student_user_obj:
-                student_subscription = get_effective_access_for_user(student_user_obj.id)
-        except Exception:
-            student_subscription = None
-
-        current_parent_tie = None
-        current_parent_summary = None
-        if current_user.is_authenticated and current_user.is_parent() and student_user_obj:
-            try:
-                current_parent_tie = get_family_tie_between(current_user.id, student_user_obj.id, include_pending=True)
-                if current_parent_tie:
-                    current_parent_summary = {
-                        'confirmed': bool(current_parent_tie.is_confirmed),
-                        'status_label': 'Подтверждена' if current_parent_tie.is_confirmed else 'Ожидает подтверждения',
-                    }
-            except Exception as e:
-                logger.warning(f"Failed to resolve current parent tie for student profile: {e}")
-
-        parents_info = []
-        family_summary = {
-            'parents_count': 0,
-            'confirmed_parents_count': 0,
-            'pending_parents_count': 0,
-            'tutors_count': 0,
-        }
-        try:
-            can_see_parents = False
-            if current_user.is_authenticated:
-                if hasattr(current_user, 'is_tutor') and current_user.is_tutor():
-                    can_see_parents = True
-                elif hasattr(current_user, 'is_admin') and current_user.is_admin():
-                    can_see_parents = True
-                elif hasattr(current_user, 'is_creator') and current_user.is_creator():
-                    can_see_parents = True
-            
-            if can_see_parents and student_user_obj:
-                try:
-                    family_ties = get_family_ties_for_student(student_user_obj.id, include_pending=True)
-                    for tie in family_ties:
-                        try:
-                            parent_user = User.query.get(tie.parent_id)
-                            if parent_user:
-                                parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
-                                
-                                if parent_profile:
-                                    name = f"{parent_profile.first_name or ''} {parent_profile.last_name or ''}".strip()
-                                    if not name:
-                                        name = parent_user.username
-                                    
-                                    parents_info.append({
-                                        'name': name,
-                                        'phone': parent_profile.phone,
-                                        'telegram_id': parent_profile.telegram_id,
-                                        'confirmed': bool(tie.is_confirmed),
-                                        'tie_id': tie.tie_id,
-                                    })
-                        except Exception as e:
-                            logger.error(f"Ошибка при загрузке родителя {tie.parent_id}: {e}", exc_info=True)
-                            continue
-                    family_summary['parents_count'] = len(parents_info)
-                    family_summary['confirmed_parents_count'] = len([p for p in parents_info if p.get('confirmed')])
-                    family_summary['pending_parents_count'] = len([p for p in parents_info if not p.get('confirmed')])
-                except Exception as e:
-                    logger.error(f"Ошибка при загрузке информации о родителях: {e}", exc_info=True)
-        except Exception as e:
-            logger.error(f"Ошибка при проверке доступа к информации о родителях: {e}", exc_info=True)
-
-        tutors_list = []
-        if student_user_obj:
-            try:
-                enrollments = Enrollment.query.filter_by(student_id=student_user_obj.id).options(
-                    db.joinedload(Enrollment.tutor)
-                ).all()
-                tutors_list = [e.tutor for e in enrollments if getattr(e, 'tutor', None)]
-                family_summary['tutors_count'] = len(tutors_list)
-            except Exception as e:
-                logger.warning(f"Ошибка загрузки преподавателей для ученика: {e}")
-        
-        force_view = (request.args.get('view') or '').strip().lower()
-        if force_view == 'student':
-            template_name = 'student_profile.html'
-        elif current_user.is_student() or current_user.is_parent():
-            template_name = 'student_profile.html'
-        else:
-            template_name = 'student_profile_teacher.html'
-
-        return render_template(template_name,
-                               student=student, 
-                               student_user=student_user_obj,
-                               student_profile=student_profile_obj,
-                               student_subscription=student_subscription,
-                               tutors_list=tutors_list,
-                               active_submissions=active_submissions,
-                               lessons=all_lessons,
-                               last_completed=last_completed,
-                               upcoming_lessons=upcoming_lessons,
-                               in_progress_lesson=in_progress_lesson,
-                               other_lessons=other_lessons,
-                               parents_info=parents_info,
-                               family_summary=family_summary,
-                               current_parent_tie=current_parent_tie,
-                               current_parent_summary=current_parent_summary)
+        # Отправляем уведомление ученику при смене баланса
+        if student.user_id:
+            from app.telegram.notifications import notify_lesson_balance_changed
+            notify_lesson_balance_changed(
+                student_user_id=student.user_id,
+                before=old_balance,
+                after=new_balance,
+                reason='Обновление преподавателем',
+                source='manual'
+            )
+        flash(f'Баланс уроков ученика {student.name} успешно обновлен до {new_balance}!', 'success')
     except Exception as e:
-        logger.error(f"Critical error in student_profile: {e}", exc_info=True)
-        flash('Произошла ошибка при загрузке профиля ученика.', 'danger')
-        return redirect(url_for('main.dashboard'))
+        db.session.rollback()
+        logger.error(f"Error updating student balance: {e}", exc_info=True)
+        flash(f'Ошибка при обновлении баланса: {e}', 'error')
+
+    return redirect(url_for('students.teacher_student_dashboard', student_id=student_id))
 
 
 @students_bp.route('/student/<int:student_id>/chat')

@@ -1,3 +1,8 @@
+/**
+ * BooStudy Premium Mobile UI & Layout Overrides
+ * Скелет мобильной версии, написанный с чистого листа
+ */
+
 :root {
   --z-dock: 60;
   --z-mobile-overlay: 140;
@@ -8,94 +13,33 @@
   --z-cmd: 230;
 }
 
-.app-main {
-  padding-top: calc(5.5rem + env(safe-area-inset-top, 0px));
-}
-
-.dock-wrapper {
-  z-index: var(--z-dock) !important;
-}
-
-.profile-dropdown [data-profile-trigger],
-.dock-avatar-trigger {
-  background: transparent;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-.profile-dropdown.is-open .profile-dropdown-content {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0);
-}
-
-.mobile-menu-overlay {
-  z-index: var(--z-mobile-overlay) !important;
-}
-
-.mobile-menu {
-  z-index: var(--z-mobile-menu) !important;
-}
-
-.modal-overlay {
-  z-index: var(--z-modal) !important;
-}
-
-.toast-container {
-  z-index: var(--z-toast) !important;
-}
-
-.confirm-modal.active {
-  z-index: var(--z-confirm) !important;
-}
-
-.cmd-palette-overlay {
-  z-index: var(--z-cmd) !important;
-}
-
 @media (max-width: 768px) {
-  .app-content {
-    padding: 0.75rem !important;
-  }
-
-  /* Компенсация высоты нижнего дока, чтобы контент не перекрывался */
-  .app-main {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
-  }
-
-  /* Скрываем старый гамбургер на мобильных устройствах */
-  .mobile-menu-toggle {
-    display: none !important;
-  }
-
   /* ═══════════════ ПЛАВАЮЩИЙ НИЖНИЙ ДОК (BOTTOM DOCK) ═══════════════ */
   .mobile-bottom-dock {
     position: fixed;
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    left: 12px;
-    right: 12px;
-    height: 64px;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    right: 16px;
+    height: 66px;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     border: 1px solid rgba(0, 0, 0, 0.08);
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
     display: flex;
     align-items: center;
     justify-content: space-around;
     z-index: var(--z-mobile-menu);
-    padding: 0 6px;
+    padding: 0 8px;
     pointer-events: auto;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
   }
 
   [data-theme="dark"] .mobile-bottom-dock {
-    background: rgba(19, 19, 22, 0.85);
+    background: rgba(9, 9, 11, 0.82);
     border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .mobile-tab {
@@ -103,32 +47,35 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 4px;
     color: #64748B;
     text-decoration: none;
     flex: 1;
     height: 100%;
-    border-radius: 14px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 16px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     font-size: 0.65rem;
     font-weight: 800;
     position: relative;
     padding-top: 4px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
   }
 
   .mobile-tab i {
-    font-size: 1.35rem;
+    font-size: 1.4rem;
     color: #94A3B8;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .mobile-tab.active {
-    color: var(--color-accent, #7B5CFF);
+    color: var(--color-accent, #8B5CF6);
   }
 
   .mobile-tab.active i {
-    color: var(--color-accent, #7B5CFF);
-    transform: translateY(-2px) scale(1.1);
+    color: var(--color-accent, #8B5CF6);
+    transform: translateY(-3px) scale(1.1);
   }
 
   [data-theme="dark"] .mobile-tab {
@@ -147,7 +94,7 @@
     color: #C4B5FD;
   }
 
-  /* Индикатор-точка под активным табом */
+  /* Неоновый индикатор-точка под активной вкладкой */
   .mobile-tab::after {
     content: '';
     position: absolute;
@@ -160,23 +107,25 @@
   }
 
   .mobile-tab.active::after {
-    background: var(--color-accent, #7B5CFF);
+    background: var(--color-accent, #8B5CF6);
+    box-shadow: 0 0 8px var(--color-accent, #8B5CF6);
   }
 
   [data-theme="dark"] .mobile-tab.active::after {
     background: #C4B5FD;
+    box-shadow: 0 0 8px #C4B5FD;
   }
 
   /* ═══════════════ ВСПЛЫВАЮЩЕЕ МЕНЮ (BOTTOM SHEET) ═══════════════ */
   .bottom-sheet-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(9, 9, 11, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.28s ease, visibility 0.28s ease;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
     z-index: var(--z-mobile-overlay);
   }
 
@@ -194,12 +143,12 @@
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: 28px 28px 0 0;
     padding: 1.25rem 1.25rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
-    max-height: 85vh;
+    max-height: 80vh;
     overflow-y: auto;
     transform: translateY(100%);
-    transition: transform 0.35s cubic-bezier(0.15, 0.85, 0.35, 1);
+    transition: transform 0.4s cubic-bezier(0.15, 0.85, 0.35, 1);
     z-index: var(--z-mobile-menu);
-    box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.12);
+    box-shadow: 0 -12px 40px rgba(9, 9, 11, 0.12);
   }
 
   .bottom-sheet-panel.active {
@@ -207,14 +156,14 @@
   }
 
   [data-theme="dark"] .bottom-sheet-panel {
-    background: #18181B;
+    background: #09090B;
     border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.7);
   }
 
   /* Ручка сдвига */
   .bottom-sheet-handle {
-    width: 36px;
+    width: 40px;
     height: 5px;
     background: #E2E8F0;
     border-radius: 10px;
@@ -239,9 +188,9 @@
   }
 
   .bottom-sheet-title {
-    font-size: 1.15rem;
-    font-weight: 900;
-    color: #0F172A;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #09090B;
     letter-spacing: -0.01em;
   }
 
@@ -254,7 +203,7 @@
     border: none;
     cursor: pointer;
     color: #94A3B8;
-    padding: 4px;
+    padding: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -262,7 +211,7 @@
   }
 
   .bottom-sheet-close:hover {
-    color: #0F172A;
+    color: #09090B;
   }
 
   [data-theme="dark"] .bottom-sheet-close:hover {
@@ -282,33 +231,32 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 14px 8px;
+    gap: 6px;
+    padding: 12px 6px;
     background: #F8FAFC;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.04);
     border-radius: 16px;
     color: #334155;
     text-decoration: none;
     font-size: 0.72rem;
-    font-weight: 800;
+    font-weight: 700;
     text-align: center;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .bottom-sheet-item i {
-    font-size: 1.45rem;
-    color: var(--color-accent, #7B5CFF);
-    transition: transform 0.2s ease;
+    font-size: 1.4rem;
+    color: var(--color-accent, #8B5CF6);
   }
 
   .bottom-sheet-item:active {
-    transform: scale(0.96);
+    transform: scale(0.95);
     background: #E2E8F0;
   }
 
   [data-theme="dark"] .bottom-sheet-item {
     background: rgba(255, 255, 255, 0.02);
-    border-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.04);
     color: #D4D4D8;
   }
 
@@ -321,8 +269,8 @@
   }
 
   .bottom-sheet-section-title {
-    font-size: 0.75rem;
-    font-weight: 900;
+    font-size: 0.72rem;
+    font-weight: 800;
     text-transform: uppercase;
     color: #94A3B8;
     letter-spacing: 0.05em;
@@ -356,13 +304,20 @@
   }
 
   .bottom-sheet-list-item i {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     color: #64748B;
   }
 
   .bottom-sheet-list-item:hover, .bottom-sheet-list-item:active {
     background: #F1F5F9;
-    color: #0F172A;
+    color: #09090B;
+  }
+
+  .bottom-sheet-list-item.logout-btn {
+    color: #EF4444;
+  }
+  .bottom-sheet-list-item.logout-btn i {
+    color: #EF4444;
   }
 
   [data-theme="dark"] .bottom-sheet-list-item {
@@ -378,499 +333,295 @@
     color: #FAFAFA;
   }
 
-  /* ═══════════════ АДАПТИВНЫЕ СЕТКИ И КНОПКИ НА МОБИЛЬНЫХ ═══════════════ */
-  .profile-grid-responsive {
+  /* Разделитель */
+  .bottom-sheet-divider {
+    height: 1px;
+    background: rgba(0, 0, 0, 0.06);
+    margin: 8px 0;
+  }
+  [data-theme="dark"] .bottom-sheet-divider {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  /* Коробка свитчера темы */
+  .theme-switcher-box {
+    padding: 8px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .theme-switcher-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #94A3B8;
+    letter-spacing: 0.05em;
+  }
+
+  /* ═══════════════ МОБИЛЬНЫЙ TOPBAR (когда десктопный dock скрыт) ═══════════════ */
+  .mobile-topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+    background: rgba(9, 9, 11, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 16px;
+    padding-right: 16px;
+    z-index: var(--z-dock);
+  }
+
+  [data-theme="light"] .mobile-topbar {
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .mobile-topbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #FAFAFA;
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: -0.02em;
+  }
+
+  [data-theme="light"] .mobile-topbar-brand {
+    color: #09090B;
+  }
+
+  .mobile-topbar-brand i {
+    color: var(--color-accent, #8B5CF6);
+    font-size: 1.25rem;
+  }
+
+  .mobile-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-topbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #D4D4D8;
+    text-decoration: none;
+  }
+
+  [data-theme="light"] .mobile-topbar-btn {
+    border-color: rgba(0, 0, 0, 0.08);
+    background: rgba(0, 0, 0, 0.03);
+    color: #475569;
+  }
+
+  /* ═══════════════ МОБИЛЬНАЯ АДАПТИВНОСТЬ СТРАНИЦ ═══════════════ */
+  main {
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .profile-grid-responsive,
+  .mobile-stack-grid {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
   }
 
-  .lesson-panel-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 1rem !important;
+  /* Inline grid-ы из шаблонов — складываем в одну колонку */
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 140px"],
+  [style*="grid-template-columns: 2fr 2fr"],
+  [style*="grid-template-columns: repeat(2"],
+  [style*="grid-template-columns: repeat(3"],
+  [style*="grid-template-columns: repeat(auto-fit, minmax(400px"] {
+    grid-template-columns: 1fr !important;
   }
 
-  .lesson-panel-actions {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    width: 100% !important;
-    gap: 0.65rem !important;
+  /* Горизонтальный скролл таблиц — только внутри обёртки */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1.5rem;
+    border-radius: 20px;
+    border: 1px solid var(--color-stroke, rgba(255, 255, 255, 0.08));
   }
 
-  .lesson-panel-actions .neo-button,
-  .lesson-panel-actions button,
-  .lesson-panel-actions a {
+  .table-responsive > table {
+    margin-bottom: 0 !important;
+    min-width: 640px;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  .table-responsive > table.users-table {
+    min-width: 720px;
+  }
+
+  .table-responsive > table.testers-table {
+    min-width: 860px;
+  }
+
+  /* Контроллеры форм */
+  select, input, textarea, .neo-input, .neo-select {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Корректировка Bento карточек на мобильных */
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* KPI-сетки: 2 колонки на узком экране */
+  .grid.grid-cols-2.sm\:grid-cols-3.lg\:grid-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  @media (max-width: 380px) {
+    .grid.grid-cols-2.sm\:grid-cols-3.lg\:grid-cols-6 {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  /* Кнопки действий во всю ширину */
+  .btn-responsive {
     width: 100% !important;
     justify-content: center !important;
-    text-align: center !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
   }
 
-  .teacher-review-panel .lesson-panel-header {
+  /* Шапки страниц с кнопками — перенос */
+  .glass-panel > .flex.items-center.justify-between,
+  section.glass-panel > .flex.items-center.justify-between {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .glass-panel > .flex.items-center.justify-between > .flex,
+  section.glass-panel > .flex.items-center.justify-between > a.neo-button {
+    width: 100%;
+  }
+
+  section.glass-panel > .flex.items-center.justify-between > a.neo-button.accent {
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Админ-навигация компактнее */
+  .admin-nav-scroll {
+    margin-bottom: 1.25rem !important;
+    padding-bottom: 0.5rem !important;
+    gap: 0.45rem !important;
+  }
+
+  .admin-nav-scroll .neo-button {
+    font-size: 0.78rem !important;
+    padding: 0.45rem 0.75rem !important;
+  }
+
+  .admin-nav-scroll .neo-button i {
+    font-size: 0.95rem !important;
+  }
+
+  /* Фильтры админки — одна колонка */
+  .filters-grid,
+  .audit-filters,
+  .filter-section,
+  .graph-toolbar {
+    grid-template-columns: 1fr !important;
+    padding: 1rem !important;
+    gap: 0.85rem !important;
+  }
+
+  .filters-actions,
+  .audit-filters .flex,
+  .graph-toolbar > :last-child {
     flex-direction: column !important;
     align-items: stretch !important;
   }
 
-  /* Сброс инлайновых отступов и размеров форм у преподавателя */
-  .profile-grid-responsive select,
-  .profile-grid-responsive input,
-  .profile-grid-responsive textarea {
+  .filters-actions .neo-button,
+  .filters-actions a.neo-button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Граф связей — горизонтальный скролл внутри stage */
+  .graph-stage {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    min-height: 420px !important;
+  }
+
+  .graph-columns {
+    min-width: 720px;
+  }
+
+  /* Task Workspace — на всю ширину экрана */
+  main .tw-shell {
     max-width: 100% !important;
     width: 100% !important;
+    margin-left: -0.25rem !important;
+    margin-right: -0.25rem !important;
+    margin-top: 0 !important;
+    margin-bottom: 24px !important;
+  }
+
+  .statistics-chart-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .statistics-chart-wrap canvas {
+    min-width: 480px !important;
+  }
+
+  /* Wizard steps — горизонтальный скролл */
+  .wizard-steps,
+  .assignment-wizard-steps {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+    max-width: 100%;
+  }
+  .dlg-card {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    margin: 12px !important;
+  }
+
+  /* QA-виджет не перекрывает TabBar */
+  #qa-floating-widget,
+  .qa-floating-widget {
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 12px !important;
+  }
+
+  /* Скрываем bottom dock на странице Task Workspace — больше места под IDE */
+  body.tw-page-workspace .mobile-bottom-dock,
+  body.tw-page-workspace .bottom-sheet-panel,
+  body.tw-page-workspace .bottom-sheet-overlay {
+    display: none !important;
+  }
+
+  body.tw-page-workspace main {
+    padding-bottom: 1.5rem !important;
   }
 }
 
-/* ═══════════════ ГЛОБАЛЬНЫЕ СТИЛИ И ИСПРАВЛЕНИЯ ТЕМ ═══════════════ */
-
-/* Анимация прокрутки для мобильных таблиц */
-@keyframes swipeHint {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(5px); }
-}
-.animate-swipe {
-  display: inline-block;
-  animation: swipeHint 1.2s ease-in-out infinite;
-}
-
-/* Глобальное исправление инпутов в темной теме */
-[data-theme="dark"] input,
-[data-theme="dark"] select,
-[data-theme="dark"] textarea {
-  color: var(--color-text-primary) !important;
-}
-
-[data-theme="dark"] select option {
-  background-color: #131316 !important;
-  color: #ffffff !important;
-}
-
-/* Исправление темной темы у преподавателя в уроке */
-[data-theme="dark"] .teacher-mode .task-card.teacher-task-card .answer-section .neo-input {
-  color: #ffffff !important;
-  background: rgba(15, 23, 42, 0.6) !important;
-  border-color: rgba(148, 163, 184, 0.3) !important;
-}
-[data-theme="dark"] .teacher-mode .task-card.teacher-task-card .auto-check-result {
-  background: rgba(16, 185, 129, 0.15) !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
-  color: #34d399 !important;
-}
-
-[data-theme="dark"] .teacher-mode .teacher-review-panel,
-[data-theme="dark"] .teacher-mode .teacher-review-cta,
-[data-theme="dark"] .teacher-mode .homework-actions.teacher-actions-bar,
-[data-theme="dark"] .teacher-mode .task-nav-bar.teacher-task-nav {
-  background: rgba(19, 19, 22, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
-}
-
-/* Переопределение инлайновых светлых фонов в темной теме */
-[data-theme="dark"] [style*="background:#eef2ff"],
-[data-theme="dark"] [style*="background: #eef2ff"],
-[data-theme="dark"] [style*="background:#EEF2FF"],
-[data-theme="dark"] [style*="background: #EEF2FF"],
-[data-theme="dark"] [style*="background-color:#eef2ff"],
-[data-theme="dark"] [style*="background-color: #eef2ff"] {
-  background-color: rgba(123, 92, 255, 0.15) !important;
-  color: #c4b5fd !important;
-  border-color: rgba(123, 92, 255, 0.25) !important;
-}
-
-[data-theme="dark"] [style*="background:#f8fafc"],
-[data-theme="dark"] [style*="background: #f8fafc"],
-[data-theme="dark"] [style*="background:#f1f5f9"],
-[data-theme="dark"] [style*="background: #f1f5f9"] {
-  background-color: var(--color-bg-surface-alt) !important;
-  color: var(--color-text-primary) !important;
-}
-
-[data-theme="dark"] [style*="background:#ffffff"],
-[data-theme="dark"] [style*="background: #ffffff"],
-[data-theme="dark"] [style*="background:#fff"],
-[data-theme="dark"] [style*="background: #fff"],
-[data-theme="dark"] [style*="background-color:#ffffff"],
-[data-theme="dark"] [style*="background-color:#fff"] {
-  background-color: var(--color-bg-surface) !important;
-  color: var(--color-text-primary) !important;
-}
-
-[data-theme="dark"] [style*="background:#fffbeb"],
-[data-theme="dark"] [style*="background: #fffbeb"] {
-  background-color: rgba(245, 158, 11, 0.15) !important;
-  color: #fbbf24 !important;
-  border-color: rgba(245, 158, 11, 0.3) !important;
-}
-
-[data-theme="dark"] [style*="background:#ecfdf5"],
-[data-theme="dark"] [style*="background: #ecfdf5"] {
-  background-color: rgba(16, 185, 129, 0.15) !important;
-  color: #34d399 !important;
-  border-color: rgba(16, 185, 129, 0.3) !important;
-}
-
-[data-theme="dark"] [style*="background:#fef2f2"],
-[data-theme="dark"] [style*="background: #fef2f2"] {
-  background-color: rgba(239, 68, 68, 0.15) !important;
-  color: #fca5a5 !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
-}
-
-/* Переопределение жестких светлых градиентов из Tailwind в темной теме */
-[data-theme="dark"] .bg-gradient-to-br.from-\[\#EEF2FF\].to-\[\#F5F3FF\],
-[data-theme="dark"] .bg-gradient-to-br[class*="from-[#EEF2FF]"],
-[data-theme="dark"] .bg-gradient-to-br[class*="to-[#F5F3FF]"] {
-  background-image: linear-gradient(to bottom right, rgba(30, 27, 75, 0.4), rgba(49, 46, 129, 0.4)) !important;
-  border-color: rgba(99, 102, 241, 0.15) !important;
-  color: #FAFAFA !important;
-}
-
-/* Переопределение фоновых Tailwind-классов bg-white на темные */
-[data-theme="dark"] .bg-white,
-[data-theme="dark"] .bg-white\/80,
-[data-theme="dark"] .bg-white\/50,
-[data-theme="dark"] .bg-white\/90 {
-  background-color: var(--color-bg-surface) !important;
-  color: var(--color-text-primary) !important;
-}
-[data-theme="dark"] .bg-surface-alt {
-  background-color: var(--color-bg-surface-alt) !important;
-}
-[data-theme="dark"] .border-white,
-[data-theme="dark"] .border-slate-200,
-[data-theme="dark"] .border-slate-100,
-[data-theme="dark"] .border-indigo-100 {
-  border-color: var(--color-stroke) !important;
-}
-[data-theme="dark"] .text-slate-700,
-[data-theme="dark"] .text-slate-600 {
-  color: var(--color-text-secondary) !important;
-}
-[data-theme="dark"] .bg-slate-50,
-[data-theme="dark"] .bg-slate-100,
-[data-theme="dark"] .bg-slate-200/50,
-[data-theme="dark"] .bg-slate-100/80 {
-  background-color: var(--color-bg-surface-alt) !important;
-}
-[data-theme="dark"] .text-slate-900,
-[data-theme="dark"] .text-slate-800,
-[data-theme="dark"] .text-slate-700 {
-  color: var(--color-text-primary) !important;
-}
-[data-theme="dark"] .text-slate-500,
-[data-theme="dark"] .text-slate-400 {
-  color: var(--color-text-muted) !important;
-}
-
-
-/* ═══════════════ BENTO BUTTON OVERRIDES ═══════════════ */
-/* Оверрайды для inline-styled кнопок (которые в HTML используют Tailwind классы) */
-
-/* Чистим наследие 3D-физики со всех кнопок */
-.neo-button,
-.lesson-back-link,
-.lesson-header__actions a,
-.lesson-header__actions button,
-.lesson-panel-actions button,
-.lesson-panel-actions a,
-[class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]),
-a[class*="bg-surface"][class*="border-purple"],
-button[class*="bg-surface"][class*="border-purple"],
-.stat-reset-btn,
-.stat-save-btn,
-#resetAllStats,
-#bulkApplyBtn {
-  border-bottom-width: 1px !important;
-  transform: none !important;
-  transition: background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease, opacity 0.14s ease !important;
-}
-
-/* Кнопки в шапке урока — инлайн стили через Tailwind */
-[class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]) {
-  background: var(--color-accent, #8B5CF6) !important;
-  color: #FFFFFF !important;
-  border: 1px solid rgba(139, 92, 246, 0.6) !important;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.22) !important;
-  border-radius: 12px !important;
-  font-weight: 700 !important;
-  text-decoration: none !important;
-}
-[class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]):hover {
-  background: #7A4DE8 !important;
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.34) !important;
-  border-color: rgba(139, 92, 246, 0.8) !important;
-  transform: none !important;
-}
-[class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]):active {
-  background: #6A3ED8 !important;
-  opacity: 0.9 !important;
-  box-shadow: 0 1px 4px rgba(139, 92, 246, 0.2) !important;
-}
-
-/* Кнопки шапки урока: outline/ghost (Редактировать, Назад в профиль) */
-a[class*="bg-surface"][class*="border-purple"],
-button[class*="bg-surface"][class*="border-purple"],
-.lesson-back-link {
-  background: var(--color-bg-surface-alt, #F1F5F9) !important;
-  color: var(--color-accent, #8B5CF6) !important;
-  border: 1px solid rgba(139, 92, 246, 0.3) !important;
-  box-shadow: 0 1px 3px rgba(15,23,42,0.05) !important;
-  border-radius: 12px !important;
-  font-weight: 700 !important;
-  text-decoration: none !important;
-}
-a[class*="bg-surface"][class*="border-purple"]:hover,
-button[class*="bg-surface"][class*="border-purple"]:hover,
-.lesson-back-link:hover {
-  background: rgba(139, 92, 246, 0.07) !important;
-  border-color: rgba(139, 92, 246, 0.5) !important;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.12) !important;
-  transform: none !important;
-}
-
-/* Кнопка удаления (красная кнопка) */
-button[class*="bg-red"],
-.lesson-header__actions button[class*="bg-red"] {
-  background: rgba(251, 113, 133, 0.08) !important;
-  color: #E11D48 !important;
-  border: 1px solid rgba(251, 113, 133, 0.3) !important;
-  box-shadow: none !important;
-  border-radius: 12px !important;
-}
-button[class*="bg-red"]:hover,
-.lesson-header__actions button[class*="bg-red"]:hover {
-  background: rgba(251, 113, 133, 0.16) !important;
-  border-color: rgba(251, 113, 133, 0.5) !important;
-  transform: none !important;
-}
-
-/* Панель действий (кнопки в panel) */
-.stat-save-btn {
-  background: var(--color-accent, #8B5CF6) !important;
-  color: #FFFFFF !important;
-  border: 1px solid rgba(139, 92, 246, 0.6) !important;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.22) !important;
-}
-.stat-save-btn:hover {
-  background: #7A4DE8 !important;
-  transform: none !important;
-}
-.stat-reset-btn,
-#bulkApplyBtn {
-  background: var(--color-bg-surface-alt, #F1F5F9) !important;
-  color: var(--color-text-secondary, #475569) !important;
-  border: 1px solid var(--color-stroke, #E2E8F0) !important;
-  box-shadow: none !important;
-}
-.stat-reset-btn:hover,
-#bulkApplyBtn:hover {
-  background: var(--color-bg-surface, #FFFFFF) !important;
-  border-color: var(--color-stroke-strong, #CBD5E1) !important;
-  transform: none !important;
-}
-#resetAllStats {
-  background: #1E293B !important;
-  color: #FFFFFF !important;
-  border: 1px solid #334155 !important;
-  box-shadow: none !important;
-}
-#resetAllStats:hover {
-  background: #334155 !important;
-  transform: none !important;
-}
-
-/* ═══════════════ ТЁМНАЯ ТЕМА — BENTO OVERRIDES ═══════════════ */
-
-[data-theme="dark"] [class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]) {
-  background: var(--color-accent, #8B5CF6) !important;
-  border-color: rgba(139, 92, 246, 0.55) !important;
-  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.28) !important;
-}
-[data-theme="dark"] [class*="bg-boo-primary"]:not([class*="bg-boo-primary/"]):hover {
-  background: #7A4DE8 !important;
-  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4) !important;
-}
-
-[data-theme="dark"] a[class*="bg-surface"][class*="border-purple"],
-[data-theme="dark"] button[class*="bg-surface"][class*="border-purple"],
-[data-theme="dark"] .lesson-back-link {
-  background: rgba(255,255,255,0.05) !important;
-  color: #C4B5FD !important;
-  border-color: rgba(139, 92, 246, 0.35) !important;
-  box-shadow: none !important;
-}
-[data-theme="dark"] a[class*="bg-surface"][class*="border-purple"]:hover,
-[data-theme="dark"] button[class*="bg-surface"][class*="border-purple"]:hover,
-[data-theme="dark"] .lesson-back-link:hover {
-  background: rgba(139, 92, 246, 0.1) !important;
-  border-color: rgba(139, 92, 246, 0.55) !important;
-}
-
-[data-theme="dark"] button[class*="bg-red"],
-[data-theme="dark"] .lesson-header__actions button[class*="bg-red"] {
-  background: rgba(251, 113, 133, 0.1) !important;
-  color: #FDA4AF !important;
-  border-color: rgba(251, 113, 133, 0.28) !important;
-}
-[data-theme="dark"] button[class*="bg-red"]:hover,
-[data-theme="dark"] .lesson-header__actions button[class*="bg-red"]:hover {
-  background: rgba(251, 113, 133, 0.18) !important;
-  border-color: rgba(251, 113, 133, 0.45) !important;
-}
-
-[data-theme="dark"] .stat-save-btn {
-  background: var(--color-accent, #8B5CF6) !important;
-  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.28) !important;
-}
-[data-theme="dark"] .stat-reset-btn,
-[data-theme="dark"] #bulkApplyBtn {
-  background: rgba(255,255,255,0.05) !important;
-  color: var(--color-text-secondary, #A1A1AA) !important;
-  border-color: rgba(255,255,255,0.09) !important;
-}
-[data-theme="dark"] .stat-reset-btn:hover,
-[data-theme="dark"] #bulkApplyBtn:hover {
-  background: rgba(255,255,255,0.09) !important;
-  border-color: rgba(255,255,255,0.15) !important;
-}
-[data-theme="dark"] #resetAllStats {
-  background: #18181B !important;
-  border-color: rgba(255,255,255,0.1) !important;
-  color: #FAFAFA !important;
-}
-[data-theme="dark"] #resetAllStats:hover {
-  background: #27272A !important;
-}
-
-
-
-
-
-
-
-
-
-/* ═══════════════ ДОРАБОТКА ПОЛЕЙ ВВОДА В ТЕМНОЙ ТЕМЕ ═══════════════ */
-
-[data-theme="dark"] .neo-input,
-[data-theme="dark"] .neo-select,
-[data-theme="dark"] .neo-textarea {
-  background: #18181B !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.15) !important;
-  color: #FAFAFA !important;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-  transition: all 0.2s ease !important;
-}
-
-[data-theme="dark"] .neo-input:focus,
-[data-theme="dark"] .neo-select:focus,
-[data-theme="dark"] .neo-textarea:focus {
-  border-color: #8B5CF6 !important;
-  border-bottom-color: #7C3AED !important;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(139, 92, 246, 0.25) !important;
-  outline: none !important;
-}
-
-[data-theme="dark"] input[type="checkbox"] {
-  accent-color: #8B5CF6 !important;
-}
-
-/* ═══════════════ СТРАНИЦА СОЗДАНИЯ РАБОТЫ (WIZARD CREATE ASSIGNMENT) ═══════════════ */
-
-[data-theme="dark"] .recipient-card.is-selected {
-  background: rgba(139, 92, 246, 0.12) !important;
-  border-color: #8B5CF6 !important;
-}
-
-[data-theme="dark"] .status-pill {
-  background: #18181B !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  color: #A1A1AA !important;
-}
-
-[data-theme="dark"] .status-pill span {
-  color: #FAFAFA !important;
-}
-
-[data-theme="dark"] .recipient-checkbox {
-  background: #131316 !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-}
-
-[data-theme="dark"] .recipient-card.is-selected .recipient-checkbox {
-  background: #8B5CF6 !important;
-  border-color: #8B5CF6 !important;
-}
-
-
-/* ═══════════════ ТЁМНАЯ ТЕМА — СТРАНИЦЫ ПРЕПОДАВАТЕЛЯ ═══════════════ */
-[data-theme="dark"] .glass-panel,
-[data-theme="dark"] .teacher-review-cta,
-[data-theme="dark"] .profile-form-section,
-[data-theme="dark"] .wizard-section,
-[data-theme="dark"] .task-settings-panel {
-  background-color: var(--color-bg-surface) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-}
-[data-theme="dark"] .hero-eyebrow {
-  color: var(--color-text-muted, #A1A1AA) !important;
-}
-[data-theme="dark"] .lesson-panel-header {
-  color: var(--color-text-primary, #FAFAFA) !important;
-}
-[data-theme="dark"] .lesson-header {
-  border-bottom-color: rgba(255,255,255,0.09) !important;
-}
-
-/* ═══════════════ ГЛОБАЛЬНАЯ РЕФОРМА ДИЗАЙНА КНОПОК И ТЕНЕЙ (БЕНТО-ФЛЭТ) ═══════════════ */
-
-/* 1. Находим все элементы с инлайновыми 3D-классами Tailwind и превращаем их в bento-flat */
-[class*="border-b-[3px]"],
-[class*="border-b-[4px]"],
-[class*="border-b-purple-"],
-[class*="border-b-indigo-"],
-[class*="border-b-slate-"],
-[class*="border-b-red-"],
-[class*="border-b-black"],
-[class*="active:translate-y-"],
-[class*="active:border-b-0"],
-[class*="shadow-[0_8px_"],
-[class*="shadow-[0_10px_"],
-.shadow-tactile {
-  border-bottom-width: 1px !important;
-  border-bottom-color: var(--color-stroke, rgba(0, 0, 0, 0.08)) !important;
-  transform: none !important;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
-  transition: all 0.15s ease !important;
-}
-
-/* 2. Отключаем смещение на active нажатие */
-[class*="active:translate-y-"]:active {
-  transform: none !important;
-  border-bottom-width: 1px !important;
-  opacity: 0.82 !important;
-  box-shadow: none !important;
-}
-
-/* 3. Дополнительные исправления для всех типов кнопок */
-.neo-button {
-  border-bottom-width: 1px !important;
-  transform: none !important;
-}
-.neo-button.ghost {
-  border-color: transparent !important;
-  border-bottom-width: 1px !important;
-  box-shadow: none !important;
-}
-[data-theme="dark"] .neo-button.ghost {
-  border-color: transparent !important;
-  border-bottom-width: 1px !important;
-}
-
-/* Устраняем белые границы у карточек в темной теме */
-[data-theme="dark"] .border-slate-200,
-[data-theme="dark"] .border-slate-100 {
-  border-color: rgba(255, 255, 255, 0.08) !important;
-}

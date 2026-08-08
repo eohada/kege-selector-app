@@ -1,0 +1,366 @@
+{% extends "sandbox/layout_parent.html" %}
+
+{% block sandbox_content %}
+<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-4 sm:p-6 pl-[6.5rem]">
+    <div class="max-w-[1400px] mx-auto bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-sm border border-slate-200/60 my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
+
+        <!-- A. HEADER & ACTIONS -->
+        <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+            <div>
+                <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-xs font-black uppercase tracking-wider mb-2">
+                    <i class="ph-bold ph-shield-check text-sm"></i> Родительский кабинет
+                </div>
+                <h1 class="text-3xl font-display font-black text-slate-900 tracking-tight">Кабинет родителя</h1>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    Мониторинг успеваемости, баланса занятий и связи с наставниками
+                </p>
+            </div>
+
+            <button onclick="openLinkChildModal()" class="bg-amber-500 hover:bg-amber-600 text-white font-black text-sm px-6 py-3.5 rounded-xl border border-amber-600 border-b-[4px] shadow-[0_4px_10px_rgba(245,158,11,0.2)] active:border-b-[1px] active:translate-y-[3px] active:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0">
+                <i class="ph-bold ph-plus text-base"></i>
+                <span>Привязать ребёнка</span>
+            </button>
+        </header>
+
+        <!-- B. BENTO GRID CONTAINER -->
+        <div class="grid grid-cols-12 gap-6 flex-1">
+
+            <!-- LEFT MAIN COLUMN: CHILDREN CARDS (8/12) -->
+            <div class="col-span-12 lg:col-span-8 flex flex-col gap-6">
+
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="ph-bold ph-users-three text-lg text-amber-500"></i> Привязанные ученики ({{ children|length }})
+                    </h3>
+                </div>
+
+                {% if not children %}
+                <!-- EMPTY STATE WHEN NO CHILDREN LINKED -->
+                <div class="bg-[#F4F7FA] border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center flex flex-col items-center justify-center space-y-4 my-auto">
+                    <div class="w-20 h-20 rounded-3xl bg-amber-50 border-2 border-amber-100 text-amber-500 flex items-center justify-center shadow-xs">
+                        <i class="ph-bold ph-user-plus text-4xl"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <h4 class="text-lg font-black text-slate-800">Профили детей пока не привязаны</h4>
+                        <p class="text-xs font-bold text-slate-400 max-w-md mx-auto leading-relaxed">
+                            Привяжите аккаунт ребёнка по уникальному коду привязки из его личного кабинета или по E-mail, чтобы отслеживать успеваемость, баланс и домашние задания.
+                        </p>
+                    </div>
+                    <button onclick="openLinkChildModal()" class="btn-3d px-6 py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl border-2 border-amber-700 shadow-[0_4px_0_#D97706] active:translate-y-[3px] transition-all cursor-pointer flex items-center gap-2">
+                        <i class="ph-bold ph-key text-base"></i>
+                        <span>Ввести код привязки</span>
+                    </button>
+                </div>
+                {% else %}
+                <!-- LIST OF LINKED CHILDREN CARDS -->
+                <div class="flex flex-col gap-6">
+                    {% for child in children %}
+                    <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 flex flex-col gap-6 hover:border-amber-300 transition-colors">
+                        
+                        <!-- Header: Child Info & Status -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+                            <div class="flex items-center gap-4">
+                                <a href="/profile/{{ child.user.id }}" class="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 p-1 shadow-xs hover:border-amber-400 transition-colors block shrink-0">
+                                    <img src="{{ child.user.avatar_url if child.user.avatar_url else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ child.user.username }}" class="w-full h-full rounded-xl object-cover">
+                                </a>
+                                <div>
+                                    <a href="/profile/{{ child.user.id }}" class="text-xl font-display font-black text-slate-800 hover:text-amber-600 no-underline transition-colors block">
+                                        {{ child.user.full_name or child.user.username }}
+                                    </a>
+                                    <span class="text-xs font-bold text-slate-400">ID #{{ child.user.id }} • {{ child.student.category if (child.student and child.student.category) else 'Информатика КЕГЭ' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <span class="px-3 py-1.5 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-black uppercase tracking-wider">
+                                    Успеваемость: {{ child.completion_pct }}%
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Metrics Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="p-4 bg-white border-2 border-slate-200/80 rounded-2xl shadow-xs text-center">
+                                <span class="block text-2xl font-black text-slate-800">{{ child.completion_pct }}%</span>
+                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Курс освоен</span>
+                            </div>
+                            <div class="p-4 bg-white border-2 border-slate-200/80 rounded-2xl shadow-xs text-center">
+                                <span class="block text-2xl font-black text-slate-800">{{ child.completed_lessons }} / {{ child.total_lessons }}</span>
+                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Уроков посещено</span>
+                            </div>
+                            <div class="p-4 bg-white border-2 border-slate-200/80 rounded-2xl shadow-xs text-center">
+                                <span class="block text-2xl font-black {% if child.lessons_balance <= 2 %}text-rose-600{% else %}text-emerald-600{% endif %}">{{ child.lessons_balance }}</span>
+                                <span class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Баланс занятий</span>
+                            </div>
+                        </div>
+
+                        <!-- Mentor Info & Actions -->
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+                            {% if child.mentor %}
+                            <div class="flex items-center gap-3 w-full sm:w-auto">
+                                <img src="{{ child.mentor.avatar_url if child.mentor.avatar_url else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ child.mentor.username }}" class="w-9 h-9 rounded-xl border border-slate-200 object-cover bg-amber-50">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0">Наставник</p>
+                                    <a href="/profile/{{ child.mentor.id }}" class="text-xs font-black text-amber-600 hover:text-amber-800 no-underline truncate">
+                                        {{ child.mentor.full_name or child.mentor.username }}
+                                    </a>
+                                </div>
+                            </div>
+                            {% else %}
+                            <p class="text-xs font-bold text-slate-400">Наставник: Ожидание назначения</p>
+                            {% endif %}
+
+                            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                <button onclick="promptUnlinkChild({{ child.user.id }}, '{{ child.user.full_name or child.user.username }}')" class="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5" title="Отвязать профиль">
+                                    <i class="ph-bold ph-user-minus text-base"></i>
+                                </button>
+                                <a href="/profile/{{ child.user.id }}" class="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs px-4 py-2.5 rounded-xl border border-amber-600 border-b-[4px] shadow-[0_4px_10px_rgba(245,158,11,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline inline-flex items-center gap-1.5">
+                                    <span>Профиль ребёнка</span>
+                                    <i class="ph-bold ph-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+            </div>
+
+            <!-- RIGHT SIDEBAR COLUMN: BALANCE & SCHEDULE (4/12) -->
+            <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                
+                <!-- FAMILY BALANCE CARD -->
+                <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <i class="ph-bold ph-wallet text-amber-500 text-lg"></i> Семейный баланс
+                        </h4>
+                        <span class="text-[10px] font-black text-emerald-600 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md">Оплачено</span>
+                    </div>
+
+                    <div class="p-5 bg-white border-2 border-slate-200/80 rounded-2xl shadow-xs text-center space-y-1">
+                        <span class="text-3xl font-black text-slate-800 block">{{ total_balance }} уроков</span>
+                        <span class="text-xs font-bold text-slate-400 block">суммарный баланс детей</span>
+                    </div>
+
+                    <p class="text-[11px] font-bold text-slate-500 leading-snug">
+                        Баланс расходуется автоматически при посещении онлайн-занятий и индивидуальных консультаций.
+                    </p>
+                </div>
+
+                <!-- UPCOMING LESSONS OF CHILDREN -->
+                <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <i class="ph-bold ph-calendar text-amber-500 text-lg"></i> Ближайшие уроки
+                        </h4>
+                        <a href="/parents/schedule" class="text-[11px] font-bold text-amber-600 hover:text-amber-800 no-underline">Всё расписание &rarr;</a>
+                    </div>
+
+                    <div class="space-y-3">
+                        {% if upcoming_lessons %}
+                        {% for item in upcoming_lessons %}
+                        <div class="p-3.5 bg-white border border-slate-200/80 rounded-xl space-y-1">
+                            <div class="flex justify-between items-center text-[10px] font-black text-amber-600 uppercase tracking-wider">
+                                <span>{{ item.child_name }}</span>
+                                <span class="text-slate-400">{{ item.lesson.lesson_date.strftime('%d.%m %H:%M') if item.lesson.lesson_date else 'Запланировано' }}</span>
+                            </div>
+                            <h5 class="text-xs font-black text-slate-800 leading-tight mb-0">Урок #{{ item.lesson.lesson_id }}: {{ item.lesson.topic or 'Занятие КЕГЭ' }}</h5>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <p class="text-xs font-bold text-slate-400 text-center py-4">Ближайших занятий не запланировано.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</main>
+
+<!-- MODAL: LINK CHILD (#link-child-modal) -->
+<div id="link-child-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden select-none">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] shadow-2xl max-w-lg w-full p-6 sm:p-8 relative space-y-6">
+        <button onclick="closeLinkChildModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="ph-bold ph-x text-xl"></i>
+        </button>
+
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center font-black text-xl shadow-xs">
+                <i class="ph-bold ph-user-plus"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-slate-900">Привязать профиль ребёнка</h3>
+                <p class="text-xs font-bold text-slate-400">Введите уникальный код привязки или E-mail</p>
+            </div>
+        </div>
+
+        <form id="link-child-form" onsubmit="submitLinkChild(event)" class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Код привязки или E-mail ученика</label>
+                <input type="text" id="student-code-input" required placeholder="Например: BS-893A или student@boostudy.ru" class="w-full h-12 px-4 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:bg-white focus:border-amber-500 focus:outline-none transition-all shadow-inner placeholder:text-slate-400">
+            </div>
+
+            <div class="p-4 bg-amber-50/60 border border-amber-100 rounded-xl space-y-1">
+                <p class="text-xs font-bold text-amber-900 leading-snug">
+                    💡 <span class="font-black">Где взять код?</span> Ребёнок может скопировать 6-значный код привязки в своем личном кабинете на странице «Профиль».
+                </p>
+            </div>
+
+            <div id="link-child-error" class="hidden p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-xl"></div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button type="button" onclick="closeLinkChildModal()" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer">Отмена</button>
+                <button type="submit" id="link-child-submit-btn" class="btn-3d px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl border-b-[3px] border-amber-700 transition-all cursor-pointer flex items-center gap-2">
+                    <i class="ph-bold ph-check text-sm"></i>
+                    <span>Привязать ребёнка</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: CONFIRM UNLINK (#unlink-student-modal) -->
+<div id="unlink-student-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 hidden select-none">
+    <div class="bg-white border-2 border-slate-200 rounded-[2rem] shadow-2xl max-w-md w-full p-6 sm:p-8 relative space-y-6">
+        <button onclick="closeUnlinkModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 cursor-pointer">
+            <i class="ph-bold ph-x text-xl"></i>
+        </button>
+
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center font-black text-xl shadow-xs">
+                <i class="ph-bold ph-user-minus"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-slate-900">Отвязать профиль ребёнка?</h3>
+                <p class="text-xs font-bold text-slate-400">Подтверждение действия</p>
+            </div>
+        </div>
+
+        <p class="text-xs font-bold text-slate-600 leading-relaxed">
+            Вы уверены, что хотите отвязать профиль <span id="unlink-student-name" class="font-black text-slate-900">ученика</span>? Вы сможете привязать его снова по коду.
+        </p>
+
+        <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="closeUnlinkModal()" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer">Отмена</button>
+            <button type="button" id="confirm-unlink-btn" onclick="executeUnlinkChild()" class="btn-3d px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-[3px] border-rose-800 transition-all cursor-pointer flex items-center gap-2">
+                <i class="ph-bold ph-trash text-sm"></i>
+                <span>Да, отвязать</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+let pendingUnlinkStudentId = null;
+
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+function openLinkChildModal() {
+    const modal = document.getElementById('link-child-modal');
+    if (modal) modal.classList.remove('hidden');
+    const errDiv = document.getElementById('link-child-error');
+    if (errDiv) errDiv.classList.add('hidden');
+}
+
+function closeLinkChildModal() {
+    const modal = document.getElementById('link-child-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function submitLinkChild(event) {
+    event.preventDefault();
+    const input = document.getElementById('student-code-input');
+    const errDiv = document.getElementById('link-child-error');
+    const submitBtn = document.getElementById('link-child-submit-btn');
+    if (!input || !input.value.trim()) return;
+
+    errDiv.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50');
+
+    try {
+        const response = await fetch('/api/parent/link_child', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ student_code_or_email: input.value.trim() })
+        });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            closeLinkChildModal();
+            showToast(data.message || 'Профиль ребёнка успешно привязан!', 'success');
+            setTimeout(() => window.location.reload(), 800);
+        } else {
+            errDiv.textContent = data.message || 'Произошла ошибка при привязке.';
+            errDiv.classList.remove('hidden');
+        }
+    } catch (err) {
+        errDiv.textContent = 'Ошибка сети. Попробуйте позже.';
+        errDiv.classList.remove('hidden');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-50');
+    }
+}
+
+function promptUnlinkChild(studentId, studentName) {
+    pendingUnlinkStudentId = studentId;
+    const nameSpan = document.getElementById('unlink-student-name');
+    if (nameSpan) nameSpan.textContent = studentName || 'ученика';
+    const modal = document.getElementById('unlink-student-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeUnlinkModal() {
+    pendingUnlinkStudentId = null;
+    const modal = document.getElementById('unlink-student-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function executeUnlinkChild() {
+    if (!pendingUnlinkStudentId) return;
+    const studentId = pendingUnlinkStudentId;
+    const btn = document.getElementById('confirm-unlink-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+    }
+
+    try {
+        const response = await fetch(`/api/parent/unlink_child/${studentId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+        const data = await response.json();
+        closeUnlinkModal();
+        if (response.ok && data.success) {
+            showToast('Профиль ребёнка отвязан.', 'success');
+            setTimeout(() => window.location.reload(), 800);
+        } else {
+            showToast(data.message || 'Ошибка отвязки профиля.', 'error');
+        }
+    } catch (err) {
+        closeUnlinkModal();
+        showToast('Ошибка соединения.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+        }
+    }
+}
+</script>
+{% endblock %}
