@@ -9,6 +9,8 @@
 x-web-common: &web-common
   build: .
   restart: unless-stopped
+  volumes:
+    - ./uploads:/app/uploads
   env_file:
     - .env
   environment:

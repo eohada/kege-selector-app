@@ -13,6 +13,8 @@
 services:
   web:
     build: .
+    volumes:
+      - ./uploads:/app/uploads
     command: env EVENTLET_NO_GREENDNS=yes gunicorn wsgi:app --worker-class eventlet -w 1 --bind 0.0.0.0:8000 --timeout 180 --keep-alive 5
     # env_file: .env — те же BOT_TOKEN, APP_URL, BOT_INTERNAL_TOKEN, что и раньше
     # ...
@@ -44,6 +46,8 @@ services:
 
   celery-worker:
     build: .
+    volumes:
+      - ./uploads:/app/uploads
     command: celery -A celery_app.celery worker --loglevel=info --concurrency=2
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0

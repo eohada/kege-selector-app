@@ -168,6 +168,9 @@ def create_app(config_name=None):
     
     logger = configure_logging(base_dir=base_dir, environment=ENVIRONMENT, service_name='boostudy')
 
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
     csrf.init_app(app)
     db.init_app(app)
     migrate.init_app(app, db)

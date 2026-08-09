@@ -1,3 +1,17 @@
+## [2026-08-09 01:40:00] - 🛡️ PRODUCTION READINESS AUDIT & FORWARD-ONLY SCHEMA INTEGRITY (v8.46.2)
+
+- **🔄 Восстановление истории миграций Alembic & Forward-only миграция (`f2b3c4d5e6f7`)**:
+  - Сохранен непреложный принцип версионирования БД: все исторические файлы миграций Alembic возвращены в исходное состояние для исключения рассинхронизации хэшей ревизий на сервере.
+  - Создана новая forward-only миграция `f2b3c4d5e6f7_schema_integrity_and_repair.py`, которая безопасно дополняет схемы таблиц (`UserProfiles`, `TheoryBlocks`, `Answers`, `Users`) без риска сбоев при `flask db upgrade`.
+- **🔐 Аудит `ADMIN_SECRET` и безопасность**:
+  - Проведён анализ использования `ADMIN_SECRET`. Выявлено, что переменная являлась устаревшим legacy-параметром. Из `docker-compose.yml` удалены неоднозначные умолчания `${ADMIN_SECRET:-}`. Защита административных роутов осуществляется через RBAC и авторизационные токены.
+- **📁 Проверка сохранности файлов (`/app/uploads`)**:
+  - В `docker-compose.example.yml` и `docker-compose.bluegreen.example.yml` зафиксировано монтирование `./uploads:/app/uploads` для предотвращения потери аватаров, обложек и материалов при перезапуске контейнеров.
+- **🌐 Поддержка Nginx & ProxyFix**:
+  - В `create_app()` включен `werkzeug.middleware.proxy_fix.ProxyFix` для корректной обработки HTTPS заголовков и IP-адресов клиентов через Nginx reverse proxy.
+- **🧪 Преддеплойный автотест `scripts/prod_smoke_test.py`**:
+  - Интегрирован комплексный скрипт автоматизированной проверки приложения, БД, шаблонов и базовых эндпоинтов.
+
 ## [2026-08-09 00:55:00] - ⚡ ОПТИМИЗАЦИЯ DOCKER И ВЫНОС HEAVY DEPENDENCIES (EASYOCR / PYTORCH) (v8.46.1)
 
 - **📦 Изоляция тяжелых зависимостей (EasyOCR, PyTorch)**:

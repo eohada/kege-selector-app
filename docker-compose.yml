@@ -99,7 +99,6 @@ services:
       - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
       - FLASK_ENV=production
       - ENVIRONMENT=production
-      - ADMIN_SECRET=${ADMIN_SECRET}
       # Переменные для связи сайта с фоновыми задачами
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -127,7 +126,6 @@ services:
       - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_sandbox
       - FLASK_ENV=development
       - ENVIRONMENT=sandbox
-      - ADMIN_SECRET=${ADMIN_SECRET}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - USE_EVENTLET=true
@@ -152,8 +150,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_admin
       - FLASK_ENV=production
-      - ENVIRONMENT=${ADMIN_ENV}
-      - ADMIN_SECRET=${ADMIN_SECRET}
+      - ENVIRONMENT=${ADMIN_ENV:-production}
 
   trainer:
     build: .
