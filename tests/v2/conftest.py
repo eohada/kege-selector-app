@@ -17,6 +17,7 @@ collect_ignore = [
         'test_auth_invitations_roles_v2.py',
         'test_preparation_mode_v2.py',
         'test_theory_learning_cycle_v2.py',
+        'test_schema_contract_v2.py',
     }
 ]
 

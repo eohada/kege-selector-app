@@ -16,19 +16,31 @@ depends_on = None
 
 
 def upgrade():
+    inspector = sa.inspect(op.get_bind())
+    profile_columns = {column['name'] for column in inspector.get_columns('UserProfiles')}
+    error_columns = {column['name'] for column in inspector.get_columns('BotErrorReports')}
+    lesson_columns = {column['name'] for column in inspector.get_columns('Lessons')}
     with op.batch_alter_table("UserProfiles", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("tg_notify_subscription_expiring", sa.Boolean(), nullable=False, server_default=sa.true()))
-        batch_op.add_column(sa.Column("tg_notify_bug_report_reply", sa.Boolean(), nullable=False, server_default=sa.true()))
-        batch_op.add_column(sa.Column("tg_notify_daily_digest", sa.Boolean(), nullable=False, server_default=sa.false()))
-        batch_op.add_column(sa.Column("tg_quiet_hours_start", sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column("tg_quiet_hours_end", sa.Integer(), nullable=True))
+        if 'tg_notify_subscription_expiring' not in profile_columns:
+            batch_op.add_column(sa.Column("tg_notify_subscription_expiring", sa.Boolean(), nullable=False, server_default=sa.true()))
+        if 'tg_notify_bug_report_reply' not in profile_columns:
+            batch_op.add_column(sa.Column("tg_notify_bug_report_reply", sa.Boolean(), nullable=False, server_default=sa.true()))
+        if 'tg_notify_daily_digest' not in profile_columns:
+            batch_op.add_column(sa.Column("tg_notify_daily_digest", sa.Boolean(), nullable=False, server_default=sa.false()))
+        if 'tg_quiet_hours_start' not in profile_columns:
+            batch_op.add_column(sa.Column("tg_quiet_hours_start", sa.Integer(), nullable=True))
+        if 'tg_quiet_hours_end' not in profile_columns:
+            batch_op.add_column(sa.Column("tg_quiet_hours_end", sa.Integer(), nullable=True))
 
     with op.batch_alter_table("BotErrorReports", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("screenshot_file_id", sa.String(length=200), nullable=True))
-        batch_op.add_column(sa.Column("creator_tg_message_id", sa.BigInteger(), nullable=True))
+        if 'screenshot_file_id' not in error_columns:
+            batch_op.add_column(sa.Column("screenshot_file_id", sa.String(length=200), nullable=True))
+        if 'creator_tg_message_id' not in error_columns:
+            batch_op.add_column(sa.Column("creator_tg_message_id", sa.BigInteger(), nullable=True))
 
     with op.batch_alter_table("Lessons", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("tg_reminder_30min_sent", sa.Boolean(), nullable=False, server_default=sa.false()))
+        if 'tg_reminder_30min_sent' not in lesson_columns:
+            batch_op.add_column(sa.Column("tg_reminder_30min_sent", sa.Boolean(), nullable=False, server_default=sa.false()))
 
 
 def downgrade():

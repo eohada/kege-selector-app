@@ -22,6 +22,7 @@ from core.audit_logger import audit_logger
 from flask_login import current_user
 from app import csrf
 from app.runtime_state import db_is_ready, migrations_are_ready, redis_ping, socketio_is_ready
+from app.utils.schema_contract import schema_contract_is_ready
 
 def get_active_role():
     """
@@ -259,6 +260,7 @@ def readiness_check():
         'db': db_is_ready(),
         'redis': redis_ping(),
         'migrations': migrations_are_ready(),
+        'schema': schema_contract_is_ready(),
         'socketio': socketio_is_ready(),
     }
     ok = all(checks.values())

@@ -17,6 +17,12 @@ depends_on = None
 
 
 def upgrade():
+    inspector = sa.inspect(op.get_bind())
+    if 'TheoryBlocks' not in set(inspector.get_table_names()):
+        return
+    columns = {column['name'] for column in inspector.get_columns('TheoryBlocks')}
+    if 'read_minutes' in columns:
+        return
     with op.batch_alter_table("TheoryBlocks") as batch_op:
         batch_op.add_column(sa.Column("read_minutes", sa.Integer(), nullable=False, server_default="5"))
 

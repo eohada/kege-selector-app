@@ -16,6 +16,9 @@ depends_on = None
 
 
 def upgrade():
+    columns = {column['name'] for column in sa.inspect(op.get_bind()).get_columns('Answers')}
+    if 'needs_revision' in columns:
+        return
     with op.batch_alter_table("Answers") as batch_op:
         batch_op.add_column(sa.Column("needs_revision", sa.Boolean(), nullable=False, server_default=sa.false()))
 

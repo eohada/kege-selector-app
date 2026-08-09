@@ -16,23 +16,36 @@ depends_on = None
 
 
 def upgrade():
+    inspector = sa.inspect(op.get_bind())
+    tables = set(inspector.get_table_names())
+    profile_columns = {column['name'] for column in inspector.get_columns('UserProfiles')}
+    if (
+        {'telegram_link_token', 'telegram_link_token_expires', 'telegram_last_interaction_at'}.issubset(profile_columns)
+        and {'TelegramBroadcasts', 'SubmissionTelegramDeadlineSents'}.issubset(tables)
+    ):
+        return
     with op.batch_alter_table("UserProfiles", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("telegram_link_token", sa.String(length=64), nullable=True))
-        batch_op.add_column(sa.Column("telegram_link_token_expires", sa.DateTime(), nullable=True))
-        batch_op.add_column(
-            sa.Column("telegram_last_interaction_at", sa.DateTime(), nullable=True)
-        )
+        if 'telegram_link_token' not in profile_columns:
+            batch_op.add_column(sa.Column("telegram_link_token", sa.String(length=64), nullable=True))
+        if 'telegram_link_token_expires' not in profile_columns:
+            batch_op.add_column(sa.Column("telegram_link_token_expires", sa.DateTime(), nullable=True))
+        if 'telegram_last_interaction_at' not in profile_columns:
+            batch_op.add_column(sa.Column("telegram_last_interaction_at", sa.DateTime(), nullable=True))
+    existing_profile_indexes = {index['name'] for index in inspector.get_indexes('UserProfiles')}
     with op.batch_alter_table("UserProfiles", schema=None) as batch_op:
-        batch_op.create_index(
-            "ix_UserProfiles_telegram_link_token", ["telegram_link_token"], unique=True
-        )
-        batch_op.create_index(
-            "ix_UserProfiles_telegram_last_interaction_at",
-            ["telegram_last_interaction_at"],
-            unique=False,
-        )
+        if 'ix_UserProfiles_telegram_link_token' not in existing_profile_indexes:
+            batch_op.create_index(
+                "ix_UserProfiles_telegram_link_token", ["telegram_link_token"], unique=True
+            )
+        if 'ix_UserProfiles_telegram_last_interaction_at' not in existing_profile_indexes:
+            batch_op.create_index(
+                "ix_UserProfiles_telegram_last_interaction_at",
+                ["telegram_last_interaction_at"],
+                unique=False,
+            )
 
-    op.create_table(
+    if 'TelegramBroadcasts' not in tables:
+        op.create_table(
         "TelegramBroadcasts",
         sa.Column("broadcast_id", sa.Integer(), nullable=False),
         sa.Column("created_by_user_id", sa.Integer(), nullable=False),
@@ -54,21 +67,22 @@ def upgrade():
             ["Users.id"],
         ),
         sa.PrimaryKeyConstraint("broadcast_id"),
-    )
-    op.create_index(
+        )
+        op.create_index(
         op.f("ix_TelegramBroadcasts_created_by_user_id"),
         "TelegramBroadcasts",
         ["created_by_user_id"],
         unique=False,
-    )
-    op.create_index(
+        )
+        op.create_index(
         op.f("ix_TelegramBroadcasts_cursor_last_user_id"),
         "TelegramBroadcasts",
         ["cursor_last_user_id"],
         unique=False,
-    )
+        )
 
-    op.create_table(
+    if 'SubmissionTelegramDeadlineSents' not in tables:
+        op.create_table(
         "SubmissionTelegramDeadlineSents",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("submission_id", sa.Integer(), nullable=False),
@@ -80,13 +94,13 @@ def upgrade():
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("submission_id", "window_key", name="uq_submission_deadline_window"),
-    )
-    op.create_index(
+        )
+        op.create_index(
         op.f("ix_SubmissionTelegramDeadlineSents_submission_id"),
         "SubmissionTelegramDeadlineSents",
         ["submission_id"],
         unique=False,
-    )
+        )
 
 
 def downgrade():

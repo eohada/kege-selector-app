@@ -16,6 +16,22 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    tables = set(inspector.get_table_names())
+    theory_block_columns = (
+        {column['name'] for column in inspector.get_columns('TheoryBlocks')}
+        if 'TheoryBlocks' in tables else set()
+    )
+    # Existing installations were historically bootstrapped with create_all().
+    # If their complete theory schema is already present, only advance Alembic.
+    if (
+        'TheoryGroups' in tables
+        and 'TheoryFeedbackHistory' in tables
+        and {'group_id', 'description', 'position'}.issubset(theory_block_columns)
+    ):
+        return
+
     op.create_table(
         "TheoryGroups",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -64,7 +80,7 @@ def upgrade():
     op.create_index(op.f("ix_TheoryFeedbackHistory_task_number"), "TheoryFeedbackHistory", ["task_number"], unique=False)
     op.create_index(op.f("ix_TheoryFeedbackHistory_user_id"), "TheoryFeedbackHistory", ["user_id"], unique=False)
 
-    conn = op.get_bind()
+    conn = bind
     rows = conn.execute(sa.text("SELECT DISTINCT course_id FROM TheoryBlocks")).fetchall()
     for row in rows:
         course_id = row[0]

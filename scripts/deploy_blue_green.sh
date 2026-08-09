@@ -110,7 +110,8 @@ run_expand_only_migrations() {
         return 0
     fi
     echo "Running expand-only migrations on $color"
-    if compose run --rm "$(service_for_color "$color")" flask db upgrade; then
+    if compose run --rm "$(service_for_color "$color")" flask db upgrade \
+        && compose run --rm "$(service_for_color "$color")" flask schema-audit; then
         return 0
     fi
     echo "Migration command failed; checking whether /ready already reports migrations OK" >&2

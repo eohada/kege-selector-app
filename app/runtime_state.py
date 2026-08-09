@@ -107,7 +107,7 @@ def migrations_are_ready() -> bool:
     """
     Best-effort readiness check:
     - for SQLite/local dev: skip hard gate
-    - for SQL databases: confirm alembic_version exists and has a value
+    - for SQL databases: confirm the applied revision is exactly the code head
     """
     try:
         from flask import current_app as app
@@ -116,8 +116,17 @@ def migrations_are_ready() -> bool:
             return True
         from app.models import db
 
-        row = db.session.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).first()
-        return bool(row and row[0])
+        rows = db.session.execute(text("SELECT version_num FROM alembic_version")).all()
+        applied_revisions = {row[0] for row in rows if row and row[0]}
+
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+        from pathlib import Path
+
+        project_root = Path(app.root_path).parent
+        config = Config(str(project_root / 'migrations' / 'alembic.ini'))
+        script = ScriptDirectory.from_config(config)
+        return bool(applied_revisions) and applied_revisions == set(script.get_heads())
     except Exception:
         return False
 
@@ -128,4 +137,3 @@ def socketio_is_ready() -> bool:
         return getattr(app, "socketio", None) is not None
     except Exception:
         return False
-

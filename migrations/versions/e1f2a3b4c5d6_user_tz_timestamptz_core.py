@@ -25,11 +25,17 @@ def upgrade():
     conn = op.get_bind()
     dialect = conn.dialect.name
 
+    user_columns = {column['name'] for column in sa.inspect(conn).get_columns('Users')}
+    if dialect != 'postgresql' and {'timezone_mode', 'timezone_iana'}.issubset(user_columns):
+        return
+
     with op.batch_alter_table("Users") as batch_op:
-        batch_op.add_column(
-            sa.Column("timezone_mode", sa.String(length=16), nullable=False, server_default="auto")
-        )
-        batch_op.add_column(sa.Column("timezone_iana", sa.String(length=64), nullable=True))
+        if 'timezone_mode' not in user_columns:
+            batch_op.add_column(
+                sa.Column("timezone_mode", sa.String(length=16), nullable=False, server_default="auto")
+            )
+        if 'timezone_iana' not in user_columns:
+            batch_op.add_column(sa.Column("timezone_iana", sa.String(length=64), nullable=True))
 
     if dialect != "postgresql":
         return

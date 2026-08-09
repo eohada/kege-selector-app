@@ -15,6 +15,9 @@ depends_on = None
 
 
 def upgrade():
+    tables = set(sa.inspect(op.get_bind()).get_table_names())
+    if {'StudentWorkspaceFiles', 'TaskCanvasDrawings'}.issubset(tables):
+        return
     op.create_table(
         "StudentWorkspaceFiles",
         sa.Column("id", sa.Integer(), nullable=False),
