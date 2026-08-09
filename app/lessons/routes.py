@@ -21,7 +21,7 @@ from app.auth.rbac_utils import check_access, get_user_scope
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, get_assignment_blocks, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, TheoryBlock, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
@@ -624,6 +624,18 @@ def _lesson_studio_state_for_viewer(state: dict, *, is_teacher: bool) -> dict:
     return visible
 
 
+def _lesson_studio_course_id(lesson: Lesson) -> int | None:
+    """Определяет курс урока без доверия параметрам браузера.
+
+    У старых уроков exam_course_id может быть пустым. В этом случае Studio
+    использует активный курс платформы — так же, как основной раздел теории.
+    """
+    if getattr(lesson, 'exam_course_id', None):
+        return int(lesson.exam_course_id)
+    active_course = Course.query.filter_by(is_active=True).order_by(Course.id).first()
+    return active_course.id if active_course else None
+
+
 def _save_lesson_studio_state(lesson: Lesson, state: dict) -> None:
     summaries = dict(getattr(lesson, 'review_summaries', None) or {})
     summaries['_studio'] = state
@@ -652,7 +664,7 @@ def lesson_studio_state_save(lesson_id: int):
         return jsonify({'success': False, 'error': 'Управлять сценарием урока может только преподаватель'}), 403
     payload = request.get_json(silent=True) or {}
     state = _lesson_studio_state(lesson)
-    for key in ('phase', 'active_task_id', 'active_pane', 'follow_student', 'timer', 'phase_timers', 'phase_durations', 'agenda', 'teacher_private_note', 'guidance', 'outcome'):
+    for key in ('phase', 'active_task_id', 'active_theory_block_id', 'active_pane', 'follow_student', 'timer', 'phase_timers', 'phase_durations', 'agenda', 'teacher_private_note', 'guidance', 'outcome'):
         if key in payload:
             state[key] = payload[key]
     guidance = state.get('guidance')
@@ -664,8 +676,18 @@ def lesson_studio_state_save(lesson_id: int):
         return jsonify({'success': False, 'error': 'Некорректные подсказки преподавателя'}), 400
     if state.get('phase') not in {'preparation', 'practice', 'reflection'}:
         return jsonify({'success': False, 'error': 'Некорректный этап урока'}), 400
-    if state.get('active_pane') not in {'control', 'work', 'board', 'meeting', 'materials', 'scenario', 'outcome'} or not isinstance(state.get('follow_student'), bool):
+    if state.get('active_pane') not in {'control', 'work', 'board', 'meeting', 'materials', 'theory', 'scenario', 'outcome'} or not isinstance(state.get('follow_student'), bool):
         return jsonify({'success': False, 'error': 'Некорректная синхронизация интерфейса'}), 400
+    theory_block_id = state.get('active_theory_block_id')
+    if theory_block_id is not None:
+        try:
+            theory_block_id = int(theory_block_id)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Некорректный материал теории'}), 400
+        lesson_course_id = _lesson_studio_course_id(lesson)
+        if not lesson_course_id or not TheoryBlock.query.filter_by(id=theory_block_id, course_id=lesson_course_id).first():
+            return jsonify({'success': False, 'error': 'Материал теории не относится к курсу урока'}), 400
+        state['active_theory_block_id'] = theory_block_id
     if not isinstance(phase_timers, dict) or not isinstance(phase_durations, dict):
         return jsonify({'success': False, 'error': 'Некорректные таймеры этапов'}), 400
     normalized_phase_timers, normalized_phase_durations = {}, {}
@@ -1021,6 +1043,20 @@ def lesson_interactive_room(lesson_id: int):
         )
     except Exception:
         can_open_task_generator = False
+    # У урока курс хранится в exam_course_id. Не берём course_id из URL или
+    # клиентского состояния: это исключает открытие чужого материала.
+    lesson_course_id = _lesson_studio_course_id(lesson)
+    theory_blocks = (
+        TheoryBlock.query.filter_by(course_id=lesson_course_id)
+        .order_by(TheoryBlock.position, TheoryBlock.id)
+        .all()
+        if lesson_course_id else []
+    )
+    theory_items = [
+        {'id': item.id, 'title': item.title or f'Тема {item.task_number}', 'task_number': item.task_number,
+         'url': url_for('theory.theory_view_block', block_id=item.id, course_id=lesson_course_id)}
+        for item in theory_blocks if (item.content or '').strip() and not (item.content or '').lstrip().startswith('<!--status:draft-->')
+    ]
 
     return render_template(
         'sandbox/lesson_room.html',
@@ -1038,6 +1074,7 @@ def lesson_interactive_room(lesson_id: int):
         studio_state=studio_state,
         is_studio_teacher=is_studio_teacher,
         can_open_task_generator=can_open_task_generator,
+        theory_items=theory_items,
         active_page='lesson_room'
     )
 

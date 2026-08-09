@@ -115,6 +115,7 @@
                 {% endif %}
             </a>
 
+            {% if trainer_available %}
             <!-- 4. Тренажёр -->
             <a href="{{ url_for('trainer.trainer_v2') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/trainer') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="⚡ Тренажёр">
                 <i class="ph-bold ph-lightning text-xl"></i>
@@ -122,6 +123,7 @@
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
                 {% endif %}
             </a>
+            {% endif %}
 
             <!-- 4. Расписание -->
             <a href="{{ url_for('schedule.schedule') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/schedule') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📅 Расписание">
@@ -176,12 +178,14 @@
             <span class="text-[10px]">Теория</span>
         </a>
 
+        {% if trainer_available %}
         {% set is_tr = request.path.startswith('/trainer') %}
         <a href="{{ url_for('trainer.trainer_v2') }}" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_tr %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
             {% if is_tr %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
             <i class="ph-bold ph-lightning text-xl"></i>
             <span class="text-[10px]">Тренажёр</span>
         </a>
+        {% endif %}
 
         {% set is_sch = request.path.startswith('/schedule') %}
         <a href="{{ url_for('schedule.schedule') }}" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_sch %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">

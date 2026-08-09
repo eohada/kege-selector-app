@@ -215,11 +215,10 @@ def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int,
     if not start_dt_utc or not end_dt_utc:
         return False
 
-    q = Lesson.query.filter(
-        Lesson.student_id == student_id,
-        Lesson.lesson_date >= (start_dt_utc.replace(tzinfo=None) if start_dt_utc.tzinfo else start_dt_utc),
-        Lesson.lesson_date < (end_dt_utc.replace(tzinfo=None) if end_dt_utc.tzinfo else end_dt_utc)
-    )
+    # Lesson.lesson_date is stored as naive Moscow wall time, while the
+    # comparison below is UTC-aware. Filtering by UTC values in SQL would
+    # silently miss the same lesson in Tomsk and other user time zones.
+    q = Lesson.query.filter(Lesson.student_id == student_id)
     if exclude_lesson_id:
         q = q.filter(Lesson.lesson_id != exclude_lesson_id)
 
@@ -618,22 +617,48 @@ def schedule():
     for l in lessons:
         if not l.lesson_date:
             continue
+        local_start = lesson_storage_to_local(l.lesson_date, timezone)
+        duration_minutes = int(l.duration or 60)
+        local_end = local_start + timedelta(minutes=duration_minutes)
         raw_lessons_payload.append({
             'lesson_id': l.lesson_id,
             'student_name': l.student.name if l.student else 'Ученик',
-            'lesson_date': l.lesson_date.isoformat(),
-            'start_iso': l.lesson_date.isoformat(),
+            'student_id': l.student_id,
+            'lesson_date': local_start.isoformat(),
+            'start_iso': local_start.isoformat(),
+            'start_date': local_start.date().isoformat(),
+            'start_time': local_start.strftime('%H:%M'),
+            'end_time': local_end.strftime('%H:%M'),
+            'grid_top': local_start.hour * 60 + local_start.minute,
             'topic': l.topic or 'Занятие',
-            'duration_minutes': int(l.duration or 60),
-            'status': l.status or 'planned'
+            'duration_minutes': duration_minutes,
+            'status': l.status or 'planned',
+            'lesson_type': l.lesson_type or 'individual',
+            'room_url': url_for('lessons.lesson_interactive_room', lesson_id=l.lesson_id),
         })
+
+    weekdays_payload = [
+        {
+            'name': day_names[index],
+            'date': day.day,
+            'iso': day.isoformat(),
+            'is_today': day == today_display_date,
+        }
+        for index, day in enumerate(week_days)
+    ]
 
     return render_template(
         tpl_name,
         schedule_page_data={
             'active_user': {'id': current_user.id, 'name': getattr(current_user, 'full_name', None) or current_user.username, 'role': current_user.role},
             'is_admin': current_user.is_admin() or current_user.is_creator(),
-            'lessons': raw_lessons_payload
+            'lessons': raw_lessons_payload,
+            'weekdays': weekdays_payload,
+            'week_offset': week_offset,
+            'week_label': week_label,
+            'timezone': timezone,
+            'base_url': url_for('schedule.schedule'),
+            'can_manage': _can_manage_schedule(),
         },
         week_days=week_days,
         week_label=week_label,
@@ -920,8 +945,9 @@ def schedule_reschedule_lesson(lesson_id: int):
 @login_required
 def create_schedule_lesson_api():
     """API создания урока с гарантией коммита в БД."""
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.create') and not current_user.is_tutor()):
+        return jsonify({'status': 'error', 'message': 'Доступ запрещен'}), 403
     data = request.get_json(force=True, silent=True) or (request.form.to_dict() if request.form else {})
-    print(f"\n[CREATE_LESSON API] Incoming RAW data: {data}")
 
     try:
         raw_student_id = data.get('student_id') or data.get('student')
@@ -937,8 +963,13 @@ def create_schedule_lesson_api():
         else:
             full_date_str = str(raw_date)
 
-        from dateutil.parser import parse
-        clean_date = parse(full_date_str).replace(tzinfo=None)
+        if 'T' not in str(raw_date) and raw_time:
+            clean_date = parse_local_lesson_datetime(
+                str(raw_date), str(raw_time), (data.get('timezone') or 'moscow'),
+            )
+        else:
+            from dateutil.parser import parse
+            clean_date = parse(full_date_str).replace(tzinfo=None)
 
         student = Student.query.filter(
             (Student.student_id == raw_student_id) | (Student.user_id == raw_student_id)
@@ -946,6 +977,17 @@ def create_schedule_lesson_api():
 
         if not student:
             return jsonify({'status': 'error', 'message': f'Ученик #{raw_student_id} не найден в БД'}), 404
+        if not _require_lesson_in_scope(Lesson(student_id=student.student_id)):
+            return jsonify({'status': 'error', 'message': 'Ученик вне области доступа'}), 403
+
+        try:
+            duration = int(data.get('duration') or 60)
+        except (TypeError, ValueError):
+            duration = 60
+        if duration not in (30, 45, 60, 90, 120):
+            return jsonify({'status': 'error', 'message': 'Некорректная длительность урока'}), 400
+        if _student_has_overlap(student.student_id, clean_date, duration):
+            return jsonify({'status': 'error', 'message': 'У ученика уже есть пересекающийся урок'}), 409
 
         if not getattr(student, 'mentor_id', None) and current_user and current_user.is_authenticated:
             student.mentor_id = current_user.id
@@ -954,15 +996,13 @@ def create_schedule_lesson_api():
             student_id=student.student_id,
             lesson_date=clean_date,
             topic=topic,
-            status='planned'
+            status='planned',
+            duration=duration,
+            lesson_type=(data.get('lesson_type') or 'individual').strip().lower(),
         )
 
         db.session.add(new_lesson)
         db.session.commit()
-
-        print(f"\n[POST CREATE LESSON] DB Engine URL: {db.engine.url}")
-        print(f"[POST CREATE LESSON SUCCESS] Lesson ID={new_lesson.lesson_id} COMMITTED for date={clean_date}!")
-        print(f"[POST CREATE LESSON SUCCESS] Total lessons in DB now: {Lesson.query.count()}\n")
 
         # 📲 ОТДЕЛЬНЫЙ ИЗОЛИРОВАННЫЙ БЛОК ТЕЛЕГРАМ-УВЕДОМЛЕНИЙ (Ошибки сети НЕ отменяют урок!)
         try:
@@ -970,8 +1010,8 @@ def create_schedule_lesson_api():
                 from app.telegram.user_notify import notify_user_by_id
                 msg = f"📅 <b>НОВЫЙ УРОК В РАСПИСАНИИ!</b>\n\n📌 <b>Тема:</b> {topic}\n⏰ <b>Время:</b> {clean_date.strftime('%d.%m.%Y %H:%M')}"
                 notify_user_by_id(student.user.id, msg, kind='lesson_scheduled')
-        except Exception as notify_err:
-            print(f"[CREATE_LESSON NOTIFY WARNING] TG notify failed, but lesson remains in DB: {str(notify_err)}")
+        except Exception:
+            logger.exception('Schedule API: lesson %s was created, but notification failed', new_lesson.lesson_id)
 
         return jsonify({
             'status': 'success',
@@ -983,7 +1023,7 @@ def create_schedule_lesson_api():
     except Exception as err:
         db.session.rollback()
         import traceback
-        print(f"[CREATE_LESSON API ERROR]: {str(err)}\n{traceback.format_exc()}")
+        logger.exception('Schedule API: failed to create lesson')
         return jsonify({'status': 'error', 'message': f'Ошибка БД: {str(err)}'}), 500
 
 
@@ -993,28 +1033,64 @@ def create_schedule_lesson_api():
 @login_required
 def update_schedule_lesson_api(lesson_id: int):
     """API обновления урока с гарантией сохранения."""
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.edit') and not current_user.is_tutor()):
+        return jsonify({'status': 'error', 'message': 'Доступ запрещен'}), 403
     try:
-        lesson = Lesson.query.get_or_404(lesson_id)
+        lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+        if not _require_lesson_in_scope(lesson):
+            return jsonify({'status': 'error', 'message': 'Доступ запрещен'}), 403
         data = request.get_json(force=True, silent=True) or request.form or {}
 
         if 'topic' in data:
-            lesson.topic = data['topic']
-        if 'lesson_date' in data or 'start_time' in data:
+            lesson.topic = str(data['topic']).strip() or lesson.topic
+        if 'lesson_date' in data or 'start_time' in data or 'time' in data:
             raw_date = data.get('lesson_date') or data.get('start_time')
-            from dateutil.parser import parse
-            lesson.lesson_date = parse(str(raw_date)).replace(tzinfo=None)
+            raw_time = data.get('time') or data.get('lesson_time') or ''
+            if raw_date and 'T' not in str(raw_date) and raw_time:
+                new_date = parse_local_lesson_datetime(
+                    str(raw_date), str(raw_time), (data.get('timezone') or 'moscow'),
+                )
+            else:
+                from dateutil.parser import parse
+                new_date = parse(str(raw_date)).replace(tzinfo=None)
+        else:
+            new_date = lesson.lesson_date
+
+        new_student_id = lesson.student_id
         if 'student_id' in data:
-            lesson.student_id = int(data['student_id'])
+            target_student = Student.query.filter(
+                (Student.student_id == int(data['student_id'])) | (Student.user_id == int(data['student_id']))
+            ).first()
+            if not target_student:
+                return jsonify({'status': 'error', 'message': 'Ученик не найден'}), 404
+            probe = Lesson(student_id=target_student.student_id)
+            if not _require_lesson_in_scope(probe):
+                return jsonify({'status': 'error', 'message': 'Ученик вне области доступа'}), 403
+            new_student_id = target_student.student_id
+
+        try:
+            new_duration = int(data.get('duration', lesson.duration or 60))
+        except (TypeError, ValueError):
+            return jsonify({'status': 'error', 'message': 'Некорректная длительность'}), 400
+        if new_duration not in (30, 45, 60, 90, 120):
+            return jsonify({'status': 'error', 'message': 'Некорректная длительность'}), 400
+        if _student_has_overlap(new_student_id, new_date, new_duration, exclude_lesson_id=lesson.lesson_id):
+            return jsonify({'status': 'error', 'message': 'У ученика уже есть пересекающийся урок'}), 409
+
+        lesson.lesson_date = new_date
+        lesson.student_id = new_student_id
+        lesson.duration = new_duration
         if 'status' in data:
+            if data['status'] not in ('planned', 'in_progress', 'completed', 'cancelled'):
+                return jsonify({'status': 'error', 'message': 'Некорректный статус'}), 400
             lesson.status = data['status']
 
         db.session.commit()
-        print(f"[LESSON COMMITTED] ID={lesson.lesson_id}, topic={lesson.topic}")
         return jsonify({'status': 'success', 'success': True}), 200
 
     except Exception as err:
         db.session.rollback()
-        print(f"[LESSON UPDATE ERROR]: {str(err)}")
+        logger.exception('Schedule API: failed to update lesson %s', lesson_id)
         return jsonify({'status': 'error', 'message': str(err)}), 500
 
 

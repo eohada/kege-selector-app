@@ -2141,55 +2141,6 @@ def student_analytics(student_id):
         flash('Ошибка при загрузке данных ученика', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    if getattr(current_user, 'is_demo_user', False):
-        from datetime import datetime, timedelta
-        _now = datetime.utcnow()
-        demo_trend_dates = []
-        demo_trend_scores = []
-        for w in range(12, 0, -1):
-            d = _now - timedelta(days=w * 7)
-            demo_trend_dates.append(d.strftime('%d.%m'))
-            demo_trend_scores.append(round(55 + (12 - w) * 2 + (w % 3), 1))
-        demo_chart_data = []
-        for i in range(1, 28):
-            pct = 70 + (i % 5) - 2
-            pct = max(40, min(98, pct))
-            color = '#ef4444' if pct < 40 else '#eab308' if pct < 80 else '#22c55e'
-            demo_chart_data.append({
-                'task_number': i, 'percent': round(pct, 1), 'correct': int(round(pct)), 'total': 100,
-                'color': color, 'auto_correct': 0, 'auto_total': 0, 'manual_correct': 0, 'manual_incorrect': 0
-            })
-        charts_context = {
-            'trend_dates': json.dumps(demo_trend_dates, ensure_ascii=False),
-            'trend_scores': json.dumps(demo_trend_scores),
-            'skill_labels': '[]',
-            'skill_values': '[]',
-            'attendance_labels': '[]', 'attendance_values': '[]',
-            'heatmap_dates': '[]', 'heatmap_values': '[]', 'heatmap_statuses': '[]'
-        }
-        metrics_demo = {'current_gpa': 72, 'delta': 5, 'completed_lessons': 12, 'total_lessons': 20}
-        gpa_demo = {'homework': 75, 'exam': 68}
-        try:
-            return render_template(
-                'student_stats_unified.html',
-                student=student,
-                charts=charts_context,
-                metrics=metrics_demo,
-                gpa_by_type=gpa_demo,
-                problem_topics=[],
-                chart_data=demo_chart_data,
-                punctuality={},
-                lessons_late_count=0,
-                can_edit=False,
-                active_lesson=None,
-                active_student=None,
-                hide_skills_radar=True
-            )
-        except Exception as e:
-            logger.error(f"Error rendering analytics for demo user {student_id}: {e}", exc_info=True)
-            flash('Ошибка при отображении статистики', 'danger')
-            return redirect(url_for('students.student_profile', student_id=student_id))
-
     try:
         scope = get_user_scope(current_user)
         if not scope['can_see_all']:
@@ -2383,6 +2334,37 @@ def student_analytics(student_id):
         'heatmap_values': json.dumps(attendance_heatmap['values']),
         'heatmap_statuses': json.dumps(attendance_heatmap['statuses'], ensure_ascii=False)
     }
+    # V2 dashboard payload: only persisted analytics and grading data, never demo values.
+    mastery_rows = []
+    solved_total = sum(int(item.get('total') or 0) for item in chart_data)
+    chart_by_task = {int(item['task_number']): item for item in chart_data if item.get('task_number') is not None}
+    readiness_rows = [
+        chart_by_task.get(task_number, {'task_number': task_number, 'percent': 0, 'total': 0})
+        for task_number in range(1, 28)
+    ]
+    forecast = None
+    try:
+        from core.db_models import UserMastery, KnowledgeNode
+        analytics_user_id = getattr(student, 'user_id', None)
+        if analytics_user_id:
+            rows = (UserMastery.query.join(KnowledgeNode, UserMastery.node_id == KnowledgeNode.id)
+                    .filter(UserMastery.user_id == analytics_user_id)
+                    .order_by(UserMastery.rating.desc()).limit(12).all())
+            mastery_rows = [{
+                'name': row.node.name, 'code': row.node.code,
+                'mmr': round(float(row.rating or 0)),
+                'solved': int(row.solved_count or 0),
+                'calibrated': bool(row.calibration_done),
+                'streak': int(row.streak_days or 0),
+            } for row in rows]
+        if solved_total >= 10:
+            weighted = sum(float(item.get('percent') or 0) * int(item.get('total') or 0) for item in chart_data)
+            forecast = {
+                'primary': round(weighted / solved_total * 29 / 100),
+                'test': round(weighted / solved_total),
+            }
+    except Exception:
+        logger.exception('Unable to build student V2 analytics mastery payload')
     
     try:
         can_edit = not (current_user.is_student() or current_user.is_parent())
@@ -2391,16 +2373,22 @@ def student_analytics(student_id):
         can_edit = False
     
     try:
-        return render_template('student_stats_unified.html',
+        # The V2 sandbox prototype is the approved visual contract. Functional
+        # data is bound into this exact layout; it must not be redesigned.
+        return render_template('sandbox_reference/analytics.html',
                              student=student,
                              charts=charts_context,
                              metrics=metrics,
                              gpa_by_type=gpa_by_type,
                              problem_topics=problem_topics,
                              chart_data=chart_data,
+                             readiness_rows=readiness_rows,
                              punctuality=punctuality,
                              lessons_late_count=lessons_late_count,
-                             can_edit=can_edit)
+                             can_edit=can_edit,
+                             mastery_rows=mastery_rows,
+                             solved_total=solved_total,
+                             forecast=forecast)
     except Exception as e:
         logger.error(f"Error rendering template for student {student_id}: {e}", exc_info=True)
         flash('Ошибка при отображении статистики', 'danger')

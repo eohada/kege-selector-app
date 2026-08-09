@@ -917,7 +917,7 @@ def student_dashboard():
     from app.students.stats_service import StatsService
     from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry, Assignment, Lesson, StudentCourseEnrollment
 
-    # Safe default fallback values for V2 Bento Cards
+    # Empty states are rendered explicitly; dashboard metrics never use demo data.
     now_utc = moscow_now() if callable(moscow_now) else datetime.now(timezone.utc)
     active_lesson = None
     upcoming_lesson = None
@@ -1054,14 +1054,6 @@ def student_dashboard():
             problem_topics = stats.get_problem_topics(threshold=60)[:6]
         except Exception:
             problem_topics = []
-
-    if getattr(current_user, 'is_demo_user', False) and not problem_topics:
-        problem_topics = [
-            {'id': 0, 'name': 'Системы счисления', 'avg_score': 42},
-            {'id': 0, 'name': 'Рекурсия и динамическое программирование', 'avg_score': 35},
-            {'id': 0, 'name': 'Теория игр', 'avg_score': 48},
-            {'id': 0, 'name': 'Графы и обход деревьев', 'avg_score': 55},
-        ]
 
     recent_grades = []
     if student:
@@ -2218,6 +2210,14 @@ def library_hub_view():
     if active_role == 'student':
         return redirect(url_for('main.dashboard'))
 
+    # Theory used to be a separate LibraryMaterial upload form here.  Those
+    # records never reached the student theory catalogue (TheoryBlock), so the
+    # same feature existed twice with incompatible data.  Keep old links safe,
+    # but send them to the only canonical teacher workspace.
+    if request.args.get('tab') == 'theory':
+        course_id = request.args.get('course_id', type=int)
+        return redirect(url_for('theory.manage_list', course_id=course_id))
+
     if active_role in ['admin', 'creator']:
         materials = LibraryMaterial.query.filter(LibraryMaterial.category != 'theory').order_by(LibraryMaterial.created_at.desc()).all()
         theory_materials = LibraryMaterial.query.filter_by(category='theory').order_by(LibraryMaterial.created_at.desc()).all()
@@ -2662,6 +2662,12 @@ def teacher_id_redirect(teacher_id):
 @main_bp.route('/u/<username>', methods=['GET'])
 def universal_profile_view(user_id=None, username=None):
     """Единый архитектурный стандарт публичных/приватных профилей V2 Sandbox."""
+    # Собственный профиль обслуживается отдельным V2-кабинетом, который
+    # учитывает все привилегированные роли (в том числе creator). Универсальный
+    # просмотр ниже остаётся только для публичных профилей по id / username.
+    if user_id is None and username is None and current_user and current_user.is_authenticated:
+        return redirect(url_for('main.workspace_profile'))
+
     target_user = None
     if user_id:
         target_user = User.query.get_or_404(user_id)
@@ -2828,6 +2834,13 @@ def universal_profile_view(user_id=None, username=None):
         })
 
     return render_template('sandbox/profile.html', **context)
+
+
+@main_bp.route('/workspace/profile', methods=['GET'])
+@login_required
+def workspace_profile():
+    """Каноничный V2-профиль текущего пользователя без legacy-шаблонов."""
+    return universal_profile_view(user_id=current_user.id)
 
 
 @main_bp.route('/api/mentor/<int:teacher_id>/review', methods=['POST'])
@@ -3135,7 +3148,9 @@ def dev_switch_role_api():
 def dev_impersonate_user(user_id):
     """Быстрый вход/переключение под выбранным пользователем."""
     user = User.query.get_or_404(user_id)
-    if current_user and current_user.is_authenticated:
+    # При переходе между тестовыми профилями сохраняем именно исходного
+    # пользователя, иначе «выйти из имперсонации» вернёт к предыдущему ученику.
+    if current_user and current_user.is_authenticated and 'impersonator_id' not in session:
         session['impersonator_id'] = current_user.id
     
     session['_user_id'] = str(user.id)
@@ -3155,9 +3170,12 @@ def dev_revert_impersonation():
         orig_user = User.query.get(imp_id)
         if orig_user:
             session['_user_id'] = str(orig_user.id)
-            session['sandbox_role'] = orig_user.role
-            session.pop('is_impersonating', None)
             login_user(orig_user, remember=True)
+    # Нельзя оставлять маркеры прошлой имперсонации: они подменяют активную
+    # роль после возврата и способны снова открыть ученический кабинет.
+    session.pop('impersonator_id', None)
+    session.pop('is_impersonating', None)
+    session.pop('sandbox_role', None)
     
     return redirect(url_for('main.dashboard'))
 

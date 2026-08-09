@@ -772,8 +772,8 @@ def demo_start():
             dest = url_for('main.student_dashboard')
         elif cinema_scene == '5' and demo_lesson_id:
             dest = url_for('lessons.lesson_classwork_view', lesson_id=demo_lesson_id) + '?cinema_scene=5'
-        elif cinema_scene == '6' and trainer_task:
-            dest = url_for('trainer.trainer_v2', task_id=trainer_task.task_id) + '?cinema_scene=6&exam=' + exam
+        elif cinema_scene == '6':
+            dest = url_for('main.student_dashboard')
         elif cinema_scene in ('7', '8', '9') and demo_student.student_id:
             dest = url_for('students.student_analytics', student_id=demo_student.student_id) + '?cinema_scene=' + cinema_scene
         if cinema_scene in ('1', '2'):
@@ -786,9 +786,7 @@ def demo_start():
     response.set_cookie('cinemaMode', 'prologue', max_age=60*60*24)
     return response
 
-@auth_bp.route('/user/profile')
-@login_required
-def user_profile():
+def _legacy_user_profile():
     """Страница профиля пользователя"""
     from app.models import Student, Lesson, db, User
     from app.utils.relationship_scope import get_family_ties_for_parent, get_family_ties_for_student
@@ -880,6 +878,13 @@ def user_profile():
         student_parents_count=student_parents_count,
         profile_tz=profile_tz,
     )
+
+
+@auth_bp.route('/user/profile')
+@login_required
+def workspace_profile():
+    """Совместимый адрес: отправляет только в каноничный профиль V2."""
+    return redirect(url_for('main.workspace_profile'))
 
 
 @auth_bp.route('/user/<int:user_id>')

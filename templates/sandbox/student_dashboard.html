@@ -1,237 +1,66 @@
 {% extends "sandbox/layout_student.html" %}
 
 {% block sandbox_content %}
-<main class="flex-1 bg-[#F8FAFC] overflow-y-auto overflow-x-hidden p-3 sm:p-5 pl-3 sm:pl-5 lg:pl-[5.5rem] pb-20 lg:pb-5">
-    <div class="max-w-[1400px] mx-auto bg-white rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-7 shadow-sm border border-slate-200/60 my-2 relative flex flex-col gap-6">
-            
-            <!-- Header -->
-            <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
-                <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
-                        <i class="ph-bold ph-user-circle"></i> Студент ID #{{ current_user.id if (current_user is defined and current_user and current_user.id) else (student.student_id if student else '1') }}
-                    </p>
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <h1 class="text-2xl sm:text-3xl font-display font-black text-slate-800 tracking-tight">
-                          {{ (student.name if student and student.name else user.username) if user else 'Ученик КЕГЭ' }}
-                        </h1>
-                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-md text-[10px] font-bold text-emerald-700">
-                            <i class="ph-fill ph-circle text-emerald-500 animate-pulse text-[8px]"></i> Online
-                        </span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 shrink-0">
-                    <a href="/sandbox/analytics" class="btn-3d px-4 sm:px-5 py-2.5 bg-[#F4F7FA] text-slate-700 font-bold border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-xl active:shadow-none hover:bg-slate-100 flex items-center text-xs gap-2 whitespace-nowrap no-underline">
-                        <i class="ph-bold ph-chart-bar text-base text-indigo-600"></i> Аналитика
-                    </a>
-                    <a href="/sandbox/analytics" class="btn-3d px-4 sm:px-5 py-2.5 bg-indigo-600 text-white font-bold border-2 border-indigo-700 shadow-[0_4px_0_#3730A3] hover:bg-indigo-500 rounded-xl active:shadow-none flex items-center text-xs gap-2 whitespace-nowrap no-underline">
-                        <i class="ph-bold ph-trend-up text-base"></i> Траектория
-                    </a>
-                </div>
-            </header>
+<main class="min-h-full flex-1 overflow-x-hidden bg-[#F8FAFC] p-3 pb-20 sm:p-5 lg:pl-[5.5rem] lg:pb-5">
+  <div class="mx-auto grid max-w-[1400px] gap-5">
+    <header class="flex flex-col justify-between gap-4 rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] sm:flex-row sm:items-center sm:p-6">
+      <div>
+        <p class="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400"><i class="ph-bold ph-user-circle"></i> Личный кабинет</p>
+        <h1 class="font-display text-2xl font-black tracking-tight text-slate-800 sm:text-3xl">{{ student.name if student and student.name else user.username }}</h1>
+        <p class="mt-1 text-xs font-bold text-slate-500">{{ pending_submissions|length }} активных работ · {{ unread_notifications }} новых уведомлений</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        {% if student %}
+        <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="btn-3d inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 border-b-4 bg-[#F4F7FA] px-4 py-2.5 text-xs font-black text-slate-700 no-underline shadow-[0_4px_0_#DAE1E9] transition hover:bg-slate-100 active:translate-y-1 active:shadow-none"><i class="ph-bold ph-chart-bar text-indigo-600"></i> Аналитика</a>
+        {% endif %}
+        {% if trainer_available %}<a href="{{ url_for('trainer.trainer_v2') }}" class="btn-3d inline-flex items-center gap-2 rounded-xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-4 py-2.5 text-xs font-black text-white no-underline shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none"><i class="ph-bold ph-lightning"></i> В тренажёр</a>{% endif %}
+      </div>
+    </header>
 
-             <!-- Bento Tile Layout (BooStudy UI Canon) -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 w-full">
+    <section class="grid gap-5 lg:grid-cols-12">
+      <div class="grid gap-5 lg:col-span-8">
+        <section class="grid gap-3 sm:grid-cols-3">
+          <article class="rounded-[1.5rem] border-2 border-slate-200 bg-[#F4F7FA] p-4 shadow-[0_4px_0_#DAE1E9]"><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Прогресс уроков</p><p class="mt-1 text-3xl font-black text-slate-800">{{ completion_pct }}%</p><p class="text-xs font-bold text-slate-500">{{ completed_lessons }} из {{ total_lessons }} завершено</p></article>
+          <article class="rounded-[1.5rem] border-2 border-amber-200 bg-[#FFF7ED] p-4 shadow-[0_4px_0_#FED7AA]"><p class="text-[10px] font-black uppercase tracking-wider text-amber-700">Нужно сделать</p><p class="mt-1 text-3xl font-black text-slate-800">{{ pending_submissions|length }}</p><p class="text-xs font-bold text-amber-800/70">активных работ</p></article>
+          <article class="rounded-[1.5rem] border-2 border-emerald-200 bg-[#ECFDF5] p-4 shadow-[0_4px_0_#A7F3D0]"><p class="text-[10px] font-black uppercase tracking-wider text-emerald-700">Средний результат</p><p class="mt-1 text-3xl font-black text-slate-800">{{ avg_score }}{% if avg_score != '—' %}%{% endif %}</p><p class="text-xs font-bold text-emerald-800/70">по последним проверкам</p></article>
+        </section>
 
-                <!-- TOP ROW / LEFT COL (8 Cols): Hero + Trajectory & Trainer -->
-                <div class="lg:col-span-8 flex flex-col gap-5">
-                    
-                    <!-- Super Hero Hub (Active or Next Lesson) -->
-                    <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.75rem] shadow-[0_4px_0_#DAE1E9] p-6 sm:p-7 flex flex-col sm:flex-row gap-6 items-center justify-between relative overflow-hidden group">
-                        <div class="hidden sm:block absolute -right-12 -bottom-12 opacity-[0.06] pointer-events-none group-hover:scale-105 transition-transform duration-700">
-                            <i class="ph-fill ph-chalkboard-teacher text-[160px] text-indigo-500"></i>
-                        </div>
-
-                        <!-- Active / Next Lesson Info -->
-                        <div class="relative z-10 w-full sm:w-auto">
-                            {% if active_lesson %}
-                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-md text-[10px] font-black uppercase tracking-widest mb-3">
-                                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span><span class="relative inline-flex h-full w-full rounded-full bg-indigo-600"></span></span>
-                                Идет сейчас
-                            </div>
-                            <h2 class="text-2xl sm:text-3xl font-display font-black leading-tight text-slate-800 mb-1.5">Урок {{ active_lesson.lesson_id }}. <span class="text-indigo-600">{{ active_lesson.topic or 'Занятие КЕГЭ' }}</span></h2>
-                            <p class="text-slate-500 font-bold text-xs">{{ active_lesson.notes or 'Интерактивная комната урока открыта' }}</p>
-                            {% elif upcoming_lesson %}
-                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-md text-[10px] font-black uppercase tracking-widest mb-3">
-                                <i class="ph-bold ph-calendar text-xs"></i> Ближайший урок
-                            </div>
-                            <h2 class="text-2xl sm:text-3xl font-display font-black leading-tight text-slate-800 mb-1.5">Урок {{ upcoming_lesson.lesson_id }}. <span class="text-indigo-600">{{ upcoming_lesson.topic or 'Занятие КЕГЭ' }}</span></h2>
-                            <p class="text-slate-500 font-bold text-xs">{{ upcoming_lesson.notes or 'Запланированное вебинарное занятие' }}</p>
-                            {% else %}
-                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-slate-200 border border-slate-300 text-slate-600 rounded-md text-[10px] font-black uppercase tracking-widest mb-3">
-                                <i class="ph-bold ph-calendar text-xs"></i> Практика
-                            </div>
-                            <h2 class="text-2xl sm:text-3xl font-display font-black leading-tight text-slate-800 mb-1.5">Свободный <span class="text-indigo-600">график практики</span></h2>
-                            <p class="text-slate-500 font-bold text-xs">Ближайших уроков не запланировано. Закрепляй темы в Тренажёре.</p>
-                            {% endif %}
-                        </div>
-                        
-                        <!-- CTA -->
-                        <div class="relative z-10 w-full sm:w-auto shrink-0 flex justify-end">
-                            {% if active_lesson or upcoming_lesson %}
-                            <a href="/lesson/{{ (active_lesson or upcoming_lesson).lesson_id }}/room" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-6 py-3.5 rounded-xl border-2 border-indigo-800 shadow-[0_4px_0_#3730A3] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-2 w-full sm:w-auto no-underline">
-                                В КОМНАТУ <i class="ph-bold ph-arrow-right text-base"></i>
-                            </a>
-                            {% else %}
-                            <a href="/sandbox/trainer" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-6 py-3.5 rounded-xl border-2 border-indigo-800 shadow-[0_4px_0_#3730A3] active:translate-y-[4px] active:shadow-none transition-all flex items-center justify-center gap-2 w-full sm:w-auto no-underline">
-                                В ТРЕНАЖЁР <i class="ph-bold ph-play text-base"></i>
-                            </a>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <!-- Trajectory + Trainer (2 Columns) -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <!-- Trajectory Stats Card -->
-                        <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.75rem] shadow-[0_4px_0_#DAE1E9] p-5 sm:p-6 flex flex-col justify-between">
-                            <div>
-                                <div class="flex items-center gap-3 mb-4">
-                                    <div class="w-10 h-10 rounded-xl bg-white border-2 border-emerald-200 text-emerald-500 flex items-center justify-center shadow-xs"><i class="ph-bold ph-trend-up text-xl"></i></div>
-                                    <div>
-                                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Курс КЕГЭ {{ student.category if (student and student.category) else '2026' }}</p>
-                                        <h3 class="text-xl font-display font-black text-slate-800">{{ completion_pct }}% DONE</h3>
-                                    </div>
-                                </div>
-                                
-                                <div class="space-y-4">
-                                    <div>
-                                        <div class="flex justify-between text-xs font-bold text-slate-500 mb-1.5">
-                                            <span>Сдано уроков</span>
-                                            <span class="text-slate-800 font-black">{{ completed_lessons }} / {{ total_lessons }}</span>
-                                        </div>
-                                        <div class="w-full bg-slate-200 rounded-full h-2.5 border border-slate-300 overflow-hidden shadow-inner">
-                                            <div class="bg-emerald-500 h-full rounded-full" style="width: {{ completion_pct }}%;"></div>
-                                        </div>
-                                    </div>
-                                    <div class="flex gap-3">
-                                         <div class="p-2.5 bg-white border-2 border-slate-200 rounded-xl flex-1 text-center shadow-xs">
-                                             <span class="block text-lg font-black text-slate-700">{{ overdue_debts }}</span>
-                                             <span class="block text-[9px] font-bold text-slate-400 uppercase">Долгов</span>
-                                         </div>
-                                         <div class="p-2.5 bg-white border-2 border-slate-200 rounded-xl flex-1 text-center shadow-xs">
-                                             <span class="block text-lg font-black text-slate-700">{{ student.xp if (student and student.xp is not none) else 0 }}</span>
-                                             <span class="block text-[9px] font-bold text-slate-400 uppercase">XP</span>
-                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <a href="/sandbox/analytics" class="mt-4 pt-2.5 border-t border-slate-200/80 text-xs font-black text-indigo-600 hover:text-indigo-800 flex items-center justify-between no-underline">
-                                <span>📊 Аналитика КЕГЭ</span>
-                                <i class="ph-bold ph-arrow-right"></i>
-                            </a>
-                        </div>
-
-                        <!-- Simulator Widget (Quick Jump) -->
-                        <div class="bg-[#FFF7ED] border-2 border-orange-200 rounded-[1.75rem] shadow-[0_4px_0_#FED7AA] p-5 sm:p-6 flex flex-col justify-between relative overflow-hidden group">
-                            <div class="relative z-10 w-full">
-                                <div class="flex items-center gap-2 mb-2">
-                                    <i class="ph-bold ph-lightning text-orange-500 text-xl"></i>
-                                    <h3 class="font-display font-black text-slate-800 text-lg">Тренажёр</h3>
-                                </div>
-                                <p class="text-xs font-bold text-orange-800/70 mb-4 leading-relaxed">Введи номер задачи из ЕГЭ для практики.</p>
-                                
-                                <form id="trainer-jump-form" onsubmit="jumpToTrainer(event)" class="flex gap-2">
-                                    <div class="relative flex-1">
-                                        <input type="text" id="trainer-task-input" placeholder="Задание № (напр. 15)" class="w-full pl-9 pr-3 py-2.5 rounded-xl border-2 border-orange-200 bg-white font-bold text-xs outline-none focus:border-orange-400 shadow-inner text-slate-800 placeholder:text-slate-400">
-                                        <i class="ph-bold ph-hash text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2 text-sm"></i>
-                                    </div>
-                                    <button type="submit" class="btn-3d bg-orange-500 hover:bg-orange-400 text-white w-11 rounded-xl border-2 border-orange-700 shadow-[0_3px_0_#C2410C] active:translate-y-[3px] active:shadow-none transition-all flex items-center justify-center shrink-0 cursor-pointer">
-                                        <i class="ph-bold ph-play text-base"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RIGHT COL (4 Cols): Mentor, TG, Recent Lessons -->
-                <div class="lg:col-span-4 flex flex-col gap-5 justify-between">
-                    
-                    <!-- Deep Mentor Widget -->
-                    {% if mentor %}
-                    <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-4 flex items-center justify-between rounded-[1.5rem] relative">
-                        <div class="flex items-center gap-3">
-                            <a href="/profile/{{ mentor.id }}" class="w-12 h-12 rounded-xl bg-white shadow-xs border-2 border-slate-200 p-0.5 block overflow-hidden shrink-0" title="Профиль">
-                                <img src="{{ mentor.avatar_url if mentor.avatar_url else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ mentor.username }}" class="w-full h-full rounded-lg object-cover bg-indigo-50">
-                            </a>
-                            <div>
-                                <a href="/profile/{{ mentor.id }}" class="text-sm font-display font-black text-slate-800 hover:text-indigo-600 no-underline transition-colors block">
-                                    {{ mentor.full_name or mentor.username }}
-                                </a>
-                                <p class="text-[10px] font-bold text-slate-400">Наставник КЕГЭ</p>
-                            </div>
-                        </div>
-                        <a href="{{ mentor.telegram_link if mentor.telegram_link else 'https://t.me/boostudy_support' }}" target="_blank" class="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl border-b-2 border-indigo-800 shadow-xs no-underline flex items-center justify-center" title="Написать">
-                            <i class="ph-bold ph-chat-circle-dots text-base"></i>
-                        </a>
-                    </div>
-                    {% endif %}
-
-                    <!-- TG Integration -->
-                    <div class="bg-[#ECFDF5] border-2 border-emerald-200 shadow-[0_4px_0_#A7F3D0] p-4 flex items-center justify-between rounded-[1.5rem]">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-white border border-emerald-200 flex items-center justify-center text-emerald-500 shadow-xs shrink-0">
-                                <i class="ph-fill ph-telegram-logo text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-xs font-display font-black text-slate-800">Telegram бот</h4>
-                                <p class="text-[10px] font-bold text-emerald-800">Уведомления в ЛС</p>
-                            </div>
-                        </div>
-                        <a href="https://t.me/boostudy_bot" target="_blank" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] rounded-xl border-b-2 border-emerald-800 no-underline">
-                            Открыть
-                        </a>
-                    </div>
-
-                    <!-- Recent Lessons Feed -->
-                    <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-5 flex flex-col rounded-[1.75rem]">
-                        <div class="flex justify-between items-center mb-3 shrink-0">
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Недавние уроки</h3>
-                            <a href="/schedule" class="text-[10px] font-black text-indigo-500 hover:text-indigo-700 transition uppercase no-underline">Все</a>
-                        </div>
-                        
-                        <div class="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-1">
-                            {% if recent_lessons %}
-                              {% for l in recent_lessons %}
-                              <a href="/lesson/{{ l.lesson_id }}/room" class="bg-white border border-slate-200 p-2.5 rounded-xl shadow-xs hover:border-indigo-300 transition-colors no-underline group flex items-center justify-between gap-2">
-                                  <div class="truncate">
-                                      <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">
-                                        {{ l.lesson_date.strftime('%d.%m, %H:%M') if l.lesson_date else 'Урок' }}
-                                      </span>
-                                      <h4 class="text-xs font-black text-slate-800 group-hover:text-indigo-600 transition-colors truncate">
-                                        Урок {{ l.lesson_id }}. {{ l.topic or 'Занятие КЕГЭ' }}
-                                      </h4>
-                                  </div>
-                                  <i class="ph-bold ph-caret-right text-slate-300 text-xs shrink-0"></i>
-                              </a>
-                              {% endfor %}
-                            {% else %}
-                              <a href="/lesson/6/room" class="bg-white border border-slate-200 p-2.5 rounded-xl shadow-xs hover:border-indigo-300 transition-colors no-underline group flex items-center justify-between gap-2">
-                                  <div>
-                                      <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">Старт</span>
-                                      <h4 class="text-xs font-black text-slate-800 truncate">Урок 6. Интерактивный</h4>
-                                  </div>
-                                  <i class="ph-bold ph-caret-right text-slate-300 text-xs shrink-0"></i>
-                              </a>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                </div>
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] sm:p-6">
+          {% set lesson = active_lesson or upcoming_lesson %}
+          <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-500">{% if active_lesson %}Урок идёт сейчас{% elif upcoming_lesson %}Следующий урок{% else %}Свободное время{% endif %}</p>
+              {% if lesson %}
+                <h2 class="mt-1 font-display text-2xl font-black text-slate-800">{{ lesson.topic or 'Занятие без темы' }}</h2>
+                <p class="mt-1 text-sm font-bold text-slate-500">{{ lesson.lesson_date.strftime('%d.%m в %H:%M') if lesson.lesson_date else 'Время будет уточнено преподавателем' }}</p>
+              {% else %}
+                <h2 class="mt-1 font-display text-2xl font-black text-slate-800">Продолжай изучение теории</h2>
+                <p class="mt-1 text-sm font-bold text-slate-500">Ближайших занятий пока нет. Открой материалы и подготовься к следующей теме.</p>
+              {% endif %}
             </div>
-        </div>
-    </main>
+            {% if lesson %}<a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id) }}" class="btn-3d inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-5 py-3 text-xs font-black text-white no-underline shadow-[0_4px_0_#3730A3] hover:bg-indigo-500 active:translate-y-1 active:shadow-none">Открыть комнату <i class="ph-bold ph-arrow-right"></i></a>{% else %}<a href="{{ url_for('theory.theory_index') }}" class="btn-3d inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-5 py-3 text-xs font-black text-white no-underline shadow-[0_4px_0_#3730A3] hover:bg-indigo-500 active:translate-y-1 active:shadow-none">Открыть теорию <i class="ph-bold ph-book-open"></i></a>{% endif %}
+          </div>
+        </section>
 
-<script>
-function jumpToTrainer(e) {
-    e.preventDefault();
-    const input = document.getElementById('trainer-task-input');
-    const taskNum = input ? input.value.trim() : '';
-    if (taskNum) {
-        window.location.href = '/sandbox/trainer?task=' + encodeURIComponent(taskNum);
-    } else {
-        window.location.href = '/sandbox/trainer';
-    }
-}
-</script>
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] sm:p-6">
+          <div class="mb-4 flex items-center justify-between"><div><p class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Очередь</p><h2 class="font-display text-xl font-black text-slate-800">Текущие работы</h2></div><span class="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{{ pending_submissions|length }}</span></div>
+          {% if pending_submissions %}<div class="grid gap-2">{% for submission in pending_submissions[:5] %}<a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="flex items-center justify-between gap-3 rounded-xl border-2 border-slate-100 bg-[#F8FAFC] px-4 py-3 no-underline transition hover:border-indigo-200 hover:bg-indigo-50"><div class="min-w-0"><p class="truncate text-sm font-black text-slate-800">{{ submission.assignment.title if submission.assignment else ('Работа #' ~ submission.submission_id) }}</p><p class="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">{{ submission.status }}</p></div><i class="ph-bold ph-caret-right shrink-0 text-slate-400"></i></a>{% endfor %}</div>{% else %}<div class="rounded-xl border-2 border-dashed border-slate-200 p-6 text-center text-sm font-bold text-slate-500">Активных работ нет — можно повторить материалы теории.</div>{% endif %}
+        </section>
+      </div>
+
+      <aside class="grid content-start gap-5 lg:col-span-4">
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-5 shadow-[0_4px_0_#DAE1E9]">
+          <div class="flex items-center justify-between"><div><p class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">Траектория</p><h2 class="font-display text-xl font-black text-slate-800">Слабые темы</h2></div>{% if student %}<a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="rounded-xl bg-white p-2 text-indigo-600"><i class="ph-bold ph-arrow-up-right"></i></a>{% endif %}</div>
+          {% if problem_topics %}<div class="mt-4 grid gap-2">{% for topic in problem_topics[:4] %}<div class="rounded-xl border-2 border-white bg-white p-3"><div class="flex justify-between gap-2 text-xs font-black text-slate-700"><span class="truncate">{{ topic.name }}</span><span>{{ topic.avg_score|round|int }}%</span></div><div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-amber-400" style="width: {{ [topic.avg_score|float, 100]|min }}%"></div></div></div>{% endfor %}</div>{% else %}<p class="mt-4 rounded-xl bg-white p-4 text-sm font-bold text-slate-500">Недостаточно проверенных работ для оценки тем.</p>{% endif %}
+        </section>
+
+        {% if mentor %}<section class="flex items-center justify-between gap-3 rounded-[1.5rem] border-2 border-slate-200 bg-white p-4 shadow-[0_4px_0_#DAE1E9]"><div class="flex min-w-0 items-center gap-3">{% if mentor.avatar_url %}<img class="h-11 w-11 rounded-xl border-2 border-slate-200 bg-slate-100 object-cover" src="{{ mentor.avatar_url }}" alt="">{% else %}<span class="grid h-11 w-11 place-items-center rounded-xl border-2 border-slate-200 bg-indigo-50 text-xl text-indigo-500"><i class="ph-bold ph-user"></i></span>{% endif %}<div class="min-w-0"><p class="truncate text-sm font-black text-slate-800">{{ mentor.full_name or mentor.username }}</p><p class="text-[10px] font-bold text-slate-400">Наставник</p></div></div>{% if mentor.telegram_link %}<a href="{{ mentor.telegram_link }}" target="_blank" rel="noopener" class="rounded-xl bg-indigo-600 p-2.5 text-white"><i class="ph-bold ph-chat-circle-dots"></i></a>{% endif %}</section>{% endif %}
+
+        <section class="rounded-[1.5rem] border-2 border-emerald-200 bg-[#ECFDF5] p-4 shadow-[0_4px_0_#A7F3D0]"><div class="flex items-center gap-3"><i class="ph-fill ph-telegram-logo text-2xl text-emerald-500"></i><div><p class="text-xs font-black text-slate-800">Telegram-уведомления</p><p class="text-[10px] font-bold text-emerald-800">{% if tg_connected %}Подключены{% else %}Не подключены{% endif %}</p></div></div></section>
+
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]"><p class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">История</p><h2 class="mb-3 font-display text-xl font-black text-slate-800">Недавние уроки</h2>{% if recent_lessons %}<div class="grid gap-2">{% for item in recent_lessons[:4] %}<a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=item.lesson_id) }}" class="flex items-center justify-between gap-2 rounded-xl bg-[#F8FAFC] px-3 py-2.5 no-underline"><span class="min-w-0 truncate text-xs font-black text-slate-700">{{ item.topic or 'Занятие без темы' }}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">{{ item.lesson_date.strftime('%d.%m') if item.lesson_date else '' }}</span></a>{% endfor %}</div>{% else %}<p class="text-sm font-bold text-slate-500">Здесь появится история занятий.</p>{% endif %}</section>
+      </aside>
+    </section>
+  </div>
+</main>
 {% endblock %}

@@ -7,7 +7,7 @@ from typing import Any
 
 import json as _json
 
-from flask import render_template, request, abort, jsonify, send_file, session, make_response
+from flask import current_app, render_template, request, abort, jsonify, send_file, session, make_response
 from flask_login import login_required, current_user
 
 from app.trainer import trainer_bp
@@ -29,6 +29,16 @@ from core.audit_logger import audit_logger
 from app import csrf
 
 logger = logging.getLogger(__name__)
+
+
+@trainer_bp.before_request
+def block_trainer_until_subscription_rollout():
+    """Keep every trainer endpoint closed while the paid rollout is not enabled."""
+    if current_app.config.get('TRAINER_ENABLED', False):
+        return None
+    if request.path.startswith('/internal/trainer/'):
+        return jsonify({'success': False, 'code': 'trainer_unavailable'}), 404
+    abort(404)
 
 
 def _extract_trainer_token_from_request() -> str:

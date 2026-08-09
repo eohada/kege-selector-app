@@ -20,7 +20,7 @@
   {% endfor %}
 {% endif %}
 
-<div data-theory-article data-task-number="{{ block.task_number }}" data-block-id="{{ block.id }}" class="flex flex-col gap-4">
+<div data-theory-article data-task-number="{{ block.task_number }}" data-block-id="{{ block.id }}" data-last-position="{{ state.last_position if state else 0 }}" class="flex flex-col gap-4">
   <button type="button" data-action="back" data-back-url="{{ back_to_url if back_to_url is defined else url_for('theory.theory_index', course_id=course_id) }}" class="flex items-center gap-2 text-muted dark:text-dark-muted font-bold text-sm hover:text-boo-primary dark:hover:text-white bg-white/50 dark:bg-white/5 px-2 py-0.5 rounded-md backdrop-blur-sm border border-slate-200/50 dark:border-dark-avatar shadow-sm dark:shadow-none w-fit transition-colors">
     <i class="ph-bold ph-arrow-left"></i> Назад в каталог
   </button>
@@ -45,10 +45,16 @@
         {% endfor %}
       </div>
       <div class="mt-3 pt-6 border-t border-slate-100 dark:border-dark-light">
-        <a href="{{ url_for('trainer.trainer_embed') }}" class="w-full py-2 bg-surface dark:bg-white/5 border border-slate-200 dark:border-dark-avatar text-secondary dark:text-white rounded-xl font-bold hover:bg-surface-alt dark:hover:bg-white/10 transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
+        <a href="{{ url_for('trainer.trainer_v2', course_id=course_id, task_type=block.task_number) }}" class="w-full py-2 bg-surface dark:bg-white/5 border border-slate-200 dark:border-dark-avatar text-secondary dark:text-white rounded-xl font-bold hover:bg-surface-alt dark:hover:bg-white/10 transition-all flex justify-center items-center gap-2 shadow-sm dark:shadow-none text-sm no-underline">
           <i class="ph-bold ph-game-controller text-boo-primary"></i> В тренажёр
         </a>
       </div>
+      {% if current_user.is_student() %}
+      <div class="mt-5 pt-5 border-t border-slate-100 dark:border-dark-light">
+        <div class="flex items-center justify-between mb-2"><span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Твой прогресс</span><span data-reading-progress-label class="text-xs font-black text-indigo-600">{{ state.reading_progress if state else 0 }}%</span></div>
+        <div class="h-2 rounded-full bg-slate-100 overflow-hidden"><div data-reading-progress-bar class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400" style="width: {{ state.reading_progress if state else 0 }}%"></div></div>
+      </div>
+      {% endif %}
     </aside>
 
     <section class="flex-1 bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 lg:p-5 overflow-y-auto relative">
@@ -64,6 +70,14 @@
         <h1 class="text-2xl md:text-2xl font-bold text-primary dark:text-white tracking-tight mb-3 leading-tight">{{ block.title or ('Задание ' ~ block.task_number) }}</h1>
         {% if block.description %}
         <p class="text-base text-muted dark:text-white/85 font-medium mb-3">{{ block.description }}</p>
+        {% endif %}
+
+        {% if current_user.is_student() %}
+        <div class="mb-6 p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 flex items-center gap-3">
+          <div class="w-10 h-10 shrink-0 rounded-xl bg-white border border-indigo-100 text-indigo-600 flex items-center justify-center"><i class="ph-fill ph-compass-tool text-xl"></i></div>
+          <div class="min-w-0 flex-1"><div class="text-[10px] uppercase tracking-widest font-black text-indigo-500">Учебный маршрут</div><div class="text-sm font-bold text-slate-700">Читай материал, отвечай на проверки и закрепляй тему практикой.</div></div>
+          <span data-reading-progress-label class="text-sm font-black text-indigo-600">{{ state.reading_progress if state else 0 }}%</span>
+        </div>
         {% endif %}
 
         {% if custom_html %}
@@ -98,6 +112,12 @@
             <label class="block text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-2">Комментарий (опционально)</label>
             <textarea name="theory_comment" rows="3" placeholder="Что улучшить? Где было непонятно?" class="w-full bg-surface-alt dark:bg-dark-inner/80 border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 text-sm font-medium text-secondary dark:text-white placeholder-slate-400 dark:placeholder-dark-muted focus:outline-none focus:border-boo-primary focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-500/25 transition-all shadow-inner-soft resize-none">{{ feedback.comment if feedback and feedback.comment else '' }}</textarea>
           </div>
+          {% if current_user.is_student() %}
+          <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div class="flex items-center justify-between gap-3 mb-2"><label for="theory-note" class="text-xs font-black uppercase tracking-widest text-slate-500">Моя заметка</label><span data-note-status class="text-xs font-bold text-slate-400">Сохраняется автоматически</span></div>
+            <textarea id="theory-note" rows="4" maxlength="5000" placeholder="Запиши правило, приём или вопрос к преподавателю…" class="w-full resize-none rounded-xl border-2 border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-indigo-500">{{ note.content if note else '' }}</textarea>
+          </div>
+          {% endif %}
         </div>
       </div>
     </section>

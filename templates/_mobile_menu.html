@@ -39,7 +39,7 @@
                 <span>Задания</span>
             </a>
             {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
-            {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
+            {% if trainer_available and sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
                 <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="mobile-tab {% if active_page == 'trainer' %}active{% endif %}">
                     <i class="ph-bold ph-game-controller"></i>
                     <span>Тренажёр</span>
@@ -67,7 +67,7 @@
                 <span>Проверка</span>
             </a>
         {% endif %}
-        {% if has_permission(current_user, 'trainer.use') %}
+        {% if trainer_available and has_permission(current_user, 'trainer.use') %}
             <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="mobile-tab {% if active_page == 'trainer' %}active{% endif %}">
                 <i class="ph-bold ph-game-controller"></i>
                 <span>Тренажёр</span>

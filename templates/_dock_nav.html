@@ -69,7 +69,7 @@
                 <i class="ph-bold ph-tray text-lg"></i> Задания
             </a>
             {% endif %}
-            {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
+            {% if trainer_available and sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
             <a id="demo-nav-trainer" {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="dock-nav-item {% if active_page == 'trainer' %}active{% endif %}">
                 <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
             </a>
@@ -97,7 +97,7 @@
                 <i class="ph-bold ph-tray text-lg"></i> Проверка
             </a>
             {% endif %}
-            {% if has_permission(current_user, 'trainer.use') %}
+            {% if trainer_available and has_permission(current_user, 'trainer.use') %}
             <a {{ spa_main_nav_attrs(url_for('trainer.trainer_v2'), 'trainer') }} class="dock-nav-item {% if active_page == 'trainer' %}active{% endif %}">
                 <i class="ph-bold ph-game-controller text-lg"></i> Тренажёр
             </a>

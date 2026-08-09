@@ -110,6 +110,8 @@ def create_app(config_name=None):
     app.config['WTF_CSRF_TIME_LIMIT'] = None
     app.config['TRAINER_URL'] = (os.environ.get('TRAINER_URL') or '').strip() or None
     app.config['TRAINER_SHARED_SECRET'] = (os.environ.get('TRAINER_SHARED_SECRET') or '').strip() or None
+    # The module stays deployed but is closed until the subscription rollout is ready.
+    app.config['TRAINER_ENABLED'] = (os.environ.get('TRAINER_ENABLED') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
     app.config['REDIS_URL'] = (
         os.environ.get('REDIS_URL')
         or os.environ.get('CELERY_BROKER_URL')
@@ -712,6 +714,7 @@ def create_app(config_name=None):
             release_notes=build_release_notes_text(),
             release_version=RELEASE_VERSION,
             qa_widget_areas=qa_widget_areas,
+            trainer_available=bool(app.config.get('TRAINER_ENABLED', False)),
         )
     
     from app.admin.routes import (

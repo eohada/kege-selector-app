@@ -2833,6 +2833,8 @@ class StudentTheoryState(db.Model):
 
     is_bookmarked = db.Column(db.Boolean, default=False, nullable=False)
     is_read = db.Column(db.Boolean, default=False, nullable=False)
+    reading_progress = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    last_position = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     last_opened_at = db.Column(db.DateTime, nullable=True)
 
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
@@ -2842,6 +2844,65 @@ class StudentTheoryState(db.Model):
 
     student = db.relationship('Student', foreign_keys=[student_id])
     course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class TheoryCheckpointAttempt(db.Model):
+    """Ответ ученика на микро-проверку внутри теоретического блока."""
+    __tablename__ = 'TheoryCheckpointAttempts'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    block_id = db.Column(db.Integer, db.ForeignKey('TheoryBlocks.id', ondelete='CASCADE'), nullable=False, index=True)
+    checkpoint_key = db.Column(db.String(80), nullable=False)
+    selected_answer = db.Column(db.String(500), nullable=False)
+    is_correct = db.Column(db.Boolean, nullable=False)
+    attempts_count = db.Column(db.Integer, nullable=False, default=1, server_default='1')
+    answered_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    block = db.relationship('TheoryBlock', foreign_keys=[block_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'block_id', 'checkpoint_key', name='uq_theory_checkpoint_attempt'),
+    )
+
+
+class StudentTheoryNote(db.Model):
+    """Личная заметка ученика к отдельному материалу теории."""
+    __tablename__ = 'StudentTheoryNotes'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    block_id = db.Column(db.Integer, db.ForeignKey('TheoryBlocks.id', ondelete='CASCADE'), nullable=False, index=True)
+    content = db.Column(db.Text, nullable=False, default='')
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    block = db.relationship('TheoryBlock', foreign_keys=[block_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'block_id', name='uq_student_theory_note'),
+    )
+
+
+class TheoryStudyAssignment(db.Model):
+    """Адресное назначение материала преподавателем для повторения или изучения."""
+    __tablename__ = 'TheoryStudyAssignments'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    block_id = db.Column(db.Integer, db.ForeignKey('TheoryBlocks.id', ondelete='CASCADE'), nullable=False, index=True)
+    assigned_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    message = db.Column(db.String(1000), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='assigned', server_default='assigned', index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    block = db.relationship('TheoryBlock', foreign_keys=[block_id])
+    assigned_by = db.relationship('User', foreign_keys=[assigned_by_user_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'block_id', name='uq_theory_study_assignment'),
+    )
 
 
 class TheoryFeedback(db.Model):

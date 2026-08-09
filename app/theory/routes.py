@@ -12,7 +12,7 @@ from collections import defaultdict
 from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app, send_file
 from markupsafe import Markup
 from flask_login import login_required, current_user
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
@@ -28,6 +28,9 @@ from app.models import (
     CourseTaskTemplate,
     StudentCourseEnrollment,
     StudentTheoryState,
+    TheoryCheckpointAttempt,
+    StudentTheoryNote,
+    TheoryStudyAssignment,
     TheoryFeedback,
     TheoryFeedbackHistory,
     moscow_now,
@@ -35,6 +38,34 @@ from app.models import (
 from app.auth.rbac_utils import has_permission
 
 logger = logging.getLogger(__name__)
+
+
+_CHECKPOINT_RE = re.compile(r'\[CHECKPOINT\s+([^\]]+)\]', re.IGNORECASE)
+_CHECKPOINT_ATTR_RE = re.compile(r'(key|question|options|answer|explanation)="([^"]*)"', re.IGNORECASE)
+
+
+def _parse_theory_checkpoints(content_value):
+    """Read author-defined micro-checkpoints from a theory article.
+
+    Format: [CHECKPOINT key="logic-1" question="..." options="A|B|C" answer="B" explanation="..."]
+    The answer stays server-side; the client receives only question and options.
+    """
+    checkpoints = []
+    for index, match in enumerate(_CHECKPOINT_RE.finditer(_strip_status_marker(content_value or ''))):
+        attrs = {name.lower(): value.strip() for name, value in _CHECKPOINT_ATTR_RE.findall(match.group(1))}
+        question = attrs.get('question', '')
+        options = [item.strip() for item in attrs.get('options', '').split('|') if item.strip()]
+        answer = attrs.get('answer', '')
+        if not question or len(options) < 2 or answer not in options:
+            continue
+        checkpoints.append({
+            'key': attrs.get('key') or f'checkpoint-{index + 1}',
+            'question': question,
+            'options': options,
+            'answer': answer,
+            'explanation': attrs.get('explanation', ''),
+        })
+    return checkpoints
 
 
 def _theory_normalize_stdin_for_run(s):
@@ -68,6 +99,53 @@ def _theory_wrap_python_for_stdio_transcript(code: str) -> str:
         "_th_builtins.input = _th_input\n"
         f"exec(compile({code!r}, '<theory>', 'exec'))\n"
     )
+
+
+def _resolve_student_block_from_payload(payload):
+    """Resolve a published, available block from a client action payload.
+
+    State rows are keyed by task number for backwards compatibility, but the
+    browser never gets to choose an arbitrary course/topic pair any more.
+    """
+    try:
+        block_id = int(payload.get('block_id'))
+    except (TypeError, ValueError):
+        return None, 'Не передан материал.'
+
+    block = TheoryBlock.query.get(block_id)
+    if not block:
+        return None, 'Материал не найден.'
+    if _extract_status(block.content) != 'published':
+        return None, 'Материал ещё не опубликован.'
+
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return None, 'Ученик не найден.'
+    if not _student_can_view_task_number(student.student_id, block.task_number, block.course_id):
+        return None, 'Доступ к материалу закрыт.'
+    return (student, block), None
+
+
+def _get_scoped_students_for_theory_manager():
+    """Return Student records visible to the current manager.
+
+    RBAC scope stores *User.id* values, while theory state and assignment
+    tables reference ``Students.student_id``. Keeping this conversion in one
+    place prevents tutors from silently losing access to their own students.
+    The numeric fallback supports legacy rows whose student and user ids were
+    historically identical.
+    """
+    from app.auth.rbac_utils import get_user_scope
+
+    scope = get_user_scope(current_user)
+    if scope.get('can_see_all'):
+        return Student.query.order_by(Student.name).all()
+    visible_user_ids = [int(value) for value in (scope.get('student_ids') or [])]
+    if not visible_user_ids:
+        return []
+    return Student.query.filter(
+        or_(Student.user_id.in_(visible_user_ids), Student.student_id.in_(visible_user_ids))
+    ).order_by(Student.name).all()
 
 
 def _strip_status_marker(content_value):
@@ -364,6 +442,31 @@ def _render_theory_content_html(content_value):
             '</div>'
         )
 
+    checkpoint_items = _parse_theory_checkpoints(text)
+    checkpoint_by_key = {item['key']: item for item in checkpoint_items}
+
+    def _checkpoint_repl(match):
+        attrs = {name.lower(): value.strip() for name, value in _CHECKPOINT_ATTR_RE.findall(match.group(1))}
+        key = attrs.get('key')
+        item = checkpoint_by_key.get(key)
+        if not item:
+            return ''
+        options_html = ''.join(
+            '<button type="button" data-action="checkpoint-choice" data-checkpoint-key="{}" data-answer="{}" '
+            'class="theory-checkpoint-option w-full text-left px-4 py-3 rounded-xl border-2 border-slate-200 bg-white font-bold text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 transition-colors">{}</button>'.format(
+                html.escape(item['key'], quote=True), html.escape(option, quote=True), html.escape(option)
+            )
+            for option in item['options']
+        )
+        return (
+            '<section class="theory-checkpoint my-8 rounded-[24px] border-2 border-indigo-100 bg-indigo-50/60 p-5" '
+            f'data-checkpoint-key="{html.escape(item["key"], quote=True)}">'
+            '<div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">'
+            '<i class="ph-fill ph-lightning"></i> Быстрая проверка</div>'
+            f'<h3 class="m-0 mb-4 text-lg font-black text-slate-900">{html.escape(item["question"])}</h3>'
+            f'<div class="space-y-2">{options_html}</div><p data-checkpoint-result class="hidden mt-3 mb-0 text-sm font-bold"></p></section>'
+        )
+
     def _preserve_blank_lines(src):
         # Convert each extra blank line into explicit spacer markers before markdown.
         return re.sub(
@@ -439,6 +542,7 @@ def _render_theory_content_html(content_value):
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
+    text = _CHECKPOINT_RE.sub(_checkpoint_repl, text)
     try:
         from markdown import markdown as _md
         text = _md(text, extensions=['extra', 'tables', 'fenced_code'])
@@ -628,8 +732,80 @@ def _build_visible_with_state(course_id):
             state_by_number[r.task_number] = {
                 'bookmarked': bool(r.is_bookmarked),
                 'read': bool(r.is_read),
+                'reading_progress': int(r.reading_progress or 0),
             }
     return visible_groups, state_by_number
+
+
+def _build_catalog_context(course_id, selected_group_id=None):
+    """Build one data-only view model for the live V2 theory catalogue."""
+    visible_groups, state_by_number = _build_visible_with_state(course_id)
+    course = Course.query.get(course_id)
+    all_blocks = [block for pack in visible_groups for block in pack['blocks']]
+    student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_student() else None
+    completed_count = sum(
+        1 for block in all_blocks
+        if state_by_number.get(block.task_number, {}).get('read')
+        or state_by_number.get(block.task_number, {}).get('reading_progress', 0) >= 100
+    )
+    in_progress_count = sum(
+        1 for block in all_blocks
+        if 0 < state_by_number.get(block.task_number, {}).get('reading_progress', 0) < 100
+    )
+    saved_count = sum(1 for block in all_blocks if state_by_number.get(block.task_number, {}).get('bookmarked'))
+
+    group_cards = []
+    for pack in visible_groups:
+        blocks = pack['blocks']
+        completed = sum(
+            1 for block in blocks
+            if state_by_number.get(block.task_number, {}).get('read')
+            or state_by_number.get(block.task_number, {}).get('reading_progress', 0) >= 100
+        )
+        next_block = next(
+            (block for block in blocks if state_by_number.get(block.task_number, {}).get('reading_progress', 0) < 100),
+            blocks[0] if blocks else None,
+        )
+        group_cards.append({
+            'group': pack['group'],
+            'blocks': blocks,
+            'completed': completed,
+            'progress': round(completed * 100 / len(blocks)) if blocks else 0,
+            'next_block': next_block,
+        })
+
+    recommendations, assigned_materials = [], []
+    if student:
+        ranked = sorted(
+            (block for block in all_blocks if state_by_number.get(block.task_number, {}).get('reading_progress', 0) < 100),
+            key=lambda block: (
+                0 if state_by_number.get(block.task_number, {}).get('reading_progress', 0) > 0 else 1,
+                block.position,
+                block.id,
+            ),
+        )
+        recommendations = ranked[:3]
+        assigned_materials = TheoryStudyAssignment.query.filter_by(
+            student_id=student.student_id, status='assigned'
+        ).join(TheoryBlock).filter(TheoryBlock.course_id == course_id).order_by(
+            TheoryStudyAssignment.created_at.desc()
+        ).all()
+
+    return {
+        'course': course,
+        'course_id': course_id,
+        'visible_groups': visible_groups,
+        'group_cards': group_cards,
+        'state_by_number': state_by_number,
+        'selected_group_id': selected_group_id,
+        'total_blocks': len(all_blocks),
+        'completed_count': completed_count,
+        'in_progress_count': in_progress_count,
+        'saved_count': saved_count,
+        'overall_progress': round(completed_count * 100 / len(all_blocks)) if all_blocks else 0,
+        'recommendations': recommendations,
+        'assigned_materials': assigned_materials,
+    }
 
 
 # --- Просмотр для учеников (и тьюторов) ---
@@ -646,11 +822,7 @@ def theory_index():
         flash('Нет доступных курсов.', 'warning')
         return redirect(url_for('main.dashboard'))
 
-    visible_groups, state_by_number = _build_visible_with_state(course_id)
-    return render_template('sandbox/theory.html',
-                           visible_groups=visible_groups,
-                           state_by_number=state_by_number,
-                           course_id=course_id)
+    return render_template('sandbox/theory.html', **_build_catalog_context(course_id))
 
 
 @theory_bp.route('/theory/group/<int:group_id>')
@@ -665,21 +837,14 @@ def theory_group_view(group_id):
         flash('Нет доступных курсов.', 'warning')
         return redirect(url_for('main.dashboard'))
 
-    visible_groups, state_by_number = _build_visible_with_state(course_id)
-    selected_group_pack = next((x for x in visible_groups if x['group'].id == group_id), None)
+    context = _build_catalog_context(course_id, selected_group_id=group_id)
+    selected_group_pack = next((x for x in context['visible_groups'] if x['group'].id == group_id), None)
     if not selected_group_pack:
         return redirect(url_for('theory.theory_index', course_id=course_id))
 
-    return render_template(
-        'theory/theory_shell.html',
-        visible_groups=visible_groups,
-        selected_group=selected_group_pack['group'],
-        selected_group_blocks=selected_group_pack['blocks'],
-        state_by_number=state_by_number,
-        course_id=course_id,
-        active_page='theory',
-        initial_view='topics',
-    )
+    # The V2 catalogue is the only live entry point.  Keep group URLs as a
+    # useful deep link, but render them through the same canonical screen.
+    return render_template('sandbox/theory.html', **context)
 
 
 @theory_bp.route('/theory/<int:task_number>')
@@ -747,12 +912,21 @@ def theory_view_block(block_id):
             state = {
                 'bookmarked': bool(st_row.is_bookmarked),
                 'read': bool(st_row.is_read),
+                'reading_progress': int(st_row.reading_progress or 0),
+                'last_position': int(st_row.last_position or 0),
             }
         feedback = TheoryFeedback.query.filter_by(
             student_id=student.student_id,
             course_id=course_id,
             task_number=task_number,
         ).first()
+    note = StudentTheoryNote.query.filter_by(student_id=student.student_id, block_id=block.id).first() if student else None
+    checkpoint_attempts = {}
+    if student:
+        checkpoint_attempts = {
+            item.checkpoint_key: item
+            for item in TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id).all()
+        }
 
     template_ctx = dict(
         block=block,
@@ -762,26 +936,15 @@ def theory_view_block(block_id):
         active_page='theory',
         custom_html=custom_html,
         rendered_content_html=_render_theory_content_html(block.content or ''),
+        note=note,
+        checkpoint_attempts=checkpoint_attempts,
     )
 
-    if request.args.get('fragment') == '1' and request.headers.get('HX-Request') == 'true':
-        return render_template(
-            'theory/_article.html',
-            initial_block=block,
-            initial_state=state,
-            initial_feedback=feedback,
-            initial_custom_html=custom_html,
-            **template_ctx,
-        )
-
     return render_template(
-        'theory/theory_shell.html',
+        'sandbox/theory_article.html',
         state_by_number=state_by_number,
-        initial_block=block,
-        initial_state=state,
-        initial_feedback=feedback,
-        initial_custom_html=custom_html,
-        initial_view='article',
+        state=state,
+        feedback=feedback,
         **template_ctx,
     )
 
@@ -913,6 +1076,9 @@ def manage_list():
             total_count=0,
             student_stats=[],
             comments_history=[],
+            checkpoint_stats=[],
+            course_insights=[],
+            scoped_students_count=0,
             course_id=None,
             active_page='theory_manage',
         )
@@ -1004,6 +1170,29 @@ def manage_list():
             db.session.commit()
             flash('Теоретическая карточка создана.', 'success')
             return redirect(url_for('theory.manage_list', course_id=course_id, group_id=group.id, block_id=block.id))
+        if action == 'assign_material':
+            block_id = request.form.get('block_id', type=int)
+            student_id = request.form.get('student_id', type=int)
+            message = (request.form.get('assignment_message') or '').strip()
+            block = TheoryBlock.query.filter_by(id=block_id, course_id=course_id).first()
+            if not block or _extract_status(block.content) != 'published':
+                flash('Назначать можно только опубликованный материал.', 'warning')
+                return redirect(url_for('theory.manage_list', course_id=course_id))
+            scoped_students = _get_scoped_students_for_theory_manager()
+            student = next((item for item in scoped_students if item.student_id == student_id), None)
+            if not student:
+                flash('У вас нет доступа к этому ученику.', 'danger')
+                return redirect(url_for('theory.manage_list', course_id=course_id, block_id=block.id))
+            assignment = TheoryStudyAssignment.query.filter_by(student_id=student.student_id, block_id=block.id).first()
+            if not assignment:
+                assignment = TheoryStudyAssignment(student_id=student.student_id, block_id=block.id, assigned_by_user_id=current_user.id)
+                db.session.add(assignment)
+            assignment.message = message or None
+            assignment.status = 'assigned'
+            assignment.completed_at = None
+            db.session.commit()
+            flash('Материал назначен ученику.', 'success')
+            return redirect(url_for('theory.manage_list', course_id=course_id, group_id=block.group_id, block_id=block.id))
 
         block_id = request.form.get('block_id', type=int)
         task_number = request.form.get('task_number', type=int)
@@ -1091,8 +1280,38 @@ def manage_list():
     published_count = sum(1 for items in blocks_by_group.values() for b in items if _extract_status(b.content) == 'published')
     completion_percent = int(round((published_count / total_count) * 100)) if total_count else 0
 
+    scoped_students = _get_scoped_students_for_theory_manager()
+    scoped_student_ids = [item.student_id for item in scoped_students]
+    course_insights = []
+    if scoped_student_ids:
+        all_states = StudentTheoryState.query.filter(
+            StudentTheoryState.course_id == course_id,
+            StudentTheoryState.student_id.in_(scoped_student_ids),
+        ).all()
+        states_by_task = defaultdict(list)
+        for state_item in all_states:
+            states_by_task[state_item.task_number].append(state_item)
+        attempts_by_block = defaultdict(list)
+        for attempt in TheoryCheckpointAttempt.query.join(TheoryBlock).filter(
+            TheoryBlock.course_id == course_id,
+            TheoryCheckpointAttempt.student_id.in_(scoped_student_ids),
+        ).all():
+            attempts_by_block[attempt.block_id].append(attempt)
+        for candidate in [block for entries in blocks_by_group.values() for block in entries if _extract_status(block.content) == 'published']:
+            states = states_by_task.get(candidate.task_number, [])
+            completed = sum(1 for state_item in states if state_item.is_read or int(state_item.reading_progress or 0) >= 100)
+            completion_rate = int(round((completed / len(scoped_student_ids)) * 100)) if scoped_student_ids else 0
+            attempts = attempts_by_block.get(candidate.id, [])
+            correct_rate = int(round((sum(1 for item in attempts if item.is_correct) / len(attempts)) * 100)) if attempts else None
+            risk = 'high' if completion_rate < 45 or (correct_rate is not None and correct_rate < 50) else 'medium' if completion_rate < 75 or (correct_rate is not None and correct_rate < 70) else 'low'
+            if risk != 'low':
+                course_insights.append({'block': candidate, 'completion_rate': completion_rate, 'correct_rate': correct_rate, 'risk': risk, 'not_started': max(0, len(scoped_student_ids) - completed)})
+        course_insights.sort(key=lambda item: (0 if item['risk'] == 'high' else 1, item['completion_rate'], item['correct_rate'] if item['correct_rate'] is not None else 101))
+        course_insights = course_insights[:6]
+
     student_stats = []
     comments_history = []
+    checkpoint_stats = []
     if selected_block:
         student_states = StudentTheoryState.query.filter_by(course_id=course_id, task_number=selected_block.task_number).all()
         feedback_rows = TheoryFeedback.query.filter_by(course_id=course_id, task_number=selected_block.task_number).all()
@@ -1124,6 +1343,20 @@ def manage_list():
             key=lambda x: x.created_at or moscow_now(),
             reverse=True,
         )[:100]
+        checkpoints = _parse_theory_checkpoints(selected_block.content)
+        attempts = TheoryCheckpointAttempt.query.filter_by(block_id=selected_block.id).all()
+        attempts_by_key = defaultdict(list)
+        for attempt in attempts:
+            attempts_by_key[attempt.checkpoint_key].append(attempt)
+        for checkpoint in checkpoints:
+            rows = attempts_by_key.get(checkpoint['key'], [])
+            correct = sum(1 for row in rows if row.is_correct)
+            checkpoint_stats.append({
+                'question': checkpoint['question'],
+                'attempts': len(rows),
+                'correct': correct,
+                'success_rate': int(round((correct / len(rows)) * 100)) if rows else None,
+            })
 
     from app.models import Course as ExamCourse
     course = ExamCourse.query.get(course_id) if course_id else None
@@ -1147,6 +1380,10 @@ def manage_list():
         total_count=total_count,
         student_stats=student_stats,
         comments_history=comments_history,
+        checkpoint_stats=checkpoint_stats,
+        course_insights=course_insights,
+        scoped_students_count=len(scoped_student_ids),
+        scoped_students=scoped_students,
         course_id=course_id,
         course=course,
         active_page='theory_manage',
@@ -1548,25 +1785,103 @@ def theory_api_run_code():
 def theory_api_read():
     if not current_user.is_student():
         return jsonify({'success': True})
-    student = Student.query.filter_by(user_id=current_user.id).first()
-    if not student:
-        return jsonify({'success': False, 'error': 'Учeник не найден'}), 404
     payload = request.get_json(silent=True) or {}
-    try:
-        task_number = int(payload.get('task_number'))
-    except Exception:
-        task_number = None
-    course_id = payload.get('course_id')
-    if not task_number:
-        return jsonify({'success': False, 'error': 'task_number required'}), 400
-    row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=course_id, task_number=task_number).first()
+    resolved, error = _resolve_student_block_from_payload(payload)
+    if error:
+        return jsonify({'success': False, 'error': error}), 404
+    student, block = resolved
+    row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number).first()
     if not row:
-        row = StudentTheoryState(student_id=student.student_id, course_id=course_id, task_number=task_number)
+        row = StudentTheoryState(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number)
         db.session.add(row)
     row.is_read = True
+    row.reading_progress = 100
     row.last_opened_at = moscow_now()
+    TheoryStudyAssignment.query.filter_by(
+        student_id=student.student_id,
+        block_id=block.id,
+        status='assigned',
+    ).update({'status': 'completed', 'completed_at': moscow_now()})
     db.session.commit()
     return jsonify({'success': True})
+
+
+@theory_bp.route('/theory/api/progress', methods=['POST'])
+@login_required
+def theory_api_progress():
+    if not current_user.is_student():
+        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
+    resolved, error = _resolve_student_block_from_payload(request.get_json(silent=True) or {})
+    if error:
+        return jsonify({'success': False, 'error': error}), 404
+    student, block = resolved
+    payload = request.get_json(silent=True) or {}
+    try:
+        progress = max(0, min(100, int(payload.get('progress', 0))))
+        position = max(0, int(payload.get('position', 0)))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректный прогресс.'}), 400
+    row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number).first()
+    if not row:
+        row = StudentTheoryState(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number)
+        db.session.add(row)
+    row.reading_progress = max(int(row.reading_progress or 0), progress)
+    row.last_position = position
+    row.last_opened_at = moscow_now()
+    db.session.commit()
+    return jsonify({'success': True, 'progress': row.reading_progress})
+
+
+@theory_bp.route('/theory/api/checkpoint', methods=['POST'])
+@login_required
+def theory_api_checkpoint():
+    if not current_user.is_student():
+        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
+    payload = request.get_json(silent=True) or {}
+    resolved, error = _resolve_student_block_from_payload(payload)
+    if error:
+        return jsonify({'success': False, 'error': error}), 404
+    student, block = resolved
+    checkpoint_key = (payload.get('checkpoint_key') or '').strip()
+    selected_answer = (payload.get('answer') or '').strip()
+    checkpoint = next((item for item in _parse_theory_checkpoints(block.content) if item['key'] == checkpoint_key), None)
+    if not checkpoint or selected_answer not in checkpoint['options']:
+        return jsonify({'success': False, 'error': 'Проверка не найдена.'}), 404
+    is_correct = selected_answer == checkpoint['answer']
+    attempt = TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key).first()
+    if not attempt:
+        attempt = TheoryCheckpointAttempt(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key, selected_answer=selected_answer, is_correct=is_correct)
+        db.session.add(attempt)
+    else:
+        attempt.selected_answer = selected_answer
+        attempt.is_correct = is_correct
+        attempt.attempts_count = int(attempt.attempts_count or 0) + 1
+        attempt.answered_at = moscow_now()
+    db.session.commit()
+    return jsonify({'success': True, 'correct': is_correct, 'explanation': checkpoint['explanation'], 'attempts': attempt.attempts_count})
+
+
+@theory_bp.route('/theory/api/note', methods=['POST'])
+@login_required
+def theory_api_note():
+    if not current_user.is_student():
+        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
+    payload = request.get_json(silent=True) or {}
+    resolved, error = _resolve_student_block_from_payload(payload)
+    if error:
+        return jsonify({'success': False, 'error': error}), 404
+    student, block = resolved
+    content = (payload.get('content') or '').strip()
+    if len(content) > 5000:
+        return jsonify({'success': False, 'error': 'Заметка не может быть длиннее 5000 символов.'}), 400
+    note = StudentTheoryNote.query.filter_by(student_id=student.student_id, block_id=block.id).first()
+    if not note and content:
+        note = StudentTheoryNote(student_id=student.student_id, block_id=block.id, content=content)
+        db.session.add(note)
+    elif note:
+        note.content = content
+    db.session.commit()
+    return jsonify({'success': True, 'saved': bool(content)})
 
 
 @theory_bp.route('/theory/api/bookmark', methods=['POST'])
@@ -1574,21 +1889,15 @@ def theory_api_read():
 def theory_api_bookmark():
     if not current_user.is_student():
         return jsonify({'success': False, 'error': 'Только для учеников'}), 403
-    student = Student.query.filter_by(user_id=current_user.id).first()
-    if not student:
-        return jsonify({'success': False, 'error': 'Учeник не найден'}), 404
     payload = request.get_json(silent=True) or {}
-    try:
-        task_number = int(payload.get('task_number'))
-    except Exception:
-        task_number = None
-    course_id = payload.get('course_id')
+    resolved, error = _resolve_student_block_from_payload(payload)
+    if error:
+        return jsonify({'success': False, 'error': error}), 404
+    student, block = resolved
     value = bool(payload.get('value'))
-    if not task_number:
-        return jsonify({'success': False, 'error': 'task_number required'}), 400
-    row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=course_id, task_number=task_number).first()
+    row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number).first()
     if not row:
-        row = StudentTheoryState(student_id=student.student_id, course_id=course_id, task_number=task_number)
+        row = StudentTheoryState(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number)
         db.session.add(row)
     row.is_bookmarked = value
     db.session.commit()
@@ -1600,40 +1909,38 @@ def theory_api_bookmark():
 def theory_api_feedback():
     if not current_user.is_student():
         return jsonify({'success': False, 'error': 'Только для учеников'}), 403
-    student = Student.query.filter_by(user_id=current_user.id).first()
-    if not student:
-        return jsonify({'success': False, 'error': 'Учeник не найден'}), 404
     payload = request.get_json(silent=True) or {}
-    try:
-        task_number = int(payload.get('task_number'))
-    except Exception:
-        task_number = None
-    course_id = payload.get('course_id')
+    resolved, error = _resolve_student_block_from_payload(payload)
+    if error:
+        return jsonify({'success': False, 'error': error}), 404
+    student, block = resolved
     rating = payload.get('rating')
     comment = (payload.get('comment') or '').strip()
-    if not task_number:
-        return jsonify({'success': False, 'error': 'task_number required'}), 400
-    row = TheoryFeedback.query.filter_by(student_id=student.student_id, course_id=course_id, task_number=task_number).first()
+    if len(comment) > 2000:
+        return jsonify({'success': False, 'error': 'Комментарий слишком длинный.'}), 400
+    row = TheoryFeedback.query.filter_by(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number).first()
     if not row:
-        row = TheoryFeedback(student_id=student.student_id, user_id=current_user.id, course_id=course_id, task_number=task_number)
+        row = TheoryFeedback(student_id=student.student_id, user_id=current_user.id, course_id=block.course_id, task_number=block.task_number)
         db.session.add(row)
     try:
         row.rating = int(rating) if rating is not None else None
     except Exception:
         row.rating = None
+    if row.rating is not None and row.rating not in range(1, 6):
+        return jsonify({'success': False, 'error': 'Оценка должна быть от 1 до 5.'}), 400
     row.comment = comment or None
     # Upsert latest feedback snapshot per student/topic instead of creating duplicates.
     history_row = TheoryFeedbackHistory.query.filter_by(
         student_id=student.student_id,
-        course_id=course_id,
-        task_number=task_number,
+        course_id=block.course_id,
+        task_number=block.task_number,
     ).order_by(TheoryFeedbackHistory.id.desc()).first()
     if not history_row:
         history_row = TheoryFeedbackHistory(
             student_id=student.student_id,
             user_id=current_user.id,
-            course_id=course_id,
-            task_number=task_number,
+            course_id=block.course_id,
+            task_number=block.task_number,
         )
         db.session.add(history_row)
     history_row.user_id = current_user.id
@@ -1659,16 +1966,7 @@ def manage_access_index():
         flash('Нет доступных курсов.', 'warning')
         return redirect(url_for('theory.manage_list'))
 
-    from app.auth.rbac_utils import get_user_scope
-    scope = get_user_scope(current_user)
-    if scope.get('can_see_all'):
-        students = Student.query.order_by(Student.name).all()
-    else:
-        sid_list = scope.get('student_ids') or []
-        if not sid_list:
-            students = []
-        else:
-            students = Student.query.filter(Student.student_id.in_(sid_list)).order_by(Student.name).all()
+    students = _get_scoped_students_for_theory_manager()
 
     return render_template(
         'theory/theory_access_list.html',
@@ -1691,14 +1989,10 @@ def manage_access_student(student_id):
         flash('Нет доступных курсов.', 'danger')
         return redirect(url_for('theory.manage_list'))
 
-    from app.auth.rbac_utils import get_user_scope
     student = Student.query.get_or_404(student_id)
-    scope = get_user_scope(current_user)
-    if not scope.get('can_see_all'):
-        sid_list = scope.get('student_ids') or []
-        if student.student_id not in sid_list:
-            flash('Нет доступа к этому ученику.', 'danger')
-            return redirect(url_for('theory.manage_access_index', course_id=course_id))
+    if student.student_id not in {item.student_id for item in _get_scoped_students_for_theory_manager()}:
+        flash('Нет доступа к этому ученику.', 'danger')
+        return redirect(url_for('theory.manage_access_index', course_id=course_id))
 
     task_numbers = _get_course_task_numbers(course_id)
     # Текущие правила: task_number -> can_view (для данного курса)

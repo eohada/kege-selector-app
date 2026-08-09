@@ -374,6 +374,19 @@ def check_and_fix_rbac_schema(app):
                         db.session.rollback()
                         logger.warning(f"Could not backfill RolePermissions: {backfill_err}")
             
+            students_table = _resolve_table_name(table_names, 'Students')
+            if students_table:
+                try:
+                    students_columns = {col['name'] for col in inspector.get_columns(students_table)}
+                    if 'lessons_balance' not in students_columns:
+                        table_ref = f'"{students_table}"' if _is_postgres(app) else students_table
+                        db.session.execute(text(f'ALTER TABLE {table_ref} ADD COLUMN lessons_balance INTEGER DEFAULT 0'))
+                        db.session.commit()
+                        logger.info(f"Added lessons_balance column to {students_table}")
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not add lessons_balance column: {e}")
+
             users_table = _resolve_table_name(table_names, 'Users')
             if users_table:
                 cols = {col['name'] for col in inspector.get_columns(users_table)}
@@ -1305,6 +1318,31 @@ def ensure_schema_columns(app):
                             logger.warning(f"Could not add cover_url column: {e}")
                             db.session.rollback()
 
+                    # Поля, добавленные в актуальную модель User для интеграции Telegram
+                    # и рабочего режима создателя. Нужны, в частности, старым локальным
+                    # SQLite-копиям до вывода User через ORM.
+                    user_columns_to_add = {
+                        'telegram_id': 'BIGINT',
+                        'telegram_chat_id': 'BIGINT',
+                        'telegram_linked_at': 'TIMESTAMP' if is_postgres else 'DATETIME',
+                        'creator_bot_mode': 'VARCHAR(32)',
+                        'parent_link_code': 'VARCHAR(128)',
+                    }
+                    for column_name, column_type in user_columns_to_add.items():
+                        if column_name in users_columns:
+                            continue
+                        try:
+                            table_ref = f'"{users_table}"' if is_postgres else users_table
+                            db.session.execute(
+                                text(f'ALTER TABLE {table_ref} ADD COLUMN {column_name} {column_type}')
+                            )
+                            db.session.commit()
+                            users_columns = users_columns | {column_name}
+                            logger.info(f"Added {column_name} column to {users_table}")
+                        except Exception as e:
+                            db.session.rollback()
+                            logger.warning(f"Could not add {column_name} column: {e}")
+
                     if 'presence_activity_key' not in users_columns:
                         try:
                             if is_postgres:
@@ -2067,6 +2105,16 @@ def ensure_schema_columns(app):
             # ===== Многокурсовая архитектура (ExamCourses, CourseTaskTemplates, etc.) =====
             _migrate_multi_course(app, inspector, table_names, is_postgres)
 
+            # TaskTemplates existed in early local databases before duration and
+            # course association were added.  The V2 library reads both fields,
+            # therefore the compatibility schema must be expanded before the
+            # page queries the model.
+            task_templates_table = _resolve_table_name(table_names, 'TaskTemplates')
+            if task_templates_table:
+                add_column = _make_safe_add_column(inspector, is_postgres)
+                add_column(task_templates_table, 'estimated_time', 'INTEGER DEFAULT 45')
+                add_column(task_templates_table, 'course_id', 'INTEGER')
+
             # ===== Связи Преподаватель-Ученик и Приглашения =====
             _migrate_teacher_students_and_invites(app, inspector, table_names, is_postgres)
 
@@ -2127,6 +2175,8 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         _add_col('TheoryBlocks', 'read_minutes', 'INTEGER DEFAULT 5')
         _add_col('TheoryBlocks', 'position', 'INTEGER DEFAULT 0')
         _add_col('StudentTheoryAccess', 'course_id', 'INTEGER')
+        _add_col('StudentTheoryState', 'reading_progress', 'INTEGER DEFAULT 0')
+        _add_col('StudentTheoryState', 'last_position', 'INTEGER DEFAULT 0')
         _add_col('StudentTaskStatistics', 'course_id', 'INTEGER')
         _add_col('Assignments', 'exam_course_id', 'INTEGER')
         _add_col('Lessons', 'exam_course_id', 'INTEGER')

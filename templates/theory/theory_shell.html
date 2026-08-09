@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends "sandbox/layout_teacher.html" if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() else "sandbox/layout_student.html" %}
 {% set active_page = active_page|default('theory') %}
 {% block title %}База знаний · Теория · BooStudy{% endblock %}
 {% block html_attrs %}data-student-theory="1"{% endblock %}
@@ -73,7 +73,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
 {% set initial_view = initial_view|default('groups') %}
 
 <div class="relative h-full w-full">
@@ -683,6 +683,7 @@
       openArticle(false);
       setupCodeBlocks(evt.target).catch(() => {});
       renderTheoryMathWhenReady(evt.target, 30);
+      bindArticleLearningState(evt.target);
     }
   });
 
@@ -728,6 +729,28 @@
     const taskNumber = root ? parseInt(root.dataset.taskNumber || '0') : 0;
     if (!taskNumber) return;
 
+    if (action === 'checkpoint-choice') {
+      e.preventDefault();
+      const checkpoint = btn.closest('[data-checkpoint-key]');
+      const r = await fetch({{ url_for('theory.theory_api_checkpoint')|tojson }}, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' }, credentials: 'same-origin',
+        body: JSON.stringify({ block_id: root.dataset.blockId, checkpoint_key: btn.dataset.checkpointKey, answer: btn.dataset.answer }),
+      });
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data || !data.success || !checkpoint) { if (window.toast) window.toast.error('Не удалось проверить ответ'); return; }
+      checkpoint.querySelectorAll('[data-action="checkpoint-choice"]').forEach((option) => {
+        const selected = option === btn;
+        option.classList.toggle('border-emerald-400', selected && data.correct);
+        option.classList.toggle('bg-emerald-50', selected && data.correct);
+        option.classList.toggle('border-rose-400', selected && !data.correct);
+        option.classList.toggle('bg-rose-50', selected && !data.correct);
+        if (data.correct) option.disabled = true;
+      });
+      const result = checkpoint.querySelector('[data-checkpoint-result]');
+      if (result) { result.classList.remove('hidden'); result.className = `mt-3 mb-0 text-sm font-bold ${data.correct ? 'text-emerald-700' : 'text-rose-700'}`; result.textContent = data.correct ? `Верно! ${data.explanation || ''}` : `Пока не так. ${data.explanation || 'Вернись к ключевой мысли выше и попробуй ещё раз после повторения.'}`; }
+      return;
+    }
+
     if (action === 'back') {
       e.preventDefault();
       const backUrl = btn.dataset.backUrl;
@@ -746,7 +769,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ task_number: taskNumber, course_id: courseId, value: nextVal }),
+        body: JSON.stringify({ block_id: root.dataset.blockId, value: nextVal }),
       });
       const data = await r.json().catch(() => null);
       if (!r.ok || !data || !data.success) { if (window.toast) window.toast.error('Не удалось сохранить'); return; }
@@ -775,7 +798,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ task_number: taskNumber, course_id: courseId, rating, comment }),
+        body: JSON.stringify({ block_id: root.dataset.blockId, rating, comment }),
       });
       const data = await r.json().catch(() => null);
       if (!r.ok || !data || !data.success) { if (window.toast) window.toast.error('Не удалось отправить'); return; }
@@ -801,7 +824,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'Accept': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ task_number: taskNumber, course_id: courseId }),
+        body: JSON.stringify({ block_id: root.dataset.blockId }),
       });
       const data = await r.json().catch(() => null);
       if (!r.ok || !data || !data.success) { if (window.toast) window.toast.error('Не удалось отметить'); return; }
@@ -823,6 +846,44 @@
       return;
     }
   });
+
+  let progressSaveTimer = null;
+  let noteTimer = null;
+  function bindArticleLearningState(container) {
+    const articleRoot = container?.querySelector('[data-theory-article]');
+    const articleScroller = container?.querySelector('section.overflow-y-auto');
+    if (!articleRoot) return;
+    if (articleScroller && articleScroller.dataset.learningBound !== '1') {
+      articleScroller.dataset.learningBound = '1';
+      const storedPosition = Number(articleRoot.dataset.lastPosition || 0);
+      if (storedPosition > 0) articleScroller.scrollTop = storedPosition;
+      articleScroller.addEventListener('scroll', () => {
+        const maxScroll = Math.max(1, articleScroller.scrollHeight - articleScroller.clientHeight);
+        const progress = Math.min(100, Math.round((articleScroller.scrollTop / maxScroll) * 100));
+        container.querySelectorAll('[data-reading-progress-label]').forEach((el) => { el.textContent = `${progress}%`; });
+        container.querySelectorAll('[data-reading-progress-bar]').forEach((el) => { el.style.width = `${progress}%`; });
+        clearTimeout(progressSaveTimer);
+        progressSaveTimer = setTimeout(async () => {
+          try { await fetch({{ url_for('theory.theory_api_progress')|tojson }}, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf }, credentials: 'same-origin', body: JSON.stringify({ block_id: articleRoot.dataset.blockId, progress, position: Math.round(articleScroller.scrollTop) }) }); } catch (_) {}
+        }, 700);
+      }, { passive: true });
+    }
+    const noteInput = container.querySelector('#theory-note');
+    if (!noteInput || noteInput.dataset.learningBound === '1') return;
+    noteInput.dataset.learningBound = '1';
+    noteInput.addEventListener('input', () => {
+      clearTimeout(noteTimer);
+      const status = container.querySelector('[data-note-status]');
+      if (status) status.textContent = 'Сохранение…';
+      noteTimer = setTimeout(async () => {
+        try {
+          const response = await fetch({{ url_for('theory.theory_api_note')|tojson }}, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf }, credentials: 'same-origin', body: JSON.stringify({ block_id: articleRoot.dataset.blockId, content: noteInput.value }) });
+          if (status) status.textContent = response.ok ? 'Сохранено' : 'Не удалось сохранить';
+        } catch (_) { if (status) status.textContent = 'Нет соединения'; }
+      }, 650);
+    });
+  }
+  bindArticleLearningState(articleContainer);
 
   // If opened directly as /theory/<n>, ensure article view is visible
   {% if initial_view == 'article' %}

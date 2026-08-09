@@ -124,9 +124,9 @@
             </a>
 
             <!-- 8. Расписание -->
-            <a href="/schedule" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/schedule', '/sandbox/teacher_schedule'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📅 Расписание">
+            <a href="/schedule" class="w-full aspect-square rounded-[1rem] {% if request.path == '/schedule' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📅 Расписание">
                 <i class="ph-bold ph-calendar-blank text-xl"></i>
-                {% if request.path in ['/schedule', '/sandbox/teacher_schedule'] %}
+                {% if request.path == '/schedule' %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
                 {% endif %}
             </a>

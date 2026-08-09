@@ -145,7 +145,7 @@
                 {% endif %}
             </div>
 
-            <a href="{{ url_for('trainer.trainer_v2') if has_permission(current_user,'trainer.use') else url_for('assignments.submissions_list') }}"
+            <a href="{{ url_for('trainer.trainer_v2') if trainer_available and has_permission(current_user,'trainer.use') else url_for('theory.theory_index') }}"
                class="clay-interactive neo-button w-full mt-5 !text-warning !border-warning/30 hover:!bg-warning/10">
                 <i class="ph-bold ph-magic-wand text-lg"></i> Подобрать тест
             </a>

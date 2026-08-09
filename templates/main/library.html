@@ -35,10 +35,10 @@
                         <i class="ph-bold ph-folder-star text-sm"></i>
                         <span>Шаблоны уроков</span>
                     </button>
-                    <button type="button" onclick="switchMainTab('theory')" id="tab-theory" class="seg-tab px-5 py-2.5 rounded-xl text-xs font-extrabold text-slate-500 hover:text-slate-800 transition-all cursor-pointer flex items-center gap-2 border border-transparent">
+                    <a href="{{ url_for('theory.manage_list') }}" id="tab-theory" class="seg-tab px-5 py-2.5 rounded-xl text-xs font-extrabold text-slate-500 hover:text-slate-800 transition-all cursor-pointer flex items-center gap-2 border border-transparent no-underline">
                         <i class="ph-bold ph-book-open text-sm"></i>
                         <span>Теория</span>
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -474,13 +474,17 @@
         if (tabParam === 'templates' || tabParam === 'lesson_templates') {
             switchMainTab('lesson_templates');
         } else if (tabParam === 'theory') {
-            switchMainTab('theory');
+            window.location.replace('{{ url_for("theory.manage_list") }}');
         } else if (tabParam === 'materials') {
             switchMainTab('materials');
         }
     });
 
     function switchMainTab(tabName) {
+        if (tabName === 'theory') {
+            window.location.assign('{{ url_for("theory.manage_list") }}');
+            return;
+        }
         activeTab = tabName;
 
         ['materials', 'lesson_templates', 'theory'].forEach(t => {

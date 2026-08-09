@@ -7,7 +7,7 @@
   
   function toast(text){const n=document.createElement('div');n.className='os-toast';n.textContent=text;document.body.append(n);setTimeout(()=>n.remove(),2400)}
   async function save(patch){if(!teacher)return null;const r=await post(`/lesson/${lessonId}/studio/state`,patch);if(r.success){state=r.state;render()}else toast(r.error||'Не удалось сохранить');return r}
-  function activate(view, remote=false){if(!['work','board','meeting','materials'].includes(view))view='work';document.querySelectorAll('.os-nav').forEach(x=>x.classList.toggle('active',x.dataset.view===view));document.querySelectorAll('[data-view-panel]').forEach(x=>x.classList.toggle('hidden',x.dataset.viewPanel!==view));if(view==='board')renderBoard();if(view==='materials')renderMaterials();if(!remote&&teacher&&state.follow_student)save({active_pane:view,follow_student:true})}
+  function activate(view, remote=false){if(!['work','theory','board','meeting','materials'].includes(view))view='work';document.querySelectorAll('.os-nav').forEach(x=>x.classList.toggle('active',x.dataset.view===view));document.querySelectorAll('[data-view-panel]').forEach(x=>x.classList.toggle('hidden',x.dataset.viewPanel!==view));if(view==='board')renderBoard();if(view==='materials')renderMaterials();if(view==='theory')renderTheory();if(!remote&&teacher&&state.follow_student)save({active_pane:view,follow_student:true})}
   
   function render(){
     const timer=state.timer||{}, phase=state.phase||'preparation';
@@ -235,6 +235,7 @@
   }
   
   function renderMaterials(){const box=$('#os-materials');box.innerHTML=(data.materials||[]).map(x=>`<a class="os-material" target="_blank" href="${x.url}">${x.name}</a>`).join('')||'Материалов пока нет.'}
+  function renderTheory(){const box=$('#os-theory-list'), frame=$('#os-theory-frame'), items=data.theory_items||[];if(!box||!frame)return;box.innerHTML=items.map(item=>`<button class="os-material ${Number(state.active_theory_block_id)===Number(item.id)?'active':''}" data-theory-id="${item.id}" data-theory-url="${item.url}">№${item.task_number} · ${item.title}</button>`).join('')||'Для курса пока нет опубликованной теории.';box.querySelectorAll('[data-theory-id]').forEach(button=>button.onclick=()=>{const id=Number(button.dataset.theoryId);state.active_theory_block_id=id;frame.src=button.dataset.theoryUrl;frame.dataset.blockId=String(id);frame.classList.remove('hidden');renderTheory();if(teacher)save({active_pane:'theory',active_theory_block_id:id,follow_student:state.follow_student})});const active=items.find(item=>Number(item.id)===Number(state.active_theory_block_id));if(active){if(frame.dataset.blockId!==String(active.id)){frame.src=active.url;frame.dataset.blockId=String(active.id)}frame.classList.remove('hidden')}}
   
   function bindControls(){
     document.querySelectorAll('.os-nav').forEach(b=>b.onclick=()=>activate(b.dataset.view));

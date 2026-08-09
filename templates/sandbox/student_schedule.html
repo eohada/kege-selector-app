@@ -113,7 +113,7 @@
                 <div style="font-weight:700;font-size:11px;color:#4f46e5;">Сегодня, {{ active_lesson.lesson_date.strftime('%H:%M') if active_lesson.lesson_date else '' }}</div>
               </div>
             </div>
-            <a href="/sandbox/lesson_room/{{ active_lesson.lesson_id }}" class="mt-1 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-extrabold text-[11px] py-1.5 px-3 rounded-xl border-b-2 border-indigo-800 shadow-xs transition-all no-underline block">
+            <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=active_lesson.lesson_id) }}" class="mt-1 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-extrabold text-[11px] py-1.5 px-3 rounded-xl border-b-2 border-indigo-800 shadow-xs transition-all no-underline block">
               ВОЙТИ В УРОК
             </a>
           </div>
@@ -128,7 +128,7 @@
                 <div style="font-weight:700;font-size:11px;color:#4f46e5;">{{ upcoming_lesson.lesson_date.strftime('%d.%m в %H:%M') if upcoming_lesson.lesson_date else '' }}</div>
               </div>
             </div>
-            <a href="/sandbox/lesson_room/{{ upcoming_lesson.lesson_id }}" class="mt-1 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-extrabold text-[11px] py-1.5 px-3 rounded-xl border-b-2 border-indigo-800 shadow-xs transition-all no-underline block">
+            <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=upcoming_lesson.lesson_id) }}" class="mt-1 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-extrabold text-[11px] py-1.5 px-3 rounded-xl border-b-2 border-indigo-800 shadow-xs transition-all no-underline block">
               ВОЙТИ В УРОК
             </a>
           </div>
@@ -262,7 +262,7 @@
   const RAW = JSON.parse(document.getElementById('schedule-data').textContent);
   let state = {
     view: 'week',
-    weekOffset: 0,
+    weekOffset: RAW.week_offset || 0,
     lessons: [],
     weekdays: RAW.weekdays || [],
     tzName: RAW.tz_name || 'Europe/Moscow',
@@ -282,11 +282,12 @@
       const iso = l.start_iso || l.start_dt;
       if (!iso) return l;
       const dt = new Date(iso);
-      l.start_date = dt.toLocaleDateString('en-CA');
-      l.start_time = dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-      const endDt = new Date(dt.getTime() + (l.duration_minutes || 60) * 60000);
-      l.end_time = endDt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-      l.grid_top = dt.getHours() * 100 + Math.round(dt.getMinutes() * 100 / 60);
+      const canUseBrowserDate = !Number.isNaN(dt.getTime());
+      l.start_date = l.start_date || (canUseBrowserDate ? dt.toLocaleDateString('en-CA') : '');
+      l.start_time = l.start_time || (canUseBrowserDate ? dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '');
+      const endDt = canUseBrowserDate ? new Date(dt.getTime() + (l.duration_minutes || 60) * 60000) : null;
+      l.end_time = l.end_time || (endDt ? endDt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '');
+      l.grid_top = Number.isFinite(Number(l.grid_top)) ? Number(l.grid_top) : (canUseBrowserDate ? dt.getHours() * 100 + Math.round(dt.getMinutes() * 100 / 60) : 0);
       l.grid_height = Math.max(Math.round((l.duration_minutes || 60) * 100 / 60), 30);
       let wdIndex = state.weekdays.findIndex(w => w.iso === l.start_date);
       if (wdIndex === -1) wdIndex = (dt.getDay() === 0 ? 6 : dt.getDay() - 1);
@@ -338,30 +339,10 @@
     return weekdays;
   }
 
-  async function fetchWeekLessons() {
-    try {
-      const r = await fetch(`/sandbox/api/schedule/lessons?week_offset=${state.weekOffset}`);
-      const data = await r.json();
-      
-      const now = new Date();
-      state.currentHour = now.getHours();
-      state.currentMinute = now.getMinutes();
-      state.weekStartIso = data.week_start_iso || '';
-      state.weekdays = generateWeekdays(state.weekOffset, state.weekStartIso);
-      state.currentWeekday = now.getDay() === 0 ? 6 : now.getDay() - 1;
-
-      state.lessons = processLessons(data.lessons || []);
-      renderCurrentView();
-      setInterval(positionTimeMarker, 10000);
-    } catch(e) {
-      // Silent fail
-    }
-  }
-
-  window.navigateWeek = async function(delta) {
-    state.weekOffset += delta;
-    await fetchWeekLessons();
-    updateWeekLabel();
+  window.navigateWeek = function(delta) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('week', String(state.weekOffset + delta));
+    window.location.assign(`${RAW.base_url || '/schedule'}?${params.toString()}`);
   };
 
   function updateWeekLabel() {
@@ -552,7 +533,7 @@
 
   function updateStats() {
     const total = state.lessons.length;
-    const done = state.lessons.filter(l => l.status === 'done').length;
+    const done = state.lessons.filter(l => l.status === 'done' || l.status === 'completed').length;
     const totalEl = document.getElementById('stat-total');
     const doneEl = document.getElementById('stat-done');
     if (totalEl) totalEl.textContent = total;
@@ -592,7 +573,7 @@
           <div style="font-weight:700;font-size:11px;color:#4f46e5;">${dateFormatted}, ${next.start_time || ''}</div>
         </div>
       </div>
-      <a href="/sandbox/lesson_room/${next.lesson_id}" class="mt-1 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-extrabold text-[11px] py-1.5 px-3 rounded-xl border-b-2 border-indigo-800 shadow-xs transition-all no-underline block">
+      <a href="${next.room_url || `/lesson/${next.lesson_id}/room`}" class="mt-1 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-extrabold text-[11px] py-1.5 px-3 rounded-xl border-b-2 border-indigo-800 shadow-xs transition-all no-underline block">
         ВОЙТИ В УРОК
       </a>
     </div>`;
@@ -613,10 +594,10 @@
     const urlBlock = document.getElementById('view-lesson-url-block');
     const urlLink = document.getElementById('view-lesson-url-link');
     const joinBtn = document.getElementById('join-btn');
-    if (lesson.meeting_url) {
+    if (lesson.room_url || lesson.meeting_url) {
       urlBlock.classList.remove('hidden');
-      urlLink.href = lesson.meeting_url;
-      urlLink.textContent = lesson.meeting_url;
+      urlLink.href = lesson.room_url || lesson.meeting_url;
+      urlLink.textContent = lesson.room_url || lesson.meeting_url;
       joinBtn.classList.remove('hidden');
     } else {
       urlBlock.classList.add('hidden');
@@ -627,8 +608,8 @@
   };
 
   window.joinLesson = function() {
-    if (state.viewingLesson && state.viewingLesson.meeting_url) {
-      window.open(state.viewingLesson.meeting_url, '_blank');
+    if (state.viewingLesson && (state.viewingLesson.room_url || state.viewingLesson.meeting_url)) {
+      window.open(state.viewingLesson.room_url || state.viewingLesson.meeting_url, '_blank');
     }
   };
 
