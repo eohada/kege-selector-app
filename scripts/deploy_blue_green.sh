@@ -31,10 +31,17 @@ DRAIN_SECONDS="${DRAIN_SECONDS:-90}"
 STOP_OLD_AFTER_DRAIN="${STOP_OLD_AFTER_DRAIN:-0}"
 PRUNE_IMAGES_AFTER_DEPLOY="${PRUNE_IMAGES_AFTER_DEPLOY:-0}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-1}"
-UPDATE_CELERY="${UPDATE_CELERY:-1}"
+# Celery belongs to the primary compose stack. Rebuilding it through the
+# blue-green file could create duplicate workers and duplicate scheduled jobs.
+UPDATE_CELERY="${UPDATE_CELERY:-0}"
 
 cd "$APP_DIR"
 mkdir -p "$STATE_DIR"
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+    echo "Missing $APP_DIR/$COMPOSE_FILE. Deploy is stopped before any traffic switch." >&2
+    exit 2
+fi
 
 compose() {
     docker compose -f "$COMPOSE_FILE" "$@"
@@ -138,8 +145,8 @@ deploy() {
     write_nginx_upstream "$target"
 
     if [[ "$UPDATE_CELERY" == "1" ]]; then
-        echo "Updating Celery worker/beat after web switch"
-        compose up -d --build celery-worker celery-beat
+        echo "Celery update is intentionally managed by the primary compose stack." >&2
+        echo "Use its dedicated release procedure after this web deployment." >&2
     fi
 
     echo "Letting old $current connections drain/reconnect for ${DRAIN_SECONDS}s"

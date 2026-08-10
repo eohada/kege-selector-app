@@ -5393,3 +5393,8 @@ outes.py for correct timezone handling.
 - `/ready` теперь требует не только наличие записи Alembic, но и точное совпадение версии с head и прохождение контракта схемы.
 - Добавлена миграция `f6a7b8c9d0e1`, которая расширяет старые базы отсутствующими полями и индексами; старые миграции приведены к идемпотентному запуску на ранее созданных схемах.
 - Blue-green deploy теперь после `flask db upgrade` обязательно запускает `flask schema-audit`; миграция не может считаться успешной только по наличию версии в `alembic_version`.
+## [2026-08-10] — Blue-green deployment made canonical
+
+- Added the tracked production compose file `docker-compose.bluegreen.yml`: it runs only `web_blue` and `web_green` on the existing `boostudy_default` network and does not create a second PostgreSQL/Redis store.
+- Hardened `scripts/deploy_blue_green.sh`: deployment stops before any traffic change when its compose file is absent; Celery is no longer duplicated by a web release.
+- Added LF enforcement for shell/compose files and a short operator guide in `deploy/BLUE_GREEN_DEPLOY.md`.

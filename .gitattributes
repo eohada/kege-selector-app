@@ -1,0 +1,4 @@
+# Deployment scripts must stay executable by Bash after checkout on Linux.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
