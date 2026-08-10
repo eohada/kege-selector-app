@@ -125,6 +125,7 @@ def migrations_are_ready() -> bool:
 
         project_root = Path(app.root_path).parent
         config = Config(str(project_root / 'migrations' / 'alembic.ini'))
+        config.set_main_option('script_location', str(project_root / 'migrations'))
         script = ScriptDirectory.from_config(config)
         return bool(applied_revisions) and applied_revisions == set(script.get_heads())
     except Exception:
