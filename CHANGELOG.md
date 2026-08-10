@@ -5402,3 +5402,7 @@ outes.py for correct timezone handling.
 - Blue-green web services now explicitly inherit the production PostgreSQL and Redis endpoints used by `web_prod`; readiness cannot be blocked by an incomplete `.env` Redis setting.
 - Added expand-only migration `f7b8c9d0e1f2`: it creates every missing mapped table, nullable non-primary-key column and model index on legacy production databases, then lets the schema contract prove readiness before traffic changes.
 - Migration-head verification now uses an absolute Alembic script path, avoiding false readiness failures caused by a container working directory.
+## [2026-08-10 23:35:00] - 🛠️ FIX: absolute Alembic migration directory in production
+
+- Flask-Migrate now receives the absolute project migration directory at application startup; Alembic no longer depends on the process current directory and cannot silently report an empty revision graph.
+- Blue-green deployment explicitly runs upgrades against `/app/migrations`, so readiness uses the same migration graph as the shipped container.

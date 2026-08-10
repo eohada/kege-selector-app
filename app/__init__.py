@@ -175,7 +175,9 @@ def create_app(config_name=None):
 
     csrf.init_app(app)
     db.init_app(app)
-    migrate.init_app(app, db)
+    # Keep Alembic independent from the current working directory.  A relative
+    # default can make one-off production commands discover zero revisions.
+    migrate.init_app(app, db, directory=os.path.join(base_dir, 'migrations'))
     from app.commands.schema import schema_audit_command
     app.cli.add_command(schema_audit_command)
     audit_logger.init_app(app)
