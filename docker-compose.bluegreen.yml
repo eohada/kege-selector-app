@@ -10,6 +10,10 @@ x-web-common: &web-common
   environment:
     ENVIRONMENT: production
     EVENTLET_NO_GREENDNS: "yes"
+    DATABASE_URL: postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/0
   volumes:
     - ./uploads:/app/uploads
   command: >

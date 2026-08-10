@@ -5399,3 +5399,4 @@ outes.py for correct timezone handling.
 - Hardened `scripts/deploy_blue_green.sh`: deployment stops before any traffic change when its compose file is absent; Celery is no longer duplicated by a web release.
 - Added LF enforcement for shell/compose files and a short operator guide in `deploy/BLUE_GREEN_DEPLOY.md`.
 - The compose-file guard runs after the Git update so a new server can receive its tracked blue-green configuration on the first release.
+- Blue-green web services now explicitly inherit the production PostgreSQL and Redis endpoints used by `web_prod`; readiness cannot be blocked by an incomplete `.env` Redis setting.
