@@ -5398,3 +5398,4 @@ outes.py for correct timezone handling.
 - Added the tracked production compose file `docker-compose.bluegreen.yml`: it runs only `web_blue` and `web_green` on the existing `boostudy_default` network and does not create a second PostgreSQL/Redis store.
 - Hardened `scripts/deploy_blue_green.sh`: deployment stops before any traffic change when its compose file is absent; Celery is no longer duplicated by a web release.
 - Added LF enforcement for shell/compose files and a short operator guide in `deploy/BLUE_GREEN_DEPLOY.md`.
+- The compose-file guard runs after the Git update so a new server can receive its tracked blue-green configuration on the first release.

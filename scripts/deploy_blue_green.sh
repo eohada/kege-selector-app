@@ -38,11 +38,6 @@ UPDATE_CELERY="${UPDATE_CELERY:-0}"
 cd "$APP_DIR"
 mkdir -p "$STATE_DIR"
 
-if [[ ! -f "$COMPOSE_FILE" ]]; then
-    echo "Missing $APP_DIR/$COMPOSE_FILE. Deploy is stopped before any traffic switch." >&2
-    exit 2
-fi
-
 compose() {
     docker compose -f "$COMPOSE_FILE" "$@"
 }
@@ -137,6 +132,11 @@ deploy() {
     echo "Current: $current, target: $target"
     git fetch origin "$BRANCH"
     git pull --ff-only origin "$BRANCH"
+
+    if [[ ! -f "$COMPOSE_FILE" ]]; then
+        echo "Missing $APP_DIR/$COMPOSE_FILE. Deploy is stopped before any traffic switch." >&2
+        exit 2
+    fi
 
     compose build "$target_service"
     run_expand_only_migrations "$target"
