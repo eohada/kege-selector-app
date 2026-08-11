@@ -980,6 +980,28 @@ def get_student_by_user_id(user_id):
                     return st
     except Exception:
         pass
+
+    # A few historical QA/imported student accounts were created before the
+    # Student record became mandatory. Repair that missing relation once so an
+    # impersonated student receives the same V2 workspace as a newly registered one.
+    if getattr(user, 'is_student', lambda: False)():
+        try:
+            st = Student(
+                user_id=user.id,
+                platform_id=(getattr(user, 'username', None) or None),
+                name=(getattr(user, 'full_name', None) or getattr(user, 'username', None) or 'Ученик').strip(),
+                email=(getattr(user, 'email', None) or None),
+                is_active=True,
+            )
+            db.session.add(st)
+            db.session.commit()
+            return st
+        except IntegrityError:
+            db.session.rollback()
+            return Student.query.filter_by(user_id=user.id).first()
+        except Exception:
+            db.session.rollback()
+            logger.exception('Unable to repair missing student profile for user %s', user.id)
     return None
 
 
