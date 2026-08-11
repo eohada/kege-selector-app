@@ -13,8 +13,10 @@ from app.auth.rbac_utils import check_access, get_user_scope
 
 logger = logging.getLogger(__name__)
 
-AVATAR_FILENAME_RE = re.compile(r'^avatar_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
-COVER_FILENAME_RE = re.compile(r'^cover_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
+# V2 appends a timestamp to avoid browser and CDN cache collisions. Older uploads
+# without it stay valid as well.
+AVATAR_FILENAME_RE = re.compile(r'^avatar_\d+(?:_\d+)?\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
+COVER_FILENAME_RE = re.compile(r'^cover_\d+(?:_\d+)?\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 
 
 def _lesson_material_root(lesson_id: int) -> str:

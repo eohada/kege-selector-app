@@ -5415,3 +5415,4 @@ outes.py for correct timezone handling.
 
 - Removed Flask and Nginx profile-media size limits, fixed persistent avatar/cover delivery paths, and added in-browser crop, zoom and positioning before upload.
 - Reworked the V2 profile's mobile spacing and metric layout for narrow screens.
+- Allowed V2 cache-busted avatar and cover filenames (`_<timestamp>`) in the public media routes; this removes the false 404 after a successful upload.
