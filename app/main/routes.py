@@ -2744,7 +2744,7 @@ def universal_profile_view(user_id=None, username=None):
         })
 
     elif role == 'student':
-        from core.db_models import Student, Submission
+        from core.db_models import Student, Submission, Lesson, StudentLearningPlanItem
         student_obj = Student.query.filter_by(user_id=target_user.id).first()
         student_ids = [target_user.id]
         if student_obj:
@@ -2772,13 +2772,19 @@ def universal_profile_view(user_id=None, username=None):
             'target_score': int(getattr(student_obj, 'target_score', 0) or 0),
         }
         
+        lesson_total = Lesson.query.filter_by(student_id=student_obj.student_id).count() if student_obj else 0
+        lesson_completed = Lesson.query.filter_by(student_id=student_obj.student_id, status='completed').count() if student_obj else 0
+        weekly_goals = StudentLearningPlanItem.query.filter_by(student_id=student_obj.student_id).order_by(
+            StudentLearningPlanItem.status.asc(), StudentLearningPlanItem.priority.desc(), StudentLearningPlanItem.item_id.desc()
+        ).limit(12).all() if student_obj else []
         context.update({
-            'user_name': getattr(target_user, "first_name", "") or target_user.username,
+            'profile_display_name': getattr(student_obj, 'name', None) or getattr(target_user, "full_name", "") or target_user.username,
+            'profile_avatar_url': getattr(target_user, 'avatar_url', None) or (getattr(target_user.profile, 'avatar_url', None) if getattr(target_user, 'profile', None) else None),
+            'profile_bio': getattr(target_user, 'about_me', None) or getattr(target_user, 'custom_status', None) or '',
             'user_handle': target_user.username,
             'user_avatar': getattr(target_user, 'avatar_url', None) or f"https://api.dicebear.com/7.x/avataaars/svg?seed={target_user.username}&backgroundColor=e0f2fe",
-            'user_cover': 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070',
-            'user_bio': 'Ученик',
-            'school_class_display': getattr(student_obj, 'school_class', '11 класс') if student_obj else '11 класс',
+            'user_cover': getattr(target_user, 'cover_url', None) or (getattr(target_user.profile, 'cover_url', None) if getattr(target_user, 'profile', None) else None),
+            'school_class_display': getattr(student_obj, 'school_class', None),
             'user_level': max(0, level - 1),
             'user_xp': xp_points,
             'xp_needed': max(0, xp_next_level - xp_points),
@@ -2786,8 +2792,8 @@ def universal_profile_view(user_id=None, username=None):
             'user_streak': int(getattr(student_obj, 'streak_days', 0) or 0) if student_obj else 0,
             'days_word': 'дней',
             'rank_title': 'Новичок' if level < 5 else 'Любитель',
-            'completed_cnt': len(completed_submissions),
-            'total_cnt': len(submissions),
+            'completed_cnt': lesson_completed,
+            'total_cnt': lesson_total,
             'progress_pct': student_stats.get('avg_score', 0) if scored_submissions else (round((len(completed_submissions) / len(submissions)) * 100) if submissions else 0)
         })
         active_subjects = []
@@ -2796,7 +2802,12 @@ def universal_profile_view(user_id=None, username=None):
             'student_stats': student_stats,
             'active_subjects': active_subjects,
             'all_achievements': all_achievements,
-            'student_obj': student_obj
+            'student_obj': student_obj,
+            'goals': [
+                {'item_id': goal.item_id, 'title': goal.title, 'notes': goal.notes, 'status': goal.status}
+                for goal in weekly_goals
+            ],
+            'show_profile_onboarding': bool(is_owner and not getattr(getattr(target_user, 'profile', None), 'profile_onboarding_completed_at', None)),
         })
 
     elif role == 'parent':
@@ -3504,13 +3515,20 @@ def api_profile_edit():
         filename = secure_filename(avatar_file.filename)
         ext = os.path.splitext(filename)[1].lower()
         if ext in {'.jpg', '.jpeg', '.png', '.gif', '.webp'}:
+            avatar_file.seek(0, os.SEEK_END)
+            file_size = avatar_file.tell()
+            avatar_file.seek(0)
+            if file_size > 5 * 1024 * 1024:
+                return jsonify({'status': 'error', 'success': False, 'message': 'Аватар больше 5 МБ. Выберите файл меньшего размера.'}), 400
             app_root = os.path.dirname(current_app.root_path)
-            upload_folder = os.path.join(app_root, 'static', 'uploads', 'avatars')
+            upload_folder = current_app.config.get('AVATAR_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'avatars')
             os.makedirs(upload_folder, exist_ok=True)
             unique_filename = f"avatar_{current_user.id}_{int(time.time())}{ext}"
             avatar_path = os.path.join(upload_folder, unique_filename)
             avatar_file.save(avatar_path)
-            current_user.avatar_url = f"/static/uploads/avatars/{unique_filename}"
+            current_user.avatar_url = f"/avatars/{unique_filename}"
+            if current_user.profile:
+                current_user.profile.avatar_url = current_user.avatar_url
     else:
         avatar_url = data.get('avatar_url')
         if avatar_url is not None and avatar_url.strip():
@@ -3572,6 +3590,66 @@ def api_profile_edit():
         'success': True,
         'message': 'Профиль успешно обновлен!'
     }), 200
+
+
+def _current_student_profile_or_404():
+    from core.db_models import Student
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        abort(404)
+    return student
+
+
+@main_bp.route('/sandbox/api/profile/goal/add', methods=['POST'])
+@login_required
+def api_profile_goal_add():
+    from core.db_models import StudentLearningPlanItem
+    title = (request.form.get('title') or (request.get_json(silent=True) or {}).get('title') or '').strip()
+    if not title or len(title) > 300:
+        return jsonify({'status': 'error', 'message': 'Введите цель длиной до 300 символов.'}), 400
+    student = _current_student_profile_or_404()
+    item = StudentLearningPlanItem(student_id=student.student_id, title=title, status='planned', created_by_user_id=current_user.id)
+    db.session.add(item)
+    db.session.commit()
+    return jsonify({'status': 'ok', 'item_id': item.item_id}), 201
+
+
+@main_bp.route('/sandbox/api/profile/goal/toggle/<int:item_id>', methods=['POST'])
+@login_required
+def api_profile_goal_toggle(item_id):
+    from core.db_models import StudentLearningPlanItem
+    student = _current_student_profile_or_404()
+    item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
+    item.status = 'planned' if item.status == 'done' else 'done'
+    db.session.commit()
+    goals = StudentLearningPlanItem.query.filter_by(student_id=student.student_id).all()
+    return jsonify({'status': 'ok', 'done_cnt': sum(goal.status == 'done' for goal in goals), 'total_cnt': len(goals)})
+
+
+@main_bp.route('/sandbox/api/profile/goal/result/<int:item_id>', methods=['POST'])
+@login_required
+def api_profile_goal_result(item_id):
+    from core.db_models import StudentLearningPlanItem
+    student = _current_student_profile_or_404()
+    item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
+    note = (request.form.get('result_note') or '').strip()
+    if len(note) > 2000:
+        return jsonify({'status': 'error', 'message': 'Комментарий слишком длинный.'}), 400
+    item.notes = note or None
+    db.session.commit()
+    return jsonify({'status': 'ok'})
+
+
+@main_bp.route('/sandbox/api/profile/onboarding/complete', methods=['POST'])
+@login_required
+def api_profile_onboarding_complete():
+    from core.db_models import UserProfile
+    profile = current_user.profile or UserProfile(user_id=current_user.id)
+    if profile not in db.session:
+        db.session.add(profile)
+    profile.profile_onboarding_completed_at = moscow_now()
+    db.session.commit()
+    return jsonify({'status': 'ok'})
 
 
 @main_bp.route('/api/user/telegram-auth-code', methods=['POST'])

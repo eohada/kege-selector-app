@@ -1856,6 +1856,7 @@ class UserProfile(db.Model):
     tg_quiet_hours_end = db.Column(db.Integer, nullable=True)    # Тихие часы: конец (0-23, МСК)
 
     internal_notes = db.Column(db.Text, nullable=True)
+    profile_onboarding_completed_at = db.Column(db.DateTime, nullable=True, index=True)
 
     # Только для создателя: фиксированная строка активности «техно-магия» поверх авто-статусов
     presence_techno_magic_enabled = db.Column(db.Boolean, default=False, nullable=False)

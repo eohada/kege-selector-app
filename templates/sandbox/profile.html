@@ -8,15 +8,15 @@
 
 {% set student_obj = linked_student if (linked_student is defined and linked_student) else (student if (student is defined and student) else (current_user.student_profile if (current_user is defined and current_user and current_user.student_profile) else none)) %}
 
-{% set user_name = (student_obj.name if (student_obj and student_obj.name) else (current_user.username if (current_user is defined and current_user and current_user.username) else 'Иван Иванов')) %}
-{% set user_handle = (current_user.username if (current_user is defined and current_user and current_user.username) else 'student_1') %}
-{% set user_email = (current_user.email if (current_user is defined and current_user and current_user.email) else 'student1@boostudy.ru') %}
-{% set user_avatar = (current_user.avatar_url if (current_user is defined and current_user and current_user.avatar_url) else (current_user.profile.avatar_url if (current_user is defined and current_user and current_user.profile and current_user.profile.avatar_url) else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ user_handle ~ '&backgroundColor=e0f2fe')) %}
+{% set user_name = profile_display_name if (profile_display_name is defined and profile_display_name) else current_user.username %}
+{% set user_handle = current_user.username %}
+{% set user_email = current_user.email or '' %}
+{% set user_avatar = profile_avatar_url if (profile_avatar_url is defined and profile_avatar_url) else '/static/images/default-avatar.svg' %}
 {% set user_cover = (current_user.cover_url if (current_user is defined and current_user and current_user.cover_url) else (current_user.profile.cover_url if (current_user is defined and current_user and current_user.profile and current_user.profile.cover_url) else none)) %}
-{% set user_bio = (current_user.about_me if (current_user is defined and current_user and current_user.about_me) else (current_user.custom_status if (current_user is defined and current_user and current_user.custom_status) else 'Готовлюсь к сдаче КЕГЭ по Информатике и Профильной Математике. Целюсь на 90+ баллов для поступления на ФКН ВШЭ.')) %}
+{% set user_bio = profile_bio if (profile_bio is defined and profile_bio) else '' %}
 
-{% set school_class_display = '11' %}
-{% set user_streak = 5 %}
+{% set school_class_display = school_class_display if (school_class_display is defined and school_class_display) else '—' %}
+{% set user_streak = user_streak if (user_streak is defined and user_streak is not none) else 0 %}
 
 {% set streak_num = user_streak|int %}
 {% set streak_mod10 = streak_num % 10 %}
@@ -31,8 +31,8 @@
   {% set days_word = 'дней' %}
 {% endif %}
 
-{% set total_cnt = (lesson_counts.total if (lesson_counts is defined and lesson_counts and lesson_counts.total is defined) else 12) %}
-{% set completed_cnt = (lesson_counts.completed if (lesson_counts is defined and lesson_counts and lesson_counts.completed is defined) else 3) %}
+{% set total_cnt = total_cnt if (total_cnt is defined and total_cnt is not none) else 0 %}
+{% set completed_cnt = completed_cnt if (completed_cnt is defined and completed_cnt is not none) else 0 %}
 
 <!-- Canvas Master Container -->
 <main class="min-h-screen w-full relative z-10 bg-[#F8FAFC] font-sans ml-0 lg:ml-24 px-4 sm:px-6 lg:px-0 pb-20 lg:pb-6">
@@ -152,7 +152,7 @@
             </div>
             <div class="min-w-0">
               <p class="text-[8px] sm:text-[9px] font-bold text-indigo-400 uppercase tracking-widest truncate">Рейтинг</p>
-              <p id="rank-in-class-text" class="text-[11px] sm:text-xs font-black text-indigo-950 truncate">{{ rank_in_class if rank_in_class is defined else '#1 в 11кл' }}</p>
+              <p id="rank-in-class-text" class="text-[11px] sm:text-xs font-black text-indigo-950 truncate">{{ rank_in_class if rank_in_class is defined else '—' }}</p>
             </div>
           </div>
 
@@ -253,7 +253,7 @@
             </div>
 
             <p id="user-bio-text" class="text-slate-700 font-medium leading-relaxed text-sm bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 shadow-inner">
-                {{ user_bio }}
+                {% if user_bio %}{{ user_bio }}{% else %}<button type="button" onclick="openProfileEditModal()" class="text-indigo-600 font-bold bg-transparent border-0 p-0 cursor-pointer">Расскажи немного о себе</button>{% endif %}
             </p>
 
             <!-- Referral & Parent Code Grid -->
@@ -344,7 +344,7 @@
                     <i class="ph-bold ph-target text-lg text-indigo-500"></i> Цели на неделю
                 </h3>
                 <span id="goals-counter-badge" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-lg border border-indigo-200 uppercase tracking-wider">
-                    {{ (goals|selectattr('status', 'equalto', 'done')|list|length) if goals is defined else 1 }} / {{ (goals|length) if goals is defined else 3 }} Готово
+                    {{ (goals|selectattr('status', 'equalto', 'done')|list|length) if goals is defined else 0 }} / {{ (goals|length) if goals is defined else 0 }} Готово
                 </span>
             </div>
 
@@ -385,6 +385,25 @@
     </div>
   </div>
 </main>
+
+{% if show_profile_onboarding is defined and show_profile_onboarding %}
+<div id="profile-onboarding" class="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/45 backdrop-blur-sm p-4">
+  <section class="w-full max-w-lg rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-[0_8px_0_#DAE1E9]">
+    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500">Первый вход</p>
+    <h2 class="mt-2 text-2xl font-black text-slate-900">Собери свой профиль за минуту</h2>
+    <p class="mt-2 text-sm font-medium text-slate-500">Здесь пока нет вымышленных достижений: показатели появятся по мере твоей реальной работы.</p>
+    <ol class="mt-5 space-y-3 text-sm font-bold text-slate-700">
+      <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">1</span><span>Нажми на аватар или «Редактировать» — добавь фото, класс и пару слов о себе.</span></li>
+      <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">2</span><span>Сформулируй главную цель и добавь 1–3 цели на эту неделю справа.</span></li>
+      <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">3</span><span>После первого урока и выполненных заданий здесь появятся посещаемость, стрик и награды.</span></li>
+    </ol>
+    <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button type="button" onclick="finishProfileOnboarding(false)" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600">Позже</button>
+      <button type="button" onclick="finishProfileOnboarding(true)" class="rounded-xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2.5 text-xs font-black text-white">Заполнить профиль</button>
+    </div>
+  </section>
+</div>
+{% endif %}
 
 <!-- BENTO 3D ALL ACHIEVEMENTS MODAL -->
 <div id="achievements-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
@@ -514,7 +533,7 @@
       <!-- Goal Text -->
       <div class="space-y-1.5">
         <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Главная цель обучения</label>
-        <input type="text" name="goal_text" id="edit-goal-text" value="{{ student_obj.goal_text if (student_obj and student_obj.goal_text) else 'Сдать КЕГЭ по Информатике на 90+ баллов' }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+        <input type="text" name="goal_text" id="edit-goal-text" value="{{ student_obj.goal_text if (student_obj and student_obj.goal_text) else '' }}" placeholder="Например: сдать КЕГЭ на 85 баллов" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
       </div>
 
       <!-- Timezone & Password Grid -->
@@ -651,7 +670,7 @@ function submitGoalResult() {
 
   fetch('/sandbox/api/profile/goal/result/' + id, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: profileApiHeaders('application/x-www-form-urlencoded'),
     body: 'result_note=' + encodeURIComponent(note)
   })
   .then(r => r.json())
@@ -676,7 +695,7 @@ function copyReferralCode(code) {
 }
 
 function toggleWeeklyGoal(itemId) {
-  fetch('/sandbox/api/profile/goal/toggle/' + itemId, { method: 'POST' })
+  fetch('/sandbox/api/profile/goal/toggle/' + itemId, { method: 'POST', headers: profileApiHeaders() })
     .then(r => r.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -693,7 +712,7 @@ function addNewGoal() {
   
   fetch('/sandbox/api/profile/goal/add', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: profileApiHeaders('application/x-www-form-urlencoded'),
     body: 'title=' + encodeURIComponent(input.value.trim())
   })
   .then(r => r.json())
@@ -711,6 +730,11 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const formData = new FormData(form);
+      const avatar = document.getElementById('edit-avatar-file');
+      if (avatar && avatar.files[0] && avatar.files[0].size > 5 * 1024 * 1024) {
+        alert('Аватар должен быть не больше 5 МБ.');
+        return;
+      }
       const csrfMeta = document.querySelector('meta[name="csrf-token"]');
       const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
       fetch('/sandbox/api/profile/edit', {
@@ -720,9 +744,9 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         body: formData
       })
-      .then(r => r.json())
-      .then(data => {
-        if (data.status === 'ok' || data.success === true) {
+      .then(async r => ({ ok: r.ok, data: await r.json() }))
+      .then(({ ok, data }) => {
+        if (ok && (data.status === 'ok' || data.success === true)) {
           closeProfileEditModal();
           window.location.reload();
         } else {
@@ -736,6 +760,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+function profileApiHeaders(contentType) {
+  const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  const headers = { 'X-CSRFToken': token, 'Accept': 'application/json' };
+  if (contentType) headers['Content-Type'] = contentType;
+  return headers;
+}
+
+function finishProfileOnboarding(openEditor) {
+  fetch('/sandbox/api/profile/onboarding/complete', { method: 'POST', headers: profileApiHeaders() })
+    .finally(() => {
+      document.getElementById('profile-onboarding')?.remove();
+      if (openEditor) openProfileEditModal();
+    });
+}
 
 function copyParentLinkCode(btn, code) {
   const targetCode = (typeof btn === 'string') ? btn : (code || 'BS-WIG9');

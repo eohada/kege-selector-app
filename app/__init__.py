@@ -204,7 +204,11 @@ def create_app(config_name=None):
     def handle_request_entity_too_large(error):
         payload = {'success': False, 'error': 'Файл слишком большой. Максимум 10MB.'}
         try:
-            accepts_json = 'application/json' in (request.headers.get('Accept') or '').lower() or request.path.endswith('/user/profile/update')
+            accepts_json = (
+                'application/json' in (request.headers.get('Accept') or '').lower()
+                or request.path.startswith('/sandbox/api/')
+                or request.path.startswith('/api/')
+            )
         except Exception:
             accepts_json = False
         return jsonify(payload), 413

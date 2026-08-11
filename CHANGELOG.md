@@ -5406,3 +5406,8 @@ outes.py for correct timezone handling.
 
 - Flask-Migrate now receives the absolute project migration directory at application startup; Alembic no longer depends on the process current directory and cannot silently report an empty revision graph.
 - Blue-green deployment explicitly runs upgrades against `/app/migrations`, so readiness uses the same migration graph as the shipped container.
+## [2026-08-11 10:00:00] - 👤 Student profile: real empty state and first-run guide
+
+- Removed demo profile data from the canonical V2 student profile: streak, lessons, bio, goals and avatar now come only from persisted student data.
+- Added persistent one-time profile guide, real weekly-goal APIs backed by `StudentLearningPlanItem`, and a default neutral avatar.
+- Fixed profile API JSON responses for oversize uploads and persistent avatar upload handling.
