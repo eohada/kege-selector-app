@@ -5411,3 +5411,7 @@ outes.py for correct timezone handling.
 - Removed demo profile data from the canonical V2 student profile: streak, lessons, bio, goals and avatar now come only from persisted student data.
 - Added persistent one-time profile guide, real weekly-goal APIs backed by `StudentLearningPlanItem`, and a default neutral avatar.
 - Fixed profile API JSON responses for oversize uploads and persistent avatar upload handling.
+## [2026-08-11 11:00:00] - 🖼️ Profile media and mobile V2 repair
+
+- Removed Flask and Nginx profile-media size limits, fixed persistent avatar/cover delivery paths, and added in-browser crop, zoom and positioning before upload.
+- Reworked the V2 profile's mobile spacing and metric layout for narrow screens.

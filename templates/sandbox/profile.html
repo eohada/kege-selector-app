@@ -1,6 +1,26 @@
 {% extends "sandbox/layout_student.html" %}
 
 {% block sandbox_content %}
+<style>
+@media (max-width: 639px) {
+  #profile-page-shell { padding: .75rem .75rem 5.5rem; }
+  #profile-page-shell > div { gap: .875rem; }
+  #profile-page-shell .profile-bento { gap: .875rem; margin-top: .875rem; }
+  #profile-page-shell .profile-bento > div { gap: .875rem; }
+  #profile-page-shell .profile-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+  #profile-page-shell .profile-metrics > :last-child { grid-column: span 2; }
+  #profile-page-shell .profile-metrics > div { min-height: 7.5rem; padding: 1rem; border-radius: 1.35rem; }
+  #profile-page-shell .profile-metrics h3 { font-size: 1.6rem; line-height: 1; }
+  #profile-page-shell .profile-metrics p { letter-spacing: .06em; }
+  #profile-page-shell .rounded-\[2rem\] { border-radius: 1.5rem; }
+  #profile-page-shell .rounded-\[1\.75rem\] { border-radius: 1.35rem; }
+  #profile-page-shell .space-y-3\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: .875rem; }
+  #profile-page-shell .max-h-\[380px\] { max-height: 20rem; }
+  #profile-page-shell input, #profile-page-shell textarea { font-size: 16px; }
+  #image-crop-modal { align-items: flex-end; padding: 0; }
+  #image-crop-modal > div { border-radius: 1.75rem 1.75rem 0 0; max-width: none; }
+}
+</style>
 {% set is_student = (current_user is defined and current_user and current_user.is_student is defined and current_user.is_student()) or (current_user is defined and current_user and current_user.role == 'student') or (current_user is not defined or not current_user or not current_user.is_authenticated) %}
 {% set is_tutor = (current_user is defined and current_user and current_user.is_tutor is defined and current_user.is_tutor()) or (current_user is defined and current_user and current_user.role in ['tutor', 'teacher']) %}
 {% set is_creator = (current_user is defined and current_user and current_user.is_creator is defined and current_user.is_creator()) or (current_user is defined and current_user and current_user.role == 'creator') %}
@@ -35,7 +55,7 @@
 {% set completed_cnt = completed_cnt if (completed_cnt is defined and completed_cnt is not none) else 0 %}
 
 <!-- Canvas Master Container -->
-<main class="min-h-screen w-full relative z-10 bg-[#F8FAFC] font-sans ml-0 lg:ml-24 px-4 sm:px-6 lg:px-0 pb-20 lg:pb-6">
+<main id="profile-page-shell" class="min-h-screen w-full relative z-10 bg-[#F8FAFC] font-sans ml-0 lg:ml-24 px-3 sm:px-6 lg:px-0 pb-20 lg:pb-6">
   <div class="max-w-[1400px] mx-auto w-full space-y-3.5 pt-4 lg:pt-0">
     
     <!-- 1. HERO & PROFILE HEADER (BooStudy UI Canon 3D Bento Block) -->
@@ -171,14 +191,14 @@
     </div>
 
     <!-- 2. BENTO GRID (12 Columns) -->
-    <div class="grid grid-cols-12 gap-3.5 w-full mt-3.5">
+    <div class="profile-bento grid grid-cols-12 gap-3.5 w-full mt-3.5">
       
       <!-- LEFT COLUMN (8 cols) -->
       <div class="col-span-12 lg:col-span-8 space-y-3.5">
         
         {% if is_student %}
         <!-- Student Metrics Row -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="profile-metrics grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div class="bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200/90 p-4 sm:p-5 rounded-[1.75rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-2.5 relative overflow-hidden group hover:-translate-y-1 transition-all">
                <div class="flex justify-between items-center z-10">
                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Траектория</p>
@@ -386,6 +406,16 @@
   </div>
 </main>
 
+<div id="image-crop-modal" class="fixed inset-0 z-[10030] hidden items-center justify-center bg-slate-950/70 p-3">
+  <div class="w-full max-w-2xl rounded-[2rem] border-2 border-slate-200 bg-white p-4 sm:p-6 shadow-[0_8px_0_#DAE1E9]">
+    <div class="mb-3 flex items-center justify-between"><div><p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Подготовка изображения</p><h2 id="crop-title" class="text-lg font-black text-slate-900">Аватар</h2></div><button type="button" onclick="closeImageCrop()" class="rounded-xl bg-slate-100 p-2 text-slate-600"><i class="ph-bold ph-x"></i></button></div>
+    <div class="overflow-hidden rounded-2xl bg-slate-100"><canvas id="image-crop-canvas" class="mx-auto block max-h-[52vh] max-w-full touch-none"></canvas></div>
+    <label class="mt-4 block text-xs font-black text-slate-600">Масштаб <input id="crop-scale" type="range" min="1" max="3" step="0.01" value="1" class="mt-2 w-full" oninput="updateCropScale(this.value)"></label>
+    <p class="mt-2 text-xs font-medium text-slate-400">Перетаскивай изображение пальцем или мышью, чтобы выбрать положение.</p>
+    <div class="mt-4 flex justify-end gap-2"><button type="button" onclick="closeImageCrop()" class="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-black text-slate-600">Отмена</button><button type="button" onclick="applyImageCrop()" class="rounded-xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2.5 text-xs font-black text-white">Готово</button></div>
+  </div>
+</div>
+
 {% if show_profile_onboarding is defined and show_profile_onboarding %}
 <div id="profile-onboarding" class="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/45 backdrop-blur-sm p-4">
   <section class="w-full max-w-lg rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-[0_8px_0_#DAE1E9]">
@@ -513,14 +543,14 @@
       <!-- Avatar Upload & URL -->
       <div class="space-y-1.5">
         <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Аватар (Загрузить файл или Ссылка)</label>
-        <input type="file" name="avatar_file" id="edit-avatar-file" accept="image/*" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-black file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
+        <input type="file" name="avatar_file" id="edit-avatar-file" accept="image/*" onchange="beginImageCrop(this, 'avatar')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-black file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
         <input type="text" name="avatar_url" id="edit-avatar-url" value="{{ user_avatar }}" placeholder="Или вставьте URL ссылки" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 mt-1">
       </div>
 
       <!-- Cover Upload & URL -->
       <div class="space-y-1.5">
         <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Обложка / Баннер (Загрузить файл или Ссылка)</label>
-        <input type="file" name="cover_file" id="edit-cover-file" accept="image/*" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-black file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
+        <input type="file" name="cover_file" id="edit-cover-file" accept="image/*" onchange="beginImageCrop(this, 'cover')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-black file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
         <input type="text" name="cover_url" id="edit-cover-url" value="{{ user_cover if user_cover else '' }}" placeholder="Или вставьте URL (или оставьте пустым для градиента)" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 mt-1">
       </div>
 
@@ -829,5 +859,28 @@ function generateTgCode() {
   })
   .catch(() => {});
 }
+
+const cropState = { image: null, input: null, mode: 'avatar', scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0 };
+const cropCanvas = document.getElementById('image-crop-canvas');
+const cropContext = cropCanvas.getContext('2d');
+function beginImageCrop(input, mode) {
+  const file = input.files && input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => { const image = new Image(); image.onload = () => {
+    cropState.image = image; cropState.input = input; cropState.mode = mode; cropState.scale = 1; cropState.x = 0; cropState.y = 0;
+    cropCanvas.width = mode === 'avatar' ? 720 : 1200; cropCanvas.height = mode === 'avatar' ? 720 : 420;
+    document.getElementById('crop-title').textContent = mode === 'avatar' ? 'Выбери аватар' : 'Выбери обложку';
+    document.getElementById('crop-scale').value = 1; document.getElementById('image-crop-modal').classList.remove('hidden'); document.getElementById('image-crop-modal').classList.add('flex'); drawCrop();
+  }; image.src = reader.result; }; reader.readAsDataURL(file);
+}
+function drawCrop() { if (!cropState.image) return; const { image, scale, x, y } = cropState; const w = cropCanvas.width, h = cropCanvas.height; const base = Math.max(w / image.width, h / image.height) * scale; const iw = image.width * base, ih = image.height * base; const minX = Math.min(0, w - iw), minY = Math.min(0, h - ih); cropState.x = Math.max(minX, Math.min(0, x)); cropState.y = Math.max(minY, Math.min(0, y)); cropContext.clearRect(0, 0, w, h); cropContext.drawImage(image, cropState.x, cropState.y, iw, ih); }
+function updateCropScale(value) { cropState.scale = Number(value); drawCrop(); }
+function cropPoint(event) { const rect = cropCanvas.getBoundingClientRect(); const point = event.touches ? event.touches[0] : event; return { x: (point.clientX - rect.left) * cropCanvas.width / rect.width, y: (point.clientY - rect.top) * cropCanvas.height / rect.height }; }
+cropCanvas.addEventListener('pointerdown', event => { const p = cropPoint(event); cropState.dragging = true; cropState.startX = p.x - cropState.x; cropState.startY = p.y - cropState.y; cropCanvas.setPointerCapture(event.pointerId); });
+cropCanvas.addEventListener('pointermove', event => { if (!cropState.dragging) return; const p = cropPoint(event); cropState.x = p.x - cropState.startX; cropState.y = p.y - cropState.startY; drawCrop(); });
+cropCanvas.addEventListener('pointerup', () => { cropState.dragging = false; });
+cropCanvas.addEventListener('pointercancel', () => { cropState.dragging = false; });
+function closeImageCrop() { document.getElementById('image-crop-modal').classList.add('hidden'); document.getElementById('image-crop-modal').classList.remove('flex'); }
+function applyImageCrop() { cropCanvas.toBlob(blob => { const original = cropState.input.files[0]; const file = new File([blob], `profile-${cropState.mode}.jpg`, { type: 'image/jpeg' }); const transfer = new DataTransfer(); transfer.items.add(file); cropState.input.files = transfer.files; closeImageCrop(); }, 'image/jpeg', .92); }
 </script>
 {% endblock %}

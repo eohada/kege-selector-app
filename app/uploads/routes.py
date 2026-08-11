@@ -175,7 +175,7 @@ def avatar_file(filename: str):
     """
     Раздача аватарок. Без авторизации (аватарки публичны).
     Если задан AVATAR_UPLOAD_ROOT — файлы берутся оттуда (persistent volume при деплое).
-    Иначе — из static/uploads/avatars (legacy).
+    Иначе — из persistent volume uploads/avatars.
     """
     base_name = os.path.basename(filename)
     if not base_name or not AVATAR_FILENAME_RE.match(base_name):
@@ -185,6 +185,7 @@ def avatar_file(filename: str):
     if root:
         roots.append(root)
     roots.extend([
+        os.path.join(os.path.dirname(current_app.root_path), 'uploads', 'avatars'),
         os.path.join(os.path.dirname(current_app.root_path), 'static', 'uploads', 'avatars'),
         os.path.join(current_app.root_path, 'static', 'uploads', 'avatars'),
         os.path.join(current_app.root_path, 'uploads', 'avatars'),
@@ -220,7 +221,7 @@ def avatar_file(filename: str):
 def cover_file(filename: str):
     """
     Раздача баннеров/обложек профиля (креатор). Публично.
-    Если задан COVER_UPLOAD_ROOT — файлы оттуда, иначе static/uploads/covers.
+    Если задан COVER_UPLOAD_ROOT — файлы оттуда, иначе persistent volume uploads/covers.
     """
     base_name = os.path.basename(filename)
     if not base_name or not COVER_FILENAME_RE.match(base_name):
@@ -230,6 +231,7 @@ def cover_file(filename: str):
     if root:
         roots.append(root)
     roots.extend([
+        os.path.join(os.path.dirname(current_app.root_path), 'uploads', 'covers'),
         os.path.join(os.path.dirname(current_app.root_path), 'static', 'uploads', 'covers'),
         os.path.join(current_app.root_path, 'static', 'uploads', 'covers'),
         os.path.join(current_app.root_path, 'uploads', 'covers'),
@@ -262,12 +264,6 @@ def upload_cover():
     if ext not in allowed_extensions:
         return jsonify({'success': False, 'error': 'Недопустимый формат файла'}), 400
         
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    if file_size > 8 * 1024 * 1024:
-        return jsonify({'success': False, 'error': 'Файл слишком большой. Максимум 8MB'}), 400
-    file.seek(0)
-        
     unique_filename = f"cover_{current_user.id}{ext}"
     cover_upload_root = current_app.config.get('COVER_UPLOAD_ROOT')
     
@@ -276,9 +272,8 @@ def upload_cover():
         cover_url = f"/covers/{unique_filename}"
     else:
         app_root = os.path.dirname(current_app.root_path)
-        upload_folder = os.path.join(app_root, 'static', 'uploads', 'covers')
-        upload_folder = os.path.abspath(upload_folder)
-        cover_url = f"/static/uploads/covers/{unique_filename}"
+        upload_folder = os.path.abspath(os.path.join(app_root, 'uploads', 'covers'))
+        cover_url = f"/covers/{unique_filename}"
         
     os.makedirs(upload_folder, exist_ok=True)
     if not os.path.isdir(upload_folder):

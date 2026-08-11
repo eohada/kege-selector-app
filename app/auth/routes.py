@@ -1001,12 +1001,6 @@ def profile_update():
                 if ext not in allowed_extensions:
                     return jsonify({'success': False, 'error': 'Недопустимый формат файла. Используйте JPG, PNG, GIF или WEBP'}), 400
                 
-                file.seek(0, os.SEEK_END)
-                file_size = file.tell()
-                file.seek(0)
-                if file_size > 5 * 1024 * 1024:
-                    return jsonify({'success': False, 'error': 'Файл слишком большой. Максимум 5MB'}), 400
-                
                 unique_filename = f"avatar_{current_user.id}{ext}"
                 avatar_upload_root = current_app.config.get('AVATAR_UPLOAD_ROOT')
                 if avatar_upload_root:
@@ -1014,9 +1008,8 @@ def profile_update():
                     avatar_url = f"/avatars/{unique_filename}"
                 else:
                     app_root = os.path.dirname(current_app.root_path)
-                    upload_folder = os.path.join(app_root, 'static', 'uploads', 'avatars')
-                    upload_folder = os.path.abspath(upload_folder)
-                    avatar_url = f"/static/uploads/avatars/{unique_filename}"
+                    upload_folder = os.path.abspath(os.path.join(app_root, 'uploads', 'avatars'))
+                    avatar_url = f"/avatars/{unique_filename}"
                 
                 os.makedirs(upload_folder, exist_ok=True)
                 if not os.path.isdir(upload_folder):
@@ -1044,11 +1037,6 @@ def profile_update():
                 ext = os.path.splitext(filename)[1].lower()
                 if ext not in allowed_extensions:
                     return jsonify({'success': False, 'error': 'Недопустимый формат. Используйте JPG, PNG, GIF или WEBP'}), 400
-                file.seek(0, os.SEEK_END)
-                file_size = file.tell()
-                file.seek(0)
-                if file_size > 8 * 1024 * 1024:
-                    return jsonify({'success': False, 'error': 'Файл слишком большой. Максимум 8MB'}), 400
                 unique_filename = f"cover_{current_user.id}{ext}"
                 cover_root = current_app.config.get('COVER_UPLOAD_ROOT')
                 if cover_root:
@@ -1056,9 +1044,8 @@ def profile_update():
                     cover_url = f"/covers/{unique_filename}"
                 else:
                     app_root = os.path.dirname(current_app.root_path)
-                    upload_folder = os.path.join(app_root, 'static', 'uploads', 'covers')
-                    upload_folder = os.path.abspath(upload_folder)
-                    cover_url = f"/static/uploads/covers/{unique_filename}"
+                    upload_folder = os.path.abspath(os.path.join(app_root, 'uploads', 'covers'))
+                    cover_url = f"/covers/{unique_filename}"
                 os.makedirs(upload_folder, exist_ok=True)
                 if not os.path.isdir(upload_folder):
                     return jsonify({'success': False, 'error': 'Не удалось создать папку для загрузки'}), 500

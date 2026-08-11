@@ -137,7 +137,7 @@ def create_app(config_name=None):
     # Корень папки вложений ответов учеников (uploads/answer_attachments).
     app.config['ANSWER_ATTACHMENTS_ROOT'] = os.environ.get('ANSWER_ATTACHMENTS_ROOT') or os.path.join(base_dir, 'uploads', 'answer_attachments')
 
-    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
+    app.config['MAX_CONTENT_LENGTH'] = None
 
     app.config['S3_ENDPOINT_URL'] = (os.environ.get('S3_ENDPOINT_URL') or '').strip() or None
     app.config['S3_ACCESS_KEY'] = (os.environ.get('S3_ACCESS_KEY') or '').strip() or None

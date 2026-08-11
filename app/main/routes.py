@@ -3515,11 +3515,6 @@ def api_profile_edit():
         filename = secure_filename(avatar_file.filename)
         ext = os.path.splitext(filename)[1].lower()
         if ext in {'.jpg', '.jpeg', '.png', '.gif', '.webp'}:
-            avatar_file.seek(0, os.SEEK_END)
-            file_size = avatar_file.tell()
-            avatar_file.seek(0)
-            if file_size > 5 * 1024 * 1024:
-                return jsonify({'status': 'error', 'success': False, 'message': 'Аватар больше 5 МБ. Выберите файл меньшего размера.'}), 400
             app_root = os.path.dirname(current_app.root_path)
             upload_folder = current_app.config.get('AVATAR_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'avatars')
             os.makedirs(upload_folder, exist_ok=True)
@@ -3540,12 +3535,14 @@ def api_profile_edit():
         ext = os.path.splitext(filename)[1].lower()
         if ext in {'.jpg', '.jpeg', '.png', '.gif', '.webp'}:
             app_root = os.path.dirname(current_app.root_path)
-            upload_folder = os.path.join(app_root, 'static', 'uploads', 'covers')
+            upload_folder = current_app.config.get('COVER_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'covers')
             os.makedirs(upload_folder, exist_ok=True)
             unique_filename = f"cover_{current_user.id}_{int(time.time())}{ext}"
             cover_path = os.path.join(upload_folder, unique_filename)
             cover_file.save(cover_path)
-            current_user.cover_url = f"/static/uploads/covers/{unique_filename}"
+            current_user.cover_url = f"/covers/{unique_filename}"
+            if current_user.profile:
+                current_user.profile.cover_url = current_user.cover_url
     else:
         cover_url = data.get('cover_url')
         if cover_url is not None and cover_url.strip():
