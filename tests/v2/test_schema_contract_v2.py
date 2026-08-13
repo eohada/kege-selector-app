@@ -72,6 +72,7 @@ def test_schema_bootstrap_then_onboarding_migration_on_empty_database(app):
         return module
 
     bootstrap = load_migration('f7b8c9d0e1f2_schema_contract_bootstrap.py', 'schema_bootstrap_migration')
+    legacy_tg = load_migration('887752e658f5_add_telegram_username_discord_id_cover_.py', 'legacy_tg_migration_after_bootstrap')
     onboarding = load_migration('f8c9d0e1f2a3_profile_onboarding_state.py', 'profile_onboarding_migration_after_bootstrap')
     promo_usage = load_migration('f9d0e1f2a3b4_promocode_usage_unique.py', 'promocode_usage_migration_after_bootstrap')
     referral_usage = load_migration('fa0b1c2d3e4f_referral_usage_unique.py', 'referral_usage_migration_after_bootstrap')
@@ -80,11 +81,13 @@ def test_schema_bootstrap_then_onboarding_migration_on_empty_database(app):
     with app.app_context(), engine.begin() as connection:
         operations = Operations(MigrationContext.configure(connection))
         bootstrap.op = operations
+        legacy_tg.op = operations
         onboarding.op = operations
         promo_usage.op = operations
         referral_usage.op = operations
 
         bootstrap.upgrade()
+        legacy_tg.upgrade()
         onboarding.upgrade()
         promo_usage.upgrade()
         referral_usage.upgrade()

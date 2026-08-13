@@ -16,12 +16,25 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    with op.batch_alter_table('Students', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('telegram_username', sa.String(length=100), nullable=True))
-        batch_op.add_column(sa.Column('discord_id', sa.String(length=100), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    table_names = {t.lower(): t for t in inspector.get_table_names()}
 
-    with op.batch_alter_table('Users', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('cover_url', sa.String(length=500), nullable=True))
+    students_table = table_names.get('students')
+    if students_table:
+        cols = {c['name'].lower() for c in inspector.get_columns(students_table)}
+        with op.batch_alter_table(students_table, schema=None) as batch_op:
+            if 'telegram_username' not in cols:
+                batch_op.add_column(sa.Column('telegram_username', sa.String(length=100), nullable=True))
+            if 'discord_id' not in cols:
+                batch_op.add_column(sa.Column('discord_id', sa.String(length=100), nullable=True))
+
+    users_table = table_names.get('users')
+    if users_table:
+        cols = {c['name'].lower() for c in inspector.get_columns(users_table)}
+        with op.batch_alter_table(users_table, schema=None) as batch_op:
+            if 'cover_url' not in cols:
+                batch_op.add_column(sa.Column('cover_url', sa.String(length=500), nullable=True))
 
 def downgrade():
     with op.batch_alter_table('Users', schema=None) as batch_op:
