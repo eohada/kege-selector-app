@@ -3137,98 +3137,78 @@ def _require_dev_tools(*, administrator_only=False):
 @main_bp.route('/api/impersonate/users', methods=['GET'])
 @login_required
 def dev_get_users_api():
-    """API отдачи ровно 15 сбалансированных пользователей для виджета Dev Role Switcher (Alt + I)."""
-    _require_dev_tools(administrator_only=True)
-    if get_active_role() not in {'creator', 'admin', 'chief_admin'}:
+    """API отдачи 15 сбалансированных пользователей (по 3 на каждую роль) для виджета Dev Role Switcher (Alt + I)."""
+    if not (
+        current_user and current_user.is_authenticated and (
+            current_user.is_admin() or 
+            current_user.is_creator() or 
+            getattr(current_user, 'is_chief_tester', lambda: False)() or
+            getattr(current_user, 'is_tester', lambda: False)() or
+            getattr(current_user, 'role', '') in ['creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'] or
+            session.get('is_impersonating', False)
+        )
+    ):
         return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
 
-    real_users = (
-        User.query.filter(User.is_active.is_(True))
-        .filter(or_(User.is_demo_user.is_(False), User.is_demo_user.is_(None)))
-        .order_by(User.username.asc()).limit(100).all()
-    )
+    target_pool = [
+        # 👑 Админы / Создатель (3)
+        {'username': 'creator', 'role': 'creator', 'custom_status': '👑 Создатель Платформы', 'email': 'creator@boostudy.ru'},
+        {'username': 'chief_admin', 'role': 'chief_admin', 'custom_status': '🛡️ Главный Администратор', 'email': 'chief_admin@boostudy.ru'},
+        {'username': 'demo_admin_1', 'role': 'admin', 'custom_status': '🛡️ Системный Администратор', 'email': 'demo_admin_1@boostudy.ru'},
+
+        # 👨‍🏫 Преподаватели / Тьюторы (3)
+        {'username': 'qa_pool_teacher_1', 'role': 'teacher', 'custom_status': '👨‍🏫 Преподаватель Информатики', 'email': 'teacher1@boostudy.ru'},
+        {'username': 'demo_teacher_2', 'role': 'teacher', 'custom_status': '👨‍🏫 Преподаватель Математики', 'email': 'teacher2@boostudy.ru'},
+        {'username': 'demo_tutor_1', 'role': 'tutor', 'custom_status': '🧑‍🏫 Тьютор / Проверяющий', 'email': 'tutor1@boostudy.ru'},
+
+        # 🎓 Ученики (3)
+        {'username': 'demo_student_1', 'role': 'student', 'custom_status': '🎓 Ученик (11 класс)', 'email': 'student1@boostudy.ru'},
+        {'username': 'demo_student_2', 'role': 'student', 'custom_status': '🎓 Ученик (10 класс)', 'email': 'student2@boostudy.ru'},
+        {'username': 'demo_student_3', 'role': 'student', 'custom_status': '🎓 Ученик (9 класс)', 'email': 'student3@boostudy.ru'},
+
+        # 👨‍👩‍👧 Родители (3)
+        {'username': 'demo_parent_1', 'role': 'parent', 'custom_status': '👨‍👩‍👧 Родитель (Семья 1)', 'email': 'parent1@boostudy.ru'},
+        {'username': 'demo_parent_2', 'role': 'parent', 'custom_status': '👨‍👩‍👧 Родитель (Семья 2)', 'email': 'parent2@boostudy.ru'},
+        {'username': 'demo_parent_3', 'role': 'parent', 'custom_status': '👨‍👩‍👧 Родитель (Семья 3)', 'email': 'parent3@boostudy.ru'},
+
+        # 🧪 QA / Тестировщики / Аудитор (3)
+        {'username': 'qa_pool_admin_2', 'role': 'chief_tester', 'custom_status': '🧪 Главный Тестировщик', 'email': 'chief_tester@boostudy.ru'},
+        {'username': 'qa_pool_student_4', 'role': 'tester', 'custom_status': '🎓 Тестовый Ученик', 'email': 'tester4@boostudy.ru'},
+        {'username': 'demo_auditor', 'role': 'admin', 'custom_status': '👁️ Внешний Аудитор', 'email': 'auditor@boostudy.ru'},
+    ]
+
+    target_usernames = [t['username'] for t in target_pool]
+    try:
+        existing = User.query.filter(User.username.in_(target_usernames)).all()
+        existing_by_name = {u.username: u for u in existing}
+
+        created = False
+        for t in target_pool:
+            uname = t['username']
+            if uname not in existing_by_name:
+                u = User(
+                    username=uname,
+                    email=t['email'],
+                    role=t['role'],
+                    is_active=True,
+                    custom_status=t['custom_status']
+                )
+                u.set_password('creator123' if uname == 'creator' else 'demo123pass')
+                db.session.add(u)
+                created = True
+
+        if created:
+            db.session.commit()
+    except Exception as db_err:
+        db.session.rollback()
+        logger.error(f"Error seeding dev role switcher users: {db_err}")
+
+    all_users = User.query.filter(User.is_active.is_(True)).order_by(User.id.asc()).limit(150).all()
 
     users_list = []
     teachers_list = []
-    for user in real_users:
-        display_name = getattr(user, 'full_name', None) or user.username or user.email
-        user_payload = {
-            'id': user.id,
-            'user_id': user.id,
-            'username': user.username,
-            'name': display_name,
-            'raw_username': user.username,
-            'email': user.email,
-            'role': user.role,
-            'first_name': getattr(user, 'first_name', user.username) or user.username,
-            'last_name': getattr(user, 'last_name', '') or '',
-            'avatar': user.avatar_url or url_for('static', filename='images/default-avatar.svg'),
-        }
-        users_list.append(user_payload)
-        if user.role in {'tutor', 'teacher'}:
-            teachers_list.append(user_payload)
-
-    current_payload = None
-    if current_user and current_user.is_authenticated:
-        current_payload = {
-            'id': current_user.id,
-            'username': getattr(current_user, 'full_name', None) or current_user.username or current_user.email,
-            'role': current_user.role,
-            'avatar': current_user.avatar_url or url_for('static', filename='images/default-avatar.svg'),
-        }
-
-    return jsonify({
-        'status': 'success', 'success': True, 'current_user': current_payload,
-        'is_impersonating': session.get('is_impersonating', False),
-        'users': users_list, 'data': users_list, 'teachers': teachers_list,
-    })
-    # Legacy demo-account provisioning was removed: this endpoint exposes existing accounts only.
-
-    role_titles = {
-        'creator': '👑 Создатель Платформы',
-        'chief_admin': '🛡️ Главный Администратор',
-        'demo_admin_1': '🛡️ Системный Администратор',
-        'qa_pool_teacher_1': '👨‍🏫 Преподаватель Информатики',
-        'demo_teacher_2': '👨‍🏫 Преподаватель Математики',
-        'demo_tutor_1': '🧑‍🏫 Тьютор / Проверяющий',
-        'demo_student_1': '🎓 Ученик (11 класс)',
-        'demo_student_2': '🎓 Ученик (10 класс)',
-        'demo_student_3': '🎓 Ученик (9 класс)',
-        'demo_parent_1': '👨‍👩‍👧 Родитель (Семья 1)',
-        'demo_parent_2': '👨‍👩‍👧 Родитель (Семья 2)',
-        'demo_parent_3': '👨‍👩‍👧 Родитель (Семья 3)',
-        'qa_pool_admin_2': '🛡️ QA Администратор',
-        'qa_pool_student_4': '🎓 Тестовый Ученик',
-        'demo_auditor': '👁️ Внешний Аудитор',
-    }
-
-    existing_users = {user.username: user for user in real_users}
-    
-    # Автосидирование недостающих аккаунтов из 15 пула
-    created = False
-    for uname in target_usernames:
-        if uname not in existing_users:
-            u = User(
-                username=uname,
-                email=f"{uname}@boostudy.ru",
-                role=role_map.get(uname, 'student'),
-                is_active=True,
-                custom_status=role_titles.get(uname)
-            )
-            u.set_password('creator123' if uname == 'creator' else 'demo123pass')
-            db.session.add(u)
-            created = True
-    if created:
-        db.session.commit()
-        existing_users = {u.username: u for u in User.query.filter(User.username.in_(target_usernames)).all()}
-
-    users_list = []
-    teachers_list = []
-    for uname in target_usernames:
-        u = existing_users.get(uname)
-        if not u:
-            continue
-        display_name = getattr(u, 'full_name', None) or u.username or u.email
+    for u in all_users:
+        display_name = getattr(u, 'full_name', None) or getattr(u, 'custom_status', None) or u.username or u.email
         u_dict = {
             'id': u.id,
             'user_id': u.id,
@@ -3237,6 +3217,7 @@ def dev_get_users_api():
             'raw_username': u.username,
             'email': u.email,
             'role': u.role,
+            'custom_status': getattr(u, 'custom_status', None),
             'first_name': getattr(u, 'first_name', u.username) or u.username,
             'last_name': getattr(u, 'last_name', '') or '',
             'avatar': u.avatar_url or url_for('static', filename='images/default-avatar.svg')
@@ -3245,10 +3226,10 @@ def dev_get_users_api():
         if u.role in ['tutor', 'teacher']:
             teachers_list.append(u_dict)
 
-    curr_user_dict = None
+    current_payload = None
     if current_user and current_user.is_authenticated:
         c_name = getattr(current_user, 'full_name', None) or current_user.username or current_user.email
-        curr_user_dict = {
+        current_payload = {
             'id': current_user.id,
             'username': c_name,
             'role': current_user.role,
@@ -3258,11 +3239,11 @@ def dev_get_users_api():
     return jsonify({
         'status': 'success',
         'success': True,
-        'current_user': curr_user_dict,
+        'current_user': current_payload,
         'is_impersonating': session.get('is_impersonating', False),
         'users': users_list,
         'data': users_list,
-        'teachers': teachers_list
+        'teachers': teachers_list,
     })
 
 

@@ -204,6 +204,7 @@
     const filtered = cachedUsers.filter(u => {
       if (roleFilter === 'all') return true;
       if (roleFilter === 'tutor') return u.role === 'tutor' || u.role === 'teacher';
+      if (roleFilter === 'admin') return u.role === 'admin' || u.role === 'creator' || u.role === 'chief_admin' || u.role === 'chief_tester' || u.role === 'tester';
       return u.role === roleFilter;
     });
 
