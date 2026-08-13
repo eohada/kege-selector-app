@@ -178,6 +178,11 @@ deploy() {
         exit 2
     fi
 
+    if [[ -f "docker-compose.yml" ]]; then
+        echo "Ensuring primary infrastructure (redis, db) is running..."
+        docker compose up -d db redis || true
+    fi
+
     compose build "$target_service"
     run_expand_only_migrations "$target"
     compose up -d "$target_service"
