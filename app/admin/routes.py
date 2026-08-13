@@ -3353,7 +3353,42 @@ def admin_permissions_page():
     if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен.', 'danger')
         return redirect(url_for('main.dashboard'))
-    return render_template('sandbox/admin/permissions.html')
+
+    from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
+    from app.models import RolePermission
+    from app.utils.db_migrations import check_and_fix_rbac_schema
+
+    roles = ['creator', 'chief_admin', 'admin', 'chief_tester', 'content_maker', 'tutor', 'designer', 'tester', 'student', 'parent']
+    
+    try:
+        from flask import current_app
+        check_and_fix_rbac_schema(current_app)
+    except Exception as e:
+        logger.error(f"Error checking RBAC schema: {e}")
+
+    role_permissions = {}
+    try:
+        current_perms = RolePermission.query.all()
+    except Exception as e:
+        logger.error(f"Error loading permissions: {e}")
+        current_perms = []
+
+    for role in roles:
+        role_permissions[role] = {}
+        for perm in current_perms:
+            if perm.role == role:
+                role_permissions[role][perm.permission_name] = perm.is_enabled
+
+        defaults = DEFAULT_ROLE_PERMISSIONS.get(role, [])
+        for perm_key in ALL_PERMISSIONS.keys():
+            if perm_key not in role_permissions[role]:
+                role_permissions[role][perm_key] = perm_key in defaults
+
+    return render_template('sandbox/admin/permissions.html',
+                         permissions=ALL_PERMISSIONS, 
+                         categories=PERMISSION_CATEGORIES,
+                         roles=roles,
+                         role_permissions=role_permissions)
 
 
 @admin_bp.route('/admin/permissions/toggle', methods=['POST'])

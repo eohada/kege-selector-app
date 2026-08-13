@@ -75,7 +75,7 @@ def admin_permissions():
             if perm_key not in role_permissions[role]:
                 role_permissions[role][perm_key] = perm_key in defaults
 
-    return render_template('admin_permissions.html', 
+    return render_template('sandbox/admin/permissions.html', 
                          permissions=ALL_PERMISSIONS, 
                          categories=PERMISSION_CATEGORIES,
                          roles=roles,

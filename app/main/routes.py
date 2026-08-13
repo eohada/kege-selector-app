@@ -39,10 +39,23 @@ def get_active_role():
 
 @main_bp.context_processor
 def inject_active_role():
+    user_can_dev = False
+    if current_user and getattr(current_user, 'is_authenticated', False):
+        user_role = (getattr(current_user, 'role', '') or '').lower()
+        if (
+            getattr(current_user, 'is_admin', lambda: False)() or 
+            getattr(current_user, 'is_creator', lambda: False)() or 
+            getattr(current_user, 'is_chief_tester', lambda: False)() or
+            getattr(current_user, 'is_tester', lambda: False)() or
+            user_role in ['creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'] or
+            session.get('is_impersonating', False)
+        ):
+            user_can_dev = True
+
     return {
         'get_active_role': get_active_role,
         'show_dev_tools': bool(
-            current_app.config.get('DEBUG') or current_app.config.get('TESTING')
+            current_app.config.get('DEBUG') or current_app.config.get('TESTING') or user_can_dev
         ),
     }
 
