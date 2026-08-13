@@ -1,11 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% from '_ui_icon.html' import ui_icon %}
 {% from '_task_content_block.html' import render_task_content %}
 {% block title %}{{ assignment.title }} - Просмотр работы{% endblock %}
 {% set active_page = 'assignments' %}
-{% block body_class %}layout-teacher{% endblock %}
-
-{% block head_css %}
+{% block extra_head %}
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .active-scale-098:active { transform: scale(0.98); }
@@ -30,7 +28,8 @@
 <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] lg:pl-[6.5rem] px-4 py-6">
 {% set total_students = counts.total if counts is defined else (submissions|length) %}
 {% set progress_done = ((counts.submitted if counts is defined else 0) + (counts.graded if counts is defined else 0) + (counts.returned if counts is defined else 0)) %}
 {% set progress_percent = ((progress_done * 100 / total_students)|round(1)) if total_students else 0 %}
@@ -186,7 +185,7 @@
                                         {% if submission.student and submission.student.user and submission.student.user.avatar_url %}
                                         <img src="{{ submission.student.user.avatar_url }}" class="w-10 h-10 rounded-xl bg-purple-50 border border-slate-200 object-cover shrink-0" alt="">
                                         {% else %}
-                                        <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (submission.student.name if submission.student else 'student')|urlencode }}&backgroundColor=F3F0FF" class="w-10 h-10 rounded-xl bg-purple-50 border border-slate-200 shrink-0" alt="">
+                                        <img src="{{ url_for('static', filename='images/default-avatar.svg') }}" class="w-10 h-10 rounded-xl bg-purple-50 border border-slate-200 shrink-0" alt="Аватар ученика">
                                         {% endif %}
                                         <div class="min-w-0">
                                             <div class="font-black text-slate-900 text-base truncate">{{ submission.student.name if submission.student else '—' }}</div>
@@ -357,9 +356,10 @@
         </div>
     </div>
 </div>
+</main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script>
         (function () {
             'use strict';

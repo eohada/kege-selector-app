@@ -1,9 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Проверка · Журнал{% endblock %}
 {% block body_class %}layout-teacher{% endblock %}
 
 {% set active_page = active_page | default('review_queue') %}
-{% block head_css %}
+{% block extra_head %}
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .bg-length-16px { background-color: length:16px; }
@@ -22,7 +22,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
 <div class="space-y-5 w-full">
     <!-- Header Section -->
     <div class="flex flex-col lg:flex-row gap-6 items-stretch">
@@ -233,7 +233,7 @@
                                 
                                 <!-- Student Row Inside -->
                                 <div class="flex items-center gap-3 p-3 bg-surface-alt dark:bg-dark-inner rounded-xl border border-slate-100 dark:border-zinc-800">
-                                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (sub.student.name if sub.student else 'student')|urlencode }}&backgroundColor=F3F0FF" class="w-10 h-10 rounded-2xl border border-slate-200 dark:border-zinc-700 bg-surface dark:bg-dark-card" alt="">
+                                    <img src="{{ url_for('static', filename='images/default-avatar.svg') }}" class="w-10 h-10 rounded-2xl border border-slate-200 dark:border-zinc-700 bg-surface dark:bg-dark-card" alt="Аватар ученика">
                                     <div class="min-w-0">
                                         <div class="font-bold text-primary text-sm truncate">{{ sub.student.name if sub.student else 'Ученик' }}</div>
                                         <div class="text-xs font-semibold text-muted dark:text-zinc-500">ID: {{ sub.student.platform_id if sub.student and sub.student.platform_id else (sub.student_id if sub.student_id else '—') }}</div>
@@ -319,7 +319,7 @@
                                 
                                 <!-- Student Row Inside -->
                                 <div class="flex items-center gap-3 p-3 bg-surface-alt dark:bg-dark-inner rounded-xl border border-slate-100 dark:border-zinc-800">
-                                    <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name if student else 'student')|urlencode }}&backgroundColor=F3F0FF" class="w-10 h-10 rounded-2xl border border-slate-200 dark:border-zinc-700 bg-surface dark:bg-dark-card" alt="">
+                                    <img src="{{ url_for('static', filename='images/default-avatar.svg') }}" class="w-10 h-10 rounded-2xl border border-slate-200 dark:border-zinc-700 bg-surface dark:bg-dark-card" alt="Аватар ученика">
                                     <div class="min-w-0">
                                         <div class="font-bold text-primary text-sm truncate">{{ student.name if student else 'Ученик' }}</div>
                                         <div class="text-xs font-semibold text-muted dark:text-zinc-500">Урок #{{ lesson.lesson_id if lesson else '—' }}</div>

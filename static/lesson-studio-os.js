@@ -3,11 +3,30 @@
   const raw = document.querySelector('#studio-os-data'); const data = raw ? JSON.parse(raw.textContent) : {};
   const lessonId = Number(root.dataset.lessonId), teacher = root.dataset.teacher === 'true', csrf = document.querySelector('meta[name="csrf-token"]')?.content || '', clientId = crypto.randomUUID();
   let state = data.state || {}, tasks = typeof data.tasks === 'string' ? JSON.parse(data.tasks) : (data.tasks || []), activeTask = null, workspace = {id:null, version:0, socket:null, applying:false}, board = {tool:'pen',color:'#312e81',width:4,drawing:null,drag:null,camera:{x:0,y:0,z:1}}, lastLaserAt = 0;
-  const $ = s => document.querySelector(s), post = (url, body) => fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf},body:JSON.stringify(body)}).then(r=>r.json()), fmt=s=>`${String(Math.floor(Math.max(0,s||0)/60)).padStart(2,'0')}:${String(Math.max(0,s||0)%60).padStart(2,'0')}`;
+  const $ = s => document.querySelector(s), fmt=s=>`${String(Math.floor(Math.max(0,s||0)/60)).padStart(2,'0')}:${String(Math.max(0,s||0)%60).padStart(2,'0')}`;
+  async function post(url, body) {
+    try {
+      const response = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf}, body: JSON.stringify(body)});
+      const payload = await response.json().catch(() => null);
+      if (payload && typeof payload === 'object') return payload;
+      return {success: false, error: response.status === 413 ? 'Файл или запрос слишком большой для сервера.' : 'Сервер вернул некорректный ответ.'};
+    } catch (error) {
+      return {success: false, error: 'Нет соединения с сервером. Проверьте сеть и повторите.'};
+    }
+  }
   
   function toast(text){const n=document.createElement('div');n.className='os-toast';n.textContent=text;document.body.append(n);setTimeout(()=>n.remove(),2400)}
   async function save(patch){if(!teacher)return null;const r=await post(`/lesson/${lessonId}/studio/state`,patch);if(r.success){state=r.state;render()}else toast(r.error||'Не удалось сохранить');return r}
-  function activate(view, remote=false){if(!['work','theory','board','meeting','materials'].includes(view))view='work';document.querySelectorAll('.os-nav').forEach(x=>x.classList.toggle('active',x.dataset.view===view));document.querySelectorAll('[data-view-panel]').forEach(x=>x.classList.toggle('hidden',x.dataset.viewPanel!==view));if(view==='board')renderBoard();if(view==='materials')renderMaterials();if(view==='theory')renderTheory();if(!remote&&teacher&&state.follow_student)save({active_pane:view,follow_student:true})}
+  function activate(view, remote=false){
+    if(!['work','theory','board','meeting','materials'].includes(view)) view='work';
+    document.querySelectorAll('.os-nav').forEach(x=>x.classList.toggle('active',x.dataset.view===view));
+    document.querySelectorAll('[data-view-panel]').forEach(x=>x.classList.toggle('hidden',x.dataset.viewPanel!==view));
+    if(view==='board') renderBoard();
+    if(view==='materials') renderMaterials();
+    if(view==='theory') renderTheory();
+    if (!remote) lessonSocket.emit('tab_changed', {lesson_id: lessonId, tab: view});
+    if(!remote && teacher && state.follow_student) save({active_pane:view,follow_student:true});
+  }
   
   function render(){
     const timer=state.timer||{}, phase=state.phase||'preparation';
@@ -16,6 +35,12 @@
     if(toggleBtn) toggleBtn.innerHTML = timer.running ? '<i class="ph-bold ph-pause"></i>' : '<i class="ph-bold ph-play"></i>';
     document.querySelectorAll('#os-phases button').forEach(b=>b.classList.toggle('active',b.dataset.phase===phase));
     document.querySelectorAll('[data-duration]').forEach(i=>i.value=Math.max(1,Math.round(((state.phase_durations||{})[i.dataset.duration]||60)/60)));
+    const followButton = $('#os-follow');
+    if (followButton) {
+      followButton.classList.toggle('os-primary', Boolean(state.follow_student));
+      followButton.textContent = state.follow_student ? 'Веду ученика' : 'Вести ученика';
+      followButton.setAttribute('aria-pressed', String(Boolean(state.follow_student)));
+    }
     renderTasks();
   }
   
@@ -185,8 +210,7 @@
           renderBoard(); return;
       }
       if(!board.drawing) return;
-      if(board.drawing.tool==='eraser') post(`/lesson/${lessonId}/studio/board`,{action:'append',stroke:{...board.drawing,points:[bp]}}).then(r=>{if(r.success){state.board=r.board;renderBoard()}});
-      else board.drawing.points.push(bp);
+      board.drawing.points.push(bp);
       renderBoard();
     });
     c.addEventListener('pointerup',e=>{
@@ -198,7 +222,7 @@
       }
       const s=board.drawing; board.drawing=null;
       if(!s) return; c.releasePointerCapture(e.pointerId);
-      if(s.tool!=='eraser' && s.points.length>1) post(`/lesson/${lessonId}/studio/board`,{action:'append',stroke:s}).then(r=>{if(r.success){state.board=r.board;renderBoard()}});
+      if(s.points.length>1) post(`/lesson/${lessonId}/studio/board`,{action:'append',stroke:s}).then(r=>{if(r.success){state.board=r.board;renderBoard()}});
     });
     document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>{board.tool=b.dataset.tool;document.querySelectorAll('[data-tool]').forEach(x=>x.classList.toggle('active',x===b))});
     document.querySelectorAll('[data-color]').forEach(b=>b.onclick=()=>board.color=b.dataset.color);
@@ -242,9 +266,16 @@
     document.querySelectorAll('[data-phase]').forEach(b=>b.onclick=()=>phaseChange(b.dataset.phase));
     $('#os-timer-toggle')?.addEventListener('click',()=>{const remaining = Math.max(0, state.timer.seconds - Math.floor((Date.now() - new Date(state.timer.updated_at).getTime()) / 1000)); save({timer:{...(state.timer||{}),seconds: state.timer.running ? remaining : state.timer.seconds, running:!state.timer?.running}});});
     document.querySelectorAll('[data-duration]').forEach(i=>i.onchange=()=>{const d={...(state.phase_durations||{})};d[i.dataset.duration]=Math.max(1,Number(i.value)||1)*60;save({phase_durations:d,phase_timers:{...(state.phase_timers||{}),[i.dataset.duration]:d[i.dataset.duration]}})});
-    $('#os-follow')?.addEventListener('click',()=>{state.follow_student=!state.follow_student;$('#os-follow').classList.toggle('os-primary',state.follow_student);save({follow_student:state.follow_student,active_pane:document.querySelector('.os-nav.active').dataset.view})});
+    $('#os-follow')?.addEventListener('click',()=>{state.follow_student=!state.follow_student;save({follow_student:state.follow_student,active_pane:document.querySelector('.os-nav.active').dataset.view})});
     $('#os-laser')?.addEventListener('click',()=>{root.classList.toggle('laser-on');toast('Лазер включён: водите курсором по странице')});
     document.addEventListener('pointermove',e=>{if(!root.classList.contains('laser-on')||Date.now()-lastLaserAt<45)return;lastLaserAt=Date.now();post(`/lesson/${lessonId}/studio/pointer`,{kind:'laser',x:e.clientX/window.innerWidth,y:e.clientY/window.innerHeight})});
+    $('#os-laser')?.addEventListener('click',()=>{
+      const enabled = root.classList.contains('laser-on');
+      const button = $('#os-laser');
+      button.classList.toggle('os-primary', enabled);
+      button.textContent = enabled ? 'Лазер: вкл.' : 'Лазер';
+      button.setAttribute('aria-pressed', String(enabled));
+    });
     let dailyFrame = null;
     $('#os-meeting-join')?.addEventListener('click', async () => {
         const btn = $('#os-meeting-join');
@@ -257,7 +288,13 @@
         $('#os-meeting-placeholder').style.display = 'none';
         const container = $('#os-daily-container');
         container.style.display = 'block';
-        if (!dailyFrame && window.DailyIframe) {
+        if (!window.DailyIframe) {
+            container.style.display = 'none';
+            $('#os-meeting-placeholder').style.display = 'block';
+            btn.disabled = false; btn.textContent = 'Подключиться';
+            return toast('Не удалось загрузить видеомодуль Daily. Обновите страницу или проверьте сеть.');
+        }
+        if (!dailyFrame) {
             dailyFrame = DailyIframe.createFrame(container, { showLeaveButton: true, iframeStyle: { width: '100%', height: '100%', border: '0' } });
             dailyFrame.on('left-meeting', () => {
                 $('#os-meeting-placeholder').style.display = 'block';
@@ -265,7 +302,14 @@
                 btn.disabled = false; btn.textContent = 'Подключиться';
             });
         }
-        await dailyFrame.join({ url: r.room_url, token: r.token });
+        try {
+          await dailyFrame.join({ url: r.room_url, token: r.token });
+        } catch (error) {
+          container.style.display = 'none';
+          $('#os-meeting-placeholder').style.display = 'block';
+          btn.disabled = false; btn.textContent = 'Подключиться';
+          toast('Не удалось подключиться к встрече Daily. Повторите попытку.');
+        }
     });
     $('#os-material-upload')?.addEventListener('click',async()=>{const f=$('#os-material-file').files?.[0];if(!f)return;const form=new FormData();form.append('file',f);const r=await fetch(`/lesson/${lessonId}/upload`,{method:'POST',headers:{'X-CSRFToken':csrf},body:form}).then(x=>x.json());if(r.success){data.materials.push(r.material);renderMaterials()}else toast(r.error||'Не удалось прикрепить материал')});
     

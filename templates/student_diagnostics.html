@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Диагностика · {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'student' %}
 
-{% block content %}
+{% block sandbox_content %}
     <section class="glass-panel mb-5 w-full">
         <p class="hero-eyebrow">диагностика</p>
         <h1 class="hero-title mb-1">{{ student.name }}</h1>
@@ -146,7 +146,7 @@
     </section>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('form').forEach(function(form) {

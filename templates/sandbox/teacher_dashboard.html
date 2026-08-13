@@ -18,7 +18,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <a href="/profile/{{ user.id if user else student.student_id }}" class="btn-3d px-5 py-2.5 bg-[#F4F7FA] text-slate-700 font-bold border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-xl active:shadow-none hover:bg-slate-100 flex items-center text-xs gap-2 whitespace-nowrap no-underline">
+                    <a href="{{ url_for('main.universal_profile_view', user_id=(user.id if user else student.user_id)) }}" class="btn-3d px-5 py-2.5 bg-[#F4F7FA] text-slate-700 font-bold border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-xl active:shadow-none hover:bg-slate-100 flex items-center text-xs gap-2 whitespace-nowrap no-underline">
                         <i class="ph-bold ph-user text-base"></i> Профиль
                     </a>
                 </div>
@@ -155,7 +155,7 @@
                     <!-- Mentor Deep Widget -->
                     <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] p-5 flex items-center gap-4 rounded-[1.5rem]">
                         <div class="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 shadow-sm flex items-center justify-center text-slate-400 shrink-0 overflow-hidden">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ tutor_user.username if tutor_user else 'Teacher' }}&backgroundColor=fef3c7" class="w-full h-full object-cover p-1">
+                            <img src="{{ tutor_user.avatar_url if tutor_user and tutor_user.avatar_url else url_for('static', filename='images/default-avatar.svg') }}" class="w-full h-full object-cover p-1" alt="Аватар преподавателя">
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Личный Наставник</p>
@@ -201,10 +201,10 @@
                         </div>
                     </div>
 
-                    <!-- Note for extra features -->
-                    <p class="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest">
-                        📌 <i>Траектории и детальный радар находятся в разработке</i>
-                    </p>
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="btn-3d flex items-center justify-center gap-2 rounded-xl border-2 border-indigo-700 border-b-[4px] bg-indigo-600 px-4 py-3 text-center text-xs font-black text-white no-underline shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none">
+                        <i class="ph-bold ph-chart-polar text-base"></i>
+                        Открыть траекторию и аналитику
+                    </a>
 
                 </div>
             </div>

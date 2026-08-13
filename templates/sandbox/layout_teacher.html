@@ -62,6 +62,7 @@
             scrollbar-width: none;  
         }
     </style>
+    {% block extra_head %}{% endblock %}
 </head>
 <body class="min-h-screen bg-[#F8FAFC]">
     {% block sandbox_sidebar %}
@@ -76,9 +77,9 @@
         <div class="flex flex-col gap-2.5 flex-1 w-full px-3 overflow-y-auto hide-scrollbar">
             
             <!-- 1. Ученики -->
-            <a href="/students" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/students', '/teacher/students', '/sandbox/teacher_dashboard'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="👥 Ученики">
+            <a href="/students" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/students', '/teacher/students'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="👥 Ученики">
                 <i class="ph-bold ph-users text-xl"></i>
-                {% if request.path in ['/students', '/teacher/students', '/sandbox/teacher_dashboard'] %}
+                {% if request.path in ['/students', '/teacher/students'] %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
                 {% endif %}
             </a>
@@ -92,9 +93,9 @@
             </a>
 
             <!-- 3. Работы -->
-            <a href="/assignments" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/assignments', '/assignments/create', '/sandbox/assignments', '/sandbox/create_assignment', '/sandbox/assignment_details', '/sandbox/mentor_task_check'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📚 Работы">
+            <a href="/assignments" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/assignments', '/assignments/create'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📚 Работы">
                 <i class="ph-bold ph-books text-xl"></i>
-                {% if request.path in ['/assignments', '/assignments/create', '/sandbox/assignments', '/sandbox/create_assignment', '/sandbox/assignment_details', '/sandbox/mentor_task_check'] %}
+                {% if request.path in ['/assignments', '/assignments/create'] %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
                 {% endif %}
             </a>
@@ -108,9 +109,9 @@
             </a>
 
             <!-- 5. Библиотека знаний -->
-            <a href="/library" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/library', '/teacher/library', '/sandbox/library'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📁 Библиотека знаний">
+            <a href="/library" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/library', '/teacher/library'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📁 Библиотека знаний">
                 <i class="ph-bold ph-folder text-xl"></i>
-                {% if request.path in ['/library', '/teacher/library', '/sandbox/library'] %}
+                {% if request.path in ['/library', '/teacher/library'] %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
                 {% endif %}
             </a>
@@ -132,9 +133,9 @@
             </a>
 
             <!-- 9. Аналитика -->
-            <a href="/analytics" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/analytics', '/teacher/analytics', '/sandbox/teacher_analytics'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📈 Аналитика">
+            <a href="/analytics" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/analytics', '/teacher/analytics'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📈 Аналитика">
                 <i class="ph-bold ph-chart-line-up text-xl"></i>
-                {% if request.path in ['/analytics', '/teacher/analytics', '/sandbox/teacher_analytics'] %}
+                {% if request.path in ['/analytics', '/teacher/analytics'] %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
                 {% endif %}
             </a>
@@ -153,8 +154,8 @@
 
         <!-- Teacher Mentor Profile Avatar Button -->
         <div class="mt-auto w-full px-3 pt-3">
-            <a href="/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/profile') or request.path in ['/teacher/profile', '/sandbox/mentor_profile'] %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Преподаватель' }}">
-                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}https://api.dicebear.com/7.x/avataaars/svg?seed={{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'TeacherAlex' }}&backgroundColor=b6e3f4{% endif %}" class="w-full h-full object-cover">
+            <a href="/workspace/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/workspace/profile') %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Преподаватель' }}">
+                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-full h-full object-cover" alt="Аватар профиля">
                 <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </a>
         </div>
@@ -190,7 +191,8 @@
       });
     </script>
 
-    {% include 'sandbox/components/dev_switcher.html' %}
+    {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>
 

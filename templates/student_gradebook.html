@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Журнал · {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'students' %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
     @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
@@ -17,7 +17,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
     <section class="glass-panel mb-5 w-full">
       <div class="flex justify-between items-start gap-4 flex-wrap">
         <div>

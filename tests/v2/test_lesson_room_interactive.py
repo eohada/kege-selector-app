@@ -1,92 +1,134 @@
-"""
-QA Автотест интерактивности Комнаты Урока ученика (/sandbox/lesson_room/<id>):
-- Проверка 1: CSRF-защита и валидация ответов тренажёра (POST check_task = 200 без 403)
-- Проверка 2: Интеграция Fabric.js на доске (библиотека и инструменты управления)
-- Проверка 3: Парсинг Markdown и отсутствие сырых "###"
-- Проверка 4: Динамическое имя преподавателя
-"""
-import sys
-import os
-import json
+"""Release regression coverage for the live V2 individual lesson room."""
 
-sys.path.insert(0, os.path.abspath('e:/projects/kege_selector_app_current'))
+import io
+from datetime import datetime, timezone
 
-from wsgi import app
-from core.db_models import db, User, ScheduleLesson
+from tests.v2.test_role_lifecycle_recovery import login_as
 
-PASS = '✅'
-FAIL = '❌'
-results = []
 
-def check(label, condition, detail=''):
-    if condition:
-        results.append((PASS, label, detail))
-        print(f'  {PASS} {label}' + (f' — {detail}' if detail else ''))
-    else:
-        results.append((FAIL, label, detail))
-        print(f'  {FAIL} {label}' + (f' — {detail}' if detail else ''))
+def _create_lesson_context(app, role_users, *, private_note='Только для преподавателя'):
+    from app import db
+    from app.models import Lesson, LessonTask, Tasks
 
-print('\n[1] Инициализация контекста приложения...')
-ctx = app.app_context()
-ctx.push()
+    with app.app_context():
+        task = Tasks(
+            task_number=7,
+            content_html='<p>Проверьте рабочее поле.</p>',
+            answer='42',
+            starter_code='print(42)',
+            is_active=True,
+        )
+        lesson = Lesson(
+            student_id=role_users['student_id'],
+            lesson_date=datetime.now(timezone.utc),
+            duration=60,
+            status='in_progress',
+            topic='Release lesson room',
+            review_summaries={
+                '_studio': {
+                    'phase': 'practice',
+                    'active_pane': 'work',
+                    'follow_student': True,
+                    'timer': {'mode': 'phase', 'seconds': 900, 'running': True, 'updated_at': None},
+                    'phase_timers': {'preparation': 600, 'practice': 900, 'reflection': 600},
+                    'phase_durations': {'preparation': 600, 'practice': 2400, 'reflection': 600},
+                    'agenda': [],
+                    'teacher_private_note': private_note,
+                    'guidance': {'next_step': 'Составь короткий план.', 'hints': ['Начни со входных данных.']},
+                    'board': {'strokes': [], 'revision': 0},
+                },
+            },
+        )
+        db.session.add_all([task, lesson])
+        db.session.flush()
+        lesson_task = LessonTask(
+            lesson_id=lesson.lesson_id,
+            task_id=task.task_id,
+            assignment_type='classwork',
+            status='pending',
+        )
+        db.session.add(lesson_task)
+        db.session.commit()
+        return lesson.lesson_id, lesson_task.lesson_task_id
 
-app.config['WTF_CSRF_ENABLED'] = True
-client = app.test_client()
 
-student_user = User.query.filter_by(username='Student_1').first()
-teacher_user = User.query.filter_by(username='Teacher_1').first()
+def test_student_room_hides_private_teacher_state_and_preserves_shared_board(app, client, role_users):
+    lesson_id, _lesson_task_id = _create_lesson_context(app, role_users)
+    login_as(client, role_users['student_user_id'], 'student')
 
-check('Student_1 найден в БД', student_user is not None)
-check('Teacher_1 найден в БД', teacher_user is not None)
+    state = client.get(f'/lesson/{lesson_id}/studio/state')
+    assert state.status_code == 200
+    payload = state.get_json()
+    assert payload['is_teacher'] is False
+    assert 'teacher_private_note' not in payload['state']
+    assert payload['state']['guidance']['next_step'] == 'Составь короткий план.'
 
-try:
-    # ── 1. GET /sandbox/lesson_room/1 — Проверка подключения Fabric.js & элементов управления ──
-    print('\n[2] Проверка GET /sandbox/lesson_room/1 (Fabric.js & Инициализация)...')
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(student_user.id if student_user else 1)
-        sess['sandbox_role'] = 'student'
-        sess['sandbox_student_id'] = 3
-        sess['_fresh'] = True
-
-    r_room = client.get('/sandbox/lesson_room/1')
-    check('GET /sandbox/lesson_room/1 = 200', r_room.status_code == 200)
-    html_room = r_room.data.decode('utf-8', errors='replace')
-
-    check('Библиотека Fabric.js подключена через CDN', 'fabric.min.js' in html_room)
-    check('Кнопка режима кисти (tool-pencil) присутствует', 'id="tool-pencil"' in html_room)
-    check('Кнопка режима выделения (tool-select) присутствует', 'id="tool-select"' in html_room)
-    check('Кнопка добавления прямоугольника (btn-add-rect) присутствует', 'id="btn-add-rect"' in html_room)
-    check('Кнопка добавления текста (btn-add-text) присутствует', 'id="btn-add-text"' in html_room)
-    check('Элемент загрузки изображений (board-image-input) присутствует', 'id="board-image-input"' in html_room)
-
-    # Проверка парсинга Markdown и преподавателя
-    check('Тег <h3> скомпилирован из Markdown', '<h3>' in html_room)
-    check('Сырые символы "### 📐" отсутствуют в HTML конспекта', '### 📐' not in html_room)
-    check('Имя преподавателя присутствует в сайдбаре', ('Даниил Багин' in html_room or 'Teacher_1' in html_room or 'Преподаватель' in html_room))
-
-    # ── 2. POST /sandbox/api/lesson_room/check_task — CSRF и проверка заданий ──
-    print('\n[3] Проверка POST /sandbox/api/lesson_room/check_task с CSRF...')
-    r_check = client.post('/sandbox/api/lesson_room/check_task', json={
-        "lesson_id": 1,
-        "task_id": 1,
-        "answer": "8"
-    }, headers={
-        'X-CSRFToken': 'test_csrf_token'
+    assert client.post(f'/lesson/{lesson_id}/studio/state', json={'phase': 'reflection'}).status_code == 403
+    stroke = client.post(f'/lesson/{lesson_id}/studio/board', json={
+        'action': 'append',
+        'stroke': {
+            'tool': 'line', 'color': '#2563eb', 'width': 4,
+            'points': [{'x': 0.1, 'y': 0.1}, {'x': 0.2, 'y': 0.2}],
+        },
     })
-    check('POST check_task без ошибки 403 (Status = 200)', r_check.status_code == 200)
-    data_check = r_check.get_json()
-    check('ok == True', data_check.get('ok') is True)
-    check('is_correct == True', data_check.get('is_correct') is True)
+    assert stroke.status_code == 200
+    assert stroke.get_json()['board']['strokes'][-1]['author'] == 'student'
+    assert client.post(f'/lesson/{lesson_id}/studio/board', json={'action': 'clear'}).status_code == 403
 
-finally:
-    ctx.pop()
+    signal = client.post(f'/lesson/{lesson_id}/studio/signal', json={'signal': 'need_hint'})
+    assert signal.status_code == 200
+    assert 'teacher_private_note' not in signal.get_json()['state']
 
-print('\n' + '=' * 60)
-passed = sum(1 for s, *_ in results if s == PASS)
-failed = sum(1 for s, *_ in results if s == FAIL)
-print(f'Итог: {PASS} {passed} прошло | {FAIL} {failed} провалено | Всего: {len(results)}')
 
-if failed:
-    sys.exit(1)
-else:
-    sys.exit(0)
+def test_tutor_room_can_manage_materials_and_task_comments(app, client, role_users, tmp_path):
+    lesson_id, lesson_task_id = _create_lesson_context(app, role_users)
+    app.config['LESSON_UPLOAD_ROOT'] = str(tmp_path / 'lesson-materials')
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    state = client.get(f'/lesson/{lesson_id}/studio/state')
+    assert state.status_code == 200
+    assert state.get_json()['is_teacher'] is True
+    assert state.get_json()['state']['teacher_private_note'] == 'Только для преподавателя'
+
+    rejected = client.post(
+        f'/lesson/{lesson_id}/studio/board/image',
+        data={'file': (io.BytesIO(b'not-a-real-png-but-an-upload-fixture'), 'board.png')},
+        content_type='multipart/form-data',
+    )
+    assert rejected.status_code == 400
+
+    uploaded = client.post(
+        f'/lesson/{lesson_id}/studio/board/image',
+        data={'file': (io.BytesIO(b'\x89PNG\r\n\x1a\n' + b'fixture'), 'board.png')},
+        content_type='multipart/form-data',
+    )
+    assert uploaded.status_code == 200, uploaded.get_json()
+    assert uploaded.get_json()['url'].startswith(f'/files/lessons/{lesson_id}/')
+
+    created = client.post(
+        f'/lesson/{lesson_id}/task/{lesson_task_id}/teacher-comment/add',
+        json={'body': 'Проверь границы цикла.'},
+    )
+    assert created.status_code == 200
+    comment_id = created.get_json()['comment']['comment_id']
+    updated = client.post(f'/lesson/teacher-comment/{comment_id}/update', json={'body': 'Проверь границы и результат.'})
+    assert updated.status_code == 200
+    assert updated.get_json()['body'] == 'Проверь границы и результат.'
+    assert client.post(f'/lesson/teacher-comment/{comment_id}/delete').status_code == 200
+
+
+def test_unrelated_student_cannot_open_lesson_room(app, client, role_users):
+    from app import db
+    from app.models import Student, User
+
+    lesson_id, _lesson_task_id = _create_lesson_context(app, role_users)
+    with app.app_context():
+        outsider = User(username='lesson_room_outsider', email='lesson_room_outsider@example.test', role='student', is_active=True)
+        db.session.add(outsider)
+        db.session.flush()
+        db.session.add(Student(name='Lesson room outsider', user_id=outsider.id, is_active=True))
+        db.session.commit()
+        outsider_id = outsider.id
+
+    login_as(client, outsider_id, 'student')
+    assert client.get(f'/lesson/{lesson_id}/room').status_code == 403

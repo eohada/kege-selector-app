@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Редактировать работу · {{ assignment.title }}{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .shadow-0--10px-40px-rgba15-23-42-008 { box-shadow: 0 -10px 40px rgba(15,23,42,0.08); }
@@ -19,7 +19,8 @@
 
 {% set active_page = 'assignments' %}
 
-{% block content %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] lg:pl-[6.5rem] px-4 py-6">
 <div class="w-full flex flex-col gap-6 pb-28">
             <div>
                 <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="flex items-center gap-2 text-slate-500 font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 mb-2 no-underline">
@@ -142,9 +143,10 @@
                 </div>
             </div>
 </div>
+</main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script>
         (function() {
             const assignmentId = {{ assignment.assignment_id }};

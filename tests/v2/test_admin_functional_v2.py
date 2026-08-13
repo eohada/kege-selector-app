@@ -1,6 +1,6 @@
 from app import db
 from app.auth.rbac_utils import has_permission
-from app.models import Course, Enrollment, FamilyTie, MaintenanceMode, RolePermission, TaskReview, Tasks, Tester as QaEntity, Topic, User, UserRole
+from app.models import Course, Enrollment, FamilyTie, MaintenanceMode, PromoCode, PromoCodeUsage, RolePermission, TaskReview, Tasks, Tester as QaEntity, Topic, User, UserRole
 from core.db_models import BugReport as QaBugReport, TestCase as QaTestCase
 
 def login_as(client, user_id: int, role: str):
@@ -221,9 +221,48 @@ def test_all_bento_admin_sections_render_for_admin(app, client):
         '/admin/topics',
         '/admin/task-formator',
         '/admin/diagnostics',
+        '/admin/promocodes',
     ):
         response = client.get(path)
         assert response.status_code == 200, path
+
+
+def test_admin_promocode_lifecycle_is_persisted_and_used_codes_are_not_deleted(app, client):
+    admin_id = _admin(app)
+    login_as(client, admin_id, 'admin')
+
+    created = client.post('/admin/promocodes', data={
+        'code': 'release_2026', 'discount_percent': '25', 'is_active': 'on',
+    })
+    assert created.status_code == 302
+    with app.app_context():
+        promo = PromoCode.query.filter_by(code='RELEASE_2026').one()
+        promo_id = promo.id
+        assert promo.discount_percent == 25
+        assert promo.is_active is True
+
+    updated = client.post(f'/admin/promocodes/{promo_id}', data={
+        'code': 'release_2026', 'bonus_days': '14', 'usage_limit': '3',
+    })
+    assert updated.status_code == 302
+    with app.app_context():
+        promo = db.session.get(PromoCode, promo_id)
+        assert promo.bonus_days == 14
+        assert promo.usage_limit == 3
+        db.session.add(PromoCodeUsage(promocode_id=promo_id, user_id=admin_id))
+        db.session.commit()
+
+    deleted = client.post(f'/admin/promocodes/{promo_id}/delete')
+    assert deleted.status_code == 302
+    with app.app_context():
+        retained = db.session.get(PromoCode, promo_id)
+        assert retained is not None
+        assert retained.is_active is False
+
+    invalid = client.post('/admin/promocodes', data={'code': 'bad code', 'discount_percent': '20'})
+    assert invalid.status_code == 302
+    with app.app_context():
+        assert PromoCode.query.filter_by(code='BAD CODE').count() == 0
 
 
 def test_tester_entity_created_from_bento_form_is_active(app, client):

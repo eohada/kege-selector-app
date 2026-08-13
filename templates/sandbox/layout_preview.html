@@ -118,7 +118,7 @@
                 <i class="ph-bold ph-gear text-xl"></i>
             </button>
             <a href="/sandbox/profile" class="w-full aspect-square rounded-[1rem] {% if '/sandbox/profile' in request.path %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative group block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Пользователь' }}">
-                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}https://api.dicebear.com/7.x/avataaars/svg?seed={{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'QAStudent' }}&backgroundColor=e0f2fe{% endif %}" class="w-full h-full object-cover">
+                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-full h-full object-cover" alt="Аватар профиля">
                 <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </a>
 
@@ -126,6 +126,6 @@
     </nav>
     {% endblock %}
     {% block sandbox_content %}{% endblock %}
-    {% include "sandbox/_dev_role_switcher.html" %}
+    {% if show_dev_tools %}{% include "sandbox/_dev_role_switcher.html" %}{% endif %}
 </body>
 </html>

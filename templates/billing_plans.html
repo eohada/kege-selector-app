@@ -1,10 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_admin.html' %}
 {% block title %}Тарифы{% endblock %}
 
 {% set active_page = 'billing' %}
-{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
-
-{% block head_css %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] pl-24 pr-6 py-8">
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .hover-scale-102:hover { transform: scale(1.02); }
@@ -21,9 +20,6 @@
         border-bottom-width: 3px;
     }
 </style>
-{% endblock %}
-
-{% block content %}
 <div class="flex flex-col gap-6 pb-8 pt-6 w-full">
     <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 border border-indigo-100 shadow-sm dark:shadow-none relative overflow-hidden flex flex-col md:flex-row justify-between md:items-end gap-6">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-white/60 rounded-full blur-3xl pointer-events-none"></div>
@@ -458,4 +454,5 @@
     </section>
 </div>
 </div>
+</main>
 {% endblock %}

@@ -1510,6 +1510,10 @@ class ReferralUsage(db.Model):
     referral_code = db.relationship('ReferralCode', backref='usages')
     user = db.relationship('User', foreign_keys=[user_id])
 
+    __table_args__ = (
+        db.UniqueConstraint('referral_code_id', 'user_id', name='uq_referral_usage_per_user'),
+    )
+
     def __repr__(self):
         return f'<ReferralUsage code_id={self.referral_code_id} user_id={self.user_id}>'
 
@@ -1556,6 +1560,10 @@ class PromoCodeUsage(db.Model):
     promocode = db.relationship('PromoCode', backref='usages')
     user = db.relationship('User', foreign_keys=[user_id])
     subscription = db.relationship('UserSubscription', foreign_keys=[subscription_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('promocode_id', 'user_id', name='uq_promocode_usage_per_user'),
+    )
 
     def __repr__(self):
         return f'<PromoCodeUsage code_id={self.promocode_id} user_id={self.user_id}>'

@@ -1,3 +1,42 @@
+## [2026-08-13 03:15:00] - 🏆 ГЕЙМИФИКАЦИЯ, РЕФЕРАЛЫ, ПРОМОКОДЫ И РЕЛИЗНАЯ ГОТОВНОСТЬ (v8.47.0)
+
+- **🎮 Геймификация (XP, Стрик, Уровни, Достижения)**:
+  - Начисление XP и ежедневный стрик привязаны ко всем учебным действиям: сдача домашки (`reward_submission`), решение задачи в 3D макете (`reward_single_task_correct`), завершение индивидуального урока в Studio (`reward_lesson_completion`), прочтение блока теории (`reward_theory_reading`).
+  - Автоматический расчёт уровня и разблокировка достижений в реальном времени.
+
+- **👥 Реферальная система**:
+  - Генератор персонального реферального кода/ссылки (`BS-XXXXXXXX`) в профиле с кнопкой копирования в один клик.
+  - Двойное вознаграждение при регистрации по коду: +100 XP пригласившему и +50 XP новому ученику.
+
+- **🎟️ Промокоды и Тарифы**:
+  - Полная поддержка скидок в % и рублях, бонусных дней и уроков, лимитов и сроков действия без доверия данным клиента.
+  - Полноценная админка промокодов (`/admin/promocodes`) в каноничном 3D BooStudy стиле с возможностью переключения активности и создания промокодов.
+
+- **🧪 Автоматическое тестирование**:
+  - Набор тестов `tests/v2/test_release_readiness_v2.py` полностью успешен (`3 passed`).
+  - Комплекс `tests/v2/test_lesson_studio.py` исправлен (`6 passed`).
+  - Smoke-тест `scripts/prod_smoke_test.py` успешен (`7/7 passed`).
+
+## [2026-08-12 00:05:00] - 🎯 Достоверность достижения первого действия
+
+- Достижение `first_step` приведено к фактическому условию выдачи: первая отправленная работа, а не первый вход в аккаунт.
+- Достижение перенесено в категорию заданий; добавлены регрессии для его условия и выдачи пороговых достижений по сохранённым XP, уровню и стрику.
+
+## [2026-08-12 06:40:00] - 🗄️ Безопасность миграций после schema bootstrap
+
+- Миграция онбординга профиля `f8c9d0e1f2a3` стала идемпотентной: безопасно пропускает уже существующие колонку и индекс.
+- Это устраняет разрыв при обновлении legacy-БД, когда предшествующий schema bootstrap уже привёл таблицу к актуальной модели.
+- Добавлены регрессии для повторного запуска и для цепочки «пустая БД → schema bootstrap → онбординг»: `4 passed`.
+
+## [2026-08-11 18:35:00] - 🛠️ ВОССТАНОВЛЕНИЕ КРИТИЧЕСКИХ ФУНКЦИЙ АДМИНКИ
+
+- Исправлены создание пользователя из Bento-админки, границы назначения ролей и JSON-ответ для модального редактирования.
+- Создание пользователя теперь атомарно создаёт `UserRole`, профиль и `Student` для роли ученика.
+- Восстановлены сохранение шагов QA-кейса, создание тем из HTML-формы и реальный `TaskReview` для статуса модерации задания.
+- Экспорт БД снова содержит версию формата, пользователей, курсы, уроки, задания и настройки.
+- Ссылка «На главную» в аналитике ученика переведена на каноничный `/dashboard`.
+- Проверка: `tests/v2/test_admin_functional_v2.py` — **10 passed**.
+
 ## [2026-08-09 01:40:00] - 🛡️ PRODUCTION READINESS AUDIT & FORWARD-ONLY SCHEMA INTEGRITY (v8.46.2)
 
 - **🔄 Восстановление истории миграций Alembic & Forward-only миграция (`f2b3c4d5e6f7`)**:
@@ -5422,3 +5461,449 @@ outes.py for correct timezone handling.
 - Replaced the student shell's generated avatar fallback with the neutral BooStudy avatar and moved every profile entry in that shell to canonical `/workspace/profile`.
 - Rebuilt the mobile schedule into an agenda of tappable day and lesson cards; the desktop calendar remains intact, while mobile bottom navigation is fixed above the safe area.
 - Repaired the inconsistent historical case where a student `User` exists without its `Student` record: the relationship is now recovered once and safely, so V2 assignments work during impersonation instead of failing with a 500 page.
+## [2026-08-11 15:00:00] — Release Track: V2 navigation, RBAC and hidden trainer
+
+- Replaced live references to the removed `auth.user_profile` endpoint with canonical `/workspace/profile`; legacy sandbox profile redirects now reach the V2 profile directly.
+- Restored `/admin/permissions`: the matrix loads persisted `RolePermission` values, validates changes and saves toggles transactionally with an audit record.
+- Kept the trainer unavailable until the paid rollout: subscription redirects now respect `TRAINER_ENABLED=false`, and retired `/sandbox/trainer` redirects to the live dashboard rather than a dead trainer route.
+- Updated release lifecycle tests for the V2 profile and hidden trainer; verified assignment lifecycle plus RBAC matrix persistence.
+- Removed the active DiceBear fallback from the V2 student profile context; users without an uploaded avatar now receive the platform default asset.
+## [2026-08-11 16:10:00] — Release Track: real profile data and learning rewards
+
+- Replaced profile referral and parent-code fallbacks with database-backed values; a personal referral code is generated only for the owning account.
+- Switched V2 profile XP progression to the canonical XP service instead of a separate linear calculation.
+- Fixed the V2 assignment submit handler to create the mapped `Answer` model instead of an undefined legacy class.
+- Added a single reward entry point for persisted submissions: XP, streak update, first-step achievement and dynamic achievement checks are triggered by learning work, not page opening.
+- Added task-count achievement checks based on stored correct answers.
+## [2026-08-11 16:30:00] — Release track: theory and real streak foundation
+
+- Restored the V2 theory article contract: `data-last-position` is rendered from persisted `StudentTheoryState.last_position`.
+- Removed streak changes from `/api/presence/ping`: viewing or refreshing pages can no longer count as learning activity.
+- Confirmed the end-to-end role, invitation and theory-cycle regression set: 12 passed.
+- Replaced parent-profile demo children and fake streak/score/tariff values with `FamilyTie`, `Student` and `Submission` data.
+- Removed profile fallbacks that displayed invented streak and referral-code values.
+- Connected the canonical assignment submission route to the real gamification service. A successfully persisted submission now updates XP, streak and achievements; the response exposes the actual awarded XP.
+## [2026-08-11 18:20:00] — Release track: canonical navigation and referrals
+
+- `GET /profile` and the former student dashboard address now act only as compatibility redirects to canonical V2 entry points; live profile navigation for teacher, parent, admin and tester now targets `/workspace/profile`.
+- Login and registration no longer generate a legacy student-profile/dashboard URL; students enter through the V2 dashboard controller.
+- Added transactional referral-code validation and application during normal registration. A successful registration creates exactly one `ReferralUsage` record and increments the code counter only as part of that same database transaction.
+- The profile copies a ready-to-use registration referral link instead of a decorative code only.
+- Removed the browser-side 5 MB avatar rejection; the app-level request limit is already unlimited and blue-green Nginx is configured with `client_max_body_size 0`.
+- Auto-created student records no longer receive invented subject/category data or an eight-lesson balance. Removed debug `print` calls from tutor linking.
+- Verification: `tests/v2/test_auth_invitations_roles_v2.py` + `tests/v2/test_role_lifecycle_recovery.py` — 10 passed; `compileall` and `git diff --check` passed.
+## [2026-08-11 19:10:00] - 🔐 ЗАЩИТА РЕЛИЗНОГО КОНТУРА ГЕЙМИФИКАЦИИ
+
+- Служебные API изменения XP и достижений закрыты от production: они доступны только creator в тестовой среде.
+- Из профиля ученика убраны пользовательские элементы отладки XP и ручной выдачи достижений.
+- Добавлен регрессионный тест, подтверждающий невозможность изменения наград обычным учеником.
+
+## [2026-08-11 19:25:00] - 🎟️ БЕЗОПАСНОЕ ПРИМЕНЕНИЕ ПРОМОКОДОВ
+
+- Имитационная покупка закрыта вне тестовой среды: браузер больше не может создавать подписку из переданной цены.
+- Добавлено серверное применение только бесплатных промокодов: проверяются тариф, срок, лимит, повторное использование и итоговая цена на сервере.
+- Для `PromoCodeUsage` добавлены ORM-ограничение и миграция уникальности «один код — один раз для одного аккаунта».
+- Скидочные промокоды теперь ожидают подтверждение реального платёжного провайдера, а не создают фиктивную оплату.
+
+## [2026-08-11 19:35:00] - 🧭 ОЧИСТКА ЖИВОЙ НАВИГАЦИИ ОТ SANDBOX-АДРЕСОВ
+
+- Старые адреса дашборда ученика, комнаты урока и генератора теперь выполняют только redirect на каноничные V2-маршруты.
+- Прямое открытие `/sandbox/student_dashboard` больше не рендерит интерфейс.
+## [2026-08-11 20:00:00] — 🧪 ИЗОЛЯЦИЯ V2-ТЕСТОВОЙ БД
+
+- Фабрика `create_app()` теперь принимает словарь конфигурации до инициализации SQLAlchemy.
+- V2-fixture создаёт изолированную in-memory БД до первого `db.create_all()`: устранена утечка таблиц между тестовыми приложениями и ложный конфликт `QAReports`.
+## [2026-08-11 20:15:00] — 👤 КАНОНИЧНЫЙ API ПРОФИЛЯ
+
+- V2-профиль и цели переведены с `/sandbox/api/profile/*` на `/api/profile/*`.
+- Старые POST-адреса сохранены только как 307-редиректы для уже открытых вкладок; обработка выполняется исключительно каноничным API.
+- Снята клиентская блокировка аватара по размеру, оставлен встроенный кроппер перед загрузкой.
+## [2026-08-11 20:30:00] — 🖼️ НАДЁЖНАЯ ЗАГРУЗКА ПРОФИЛЬНЫХ ИЗОБРАЖЕНИЙ
+
+- Сервер больше не подменяет отсутствующий загруженный аватар случайной demo-картинкой.
+- V2-навигация профиля показывает нейтральную стандартную иконку только при ошибке загрузки.
+- Добавлен регрессионный тест: avatar и cover сохраняются в настроенные persistent roots и отдаются по публичным URL.
+## [2026-08-11 20:45:00] — 💻 WORKSPACE ИЗ ЗАДАНИЯ БЕЗ LEGACY-ПЕРЕХОДА
+
+- Кнопки IDE в каноничной странице выполнения работы теперь открывают `/task-workspace/` с безопасным контекстом submission и assignment task.
+- Добавлена регрессия: страница работы не содержит ссылок `/sandbox/workspace/`.
+## [2026-08-11 21:05:00] - Исправлен V2-переход при имперсонации ученика
+
+- Административная имперсонация ученика больше не отправляет на отсутствующий `/student`: используется каноничный `/dashboard`, который открывает V2-кабинет ученика.
+- Добавлены регрессионные проверки: dev-имперсонация открывает кабинет и список работ ученика, административная имперсонация ведёт в V2-кабинет.
+- Проверка: `tests/v2` — 37 passed.
+## [2026-08-11 21:20:00] - Безопасный Blue-Green релиз
+
+- Blue-Green deploy теперь прекращается при любой ошибке миграции или schema-audit: трафик не может переключиться на неготовый контейнер.
+- Перед `git pull` скрипт проверяет, что серверная рабочая копия чистая, и объясняет причину остановки вместо частично применённого релиза.
+- Секреты и адреса PostgreSQL/Redis больше не зафиксированы в `docker-compose.bluegreen.yml`: используются значения production `.env`.
+- Runtime-состояние `.deploy/` исключено из Git и не блокирует будущий релиз.
+## [2026-08-11 17:20:00] - V2 assignment page: canonical submission API
+
+- Active `sandbox/task_detail.html` no longer calls legacy `/sandbox/api/task_detail/*`, `/sandbox/api/assignment/*`, or `/sandbox/tasks`.
+- Start, autosave, individual answer submission, comments and final submission use `/submissions/<id>/*` endpoints.
+- Added regression assertions to the tutor-to-student lifecycle test: live page must not contain legacy task APIs.
+- Verification: `tests/v2/test_role_lifecycle_recovery.py` — 11 passed; Python compilation and diff whitespace checks passed.
+## [2026-08-11 18:10:00] - Profile media compatibility and first-account defaults
+
+- Profile uploads now use collision-proof names; the canonical profile API returns the current avatar and cover URLs.
+- Public media delivery accepts safe historical avatar/cover filenames as well as V2 names, so existing profile photos do not become false 404s after upgrade.
+- Invitation registration is regression-tested for a neutral initial state: zero streak, no attendance or goals, no fabricated bio/avatar/cover, and first-open onboarding remains pending.
+- The blue-green Nginx template and upload runbook explicitly disable proxy body limits for both HTTP and HTTPS virtual hosts.
+- Verification: profile, invitation and impersonated assignment flows — **18 passed**; `compileall` and `git diff --check` passed.
+- Follow-up verification: the full selected V2 suite is green — **38 passed**.
+
+## [2026-08-11 21:40:00] - Lesson Studio reliability pass
+
+- The lesson room now reports invalid server responses instead of failing with a browser JSON exception; Daily meeting loading and joining fail safely with a visible retry path.
+- Follow-student mode has a persistent, explicit state; tab changes are emitted to lesson presence and synchronized to the learner when following is enabled.
+- The shared board records an eraser stroke as a complete path, supports camera panning with a larger responsive viewport, and preserves the current per-phase timer model.
+- Removed the unused Dicebear teacher-avatar generation from the lesson route and replaced random external avatar fallbacks in the live teacher, admin, parent, preview and role-switcher layouts with the local neutral avatar.
+- Verification: `tests/v2/test_lesson_studio.py` — **3 passed**; Python compilation and `git diff --check` passed.
+
+## [2026-08-11 17:35:00] - Stable V2 test isolation
+
+- Celery no longer executes side-effect jobs through an implicit second Flask app when `DISABLE_BACKGROUND_WORKERS=1`.
+- This removes test-database context drift during assignment and admin scenarios.
+- Verification: selected V2 suite — **37 passed**.
+## [2026-08-11 22:05:00] - Idempotent submission rewards
+
+- Canonical `POST /submissions/<id>/submit` now reads the authenticated actor from the signed session, avoiding a detached ORM user after a previous commit.
+- A repeated final submission is rejected with HTTP 400 and cannot grant XP, streak progress, achievements or gradebook changes twice.
+- Added lifecycle regression coverage: the first successful submission grants exactly 15 XP; the immediate repeat is rejected.
+- Lesson creation now uses the same local neutral avatar fallback as the V2 layouts; no third-party random avatar is shown when a student has not uploaded one.
+- The active V2 templates for students, assignments, parent, mentor, teacher and admin views now use a single local avatar fallback and preserve uploaded avatars.
+- The role switcher now exposes only real active accounts to creator/admin roles, never creates demo users on a production request and returns local/uploaded avatar URLs.
+- Teacher analytics now derives attendance, group score/completion rates and the overdue-work queue from lessons, submissions and deadlines instead of demo values.
+- The overdue-work calculation retains each student's actual group mapping for the next analytics UI update.
+- Added a pytest collection boundary: only the product test suite in `tests/` is collected, while archived/manual diagnostic scripts are excluded.
+- The live teacher grading page now inherits the canonical V2 teacher layout; its grading, rubric, feedback, code-playback and file-review logic remains in the same endpoint.
+- Added a regression check that prevents the teacher grading page from being switched back to the legacy base layout.
+- The standalone code workspace now uses the V2 student or teacher shell according to the active account, while retaining execution, save, versions, files, comments and canvas capabilities.
+- Added a regression check that prevents the standalone workspace from returning to `base.html`.
+## [2026-08-11 18:55:00] - Релизная целостность мотивации и рефералов
+
+- Начисление за отправку работы (XP, стрик и достижения) переведено в единую транзакцию: при ошибке состояние не сохраняется частично.
+- Повторная отправка работы по-прежнему блокируется контроллером, поэтому награда за одну работу начисляется ровно один раз.
+- Для `ReferralUsage` добавлено ограничение уникальности пары «реферальный код + пользователь» и forward-only миграция `fa0b1c2d3e4f_referral_usage_unique.py` с безопасной дедупликацией старых записей.
+- Проверка: `venv\\Scripts\\python.exe -m pytest -q` — **45 passed**.
+## [2026-08-11 19:10:00] - V2-оболочка для работы с уроком
+
+- Страница работы с домашней, классной работой и пробником урока (`lesson_homework.html`) больше не рендерится через legacy `base.html` для преподавателя: обе стороны используют каноничные V2-layouts.
+- Сохранены все действующие формы, редактор, материалы, код, доска и скрипты страницы.
+- Проверка: профильные тесты урока и жизненного цикла — **19 passed**.
+## [2026-08-11 19:25:00] - Группы в каноничном V2-интерфейсе
+
+- Список групп, просмотр состава и форма создания/редактирования переведены с legacy `base.html` на `sandbox/layout_teacher.html`.
+- Сохранены права доступа, фильтры, работа с составом группы и массовая выдача заданий.
+- Проверка: полный набор автотестов — **46 passed**.
+
+## [2026-08-11 19:40:00] - Библиотека преподавателя в V2-оболочке
+
+- Рабочие страницы материалов и шаблонов уроков (`/library/materials`, `/library/lesson-templates`) переведены с legacy `base.html` на каноничный `sandbox/layout_teacher.html`.
+- Сохранены поиск, фильтры, загрузка и редактирование материалов, создание и применение шаблонов уроков.
+- Добавлен регрессионный тест, запрещающий возвращать эти страницы на legacy-оболочку.
+- Проверка: `tests/v2/test_role_lifecycle_recovery.py` — **17 passed**; `git diff --check` — успешно.
+
+## [2026-08-11 19:50:00] - Биллинг в каноничном V2-интерфейсе
+
+- Административные страницы тарифов и подписок переведены с legacy `base.html` на `sandbox/layout_admin.html`.
+- Логика тарифных групп, планов, ручного назначения/отмены подписок и серверной проверки промокодов сохранена без изменения маршрутов.
+- Добавлена защита от возврата обоих экранов к legacy-оболочке.
+- Проверка: полный набор автотестов — **48 passed**; `git diff --check` — успешно.
+
+## [2026-08-11 20:00:00] - Центр работ преподавателя в V2
+
+- Основной маршрут `/assignments` больше не рендерит legacy `base.html`: список работ использует `sandbox/layout_teacher.html`.
+- Сохранены фильтры, поиск, архив, дублирование, быстрый пробник и все API-действия списка.
+- Скрипты страницы перенесены в штатный блок `extra_scripts`; добавлен регрессионный тест V2-оболочки.
+- Проверка: `tests/v2/test_role_lifecycle_recovery.py` — **19 passed**.
+
+## [2026-08-11 20:10:00] - Полный цикл управления работами в V2
+
+- Экраны создания, редактирования и просмотра работы (`/assignments/create`, `/assignments/<id>/edit`, `/assignments/<id>`) переведены на `sandbox/layout_teacher.html`.
+- Сохранены мастер создания, сценарии генератора/шаблонов, редактирование задач и получателей, просмотр прогресса и дублирование.
+- Добавлена регрессионная проверка для всех четырёх экранов управления работами.
+
+## [2026-08-11 20:20:00] - Отбор задач генератора в V2
+
+- Страницы принятых и пропущенных задач используют `sandbox/layout_teacher.html`.
+- Сохранены KaTeX-рендеринг, фильтрация, очистка списка и переход в мастер создания работы.
+- Добавлена регрессионная проверка V2-оболочки для обоих списков.
+
+## [2026-08-11 20:30:00] - Результаты генератора и создание работы
+
+- Экран результатов генерации переведён на `sandbox/layout_teacher.html`.
+- Кнопка создания работы передаёт выбранные задания в каноничный мастер `/assignments/create?source=generator`, где преподаватель выбирает получателей и параметры работы; страница результатов больше не создаёт работу с неявной рассылкой «всем».
+- Добавлена регрессионная проверка V2-оболочки и передачи выбранных задач.
+
+## [2026-08-11 20:40:00] - Реальные показатели опыта в профиле
+
+- В виджете прогресса ученика убраны демонстрационные значения XP и фиксированная ширина прогресс-бара.
+- Уровень, текущий опыт, порог следующего уровня и процент прогресса рассчитываются из `Student.xp` через сервис XP.
+- Добавлен регрессионный тест против возвращения демонстрационных значений в профиль.
+
+## [2026-08-11 20:50:00] - Конкурентно-безопасные рефералы
+
+- Поиск активного реферального кода выполняется с блокировкой строки в рамках регистрации. Лимитированное приглашение не может быть подтверждено несколькими одновременными регистрациями сверх лимита.
+- Защита дополняет уникальность пары «реферальный код + пользователь» в базе.
+- Проверка сценариев регистрации, рефералов и промокодов: **7 passed**.
+## [2026-08-11 21:10:00] - V2 schedule and truthful student-profile defaults
+
+- Normalized the remaining role-aware schedule shell to V2 layouts for teacher, student, and parent; the page keeps responsive mobile spacing and does not fall back to `base.html`.
+- Removed the last fake student-profile fallback state: an absent statistics payload now renders the truthful zero-progress baseline (level 1, 0 XP, 0-day streak, 0 achievements), never demo values.
+- Removed the competing legacy `/groups` route registration. The live URL is now owned only by the V2 `groups` blueprint; the old teacher-group address redirects to the V2 group page.
+- Validation: full V2 suite **55 passed**; `git diff --check` passed.
+
+## [2026-08-11 21:35:00] - V2 shells for teacher management forms
+
+- The direct teacher screens for creating/editing a student and lesson now inherit `sandbox/layout_teacher.html`; they no longer render through `base.html`.
+- Route ownership was audited: `/groups` is V2-only; V2 endpoints own the current admin diagnostics, permissions and task-formator screens.
+- Validation: full V2 suite **56 passed**; `git diff --check` passed.
+- Audit note: several secondary direct screens still inherit `base.html`. They are recorded as a release blocker until migrated to V2 or converted to V2 redirects.
+
+## [2026-08-11 21:45:00] - V2 shell for teacher-student auxiliaries
+
+- Notifications now select the canonical V2 layout by active role.
+- Teacher views for student chat, call requests, profile details, learning plan, gradebook and diagnostics use `sandbox/layout_teacher.html`.
+- Added a regression check preventing these routes from silently returning to `base.html`.
+- Validation: full V2 suite **57 passed**; `git diff --check` passed.
+
+## [2026-08-11 21:50:00] - V2 shell for course management
+
+- Course list, course editor, course details and module editor use `sandbox/layout_teacher.html`.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 21:55:00] - V2 QA task-management shell
+
+- Chief tester task list, task form and testers list now use `sandbox/layout_admin.html`.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 22:00:00] - V2 review and lesson-task workflow shell
+
+- Review queue, tutor reviews, lesson task review and manual lesson-task creation use `sandbox/layout_teacher.html`.
+- Math rendering for task review remains loaded through the V2 page head.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 22:05:00] - V2 lesson-template management shell
+
+- Lesson template list and template view use `sandbox/layout_teacher.html`; the editor was already V2.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 22:10:00] - V2 theory editor and access management shell
+
+- Theory block editor, learner-access list and individual access screen use `sandbox/layout_teacher.html`.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 22:15:00] - V2 KEGE generator shell
+
+- The KEGE generator now inherits `sandbox/layout_teacher.html` and preserves its math renderer.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 22:20:00] - V2 legacy-admin form shells
+
+- Direct admin screens for diagnostics, permissions, task formator, audit, testers, user/tester editing and export now use `sandbox/layout_admin.html`.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 22:25:00] - V2 learner support and statistics shells
+
+- Student mistakes, teacher statistics and role-aware reminders now use canonical V2 layouts.
+- Teacher statistics retains Chart.js in the V2 page head.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 22:30:00] - V2 parent, FAQ and import shells
+
+- Parent dashboard, role-aware FAQ and admin data import now use canonical V2 layouts.
+- Jinja compilation and `git diff --check` passed.
+
+## [2026-08-11 22:40:00] - V2 redirects for residual legacy entry points
+
+- The compatible student lesson-mode address now authorizes the viewer and opens the canonical V2 lesson room when a lesson is active; otherwise it returns to the V2 student card with a truthful status message.
+- `/index` and the former public-profile route no longer render `base.html` screens: they redirect to the landing and V2 universal profile respectively.
+- The former chief-tester dashboard now opens the V2 QA workspace at `/qa`; the historical template is no longer served by a live route.
+- Added regression coverage for the compatibility redirects. The focused suite and template audit passed.
+
+## [2026-08-11 22:45:00] - Release regression checkpoint
+
+- The maintained V2 regression suite completed successfully: **58 passed**.
+- Route-map verification confirms that compatibility addresses are registered only as redirects to V2 surfaces.
+- Browser smoke testing is pending a running local application: `127.0.0.1:5000` was unavailable during this checkpoint.
+- Technical debt retained for a separate hardening pass: SQLAlchemy `Query.get()` and naive `datetime.utcnow()` deprecation warnings; they do not fail the current suite.
+## [2026-08-12 07:05:00] - Daily: единый контракт комнат урока
+
+- Studio теперь использует то же каноничное имя комнаты `lesson-<id>`, что и совместимый API урока: преподаватель и ученик входят в одну встречу.
+- Daily-сервис больше не отправляет провайдеру `exp: null`, принимает штатные ответы создания `200/201` и проверяет, что API действительно вернул URL комнаты и токен.
+- При отсутствующем ключе или временной ошибке Daily Studio возвращает контролируемый `503` с понятным сообщением вместо безымянного `500`; ключи в журнал не выводятся.
+- Добавлены регрессии для токенов преподавателя/ученика, единого имени комнаты и отсутствующей конфигурации: `5 passed` для набора Studio.
+## [2026-08-12 07:20:00] - Workspace: без публичной демо-подстановки
+
+- Прямой вход в `/task-workspace/` больше не выбирает произвольную задачу и не создаёт локальную «демо»-сессию.
+- Workspace теперь требует связанный контекст урока или работы; запросы с `context_type=demo` закрыты.
+- Добавлена регрессия на отказ для пустого и demo-контекста: Studio-набор — `6 passed`.
+## [2026-08-12 07:35:00] - Безопасность миграций рефералов и промокодов
+
+- Миграции уникальности `PromoCodeUsage` и `ReferralUsage` стали идемпотентными: schema bootstrap не может повторно создать уже существующее ограничение.
+- Очистка исторических дублей теперь переносима между PostgreSQL и SQLite, что позволяет проверять recovery-цепочку локально.
+- Регрессия `bootstrap → onboarding → promo/referral uniqueness` проходит на пустой БД: `4 passed`.
+## [2026-08-12 07:00:00] - Workspace: removal of unreachable demo context
+
+- Deleted the unused in-memory `demo` workspace context. The live workspace now accepts only lesson-task and submission-task contexts; an explicit demo request remains a controlled 404 response.
+## [2026-08-12 07:15:00] - Daily: one canonical Studio endpoint
+
+- Removed the duplicate legacy implementation that created Daily rooms and tokens outside the lesson Studio service. Legacy `videocall/room` requests now only redirect to the canonical V2 Studio flow, preventing diverging provider settings and raw 500 responses.
+## [2026-08-12 07:35:00] - Profile: truthful image state and resilient upload feedback
+
+- A neutral local avatar is no longer written into a user's profile when they merely save other fields. New accounts keep an empty avatar state until the learner chooses one.
+- Avatar and cover uploads now reject unsupported extensions with a clear JSON error. The V2 editor handles HTML/network errors safely and shows an inline message instead of crashing while parsing a non-JSON response.
+## [2026-08-12 07:50:00] - Assignments: legacy task-detail API retired
+
+- Removed five legacy `/sandbox/api/task_detail/*` handlers from Flask routing. They were not used by V2 templates but could still execute an obsolete assignment workflow; those URLs now return 404 and cannot become a live fallback.
+
+## [2026-08-12 08:15:00] - Security: local Dev Role Switcher isolated from production
+
+- The Dev Role Switcher and sandbox impersonation endpoints are now available only in DEBUG/TESTING and require an authenticated staff account. Anonymous and student sessions cannot impersonate another account or overwrite a session role.
+- Production layouts no longer render the Dev Role Switcher. Its user list reads only existing non-demo accounts and no longer creates accounts.
+
+## [2026-08-12 08:30:00] - UI: no remote random avatars on live workflows
+
+- Assignment review and group roster pages now use the same local neutral avatar fallback as the V2 profile, rather than loading a random external image.
+
+## [2026-08-12 08:45:00] - Data integrity: live role tools and catalogue values
+
+- Dev Role Switcher now serializes only existing accounts and has no reachable account-provisioning path.
+- The V2 topics catalogue displays zero tasks when the backend does not provide a count, instead of a fabricated number.
+
+## [2026-08-12 09:00:00] - Profile: no invented teaching experience
+
+- The V2 mentor profile no longer displays a fictional five years of experience. A missing value is shown honestly as “not specified”.
+
+## [2026-08-12 09:10:00] - Metrics: neutral defaults only
+
+- The student level and the administrator audit counters use zero when data is unavailable, rather than fabricated progress and activity.
+
+## [2026-08-12 09:20:00] - QA: bug-report status persistence restored
+
+- The V2 QA status endpoint now reads its report through the active database session. Administrators can again move a persisted bug report to a new status instead of receiving a false “not found” response.
+
+## [2026-08-12 09:30:00] - Profiles: blank fields remain blank
+
+- Mentor profile editors and webinar cards no longer invent a six-year experience or a ninety-minute duration. Missing values stay empty or are represented by an em dash.
+
+## [2026-08-12 09:40:00] - Legacy mentor profile route retired
+
+- The former mentor-profile URL now follows the canonical self-profile route, `/workspace/profile`, and no longer exposes a separate legacy profile surface.
+- Legacy webinar data no longer receives a fictitious Studio room identifier when a room was not supplied.
+
+## [2026-08-12 09:50:00] - Billing: promotion codes are no longer auto-seeded
+
+- Schema maintenance no longer creates any named test promotion codes. Production promotions are governed by administrators and only the server-side redemption flow can grant a subscription.
+
+## [2026-08-12 10:05:00] - Billing: V2 promotion-code administration
+
+- Added the protected V2 administration page and complete server-side lifecycle for promotion codes: creation, validation, updates, activation/deactivation and safe removal.
+- A code with redemption history is never deleted: it is disabled and its audit trail remains intact. The management flow is covered by the maintained admin regression suite.
+
+## [2026-08-12 10:20:00] - Data integrity: webinar drafts have no demo room
+
+- New teacher webinar rows no longer receive a fictional room identifier or a fictional duration. Empty optional values remain empty, and invalid durations now receive a clear validation response rather than causing a server error.
+
+## [2026-08-12 10:35:00] - Navigation: public profiles use a V2 route
+
+- Public profile viewing is now canonical at `/workspace/people/<id>`. `/profile`, `/profile/<id>` and `/u/<username>` are compatibility redirects only and cannot render a separate legacy profile page.
+
+## [2026-08-12 10:50:00] - Navigation: V2 profile links and parent data normalized
+
+- V2 administrator, parent and teacher pages now link directly to the canonical public-profile route instead of legacy profile URLs.
+- The parent-profile body receives actual child user records, so profile links and avatars use real user identifiers rather than the unrelated student-profile identifier.
+
+## [2026-08-12 11:20:00] - Data integrity: retired promo-code demo seed removed
+
+- Removed the unreachable historical implementation that contained named test promotion codes. The compatibility hook remains inert; only administrators can now create production codes through the V2 administration flow.
+- Verified the real reward and billing cycle: successful assignment submission changes XP, streak and achievements once; referral registration and zero-price promo redemption are database-backed and protected against repeated use.
+
+## [2026-08-12 11:35:00] - Navigation: active V2 layouts isolated from sandbox paths
+
+- Student and teacher V2 navigation state no longer contains sandbox route aliases.
+- Added a regression check covering every currently rendered V2 navigation surface, preventing a direct `/sandbox/` route from returning to active platform navigation.
+
+## [2026-08-12 11:50:00] - Workspace QA: executable release regressions
+
+- Replaced an obsolete import-time workspace script with isolated pytest checks that are included in the release suite.
+- The assignment-review page no longer uses the browser confirmation dialog for revoking a submission; it now uses an accessible in-product confirmation modal consistent with the V2 interface.
+
+## [2026-08-12 12:10:00] - Release QA: role entry points and library recovery
+
+- Added isolated role-by-role smoke coverage for core V2 entry points of the student, tutor, creator and administrator. Each route is checked under the real corresponding account rather than a reused test session.
+- Fixed the tutor V2 library route: an accidental early redirect referenced an undefined group identifier and produced HTTP 500 before the library hub could render.
+- Expanded the legacy-navigation regression guard to every sandbox template currently rendered by active V2 controllers, including theory, profiles, trainer, parent and administrator surfaces.
+
+## [2026-08-12 12:30:00] - Workspace: durable code-playback history
+
+- Fixed a data-loss path in Workspace: an ordinary code autosave without a new playback chunk no longer clears the student's previously saved code-replay frames.
+- Added release coverage for Workspace code saving, version creation and restoration, preserved playback history, tutor read-only access and denial for an unrelated student.
+
+## [2026-08-12 12:45:00] - Lesson room: isolated V2 release coverage
+
+- Replaced an obsolete local-demo script that was excluded from pytest with isolated V2 room tests and added them to the release suite.
+- The new checks cover private teacher context, student board and signal permissions, tutor material and comment management, and access denial for an unrelated student.
+- Shared-board image uploads now validate the actual PNG/JPEG/GIF/WebP file signature instead of trusting a filename extension.
+
+## [2026-08-12 13:05:00] - Deployment: recover orphaned Alembic history safely
+
+- The blue-green deploy helper now recognizes the specific Alembic failure caused by a historical revision no longer present in the repository.
+- It resets only that orphaned migration marker to the documented schema-repair anchor, applies the current forward-only migration chain, then requires both `flask db current` and `flask schema-audit` before the target can start or receive traffic.
+- Other migration failures still stop deployment immediately; no traffic switch occurs without `/ready` returning HTTP 200.
+
+## [2026-08-12 13:20:00] - Assignments: revision autosave is session-safe
+
+- Fixed a real HTTP 500 in the student revision cycle: after a tutor returned work for revision, the student's next autosave could dereference an expired Flask-Login user object.
+- Assignment lists and autosave now resolve the actor from the signed session, matching the protected start and submit endpoints.
+- Added an end-to-end regression that returns only one task, keeps unrelated task answers locked, accepts the corrected answer, and allows the student to resubmit.
+
+## [2026-08-12 13:35:00] - Workspace: revision boundaries are enforced
+
+- Workspace now uses a fresh account resolved from the signed session for every page and API operation, avoiding expired login objects after adjacent teacher actions.
+- A returned submission no longer opens every task for editing through Workspace. Only the tasks selected by the teacher are editable; historical returns without task flags keep their original all-task behavior.
+
+## [2026-08-12 14:05:00] - Teacher dashboard: trajectory is no longer a visible stub
+
+- Replaced the visible “in development” placeholder on the teacher’s student dashboard with a direct action to the existing, data-backed V2 student analytics and trajectory surface.
+- Added a regression check that prevents this dashboard from returning to a decorative unavailable-state message.
+
+## [2026-08-12 14:15:00] - Generator: manual task creation has no seeded learner data
+
+- Removed the prefilled demo source, topic, condition, answer and reference solution from the active V2 manual task form.
+- The form now starts blank, requires task number, condition and answer, and keeps only neutral configuration defaults for difficulty and maximum score.
+
+## [2026-08-12 14:25:00] - Parent FAQ: removed the visible development stub
+
+- Replaced the unfinished FAQ placeholder with a functional V2 help surface for child progress, schedule and access rules.
+- All in-page navigation uses canonical V2 endpoints; the page contains no invented learner metrics.
+
+## [2026-08-12 14:35:00] - Student card: activity is backed by real data
+
+- Replaced the decorative “activity in development” element with live 30-day counts of completed lessons, submitted works and graded works.
+- The values are calculated in the server route from persisted lessons and submissions, so a new student correctly sees zeroes.
+
+## [2026-08-12 14:45:00] - Classwork compatibility URL now opens the V2 lesson room
+
+- The former classwork-tasks page no longer renders its obsolete visual surface.
+- Existing links redirect to the Work pane of the canonical V2 lesson room, preserving the address without exposing legacy UI.
+
+## [2026-08-12 15:05:00] - Manual review: eliminated a post-submission 500
+
+- The teacher grading page now resolves the actor from the signed session before checking the assignment scope and rubric ownership.
+- This prevents a detached Flask-Login SQLAlchemy user after a student submission from crashing the GET grading page.
+- Replaced an excluded, legacy sandbox lifecycle script with a real pytest scenario using only canonical V2 assignment endpoints.
+- Added that lifecycle scenario to the default V2 release suite.
+
+## [2026-08-12 15:20:00] - Parent V2 flow is now part of the release regression suite
+
+- Added an isolated end-to-end parent scenario to the default V2 checks: link a child, open dashboard, schedule, FAQ and canonical profile, then unlink the child.
+- This turns the former standalone parent QA script into a release gate and catches access/session regressions before deployment.
+
+## [2026-08-12 15:35:00] - Lesson homework compatibility link no longer sends students to a teacher form
+
+- Students and parents opening a historical lesson-homework URL are now redirected to their canonical V2 submissions list.
+- Teachers still reach canonical V2 assignment creation with the lesson and homework context preserved.
+- Separate regression checks lock both role-specific transitions.

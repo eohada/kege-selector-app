@@ -43,17 +43,16 @@ def _redirect_after_login(user):
     if user.is_student():
         eff = get_effective_access_for_user(user.id)
         allow_lessons = True if eff.allow_lessons is None else bool(eff.allow_lessons)
-        allow_trainer = True if eff.allow_trainer is None else bool(eff.allow_trainer)
+        allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', False)) and (
+            True if eff.allow_trainer is None else bool(eff.allow_trainer)
+        )
         if eff.status == 'expired':
-            return url_for('auth.user_profile')
+            return url_for('main.workspace_profile')
         if (allow_lessons is False) and (allow_trainer is True):
             return url_for('trainer.trainer_embed')
         if (allow_lessons is False) and (allow_trainer is False):
-            return url_for('auth.user_profile')
-        student = Student.query.filter_by(user_id=user.id).first()
-        if student:
-            return url_for('students.student_profile', student_id=student.student_id)
-        return url_for('main.student_dashboard')
+            return url_for('main.workspace_profile')
+        return url_for('main.dashboard')
     return url_for('main.dashboard')
 
 
@@ -161,20 +160,18 @@ def login():
                     elif user.is_student():
                         eff = get_effective_access_for_user(user.id)
                         allow_lessons = True if eff.allow_lessons is None else bool(eff.allow_lessons)
-                        allow_trainer = True if eff.allow_trainer is None else bool(eff.allow_trainer)
+                        allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', False)) and (
+                            True if eff.allow_trainer is None else bool(eff.allow_trainer)
+                        )
                         if eff.status == 'expired':
-                            next_page = url_for('auth.user_profile')
+                            next_page = url_for('main.workspace_profile')
 
                         elif (allow_lessons is False) and (allow_trainer is True):
                             next_page = url_for('trainer.trainer_embed')
                         elif (allow_lessons is False) and (allow_trainer is False):
-                            next_page = url_for('auth.user_profile')
+                            next_page = url_for('main.workspace_profile')
                         else:
-                            student = Student.query.filter_by(user_id=user.id).first()
-                            if student:
-                                next_page = url_for('students.student_profile', student_id=student.student_id)
-                            else:
-                                next_page = url_for('main.student_dashboard')
+                            next_page = url_for('main.dashboard')
                     elif user.is_admin():
                         next_page = url_for('main.dashboard')
                     else:
@@ -765,22 +762,23 @@ def demo_start():
 
     cinema_scene = request.args.get('cinema_scene', '').strip()
     if cinema_scene in ('1', '2', '3', '4', '5', '6', '7', '8', '9'):
-        dest = url_for('main.student_dashboard')
+        dest = url_for('main.dashboard')
         if cinema_scene == '3':
             dest = url_for('theory.theory_index')
         elif cinema_scene == '4':
-            dest = url_for('main.student_dashboard')
+            dest = url_for('main.dashboard')
         elif cinema_scene == '5' and demo_lesson_id:
             dest = url_for('lessons.lesson_classwork_view', lesson_id=demo_lesson_id) + '?cinema_scene=5'
         elif cinema_scene == '6':
-            dest = url_for('main.student_dashboard')
+            dest = url_for('main.dashboard')
         elif cinema_scene in ('7', '8', '9') and demo_student.student_id:
             dest = url_for('students.student_analytics', student_id=demo_student.student_id) + '?cinema_scene=' + cinema_scene
         if cinema_scene in ('1', '2'):
             dest = dest + ('&' if '?' in dest else '?') + 'cinema_scene=' + cinema_scene
         response = make_response(redirect(dest))
     else:
-        dest = url_for('main.student_dashboard') + ('&' if '?' in url_for('main.student_dashboard') else '?') + 'cinema_scene=0'
+        dashboard_url = url_for('main.dashboard')
+        dest = dashboard_url + ('&' if '?' in dashboard_url else '?') + 'cinema_scene=0'
         response = make_response(redirect(dest))
     response.set_cookie('is_demo', 'true', max_age=60*60*24)
     response.set_cookie('cinemaMode', 'prologue', max_age=60*60*24)
@@ -895,7 +893,7 @@ def user_public_profile(user_id: int):
     Не показывает приватные данные (телефон), только имя/роль/описание/аватар/ID/Telegram.
     """
     if user_id == current_user.id:
-        return redirect(url_for('auth.user_profile'))
+        return redirect(url_for('main.workspace_profile'))
 
     u = User.query.get_or_404(user_id)
 
@@ -961,17 +959,7 @@ def user_public_profile(user_id: int):
         tutor_subjects = [subject_map.get(s.lower().strip(), s) for s in subjects if s]
         active_students_count = db.session.query(Enrollment.student_id).filter_by(tutor_id=u.id, status='active').distinct().count()
 
-    return render_template(
-        'user_public_profile.html',
-        public_user=u,
-        public_display_name=(demo_profile_override.get('display_name') if demo_profile_override else None) or display_name or u.username,
-        creator_cover_url=demo_profile_override.get('creator_cover_url') if demo_profile_override else creator_cover_url,
-        public_numeric_id=(demo_profile_override.get('public_numeric_id') if demo_profile_override else None) or public_numeric_id,
-        cinema_demo_ids=cinema_demo_ids,
-        demo_profile_override=demo_profile_override,
-        tutor_subjects=tutor_subjects,
-        active_students_count=active_students_count,
-    )
+    return redirect(url_for('main.universal_profile_view', user_id=u.id))
 
 @auth_bp.route('/user/profile/update', methods=['POST'])
 @login_required
@@ -1231,6 +1219,14 @@ def register():
                                    username=username, email=email, full_name=full_name)
 
         try:
+            from app.utils.referral_service import ReferralCodeError, get_active_referral_code
+            referral = get_active_referral_code(ref_param)
+        except ReferralCodeError as error:
+            return render_template('auth/register.html', error=str(error),
+                                   tutor=tutor, invite_student=invite_student, ref=ref_param,
+                                   username=username, email=email, full_name=full_name)
+
+        try:
             new_user = User(
                 username=username,
                 email=email if email else None,
@@ -1240,6 +1236,9 @@ def register():
             )
             db.session.add(new_user)
             db.session.flush()
+
+            from app.utils.referral_service import apply_referral_code
+            apply_referral_code(new_user, referral)
 
             db.session.add(UserRole(user_id=new_user.id, role=role))
             profile = UserProfile(user_id=new_user.id, first_name=full_name or username, last_name='')
@@ -1379,7 +1378,7 @@ def register_student_invite(token: str):
             db.session.commit()
 
             flash(f'Регистрация прошла успешно! Вы привязаны к преподавателю {teacher.username if teacher else ""}.', 'success')
-            return redirect(url_for('main.student_dashboard'))
+            return redirect(url_for('main.dashboard'))
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error registering student via invite: {e}", exc_info=True)

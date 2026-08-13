@@ -1,11 +1,11 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% set active_page = active_page|default('theory_manage') %}
 
 {% block title %}Доступ к теории по ученикам · BooStudy{% endblock %}
 
 {% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .shadow-0-4px-12px-rgba139-92-246-005 { box-shadow: 0 4px 12px rgba(139,92,246,0.05); }
@@ -18,7 +18,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
 <div class="access-container pt-6 pb-8 w-full">
     <section class="mb-3 flex flex-col gap-2">
         <div class="back-link">

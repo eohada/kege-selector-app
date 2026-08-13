@@ -2119,7 +2119,6 @@ def ensure_schema_columns(app):
             _migrate_teacher_students_and_invites(app, inspector, table_names, is_postgres)
 
             # ===== Сидирование промокодов =====
-            _seed_promo_codes(app)
 
             try:
                 db.session.commit()
@@ -2487,58 +2486,8 @@ def _make_safe_add_column(inspector, is_postgres):
 
 
 def _seed_promo_codes(app):
-    """Создаёт тестовые промокоды для тестировщиков."""
-    from datetime import datetime, timedelta
-    try:
-        from app.models import PromoCode
-        
-        # Проверим, есть ли уже промокоды
-        if PromoCode.query.first():
-            return
-            
-        # 1. Рабочий промокод на скидку 20%
-        pc1 = PromoCode(
-            code="SALE20",
-            discount_percent=20,
-            is_active=True,
-            note="Скидка 20% на любой тариф"
-        )
-        # 2. Рабочий промокод на фиксированную скидку 3000 руб
-        pc2 = PromoCode(
-            code="BOO3000",
-            discount_rub=3000,
-            is_active=True,
-            note="Скидка 3000 рублей"
-        )
-        # 3. Рабочий промокод на +3 бонусных урока
-        pc3 = PromoCode(
-            code="BONUS3",
-            bonus_lessons=3,
-            is_active=True,
-            note="+3 бесплатных урока к тарифу"
-        )
-        # 4. Просроченный промокод
-        pc4 = PromoCode(
-            code="EXPIRED100",
-            discount_percent=100,
-            is_active=True,
-            expires_at=datetime.utcnow() - timedelta(days=2),
-            note="Просроченный промокод на 100%"
-        )
-        # 5. Отключенный промокод
-        pc5 = PromoCode(
-            code="DISABLED",
-            discount_percent=50,
-            is_active=False,
-            note="Неактивный промокод"
-        )
-        
-        db.session.add_all([pc1, pc2, pc3, pc4, pc5])
-        db.session.commit()
-        logger.info("Successfully seeded default promo codes: SALE20, BOO3000, BONUS3, EXPIRED100, DISABLED")
-    except Exception as e:
-        db.session.rollback()
-        logger.warning(f"Could not seed promo codes: {e}")
+    """Deprecated compatibility hook; production codes are created by administrators."""
+    return
 
 
 def _migrate_teacher_students_and_invites(app, inspector, table_names, is_postgres):

@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}{{ course.title }} · Курс{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     .course-hero {
@@ -41,7 +41,7 @@
 
 {% set active_page = 'students' %}
 
-{% block content %}
+{% block sandbox_content %}
 <div class="course-hero w-full">
     <div style="display:flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
         <div style="min-width: 0;">

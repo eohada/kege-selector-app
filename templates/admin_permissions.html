@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_admin.html' %}
 {% block title %}Управление правами доступа · Админ-панель{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     .role-grid {
         display: grid;
@@ -231,7 +231,7 @@
 
 {% set active_page = 'admin' %}
 
-{% block content %}
+{% block sandbox_content %}
 <section class="glass-panel w-full">
     <div class="flex justify-between items-center mb-5">
         <div class="flex items-center gap-4">
@@ -320,7 +320,7 @@
 </section>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
 function selectRole(roleName) {
     document.querySelectorAll('.role-card').forEach(card => {

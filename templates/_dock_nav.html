@@ -12,7 +12,7 @@
         <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="mobile-topbar-btn" aria-label="Уведомления">
             <i class="ph-bold ph-bell-ringing"></i>
         </a>
-        <a {{ spa_main_nav_attrs(url_for('auth.user_profile'), 'profile') }} class="mobile-topbar-btn" aria-label="Профиль">
+        <a {{ spa_main_nav_attrs(url_for('main.workspace_profile'), 'profile') }} class="mobile-topbar-btn" aria-label="Профиль">
             <i class="ph-bold ph-user-circle"></i>
         </a>
     </div>
@@ -196,7 +196,7 @@
                         {% endif %}
                     </button>
                     <div class="profile-dropdown-content" data-profile-menu>
-                        <a {{ spa_main_nav_attrs(url_for('auth.user_profile'), 'profile') }} class="profile-item">
+                        <a {{ spa_main_nav_attrs(url_for('main.workspace_profile'), 'profile') }} class="profile-item">
                             <i class="ph-bold ph-user text-base text-muted"></i>
                             <span>Профиль</span>
                         </a>

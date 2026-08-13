@@ -80,7 +80,7 @@ def get_rank_title(level, subject='Информатика'):
         return f"Божество алгоритмов (ур. {level})"
     return f"Ученик уровня {level}"
 
-def add_xp_to_student(student, amount):
+def add_xp_to_student(student, amount, *, commit=True):
     """Добавляет XP ученику, пересчитывает уровень и сохраняет в базу."""
     if not student or amount <= 0:
         return False
@@ -90,10 +90,12 @@ def add_xp_to_student(student, amount):
         new_level = calculate_level_from_xp(student.xp)
         leveled_up = new_level > (student.level or 1)
         student.level = new_level
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return leveled_up
     except Exception as e:
-        db.session.rollback()
+        if commit:
+            db.session.rollback()
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error adding XP to student {student.student_id}: {e}", exc_info=True)

@@ -35,6 +35,9 @@ def make_celery(app=None):
         app = flask_app
 
     is_local = (os.environ.get('ENVIRONMENT') or 'local') == 'local'
+    background_workers_disabled = (os.environ.get('DISABLE_BACKGROUND_WORKERS') or '').strip().lower() in {
+        '1', 'true', 'yes', 'on'
+    }
     celery.conf.update(
         broker_url=app.config.get('CELERY_BROKER_URL', 'redis://localhost:6379/0') if not is_local else 'memory://',
         result_backend=None if is_local else app.config.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'),
@@ -47,8 +50,12 @@ def make_celery(app=None):
         task_soft_time_limit=90,
         worker_prefetch_multiplier=1,
         worker_max_tasks_per_child=100,
-        task_always_eager=is_local,
-        task_ignore_result=is_local,
+        # Tests and maintenance commands must never execute side effects in a
+        # second implicit Flask application.  In production Celery workers
+        # remain responsible for delivery; local development can still run
+        # eagerly when background work is explicitly enabled.
+        task_always_eager=is_local and not background_workers_disabled,
+        task_ignore_result=is_local or background_workers_disabled,
     )
 
     beat = dict(app.config.get('CELERY_BEAT_SCHEDULE') or {})

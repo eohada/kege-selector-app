@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
-from flask import render_template, request, redirect, url_for, flash, abort
+from flask import render_template, request, redirect, url_for, flash, abort, current_app, jsonify
 from flask_login import login_required, current_user
 
 from app.billing import billing_bp
@@ -338,6 +338,12 @@ def billing_subscription_cancel(subscription_id: int):
 @billing_bp.route('/billing/plans/buy_simulate', methods=['POST'])
 @login_required
 def billing_plans_buy_simulate():
+    """Legacy test route. Real subscriptions may not be created from browser data."""
+    if not current_app.config.get('TESTING'):
+        abort(404)
+    if not current_user.is_creator():
+        abort(403)
+
     from datetime import datetime, timedelta
     import re
     from flask import request, redirect, url_for, flash
@@ -459,37 +465,67 @@ def billing_plans_buy_simulate():
 @billing_bp.route('/billing/promocode/check', methods=['POST'])
 @login_required
 def billing_promocode_check():
-    import datetime
-    from flask import request, jsonify
-    from app.models import PromoCode
-    
-    code_str = (request.json.get('code') or '').strip().upper()
-    if not code_str:
-        return jsonify({'success': False, 'message': 'Промокод не введен.'})
-        
-    promocode = PromoCode.query.filter_by(code=code_str).first()
-    if not promocode:
-        return jsonify({'success': False, 'message': 'Такого промокода не существует.'})
-        
-    if not promocode.is_active:
-        return jsonify({'success': False, 'message': 'Этот промокод неактивен.'})
-        
-    now = datetime.datetime.utcnow()
-    if promocode.starts_at and promocode.starts_at > now:
-        return jsonify({'success': False, 'message': 'Этот промокод еще не действует.'})
-        
-    if promocode.expires_at and promocode.expires_at < now:
-        return jsonify({'success': False, 'message': 'Срок действия промокода истек.'})
-        
-    if promocode.usage_limit is not None and promocode.usage_count >= promocode.usage_limit:
-        return jsonify({'success': False, 'message': 'Этот промокод уже использован максимальное количество раз.'})
-        
-    # Все ок! Возвращаем детали
+    from app.billing.promo_service import PromoCodeError, get_eligible_promo_code, get_final_price
+
+    data = request.get_json(silent=True) or request.form
+    try:
+        plan_id = int(data.get('plan_id'))
+    except (TypeError, ValueError):
+        plan_id = None
+    if not plan_id:
+        return jsonify({'success': False, 'message': 'Сначала выберите тариф.'}), 400
+    plan = TariffPlan.query.filter_by(plan_id=plan_id, is_active=True).first()
+    if not plan:
+        return jsonify({'success': False, 'message': 'Тариф недоступен.'}), 404
+    try:
+        promocode = get_eligible_promo_code(data.get('code'), current_user.id, plan)
+    except PromoCodeError as error:
+        return jsonify({'success': False, 'message': str(error)}), 400
+
     return jsonify({
         'success': True,
         'code': promocode.code,
         'discount_percent': promocode.discount_percent,
         'discount_rub': promocode.discount_rub,
         'bonus_lessons': promocode.bonus_lessons,
-        'bonus_days': promocode.bonus_days
+        'bonus_days': promocode.bonus_days,
+        'final_price_rub': get_final_price(plan, promocode),
+        'can_redeem_without_payment': get_final_price(plan, promocode) == 0,
     })
+
+
+@billing_bp.route('/billing/promocode/redeem', methods=['POST'])
+@login_required
+def billing_promocode_redeem():
+    """Redeem only a zero-price promo; paid orders require a verified provider webhook."""
+    from app.billing.promo_service import PromoCodeError, redeem_free_promo
+
+    data = request.get_json(silent=True) or request.form
+    try:
+        plan_id = int(data.get('plan_id'))
+    except (TypeError, ValueError):
+        plan_id = None
+    if not plan_id:
+        return jsonify({'success': False, 'message': 'Сначала выберите тариф.'}), 400
+    try:
+        subscription = redeem_free_promo(data.get('code'), current_user.id, plan_id)
+        db.session.commit()
+    except PromoCodeError as error:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(error)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception('Failed to redeem promo code for user_id=%s', current_user.id)
+        return jsonify({'success': False, 'message': 'Не удалось применить промокод.'}), 500
+
+    try:
+        audit_logger.log(
+            action='billing_promocode_redeem',
+            entity='UserSubscription',
+            entity_id=subscription.subscription_id,
+            status='success',
+            metadata={'user_id': current_user.id, 'plan_id': plan_id},
+        )
+    except Exception:
+        logger.warning('Could not audit promo redemption subscription_id=%s', subscription.subscription_id, exc_info=True)
+    return jsonify({'success': True, 'subscription_id': subscription.subscription_id})

@@ -65,6 +65,14 @@ def test_individual_lesson_studio_separates_teacher_and_student_controls(app, cl
     assert updated.get_json()['state']['teacher_private_note'] == 'Только для преподавателя'
     assert updated.get_json()['state']['phase_timers']['practice'] == 2400
 
+    follow_state = client.post(
+        f'/lesson/{lesson_id}/studio/state',
+        json={'phase': 'practice', 'active_pane': 'board', 'follow_student': True},
+    )
+    assert follow_state.status_code == 200
+    assert follow_state.get_json()['state']['active_pane'] == 'board'
+    assert follow_state.get_json()['state']['follow_student'] is True
+
     login_as(client, role_users['student_user_id'], 'student')
     student_room = client.get(f'/lesson/{lesson_id}/room')
     student_html = student_room.get_data(as_text=True)
@@ -129,6 +137,16 @@ def test_individual_lesson_studio_separates_teacher_and_student_controls(app, cl
     assert board_text.status_code == 200
     assert board_text.get_json()['board']['strokes'][-1]['tool'] == 'text'
 
+    board_eraser = client.post(
+        f'/lesson/{lesson_id}/studio/board',
+        json={'action': 'append', 'stroke': {
+            'tool': 'eraser', 'width': 18,
+            'points': [{'x': 12, 'y': 12}, {'x': 32, 'y': 32}],
+        }},
+    )
+    assert board_eraser.status_code == 200
+    assert board_eraser.get_json()['board']['strokes'][-1]['tool'] == 'eraser'
+
     timer_state = client.post(
         f'/lesson/{lesson_id}/studio/state',
         json={
@@ -183,13 +201,69 @@ def test_teacher_finishes_lesson_and_student_receives_readonly_outcome(app, clie
     assert state['outcome']['homework'] == 'Решить две задачи'
     assert 'teacher_private_note' not in state
 
-    video_room = client.get(f'/lesson/{lesson_id}/videocall/room')
-    assert video_room.status_code == 200
-    assert video_room.get_json()['success'] is True
-    assert video_room.get_json()['room_name'] == f'lesson-{lesson_id}'
+    legacy_video_room = client.get(f'/lesson/{lesson_id}/videocall/room', follow_redirects=False)
+    assert legacy_video_room.status_code == 302
+    assert legacy_video_room.headers['Location'].endswith(f'/lesson/{lesson_id}/room')
+
+    legacy_video_join = client.post(f'/lesson/{lesson_id}/videocall/room', follow_redirects=False)
+    assert legacy_video_join.status_code == 307
+    assert legacy_video_join.headers['Location'].endswith(f'/lesson/{lesson_id}/studio/daily/join')
 
     material_delete = client.post(f'/lesson/{lesson_id}/material/delete', json={'url': '/private-file'})
     assert material_delete.status_code == 403
+
+
+def test_studio_daily_join_uses_canonical_room_and_role_token(app, client, role_users, monkeypatch):
+    lesson_id, _ = _studio_fixture(app, role_users)
+    calls = []
+
+    monkeypatch.setattr(
+        'app.lessons.routes.DailyService.get_or_create_room',
+        lambda room_name: calls.append(('room', room_name)) or f'https://example.daily.co/{room_name}',
+    )
+    monkeypatch.setattr(
+        'app.lessons.routes.DailyService.create_meeting_token',
+        lambda room_name, user_name, is_owner: calls.append(('token', room_name, user_name, is_owner)) or 'daily-token',
+    )
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    teacher_response = client.post(f'/lesson/{lesson_id}/studio/daily/join')
+
+    assert teacher_response.status_code == 200
+    assert teacher_response.get_json()['room_url'] == f'https://example.daily.co/lesson-{lesson_id}'
+    assert calls[0] == ('room', f'lesson-{lesson_id}')
+    assert calls[1][0] == 'token'
+    assert calls[1][1] == f'lesson-{lesson_id}'
+    assert calls[1][3] is True
+
+    calls.clear()
+    login_as(client, role_users['student_user_id'], 'student')
+    student_response = client.post(f'/lesson/{lesson_id}/studio/daily/join')
+
+    assert student_response.status_code == 200
+    assert calls[1][3] is False
+
+
+def test_studio_daily_join_reports_missing_provider_configuration(app, client, role_users, monkeypatch):
+    lesson_id, _ = _studio_fixture(app, role_users)
+    monkeypatch.setattr(
+        'app.lessons.routes.DailyService.get_or_create_room',
+        lambda room_name: (_ for _ in ()).throw(ValueError('Daily API key is not configured')),
+    )
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    response = client.post(f'/lesson/{lesson_id}/studio/daily/join')
+
+    assert response.status_code == 503
+    assert response.get_json()['success'] is False
+    assert 'настроен' in response.get_json()['error']
+
+
+def test_workspace_rejects_demo_and_missing_context(client, role_users):
+    login_as(client, role_users['student_user_id'], 'student')
+
+    assert client.get('/task-workspace/').status_code == 400
+    assert client.get('/task-workspace/?context_type=demo').status_code == 404
 
 
 def test_lesson_material_upload_persists_in_configured_storage(app, client, role_users, tmp_path):

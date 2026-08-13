@@ -87,11 +87,11 @@ def _lesson_room_url(lesson_id: int) -> str:
 
 
 def _profile_unlink_hint_url() -> str:
-    path = url_for('auth.user_profile')
+    path = url_for('main.workspace_profile')
     base = _external_base_url()
     if base:
         return base + path
-    return url_for('auth.user_profile', _external=True)
+    return url_for('main.workspace_profile', _external=True)
 
 
 def resolve_user_from_init_data(body: dict | None) -> tuple[dict | None, tuple[Any, ...] | None, str | None]:

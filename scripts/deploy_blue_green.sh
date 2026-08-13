@@ -31,6 +31,11 @@ DRAIN_SECONDS="${DRAIN_SECONDS:-90}"
 STOP_OLD_AFTER_DRAIN="${STOP_OLD_AFTER_DRAIN:-0}"
 PRUNE_IMAGES_AFTER_DEPLOY="${PRUNE_IMAGES_AFTER_DEPLOY:-0}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-1}"
+# Legacy installations created before Alembic can contain a revision from an
+# abandoned migration history.  A normal upgrade cannot start from an unknown
+# revision, so recover it from the last schema-repair anchor and then apply the
+# current forward-only chain.  This never deletes application data.
+MIGRATION_RECOVERY_ANCHOR="${MIGRATION_RECOVERY_ANCHOR:-f2b3c4d5e6f7}"
 # Celery belongs to the primary compose stack. Rebuilding it through the
 # blue-green file could create duplicate workers and duplicate scheduled jobs.
 UPDATE_CELERY="${UPDATE_CELERY:-0}"
@@ -40,6 +45,14 @@ mkdir -p "$STATE_DIR"
 
 compose() {
     docker compose -f "$COMPOSE_FILE" "$@"
+}
+
+ensure_clean_worktree() {
+    if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+        echo "Deployment stopped: the server checkout contains local changes or untracked files." >&2
+        echo "Commit them to the release branch or move them outside $APP_DIR, then run deploy again." >&2
+        return 1
+    fi
 }
 
 active_color() {
@@ -107,19 +120,45 @@ write_nginx_upstream() {
 
 run_expand_only_migrations() {
     local color="$1"
+    local migration_log
     if [[ "$RUN_MIGRATIONS" != "1" ]]; then
         echo "Skipping migrations because RUN_MIGRATIONS=$RUN_MIGRATIONS"
         return 0
     fi
     echo "Running expand-only migrations on $color"
-    if compose run --rm "$(service_for_color "$color")" flask db upgrade -d /app/migrations \
-        && compose run --rm "$(service_for_color "$color")" flask schema-audit; then
-        return 0
+    migration_log="$(mktemp /tmp/boostudy-migrations-${color}.XXXXXX)"
+    if ! compose run --rm "$(service_for_color "$color")" flask db upgrade -d /app/migrations >"$migration_log" 2>&1; then
+        cat "$migration_log" >&2
+        if ! grep -q "Can't locate revision identified" "$migration_log"; then
+            rm -f "$migration_log"
+            echo "Migration failed. Traffic was not switched." >&2
+            return 1
+        fi
+
+        echo "Recovering an orphaned legacy Alembic revision from $MIGRATION_RECOVERY_ANCHOR"
+        if ! compose run --rm "$(service_for_color "$color")" flask db stamp "$MIGRATION_RECOVERY_ANCHOR" --purge -d /app/migrations; then
+            rm -f "$migration_log"
+            echo "Legacy migration recovery failed. Traffic was not switched." >&2
+            return 1
+        fi
+        if ! compose run --rm "$(service_for_color "$color")" flask db upgrade -d /app/migrations; then
+            rm -f "$migration_log"
+            echo "Migration failed after legacy recovery. Traffic was not switched." >&2
+            return 1
+        fi
+    else
+        cat "$migration_log"
     fi
-    echo "Migration command failed; checking whether /ready already reports migrations OK" >&2
-    compose up -d "$(service_for_color "$color")"
-    wait_ready "$color"
-    echo "Continuing because /ready confirms $color is ready"
+    rm -f "$migration_log"
+
+    if ! compose run --rm "$(service_for_color "$color")" flask db current -d /app/migrations; then
+        echo "Migration state cannot be read after upgrade. Traffic was not switched." >&2
+        return 1
+    fi
+    if ! compose run --rm "$(service_for_color "$color")" flask schema-audit; then
+        echo "Schema audit failed after migrations. Traffic was not switched." >&2
+        return 1
+    fi
 }
 
 deploy() {
@@ -130,6 +169,7 @@ deploy() {
     target_service="$(service_for_color "$target")"
 
     echo "Current: $current, target: $target"
+    ensure_clean_worktree
     git fetch origin "$BRANCH"
     git pull --ff-only origin "$BRANCH"
 

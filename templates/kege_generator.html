@@ -1,10 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% set active_page = 'generator' %}
 {% block title %}Генератор КЕГЭ{% endblock %}
 
 {% block body_class %}{% if active_lesson %}lesson-active{% endif %}{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
 <style>
     .gen-premium-shell {
@@ -64,6 +64,7 @@
         .gen-start-card { position: static; }
     }
 </style>
+<script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 {% endblock %}
 
 {% block head_js %}
@@ -71,7 +72,7 @@
 <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
 {% set is_homework = (assignment_type == 'homework') %}
 {% set is_classwork = (assignment_type == 'classwork') %}
 {% set is_exam = (assignment_type == 'exam') %}
@@ -306,7 +307,7 @@
 </div>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
     window.__GEN_SEED_TASK__ = {{ seed_task_payload | tojson if seed_task_payload else 'null' }};
 </script>

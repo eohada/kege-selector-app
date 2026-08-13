@@ -16,7 +16,9 @@ def register_sandbox_socket(socketio):
 
     @socketio.on('join', namespace='/sandbox')
     def on_join(data):
-        room_id = data.get('room_id', 'demo_lesson_1')
+        room_id = (data.get('room_id') or '').strip()
+        if not room_id:
+            return
         role = data.get('role', 'student')
         
         join_room(room_id)

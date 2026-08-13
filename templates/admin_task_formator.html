@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_admin.html' %}
 {% block title %}Формироватор банка заданий · Админка{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     .tf-grid{display:grid;grid-template-columns:430px 1fr;gap:1.5rem;align-items:start}
     @media (max-width:980px){.tf-grid{grid-template-columns:1fr}}
@@ -36,7 +36,7 @@
 
 {% set active_page = 'admin' %}
 
-{% block content %}
+{% block sandbox_content %}
 <section class="glass-panel mb-5 w-full">
     <div class="panel-head flex justify-between items-start mb-4">
         <div>
@@ -181,7 +181,7 @@
 </section>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
     const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const listEl = document.getElementById('tfList');

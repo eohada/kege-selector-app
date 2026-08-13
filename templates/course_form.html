@@ -1,9 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}{{ title }} · {{ student.name }}{% endblock %}
 
 {% set active_page = 'students' %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     .form-card {
         background: var(--surface-1);
@@ -18,7 +18,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
 <div class="page-header w-full" style="display:flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
     <div>
         <div class="hero-eyebrow">Курс → модули → уроки</div>
@@ -85,7 +85,7 @@
 </div>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('form').forEach(function(form) {

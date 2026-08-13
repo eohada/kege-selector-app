@@ -1,19 +1,15 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 
 {% block title %}Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %} · BooStudy{% endblock %}
 
-{% block body_class %}{% if active_lesson %}lesson-active{% endif %}{% endblock %}
-
-{% block head_css %}
+{% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
-{% endblock %}
-
-{% block head_extra %}
 <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
 <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] lg:pl-[6.5rem] px-4 py-6">
 <section class="glass-panel w-full">
     <div>
         <p class="hero-eyebrow">пропущенные задания</p>
@@ -123,9 +119,10 @@
     </div>
 </section>
 {% endif %}
+</main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script src="{{ url_for('static', filename='loading.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {

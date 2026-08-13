@@ -1,7 +1,7 @@
 {% extends "sandbox/layout_teacher.html" if is_studio_teacher else "sandbox/layout_student.html" %}
 
 {% block sandbox_content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='lesson-studio-os.css') }}?v=20260807-os">
+<link rel="stylesheet" href="{{ url_for('static', filename='lesson-studio-os.css') }}?v=20260811-studio">
 <main class="studio-os-page">
   <div id="lesson-studio-os" class="studio-os" data-lesson-id="{{ lesson_id }}" data-teacher="{{ 'true' if is_studio_teacher else 'false' }}">
     <script id="studio-os-data" type="application/json">{{ {'tasks': tasks_json|safe, 'state': studio_state, 'materials': lesson.materials or [], 'theory_items': theory_items, 'can_open_generator': can_open_task_generator, 'meeting_user': teacher_name if is_studio_teacher else (student.name if student else 'Ученик'), 'video_url': video_url}|tojson }}</script>
@@ -17,7 +17,8 @@
           <div id="os-timer" class="os-timer">00:00</div>
           {% if is_studio_teacher %}
           <button id="os-timer-toggle" class="os-icon-btn"><i class="ph-bold ph-play"></i></button>
-          <div class="os-timer-settings">
+          <div class="os-timer-settings" aria-label="Длительность этапов в минутах">
+            <span class="os-timer-settings-label">мин. по этапам</span>
             <input data-duration="preparation" type="number" min="1" max="240" title="Мин. на подготовку" placeholder="П">
             <input data-duration="practice" type="number" min="1" max="240" title="Мин. на практику" placeholder="Пр">
             <input data-duration="reflection" type="number" min="1" max="240" title="Мин. на итог" placeholder="И">
@@ -59,5 +60,5 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
-<script src="{{ url_for('static', filename='lesson-studio-os.js') }}?v=20260807-os"></script>
+<script src="{{ url_for('static', filename='lesson-studio-os.js') }}?v=20260811-studio"></script>
 {% endblock %}

@@ -239,42 +239,6 @@
                 {{ streak | pluralize_days }}
             </div>
 
-            <!-- Отладочный пульт (только для тестирования/админа) -->
-            <div class="debug-only-control mt-3 pt-3 border-t border-slate-200/50 dark:border-dark-avatar flex flex-wrap items-center justify-between gap-2">
-                <div class="flex items-center gap-1.5">
-                    <input type="number" id="debug-streak-input" class="w-14 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs font-bold text-center text-primary dark:text-white" value="{{ streak }}">
-                    <button onclick="overrideStreak()" class="px-2 py-1 bg-boo-primary hover:bg-purple-600 text-white rounded-lg text-micro font-extrabold transition-all">Установить</button>
-                </div>
-                <label class="flex items-center gap-1 cursor-pointer select-none">
-                    <input type="checkbox" id="debug-streak-freeze" class="rounded border-slate-300 text-boo-primary focus:ring-boo-primary" {% if student and student.streak_frozen %}checked{% endif %} onchange="overrideStreak()">
-                    <span class="text-micro font-bold text-muted">Заморозка</span>
-                </label>
-            </div>
-            <script>
-                async function overrideStreak() {
-                    const days = document.getElementById('debug-streak-input').value;
-                    const frozen = document.getElementById('debug-streak-freeze').checked;
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                    try {
-                        const resp = await fetch('/api/student/{{ student.student_id }}/debug-streak', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-Token': csrfToken
-                            },
-                            body: JSON.stringify({ streak_days: days, streak_frozen: frozen })
-                        });
-                        const res = await resp.json();
-                        if (res.success) {
-                            window.location.reload();
-                        } else {
-                            alert('Ошибка: ' + res.error);
-                        }
-                    } catch(e) {
-                        console.error(e);
-                    }
-                }
-            </script>
         </div>
 
         <!-- Опыт (XP) -->
@@ -315,35 +279,6 @@
                 <span>{{ next_lvl_xp }} XP</span>
             </div>
 
-            <!-- Отладочный пульт (только для тестирования/админа) -->
-            <div class="debug-only-control mt-3 pt-3 border-t border-slate-200/50 dark:border-dark-avatar flex items-center gap-1.5">
-                <input type="number" id="debug-xp-input" class="w-16 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs font-bold text-center text-primary dark:text-white" value="{{ current_xp }}">
-                <button onclick="overrideXP()" class="px-2 py-1 bg-boo-primary hover:bg-purple-600 text-white rounded-lg text-micro font-extrabold transition-all">Установить XP</button>
-            </div>
-            <script>
-                async function overrideXP() {
-                    const xpVal = document.getElementById('debug-xp-input').value;
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                    try {
-                        const resp = await fetch('/api/student/{{ student.student_id }}/debug-xp', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-Token': csrfToken
-                            },
-                            body: JSON.stringify({ xp: xpVal })
-                        });
-                        const res = await resp.json();
-                        if (res.success) {
-                            window.location.reload();
-                        } else {
-                            alert('Ошибка: ' + res.error);
-                        }
-                    } catch(e) {
-                        console.error(e);
-                    }
-                }
-            </script>
         </div>
 
         <!-- GPA -->
@@ -626,15 +561,6 @@
                     color: white !important;
                     border-color: #8b5cf6 !important;
                 }
-                .debug-only-control {
-                    display: none !important;
-                }
-                body.debug-mode-active .debug-only-control {
-                    display: flex !important;
-                }
-                body.debug-mode-active input.debug-only-control {
-                    display: inline-block !important;
-                }
             </style>
             {% set unlocked_keys = get_student_unlocked_achievement_keys(student.student_id) if student else [] %}
             <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6 flex flex-col">
@@ -692,10 +618,6 @@
                                             {{ meta.title }}
                                         {% endif %}
                                     </span>
-                                    <input type="checkbox" class="debug-only-control rounded border-slate-300 text-boo-primary focus:ring-boo-primary w-3.5 h-3.5 cursor-pointer shrink-0" 
-                                           {% if has_it %}checked{% endif %} 
-                                           onchange="toggleAchievement('{{ key }}', this)"
-                                           title="Выдать/забрать (Создатель)">
                                 </div>
                                 <p class="text-micro text-muted dark:text-dark-muted leading-relaxed">
                                     {% if is_secret and not has_it %}
@@ -749,33 +671,6 @@
                             card.style.display = 'none';
                         }
                     });
-                }
-            </script>
-
-            <script>
-                async function toggleAchievement(key, checkbox) {
-                    const action = checkbox.checked ? 'grant' : 'revoke';
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-                    try {
-                        const resp = await fetch('/api/student/{{ student.student_id }}/debug-achievements', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-Token': csrfToken
-                            },
-                            body: JSON.stringify({ achievement_key: key, action: action })
-                        });
-                        const res = await resp.json();
-                        if (res.success) {
-                            window.location.reload();
-                        } else {
-                            alert('Ошибка: ' + res.error);
-                            checkbox.checked = !checkbox.checked;
-                        }
-                    } catch(e) {
-                        console.error(e);
-                        checkbox.checked = !checkbox.checked;
-                    }
                 }
             </script>
 

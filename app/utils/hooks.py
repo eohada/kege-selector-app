@@ -683,7 +683,7 @@ def register_hooks(app):
 
             student_safe_endpoints = {
                 'auth.logout',
-                'auth.user_profile',
+                'main.workspace_profile',
                 'main.dashboard',
                 'main.student_dashboard',
                 'main.faq',
@@ -707,14 +707,16 @@ def register_hooks(app):
                 if request.path.startswith('/api/telegram/'):
                     return None
                 if request.path.startswith('/internal/trainer/') or (request.endpoint or '').startswith('trainer.'):
-                    return redirect(url_for('auth.user_profile'))
-                return redirect(url_for('auth.user_profile'))
+                    return redirect(url_for('main.workspace_profile'))
+                return redirect(url_for('main.workspace_profile'))
 
             if plan.allow_lessons is None and plan.allow_trainer is None:
                 return None
 
             allow_lessons = True if plan.allow_lessons is None else bool(plan.allow_lessons)
-            allow_trainer = True if plan.allow_trainer is None else bool(plan.allow_trainer)
+            allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', False)) and (
+                True if plan.allow_trainer is None else bool(plan.allow_trainer)
+            )
 
             ep = (request.endpoint or '')
             if ep in student_safe_endpoints or any(ep.startswith(pfx) for pfx in student_safe_prefixes):

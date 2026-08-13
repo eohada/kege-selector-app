@@ -120,7 +120,7 @@
       <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-transform hover:-translate-y-[2px]">
           <div class="flex items-center gap-4">
               <div class="w-12 h-12 rounded-[1rem] bg-white border-2 border-slate-200 flex items-center justify-center shrink-0 shadow-sm overflow-hidden relative">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ sub.student.user.full_name or sub.student.user.username }}&backgroundColor=e0f2fe" class="w-full h-full object-cover">
+                  <img src="{{ sub.student.user.avatar_url if sub.student.user and sub.student.user.avatar_url else url_for('static', filename='images/default-avatar.svg') }}" class="w-full h-full object-cover" alt="Аватар ученика">
               </div>
               <div>
                   <h3 class="text-lg font-black text-slate-800 tracking-tight">{{ sub.student.user.full_name or sub.student.user.username }}</h3>
@@ -159,8 +159,8 @@
                   Перейти в работу
               </a>
               {% if sub.status != 'REVOKED' %}
-              <form action="/submissions/{{ sub.submission_id }}/revoke" method="POST" class="inline" onsubmit="return confirm('Вы уверены, что хотите отозвать работу у этого ученика?');">
-                <button type="submit" class="btn-3d bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-sm px-4 py-2.5 rounded-xl border border-rose-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer border-none" title="Отозвать">
+              <form action="/submissions/{{ sub.submission_id }}/revoke" method="POST" class="inline" data-revoke-form>
+                <button type="button" onclick="openRevokeDialog(this.closest('form'))" class="btn-3d bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-sm px-4 py-2.5 rounded-xl border border-rose-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer border-none" title="Отозвать">
                     <i class="ph-bold ph-x"></i>
                 </button>
               </form>
@@ -180,4 +180,36 @@
     
   </div>
 </main>
+
+<dialog id="revoke-submission-dialog" class="backdrop:bg-slate-950/35 bg-transparent p-4 w-full max-w-md">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_5px_0_#DAE1E9] rounded-[2rem] p-6">
+    <div class="w-11 h-11 rounded-2xl bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center mb-4">
+      <i class="ph-bold ph-warning text-xl"></i>
+    </div>
+    <h2 class="text-lg font-black text-slate-900">Отозвать работу?</h2>
+    <p class="mt-2 text-sm font-semibold text-slate-500 leading-relaxed">Ученик больше не сможет продолжать эту попытку. При необходимости работу можно выдать заново.</p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" onclick="closeRevokeDialog()" class="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs rounded-xl border border-slate-200 border-b-[3px] transition-all">Отмена</button>
+      <button type="button" id="confirm-revoke-submission" class="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border border-rose-700 border-b-[3px] shadow-[0_3px_8px_rgba(225,29,72,0.22)] transition-all">Отозвать</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  let revokeSubmissionForm = null;
+
+  function openRevokeDialog(form) {
+    revokeSubmissionForm = form;
+    document.getElementById('revoke-submission-dialog').showModal();
+  }
+
+  function closeRevokeDialog() {
+    document.getElementById('revoke-submission-dialog').close();
+    revokeSubmissionForm = null;
+  }
+
+  document.getElementById('confirm-revoke-submission').addEventListener('click', () => {
+    if (revokeSubmissionForm) revokeSubmissionForm.submit();
+  });
+</script>
 {% endblock %}

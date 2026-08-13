@@ -71,6 +71,13 @@
                 {% endif %}
             </a>
 
+            <a href="/admin/promocodes" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/promocodes') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Промокоды">
+                <i class="ph-bold ph-ticket text-xl"></i>
+                {% if p.startswith('/admin/promocodes') %}
+                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% endif %}
+            </a>
+
             <!-- 4. Тестировщики -->
             <a href="/admin/testers" class="w-full aspect-square rounded-[1rem] {% if p.startswith('/admin/testers') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🛡️ Тестировщики">
                 <i class="ph-bold ph-shield-check text-xl"></i>
@@ -121,8 +128,8 @@
             </a>
 
             <!-- Admin Profile Avatar -->
-            <a href="/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/profile') %}border-2 border-rose-600 shadow-md ring-2 ring-rose-500/20{% else %}border-2 border-slate-200 hover:border-rose-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Admin' }}">
-                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}https://api.dicebear.com/7.x/avataaars/svg?seed={{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Admin' }}&backgroundColor=fecdd3{% endif %}" class="w-full h-full object-cover">
+            <a href="/workspace/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/workspace/profile') %}border-2 border-rose-600 shadow-md ring-2 ring-rose-500/20{% else %}border-2 border-slate-200 hover:border-rose-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Admin' }}">
+                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-full h-full object-cover" alt="Аватар профиля">
                 <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </a>
         </div>
@@ -180,7 +187,7 @@
     }
     </script>
 
-    {% include 'sandbox/components/dev_switcher.html' %}
+    {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
 </body>
 </html>
 

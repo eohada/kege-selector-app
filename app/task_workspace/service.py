@@ -193,30 +193,6 @@ def _has_teacher_scope(user) -> bool:
     )
 
 
-def _resolve_demo_context(user) -> WorkspaceContext:
-    task = (
-        Tasks.query.filter(Tasks.is_active.is_(True))
-        .order_by(Tasks.task_id.desc())
-        .first()
-        or Tasks.query.order_by(Tasks.task_id.desc()).first()
-    )
-    if not task:
-        abort(404, "В банке нет задач для тестового workspace")
-    can_edit = not getattr(user, "is_parent", lambda: False)()
-    return WorkspaceContext(
-        context_type="demo",
-        context_id=None,
-        task_id=task.task_id,
-        task=task,
-        title=f"Workspace-прототип · задача #{task.task_id}",
-        subtitle="Локальная тестовая площадка нового редактора",
-        source_label="DEV workspace",
-        code=task.starter_code or "",
-        can_edit=can_edit,
-        can_review=_has_teacher_scope(user),
-    )
-
-
 def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
     lesson_task = (
         LessonTask.query.options(
@@ -287,6 +263,17 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     is_parent = getattr(user, "is_parent", lambda: False)()
     normalized_status = (submission.status or "").strip().upper()
     can_edit = is_owner and normalized_status in {"IN_PROGRESS", "RETURNED"} and not is_parent
+    if can_edit and normalized_status == "RETURNED":
+        revision_task_ids = {
+            int(item.assignment_task_id)
+            for item in (submission.answers or [])
+            if getattr(item, "needs_revision", False) and getattr(item, "assignment_task_id", None) is not None
+        }
+        # Historical returned submissions did not have per-task flags and
+        # intentionally remain fully editable. New returns reopen only the
+        # tasks explicitly selected by the teacher.
+        if revision_task_ids:
+            can_edit = int(assignment_task.assignment_task_id) in revision_task_ids
 
     timer_seconds_left = None
     if normalized_status != "RETURNED" and submission.started_at and submission.assignment.time_limit_minutes:
@@ -320,10 +307,8 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
 
 
 def resolve_workspace_context(user, context_type: str, context_id: int | None = None, assignment_task_id: int | None = None) -> WorkspaceContext:
-    kind = (context_type or "demo").strip().lower()
-    if kind == "demo":
-        ctx = _resolve_demo_context(user)
-    elif kind == "lesson_task":
+    kind = (context_type or "").strip().lower()
+    if kind == "lesson_task":
         if context_id is None:
             abort(400, "Не указан lesson_task_id")
         ctx = _resolve_lesson_task_context(user, int(context_id))
@@ -331,6 +316,8 @@ def resolve_workspace_context(user, context_type: str, context_id: int | None = 
         if context_id is None or assignment_task_id is None:
             abort(400, "Не указаны submission_id / assignment_task_id")
         ctx = _resolve_submission_task_context(user, int(context_id), int(assignment_task_id))
+    elif kind == "demo":
+        abort(404, "Демонстрационный workspace недоступен в живой платформе")
     else:
         abort(404, "Неизвестный тип workspace")
 

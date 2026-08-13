@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_admin.html' %}
 {% block title %}Админ-панель: Логи действий · BooStudy{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     .audit-filters {
         display: grid;
@@ -81,7 +81,7 @@
 
 {% set active_page = 'admin' %}
 
-{% block content %}
+{% block sandbox_content %}
 <section class="glass-panel w-full">
     <div class="flex items-center gap-4 mb-5">
         <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
@@ -287,7 +287,7 @@
 </section>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
     function toggleMetadata(logId) {
         const content = document.getElementById('metadata-' + logId);

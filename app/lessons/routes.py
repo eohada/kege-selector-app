@@ -16,7 +16,7 @@ from flask_login import login_required, current_user  # comment
 from sqlalchemy import text, or_  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from app.utils.db_migrations import ensure_schema_columns
-from app.auth.rbac_utils import check_access, get_user_scope
+from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
@@ -964,6 +964,14 @@ def lesson_studio_finish(lesson_id: int):
     except Exception:
         db.session.rollback()
         logger.warning('Unable to send lesson studio outcome notification', exc_info=True)
+
+    # Награждение ученика за успешное прохождение урока (XP, стрик, достижения)
+    try:
+        from app.utils.gamification_service import reward_lesson_completion
+        reward_lesson_completion(lesson.student)
+    except Exception:
+        logger.warning('Unable to award gamification rewards for lesson completion', exc_info=True)
+
     return jsonify({'success': True, 'state': _lesson_studio_state_for_viewer(state, is_teacher=True), 'status': lesson.status})
 
 
@@ -3863,109 +3871,15 @@ def lesson_whiteboard_miro_auth_status(lesson_id):
 @lessons_bp.route('/lesson/<int:lesson_id>/videocall/room', methods=['POST'])
 @login_required
 def lesson_videocall_create_room(lesson_id):
-    """Создать или получить комнату Daily.co для урока."""
-    import requests
-    import time
-    
-    lesson = Lesson.query.get_or_404(lesson_id)
-    _lesson_studio_access(lesson)
-    
-    api_key = current_app.config.get('DAILY_API_KEY')
-    domain = current_app.config.get('DAILY_DOMAIN', 'urep')
-    
-    if not api_key:
-        return jsonify({'success': False, 'error': 'Daily.co API key not configured'}), 500
-    
-    room_name = f"lesson-{lesson_id}"
-
-    def room_payload(room_data):
-        token_response = requests.post(
-            'https://api.daily.co/v1/meeting-tokens',
-            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-            json={'properties': {
-                'room_name': room_name,
-                'user_name': current_user.username,
-                'is_owner': _lesson_studio_is_teacher(),
-                'exp': int(time.time()) + max(7200, int(lesson.duration or 60) * 60 + 1800),
-            }},
-        )
-        if token_response.status_code not in (200, 201):
-            logger.error('Daily.co meeting-token creation failed: %s', token_response.text)
-            return None
-        token_data = token_response.json()
-        return {
-            'success': True,
-            'room_url': room_data.get('url') or f"https://{domain}.daily.co/{room_name}",
-            'room_name': room_name,
-            'token': token_data.get('token'),
-        }
-
-    try:
-        check_response = requests.get(
-            f'https://api.daily.co/v1/rooms/{room_name}',
-            headers={'Authorization': f'Bearer {api_key}'}
-        )
-        
-        if check_response.status_code == 200:
-            room_data = check_response.json()
-            payload = room_payload(room_data)
-            if not payload or not payload.get('token'):
-                return jsonify({'success': False, 'error': 'Failed to authorize lesson room'}), 500
-            payload['exists'] = True
-            return jsonify(payload)
-        
-        create_response = requests.post(
-            'https://api.daily.co/v1/rooms',
-            headers={
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'name': room_name,
-                'privacy': 'private',
-                'properties': {
-                    'enable_screenshare': True,
-                    'enable_chat': False,
-                    'start_video_off': False,
-                    'start_audio_off': False,
-                    'enable_knocking': False,
-                    'exp': None  # Комната не истекает
-                }
-            }
-        )
-        
-        if create_response.status_code in [200, 201]:
-            room_data = create_response.json()
-            logger.info(f"Daily.co room created for lesson {lesson_id}: {room_name}")
-            payload = room_payload(room_data)
-            if not payload or not payload.get('token'):
-                return jsonify({'success': False, 'error': 'Failed to authorize lesson room'}), 500
-            payload['exists'] = False
-            return jsonify(payload)
-        else:
-            logger.error(f"Daily.co room creation failed: {create_response.text}")
-            return jsonify({'success': False, 'error': 'Failed to create room'}), 500
-            
-    except Exception as e:
-        logger.error(f"Error creating Daily.co room: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    """Legacy redirect for videocall POST to V2 Studio Daily join."""
+    return redirect(url_for('lessons.lesson_studio_daily_join', lesson_id=lesson_id), code=307)
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/videocall/room', methods=['GET'])
 @login_required
 def lesson_videocall_get_room(lesson_id):
-    """Получить информацию о комнате Daily.co для урока."""
-    lesson = Lesson.query.get_or_404(lesson_id)
-    _lesson_studio_access(lesson)
-    domain = current_app.config.get('DAILY_DOMAIN', 'urep')
-    room_name = f"lesson-{lesson_id}"
-    
-    return jsonify({
-        'success': True,
-        'room_url': f"https://{domain}.daily.co/{room_name}",
-        'room_name': room_name,
-        'domain': domain
-    })
+    """Legacy redirect for videocall GET to V2 Studio room."""
+    return redirect(url_for('lessons.lesson_interactive_room', lesson_id=lesson_id), code=302)
 
 @lessons_bp.route('/lesson/<int:lesson_id>/studio/daily/join', methods=['POST'])
 @login_required
@@ -3975,12 +3889,15 @@ def lesson_studio_daily_join(lesson_id: int):
     
     is_teacher = _lesson_studio_is_teacher()
     user_name = getattr(current_user, 'display_name', None) or current_user.username
-    room_name = f"lesson_{lesson_id}"
+    room_name = f"lesson-{lesson_id}"
     
     try:
         room_url = DailyService.get_or_create_room(room_name)
         token = DailyService.create_meeting_token(room_name, user_name, is_teacher)
         return jsonify({'success': True, 'room_url': room_url, 'token': token})
+    except ValueError as e:
+        logger.warning(f"Daily.co configuration error for lesson {lesson_id}: {e}")
+        return jsonify({'success': False, 'error': 'Видеосервер не настроен или недоступен'}), 503
     except Exception as e:
         logger.error(f"Daily.co integration error for lesson {lesson_id}: {e}")
         return jsonify({'success': False, 'error': 'Не удалось подключиться к видеосерверу'}), 500

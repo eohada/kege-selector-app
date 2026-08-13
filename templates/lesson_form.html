@@ -1,10 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% from '_ui_icon.html' import ui_icon %}
 {% block title %}{{ title }} · {{ student.name }}{% endblock %}
 {% set active_page = 'dashboard' %}
 {% block body_class %}layout-teacher{% if active_lesson %} lesson-active{% endif %}{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     /* ── Lesson Form Design System ── */
     .lf-container {
@@ -414,7 +414,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
     {% if active_lesson %}
     <div class="now-playing-pill w-full" onclick="toggleLessonMenu()">
         {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
@@ -463,7 +463,7 @@
                         {% if student.user and student.user.avatar_url %}
                             <img src="{{ student.user.avatar_url }}" alt="Avatar" class="w-full h-full object-cover">
                         {% else %}
-                            <img src="https://api.dicebear.com/7.x/adventurer-neutral/svg?seed={{ (student.name or student.student_id|string)|urlencode }}&backgroundColor=F3F0FF" alt="Avatar">
+                            <img src="{{ url_for('static', filename='images/default-avatar.svg') }}" alt="Аватар ученика" class="w-full h-full object-cover">
                         {% endif %}
                     </div>
                     <div>
@@ -747,7 +747,7 @@
     </div>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script>
         // Set datetime preset helper
         function setDateTimePreset(type) {

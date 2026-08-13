@@ -1,15 +1,15 @@
-{% extends "base.html" %}
+{% extends "sandbox/layout_teacher.html" if current_user.role in ['teacher', 'tutor', 'admin', 'creator'] else "sandbox/layout_student.html" %}
 
 {% block title %}Task Workspace · BooStudy{% endblock %}
 
 {% block body_class %}tw-page-workspace{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260803-bento-v2">
 {% endblock %}
 
-{% block content %}
-<main class="tw-shell w-full" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
+{% block sandbox_content %}
+<main class="tw-shell w-full min-h-screen px-3 py-4 lg:pl-[6.5rem] lg:pr-6" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
     <header class="tw-topbar">
         <div>
             <div class="tw-kicker">{{ workspace.source_label }}</div>
@@ -235,7 +235,6 @@ window.TASK_WORKSPACE_USER_ID = {{ current_user.id if current_user.is_authentica
 {% include '_partials/canvas_overlay.html' %}
 {% endblock %}
 
-{% block scripts_extra %}
-{{ super() }}
+{% block extra_scripts %}
 <script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260803-bento-v2"></script>
 {% endblock %}

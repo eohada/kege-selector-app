@@ -49,7 +49,7 @@
     let selectedWorkspaceFile = null;
     const storageKey = [
         'task-workspace',
-        ws.context_type || 'demo',
+        ws.context_type || 'missing-context',
         ws.context_id || 'none',
         ws.assignment_task_id || 'none',
         ws.task_id || 'task'
@@ -97,7 +97,7 @@
 
     function payload() {
         return {
-            context_type: ws.context_type || 'demo',
+            context_type: ws.context_type || '',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
@@ -148,14 +148,14 @@
     }
 
     function emitWorkspaceCursor(force = false) {
-        if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo' || !code) return;
+        if (!workspaceSocketReady || !workspaceSocket || !ws.context_type || !code) return;
         if (!force) {
             if (workspaceCursorTimer) clearTimeout(workspaceCursorTimer);
             workspaceCursorTimer = setTimeout(() => emitWorkspaceCursor(true), 80);
             return;
         }
         workspaceSocket.emit('workspace_cursor_update', {
-            context_type: ws.context_type || 'demo',
+            context_type: ws.context_type || '',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
@@ -337,7 +337,7 @@
         const emitJoin = () => {
             if (!workspaceSocket || !ws.context_type) return;
             workspaceSocket.emit('join_workspace', {
-                context_type: ws.context_type || 'demo',
+                context_type: ws.context_type || '',
                 context_id: ws.context_id || null,
                 assignment_task_id: ws.assignment_task_id || null,
             });
@@ -450,7 +450,7 @@
     }
 
     function emitWorkspaceDraft(force = false) {
-        if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo') return;
+        if (!workspaceSocketReady || !workspaceSocket || !ws.context_type) return;
         const now = Date.now();
         if (!force) {
             if (workspaceDraftTimer) clearTimeout(workspaceDraftTimer);
@@ -459,7 +459,7 @@
         }
         workspaceLocalDraftTs = now;
         workspaceSocket.emit('workspace_draft_update', {
-            context_type: ws.context_type || 'demo',
+            context_type: ws.context_type || '',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
@@ -485,7 +485,7 @@
     }
 
     function emitWorkspacePatch(prevValue, nextValue) {
-        if (!workspaceSocketReady || !workspaceSocket || ws.context_type === 'demo') return;
+        if (!workspaceSocketReady || !workspaceSocket || !ws.context_type) return;
         const before = String(prevValue ?? '');
         const after = String(nextValue ?? '');
         if (before === after) return;
@@ -501,7 +501,7 @@
         };
         pendingWorkspaceOps.push(op);
         workspaceSocket.emit('workspace_patch', {
-            context_type: ws.context_type || 'demo',
+            context_type: ws.context_type || '',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
@@ -817,7 +817,7 @@
 
     function scheduleAutosave() {
         dirtySinceAutosave = true;
-        if (ws.context_type === 'demo') return;
+        if (!ws.context_type) return;
         if (autosaveTimer) clearTimeout(autosaveTimer);
         autosaveTimer = setTimeout(() => {
             autosaveTimer = null;
@@ -894,14 +894,14 @@
     }
 
     async function pullServerState(force = false) {
-        if (ws.context_type === 'demo') return;
+        if (!ws.context_type) return;
         if (workspaceSocketReady && !force) return;
         if (pendingWorkspaceOps.length && !force) return;
         if (liveSyncBusy && !force) return;
         liveSyncBusy = true;
         try {
             const params = new URLSearchParams({
-                context_type: ws.context_type || 'demo',
+                context_type: ws.context_type || '',
             });
             if (ws.context_id != null) params.set('context_id', String(ws.context_id));
             if (ws.assignment_task_id != null) params.set('assignment_task_id', String(ws.assignment_task_id));
@@ -936,7 +936,7 @@
             const raw = localStorage.getItem(storageKey);
             if (!raw) return;
             const data = JSON.parse(raw);
-            if (data.code && (!code.value || ws.context_type === 'demo')) code.value = data.code;
+            if (data.code && !code.value) code.value = data.code;
             workspaceLocalCode = code.value || '';
             if (data.notes) notes.value = data.notes;
             if (Array.isArray(data.playback_frames) && data.playback_frames.length) {
@@ -985,10 +985,7 @@
 
     async function saveServer(isAutosave = false) {
         saveLocal();
-        if (ws.context_type === 'demo') {
-            setStatus('Сохранено локально', 'ok');
-            return;
-        }
+        if (!ws.context_type) return;
         setStatus(isAutosave ? 'Автосохранение...' : 'Сохранение...', 'run');
         try {
             const resp = await fetch('/task-workspace/api/save', {
@@ -1015,7 +1012,7 @@
 
     function flushWorkspaceBeforeExit() {
         saveLocal();
-        if (ws.context_type === 'demo') return;
+        if (!ws.context_type) return;
         try {
             if (workspaceSocketReady && workspaceSocket) {
                 emitWorkspaceDraft(true);
@@ -1434,7 +1431,7 @@
                     const item = items.find((x) => Number(x.version_id) === id);
                     if (!item) return;
                     let restored = item;
-                    if (ws.can_edit && ws.context_type !== 'demo') {
+                    if (ws.can_edit) {
                         const resp = await fetch(`/task-workspace/api/versions/${id}/restore`, {
                             method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify(payload())
                         });

@@ -60,11 +60,11 @@
                         <!-- Header: Child Info & Status -->
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
                             <div class="flex items-center gap-4">
-                                <a href="/profile/{{ child.user.id }}" class="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 p-1 shadow-xs hover:border-amber-400 transition-colors block shrink-0">
-                                    <img src="{{ child.user.avatar_url if child.user.avatar_url else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ child.user.username }}" class="w-full h-full rounded-xl object-cover">
+                                <a href="{{ url_for('main.universal_profile_view', user_id=child.user.id) }}" class="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 p-1 shadow-xs hover:border-amber-400 transition-colors block shrink-0">
+                                    <img src="{{ child.user.avatar_url if child.user.avatar_url else url_for('static', filename='images/default-avatar.svg') }}" class="w-full h-full rounded-xl object-cover" alt="Аватар ребёнка">
                                 </a>
                                 <div>
-                                    <a href="/profile/{{ child.user.id }}" class="text-xl font-display font-black text-slate-800 hover:text-amber-600 no-underline transition-colors block">
+                                    <a href="{{ url_for('main.universal_profile_view', user_id=child.user.id) }}" class="text-xl font-display font-black text-slate-800 hover:text-amber-600 no-underline transition-colors block">
                                         {{ child.user.full_name or child.user.username }}
                                     </a>
                                     <span class="text-xs font-bold text-slate-400">ID #{{ child.user.id }} • {{ child.student.category if (child.student and child.student.category) else 'Информатика КЕГЭ' }}</span>
@@ -98,10 +98,10 @@
                         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
                             {% if child.mentor %}
                             <div class="flex items-center gap-3 w-full sm:w-auto">
-                                <img src="{{ child.mentor.avatar_url if child.mentor.avatar_url else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ child.mentor.username }}" class="w-9 h-9 rounded-xl border border-slate-200 object-cover bg-amber-50">
+                                <img src="{{ child.mentor.avatar_url if child.mentor.avatar_url else url_for('static', filename='images/default-avatar.svg') }}" class="w-9 h-9 rounded-xl border border-slate-200 object-cover bg-amber-50" alt="Аватар наставника">
                                 <div>
                                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0">Наставник</p>
-                                    <a href="/profile/{{ child.mentor.id }}" class="text-xs font-black text-amber-600 hover:text-amber-800 no-underline truncate">
+                                    <a href="{{ url_for('main.universal_profile_view', user_id=child.mentor.id) }}" class="text-xs font-black text-amber-600 hover:text-amber-800 no-underline truncate">
                                         {{ child.mentor.full_name or child.mentor.username }}
                                     </a>
                                 </div>
@@ -114,7 +114,7 @@
                                 <button onclick="promptUnlinkChild({{ child.user.id }}, '{{ child.user.full_name or child.user.username }}')" class="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-black text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5" title="Отвязать профиль">
                                     <i class="ph-bold ph-user-minus text-base"></i>
                                 </button>
-                                <a href="/profile/{{ child.user.id }}" class="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs px-4 py-2.5 rounded-xl border border-amber-600 border-b-[4px] shadow-[0_4px_10px_rgba(245,158,11,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline inline-flex items-center gap-1.5">
+                                <a href="{{ url_for('main.universal_profile_view', user_id=child.user.id) }}" class="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs px-4 py-2.5 rounded-xl border border-amber-600 border-b-[4px] shadow-[0_4px_10px_rgba(245,158,11,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline inline-flex items-center gap-1.5">
                                     <span>Профиль ребёнка</span>
                                     <i class="ph-bold ph-arrow-right"></i>
                                 </a>

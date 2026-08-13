@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_parent.html' if current_user.is_parent() else ('sandbox/layout_student.html' if current_user.is_student() else 'sandbox/layout_teacher.html') %}
 {% block title %}Напоминания · BooStudy{% endblock %}
 {% set active_page = 'reminders' %}
 
-{% block content %}
+{% block sandbox_content %}
 <div class="space-y-5 w-full">
     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>

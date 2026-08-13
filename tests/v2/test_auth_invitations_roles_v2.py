@@ -7,7 +7,8 @@ import secrets
 import hashlib
 from core.db_models import (
     db, User, UserRole, UserProfile, Student, TeacherProfile,
-    TeacherStudent, FamilyTie, InviteLink
+    TeacherStudent, FamilyTie, InviteLink, ReferralCode, ReferralUsage,
+    PromoCode, PromoCodeUsage, TariffPlan, UserSubscription,
 )
 from app.utils.relationship_scope import (
     teacher_has_student, parent_has_student, can_user_access_student
@@ -52,6 +53,98 @@ def test_teacher_self_registration(app):
 
         tp = TeacherProfile.query.filter_by(user_id=user.id).first()
         assert tp is not None
+
+
+def test_registration_applies_a_real_referral_code_once(app):
+    """A regular registration records the referral in the same transaction."""
+    with app.app_context():
+        inviter = User(username=f"referrer_{secrets.token_hex(4)}", role='tutor', is_active=True)
+        inviter.set_password('pass123')
+        db.session.add(inviter)
+        db.session.flush()
+        referral = ReferralCode(code=f"BS-{secrets.token_hex(4).upper()}", creator_id=inviter.id, is_active=True)
+        db.session.add(referral)
+        db.session.commit()
+        referral_code = referral.code
+        referral_id = referral.id
+
+    client = app.test_client()
+    logout_user_client(client)
+    username = f"referred_{secrets.token_hex(4)}"
+    response = client.post(f'/register?ref={referral_code}', data={
+        'username': username,
+        'email': f'{username}@example.com',
+        'password': 'Password123!',
+        'password_confirm': 'Password123!',
+        'role': 'tutor',
+        'full_name': 'Referred user',
+        'ref': referral_code,
+    }, follow_redirects=True)
+    assert response.status_code == 200
+
+    with app.app_context():
+        referred = User.query.filter_by(username=username).first()
+        referral = ReferralCode.query.get(referral_id)
+        usage = ReferralUsage.query.filter_by(referral_code_id=referral_id, user_id=referred.id).first()
+        assert usage is not None
+        assert referral.usage_count == 1
+
+
+def test_referral_lookup_locks_a_limited_code_before_registration(app):
+    from app.utils.referral_service import get_active_referral_code
+
+    with app.app_context():
+        inviter = User(username=f"ref_lock_{secrets.token_hex(4)}", role='teacher', is_active=True)
+        db.session.add(inviter)
+        db.session.flush()
+        referral = ReferralCode(code=f"LOCK-{secrets.token_hex(4).upper()}", creator_id=inviter.id, usage_limit=1, is_active=True)
+        db.session.add(referral)
+        db.session.commit()
+        assert get_active_referral_code(referral.code).id == referral.id
+
+
+def test_free_promocode_redeems_once_and_never_trusts_browser_price(app):
+    with app.app_context():
+        student_user = User(username=f"promo_student_{secrets.token_hex(4)}", role='student', is_active=True)
+        student_user.set_password('pass123')
+        db.session.add(student_user)
+        db.session.flush()
+        plan = TariffPlan(
+            title=f"Promo plan {secrets.token_hex(4)}",
+            price_rub=12000,
+            period_days=30,
+            lessons_count=8,
+            allow_lessons=True,
+            is_active=True,
+        )
+        db.session.add(plan)
+        db.session.flush()
+        promo = PromoCode(
+            code=f"FREE-{secrets.token_hex(4).upper()}",
+            discount_percent=100,
+            plan_id=plan.plan_id,
+            is_active=True,
+            usage_limit=2,
+        )
+        db.session.add(promo)
+        db.session.commit()
+        user_id, plan_id, promo_code = student_user.id, plan.plan_id, promo.code
+
+    client = app.test_client()
+    login_user_client(client, user_id, 'student')
+    first = client.post('/billing/promocode/redeem', json={
+        'plan_id': plan_id,
+        'code': promo_code,
+        'price': 1,
+    })
+    assert first.status_code == 200, first.get_json()
+    second = client.post('/billing/promocode/redeem', json={'plan_id': plan_id, 'code': promo_code})
+    assert second.status_code == 400
+
+    with app.app_context():
+        assert UserSubscription.query.filter_by(user_id=user_id, plan_id=plan_id, status='active').count() == 1
+        assert PromoCodeUsage.query.filter_by(user_id=user_id).count() == 1
+        assert PromoCode.query.filter_by(code=promo_code).one().usage_count == 1
 
 
 def test_student_invite_flow(app):
@@ -111,6 +204,13 @@ def test_student_invite_flow(app):
 
         student_prof = Student.query.filter_by(user_id=student_user.id).first()
         assert student_prof is not None
+        assert student_prof.streak_days == 0
+        assert student_prof.goal_text is None
+        assert student_user.about_me is None
+        assert student_user.avatar_url is None
+        assert student_user.cover_url is None
+        profile = UserProfile.query.filter_by(user_id=student_user.id).one()
+        assert profile.profile_onboarding_completed_at is None
 
         teacher = User.query.get(teacher_id)
         # Verify TeacherStudent link

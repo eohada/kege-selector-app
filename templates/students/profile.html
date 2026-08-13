@@ -637,7 +637,7 @@ function submitGoalResult() {
   const note = document.getElementById('result-note-input').value;
   if (!id) return;
 
-  fetch('/sandbox/api/profile/goal/result/' + id, {
+  fetch('/api/profile/goal/result/' + id, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'result_note=' + encodeURIComponent(note)
@@ -660,7 +660,7 @@ function copyReferralCode(code) {
 }
 
 function toggleWeeklyGoal(itemId) {
-  fetch('/sandbox/api/profile/goal/toggle/' + itemId, { method: 'POST' })
+  fetch('/api/profile/goal/toggle/' + itemId, { method: 'POST' })
     .then(r => r.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -675,7 +675,7 @@ function addNewGoal() {
   const input = document.getElementById('new-goal-input');
   if (!input || !input.value.trim()) return;
   
-  fetch('/sandbox/api/profile/goal/add', {
+  fetch('/api/profile/goal/add', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'title=' + encodeURIComponent(input.value.trim())
@@ -695,7 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const formData = new FormData(form);
-      fetch('/sandbox/api/profile/edit', {
+      fetch('/api/profile/edit', {
         method: 'POST',
         body: formData
       })

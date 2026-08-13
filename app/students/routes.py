@@ -8,7 +8,7 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, c
 from flask_login import login_required
 from sqlalchemy import text, or_, func  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
 from sqlalchemy.exc import OperationalError, ProgrammingError
-from datetime import datetime
+from datetime import datetime, timedelta
 import csv
 import io
 from flask import Response
@@ -1079,6 +1079,25 @@ def student_info(student_id: int):
             tutors_list = [e.tutor for e in enrollments if getattr(e, 'tutor', None)]
         except Exception:
             pass
+    activity_since = moscow_now() - timedelta(days=30)
+    activity_summary = {
+        'completed_lessons': Lesson.query.filter(
+            Lesson.student_id == student.student_id,
+            Lesson.status == 'completed',
+            Lesson.lesson_date >= activity_since,
+        ).count(),
+        'submitted_works': Submission.query.filter(
+            Submission.student_id == student.student_id,
+            Submission.submitted_at.isnot(None),
+            Submission.submitted_at >= activity_since,
+        ).count(),
+        'graded_works': Submission.query.filter(
+            Submission.student_id == student.student_id,
+            Submission.status == 'GRADED',
+            Submission.graded_at.isnot(None),
+            Submission.graded_at >= activity_since,
+        ).count(),
+    }
     return render_template(
         'student_info.html',
         student=student,
@@ -1087,6 +1106,7 @@ def student_info(student_id: int):
         student_subscription=student_subscription,
         tutors_list=tutors_list,
         parents_info=parents_info,
+        activity_summary=activity_summary,
     )
 
 
@@ -2802,22 +2822,18 @@ def lesson_test_reminder(student_id, lesson_id):
 @students_bp.route('/student/<int:student_id>/lesson-mode')
 @login_required
 def lesson_mode(student_id):
-    """Режим урока для студента"""
-    student = Student.query.options(db.joinedload(Student.user)).get_or_404(student_id)
-    now = moscow_now()
-    
-    all_lessons = Lesson.query.filter_by(student_id=student_id).order_by(Lesson.lesson_date.desc()).all()
-    lessons = all_lessons
-    
-    current_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
-    planned_lessons = [l for l in all_lessons if l.status == 'planned' and l.lesson_date and l.lesson_date >= now]
-    upcoming_lesson = sorted(planned_lessons, key=lambda x: x.lesson_date)[0] if planned_lessons else None
+    """Совместимый адрес: открывает только каноничную V2-комнату урока."""
+    student = _guard_student_access(student_id)
+    current_lesson = (
+        Lesson.query.filter_by(student_id=student.student_id, status='in_progress')
+        .order_by(Lesson.lesson_date.desc())
+        .first()
+    )
+    if current_lesson:
+        return redirect(url_for('lessons.lesson_interactive_room', lesson_id=current_lesson.lesson_id))
 
-    return render_template('lesson_mode.html',
-                         student=student,
-                         lessons=lessons,
-                         current_lesson=current_lesson,
-                         upcoming_lesson=upcoming_lesson)
+    flash('Активного урока сейчас нет. Расписание и будущие занятия доступны в карточке ученика.', 'info')
+    return redirect(url_for('students.student_profile', student_id=student.student_id))
 
 @students_bp.route('/student/<int:student_id>/start-lesson', methods=['POST'])
 @login_required

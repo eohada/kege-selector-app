@@ -23,11 +23,11 @@
             {% for child in children_list %}
             <div class="p-5 bg-[#F8FAFC] border-2 border-slate-200/80 rounded-[1.5rem] flex flex-col sm:flex-row items-center justify-between gap-4 hover:border-amber-300 transition-colors">
                 <div class="flex items-center gap-4">
-                    <a href="/profile/{{ child.id }}" class="w-12 h-12 rounded-2xl bg-white border-2 border-slate-200 p-0.5 shadow-xs overflow-hidden block shrink-0">
-                        <img src="{{ child.avatar_url if child.avatar_url else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ child.username }}" class="w-full h-full rounded-xl object-cover">
+                    <a href="{{ url_for('main.universal_profile_view', user_id=child.id) }}" class="w-12 h-12 rounded-2xl bg-white border-2 border-slate-200 p-0.5 shadow-xs overflow-hidden block shrink-0">
+                        <img src="{{ child.avatar_url if child.avatar_url else url_for('static', filename='images/default-avatar.svg') }}" class="w-full h-full rounded-xl object-cover" alt="Аватар ребёнка">
                     </a>
                     <div>
-                        <a href="/profile/{{ child.id }}" class="text-base font-black text-slate-800 hover:text-amber-600 no-underline transition-colors block">
+                        <a href="{{ url_for('main.universal_profile_view', user_id=child.id) }}" class="text-base font-black text-slate-800 hover:text-amber-600 no-underline transition-colors block">
                             {{ child.full_name or child.username }}
                         </a>
                         <p class="text-xs font-bold text-slate-400">E-mail: {{ child.email or 'Не указан' }}</p>
@@ -35,7 +35,7 @@
                 </div>
 
                 <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-                    <a href="/profile/{{ child.id }}" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl border-b-[3px] border-amber-700 no-underline transition-all flex items-center gap-1.5">
+                    <a href="{{ url_for('main.universal_profile_view', user_id=child.id) }}" class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs rounded-xl border-b-[3px] border-amber-700 no-underline transition-all flex items-center gap-1.5">
                         <span>Профиль</span>
                         <i class="ph-bold ph-arrow-right text-sm"></i>
                     </a>

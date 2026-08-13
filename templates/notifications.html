@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_parent.html' if current_user.is_parent() else ('sandbox/layout_student.html' if current_user.is_student() else 'sandbox/layout_teacher.html') %}
 {% block title %}Уведомления{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     .notif {
         background: var(--color-bg-surface);
@@ -37,7 +37,7 @@
 
 {% set active_page = 'notifications' %}
 
-{% block content %}
+{% block sandbox_content %}
 <section class="glass-panel mb-5 w-full">
     <div class="flex justify-between items-start gap-4 flex-wrap">
         <div>
@@ -88,7 +88,7 @@
 </section>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
     const CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
     async function markRead(id) {

@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_admin.html' %}
 {% block title %}{% if tester %}Редактирование тестировщика{% else %}Создание тестировщика{% endif %} · Админ-панель{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     .form-container {
         max-width: 800px;
@@ -60,7 +60,7 @@
 
 {% set active_page = 'admin' %}
 
-{% block content %}
+{% block sandbox_content %}
 <section class="glass-panel w-full">
     <div class="mb-3">
         <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button ghost">

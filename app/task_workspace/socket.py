@@ -23,7 +23,7 @@ def _live_sync_enabled() -> bool:
 
 
 def _room_key(context_type: str, context_id: int | None, assignment_task_id: int | None) -> str:
-    return f"{(context_type or 'demo').strip().lower()}:{context_id if context_id is not None else 'none'}:{assignment_task_id if assignment_task_id is not None else 'none'}"
+    return f"{(context_type or 'missing-context').strip().lower()}:{context_id if context_id is not None else 'none'}:{assignment_task_id if assignment_task_id is not None else 'none'}"
 
 
 def get_workspace_live_state(ctx) -> dict[str, Any]:
@@ -89,7 +89,7 @@ def register_task_workspace_socket(socketio) -> None:
     def _resolve_room(data: dict[str, Any]) -> tuple[str, Any] | tuple[None, None]:
         from .service import resolve_workspace_context
 
-        context_type = (data.get("context_type") or "demo").strip().lower()
+        context_type = (data.get("context_type") or "").strip().lower()
         context_id = data.get("context_id")
         assignment_task_id = data.get("assignment_task_id")
         try:

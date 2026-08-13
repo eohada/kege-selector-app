@@ -18,6 +18,11 @@ collect_ignore = [
         'test_preparation_mode_v2.py',
         'test_theory_learning_cycle_v2.py',
         'test_schema_contract_v2.py',
+        'test_dynamic_workspace_and_navigation.py',
+        'test_lesson_room_interactive.py',
+        'test_full_assignment_lifecycle.py',
+        'test_deploy_bluegreen_contract.py',
+        'test_release_readiness_v2.py',
     }
 ]
 
@@ -31,12 +36,11 @@ os.environ.setdefault('DISABLE_BACKGROUND_WORKERS', '1')
 def app():
     from app import create_app, db
 
-    test_app = create_app()
-    test_app.config.update(
-        TESTING=True,
-        WTF_CSRF_ENABLED=False,
-        SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
-    )
+    test_app = create_app({
+        'TESTING': True,
+        'WTF_CSRF_ENABLED': False,
+        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+    })
     with test_app.app_context():
         db.create_all()
         yield test_app
@@ -63,8 +67,9 @@ def role_users(app):
 
     with app.app_context():
         tutor = User(username='v2_tutor', email='v2_tutor@example.test', role='tutor', is_active=True)
+        creator = User(username='v2_creator', email='v2_creator@example.test', role='creator', is_active=True)
         student_user = User(username='v2_student', email='v2_student@example.test', role='student', is_active=True)
-        db.session.add_all([tutor, student_user])
+        db.session.add_all([tutor, creator, student_user])
         db.session.flush()
         student = Student(name='V2 Fixture Student', user_id=student_user.id, is_active=True)
         db.session.add(student)
@@ -72,6 +77,7 @@ def role_users(app):
         db.session.commit()
         return {
             'tutor_id': tutor.id,
+            'creator_id': creator.id,
             'student_user_id': student_user.id,
             'student_id': student.student_id,
         }

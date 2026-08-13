@@ -75,7 +75,7 @@
         {% if current_user and current_user.is_authenticated %}
         <div class="flex items-center gap-3">
             <div class="hidden sm:flex items-center gap-2.5 px-3 py-1.5 bg-[#F4F7FA] border border-slate-200 rounded-xl">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ (current_user.full_name or current_user.username)|escape }}" class="w-7 h-7 rounded-lg border border-slate-200 bg-white object-cover">
+                <img src="{{ current_user.avatar_url if current_user.avatar_url else url_for('static', filename='images/default-avatar.svg') }}" class="w-7 h-7 rounded-lg border border-slate-200 bg-white object-cover" alt="Аватар профиля">
                 <div class="text-left">
                     <span class="text-xs font-black text-slate-800 block leading-none">{{ current_user.full_name or current_user.username }}</span>
                     <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block">

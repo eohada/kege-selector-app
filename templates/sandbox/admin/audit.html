@@ -26,11 +26,11 @@
         </div>
         <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Активные сессии</span>
-            <span class="text-2xl font-black text-emerald-600 block">{{ audit_stats.active_sessions if audit_stats is defined else 4 }}</span>
+            <span class="text-2xl font-black text-emerald-600 block">{{ audit_stats.active_sessions if audit_stats is defined else 0 }}</span>
         </div>
         <div class="p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-xs text-center space-y-1">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Событий за сегодня</span>
-            <span class="text-2xl font-black text-indigo-600 block">{{ audit_stats.today_events if audit_stats is defined else 12 }}</span>
+            <span class="text-2xl font-black text-indigo-600 block">{{ audit_stats.today_events if audit_stats is defined else 0 }}</span>
         </div>
     </div>
 

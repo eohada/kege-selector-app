@@ -9,13 +9,14 @@ import io
 import contextlib
 import threading
 import time
+import json
 from datetime import datetime, timedelta
 import os  # Окружение (ENVIRONMENT) для безопасных ограничений.
 import hmac
 import requests
 from flask import render_template, request, redirect, url_for, flash, make_response, jsonify, current_app, session
 from flask_login import login_required, current_user
-from sqlalchemy import func, delete
+from sqlalchemy import func, delete, or_
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from werkzeug.security import generate_password_hash  # Хешируем пароль как в scripts/create_tester_user.py. # comment
 
@@ -29,7 +30,7 @@ from app.telegram.role_management import (
     set_single_role,
 )
 from app.models import Submission, Answer, UserSubscription, UserNotification, BotAdmin, SubmissionComment, Assignment
-from core.db_models import Tester, task_topics, TestCase, TestStep, BugReport
+from core.db_models import Tester, task_topics, TestCase, TestStep, BugReport, PromoCode, TariffPlan, SystemSetting
 from core.audit_logger import audit_logger
 from app import csrf
 from app.auth.rbac_utils import require_admin, has_permission, check_access
@@ -3670,4 +3671,78 @@ def admin_export_db_json():
     res.headers['Content-Type'] = 'application/json'
     res.headers['Content-Disposition'] = 'attachment; filename=boostudy_db_dump.json'
     return res
+
+
+@admin_bp.route('/admin/promocodes', methods=['GET'])
+@login_required
+def admin_promocodes_list():
+    """Список промокодов (только для администраторов)"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    promos = PromoCode.query.order_by(PromoCode.created_at.desc()).all()
+    plans = TariffPlan.query.filter_by(is_active=True).all()
+    return render_template('sandbox/admin/promocodes.html', promos=promos, plans=plans)
+
+
+@admin_bp.route('/admin/promocodes/create', methods=['POST'])
+@login_required
+def admin_promocodes_create():
+    """Создание нового промокода"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    code = (request.form.get('code') or '').strip().upper()
+    if not code:
+        flash('Код промокода не может быть пустым.', 'danger')
+        return redirect(url_for('admin.admin_promocodes_list'))
+
+    existing = PromoCode.query.filter_by(code=code).first()
+    if existing:
+        flash(f'Промокод {code} уже существует.', 'warning')
+        return redirect(url_for('admin.admin_promocodes_list'))
+
+    try:
+        discount_percent = int(request.form.get('discount_percent') or 0)
+        discount_rub = int(request.form.get('discount_rub') or 0)
+        usage_limit_val = request.form.get('usage_limit')
+        usage_limit = int(usage_limit_val) if usage_limit_val and usage_limit_val.strip() else None
+        bonus_lessons = int(request.form.get('bonus_lessons') or 0)
+        bonus_days = int(request.form.get('bonus_days') or 0)
+        plan_id_val = request.form.get('plan_id')
+        plan_id = int(plan_id_val) if plan_id_val and plan_id_val.strip() else None
+
+        promo = PromoCode(
+            code=code,
+            discount_percent=discount_percent,
+            discount_rub=discount_rub,
+            usage_limit=usage_limit,
+            bonus_lessons=bonus_lessons,
+            bonus_days=bonus_days,
+            plan_id=plan_id,
+            is_active=True,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(promo)
+        db.session.commit()
+        flash(f'Промокод {code} успешно создан!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при создании промокода: {e}', 'danger')
+
+    return redirect(url_for('admin.admin_promocodes_list'))
+
+
+@admin_bp.route('/admin/promocodes/<int:promo_id>/toggle', methods=['POST'])
+@login_required
+def admin_promocodes_toggle(promo_id: int):
+    """Включение / отключение промокода"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    promo = PromoCode.query.get_or_404(promo_id)
+    promo.is_active = not promo.is_active
+    db.session.commit()
+    return jsonify({'success': True, 'is_active': promo.is_active})
 

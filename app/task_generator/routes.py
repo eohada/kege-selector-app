@@ -197,6 +197,12 @@ def _require_task_generator_access() -> None:
 def task_generator(lesson_id=None):
     """Генератор заданий (ЕГЭ / ОГЭ)"""
     _require_task_generator_access()
+    if request.path.startswith('/sandbox/task_generator'):
+        canonical_query = request.args.to_dict(flat=True)
+        if lesson_id is not None:
+            canonical_query['lesson_id'] = lesson_id
+        return redirect(url_for('task_generator.task_generator', **canonical_query))
+
     lesson = None
     student = None
     if lesson_id is None:

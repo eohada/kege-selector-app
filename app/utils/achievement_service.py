@@ -1,5 +1,5 @@
 from datetime import datetime
-from app.models import db, Student, UserAchievement
+from app.models import db, Student, UserAchievement, Answer, Submission
 from app.utils.xp_service import add_xp_to_student
 
 # Спецификация достижений (Ачивки) ЕГЭ по Информатике
@@ -35,10 +35,10 @@ ACHIEVEMENTS_REGISTRY = {
         'category': 'streak'
     },
     'first_step': {
-        'title': 'Быстрый старт',
-        'desc': 'Зайти на платформу в первый раз',
+        'title': 'Первый шаг',
+        'desc': 'Отправить первую работу на проверку',
         'icon': 'ph-footprints',
-        'category': 'streak'
+        'category': 'tasks'
     },
     'weekend_warrior': {
         'title': 'Воин выходного дня',
@@ -204,12 +204,88 @@ ACHIEVEMENTS_REGISTRY = {
     }
 }
 
+
+def build_student_achievement_catalog(student):
+    """Build profile cards from the same registry that grants achievements.
+
+    Only achievements whose conditions are implemented are shown.  This keeps
+    the profile truthful instead of displaying a decorative achievement that
+    can never be earned in the current product.
+    """
+    if not student:
+        return []
+
+    unlocked_rows = UserAchievement.query.filter_by(student_id=student.student_id).all()
+    unlocked_dates = {
+        row.achievement_key: row.unlocked_at.strftime('%d.%m.%Y')
+        for row in unlocked_rows
+        if row.unlocked_at
+    }
+    unlocked_keys = set(unlocked_dates)
+    completed_submissions = Submission.query.filter(
+        Submission.student_id == student.student_id,
+        Submission.status.in_(['SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED']),
+    ).count()
+    correct_answers = (
+        Answer.query.join(Submission, Answer.submission_id == Submission.submission_id)
+        .filter(Submission.student_id == student.student_id, Answer.is_correct.is_(True))
+        .count()
+    )
+    values = {
+        'first_step': completed_submissions,
+        'streak_3': int(student.streak_days or 0),
+        'streak_7': int(student.streak_days or 0),
+        'streak_30': int(student.streak_days or 0),
+        'streak_90': int(student.streak_days or 0),
+        'streak_180': int(student.streak_days or 0),
+        'lvl_5': int(student.level or 1),
+        'lvl_15': int(student.level or 1),
+        'lvl_30': int(student.level or 1),
+        'lvl_50': int(student.level or 1),
+        'xp_1000': int(student.xp or 0),
+        'xp_10000': int(student.xp or 0),
+        'tasks_10': correct_answers,
+        'tasks_50': correct_answers,
+        'tasks_200': correct_answers,
+        'tasks_500': correct_answers,
+    }
+    targets = {
+        'first_step': 1, 'streak_3': 3, 'streak_7': 7, 'streak_30': 30,
+        'streak_90': 90, 'streak_180': 180, 'lvl_5': 5, 'lvl_15': 15,
+        'lvl_30': 30, 'lvl_50': 50, 'xp_1000': 1000, 'xp_10000': 10000,
+        'tasks_10': 10, 'tasks_50': 50, 'tasks_200': 200, 'tasks_500': 500,
+    }
+    unit_by_key = {
+        'first_step': 'работа', 'streak_3': 'дней', 'streak_7': 'дней',
+        'streak_30': 'дней', 'streak_90': 'дней', 'streak_180': 'дней',
+        'lvl_5': 'уровень', 'lvl_15': 'уровень', 'lvl_30': 'уровень',
+        'lvl_50': 'уровень', 'xp_1000': 'XP', 'xp_10000': 'XP',
+        'tasks_10': 'задач', 'tasks_50': 'задач', 'tasks_200': 'задач',
+        'tasks_500': 'задач',
+    }
+    result = []
+    for key, target in targets.items():
+        meta = ACHIEVEMENTS_REGISTRY[key]
+        value = values[key]
+        result.append({
+            'key': key,
+            'title': meta['title'],
+            'desc': meta['desc'],
+            'condition': meta['desc'],
+            'icon': meta['icon'],
+            'xp': 0 if key == 'first_step' else 100,
+            'unlocked': key in unlocked_keys,
+            'progress': f'{min(value, target)}/{target} {unit_by_key[key]}',
+            'date': unlocked_dates.get(key),
+        })
+    return result
+
 def get_student_unlocked_achievement_keys(student_id):
     """Возвращает список ключей полученных ачивок ученика."""
     unlocked = UserAchievement.query.filter_by(student_id=student_id).all()
     return [u.achievement_key for u in unlocked]
 
-def grant_achievement(student, achievement_key, award_xp=True):
+def grant_achievement(student, achievement_key, award_xp=True, *, commit=True):
     """
     Выдает ачивку ученику. Начисляет +100 XP бонусного опыта.
     """
@@ -234,12 +310,14 @@ def grant_achievement(student, achievement_key, award_xp=True):
         
         # За верную ачивку даем +100 XP
         if award_xp:
-            add_xp_to_student(student, 100)
+            add_xp_to_student(student, 100, commit=commit)
             
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return True
     except Exception as e:
-        db.session.rollback()
+        if commit:
+            db.session.rollback()
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error granting achievement {achievement_key} to student {student.student_id}: {e}", exc_info=True)
@@ -270,7 +348,7 @@ def revoke_achievement(student, achievement_key):
         logger.error(f"Error revoking achievement {achievement_key} from student {student.student_id}: {e}", exc_info=True)
         return False
 
-def check_and_grant_dynamic_achievements(student):
+def check_and_grant_dynamic_achievements(student, *, commit=True):
     """
     Проверяет и выдает ачивки на основе стрика, уровня, опыта и решенных задач.
     """
@@ -279,21 +357,28 @@ def check_and_grant_dynamic_achievements(student):
     
     # 1. Проверки по стрикам
     streak = student.streak_days or 0
-    if streak >= 3: grant_achievement(student, 'streak_3')
-    if streak >= 7: grant_achievement(student, 'streak_7')
-    if streak >= 30: grant_achievement(student, 'streak_30')
-    if streak >= 90: grant_achievement(student, 'streak_90')
-    if streak >= 180: grant_achievement(student, 'streak_180')
-    
-    # Всегда выдаем первый шаг при входе
-    grant_achievement(student, 'first_step', award_xp=False)
+    if streak >= 3: grant_achievement(student, 'streak_3', commit=commit)
+    if streak >= 7: grant_achievement(student, 'streak_7', commit=commit)
+    if streak >= 30: grant_achievement(student, 'streak_30', commit=commit)
+    if streak >= 90: grant_achievement(student, 'streak_90', commit=commit)
+    if streak >= 180: grant_achievement(student, 'streak_180', commit=commit)
     
     # 2. Проверки по уровням и XP
     level = student.level or 1
     xp = student.xp or 0
-    if level >= 5: grant_achievement(student, 'lvl_5')
-    if level >= 15: grant_achievement(student, 'lvl_15')
-    if level >= 30: grant_achievement(student, 'lvl_30')
-    if level >= 50: grant_achievement(student, 'lvl_50')
-    if xp >= 1000: grant_achievement(student, 'xp_1000')
-    if xp >= 10000: grant_achievement(student, 'xp_10000')
+    if level >= 5: grant_achievement(student, 'lvl_5', commit=commit)
+    if level >= 15: grant_achievement(student, 'lvl_15', commit=commit)
+    if level >= 30: grant_achievement(student, 'lvl_30', commit=commit)
+    if level >= 50: grant_achievement(student, 'lvl_50', commit=commit)
+    if xp >= 1000: grant_achievement(student, 'xp_1000', commit=commit)
+    if xp >= 10000: grant_achievement(student, 'xp_10000', commit=commit)
+
+    correct_answers = (
+        Answer.query.join(Submission, Answer.submission_id == Submission.submission_id)
+        .filter(Submission.student_id == student.student_id, Answer.is_correct.is_(True))
+        .count()
+    )
+    if correct_answers >= 10: grant_achievement(student, 'tasks_10', commit=commit)
+    if correct_answers >= 50: grant_achievement(student, 'tasks_50', commit=commit)
+    if correct_answers >= 200: grant_achievement(student, 'tasks_200', commit=commit)
+    if correct_answers >= 500: grant_achievement(student, 'tasks_500', commit=commit)

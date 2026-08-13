@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_student.html' %}
 
 {% block title %}Работа над ошибками · BooStudy{% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
 <section class="glass-panel mb-5 w-full">
     <p class="hero-eyebrow">тренажер</p>
     <h1 class="hero-title mb-1">Работа над ошибками</h1>
@@ -62,7 +62,7 @@
 {% endif %}
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
     document.querySelectorAll('.mistake-retry-form').forEach(form => {
         form.addEventListener('submit', async function(e) {

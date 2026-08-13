@@ -14,7 +14,7 @@ def pluralize_days(n):
         return f"{n} дня"
     return f"{n} дней"
 
-def update_student_streak(student):
+def update_student_streak(student, *, commit=True):
     """
     Обновляет стрик ежедневной активности ученика.
     """
@@ -45,9 +45,11 @@ def update_student_streak(student):
             student.streak_days = 1
             student.last_activity_date = today
             
-        db.session.commit()
+        if commit:
+            db.session.commit()
     except Exception as e:
-        db.session.rollback()
+        if commit:
+            db.session.rollback()
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error updating student daily streak: {e}", exc_info=True)

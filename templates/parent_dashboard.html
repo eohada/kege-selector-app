@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_parent.html' %}
 {% block title %}Дашборд родителя{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .max-w-180px { max-width: 180px; }
@@ -20,7 +20,7 @@
 
 {% set active_page = 'parent_dashboard' %}
 
-{% block content %}
+{% block sandbox_content %}
 <div class="flex flex-col gap-6 pb-8 pt-6 w-full">
     <!-- Hero / Welcome Banner -->
     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600/10 via-purple-600/5 to-transparent dark:from-purple-950/20 dark:via-indigo-950/10 dark:to-transparent border border-slate-200 dark:border-dark-light p-6 sm:p-6 shadow-tactile dark:shadow-glass-dark">

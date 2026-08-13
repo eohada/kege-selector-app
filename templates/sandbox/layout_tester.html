@@ -100,7 +100,7 @@
         </div>
 
         <!-- User Profile Bottom Left -->
-        <a href="/profile" class="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center text-emerald-800 font-black text-xs hover:scale-105 transition-transform" title="{{ current_user.username if current_user.is_authenticated else 'Тестировщик' }}">
+        <a href="/workspace/profile" class="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center text-emerald-800 font-black text-xs hover:scale-105 transition-transform" title="{{ current_user.username if current_user.is_authenticated else 'Тестировщик' }}">
             {{ (current_user.username[0] if current_user.is_authenticated and current_user.username else 'T')|upper }}
         </a>
     </nav>

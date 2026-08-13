@@ -34,7 +34,7 @@
                     </a>
                     {% endif %}
                     {% endif %}
-                    <a href="{{ url_for('auth.user_profile') }}" class="cmd-palette-item">
+                    <a href="{{ url_for('main.workspace_profile') }}" class="cmd-palette-item">
                         <i class="ph-bold ph-user text-base text-muted"></i> Мой профиль
                     </a>
                     {% endif %}
@@ -157,7 +157,7 @@ function cmdPalette() {
             {% endif %}
             {% if trainer_available %}a.push({ title: 'Тренажёр', url: "{{ url_for('trainer.trainer_v2') }}" });{% endif %}
             a.push({ title: 'Генератор задач', url: "{{ url_for('task_generator.task_generator') }}" });
-            a.push({ title: 'Профиль', url: "{{ url_for('auth.user_profile') }}" });
+            a.push({ title: 'Профиль', url: "{{ url_for('main.workspace_profile') }}" });
             {% endif %}
             return a;
         })(),

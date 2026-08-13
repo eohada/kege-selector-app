@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% from '_ui_icon.html' import ui_icon %}
 {% block title %}{{ template.name }} · BooStudy{% endblock %}
 {% set active_page = 'templates' %}
@@ -11,7 +11,7 @@
     .active-scale-098:active { transform: scale(0.98); }
     .hover-shadow-0-6px-16px-rgba139-92-246-015:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.15); }
 </style>
-{% block content %}
+{% block sandbox_content %}
 <div class="flex flex-col gap-6 pb-6 w-full">
     <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 shadow-sm dark:shadow-glass-dark">
         <div class="flex items-center gap-4 mb-3">

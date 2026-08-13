@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% from '_ui_icon.html' import ui_icon %}
 {% from '_task_content_block.html' import render_task_content %}
 {% block html_attrs %}data-grade-page="1"{% endblock %}
@@ -6,7 +6,7 @@
 {% set active_page = 'assignments' %}
 {% block body_class %}layout-teacher{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .max-h-24rem { max-height: 24rem; }
@@ -528,12 +528,10 @@
     </style>
 {% endblock %}
 
-{% block head_js %}
 <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
-{% endblock %}
 
-{% block content %}
-        <div class="grade-app-content w-full mt-5 pb-32">
+{% block sandbox_content %}
+        <main class="grade-app-content w-full min-h-screen pl-0 lg:pl-[6.5rem] p-3 sm:p-6 pb-32">
         <div class="grade-page-inner">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К работе</a></p>
 
@@ -1020,9 +1018,10 @@
         .return-revision-field .neo-input { width: 100%; box-sizing: border-box; }
         .return-revision-actions { display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
     </style>
+        </main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script>
     var assignmentDeadline = {% if assignment.deadline %}"{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') }}"{% else %}null{% endif %};
     var assignmentMaxAttempts = {{ assignment.max_attempts_default or 1 }};

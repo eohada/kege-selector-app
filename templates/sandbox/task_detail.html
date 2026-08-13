@@ -167,7 +167,7 @@
 
             <!-- Быстрые утилиты -->
             <div class="flex items-center gap-3 pt-2">
-              <a href="/sandbox/workspace/{{ assignment.assignment_id if assignment else 0 }}/{{ t.task_number }}" class="bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline flex items-center gap-1.5 text-xs">
+              <a href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=t.assignment_task_id) }}" class="bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline flex items-center gap-1.5 text-xs">
                 <i class="ph-bold ph-lightning text-amber-500"></i> Открыть черновик в IDE
               </a>
             </div>
@@ -240,7 +240,7 @@
                 </h3>
               </div>
 
-              <a href="/sandbox/workspace/{{ assignment.assignment_id if assignment else 0 }}/{{ t.task_number }}" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-black px-5 py-3 rounded-xl border-b-[4px] border-indigo-800 shadow-md active:translate-y-[2px] transition-all no-underline flex items-center justify-center gap-2 text-xs">
+              <a href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=t.assignment_task_id) }}" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-black px-5 py-3 rounded-xl border-b-[4px] border-indigo-800 shadow-md active:translate-y-[2px] transition-all no-underline flex items-center justify-center gap-2 text-xs">
                 <i class="ph-bold ph-code text-base"></i> Решать в Workspace
               </a>
             </div>
@@ -348,6 +348,7 @@
 <script id="task-page-data" type="application/json">
 {
   "assignmentId": {{ (assignment.assignment_id if assignment else (assignment_id if assignment_id is defined else None)) | tojson | safe }},
+  "submissionId": {{ (submission.submission_id if submission else (submission_id if submission_id is defined else None)) | tojson | safe }},
   "assignmentMeta": {{ (assignment_meta if assignment_meta is defined else {}) | tojson | safe }},
   "tasksData": {{ tasks_data | tojson | safe }},
   "messagesByTask": {{ (messages_by_task if messages_by_task is defined else {}) | tojson | safe }}
@@ -360,6 +361,7 @@ const rawDataEl = document.getElementById('task-page-data');
 const pageData = rawDataEl ? JSON.parse(rawDataEl.textContent) : {};
 
 const ASSIGNMENT_ID = pageData.assignmentId;
+const SUBMISSION_ID = Number(pageData.submissionId || 0);
 const ASSIGNMENT_META = pageData.assignmentMeta || {};
 const TASKS_DATA = pageData.tasksData || [];
 const MESSAGES_BY_TASK = pageData.messagesByTask || {};
@@ -367,6 +369,21 @@ const MESSAGES_BY_TASK = pageData.messagesByTask || {};
 let currentTaskIndex = 1;
 let liveTimerInterval = null;
 let currentRemainingSeconds = ASSIGNMENT_META.remaining_seconds || 0;
+const loadedCommentThreads = new Set();
+
+async function requestJson(url, options = {}) {
+  const response = await fetch(url, options);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error || payload.message || 'Request failed');
+  }
+  return payload;
+}
+
+function submissionUrl(path) {
+  if (!SUBMISSION_ID) throw new Error('Submission context is missing');
+  return `/submissions/${SUBMISSION_ID}/${path}`;
+}
 
 function getCsrfToken() {
   const meta = document.querySelector('meta[name="csrf-token"]');
@@ -423,18 +440,18 @@ function initKaTeX() {
 /* --- TIMED ASSIGNMENT & START SCREEN --- */
 async function startTimedAssignment() {
   try {
-    const res = await fetch(`/sandbox/api/assignment/${ASSIGNMENT_ID}/start`, {
+    const data = await requestJson(submissionUrl('start'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCsrfToken()
       }
     });
-    const data = await res.json();
-    if (data.success) {
+    {
       ASSIGNMENT_META.started_at = data.started_at;
       ASSIGNMENT_META.status = 'IN_PROGRESS';
-      currentRemainingSeconds = data.remaining_seconds;
+      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - Date.parse(data.started_at)) / 1000));
+      currentRemainingSeconds = Math.max(0, (Number(ASSIGNMENT_META.time_limit_minutes || 0) * 60) - elapsedSeconds);
 
       document.getElementById('start-screen-container').classList.add('hidden');
       document.getElementById('task-stepper-container').classList.remove('hidden');
@@ -449,7 +466,6 @@ async function startTimedAssignment() {
 
       startLiveTimer();
       show3DToast('Таймер запущен! Удачи в решении работы!');
-    }
   } catch (e) {
     show3DToast('Ошибка старта работы');
   }
@@ -525,6 +541,7 @@ function switchTask(targetArg) {
 
   renderAttachments(orderIndex);
   renderChat(orderIndex);
+  loadComments(orderIndex);
 
   setTimeout(() => {
     renderKaTeXNow();
@@ -547,7 +564,7 @@ function renderAttachments(orderIndex) {
   files.forEach(f => {
     const isXls = f.name.endsWith('.xlsx') || f.name.endsWith('.xls');
     const iconClass = isXls ? 'ph-file-xls text-emerald-600 bg-emerald-50 border-emerald-200' : 'ph-file-text text-indigo-600 bg-indigo-50 border-indigo-200';
-    const downloadUrl = f.url || `/sandbox/download_attachment/${f.name}`;
+    const downloadUrl = f.url || '#';
 
     html += `
       <a href="${downloadUrl}" download class="p-3 bg-white border-2 border-slate-200 rounded-xl flex items-center justify-between hover:border-indigo-300 transition-all group no-underline shadow-xs">
@@ -601,6 +618,24 @@ function renderChat(orderIndex) {
   box.scrollTop = box.scrollHeight;
 }
 
+async function loadComments(orderIndex) {
+  const task = TASKS_DATA[orderIndex - 1];
+  if (!task || loadedCommentThreads.has(orderIndex)) return;
+  try {
+    const data = await requestJson(`${submissionUrl('comments')}?assignment_task_id=${task.assignment_task_id}`);
+    MESSAGES_BY_TASK[orderIndex] = (data.comments || []).map((comment) => ({
+      user_role: comment.is_mine ? 'student' : 'tutor',
+      user_name: comment.author?.name || 'Пользователь',
+      time_str: comment.created_human || '',
+      message: comment.text || ''
+    }));
+    loadedCommentThreads.add(orderIndex);
+    if (currentTaskIndex === orderIndex) renderChat(orderIndex);
+  } catch (e) {
+    console.warn('Unable to load assignment comments', e);
+  }
+}
+
 async function submitSingleTask(btnArg) {
   let orderIndex = 1;
   let assTaskId = 1;
@@ -622,7 +657,7 @@ async function submitSingleTask(btnArg) {
   }
 
   try {
-    const response = await fetch(`/sandbox/api/task_detail/${ASSIGNMENT_ID}/submit_task`, {
+    const res = await requestJson(submissionUrl('submit-task'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -630,11 +665,9 @@ async function submitSingleTask(btnArg) {
       },
       body: JSON.stringify({
         assignment_task_id: assTaskId,
-        answer: answerVal
+        value: answerVal
       })
     });
-
-    const res = await response.json();
 
     const feedbackBox = document.getElementById(`feedback-box-${orderIndex}`);
     const attemptsSpan = document.querySelector(`#attempts-badge-${orderIndex} .used-attempts`);
@@ -652,7 +685,7 @@ async function submitSingleTask(btnArg) {
         feedbackBox.classList.remove('hidden');
         feedbackBox.innerHTML = `
           <div class="p-3.5 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-black flex items-center gap-2">
-            <i class="ph-bold ph-check-circle text-emerald-600 text-lg"></i> ${res.message}
+            <i class="ph-bold ph-check-circle text-emerald-600 text-lg"></i> Ответ принят.
           </div>
         `;
       }
@@ -664,7 +697,7 @@ async function submitSingleTask(btnArg) {
         feedbackBox.classList.remove('hidden');
         feedbackBox.innerHTML = `
           <div class="p-3.5 bg-rose-100 border border-rose-300 text-rose-900 rounded-xl text-xs font-black flex items-center gap-2">
-            <i class="ph-bold ph-x-circle text-rose-600 text-lg"></i> ${res.message}
+            <i class="ph-bold ph-x-circle text-rose-600 text-lg"></i> Ответ сохранён. Проверьте решение и попробуйте ещё раз.
           </div>
         `;
       }
@@ -673,16 +706,12 @@ async function submitSingleTask(btnArg) {
       }
     }
 
-    if (res.is_locked) {
+    if (Number(res.attempts_used || 0) >= Number(res.max_attempts || Infinity)) {
       input.disabled = true;
       input.readOnly = true;
       if (submitBtn) submitBtn.disabled = true;
 
-      if (res.correct_answer && revealBox) {
-        revealBox.classList.remove('hidden');
-        const correctValSpan = revealBox.querySelector('.correct-val');
-        if (correctValSpan) correctValSpan.textContent = res.correct_answer;
-      }
+      if (revealBox) revealBox.classList.add('hidden');
     }
   } catch (err) {
     show3DToast('Ошибка соединения при отправке ответа');
@@ -692,24 +721,24 @@ async function submitSingleTask(btnArg) {
 async function saveDraft(silent = false) {
   if (ASSIGNMENT_META.is_submitted) return;
 
-  const answers = {};
+  const answers = [];
   TASKS_DATA.forEach(t => {
     const input = document.getElementById(`answer-input-${t.order_index}`);
     if (input) {
-      answers[t.assignment_task_id] = input.value.trim();
+      answers.push({ assignment_task_id: t.assignment_task_id, value: input.value.trim() });
     }
   });
 
   try {
-    const res = await fetch(`/sandbox/api/task_detail/${ASSIGNMENT_ID}/save_draft`, {
-      method: 'POST',
+    await requestJson(submissionUrl('autosave'), {
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCsrfToken()
       },
       body: JSON.stringify({ answers })
     });
-    const data = await res.json();
+    const data = { message: 'Черновик сохранён.' };
     if (!silent) {
       show3DToast(data.message || 'Черновик сохранён!');
     }
@@ -728,21 +757,27 @@ async function sendChatMessage() {
   if (!msg) return;
 
   try {
-    const res = await fetch(`/sandbox/api/task_detail/${ASSIGNMENT_ID}/chat`, {
+    const task = TASKS_DATA[currentTaskIndex - 1];
+    if (!task) return;
+    const data = await requestJson(submissionUrl('comments'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCsrfToken()
       },
       body: JSON.stringify({
-        task_id: currentTaskIndex,
-        message: msg
+        assignment_task_id: task.assignment_task_id,
+        text: msg
       })
     });
-    const data = await res.json();
-    if (data.success && data.chat_message) {
+    if (data.comment) {
       if (!MESSAGES_BY_TASK[currentTaskIndex]) MESSAGES_BY_TASK[currentTaskIndex] = [];
-      MESSAGES_BY_TASK[currentTaskIndex].push(data.chat_message);
+      MESSAGES_BY_TASK[currentTaskIndex].push({
+        user_role: 'student',
+        user_name: data.comment.author?.name || 'Вы',
+        time_str: new Date(data.comment.created_at).toLocaleString('ru-RU'),
+        message: data.comment.text || msg
+      });
       renderChat(currentTaskIndex);
       input.value = '';
     }
@@ -772,28 +807,27 @@ async function confirmSubmitEntireAssignment() {
 }
 
 async function performSubmitEntireAssignment(forced = false) {
-  const answers = {};
-  TASKS_DATA.forEach(t => {
-    const input = document.getElementById(`answer-input-${t.order_index}`);
-    if (input) {
-      answers[t.assignment_task_id] = input.value.trim();
-    }
-  });
-
   try {
-    const res = await fetch(`/sandbox/api/task_detail/${ASSIGNMENT_ID}/submit_assignment`, {
+    await saveDraft(true);
+    const taskTimes = {};
+    TASKS_DATA.forEach((task) => { taskTimes[task.assignment_task_id] = 0; });
+    const data = await requestJson(submissionUrl('submit'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCsrfToken()
       },
-      body: JSON.stringify({ answers, is_auto_submit: forced })
+      body: JSON.stringify({ task_times: taskTimes })
     });
-    const data = await res.json();
+    const completionMessage = forced
+      ? 'Время вышло. Ответы сохранены и отправлены на проверку.'
+      : `Работа сдана.${data.awarded_xp ? ` Получено ${data.awarded_xp} XP.` : ''}`;
+    show3DToast(completionMessage, '/submissions');
+    return;
     if (forced || data.is_auto_submit) {
-      show3DToast('⏰ Время вышло! Ваши ответы были автоматически сохранены и отправлены на проверку', '/sandbox/tasks');
+      show3DToast('Время вышло. Ответы сохранены и отправлены на проверку.', '/submissions');
     } else {
-      show3DToast(data.message || 'Работа сдана!', '/sandbox/tasks');
+      show3DToast(`Работа сдана.${data.awarded_xp ? ` Получено ${data.awarded_xp} XP.` : ''}`, '/submissions');
     }
   } catch (e) {
     show3DToast('Ошибка при сдаче работы');

@@ -478,7 +478,7 @@ def resolve_presence_activity(user, endpoint: str, path: str) -> Tuple[str, str]
     if ep.startswith("billing."):
         return "billing", _pick("Работает с тарифами и оплатами", "Упирается в деньги и подписки")
 
-    if ep.startswith("auth.user_profile"):
+    if ep.startswith("main.workspace_profile"):
         return "profile", _pick("Обновляет профиль", "Шлифует данные профиля")
 
     if ep.startswith("main.student_dashboard"):

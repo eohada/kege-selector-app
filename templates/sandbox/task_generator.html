@@ -168,7 +168,7 @@
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label class="text-[10px] font-black uppercase text-slate-400">№ Задания (1–27):</label>
-                <input type="number" id="manual-number" min="1" max="27" value="15" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+                <input type="number" id="manual-number" min="1" max="27" required placeholder="№" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
               </div>
 
               <div>
@@ -187,29 +187,24 @@
 
               <div>
                 <label class="text-[10px] font-black uppercase text-slate-400">Источник:</label>
-                <input type="text" id="manual-source" value="Демоверсия ФИПИ" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+                <input type="text" id="manual-source" placeholder="Например: ФИПИ, авторское" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
               </div>
             </div>
 
             <div>
               <label class="text-[10px] font-black uppercase text-slate-400">Тема / Предикат:</label>
-              <input type="text" id="manual-topic" value="Поразрядная конъюнкция и логика" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+              <input type="text" id="manual-topic" placeholder="Например: Логика и предикаты" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
             </div>
 
             <div>
               <label class="text-[10px] font-black uppercase text-slate-400">Текст условия (LaTeX $...$):</label>
-              <textarea id="manual-content" rows="4" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 leading-relaxed font-sans" placeholder="Обозначим через $P$ поразрядную конъюнкцию..."><p class="font-semibold text-slate-800">
-  Обозначим через $P$ поразрядную конъюнкцию неотрицательных целых чисел $m$ и $n$. 
-  Для какого наименьшего натурального числа $A$ формула 
-  $$(x \land 29 \neq 0) \to ((x \land 17 = 0) \to (x \land A \neq 0))$$ 
-  тождественно истинна?
-</p></textarea>
+              <textarea id="manual-content" rows="4" required oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 leading-relaxed font-sans" placeholder="Введите условие. Разметка и формулы LaTeX поддерживаются."></textarea>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="text-[10px] font-black uppercase text-slate-400">Правильный ответ:</label>
-                <input type="text" id="manual-answer" value="12" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-black text-slate-800 focus:outline-none focus:border-indigo-500">
+                <input type="text" id="manual-answer" required placeholder="Ответ" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-black text-slate-800 focus:outline-none focus:border-indigo-500">
               </div>
 
               <div>
@@ -220,13 +215,7 @@
 
             <div>
               <label class="text-[10px] font-black uppercase text-slate-400">Эталонное решение (Python):</label>
-              <textarea id="manual-code" rows="4" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs font-mono text-emerald-400 focus:outline-none leading-relaxed" placeholder="# Python скрипт решения">def f(x, A):
-    return (x & 29 != 0) <= ((x & 17 == 0) <= (x & A != 0))
-
-for A in range(1, 1000):
-    if all(f(x, A) for x in range(1000)):
-        print(A)
-        break</textarea>
+              <textarea id="manual-code" rows="4" oninput="triggerLivePreviewDebounced()" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs font-mono text-emerald-400 focus:outline-none leading-relaxed" placeholder="# При необходимости добавьте эталонное решение на Python"></textarea>
             </div>
 
             <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-black shadow-md transition-all active:scale-95 cursor-pointer border-none flex items-center justify-center gap-2">
@@ -251,7 +240,7 @@ for A in range(1, 1000):
             <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100">
               <div class="flex items-center gap-2">
                 <span id="preview-badge-num" class="px-3 py-1 bg-indigo-50 border border-indigo-200/60 rounded-xl text-xs font-black text-indigo-600">
-                  № 15
+                  № —
                 </span>
                 <span id="preview-badge-score" class="px-3 py-1 bg-slate-100 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-600">
                   1 Балл
@@ -260,12 +249,12 @@ for A in range(1, 1000):
                   Уровень: Средний
                 </span>
               </div>
-              <span id="preview-source" class="text-xs font-mono font-bold text-slate-400">Демоверсия ФИПИ</span>
+              <span id="preview-source" class="text-xs font-mono font-bold text-slate-400">Ручной ввод</span>
             </div>
 
             <!-- Тема -->
             <p id="preview-topic" class="text-xs font-bold text-indigo-600">
-              Тема: Поразрядная конъюнкция и логика
+              Тема: не указана
             </p>
 
             <!-- Контент условия c KaTeX -->
@@ -281,13 +270,12 @@ for A in range(1, 1000):
             <!-- Ответ -->
             <div class="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold flex items-center justify-between">
               <span>Эталонный ответ:</span>
-              <span id="preview-answer" class="font-mono font-black text-sm">12</span>
+              <span id="preview-answer" class="font-mono font-black text-sm">—</span>
             </div>
 
             <!-- Код решения -->
             <div class="bg-slate-900 p-4 rounded-xl font-mono text-xs text-emerald-400 overflow-x-auto">
-              <pre><code id="preview-code">def f(x, A):
-    return (x & 29 != 0) <= ((x & 17 == 0) <= (x & A != 0))</code></pre>
+              <pre><code id="preview-code"># Эталонное решение пока не добавлено</code></pre>
             </div>
           </div>
         </div>
@@ -808,7 +796,7 @@ function triggerLivePreviewDebounced() {
 }
 
 function updateLivePreviewReal() {
-  const num = document.getElementById('manual-number').value || 15;
+  const num = document.getElementById('manual-number').value || '—';
   const diffVal = document.getElementById('manual-diff').value;
   const diffStr = diffVal === '1' ? 'Базовый' : (diffVal === '3' ? 'Сложный' : 'Средний');
   const score = document.getElementById('manual-score').value || 1;

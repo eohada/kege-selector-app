@@ -1803,6 +1803,11 @@ def theory_api_read():
         status='assigned',
     ).update({'status': 'completed', 'completed_at': moscow_now()})
     db.session.commit()
+    try:
+        from app.utils.gamification_service import reward_theory_reading
+        reward_theory_reading(student)
+    except Exception:
+        pass
     return jsonify({'success': True})
 
 
@@ -1829,6 +1834,14 @@ def theory_api_progress():
     row.last_position = position
     row.last_opened_at = moscow_now()
     db.session.commit()
+
+    if row.reading_progress >= 100:
+        try:
+            from app.utils.gamification_service import reward_theory_reading
+            reward_theory_reading(student)
+        except Exception:
+            pass
+
     return jsonify({'success': True, 'progress': row.reading_progress})
 
 

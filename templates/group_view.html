@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Группа · {{ group.title }}{% endblock %}
 
 {% set active_page = 'groups' %}
@@ -12,8 +12,9 @@
     .bg-length-16px { background-color: length:16px; }
     .bg-urldata-image-svgxmlcharsetutf-8-3Csvg { background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg; }
 </style>
-{% block content %}
-<div class="flex flex-col gap-6 pb-6 w-full">
+{% block sandbox_content %}
+<main class="flex-1 overflow-y-auto bg-[#F8FAFC] p-4 pb-24 lg:pl-[6.5rem] lg:pr-8 lg:pt-8">
+<div class="mx-auto flex w-full max-w-[1400px] flex-col gap-6 pb-6">
     <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-6">
         <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
         <div class="relative z-10 max-w-3xl">
@@ -164,4 +165,5 @@
         </div>
     </div>
 </div>
+</main>
 {% endblock %}

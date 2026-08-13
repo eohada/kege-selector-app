@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Создать работу · URep{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .max-h-min56vh-620px { max-height: min(56vh,620px); }
@@ -98,7 +98,8 @@
 
 {% set active_page = 'assignments' %}
 
-{% block content %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] lg:pl-[6.5rem] px-4 py-6">
 <div class="flex-1 overflow-y-auto pt-6 pb-16">
   <div id="assignmentCreateWizard" class="wizard-container w-full">
     <script type="application/json" id="group-members-json">{{ (group_members_map or {})|tojson }}</script>
@@ -404,9 +405,10 @@
     </div>
   </div>
 </div>
+</main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script type="application/json" id="task-ids-json">{{ (task_ids or [])|tojson }}</script>
     <script>
         window.initAssignmentCreate = function() {

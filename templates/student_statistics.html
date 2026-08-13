@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Статистика - {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'dashboard' %}
 
-{% block head_css %}
+{% block extra_head %}
 <style>
     .statistics-chart-wrap { overflow-x: auto; }
     .statistics-chart-wrap canvas { min-width: 620px; }
@@ -10,13 +10,14 @@
         .statistics-chart-wrap canvas { min-width: 520px; }
     }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {% endblock %}
 
 {% block head_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
         <section class="glass-panel mb-3 w-full">
             <div class="flex items-center gap-4 mb-3">
                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">
@@ -125,7 +126,7 @@
         {% endif %}
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script>
         function showTemporaryNotification(message, type) {
             if (window.toast && typeof window.toast.success === 'function') {

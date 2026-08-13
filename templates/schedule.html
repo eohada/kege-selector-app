@@ -1,9 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_parent.html' if current_user.is_parent() else ('sandbox/layout_student.html' if current_user.is_student() else 'sandbox/layout_teacher.html') %}
 {% block title %}Расписание · URep{% endblock %}
-{% block body_attrs %}data-csrf-token="{{ csrf_token() if csrf_token else '' }}" data-cinema-scene="schedule"{% endblock %}
-{% block body_class %}layout-teacher{% endblock %}
 {% set active_page = 'schedule' %}
-{% block content %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] lg:pl-[6.5rem] px-3 sm:px-6 py-4 sm:py-6" data-csrf-token="{{ csrf_token() if csrf_token else '' }}" data-cinema-scene="schedule">
 <style>
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
@@ -923,8 +922,9 @@
         </div>
     </div>
     {% endif %}
+</main>
 {% endblock %}
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script>
         const currentTimezone = '{{ timezone }}';
         window.weekDaysIso = [{% for d in week_days %}"{{ d.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}];

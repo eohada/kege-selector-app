@@ -74,6 +74,9 @@ backups/*.db
 *.bak
 *.swp
 
+# Runtime state of the blue-green deployment helper.
+.deploy/
+
 # Coverage
 htmlcov/
 .coverage

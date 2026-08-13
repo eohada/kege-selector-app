@@ -113,8 +113,8 @@
 
         <!-- Parent Profile Link -->
         <div class="mt-auto w-full px-3">
-            <a href="/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/profile') %}border-2 border-amber-500 shadow-md ring-2 ring-amber-500/20{% else %}border-2 border-slate-200 hover:border-amber-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль родителя: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Родитель' }}">
-                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}https://api.dicebear.com/7.x/avataaars/svg?seed={{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'QAParent' }}&backgroundColor=fef3c7{% endif %}" class="w-full h-full object-cover">
+            <a href="/workspace/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/workspace/profile') %}border-2 border-amber-500 shadow-md ring-2 ring-amber-500/20{% else %}border-2 border-slate-200 hover:border-amber-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль родителя: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Родитель' }}">
+                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-full h-full object-cover" alt="Аватар профиля">
                 <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </a>
         </div>
@@ -158,7 +158,7 @@
         }, 3500);
     }
     </script>
-    {% include 'sandbox/components/dev_switcher.html' %}
+    {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
     {% include 'sandbox/components/_qa_widget.html' ignore missing %}
 </body>
 </html>

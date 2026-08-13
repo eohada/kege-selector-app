@@ -1,4 +1,4 @@
-{% extends "sandbox/layout_student.html" if (is_student_view or is_parent_view) else "base.html" %}
+{% extends "sandbox/layout_student.html" if (is_student_view or is_parent_view) else "sandbox/layout_teacher.html" %}
 {% from '_task_content_block.html' import render_task_content %}
 {% block html_attrs %}data-student-lesson-room="1"{% endblock %}
 {% block title %}{{ lesson.topic or 'Урок' }} · BooStudy{% endblock %}
@@ -6,7 +6,7 @@
 {% block body_attrs %}data-cinema-scene="lesson"{% endblock %}
 {% block body_class %}{% if is_student_view or is_parent_view %}layout-student{% else %}layout-teacher teacher-mode{% endif %} min-h-screen{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
     <style>
@@ -852,9 +852,6 @@
         }
     }
     </style>
-{% endblock %}
-
-{% block head_js %}
 <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 <script src="{{ url_for('static', filename='workspace/file-manager.js') }}?v=6"></script>
 <script src="{{ url_for('static', filename='workspace/file-viewer.js') }}?v=6"></script>

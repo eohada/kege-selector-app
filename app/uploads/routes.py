@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 # without it stay valid as well.
 AVATAR_FILENAME_RE = re.compile(r'^avatar_\d+(?:_\d+)?\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 COVER_FILENAME_RE = re.compile(r'^cover_\d+(?:_\d+)?\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
+# Before V2 normalized upload names were introduced, some installations stored
+# profile media with spaces or dashes in the basename.  Keep those existing
+# records readable while still refusing paths and unrelated file extensions.
+LEGACY_PUBLIC_ASSET_RE = re.compile(
+    r'^(?:avatar|cover)[\w .-]*\.(jpg|jpeg|png|gif|webp)$',
+    re.IGNORECASE,
+)
 
 
 def _lesson_material_root(lesson_id: int) -> str:
@@ -63,6 +70,15 @@ def _resolve_uploaded_asset(base_name: str, roots: list[str], allowed_prefix: st
             if os.path.isfile(candidate):
                 return candidate
     return None
+
+
+def _is_public_profile_asset(base_name: str, kind: str) -> bool:
+    canonical_pattern = AVATAR_FILENAME_RE if kind == 'avatars' else COVER_FILENAME_RE
+    if canonical_pattern.match(base_name):
+        return True
+    if not LEGACY_PUBLIC_ASSET_RE.match(base_name):
+        return False
+    return base_name.lower().startswith(('avatar', 'cover'))
 
 def _resolve_accessible_student_ids(scope: dict) -> list[int]:
     if not scope or scope.get('can_see_all'):
@@ -180,7 +196,7 @@ def avatar_file(filename: str):
     Иначе — из persistent volume uploads/avatars.
     """
     base_name = os.path.basename(filename)
-    if not base_name or not AVATAR_FILENAME_RE.match(base_name):
+    if not base_name or not _is_public_profile_asset(base_name, 'avatars'):
         abort(404)
     roots = []
     root = current_app.config.get('AVATAR_UPLOAD_ROOT')
@@ -194,25 +210,9 @@ def avatar_file(filename: str):
     ])
     abs_path = _resolve_uploaded_asset(base_name, roots, 'avatars')
     if not abs_path:
-        app_root = os.path.dirname(current_app.root_path)
-        fallback_candidates = [
-            os.path.join(app_root, 'static', 'images', 'demo_user_avatar.png'),
-            os.path.join(app_root, 'static', 'images', 'demo_creator_avatar_1.png'),
-            os.path.join(app_root, 'static', 'images', 'demo_creator_avatar.jpg'),
-            os.path.join(current_app.root_path, 'static', 'images', 'demo_user_avatar.png'),
-            os.path.join(current_app.root_path, 'static', 'images', 'demo_creator_avatar_1.png'),
-            os.path.join(current_app.root_path, 'static', 'images', 'demo_creator_avatar.jpg'),
-        ]
-        for fallback_path in fallback_candidates:
-            if os.path.isfile(fallback_path):
-                response = send_file(
-                    fallback_path,
-                    mimetype=None,
-                    as_attachment=False,
-                    download_name=os.path.basename(fallback_path),
-                )
-                response.headers['Cache-Control'] = 'no-store, max-age=0'
-                return response
+        # Never substitute somebody else's demo image for a missing upload.
+        # The profile UI has its own neutral placeholder and a stale URL must
+        # remain observable so storage/volume configuration can be repaired.
         abort(404)
     response = send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
     response.headers['Cache-Control'] = 'public, max-age=300'
@@ -226,7 +226,7 @@ def cover_file(filename: str):
     Если задан COVER_UPLOAD_ROOT — файлы оттуда, иначе persistent volume uploads/covers.
     """
     base_name = os.path.basename(filename)
-    if not base_name or not COVER_FILENAME_RE.match(base_name):
+    if not base_name or not _is_public_profile_asset(base_name, 'covers'):
         abort(404)
     roots = []
     root = current_app.config.get('COVER_UPLOAD_ROOT')

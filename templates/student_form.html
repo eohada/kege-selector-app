@@ -1,8 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}{{ title }} · BooStudy{% endblock %}
 {% set active_page = 'dashboard' %}
 
-{% block content %}
+{% block sandbox_content %}
         <section class="glass-panel form-hero w-full">
             <div>
                 <p class="hero-eyebrow">форма ученика</p>
@@ -132,7 +132,7 @@
         </form>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const studentForm = document.querySelector('section.form-hero') ?

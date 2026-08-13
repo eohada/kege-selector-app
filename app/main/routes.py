@@ -39,7 +39,12 @@ def get_active_role():
 
 @main_bp.context_processor
 def inject_active_role():
-    return dict(get_active_role=get_active_role)
+    return {
+        'get_active_role': get_active_role,
+        'show_dev_tools': bool(
+            current_app.config.get('DEBUG') or current_app.config.get('TESTING')
+        ),
+    }
 
 
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -107,13 +112,6 @@ def presence_ping():
         current_user.presence_activity_text = new_text
         current_user.presence_updated_at = now
         
-        if current_user.is_student():
-            try:
-                from app.utils.streak_service import update_student_streak_by_user_id
-                update_student_streak_by_user_id(current_user.id)
-            except Exception as e:
-                logger.error(f"Error updating streak on ping: {e}")
-
         db.session.commit()
 
         try:
@@ -413,7 +411,7 @@ def index():
 
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
-    return render_template('index.html')
+    return redirect(url_for('main.landing'))
 
 @main_bp.route('/students/<int:student_id>')
 @main_bp.route('/teacher/students/<int:student_id>')
@@ -517,8 +515,6 @@ def dashboard():
                         user_id=su.id,
                         name=su.full_name or su.username,
                         is_active=True,
-                        category='ЕГЭ',
-                        lessons_balance=8
                     )
                     db.session.add(st_obj)
                     new_st_created = True
@@ -906,6 +902,10 @@ def dashboard():
 @login_required
 def student_dashboard():
     """Дашборд ученика V2 Sandbox: план, задания, риски по темам."""
+    # Старый публичный адрес сохраняем только как совместимый переход.
+    # Живой интерфейс всегда должен открывать каноничный V2-дашборд.
+    if request.path in {'/student/dashboard', '/sandbox/student_dashboard'}:
+        return redirect(url_for('main.dashboard'))
     active_role = get_active_role()
     if active_role not in ['student', 'parent'] and (current_user.role in ['teacher', 'tutor', 'admin', 'creator']):
         return redirect(url_for('main.dashboard'))
@@ -1408,7 +1408,12 @@ def platform_bug_reports():
 @main_bp.route('/api/student/<int:student_id>/debug-streak', methods=['POST'])
 @login_required
 def debug_streak(student_id):
-    """Временный API для изменения стрика ученика (для тестов)."""
+    """Тестовый API: недоступен в рабочем окружении."""
+    if not current_app.config.get('TESTING'):
+        abort(404)
+    if not current_user.is_creator():
+        abort(403)
+
     from app.models import Student
     student = Student.query.get_or_404(student_id)
     payload = request.get_json(silent=True) or {}
@@ -1440,7 +1445,6 @@ def is_godmode_user():
 @login_required
 def link_tutor(student_id):
     """Привязывает ученика к текущему создателю/преподавателю (1-Click Link)."""
-    print(f"\n[LINK_TUTOR DEBUG] Triggered for student_id={student_id} by user={current_user.username} (id={current_user.id}, role={current_user.role})")
     if not is_godmode_user() and getattr(current_user, 'role', '') not in ['teacher', 'tutor', 'admin']:
         return jsonify({'status': 'error', 'message': 'Недостаточно прав (403)'}), 403
 
@@ -1457,16 +1461,12 @@ def link_tutor(student_id):
                     user_id=user.id,
                     name=user.full_name or user.username,
                     is_active=True,
-                    category='ЕГЭ',
-                    lessons_balance=8
                 )
                 db.session.add(student)
 
         target_tutor_id = current_user.id
-        print(f"[LINK_TUTOR DEBUG] Setting student.mentor_id (tutor_id) = {target_tutor_id}")
         student.mentor_id = target_tutor_id
         db.session.commit()
-        print(f"[LINK_TUTOR DEBUG] SUCCESS! db.session.commit() executed for student_id={student.student_id}\n")
 
         return jsonify({
             'status': 'success',
@@ -1572,7 +1572,12 @@ def admin_update_user(user_id):
 @main_bp.route('/api/student/<int:student_id>/debug-xp', methods=['POST'])
 @login_required
 def debug_xp(student_id):
-    """Временный API для изменения опыта (XP) ученика (для тестов)."""
+    """Тестовый API: недоступен в рабочем окружении."""
+    if not current_app.config.get('TESTING'):
+        abort(404)
+    if not current_user.is_creator():
+        abort(403)
+
     from app.models import Student
     from app.utils.xp_service import calculate_level_from_xp
     student = Student.query.get_or_404(student_id)
@@ -1597,7 +1602,12 @@ def debug_xp(student_id):
 @main_bp.route('/api/student/<int:student_id>/debug-achievements', methods=['POST'])
 @login_required
 def debug_achievements(student_id):
-    """Временный API для выдачи/забора ачивок ученика (для тестов/Создателя)."""
+    """Тестовый API: недоступен в рабочем окружении."""
+    if not current_app.config.get('TESTING'):
+        abort(404)
+    if not current_user.is_creator():
+        abort(403)
+
     from app.models import Student
     from app.utils.achievement_service import grant_achievement, revoke_achievement
     student = Student.query.get_or_404(student_id)
@@ -1711,8 +1721,6 @@ def serve_qa_upload(filename):
 from core.db_models import SchoolGroup, GroupStudent, TaskTemplate, TemplateTask
 
 
-@main_bp.route('/groups', methods=['GET'])
-@main_bp.route('/teacher/groups', methods=['GET'])
 @login_required
 def teacher_groups():
     """Список групп и классов преподавателя."""
@@ -2145,10 +2153,10 @@ def render_sandbox_layout_page(page_name):
 
     canonical_pages = {
         'theory': 'theory.theory_index',
-        'trainer': 'trainer.trainer_v2',
+        'trainer': 'main.dashboard',
         'schedule': 'schedule.schedule',
         'student_schedule': 'schedule.schedule',
-        'profile': 'main.universal_profile_view',
+        'profile': 'main.workspace_profile',
         'analytics': 'main.analytics_view',
         'library': 'library.materials_library',
         'assignments': 'assignments.submissions_list',
@@ -2435,6 +2443,11 @@ def analytics_view():
     else:
         student_ids = []
 
+    group_titles_by_id = {group.group_id: group.title for group in groups}
+    student_group_names = {}
+    for link in group_students if active_group_ids else []:
+        student_group_names.setdefault(link.student_id, group_titles_by_id.get(link.group_id, 'Группа'))
+
     attempts = []
     if student_ids:
         try:
@@ -2489,32 +2502,70 @@ def analytics_view():
                 })
         problem_topics.sort(key=lambda x: x['pct'])
 
+    from core.db_models import Assignment, Submission
+
+    submissions_by_student = {}
+    overdue_by_student = {}
+    if student_ids:
+        now = datetime.utcnow()
+        student_submissions = Submission.query.join(Assignment).filter(
+            Submission.student_id.in_(student_ids),
+        ).all()
+        for submission in student_submissions:
+            submissions_by_student.setdefault(submission.student_id, []).append(submission)
+            assignment = submission.assignment
+            deadline = getattr(assignment, 'deadline', None)
+            if deadline and deadline.replace(tzinfo=None) < now and submission.status in {'ASSIGNED', 'IN_PROGRESS', 'RETURNED'}:
+                overdue_by_student[submission.student_id] = overdue_by_student.get(submission.student_id, 0) + 1
+
+    lessons = Lesson.query.filter(Lesson.student_id.in_(student_ids)).all() if student_ids else []
+    attended_lessons = sum(1 for lesson in lessons if (lesson.status or '').lower() == 'completed')
+    attendance_pct = round((attended_lessons / len(lessons)) * 100, 1) if lessons else 0.0
+
     # Pure database values without hardcode
     groups_stats = []
     for g in groups:
-        st_count = len(g.students) if hasattr(g, 'students') and g.students else 0
+        group_student_ids = [link.student_id for link in group_students if link.group_id == g.group_id]
+        group_submissions = [
+            submission for student_id in group_student_ids
+            for submission in submissions_by_student.get(student_id, [])
+            if submission.percentage is not None
+        ]
+        st_count = len(group_student_ids)
+        group_avg_score = round(sum(submission.percentage for submission in group_submissions) / len(group_submissions), 1) if group_submissions else 0.0
+        group_hw_pct = round(
+            sum(1 for submission in group_submissions if submission.status in {'GRADED', 'SUBMITTED', 'NEEDS_MANUAL_REVIEW'})
+            / len(group_submissions) * 100,
+            1,
+        ) if group_submissions else 0.0
         groups_stats.append({
             'group_id': g.group_id,
             'title': g.title,
             'subject': g.subject or 'Предмет не указан',
             'students_count': st_count,
             'tag': g.tag or 'Группа',
-            'avg_score': 0.0,
-            'hw_pct': 0
+            'avg_score': group_avg_score,
+            'hw_pct': group_hw_pct,
         })
 
     debtors = []
     if student_ids:
         st_records = Student.query.filter(Student.student_id.in_(student_ids)).limit(10).all()
         for st in st_records:
+            overdue_count = overdue_by_student.get(st.student_id, 0)
+            if not overdue_count:
+                continue
             u_name = st.name if hasattr(st, 'name') and st.name else (st.user.full_name if hasattr(st, 'user') and st.user else f"Ученик #{st.student_id}")
             debtors.append({
                 'student_id': st.student_id,
                 'name': u_name,
                 'group_name': groups[0].title if groups else 'Общая группа',
-                'overdue_count': 1,
-                'avatar': f"https://api.dicebear.com/7.x/avataaars/svg?seed={u_name}"
+                'overdue_count': overdue_count,
+                'avatar': (st.user.avatar_url if getattr(st, 'user', None) and st.user.avatar_url else url_for('static', filename='images/default-avatar.svg'))
             })
+            debtors[-1]['group_name'] = student_group_names.get(st.student_id, 'Группа не указана')
+
+        debtors.sort(key=lambda debtor: debtor['overdue_count'], reverse=True)
 
     return render_template(
         'main/teacher_analytics.html',
@@ -2523,7 +2574,7 @@ def analytics_view():
         avg_score=avg_ege_score,
         hw_on_time_pct=hw_on_time_pct,
         problem_topics_count=len(problem_topics),
-        attendance_pct=0.0 if not student_ids else 92.8,
+        attendance_pct=attendance_pct,
         groups_stats=groups_stats,
         problem_topics=problem_topics,
         debtors=debtors
@@ -2643,14 +2694,15 @@ def get_or_create_teacher_profile(teacher_user):
 def sandbox_mentor_profile_redirect():
     """Редирект со старых роутов на единую систему профилей /profile."""
     if current_user and current_user.is_authenticated:
-        return redirect(url_for('main.universal_profile_view', user_id=current_user.id))
-    return redirect(url_for('main.universal_profile_view'))
+        return redirect(url_for('main.workspace_profile'))
+    return redirect(url_for('auth.login'))
 
 
 @main_bp.route('/mentor/<username>', methods=['GET'])
 def mentor_username_redirect(username):
     """Редирект со старого роута /mentor/<username> на /u/<username>."""
-    return redirect(url_for('main.universal_profile_view', username=username))
+    target_user = User.query.filter((User.username == username) | (User.email == username)).first_or_404()
+    return redirect(url_for('main.universal_profile_view', user_id=target_user.id))
 
 
 @main_bp.route('/teacher/<int:teacher_id>', methods=['GET'])
@@ -2662,26 +2714,25 @@ def teacher_id_redirect(teacher_id):
 @main_bp.route('/profile', methods=['GET'])
 @main_bp.route('/profile/<int:user_id>', methods=['GET'])
 @main_bp.route('/u/<username>', methods=['GET'])
-def universal_profile_view(user_id=None, username=None):
+def legacy_profile_redirect(user_id=None, username=None):
+    """Legacy profile URLs only redirect; they never render a profile surface."""
+    if user_id is not None:
+        return redirect(url_for('main.universal_profile_view', user_id=user_id))
+    if username is not None:
+        target_user = User.query.filter((User.username == username) | (User.email == username)).first_or_404()
+        return redirect(url_for('main.universal_profile_view', user_id=target_user.id))
+    return redirect(url_for('main.workspace_profile' if current_user.is_authenticated else 'auth.login'))
+
+
+@main_bp.route('/workspace/people/<int:user_id>', methods=['GET'])
+def universal_profile_view(user_id=None):
     """Единый архитектурный стандарт публичных/приватных профилей V2 Sandbox."""
+    # /profile был старой точкой входа. Для собственного кабинета у него
+    # больше нет отдельного рендера: только /workspace/profile.
     # Собственный профиль обслуживается отдельным V2-кабинетом, который
     # учитывает все привилегированные роли (в том числе creator). Универсальный
     # просмотр ниже остаётся только для публичных профилей по id / username.
-    if user_id is None and username is None and current_user and current_user.is_authenticated:
-        return redirect(url_for('main.workspace_profile'))
-
-    target_user = None
-    if user_id:
-        target_user = User.query.get_or_404(user_id)
-    elif username:
-        target_user = User.query.filter((User.username == username) | (User.email == username)).first()
-        if not target_user:
-            abort(404)
-    else:
-        if current_user and current_user.is_authenticated:
-            target_user = current_user
-        else:
-            return redirect(url_for('auth.login'))
+    target_user = User.query.get_or_404(user_id)
 
     viewer = current_user if (current_user and current_user.is_authenticated) else None
     viewer_role = (get_active_role() or (viewer.role if viewer else 'student')).lower()
@@ -2755,15 +2806,20 @@ def universal_profile_view(user_id=None, username=None):
             if (sub.status or '').upper() in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED'}
         ]
         scored_submissions = [sub for sub in completed_submissions if sub.percentage is not None]
+        from app.utils.xp_service import calculate_level_from_xp, get_rank_title, get_xp_for_level
+        from app.utils.referral_service import get_or_create_personal_referral_code
+
         xp_points = int(getattr(student_obj, 'xp', 0) or 0)
-        level = max(1, xp_points // 500 + 1)
-        xp_next_level = level * 500
+        level = calculate_level_from_xp(xp_points)
+        xp_next_level = get_xp_for_level(level + 1)
+        personal_referral = get_or_create_personal_referral_code(target_user) if is_owner else None
         student_stats = {
             'level': level,
-            'rank_title': 'Новичок' if level < 5 else ('Профи' if level < 10 else 'Гуру'),
+            'rank_title': get_rank_title(level),
             'streak_days': int(getattr(student_obj, 'streak_days', 0) or 0),
             'xp_points': xp_points,
             'xp_next_level': xp_next_level,
+            'xp_progress_pct': min(100, round((xp_points / xp_next_level) * 100)) if xp_next_level else 0,
             'hw_completed': len(completed_submissions),
             'hw_total': len(submissions),
             'on_time_pct': round(sum(1 for sub in completed_submissions if not sub.is_late) / len(completed_submissions) * 100) if completed_submissions else 0,
@@ -2782,16 +2838,16 @@ def universal_profile_view(user_id=None, username=None):
             'profile_avatar_url': getattr(target_user, 'avatar_url', None) or (getattr(target_user.profile, 'avatar_url', None) if getattr(target_user, 'profile', None) else None),
             'profile_bio': getattr(target_user, 'about_me', None) or getattr(target_user, 'custom_status', None) or '',
             'user_handle': target_user.username,
-            'user_avatar': getattr(target_user, 'avatar_url', None) or f"https://api.dicebear.com/7.x/avataaars/svg?seed={target_user.username}&backgroundColor=e0f2fe",
+            'user_avatar': getattr(target_user, 'avatar_url', None) or url_for('static', filename='images/default-avatar.svg'),
             'user_cover': getattr(target_user, 'cover_url', None) or (getattr(target_user.profile, 'cover_url', None) if getattr(target_user, 'profile', None) else None),
             'school_class_display': getattr(student_obj, 'school_class', None),
-            'user_level': max(0, level - 1),
+            'user_level': level,
             'user_xp': xp_points,
             'xp_needed': max(0, xp_next_level - xp_points),
             'xp_pct': round((xp_points / xp_next_level) * 100) if xp_next_level else 0,
             'user_streak': int(getattr(student_obj, 'streak_days', 0) or 0) if student_obj else 0,
             'days_word': 'дней',
-            'rank_title': 'Новичок' if level < 5 else 'Любитель',
+            'rank_title': get_rank_title(level),
             'completed_cnt': lesson_completed,
             'total_cnt': lesson_total,
             'progress_pct': student_stats.get('avg_score', 0) if scored_submissions else (round((len(completed_submissions) / len(submissions)) * 100) if submissions else 0)
@@ -2808,28 +2864,29 @@ def universal_profile_view(user_id=None, username=None):
                 for goal in weekly_goals
             ],
             'show_profile_onboarding': bool(is_owner and not getattr(getattr(target_user, 'profile', None), 'profile_onboarding_completed_at', None)),
+            'referral_code_str': personal_referral.code if personal_referral else None,
+            'personal_referral': personal_referral,
         })
 
     elif role == 'parent':
         linked_children = []
         try:
-            from core.db_models import Student
-            st_list = Student.query.limit(2).all()
-            for st in st_list:
-                linked_children.append({
-                    'id': st.student_id,
-                    'name': st.name or f"Ученик #{st.student_id}",
-                    'streak': 5,
-                    'avg_score': 82,
-                    'active_tariff': 'Годовой 90+'
-                })
-        except Exception as e:
-            logger.error(f"Error fetching parent children: {e}")
+            from core.db_models import Student, Submission
+            ties = FamilyTie.query.filter_by(parent_id=target_user.id, is_confirmed=True).all()
+            for tie in ties:
+                child_user = tie.student
+                child = Student.query.filter_by(user_id=tie.student_id).first()
+                if not child:
+                    continue
+                if child_user:
+                    linked_children.append(child_user)
+        except Exception:
+            logger.exception("Unable to build parent profile from FamilyTie records")
 
         parent_stats = {
-            'children_count': len(linked_children) or 1,
-            'active_tariffs': 1,
-            'balance_lessons': 14
+            'children_count': len(linked_children),
+            'active_tariffs': 0,
+            'balance_lessons': 0,
         }
         context.update({
             'linked_children': linked_children,
@@ -2972,17 +3029,27 @@ def api_update_teacher_profile():
 
     # 4. Обновляем Вебинары
     if 'webinars' in data and isinstance(data['webinars'], list):
-        TeacherWebinar.query.filter_by(teacher_id=current_user.id).delete()
+        normalized_webinars = []
         for w in data['webinars']:
-            if w.get('title'):
-                tw = TeacherWebinar(
-                    teacher_id=current_user.id,
-                    title=w.get('title').strip(),
-                    duration_minutes=int(w.get('duration_minutes', 90)),
-                    room_id=w.get('room_id', 'demo_lesson_1'),
-                    is_live=bool(w.get('is_live', False))
-                )
-                db.session.add(tw)
+            title = (w.get('title') or '').strip()
+            if not title:
+                continue
+            raw_duration = w.get('duration_minutes')
+            try:
+                duration_minutes = int(raw_duration) if raw_duration not in (None, '') else None
+            except (TypeError, ValueError):
+                return jsonify({'status': 'error', 'message': 'Длительность вебинара должна быть целым числом.'}), 400
+            if duration_minutes is not None and duration_minutes < 1:
+                return jsonify({'status': 'error', 'message': 'Длительность вебинара должна быть больше нуля.'}), 400
+            normalized_webinars.append({
+                'title': title,
+                'duration_minutes': duration_minutes,
+                'room_id': (w.get('room_id') or '').strip() or None,
+                'is_live': bool(w.get('is_live', False)),
+            })
+        TeacherWebinar.query.filter_by(teacher_id=current_user.id).delete()
+        for w in normalized_webinars:
+            db.session.add(TeacherWebinar(teacher_id=current_user.id, **w))
 
     db.session.commit()
 
@@ -3040,18 +3107,69 @@ def api_enroll_mentor_program(teacher_id):
 # =========================================================================
 # DEV ROLE SWITCHER & IMPERSONATION API
 # =========================================================================
+def _require_dev_tools(*, administrator_only=False):
+    """Restrict local QA helpers to a signed-in staff session."""
+    if not (current_app.config.get('DEBUG') or current_app.config.get('TESTING')):
+        abort(404)
+
+    permitted_roles = {'creator', 'admin', 'chief_admin'}
+    if not administrator_only:
+        permitted_roles.update({'teacher', 'tutor'})
+    if get_active_role() not in permitted_roles:
+        abort(403)
+
+
 @main_bp.route('/api/dev/users', methods=['GET'])
 @main_bp.route('/sandbox/api/impersonate/users', methods=['GET'])
 @main_bp.route('/api/impersonate/users', methods=['GET'])
+@login_required
 def dev_get_users_api():
     """API отдачи ровно 15 сбалансированных пользователей для виджета Dev Role Switcher (Alt + I)."""
-    target_usernames = [
-        'creator', 'chief_admin', 'demo_admin_1',
-        'qa_pool_teacher_1', 'demo_teacher_2', 'demo_tutor_1',
-        'demo_student_1', 'demo_student_2', 'demo_student_3',
-        'demo_parent_1', 'demo_parent_2', 'demo_parent_3',
-        'qa_pool_admin_2', 'qa_pool_student_4', 'demo_auditor'
-    ]
+    _require_dev_tools(administrator_only=True)
+    if get_active_role() not in {'creator', 'admin', 'chief_admin'}:
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+
+    real_users = (
+        User.query.filter(User.is_active.is_(True))
+        .filter(or_(User.is_demo_user.is_(False), User.is_demo_user.is_(None)))
+        .order_by(User.username.asc()).limit(100).all()
+    )
+
+    users_list = []
+    teachers_list = []
+    for user in real_users:
+        display_name = getattr(user, 'full_name', None) or user.username or user.email
+        user_payload = {
+            'id': user.id,
+            'user_id': user.id,
+            'username': user.username,
+            'name': display_name,
+            'raw_username': user.username,
+            'email': user.email,
+            'role': user.role,
+            'first_name': getattr(user, 'first_name', user.username) or user.username,
+            'last_name': getattr(user, 'last_name', '') or '',
+            'avatar': user.avatar_url or url_for('static', filename='images/default-avatar.svg'),
+        }
+        users_list.append(user_payload)
+        if user.role in {'tutor', 'teacher'}:
+            teachers_list.append(user_payload)
+
+    current_payload = None
+    if current_user and current_user.is_authenticated:
+        current_payload = {
+            'id': current_user.id,
+            'username': getattr(current_user, 'full_name', None) or current_user.username or current_user.email,
+            'role': current_user.role,
+            'avatar': current_user.avatar_url or url_for('static', filename='images/default-avatar.svg'),
+        }
+
+    return jsonify({
+        'status': 'success', 'success': True, 'current_user': current_payload,
+        'is_impersonating': session.get('is_impersonating', False),
+        'users': users_list, 'data': users_list, 'teachers': teachers_list,
+    })
+    # Legacy demo-account provisioning was removed: this endpoint exposes existing accounts only.
 
     role_titles = {
         'creator': '👑 Создатель Платформы',
@@ -3071,15 +3189,7 @@ def dev_get_users_api():
         'demo_auditor': '👁️ Внешний Аудитор',
     }
 
-    role_map = {
-        'creator': 'creator', 'chief_admin': 'admin', 'demo_admin_1': 'admin',
-        'qa_pool_teacher_1': 'teacher', 'demo_teacher_2': 'teacher', 'demo_tutor_1': 'tutor',
-        'demo_student_1': 'student', 'demo_student_2': 'student', 'demo_student_3': 'student',
-        'demo_parent_1': 'parent', 'demo_parent_2': 'parent', 'demo_parent_3': 'parent',
-        'qa_pool_admin_2': 'admin', 'qa_pool_student_4': 'student', 'demo_auditor': 'auditor'
-    }
-
-    existing_users = {u.username: u for u in User.query.filter(User.username.in_(target_usernames)).all()}
+    existing_users = {user.username: user for user in real_users}
     
     # Автосидирование недостающих аккаунтов из 15 пула
     created = False
@@ -3105,18 +3215,18 @@ def dev_get_users_api():
         u = existing_users.get(uname)
         if not u:
             continue
-        title = role_titles.get(uname, u.username)
+        display_name = getattr(u, 'full_name', None) or u.username or u.email
         u_dict = {
             'id': u.id,
             'user_id': u.id,
             'username': u.username,
-            'name': f"{u.username} ({title})",
+            'name': display_name,
             'raw_username': u.username,
             'email': u.email,
             'role': u.role,
             'first_name': getattr(u, 'first_name', u.username) or u.username,
             'last_name': getattr(u, 'last_name', '') or '',
-            'avatar': f"https://api.dicebear.com/7.x/avataaars/svg?seed={u.username}"
+            'avatar': u.avatar_url or url_for('static', filename='images/default-avatar.svg')
         }
         users_list.append(u_dict)
         if u.role in ['tutor', 'teacher']:
@@ -3129,7 +3239,7 @@ def dev_get_users_api():
             'id': current_user.id,
             'username': c_name,
             'role': current_user.role,
-            'avatar': f"https://api.dicebear.com/7.x/avataaars/svg?seed={c_name}"
+            'avatar': current_user.avatar_url or url_for('static', filename='images/default-avatar.svg')
         }
 
     return jsonify({
@@ -3145,10 +3255,14 @@ def dev_get_users_api():
 
 @main_bp.route('/api/dev/switch_role', methods=['POST'])
 @main_bp.route('/sandbox/api/dev/switch_role', methods=['POST'])
+@login_required
 def dev_switch_role_api():
     """API быстрой смены активной роли в сессии."""
+    _require_dev_tools()
     data = request.json or request.form or {}
     new_role = (data.get('role') or 'student').strip().lower()
+    if new_role not in {'creator', 'chief_admin', 'admin', 'teacher', 'tutor', 'student', 'parent', 'auditor'}:
+        return jsonify({'success': False, 'error': 'Unknown role'}), 400
     session['sandbox_role'] = new_role
     return jsonify({
         'status': 'success',
@@ -3158,13 +3272,20 @@ def dev_switch_role_api():
 
 
 @main_bp.route('/sandbox/impersonate/<int:user_id>', methods=['GET'])
+@login_required
 def dev_impersonate_user(user_id):
     """Быстрый вход/переключение под выбранным пользователем."""
+    _require_dev_tools()
     user = User.query.get_or_404(user_id)
     # При переходе между тестовыми профилями сохраняем именно исходного
     # пользователя, иначе «выйти из имперсонации» вернёт к предыдущему ученику.
-    if current_user and current_user.is_authenticated and 'impersonator_id' not in session:
-        session['impersonator_id'] = current_user.id
+    if 'impersonator_id' not in session:
+        # The authenticated ORM object can be expired after a previous
+        # transaction (for example, after a submission is saved).  Flask's
+        # session remains the authoritative source for the original account.
+        original_user_id = session.get('_user_id')
+        if original_user_id is not None:
+            session['impersonator_id'] = int(original_user_id)
     
     session['_user_id'] = str(user.id)
     session['_fresh'] = True
@@ -3176,6 +3297,7 @@ def dev_impersonate_user(user_id):
 
 
 @main_bp.route('/sandbox/impersonate/revert', methods=['GET'])
+@login_required
 def dev_revert_impersonation():
     """Сброс имперсонации к исходному пользователю."""
     imp_id = session.get('impersonator_id')
@@ -3393,6 +3515,12 @@ def parents_faq():
 
 
 def get_student_achievements(target_user, student_obj):
+    """Return only achievements backed by the live achievement registry."""
+    from app.utils.achievement_service import build_student_achievement_catalog
+    return build_student_achievement_catalog(student_obj)
+
+
+def _get_student_achievements_legacy(target_user, student_obj):
     """Возвращает список ачивок с реальным прогрессом для профиля ученика."""
     from core.db_models import UserAchievement, Submission
     
@@ -3495,7 +3623,7 @@ def get_student_achievements(target_user, student_obj):
     return catalog
 
 
-@main_bp.route('/sandbox/api/profile/edit', methods=['POST'])
+@main_bp.route('/api/profile/edit', methods=['POST'])
 @main_bp.route('/api/student/profile/update', methods=['POST'])
 @main_bp.route('/api/user/profile/update', methods=['POST'])
 @login_required
@@ -3510,39 +3638,43 @@ def api_profile_edit():
     from werkzeug.utils import secure_filename
     import time
 
+    allowed_profile_image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+
     avatar_file = request.files.get('avatar_file')
     if avatar_file and avatar_file.filename:
         filename = secure_filename(avatar_file.filename)
         ext = os.path.splitext(filename)[1].lower()
-        if ext in {'.jpg', '.jpeg', '.png', '.gif', '.webp'}:
-            app_root = os.path.dirname(current_app.root_path)
-            upload_folder = current_app.config.get('AVATAR_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'avatars')
-            os.makedirs(upload_folder, exist_ok=True)
-            unique_filename = f"avatar_{current_user.id}_{int(time.time())}{ext}"
-            avatar_path = os.path.join(upload_folder, unique_filename)
-            avatar_file.save(avatar_path)
-            current_user.avatar_url = f"/avatars/{unique_filename}"
-            if current_user.profile:
-                current_user.profile.avatar_url = current_user.avatar_url
+        if ext not in allowed_profile_image_extensions:
+            return jsonify({'status': 'error', 'success': False, 'message': 'Аватар: поддерживаются JPG, PNG, GIF и WebP.'}), 400
+        app_root = os.path.dirname(current_app.root_path)
+        upload_folder = current_app.config.get('AVATAR_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'avatars')
+        os.makedirs(upload_folder, exist_ok=True)
+        unique_filename = f"avatar_{current_user.id}_{time.time_ns()}{ext}"
+        avatar_path = os.path.join(upload_folder, unique_filename)
+        avatar_file.save(avatar_path)
+        current_user.avatar_url = f"/avatars/{unique_filename}"
+        if current_user.profile:
+            current_user.profile.avatar_url = current_user.avatar_url
     else:
-        avatar_url = data.get('avatar_url')
-        if avatar_url is not None and avatar_url.strip():
-            current_user.avatar_url = avatar_url.strip()
+        avatar_url = (data.get('avatar_url') or '').strip()
+        if avatar_url and avatar_url != url_for('static', filename='images/default-avatar.svg'):
+            current_user.avatar_url = avatar_url
 
     cover_file = request.files.get('cover_file')
     if cover_file and cover_file.filename:
         filename = secure_filename(cover_file.filename)
         ext = os.path.splitext(filename)[1].lower()
-        if ext in {'.jpg', '.jpeg', '.png', '.gif', '.webp'}:
-            app_root = os.path.dirname(current_app.root_path)
-            upload_folder = current_app.config.get('COVER_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'covers')
-            os.makedirs(upload_folder, exist_ok=True)
-            unique_filename = f"cover_{current_user.id}_{int(time.time())}{ext}"
-            cover_path = os.path.join(upload_folder, unique_filename)
-            cover_file.save(cover_path)
-            current_user.cover_url = f"/covers/{unique_filename}"
-            if current_user.profile:
-                current_user.profile.cover_url = current_user.cover_url
+        if ext not in allowed_profile_image_extensions:
+            return jsonify({'status': 'error', 'success': False, 'message': 'Обложка: поддерживаются JPG, PNG, GIF и WebP.'}), 400
+        app_root = os.path.dirname(current_app.root_path)
+        upload_folder = current_app.config.get('COVER_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'covers')
+        os.makedirs(upload_folder, exist_ok=True)
+        unique_filename = f"cover_{current_user.id}_{time.time_ns()}{ext}"
+        cover_path = os.path.join(upload_folder, unique_filename)
+        cover_file.save(cover_path)
+        current_user.cover_url = f"/covers/{unique_filename}"
+        if current_user.profile:
+            current_user.profile.cover_url = current_user.cover_url
     else:
         cover_url = data.get('cover_url')
         if cover_url is not None and cover_url.strip():
@@ -3585,6 +3717,8 @@ def api_profile_edit():
     return jsonify({
         'status': 'ok',
         'success': True,
+        'avatar_url': current_user.avatar_url,
+        'cover_url': current_user.cover_url,
         'message': 'Профиль успешно обновлен!'
     }), 200
 
@@ -3597,7 +3731,7 @@ def _current_student_profile_or_404():
     return student
 
 
-@main_bp.route('/sandbox/api/profile/goal/add', methods=['POST'])
+@main_bp.route('/api/profile/goal/add', methods=['POST'])
 @login_required
 def api_profile_goal_add():
     from core.db_models import StudentLearningPlanItem
@@ -3611,7 +3745,7 @@ def api_profile_goal_add():
     return jsonify({'status': 'ok', 'item_id': item.item_id}), 201
 
 
-@main_bp.route('/sandbox/api/profile/goal/toggle/<int:item_id>', methods=['POST'])
+@main_bp.route('/api/profile/goal/toggle/<int:item_id>', methods=['POST'])
 @login_required
 def api_profile_goal_toggle(item_id):
     from core.db_models import StudentLearningPlanItem
@@ -3623,7 +3757,7 @@ def api_profile_goal_toggle(item_id):
     return jsonify({'status': 'ok', 'done_cnt': sum(goal.status == 'done' for goal in goals), 'total_cnt': len(goals)})
 
 
-@main_bp.route('/sandbox/api/profile/goal/result/<int:item_id>', methods=['POST'])
+@main_bp.route('/api/profile/goal/result/<int:item_id>', methods=['POST'])
 @login_required
 def api_profile_goal_result(item_id):
     from core.db_models import StudentLearningPlanItem
@@ -3637,7 +3771,7 @@ def api_profile_goal_result(item_id):
     return jsonify({'status': 'ok'})
 
 
-@main_bp.route('/sandbox/api/profile/onboarding/complete', methods=['POST'])
+@main_bp.route('/api/profile/onboarding/complete', methods=['POST'])
 @login_required
 def api_profile_onboarding_complete():
     from core.db_models import UserProfile
@@ -3647,6 +3781,32 @@ def api_profile_onboarding_complete():
     profile.profile_onboarding_completed_at = moscow_now()
     db.session.commit()
     return jsonify({'status': 'ok'})
+
+
+# Compatibility endpoints only forward POST requests to the canonical V2 API.
+@main_bp.route('/sandbox/api/profile/edit', methods=['POST'])
+def legacy_api_profile_edit():
+    return redirect(url_for('main.api_profile_edit'), code=307)
+
+
+@main_bp.route('/sandbox/api/profile/goal/add', methods=['POST'])
+def legacy_api_profile_goal_add():
+    return redirect(url_for('main.api_profile_goal_add'), code=307)
+
+
+@main_bp.route('/sandbox/api/profile/goal/toggle/<int:item_id>', methods=['POST'])
+def legacy_api_profile_goal_toggle(item_id):
+    return redirect(url_for('main.api_profile_goal_toggle', item_id=item_id), code=307)
+
+
+@main_bp.route('/sandbox/api/profile/goal/result/<int:item_id>', methods=['POST'])
+def legacy_api_profile_goal_result(item_id):
+    return redirect(url_for('main.api_profile_goal_result', item_id=item_id), code=307)
+
+
+@main_bp.route('/sandbox/api/profile/onboarding/complete', methods=['POST'])
+def legacy_api_profile_onboarding_complete():
+    return redirect(url_for('main.api_profile_onboarding_complete'), code=307)
 
 
 @main_bp.route('/api/user/telegram-auth-code', methods=['POST'])

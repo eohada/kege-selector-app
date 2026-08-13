@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Чат · {{ student.name }} · BooStudy{% endblock %}
 {% set active_page = 'student_profile' %}
 
@@ -9,7 +9,7 @@
     .text-220px { font-size: 220px; }
     .max-w-85 { max-width: 85%; }
 </style>
-{% block content %}
+{% block sandbox_content %}
 <div class="flex flex-col gap-6 w-full">
 
     <div class="bg-surface rounded-2xl border border-slate-200 border-b-4 border-b-slate-300 shadow-tactile p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative overflow-hidden">
@@ -67,7 +67,7 @@
 </div>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
 (function() {
   const lessonId = {{ lesson.lesson_id|int }};

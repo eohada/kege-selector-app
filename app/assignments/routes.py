@@ -5133,18 +5133,26 @@ def sandbox_api_submit_task(assignment_id: int):
 
     answer = next((a for a in submission.answers if a.assignment_task_id == ass_task_id), None)
     if not answer:
-        answer = StudentAnswer(submission_id=submission.submission_id, assignment_task_id=ass_task_id, attempts_used=0)
+        answer = Answer(submission_id=submission.submission_id, assignment_task_id=ass_task_id, attempts_used=0)
         db.session.add(answer)
 
     answer.attempts_used = (answer.attempts_used or 0) + 1
     answer.student_answer = answer_text
 
+    was_already_correct = bool(answer.is_correct)
     is_correct = False
     if task and task.answer:
         is_correct = (answer_text.strip().lower() == task.answer.strip().lower())
     answer.is_correct = is_correct
 
     db.session.commit()
+
+    if is_correct and not was_already_correct:
+        try:
+            from app.utils.gamification_service import reward_single_task_correct
+            reward_single_task_correct(student)
+        except Exception:
+            pass
 
     max_attempts = ass_task.assignment.get_effective_max_attempts_for_task(ass_task)
     is_locked = is_correct or (answer.attempts_used >= max_attempts)
@@ -5179,7 +5187,7 @@ def sandbox_api_save_draft(assignment_id: int):
         at_id = int(at_id_str)
         ans = next((a for a in submission.answers if a.assignment_task_id == at_id), None)
         if not ans:
-            ans = StudentAnswer(submission_id=submission.submission_id, assignment_task_id=at_id, attempts_used=0)
+            ans = Answer(submission_id=submission.submission_id, assignment_task_id=at_id, attempts_used=0)
             db.session.add(ans)
         ans.student_answer = str(ans_val).strip()
 
@@ -5226,7 +5234,7 @@ def sandbox_api_submit_assignment(assignment_id: int):
         at_id = int(at_id_str)
         ans = next((a for a in submission.answers if a.assignment_task_id == at_id), None)
         if not ans:
-            ans = StudentAnswer(submission_id=submission.submission_id, assignment_task_id=at_id, attempts_used=0)
+            ans = Answer(submission_id=submission.submission_id, assignment_task_id=at_id, attempts_used=0)
             db.session.add(ans)
         ans.student_answer = str(ans_val).strip()
         ass_task = AssignmentTask.query.get(at_id)

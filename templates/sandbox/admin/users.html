@@ -95,9 +95,9 @@
                     {% for u in user_list %}
                     <tr class="user-row hover:bg-slate-50/80 transition-colors" data-role="{{ u.role|lower }}" data-search="{{ (u.full_name or '') ~ ' ' ~ u.username ~ ' ' ~ u.email }}">
                         <td class="py-3.5 px-4 flex items-center gap-3">
-                            <img src="{{ u.avatar_url if u.avatar_url else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ u.username }}" class="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0">
+                            <img src="{{ u.avatar_url if u.avatar_url else url_for('static', filename='images/default-avatar.svg') }}" class="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0" alt="Аватар пользователя">
                             <div>
-                                <a href="/profile/{{ u.id }}" class="text-slate-900 font-black hover:text-rose-600 no-underline block">{{ u.full_name or u.username }}</a>
+                                <a href="{{ url_for('main.universal_profile_view', user_id=u.id) }}" class="text-slate-900 font-black hover:text-rose-600 no-underline block">{{ u.full_name or u.username }}</a>
                                 <span class="text-[10px] text-slate-400 font-medium">@{{ u.username }}</span>
                             </div>
                         </td>
@@ -116,7 +116,7 @@
                         <td class="py-3.5 px-4 text-slate-400 text-[11px]">#{{ u.id }} • {{ u.created_at.strftime('%d.%m.%Y') if (u.created_at is defined and u.created_at) else '2026' }}</td>
                         <td class="py-3.5 px-4 text-right">
                             <div class="inline-flex items-center gap-1.5">
-                                <a href="/profile/{{ u.id }}" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors no-underline" title="Просмотр профиля">
+                                <a href="{{ url_for('main.universal_profile_view', user_id=u.id) }}" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors no-underline" title="Просмотр профиля">
                                     <i class="ph-bold ph-eye text-sm"></i>
                                 </a>
                                 <button onclick="openEditUserModal({{ u.id }}, '{{ u.full_name or u.username }}', '{{ u.role }}', '{{ u.email or '' }}')" class="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl transition-colors cursor-pointer border-0" title="Редактировать">

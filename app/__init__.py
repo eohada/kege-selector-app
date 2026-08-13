@@ -125,7 +125,7 @@ def create_app(config_name=None):
     app.config['MIRO_REDIRECT_URI'] = (os.environ.get('MIRO_REDIRECT_URI') or '').strip() or None  # например https://boostudy.ru/auth/miro/callback
     
     app.config['DAILY_API_KEY'] = (os.environ.get('DAILY_API_KEY') or '').strip() or None
-    app.config['DAILY_DOMAIN'] = 'urep'  # urep.daily.co
+    app.config['DAILY_DOMAIN'] = (os.environ.get('DAILY_DOMAIN') or 'urep').strip()
     
     app.config['AVATAR_UPLOAD_ROOT'] = (os.environ.get('AVATAR_UPLOAD_ROOT') or '').strip() or None
     app.config['COVER_UPLOAD_ROOT'] = (os.environ.get('COVER_UPLOAD_ROOT') or '').strip() or None
@@ -168,6 +168,13 @@ def create_app(config_name=None):
             app.config['SQLALCHEMY_DATABASE_URI'] = demo_db_url
         # иначе оставляем уже установленный DATABASE_URL выше
     
+    # Test and one-off maintenance callers may provide a mapping of overrides.
+    # It must be applied before Flask-SQLAlchemy is initialised: changing the
+    # database URI afterwards keeps the old engine alive and lets tests leak
+    # tables between otherwise isolated application instances.
+    if isinstance(config_name, dict):
+        app.config.update(config_name)
+
     logger = configure_logging(base_dir=base_dir, environment=ENVIRONMENT, service_name='boostudy')
 
     from werkzeug.middleware.proxy_fix import ProxyFix
@@ -202,7 +209,10 @@ def create_app(config_name=None):
 
     @app.errorhandler(RequestEntityTooLarge)
     def handle_request_entity_too_large(error):
-        payload = {'success': False, 'error': 'Файл слишком большой. Максимум 10MB.'}
+        payload = {
+            'success': False,
+            'error': 'Файл не удалось передать целиком. Повторите загрузку или проверьте ограничение reverse proxy.',
+        }
         try:
             accepts_json = (
                 'application/json' in (request.headers.get('Accept') or '').lower()

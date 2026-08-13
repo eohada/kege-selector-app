@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% set active_page = 'templates' %}
 {% block title %}Библиотека шаблонов{% endblock %}
 {% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
@@ -14,7 +14,7 @@
     .bg-right-12px-center { background-color: right 12px center; }
     .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
 </style>
-{% block content %}
+{% block sandbox_content %}
 {% set can_manage_templates = (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage'))) %}
 <div class="flex flex-col gap-6 pb-6 w-full">
 <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-6">
@@ -162,7 +162,7 @@
 </div>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script src="{{ url_for('static', filename='loading.js') }}"></script>
 <script>
     function applyFilters() {

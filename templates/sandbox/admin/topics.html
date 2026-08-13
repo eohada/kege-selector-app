@@ -37,7 +37,7 @@
                     <p class="text-xs font-medium text-slate-500 mb-0 leading-relaxed">{{ top.description or 'Описание темы подготовки' }}</p>
                 </div>
                 <div class="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs font-bold">
-                    <span class="text-slate-400 font-bold">Привязано задач: {{ top.tasks_count if (top.tasks_count is defined and top.tasks_count) else 14 }}</span>
+                    <span class="text-slate-400 font-bold">Привязано задач: {{ top.tasks_count if top.tasks_count is defined else 0 }}</span>
                     <button onclick="deleteTopic({{ top.id }})" class="text-rose-600 hover:text-rose-800 cursor-pointer border-0 bg-transparent">Удалить</button>
                 </div>
             </div>

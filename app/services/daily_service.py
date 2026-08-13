@@ -1,7 +1,8 @@
+import logging
 import os
+
 import requests
 from flask import current_app
-import logging
 logger = logging.getLogger(__name__)
 
 DAILY_API_URL = "https://api.daily.co/v1"
@@ -9,7 +10,7 @@ DAILY_API_URL = "https://api.daily.co/v1"
 class DailyService:
     @staticmethod
     def _get_api_key():
-        return os.environ.get('DAILY_API_KEY')
+        return (current_app.config.get('DAILY_API_KEY') or os.environ.get('DAILY_API_KEY') or '').strip()
 
     @staticmethod
     def _get_headers():
@@ -35,8 +36,11 @@ class DailyService:
         try:
             resp = requests.get(check_url, headers=headers, timeout=5)
             if resp.status_code == 200:
-                data = resp.json()
-                return data.get("url")
+                room_url = (resp.json() or {}).get("url")
+                if room_url:
+                    return room_url
+                logger.error("Daily returned an existing room without URL: %s", room_name)
+                raise RuntimeError("Daily room response did not include a URL")
         except requests.RequestException as e:
             logger.warning(f"Error checking Daily room {room_name}: {e}")
             # Continue to try creating it if check fails (might be 404)
@@ -50,22 +54,26 @@ class DailyService:
             "properties": {
                 "enable_chat": True,
                 "enable_screenshare": True,
-                "exp": None # Never expires
             }
         }
         
         try:
             resp = requests.post(create_url, headers=headers, json=payload, timeout=5)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data.get("url")
+            if resp.status_code in (200, 201):
+                room_url = (resp.json() or {}).get("url")
+                if room_url:
+                    return room_url
+                logger.error("Daily created a room without URL: %s", room_name)
+                raise RuntimeError("Daily room response did not include a URL")
             elif resp.status_code == 400 and "already exists" in resp.text:
                 # In case of race condition, check again
                 resp = requests.get(check_url, headers=headers, timeout=5)
                 if resp.status_code == 200:
-                    return resp.json().get("url")
+                    room_url = (resp.json() or {}).get("url")
+                    if room_url:
+                        return room_url
             
-            logger.error(f"Failed to create Daily room {room_name}: {resp.text}")
+            logger.error("Daily room creation failed for %s (HTTP %s)", room_name, resp.status_code)
             raise RuntimeError("Failed to create video room")
             
         except requests.RequestException as e:
@@ -90,10 +98,13 @@ class DailyService:
         
         try:
             resp = requests.post(create_url, headers=headers, json=payload, timeout=5)
-            if resp.status_code == 200:
-                data = resp.json()
-                return data.get("token")
-            logger.error(f"Failed to create meeting token for room {room_name}: {resp.text}")
+            if resp.status_code in (200, 201):
+                token = (resp.json() or {}).get("token")
+                if token:
+                    return token
+                logger.error("Daily created a meeting token without token value for %s", room_name)
+                raise RuntimeError("Daily meeting-token response did not include a token")
+            logger.error("Daily meeting-token creation failed for %s (HTTP %s)", room_name, resp.status_code)
             raise RuntimeError("Failed to create meeting token")
         except requests.RequestException as e:
             logger.error(f"Request exception creating meeting token for {room_name}: {e}")

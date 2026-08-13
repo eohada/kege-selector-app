@@ -1,10 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% from '_task_content_block.html' import render_task_content %}
 {% block title %}Проверка · Задача урока · BooStudy{% endblock %}
 {% set active_page = 'review_queue' %}
 {% block body_class %}layout-teacher{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <!-- Custom Styles for JIT Class Elimination -->
 <style>
     .shadow-0-0-10px-rgba244-63-94-05 { box-shadow: 0 0 10px rgba(244,63,94,0.5); }
@@ -115,13 +115,10 @@
         }
         .muted { color: var(--text-muted); }
     </style>
+    <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 {% endblock %}
 
-{% block head_js %}
-<script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
-{% endblock %}
-
-{% block content %}
+{% block sandbox_content %}
 <div class="flex flex-col gap-6 w-full">
         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
         {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) if lesson and lesson.lesson_date else None %}
@@ -356,7 +353,7 @@
 </div>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script>
         const LESSON_ID = {{ lesson.lesson_id }};
         const LESSON_TASK_ID = {{ lesson_task.lesson_task_id }};

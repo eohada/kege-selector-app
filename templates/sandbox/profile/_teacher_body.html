@@ -220,7 +220,7 @@
                     <span class="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60 uppercase">
                         {{ web.scheduled_at.strftime('%d.%m.%Y, %H:%M') if web.scheduled_at else 'Запланировано' }}
                     </span>
-                    <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><i class="ph-bold ph-clock"></i> {{ web.duration_minutes or 90 }} мин</span>
+                    <span class="text-[10px] font-bold text-slate-400 flex items-center gap-1"><i class="ph-bold ph-clock"></i> {{ web.duration_minutes if web.duration_minutes is not none else '—' }} мин</span>
                 </div>
                 <h5 class="text-xs font-bold text-slate-800 leading-snug">{{ web.title }}</h5>
             </div>
@@ -305,7 +305,7 @@
                     </div>
                     <div>
                         <label class="block text-xs font-black uppercase text-slate-500 mb-1.5">Опыт преподавания (лет)</label>
-                        <input id="edit-experience" type="number" value="{{ profile.experience_years if profile else 6 }}" class="w-full px-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-indigo-500 outline-none">
+                        <input id="edit-experience" type="number" value="{{ profile.experience_years if profile and profile.experience_years is not none else '' }}" class="w-full px-4 py-3 bg-white border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:border-indigo-500 outline-none">
                     </div>
                 </div>
 
@@ -386,7 +386,7 @@
                         <input type="text" placeholder="Тема вебинара" value="{{ w.title }}" class="web-title w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 pr-8">
                         <div class="grid grid-cols-2 gap-3">
                             <input type="number" placeholder="Длительность (мин)" value="{{ w.duration_minutes }}" class="web-duration px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800">
-                            <input type="text" placeholder="ID комнаты (demo_lesson_1)" value="{{ w.room_id }}" class="web-room px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800">
+                            <input type="text" placeholder="ID комнаты Daily (необязательно)" value="{{ w.room_id or '' }}" class="web-room px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800">
                         </div>
                     </div>
                     {% endfor %}
@@ -782,8 +782,8 @@ function addWebinarRow() {
         </button>
         <input type="text" placeholder="Тема вебинара" class="web-title w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 pr-8">
         <div class="grid grid-cols-2 gap-3">
-            <input type="number" placeholder="Длительность (мин)" class="web-duration px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800" value="90">
-            <input type="text" placeholder="ID комнаты" class="web-room px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800" value="demo_lesson_1">
+            <input type="number" min="1" placeholder="Длительность (мин)" class="web-duration px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800">
+            <input type="text" placeholder="ID комнаты Daily (необязательно)" class="web-room px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800">
         </div>
     `;
     container.appendChild(div);
@@ -834,8 +834,8 @@ async function saveProfileChanges() {
         if (title) {
             webinars.push({
                 title: title,
-                duration_minutes: parseInt(item.querySelector('.web-duration')?.value || '90'),
-                room_id: item.querySelector('.web-room')?.value.trim() || 'demo_lesson_1'
+                duration_minutes: item.querySelector('.web-duration')?.value ? parseInt(item.querySelector('.web-duration').value, 10) : null,
+                room_id: item.querySelector('.web-room')?.value.trim() || null
             });
         }
     });

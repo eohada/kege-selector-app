@@ -1,9 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_admin.html' %}
 {% block title %}Подписки{% endblock %}
 
 {% set active_page = 'billing' %}
 
-{% block content %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] pl-24 pr-6 py-8">
 <section class="glass-panel w-full" style="margin-bottom: 1.25rem;">
     <p class="hero-eyebrow">биллинг</p>
     <h1 class="hero-title" style="margin-bottom:.25rem;">Подписки</h1>
@@ -108,4 +109,5 @@
         </div>
     </section>
 </div>
+</main>
 {% endblock %}

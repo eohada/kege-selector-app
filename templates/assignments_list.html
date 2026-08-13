@@ -1,9 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Работы — BooStudy Design System{% endblock %}
 {% set active_page = 'assignments' %}
-{% block body_class %}layout-teacher{% endblock %}
-
-{% block head_extra %}
+{% block extra_head %}
 <style>
     .seg-btn.active {
         background-color: #FFFFFF;
@@ -16,7 +14,8 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] lg:pl-[6.5rem] px-4 py-6">
 <!-- Master Monolithic Content Container (1:1 with tasks.html) -->
 <div class="flex-1 bg-white rounded-[2.5rem] shadow-[0_15px_35px_rgba(15,23,42,0.05)] border border-slate-200/60 overflow-y-auto overflow-x-hidden flex flex-col max-w-[1400px] mx-auto font-sans text-slate-800 my-4">
     <div class="p-8 sm:p-10 w-full flex flex-col h-full gap-8">
@@ -355,9 +354,10 @@
         </div>
     </div>
 </div>
+</main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
 (function () {
     'use strict';

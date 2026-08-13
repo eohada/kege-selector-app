@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Проверка · Тьютор{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     .queue-hero {
@@ -41,7 +41,7 @@
 
 {% set active_page = active_page | default('tutor_reviews') %}
 
-{% block content %}
+{% block sandbox_content %}
 <section class="queue-hero w-full">
     <div class="hero-eyebrow">Проверка</div>
     <h1 class="queue-title">Требуют проверки</h1>

@@ -1,10 +1,10 @@
 # Ошибка 413 при загрузке аватарки (Request Entity Too Large)
 
-Если перед приложением стоит **nginx** (Ubuntu/другой сервер), по умолчанию он ограничивает размер тела запроса (~1 MB). Запрос на обновление профиля с аватаркой (до 5 MB) обрезается, и nginx возвращает **413 Request Entity Too Large** до того, как запрос дойдёт до Flask.
+Если перед приложением стоит **nginx** (Ubuntu/другой сервер), по умолчанию он ограничивает размер тела запроса (~1 MB). Запрос на обновление профиля с аватаркой или обложкой обрезается, и nginx возвращает **413 Request Entity Too Large** до того, как запрос дойдёт до Flask.
 
 ## Решение
 
-В конфигурации nginx нужно увеличить лимит. Варианты:
+Для профиля BooStudy лимит не нужен: он уже отсутствует на уровне Flask и должен быть отключён в каждом активном virtual host Nginx. Варианты:
 
 ### 1. Для одного server-блока (рекомендуется)
 
@@ -13,7 +13,7 @@
 ```nginx
 server {
     # ... остальные директивы ...
-    client_max_body_size 10M;
+    client_max_body_size 0;
     location / {
         proxy_pass http://...;
         # ...
@@ -27,7 +27,7 @@ server {
 
 ```nginx
 http {
-    client_max_body_size 10M;
+    client_max_body_size 0;
     # ...
 }
 ```
@@ -38,7 +38,7 @@ http {
 
 ```nginx
 location /user/profile/update {
-    client_max_body_size 10M;
+    client_max_body_size 0;
     proxy_pass http://ваш_backend;
     proxy_request_buffering off;  # при необходимости
     # ...
@@ -80,4 +80,4 @@ docker compose logs web_prod --tail 80
 sudo tail -30 /var/log/nginx/error.log
 ```
 
-В приложении уже задан лимит 10 MB (`MAX_CONTENT_LENGTH`); аватарка в интерфейсе ограничена 5 MB. Лимит в nginx должен быть не меньше (рекомендуется **10M**).
+Для аватаров и обложек лимит со стороны BooStudy отключён (`MAX_CONTENT_LENGTH = None`). В каждом активном `server {}` — в том числе HTTPS на `443` — должен стоять `client_max_body_size 0;`, иначе Nginx вернёт 413 раньше приложения.

@@ -381,17 +381,7 @@ def dashboard():
         testers = _get_testers()
         workloads = []
 
-    return render_template(
-        "chief_tester/main_tester_cabinet.html",
-        stats=stats,
-        task_cards=task_cards,
-        task_columns=columns,
-        activity=activity,
-        testers=testers,
-        workloads=workloads,
-        initial_tab=initial_tab,
-        ct_scope=scope,
-    )
+    return redirect(url_for('qa_tester.index'))
 
 
 @chief_tester_bp.route("/logs/tail")
@@ -696,4 +686,3 @@ def tester_toggle_active(user_id: int):
     db.session.commit()
     flash(f"Тестер {u.username}: {'активен' if u.is_active else 'отключён'}", "success")
     return redirect(url_for("chief_tester.testers"))
-

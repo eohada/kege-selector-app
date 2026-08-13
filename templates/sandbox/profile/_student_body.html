@@ -92,17 +92,17 @@
                           <i class="ph-fill ph-lightning text-amber-400"></i> Прогресс Ученика
                       </h3>
                       <span class="text-[10px] font-black text-emerald-400 bg-emerald-900/40 border border-emerald-500/30 px-2.5 py-1 rounded-lg uppercase">
-                          Уровень {{ student_stats.level if student_stats else 12 }}
+                          Уровень {{ student_stats.level if student_stats else 0 }}
                       </span>
                   </div>
 
                   <div class="space-y-2">
                       <div class="flex items-center justify-between text-xs font-bold text-slate-300">
                           <span>Опыт (XP)</span>
-                          <span>{{ student_stats.xp_points if student_stats else 3450 }} / {{ student_stats.xp_next_level if student_stats else 4000 }} XP</span>
+                          <span>{{ student_stats.xp_points if student_stats else 0 }} / {{ student_stats.xp_next_level if student_stats else 100 }} XP</span>
                       </div>
                       <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
-                          <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full" style="width: 86%"></div>
+                          <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full" style="width: {{ student_stats.xp_progress_pct if student_stats else 0 }}%"></div>
                       </div>
                   </div>
 
@@ -111,7 +111,7 @@
                           🔥
                       </div>
                       <div>
-                          <h5 class="text-xs font-bold text-white mb-0.5">Ударный режим {{ student_stats.streak_days if student_stats else 5 }} дней подряд!</h5>
+                          <h5 class="text-xs font-bold text-white mb-0.5">Ударный режим {{ student_stats.streak_days if student_stats else 0 }} дней подряд!</h5>
                           <p class="text-[10px] text-slate-400 font-medium">Решайте минимум 1 задачу ежедневно для сохранения серии.</p>
                       </div>
                   </div>
@@ -125,7 +125,7 @@
                       <i class="ph-bold ph-trophy text-lg text-amber-500"></i> Достижения & Ачивки
                   </h3>
                   <button onclick="openAchievementsModal()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-200 px-3.5 py-1.5 rounded-xl uppercase tracking-wider transition-colors cursor-pointer border-0 flex items-center gap-1.5">
-                      <span>Смотреть все ачивки ({{ all_achievements|length if all_achievements is defined else 6 }}) &rarr;</span>
+                      <span>Смотреть все ачивки ({{ all_achievements|length if all_achievements is defined else 0 }}) &rarr;</span>
                   </button>
               </div>
 
@@ -209,3 +209,16 @@ function generateTgCode() {
     .catch(() => alert('Генерация кода возможна через Telegram-бот.'));
 }
 </script>
+{% set student_stats = student_stats or {
+    'hw_completed': 0,
+    'hw_total': 0,
+    'on_time_pct': 0,
+    'tasks_solved': 0,
+    'avg_score': 0,
+    'target_score': none,
+    'level': 1,
+    'xp_points': 0,
+    'xp_next_level': 100,
+    'xp_progress_pct': 0,
+    'streak_days': 0
+} %}

@@ -37,7 +37,7 @@
                     {% for t in tester_list %}
                     <tr class="hover:bg-slate-50/80 transition-colors">
                         <td class="py-3.5 px-4 font-black text-slate-800 flex items-center gap-3">
-                            <img src="{{ t.avatar_url if (t.avatar_url is defined and t.avatar_url) else 'https://api.dicebear.com/7.x/avataaars/svg?seed=' ~ t.username }}" class="w-8 h-8 rounded-xl object-cover border border-slate-200">
+                            <img src="{{ t.avatar_url if (t.avatar_url is defined and t.avatar_url) else url_for('static', filename='images/default-avatar.svg') }}" class="w-8 h-8 rounded-xl object-cover border border-slate-200" alt="Аватар тестировщика">
                             <span>{{ t.full_name or t.username }}</span>
                         </td>
                         <td class="py-3.5 px-4 text-slate-600">{{ t.email or '—' }}</td>
@@ -52,7 +52,7 @@
                                 <a href="/admin/audit?user_id={{ t.id }}" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-xl no-underline flex items-center gap-1">
                                     <i class="ph-bold ph-scroll"></i> 📜 Логи
                                 </a>
-                                <a href="/profile/{{ t.id }}" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl no-underline">
+                                <a href="{{ url_for('main.universal_profile_view', user_id=t.id) }}" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl no-underline">
                                     Профиль
                                 </a>
                             </div>

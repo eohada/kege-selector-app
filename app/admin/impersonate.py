@@ -52,7 +52,10 @@ def impersonate_user(target_identifier=None, user_id=None):
     if target_user.role in ('tester', 'chief_tester'):
         return redirect('/tester')
     elif target_user.role == 'student':
-        return redirect('/student')
+        # A student has no standalone `/student` page.  The V2 dashboard
+        # resolves the active role and is the single safe entry point for an
+        # impersonated student as well.
+        return redirect(url_for('main.dashboard'))
     elif target_user.role == 'teacher':
         return redirect('/dashboard')
     elif target_user.role == 'parent':

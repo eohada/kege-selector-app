@@ -1,7 +1,7 @@
-{% extends 'base.html' %}
+{% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Результаты: Задание {{ task_type }}{% endblock %}
 
-{% block head_css %}
+{% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
 <style>
     .results-hero { margin-bottom: 2rem; }
@@ -61,18 +61,14 @@
 
     .task-actions { display: flex; gap: 0.5em; flex-wrap: wrap; }
 </style>
-{% endblock %}
-
-{% block head_js %}
 <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
 <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
 {% endblock %}
 
-{% block body_attrs %}data-lesson-id="{% if lesson_id %}{{ lesson_id }}{% endif %}" data-assignment-type="{{ assignment_type }}" data-template-id="{% if template_id %}{{ template_id }}{% endif %}"{% endblock %}
-
 {% set active_page = active_page | default('generator') %}
 
-{% block content %}
+{% block sandbox_content %}
+<main class="min-h-screen bg-[#F8FAFC] lg:pl-[6.5rem] px-4 py-6" data-lesson-id="{% if lesson_id %}{{ lesson_id }}{% endif %}" data-assignment-type="{{ assignment_type }}" data-template-id="{% if template_id %}{{ template_id }}{% endif %}">
         {% set is_homework = assignment_type == 'homework' %}
         {% set mode_label = 'домашнего задания' if is_homework else 'классной работы' %}
         {% set add_action_text = 'Добавить в ДЗ' if is_homework else 'Добавить в работу' %}
@@ -249,9 +245,10 @@
             </form>
         </div>
     </div>
+</main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
     <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script>
@@ -282,10 +279,24 @@
         const ASSIGNMENTS_DISTRIBUTE_URL = "{{ url_for('assignments.distribute_assignment') }}";
         const ASSIGNMENTS_LIST_URL = "{{ url_for('assignments.assignments_list') }}";
         const ASSIGNMENT_VIEW_URL_TPL = "{{ url_for('assignments.assignment_view', assignment_id=0) }}";
+        const ASSIGNMENT_CREATE_URL = "{{ url_for('assignments.assignment_create') }}";
 
         let __createAssignmentSelectedTasks = [];
 
         function showCreateAssignmentModal(selectedTasks) {
+            const taskIds = Array.isArray(selectedTasks)
+                ? selectedTasks.map(Number).filter(Number.isInteger).slice(0, 300)
+                : [];
+            if (!taskIds.length) return;
+            const params = new URLSearchParams({
+                source: 'generator',
+                assignment_type: ASSIGNMENT_TYPE || 'homework',
+                task_ids: taskIds.join(','),
+            });
+            if (LESSON_ID) params.set('lesson_id', String(LESSON_ID));
+            window.location.assign(`${ASSIGNMENT_CREATE_URL}?${params.toString()}`);
+            return;
+
             __createAssignmentSelectedTasks = Array.isArray(selectedTasks) ? selectedTasks.slice(0, 300) : [];
             const modal = document.getElementById('createAssignmentModal');
             const form = document.getElementById('createAssignmentForm');
