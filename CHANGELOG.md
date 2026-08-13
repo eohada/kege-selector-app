@@ -1,3 +1,13 @@
+## [2026-08-13 04:33:00] - 🎨 BOOSTUDY UI CANON GROUPS V2, FIX PERMISSIONS 500, ALT+I IMPERSONATION
+
+- **👥 Группы и классы (V2 3D UI Canon)**:
+  - Шаблон `templates/groups_list.html` переработан в каноничном BooStudy 3D дизайне (`bg-[#F4F7FA]`, 3D карточки `bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem]`, 3D кнопки `border-b-[4px]`, аватары учеников).
+- **🛡️ Админка прав доступа (/admin/permissions)**:
+  - Исправлен `HTTP 500`: в контекст шаблона `sandbox/admin/permissions.html` переданы переменные матрицы `permissions`, `categories`, `roles`, `role_permissions`.
+- **🔑 Шорткат имперсонации (Alt + I)**:
+  - `show_dev_tools` активирован в `production` для ролей `creator`, `admin`, `chief_admin`, `chief_tester`, `tester`, `tutor`, `teacher`.
+  - Панель имперсонации Dev Switcher и горячая клавиша `Alt + I` работают корректно во всех окружениях и раскладках клавиатуры.
+
 ## [2026-08-13 03:30:00] - 🛠️ ИДЕМПОТЕНТНОСТЬ МИГРАЦИИ (887752e658f5)
 
 - Миграция `887752e658f5` приведена к идемпотентному виду: добавлена проверка наличия колонок (`telegram_username`, `discord_id`, `cover_url`) перед вызовом `add_column`.
