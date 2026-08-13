@@ -31,10 +31,7 @@ DRAIN_SECONDS="${DRAIN_SECONDS:-90}"
 STOP_OLD_AFTER_DRAIN="${STOP_OLD_AFTER_DRAIN:-0}"
 PRUNE_IMAGES_AFTER_DEPLOY="${PRUNE_IMAGES_AFTER_DEPLOY:-0}"
 RUN_MIGRATIONS="${RUN_MIGRATIONS:-1}"
-# Legacy installations created before Alembic can contain a revision from an
-# abandoned migration history.  A normal upgrade cannot start from an unknown
-# revision, so recover it from the last schema-repair anchor and then apply the
-# current forward-only chain.  This never deletes application data.
+#
 MIGRATION_RECOVERY_ANCHOR="${MIGRATION_RECOVERY_ANCHOR:-f2b3c4d5e6f7}"
 # Celery belongs to the primary compose stack. Rebuilding it through the
 # blue-green file could create duplicate workers and duplicate scheduled jobs.
@@ -239,3 +236,8 @@ case "${1:-deploy}" in
     switch-green) write_nginx_upstream green ;;
     *) echo "Usage: $0 [deploy|rollback|status|switch-blue|switch-green]" >&2; exit 2 ;;
 esac
+
+# Legacy installations created before Alembic can contain a revision from an
+# abandoned migration history.  A normal upgrade cannot start from an unknown
+# revision, so recover it from the last schema-repair anchor and then apply the
+# current forward-only chain.  This never deletes application data.
