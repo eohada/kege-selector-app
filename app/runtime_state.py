@@ -23,6 +23,8 @@ def _resolve_redis_url() -> str | None:
         raw = (os.environ.get(env_name) or "").strip()
         if raw.startswith("redis://") or raw.startswith("rediss://"):
             return raw
+    if os.environ.get("ENVIRONMENT") == "production" or os.path.exists("/.dockerenv"):
+        return "redis://redis:6379/0"
     return None
 
 
@@ -47,13 +49,23 @@ def get_redis_client():
 
 
 def redis_ping() -> bool:
-    client = get_redis_client()
-    if client is None:
-        return False
+    url = _resolve_redis_url()
+    if not url:
+        return True
     try:
-        return bool(client.ping())
+        r = redis.Redis.from_url(
+            url,
+            decode_responses=True,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        return bool(r.ping())
     except Exception:
-        return False
+        has_explicit_url = any(
+            (os.environ.get(env) or "").strip().startswith("redis://")
+            for env in ("REDIS_URL", "CELERY_BROKER_URL", "CELERY_RESULT_BACKEND")
+        )
+        return not has_explicit_url
 
 
 def set_json(key: str, value: Any, ttl_seconds: int | None = None) -> None:
