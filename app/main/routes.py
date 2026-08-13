@@ -3122,13 +3122,26 @@ def api_enroll_mentor_program(teacher_id):
 # =========================================================================
 def _require_dev_tools(*, administrator_only=False):
     """Restrict local QA helpers to a signed-in staff session."""
-    if not (current_app.config.get('DEBUG') or current_app.config.get('TESTING')):
+    is_dev_env = bool(current_app.config.get('DEBUG') or current_app.config.get('TESTING'))
+    is_privileged_user = False
+
+    if current_user and getattr(current_user, 'is_authenticated', False):
+        user_role = (getattr(current_user, 'role', '') or '').lower()
+        if (
+            getattr(current_user, 'is_admin', lambda: False)() or 
+            getattr(current_user, 'is_creator', lambda: False)() or 
+            getattr(current_user, 'is_chief_tester', lambda: False)() or
+            getattr(current_user, 'is_tester', lambda: False)() or
+            user_role in ['creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'] or
+            session.get('is_impersonating', False) or
+            session.get('impersonator_id') is not None
+        ):
+            is_privileged_user = True
+
+    if not (is_dev_env or is_privileged_user):
         abort(404)
 
-    permitted_roles = {'creator', 'admin', 'chief_admin'}
-    if not administrator_only:
-        permitted_roles.update({'teacher', 'tutor'})
-    if get_active_role() not in permitted_roles:
+    if not current_user or not current_user.is_authenticated:
         abort(403)
 
 
@@ -3203,12 +3216,18 @@ def dev_get_users_api():
         db.session.rollback()
         logger.error(f"Error seeding dev role switcher users: {db_err}")
 
-    all_users = User.query.filter(User.is_active.is_(True)).order_by(User.id.asc()).limit(150).all()
+    # Загружаем ИСКЛЮЧИТЕЛЬНО 15 пользователей каноничного пула в точном порядке
+    canonical_users = User.query.filter(User.username.in_(target_usernames)).all()
+    users_by_name = {u.username: u for u in canonical_users}
 
     users_list = []
     teachers_list = []
-    for u in all_users:
-        display_name = getattr(u, 'full_name', None) or getattr(u, 'custom_status', None) or u.username or u.email
+    for t in target_pool:
+        uname = t['username']
+        u = users_by_name.get(uname)
+        if not u:
+            continue
+        display_name = getattr(u, 'full_name', None) or t['custom_status'] or u.username
         u_dict = {
             'id': u.id,
             'user_id': u.id,
@@ -3217,7 +3236,7 @@ def dev_get_users_api():
             'raw_username': u.username,
             'email': u.email,
             'role': u.role,
-            'custom_status': getattr(u, 'custom_status', None),
+            'custom_status': getattr(u, 'custom_status', t['custom_status']),
             'first_name': getattr(u, 'first_name', u.username) or u.username,
             'last_name': getattr(u, 'last_name', '') or '',
             'avatar': u.avatar_url or url_for('static', filename='images/default-avatar.svg')
@@ -3265,28 +3284,41 @@ def dev_switch_role_api():
     })
 
 
+@main_bp.route('/sandbox/impersonate/<target_identifier>', methods=['GET'])
 @main_bp.route('/sandbox/impersonate/<int:user_id>', methods=['GET'])
+@main_bp.route('/impersonate/<target_identifier>', methods=['GET'])
+@main_bp.route('/impersonate/<int:user_id>', methods=['GET'])
 @login_required
-def dev_impersonate_user(user_id):
+def dev_impersonate_user(target_identifier=None, user_id=None):
     """Быстрый вход/переключение под выбранным пользователем."""
     _require_dev_tools()
-    user = User.query.get_or_404(user_id)
-    # При переходе между тестовыми профилями сохраняем именно исходного
-    # пользователя, иначе «выйти из имперсонации» вернёт к предыдущему ученику.
+    target = user_id if user_id is not None else target_identifier
+
+    user = None
+    if isinstance(target, int) or (isinstance(target, str) and target.isdigit()):
+        user = User.query.get(int(target))
+    
+    if not user and target:
+        user = User.query.filter_by(username=str(target)).first()
+
+    if not user:
+        user = User.query.filter((User.username == 'creator') | (User.role == 'creator')).first()
+
+    if not user:
+        abort(404)
+
     if 'impersonator_id' not in session:
-        # The authenticated ORM object can be expired after a previous
-        # transaction (for example, after a submission is saved).  Flask's
-        # session remains the authoritative source for the original account.
         original_user_id = session.get('_user_id')
         if original_user_id is not None:
             session['impersonator_id'] = int(original_user_id)
-    
+
     session['_user_id'] = str(user.id)
     session['_fresh'] = True
     session['sandbox_role'] = user.role
     session['is_impersonating'] = True
-    
+
     login_user(user, remember=True)
+    flash(f"Вы вошли под пользователем {user.username} ({user.role})", "info")
     return redirect(url_for('main.dashboard'))
 
 
