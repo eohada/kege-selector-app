@@ -279,13 +279,14 @@
             <!-- Referral & Parent Code Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <!-- Referral Code Box -->
+                {% set ref_code = (personal_referral.code if (personal_referral and personal_referral.code) else (referral_code_str if referral_code_str is defined else 'BOOSTUDY-2026')) %}
                 <div class="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-[0_3px_0_#C7D2FE]">
                     <div>
                         <span class="text-[10px] font-black text-indigo-700 uppercase tracking-wider block">Реферальный код</span>
-                        <p class="text-xs font-bold text-slate-700">Бонусы платформы</p>
+                        <p class="text-xs font-bold text-slate-700">+100 XP вам и +50 XP другу</p>
                     </div>
-                    <button onclick="copyReferralCode(this, '{{ referral_code_str if referral_code_str is defined else 'BOOSTUDY-2026' }}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2 px-3 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider shrink-0 border-0">
-                        <i class="ph-bold ph-copy text-sm"></i> <span>{{ referral_code_str if referral_code_str is defined else 'BOOSTUDY-2026' }}</span>
+                    <button onclick="copyReferralCode(this, '{{ ref_code }}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2 px-3 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider shrink-0 border-0">
+                        <i class="ph-bold ph-copy text-sm"></i> <span>{{ ref_code }}</span>
                     </button>
                 </div>
 
@@ -299,27 +300,6 @@
                         <i class="ph-bold ph-key text-sm"></i> <span>{{ current_user.link_code if current_user.link_code else 'BS-WIG9' }}</span>
                     </button>
                 </div>
-
-                {% if personal_referral %}
-                <!-- Personal Referral Code Box -->
-                <div class="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-[0_3px_0_#C7D2FE]">
-                    <div>
-                        <span class="text-[10px] font-black text-indigo-700 uppercase tracking-wider block">Реферальный код</span>
-                        <p class="text-xs font-bold text-slate-700">+100 XP вам и +50 XP другу</p>
-                    </div>
-                    <button onclick="copyRefCode(this, '{{ personal_referral.code }}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2 px-3 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider shrink-0 border-0">
-                        <i class="ph-bold ph-copy text-sm"></i> <span>{{ personal_referral.code }}</span>
-                    </button>
-                </div>
-                <script>
-                function copyRefCode(btn, code) {
-                    navigator.clipboard.writeText(code);
-                    const orig = btn.innerHTML;
-                    btn.innerHTML = '<i class="ph-bold ph-check text-sm"></i> <span>Скопировано!</span>';
-                    setTimeout(() => { btn.innerHTML = orig; }, 2000);
-                }
-                </script>
-                {% endif %}
             </div>
         </div>
 

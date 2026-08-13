@@ -5,12 +5,22 @@ import requests
 from flask import current_app
 logger = logging.getLogger(__name__)
 
-DAILY_API_URL = "https://api.daily.co/v1"
-
 class DailyService:
     @staticmethod
     def _get_api_key():
         return (current_app.config.get('DAILY_API_KEY') or os.environ.get('DAILY_API_KEY') or '').strip()
+
+    @staticmethod
+    def _get_api_url():
+        url = (current_app.config.get('DAILY_API_URL') or os.environ.get('DAILY_API_URL') or 'https://api.daily.co/v1').strip()
+        return url.rstrip('/')
+
+    @staticmethod
+    def _get_proxies():
+        proxy = (current_app.config.get('DAILY_PROXY') or os.environ.get('DAILY_PROXY') or os.environ.get('HTTPS_PROXY') or '').strip()
+        if proxy:
+            return {'http': proxy, 'https': proxy}
+        return None
 
     @staticmethod
     def _get_headers():
@@ -23,18 +33,20 @@ class DailyService:
             "Content-Type": "application/json"
         }
 
-    @staticmethod
-    def get_or_create_room(room_name: str) -> str:
+    @classmethod
+    def get_or_create_room(cls, room_name: str) -> str:
         """
         Creates a private room in Daily or returns its URL if it already exists.
         Returns the room_url.
         """
-        headers = DailyService._get_headers()
+        headers = cls._get_headers()
+        base_url = cls._get_api_url()
+        proxies = cls._get_proxies()
         
         # Check if room already exists
-        check_url = f"{DAILY_API_URL}/rooms/{room_name}"
+        check_url = f"{base_url}/rooms/{room_name}"
         try:
-            resp = requests.get(check_url, headers=headers, timeout=5)
+            resp = requests.get(check_url, headers=headers, proxies=proxies, timeout=5)
             if resp.status_code == 200:
                 room_url = (resp.json() or {}).get("url")
                 if room_url:
@@ -47,7 +59,7 @@ class DailyService:
             pass
 
         # Create the room
-        create_url = f"{DAILY_API_URL}/rooms"
+        create_url = f"{base_url}/rooms"
         payload = {
             "name": room_name,
             "privacy": "private",
@@ -58,7 +70,7 @@ class DailyService:
         }
         
         try:
-            resp = requests.post(create_url, headers=headers, json=payload, timeout=5)
+            resp = requests.post(create_url, headers=headers, json=payload, proxies=proxies, timeout=5)
             if resp.status_code in (200, 201):
                 room_url = (resp.json() or {}).get("url")
                 if room_url:
@@ -67,7 +79,7 @@ class DailyService:
                 raise RuntimeError("Daily room response did not include a URL")
             elif resp.status_code == 400 and "already exists" in resp.text:
                 # In case of race condition, check again
-                resp = requests.get(check_url, headers=headers, timeout=5)
+                resp = requests.get(check_url, headers=headers, proxies=proxies, timeout=5)
                 if resp.status_code == 200:
                     room_url = (resp.json() or {}).get("url")
                     if room_url:
@@ -80,13 +92,15 @@ class DailyService:
             logger.error(f"Request exception creating Daily room {room_name}: {e}")
             raise RuntimeError("Failed to connect to video provider")
 
-    @staticmethod
-    def create_meeting_token(room_name: str, user_name: str, is_owner: bool) -> str:
+    @classmethod
+    def create_meeting_token(cls, room_name: str, user_name: str, is_owner: bool) -> str:
         """
         Creates a meeting token scoped to the room.
         """
-        headers = DailyService._get_headers()
-        create_url = f"{DAILY_API_URL}/meeting-tokens"
+        headers = cls._get_headers()
+        base_url = cls._get_api_url()
+        proxies = cls._get_proxies()
+        create_url = f"{base_url}/meeting-tokens"
         
         payload = {
             "properties": {
@@ -97,7 +111,7 @@ class DailyService:
         }
         
         try:
-            resp = requests.post(create_url, headers=headers, json=payload, timeout=5)
+            resp = requests.post(create_url, headers=headers, json=payload, proxies=proxies, timeout=5)
             if resp.status_code in (200, 201):
                 token = (resp.json() or {}).get("token")
                 if token:
