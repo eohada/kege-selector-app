@@ -78,6 +78,9 @@ def create_app(config_name=None):
     elif postgres_alt_url:
         selected_database_url = postgres_alt_url
         database_url_source = 'POSTGRES_URL'
+    elif os.environ.get('ENVIRONMENT') == 'production' or os.path.exists('/.dockerenv'):
+        selected_database_url = 'postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod'
+        database_url_source = 'production_docker_default'
 
     if selected_database_url:
         database_url = selected_database_url
