@@ -371,11 +371,11 @@
 
         function toastOk(msg) {
             try { window.showToast && window.showToast(msg, 'success'); return; } catch (e) {}
-            alert(msg);
+            window.BooNotify.success(msg);
         }
         function toastErr(msg) {
             try { window.showToast && window.showToast(msg, 'error'); return; } catch (e) {}
-            alert(msg);
+            window.BooNotify.error(msg);
         }
 
         function renderCorrectness() {
@@ -509,7 +509,7 @@
             }
         }
         async function deleteComment(cid) {
-            if (!confirm('Вы действительно хотите удалить этот комментарий?')) return;
+            if (!await window.BooNotify.confirm({ title: 'Удалить комментарий?', message: 'Комментарий будет удалён без возможности восстановления.', confirmText: 'Удалить', variant: 'danger' })) return;
             try {
                 await jsonPost(`/lesson/teacher-comment/${cid}/delete`);
                 toastOk('Комментарий удален');

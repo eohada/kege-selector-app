@@ -135,37 +135,6 @@
     <script src="{{ url_for('static', filename='confirm-modal.js') }}?v=20260528-v26"></script>
     <script defer src="{{ url_for('static', filename='spa-nav-sync.js') }}?v=20260528-v26"></script>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <script type="application/json" id="flash-messages-data">
-    [{% for category, message in messages %}{"category": "{{ category }}", "message": {{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]
-    </script>
-    <script>
-    (function() {
-        function show() {
-            var t = window.toast;
-            if (!t || typeof t.success !== 'function') { if ((show.n = (show.n||0)+1) < 20) setTimeout(show, 100); return; }
-            var el = document.getElementById('flash-messages-data');
-            if (!el || show.done) return;
-            try {
-                JSON.parse(el.textContent).forEach(function(m) {
-                    var c = m.category || 'success';
-                    if (c === 'error' || c === 'danger') t.error(m.message);
-                    else if (c === 'warning') t.warning(m.message);
-                    else if (c === 'info') t.info(m.message);
-                    else t.success(m.message);
-                });
-                show.done = true;
-            } catch(e) {}
-        }
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show);
-        else show();
-        window.addEventListener('load', function() { setTimeout(show, 100); });
-    })();
-    </script>
-    {% endif %}
-    {% endwith %}
-
     {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/demo_cinema.css') }}">
     {% if cinema_demo_ids is defined and cinema_demo_ids %}
@@ -340,6 +309,7 @@
         setTimeout(() => { toast.classList.remove('opacity-100', 'translate-y-0'); toast.classList.add('opacity-0', 'translate-y-10'); }, 3500);
     }
     </script>
+    {% include 'sandbox/components/_feedback_system.html' %}
 </body>
 
 

@@ -356,7 +356,8 @@ window.initPremiumSchedule = () => {
       });
 
       deleteBtn?.addEventListener('click', async () => {
-        if (!confirm('Удалить урок? Это действие нельзя отменить.')) return;
+        const approved = await window.BooNotify.confirm({ title: 'Удалить урок?', message: 'Это действие нельзя отменить.', confirmText: 'Удалить', variant: 'danger' });
+        if (!approved) return;
         try {
           if (!deleteUrlTpl) throw new Error('delete url not configured');
           const url = deleteUrlTpl.replace('0', String(meta.lesson_id));

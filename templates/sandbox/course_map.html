@@ -142,12 +142,12 @@
             if (data.success) {
                 window.location.reload();
             } else {
-                alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                window.BooNotify.error(data.error || 'Неизвестная ошибка');
                 overlay.classList.add('hidden');
             }
         } catch (error) {
             console.error('Upload error:', error);
-            alert('Ошибка сети при загрузке');
+            window.BooNotify.error('Ошибка сети при загрузке');
             overlay.classList.add('hidden');
         }
         

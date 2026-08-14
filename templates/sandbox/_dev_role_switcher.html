@@ -189,7 +189,7 @@
       if (data.status === 'ok') {
         window.location.reload();
       } else {
-        alert('Ошибка назначения наставника: ' + (data.message || 'ошибка'));
+        window.BooNotify.error('Ошибка назначения наставника: ' + (data.message || 'ошибка'));
       }
     });
   };

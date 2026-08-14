@@ -473,9 +473,10 @@
     scheduleSave();
   }
 
-  function clearAll() {
+  async function clearAll() {
     if (!strokes.length) return;
-    if (!confirm('Очистить все заметки?')) return;
+    const approved = await window.BooNotify.confirm({ title: 'Очистить доску?', message: 'Все заметки на этой доске будут удалены.', confirmText: 'Очистить', variant: 'danger' });
+    if (!approved) return;
     strokes = [];
     redoStack = [];
     dirty = true;

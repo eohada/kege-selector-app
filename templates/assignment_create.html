@@ -584,8 +584,8 @@
             // Expose pickTemplate globally
             window.pickTemplate = pickTemplate;
 
-            function clearTasks() {
-                if (!confirm('Очистить список задач?')) return;
+            async function clearTasks() {
+                if (!await window.BooNotify.confirm({ title: 'Очистить список задач?', message: 'Несохранённый список задач будет очищен.', confirmText: 'Очистить', variant: 'danger' })) return;
                 const sel = document.getElementById('ca_recipients');
                 const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
                 location.href = `/assignments/create?source=manual&recipient_ids=${ids}`;

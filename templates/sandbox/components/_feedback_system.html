@@ -1,0 +1,23 @@
+<style>
+    .boo-notify-stack{position:fixed;right:max(1rem,env(safe-area-inset-right));bottom:max(1rem,env(safe-area-inset-bottom));z-index:9999;display:flex;max-width:min(25rem,calc(100vw - 2rem));flex-direction:column;gap:.75rem;pointer-events:none}.boo-notify{display:grid;grid-template-columns:2rem minmax(0,1fr) 1.75rem;gap:.65rem;align-items:start;border:2px solid #cbd5e1;border-radius:1.25rem;background:#fff;padding:.85rem;box-shadow:0 5px 0 #d9e1ea,0 12px 28px rgba(15,23,42,.12);opacity:0;transform:translateY(.75rem);transition:opacity .18s ease,transform .18s ease;pointer-events:auto}.boo-notify.is-visible{opacity:1;transform:translateY(0)}.boo-notify--success{border-color:#86efac}.boo-notify--error,.boo-notify--danger{border-color:#fda4af}.boo-notify--warning{border-color:#fcd34d}.boo-notify--info{border-color:#a5b4fc}.boo-notify__icon{display:flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:.8rem;background:#e0e7ff;color:#4338ca;font-weight:900}.boo-notify--success .boo-notify__icon{background:#dcfce7;color:#047857}.boo-notify--error .boo-notify__icon,.boo-notify--danger .boo-notify__icon{background:#ffe4e6;color:#e11d48}.boo-notify--warning .boo-notify__icon{background:#fef3c7;color:#b45309}.boo-notify__body strong{display:block;color:#172554;font-size:.8rem;font-weight:900}.boo-notify__body p{margin:.2rem 0 0;color:#475569;font-size:.8rem;font-weight:650;line-height:1.35}.boo-notify__close{border:0;background:transparent;color:#64748b;font-size:1.35rem;line-height:1;cursor:pointer}.boo-confirm-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(15,23,42,.38);opacity:0;transition:opacity .16s ease}.boo-confirm-overlay.is-visible{opacity:1}.boo-confirm{width:min(100%,31rem);border:2px solid #cbd5e1;border-radius:2rem;background:#f8fafc;padding:1.5rem;box-shadow:0 6px 0 #d9e1ea,0 24px 64px rgba(15,23,42,.25)}.boo-confirm__mark{display:flex;align-items:center;justify-content:center;width:2.75rem;height:2.75rem;border:2px solid #c7d2fe;border-radius:1rem;background:#e0e7ff;color:#4338ca;font-size:1.25rem;font-weight:900}.boo-confirm__mark--danger{border-color:#fda4af;background:#ffe4e6;color:#e11d48}.boo-confirm__copy h2{margin:1rem 0 .35rem;color:#172554;font-size:1.15rem;font-weight:900}.boo-confirm__copy p{margin:0;color:#475569;font-size:.9rem;font-weight:650;line-height:1.5}.boo-confirm__actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:1.5rem}.boo-confirm__button{min-height:2.8rem;border:1px solid;border-bottom-width:4px;border-radius:.8rem;padding:.6rem 1rem;font-size:.85rem;font-weight:900;cursor:pointer}.boo-confirm__button--secondary{border-color:#cbd5e1;background:#fff;color:#334155}.boo-confirm__button--primary{border-color:#3730a3;background:#4f46e5;color:#fff}.boo-confirm__button--danger{border-color:#be123c;background:#e11d48;color:#fff}.boo-prompt__input{box-sizing:border-box;width:100%;height:3rem;margin-top:1rem;border:2px solid #cbd5e1;border-radius:.8rem;background:#fff;padding:0 .85rem;color:#0f172a;font-weight:700;outline:0}.boo-prompt__input:focus{border-color:#6366f1}@media(max-width:640px){.boo-notify-stack{left:1rem;right:1rem;max-width:none;bottom:max(5rem,env(safe-area-inset-bottom))}.boo-confirm__actions{flex-direction:column-reverse}.boo-confirm__button{width:100%}}
+</style>
+<script src="{{ url_for('static', filename='platform-feedback.js') }}?v=20260814-v1"></script>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<script type="application/json" class="boo-flash-messages">[{% for category, message in messages %}{"type": {{ category|tojson }}, "message": {{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]</script>
+<script>
+(function () {
+    var source = document.currentScript.previousElementSibling;
+    if (!source || !window.BooNotify) return;
+    try {
+        JSON.parse(source.textContent).forEach(function (notice) {
+            window.BooNotify.notify(notice.message, notice.type);
+        });
+        source.remove();
+    } catch (error) {
+        window.BooNotify.error('Не удалось показать системное уведомление.');
+    }
+}());
+</script>
+{% endif %}
+{% endwith %}

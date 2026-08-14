@@ -5930,3 +5930,22 @@ outes.py for correct timezone handling.
 - Students and parents opening a historical lesson-homework URL are now redirected to their canonical V2 submissions list.
 - Teachers still reach canonical V2 assignment creation with the lesson and homework context preserved.
 - Separate regression checks lock both role-specific transitions.
+
+## [2026-08-14 10:15:00] - Release polish: V2 group form
+
+- Replaced the isolated legacy-styled group create/edit form with the canonical BooStudy V2 layout while preserving routes, CSRF and persistence behavior.
+
+## [2026-08-14 10:40:00] - Release polish: unified V2 feedback
+
+- Added one V2 feedback layer for contextual flash messages, toasts, confirmations and prompts across role layouts.
+- Migrated active V2 native browser dialogs to the BooStudy feedback layer.
+
+## [2026-08-14 10:55:00] - Release polish: single flash owner
+
+- Removed competing legacy flash renderers from shared base templates so every current message is displayed by the V2 feedback layer in the response where it was created.
+- Added regression coverage for current-response flash rendering and migrated the last native trainer alert to BooNotify.
+
+## [2026-08-14 10:00:00] - Release polish: mandatory step journal
+
+- Added a project-wide rule requiring a written plan and recorded result before and after every independent implementation step.
+- Created the active Obsidian release-polish journal and linked it from the current-work note.

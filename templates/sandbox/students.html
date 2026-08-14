@@ -526,14 +526,14 @@
                 if (typeof showBentoToast === 'function') {
                     showBentoToast("🚀 Ссылка-приглашение ученика скопирована!", "success");
                 } else {
-                    alert('🚀 Ссылка-приглашение для ученика скопирована в буфер обмена!\n\n' + data.invite_url);
+                    window.BooNotify.success('Ссылка-приглашение ученика скопирована.');
                 }
             } else {
-                alert('Ошибка: ' + (data.message || 'Не удалось создать ссылку'));
+                window.BooNotify.error(data.message || 'Не удалось создать ссылку');
             }
         } catch(err) {
             console.error("[STUDENT INVITE JS ERROR]:", err);
-            alert('Ошибка при генерации ссылки-приглашения: ' + err);
+            window.BooNotify.error('Ошибка при генерации ссылки-приглашения: ' + err);
         }
     }
 
@@ -556,14 +556,14 @@
                 if (typeof showBentoToast === 'function') {
                     showBentoToast("👨‍👩‍👧 Ссылка родителя скопирована!", "success");
                 } else {
-                    alert('👨‍👩‍👧 Ссылка-приглашение родителя для ученика ' + (studentName || '') + ' скопирована!\n\n' + data.invite_url);
+                    window.BooNotify.success('Ссылка-приглашение родителя скопирована.');
                 }
             } else {
-                alert('Ошибка: ' + (data.message || 'Не удалось создать ссылку'));
+                window.BooNotify.error(data.message || 'Не удалось создать ссылку');
             }
         } catch(err) {
             console.error("[PARENT INVITE JS ERROR]:", err);
-            alert('Ошибка при генерации ссылки родителя: ' + err);
+            window.BooNotify.error('Ошибка при генерации ссылки родителя: ' + err);
         }
     }
 </script>

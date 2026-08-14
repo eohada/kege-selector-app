@@ -86,6 +86,48 @@ def test_legacy_compatibility_entries_redirect_to_v2_surfaces(app, client, role_
     assert anonymous_index.headers['Location'] in {'/landing', '/dashboard'}
 
 
+def test_group_creation_uses_the_v2_form_and_persists_the_group(client, app, role_users):
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    form_response = client.get('/groups/new')
+    assert form_response.status_code == 200
+    assert 'Новая группа'.encode('utf-8') in form_response.data
+    assert b'main/groups.html' not in form_response.data
+
+    created = client.post(
+        '/groups/new',
+        data={
+            'title': 'V2 test group',
+            'subject': 'Информатика',
+            'description': 'Группа из регрессионного теста',
+            'status': 'active',
+        },
+        follow_redirects=False,
+    )
+    assert created.status_code == 302
+    assert created.headers['Location'].startswith('/groups/')
+
+    from app.models import SchoolGroup
+
+    with app.app_context():
+        group = SchoolGroup.query.filter_by(title='V2 test group').one()
+        assert group.owner_user_id == role_users['tutor_id']
+        assert group.status == 'active'
+
+
+def test_v2_feedback_renders_a_flash_in_the_current_response(client, role_users):
+    login_as(client, role_users['tutor_id'], 'tutor')
+    with client.session_transaction() as session:
+        session['_flashes'] = [('success', 'Group saved on this screen')]
+
+    response = client.get('/groups/new')
+
+    assert response.status_code == 200
+    assert b'platform-feedback.js' in response.data
+    assert b'boo-flash-messages' in response.data
+    assert b'Group saved on this screen' in response.data
+
+
 def test_classwork_compatibility_route_redirects_to_the_v2_lesson_room(client, role_users):
     login_as(client, role_users['tutor_id'], 'tutor')
 

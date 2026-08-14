@@ -183,7 +183,8 @@ document.addEventListener('alpine:init', () => {
     /* ── Delete ── */
 
     async deleteFile(fileId) {
-      if (!confirm('Удалить файл из хранилища?')) return;
+      const approved = await window.BooNotify.confirm({ title: 'Удалить файл?', message: 'Файл будет удалён из хранилища.', confirmText: 'Удалить', variant: 'danger' });
+      if (!approved) return;
       this.error = '';
       const data = await api(`/workspace/${fileId}`, { method: 'DELETE' });
       if (data.success) {

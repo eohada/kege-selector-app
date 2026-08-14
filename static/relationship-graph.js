@@ -1046,7 +1046,8 @@
 
     async _deleteEdge() {
       if (!this.currentEdge) return;
-      if (!confirm('Удалить эту связь?')) return;
+      const approved = await window.BooNotify.confirm({ title: 'Удалить связь?', message: 'Связь между пользователями будет удалена.', confirmText: 'Удалить', variant: 'danger' });
+      if (!approved) return;
       try {
         this.dlgDelete.disabled = true;
         const isFamily = this.currentEdge.kind === 'family';

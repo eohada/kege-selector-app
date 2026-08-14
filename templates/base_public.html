@@ -61,25 +61,7 @@
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='theme-switcher.js') }}?v=20260708-v1"></script>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        {% for category, message in messages %}
-        {% if category == 'error' or category == 'danger' %}
-        if (window.toast) window.toast.error({{ message|tojson }});
-        {% elif category == 'warning' %}
-        if (window.toast) window.toast.warning({{ message|tojson }});
-        {% elif category == 'info' %}
-        if (window.toast) window.toast.info({{ message|tojson }});
-        {% else %}
-        if (window.toast) window.toast.success({{ message|tojson }});
-        {% endif %}
-        {% endfor %}
-    });
-    </script>
-    {% endif %}
-    {% endwith %}
+    {% include 'sandbox/components/_feedback_system.html' %}
 
     {% block scripts_extra %}{% endblock %}
 </body>

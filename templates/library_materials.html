@@ -123,7 +123,7 @@
                                     <i class="ph-fill ph-file text-2xl"></i>
                                 </div>
                                 {% endif %}
-                                <form method="POST" action="{{ url_for('library.materials_delete', asset_id=a.asset_id) }}" class="inline" onsubmit="return confirm('Удалить материал из библиотеки?');">
+                                <form method="POST" action="{{ url_for('library.materials_delete', asset_id=a.asset_id) }}" class="inline" data-confirm-message="Удалить материал из библиотеки?" data-confirm-title="Удалить материал?" data-confirm-text="Удалить" data-confirm-variant="danger">
                                     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                                     <button type="submit" class="text-muted dark:text-dark-muted hover:text-red-500 dark:hover:text-red-400 transition-colors bg-transparent border-0 cursor-pointer" title="Удалить"><i class="ph-bold ph-trash text-lg"></i></button>
                                 </form>

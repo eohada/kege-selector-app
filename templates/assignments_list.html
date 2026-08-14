@@ -415,7 +415,7 @@
     window.archiveAssignment = async function (assignmentId) {
         try {
             if (!assignmentId) return;
-            if (!window.confirm('Архивировать работу? Она исчезнет из активного списка (но останется в архиве).')) return;
+            if (!await window.BooNotify.confirm({ title: 'Архивировать работу?', message: 'Она исчезнет из активного списка, но останется в архиве.', confirmText: 'В архив' })) return;
             const url = '/assignments/' + encodeURIComponent(String(assignmentId)) + '/archive';
             const { ok, data } = await postJson(url, {});
             if (!ok || !data || !data.success) { toastAny('error', (data && data.error) ? data.error : 'Не удалось архивировать.'); return; }

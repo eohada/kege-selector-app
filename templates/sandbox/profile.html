@@ -763,7 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const formData = new FormData(form);
       const avatar = document.getElementById('edit-avatar-file');
       if (avatar && avatar.files[0] && avatar.files[0].size > 5 * 1024 * 1024) {
-        alert('Аватар должен быть не больше 5 МБ.');
+        window.BooNotify.error('Не удалось обработать аватар. Выберите другое изображение.');
         return;
       }
       const csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -781,12 +781,12 @@ document.addEventListener('DOMContentLoaded', () => {
           closeProfileEditModal();
           window.location.reload();
         } else {
-          alert('Ошибка сохранения: ' + (data.message || data.error || 'неизвестно'));
+          window.BooNotify.error('Ошибка сохранения: ' + (data.message || data.error || 'неизвестно'));
         }
       })
       .catch(err => {
         console.error('Failed to save profile:', err);
-        alert('Ошибка при отправке данных!');
+        window.BooNotify.error('Ошибка при отправке данных.');
       });
     });
   }
@@ -855,7 +855,7 @@ function generateTgCode() {
     if (code && typeof openTgCodeModal === 'function') {
       openTgCodeModal(code);
     } else if (code) {
-      alert('Твой код авторизации Telegram: ' + code);
+      window.BooNotify.info('Код авторизации: ' + code, { title: 'Telegram', duration: 9000 });
     }
   })
   .catch(() => {});

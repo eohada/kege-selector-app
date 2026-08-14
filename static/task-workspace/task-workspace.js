@@ -1480,7 +1480,7 @@
     }
 
     async function createWorkspaceFile() {
-        const name = window.prompt('Имя файла, например solution.py');
+        const name = await window.BooNotify.prompt({ title: 'Новый файл', message: 'Укажите имя файла для рабочего пространства.', placeholder: 'Например: solution.py', confirmText: 'Создать' });
         if (!name) return;
         const scope = workspaceFileScope();
         const resp = await fetch('/workspace/create', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify({ ...scope, filename: name }) });

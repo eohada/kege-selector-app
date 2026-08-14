@@ -258,13 +258,13 @@
                                 } else {
                                     cm.replaceRange('', from, to);
                                     cm.replaceRange('![Изображение](' + (file.name || '') + ')', from);
-                                    alert(data.error || 'Ошибка загрузки');
+                                    window.BooNotify.error(data.error || 'Ошибка загрузки');
                                 }
                             })
                             .catch(function() {
                                 cm.replaceRange('', from, to);
                                 cm.replaceRange('![Изображение](' + (file.name || '') + ')', from);
-                                alert('Ошибка загрузки изображения');
+                                window.BooNotify.error('Ошибка загрузки изображения');
                             });
                     };
                     input.click();
@@ -307,12 +307,12 @@
                                     cm.replaceRange(html, from, to);
                                 } else {
                                     cm.replaceRange('', from, to);
-                                    alert(data.error || 'Ошибка загрузки PDF');
+                                    window.BooNotify.error(data.error || 'Ошибка загрузки PDF');
                                 }
                             })
                             .catch(function() {
                                 cm.replaceRange('', from, to);
-                                alert('Ошибка загрузки PDF');
+                                window.BooNotify.error('Ошибка загрузки PDF');
                             });
                     };
                     input.click();

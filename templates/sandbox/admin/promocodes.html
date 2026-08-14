@@ -168,7 +168,7 @@ async function togglePromo(promoId) {
             location.reload();
         }
     } catch (e) {
-        alert('Ошибка обновления промокода');
+        window.BooNotify.error('Ошибка обновления промокода');
     }
 }
 </script>

@@ -1,98 +1,112 @@
 {% extends 'sandbox/layout_teacher.html' %}
-{% block title %}{% if is_new %}Создать группу{% else %}Редактировать группу{% endif %}{% endblock %}
-
+{% block title %}{% if is_new %}Создать группу{% else %}Настроить группу{% endif %} · BooStudy{% endblock %}
 {% set active_page = 'groups' %}
-{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
-
-<!-- Custom Styles for JIT Class Elimination -->
-<style>
-    .active-scale-098:active { transform: scale(0.98); }
-    .bg-length-16px { background-color: length:16px; }
-    .hover-shadow-0-6px-16px-rgba139-92-246-015:hover { box-shadow: 0 6px 16px rgba(139,92,246,0.15); }
-    .bg-urldata-image-svgxmlcharsetutf-8-3Csvg { background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg; }
-    .bg-right-12px-center { background-color: right 12px center; }
-    .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
-</style>
 {% block sandbox_content %}
-<main class="flex-1 overflow-y-auto bg-[#F8FAFC] p-4 pb-24 lg:pl-[6.5rem] lg:pr-8 lg:pt-8">
-<div class="mx-auto flex w-full max-w-[900px] flex-col gap-6 pb-6">
-    <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden">
-        <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
-        <p class="text-tiny font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-            <i class="ph-fill ph-users-four text-sm"></i> группы
-        </p>
-        <h1 class="text-2xl font-bold text-primary dark:text-white tracking-tight">
-            {% if is_new %}Создать новую группу{% else %}Редактировать группу{% endif %}
-        </h1>
-    </section>
+<main class="flex-1 overflow-y-auto bg-[#F8FAFC] p-4 pb-24 lg:p-8 lg:pl-[6.5rem]">
+    <div class="mx-auto w-full max-w-[1400px]">
+        <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8">
+            <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-100 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-indigo-700">
+                        <i class="ph-bold ph-users-three"></i> Учебные группы
+                    </div>
+                    <h1 class="mt-3 font-display text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+                        {% if is_new %}Новая группа{% else %}Настройка группы{% endif %}
+                    </h1>
+                    <p class="mt-2 max-w-2xl text-sm font-semibold leading-relaxed text-slate-500">
+                        {% if is_new %}Сначала задайте основу. Учеников и общие работы можно добавить сразу после сохранения.{% else %}Измените параметры группы. Состав учеников и массовые работы доступны на её странице.{% endif %}
+                    </p>
+                </div>
+                <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="inline-flex w-auto shrink-0 items-center justify-center gap-2 self-start rounded-xl border border-slate-200 border-b-[4px] bg-white px-5 py-3 text-sm font-black text-slate-700 no-underline shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[3px] active:border-b-[1px]">
+                    <i class="ph-bold ph-arrow-left"></i> Назад к группам
+                </a>
+            </div>
+        </section>
 
-    <div class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 lg:p-6 shadow-sm dark:shadow-glass-dark mb-3">
-        <form method="POST" action="{% if is_new %}{{ url_for('groups.group_new') }}{% else %}{{ url_for('groups.group_edit', group_id=group.group_id) }}{% endif %}" data-no-ajax="1" class="space-y-6">
+        <form method="POST" action="{% if is_new %}{{ url_for('groups.group_new') }}{% else %}{{ url_for('groups.group_edit', group_id=group.group_id) }}{% endif %}" data-no-ajax="1" class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-            {% if form and form.errors %}
-            <div class="alert alert-danger p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl text-red-650 dark:text-red-400 text-sm">
-                <strong class="font-extrabold">Ошибки валидации:</strong>
-                <ul class="list-disc pl-5 mt-2 space-y-1">
-                    {% for field, errors in form.errors.items() %}
-                    {% for error in errors %}
-                    <li>{{ error }}</li>
-                    {% endfor %}
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-            
-            <div class="space-y-1.5">
-                <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Название *</label>
-                <input type="text" name="title" required value="{{ group.title if group else '' }}" placeholder="Например: 10А (информатика)" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm">
-            </div>
 
-            <div class="space-y-1.5">
-                <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Предмет</label>
-                <input type="text" name="subject" value="{{ group.subject if group else '' }}" placeholder="INFORMATICS_EGE_2026" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm">
-            </div>
+            <section class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8">
+                <div class="flex items-center gap-3 border-b border-slate-200 pb-5">
+                    <span class="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-indigo-200 bg-indigo-50 text-xl text-indigo-600"><i class="ph-bold ph-book-open-text"></i></span>
+                    <div>
+                        <h2 class="font-display text-lg font-black text-slate-900">Основные данные</h2>
+                        <p class="text-xs font-bold text-slate-400">То, что увидят вы и ученики в списке групп.</p>
+                    </div>
+                </div>
 
-            <div class="space-y-1.5">
-                <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Статус</label>
-                {% set st = (group.status if group else 'active') %}
-                <select name="status" class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-200 focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat">
-                    <option value="active" {% if st == 'active' %}selected{% endif %}>active</option>
-                    <option value="archived" {% if st == 'archived' %}selected{% endif %}>archived</option>
-                </select>
-            </div>
+                {% if form and form.errors %}
+                <div class="mt-6 rounded-2xl border-2 border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+                    <p class="font-black">Проверьте заполнение формы</p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5">
+                        {% for field, errors in form.errors.items() %}{% for error in errors %}<li>{{ error }}</li>{% endfor %}{% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
 
-            <div class="space-y-1.5">
-                <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Описание</label>
-                <textarea rows="4" name="description" placeholder="Для кого группа, цели, примечания..." class="w-full bg-surface-alt dark:bg-white/[0.03] border border-slate-200 dark:border-dark-avatar rounded-xl px-4 py-3 font-semibold text-secondary dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-boo-primary transition-all text-sm resize-y">{{ group.description if group and group.description else '' }}</textarea>
-            </div>
+                <div class="mt-6 grid gap-5 md:grid-cols-2">
+                    <label class="block md:col-span-2">
+                        <span class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500">Название группы <span class="text-rose-500">*</span></span>
+                        <input type="text" name="title" required maxlength="160" value="{{ group.title if group else '' }}" placeholder="Например: ЕГЭ 2026 · поток А" class="h-12 w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 text-sm font-bold text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500">
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500">Предмет</span>
+                        <input type="text" name="subject" maxlength="120" value="{{ group.subject if group else '' }}" placeholder="Например: Информатика ЕГЭ" class="h-12 w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 text-sm font-bold text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500">
+                    </label>
+                    <label class="block">
+                        <span class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500">Статус</span>
+                        {% set status = group.status if group else 'active' %}
+                        <select name="status" class="h-12 w-full cursor-pointer rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 text-sm font-bold text-slate-900 outline-none transition-colors focus:border-indigo-500">
+                            <option value="active" {% if status == 'active' %}selected{% endif %}>Активна</option>
+                            <option value="archived" {% if status == 'archived' %}selected{% endif %}>В архиве</option>
+                        </select>
+                    </label>
+                    <label class="block md:col-span-2">
+                        <span class="mb-2 block text-[11px] font-black uppercase tracking-widest text-slate-500">Короткое описание</span>
+                        <textarea rows="5" name="description" maxlength="2000" placeholder="Цель группы, формат занятий и важные договорённости…" class="w-full resize-y rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-3 text-sm font-semibold leading-relaxed text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500">{{ group.description if group and group.description else '' }}</textarea>
+                    </label>
+                </div>
+            </section>
 
-            <div class="flex gap-4 justify-end">
-                <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700/80 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center no-underline">Отмена</a>
-                <button type="submit" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-0-4px-12px-rgba139-92-246-008 hover-shadow-0-6px-16px-rgba139-92-246-015">
-                    {% if is_new %}Создать{% else %}Сохранить{% endif %}
-                </button>
-            </div>
+            <aside class="flex flex-col gap-6">
+                <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl border-2 border-amber-200 bg-amber-50 text-xl text-amber-600"><i class="ph-bold ph-lightbulb"></i></div>
+                    <h2 class="mt-4 font-display text-lg font-black text-slate-900">Что будет дальше</h2>
+                    <ol class="mt-4 space-y-3 text-sm font-semibold leading-relaxed text-slate-600">
+                        <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white">1</span><span>Сохраните группу.</span></li>
+                        <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-700">2</span><span>Добавьте учеников на странице группы.</span></li>
+                        <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-black text-indigo-700">3</span><span>Создайте общую работу при необходимости.</span></li>
+                    </ol>
+                </section>
+                <div class="flex flex-col-reverse gap-3 sm:flex-row xl:flex-col">
+                    <a href="{% if is_new %}{{ url_for('groups.groups_list') }}{% else %}{{ url_for('groups.group_view', group_id=group.group_id) }}{% endif %}" class="inline-flex w-auto flex-1 items-center justify-center rounded-xl border border-slate-200 border-b-[4px] bg-white px-5 py-3.5 text-sm font-black text-slate-700 no-underline shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[3px] active:border-b-[1px]">Отменить</a>
+                    <button type="submit" class="inline-flex w-auto flex-1 items-center justify-center gap-2 rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-5 py-3.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(79,70,229,0.2)] transition-all hover:bg-indigo-500 active:translate-y-[3px] active:border-b-[1px] disabled:cursor-wait disabled:opacity-70">
+                        <i class="ph-bold {% if is_new %}ph-plus-circle{% else %}ph-floppy-disk{% endif %}"></i>{% if is_new %}Создать группу{% else %}Сохранить изменения{% endif %}
+                    </button>
+                </div>
+            </aside>
         </form>
     </div>
-</div>
 </main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('form').forEach(function(form) {
-        if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
-        form.addEventListener('submit', function() {
-            var btn = form.querySelector('button[type="submit"], input[type="submit"]');
-            if (btn && !btn.disabled) {
-                btn.disabled = true;
-                btn.dataset.originalText = btn.textContent;
-                btn.textContent = 'Сохранение...';
-                setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
-            }
-        });
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.querySelector('form[data-no-ajax="1"]');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+        const button = form.querySelector('button[type="submit"]');
+        if (!button || button.disabled) return;
+        button.disabled = true;
+        button.dataset.initialText = button.innerHTML;
+        button.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Сохраняем…';
+        window.setTimeout(function () {
+            if (!button.disabled) return;
+            button.disabled = false;
+            button.innerHTML = button.dataset.initialText;
+        }, 10000);
     });
 });
 </script>

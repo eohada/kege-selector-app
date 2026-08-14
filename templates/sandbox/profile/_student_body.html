@@ -189,11 +189,11 @@ function copyParentLinkCode(code) {
             if (typeof showToast === 'function') {
                 showToast('Код привязки ' + code + ' скопирован в буфер обмена!', 'success');
             } else {
-                alert('Код ' + code + ' скопирован!');
+                window.BooNotify.success('Код привязки скопирован.');
             }
         });
     } else {
-        alert('Код привязки: ' + code);
+        window.BooNotify.info('Код привязки: ' + code, { title: 'Код привязки', duration: 9000 });
     }
 }
 function generateTgCode() {
@@ -201,12 +201,12 @@ function generateTgCode() {
     .then(r => r.json())
     .then(d => {
         if (d.code) {
-            alert('Ваш временный код авторизации в Telegram: ' + d.code);
+            window.BooNotify.info('Временный код: ' + d.code, { title: 'Код авторизации', duration: 9000 });
         } else {
-            alert('Код сгенерирован! Откройте нашего бота для завершения привязки.');
+            window.BooNotify.success('Код сгенерирован. Откройте бота для завершения привязки.');
         }
     })
-    .catch(() => alert('Генерация кода возможна через Telegram-бот.'));
+    .catch(() => window.BooNotify.error('Генерация кода сейчас доступна через Telegram-бот.'));
 }
 </script>
 {% set student_stats = student_stats or {
