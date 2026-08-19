@@ -141,33 +141,9 @@ def update_report(report_id):
 @login_required
 @qa_access_required
 def execute_test(test_id):
-    test = QATestCase.query.get_or_404(test_id)
-    existing_report = QAReport.query.filter_by(test_id=test.id, reporter_id=current_user.id).first()
-    failed_steps = existing_report.failed_steps if existing_report and existing_report.failed_steps else []
-    is_readonly = bool(existing_report and existing_report.status != 'retest')
-
-    admin_comment = None
-    if existing_report and existing_report.status == 'retest':
-        last_history = QAReportHistory.query.filter_by(
-            report_id=existing_report.id, new_status='retest'
-        ).order_by(QAReportHistory.created_at.desc()).first()
-        if last_history:
-            admin_comment = last_history.comment
-
-    history = QAReportHistory.query.filter_by(
-        report_id=existing_report.id
-    ).order_by(QAReportHistory.created_at.asc()).all() if existing_report else []
-
-    return render_template(
-        'qa_tester/execute.html',
-        test=test,
-        qa_areas=QA_AREAS,
-        existing_report=existing_report,
-        failed_steps=failed_steps,
-        admin_comment=admin_comment,
-        history=history,
-        is_readonly=is_readonly,
-    )
+    """Совместимый URL: работа с кейсом выполняется в V2-кабинете тестировщика."""
+    QATestCase.query.get_or_404(test_id)
+    return redirect(url_for('qa_tester.index', focus_test_id=test_id), code=302)
 
 
 @qa_tester_bp.route('/test/<int:test_id>/submit', methods=['POST'])
@@ -351,15 +327,7 @@ def upload_video():
 @qa_access_required
 def ad_hoc_bug():
     if request.method == 'GET':
-        dummy_test = {
-            'id': 'ad-hoc',
-            'title': 'Спонтанный баг (Ad-Hoc)',
-            'description': 'Опишите найденную проблему, которая не привязана к конкретному тест-кейсу. Укажите шаги для воспроизведения и прикрепите скриншоты, если необходимо.',
-            'area': 'Общая',
-            'priority': 'medium',
-            'steps': ['Опишите ваши действия', 'Что вы ожидали увидеть', 'Что произошло на самом деле']
-        }
-        return render_template('qa_tester/execute.html', test=dummy_test, report=None, is_adhoc=True, is_readonly=False, qa_areas=QA_AREAS)
+        return redirect(url_for('qa_tester.index', compose_bug='1'), code=302)
 
     if request.method == 'POST':
         area = request.form.get('area', 'Общая')
@@ -446,8 +414,7 @@ def ad_hoc_bug():
 @login_required
 @qa_access_required
 def history():
-    reports = QAReport.query.filter_by(reporter_id=current_user.id).order_by(QAReport.created_at.desc()).all()
-    return render_template('qa_tester/history.html', reports=reports)
+    return redirect(url_for('qa_tester.index', pane='history'), code=302)
 
 
 @qa_tester_bp.route('/test-cases/<int:tc_id>/status', methods=['POST'])

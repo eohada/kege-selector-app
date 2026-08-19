@@ -23,7 +23,7 @@
                 📝 Создать работу ({{ tasks|length }})
             </a>
             {% endif %}
-            <form method="POST" action="{{ clear_accepted_url | default(url_for('assignments.assignments_accepted_clear')) }}" class="inline-flex gap-2 items-center" onsubmit="return confirmAcceptedClear();">
+            <form id="accepted-clear-form" method="POST" action="{{ clear_accepted_url | default(url_for('assignments.assignments_accepted_clear')) }}" class="inline-flex gap-2 items-center">
                 {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                 {% if task_type %}<input type="hidden" name="task_type" value="{{ task_type }}">{% endif %}
                 {% if assignment_type %}<input type="hidden" name="assignment_type" value="{{ assignment_type }}">{% endif %}
@@ -145,10 +145,24 @@ function filterByTaskType(taskType) {
     }
 }
 
-function confirmAcceptedClear() {
+async function confirmAcceptedClear() {
     const total = {{ (tasks|length) if tasks is defined else 0 }};
     const typePart = {% if task_type %}'типа {{ task_type }}'{% else %}'всех типов'{% endif %};
-    return window.confirm('Очистить принятые задания ' + typePart + '?\n\nСейчас в списке: ' + total + ' шт.\nДействие необратимо.');
+    if (!window.BooNotify || typeof window.BooNotify.confirm !== 'function') {
+        window.toast?.error('Не удалось открыть подтверждение. Обновите страницу и попробуйте снова.');
+        return false;
+    }
+    return window.BooNotify.confirm({
+        title: 'Очистить принятые задания?',
+        message: 'Будут удалены задания ' + typePart + '. Сейчас в списке: ' + total + ' шт. Действие нельзя отменить.',
+        confirmText: 'Очистить',
+        variant: 'danger',
+    });
 }
+
+document.getElementById('accepted-clear-form')?.addEventListener('submit', async function(event) {
+    event.preventDefault();
+    if (await confirmAcceptedClear()) this.submit();
+});
 </script>
 {% endblock %}

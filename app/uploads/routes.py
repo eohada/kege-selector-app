@@ -4,7 +4,7 @@ import os
 import re
 import logging
 
-from flask import send_file, abort, current_app
+from flask import send_file, abort, current_app, request
 from flask_login import login_required, current_user
 
 from app.uploads import uploads_bp
@@ -185,7 +185,20 @@ def lesson_file(lesson_id: int, stored_name: str):
     if not os.path.exists(abs_path):
         abort(404)
 
-    return send_file(abs_path, as_attachment=True, download_name=stored_name)
+    # The same protected URL serves two deliberate use cases: a normal click
+    # downloads the source file, while the Room V3 preview requests it inline.
+    # Keeping access control here prevents an iframe preview from becoming a
+    # public bypass around lesson membership.
+    inline = request.args.get('inline') == '1'
+    response = send_file(
+        abs_path,
+        as_attachment=not inline,
+        download_name=stored_name,
+        conditional=True,
+    )
+    if inline:
+        response.headers['Content-Disposition'] = f'inline; filename="{stored_name}"'
+    return response
 
 
 @uploads_bp.route('/avatars/<path:filename>')

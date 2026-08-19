@@ -732,14 +732,14 @@ def register_hooks(app):
                     'students.student_statistics',
                 }
                 if ep == 'main.student_dashboard':
-                    return redirect(url_for('trainer.trainer_embed'))
+                    return redirect(url_for('trainer.trainer_v2'))
                 if ep in allowed_student_endpoints:
                     return None
                 if ep.startswith('auth.'):
                     return None
                 if request.path.startswith('/api/telegram/'):
                     return None
-                return redirect(url_for('trainer.trainer_embed'))
+                return redirect(url_for('trainer.trainer_v2'))
 
             lesson_prefixes = (
                 'lessons.',

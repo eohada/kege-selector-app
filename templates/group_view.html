@@ -1,169 +1,67 @@
 {% extends 'sandbox/layout_teacher.html' %}
 {% block title %}Группа · {{ group.title }}{% endblock %}
-
 {% set active_page = 'groups' %}
-{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
 
-
-<!-- Custom Styles for JIT Class Elimination -->
-<style>
-    .bg-right-12px-center { background-color: right 12px center; }
-    .active-scale-098:active { transform: scale(0.98); }
-    .bg-length-16px { background-color: length:16px; }
-    .bg-urldata-image-svgxmlcharsetutf-8-3Csvg { background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg; }
-</style>
 {% block sandbox_content %}
-<main class="flex-1 overflow-y-auto bg-[#F8FAFC] p-4 pb-24 lg:pl-[6.5rem] lg:pr-8 lg:pt-8">
-<div class="mx-auto flex w-full max-w-[1400px] flex-col gap-6 pb-6">
-    <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-6">
-        <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="relative z-10 max-w-3xl">
-            <div class="text-tiny font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                <i class="ph-fill ph-users-four text-sm"></i> группа
+<main class="min-h-full bg-[#F8FAFC] px-4 py-5 pb-28 lg:pl-[6.5rem] lg:pr-8 lg:pt-8">
+    <div class="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
+            <div class="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                <div class="min-w-0">
+                    <div class="mb-3 flex flex-wrap items-center gap-2">
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-100 px-3 py-1 text-xs font-black uppercase tracking-widest text-indigo-700"><i class="ph-bold ph-users-three"></i> Группа</span>
+                        {% if group.status == 'active' %}
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-100 px-3 py-1 text-xs font-black uppercase tracking-widest text-emerald-800"><i class="ph-bold ph-check-circle"></i> Активна</span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-black uppercase tracking-widest text-slate-600"><i class="ph-bold ph-archive"></i> Архив</span>
+                        {% endif %}
+                    </div>
+                    <h1 class="break-words text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{{ group.title }}</h1>
+                    <div class="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-600">
+                        {% if group.subject %}<span class="rounded-lg border border-slate-200 bg-white px-3 py-1.5"><i class="ph-bold ph-book-open-text mr-1.5 text-indigo-500"></i>{{ group.subject }}</span>{% endif %}
+                        <span class="rounded-lg border border-slate-200 bg-white px-3 py-1.5"><i class="ph-bold ph-users mr-1.5 text-indigo-500"></i>{{ members|length }} {{ 'участник' if members|length == 1 else 'участников' }}</span>
+                    </div>
+                    {% if group.description %}<p class="mt-4 max-w-3xl text-sm leading-6 text-slate-600">{{ group.description }}</p>{% endif %}
+                </div>
+                <div class="flex flex-wrap gap-2 xl:max-w-[31rem] xl:justify-end">
+                    <a href="{{ url_for('groups.groups_list') }}" class="inline-flex w-auto items-center gap-2 rounded-xl border border-slate-200 border-b-[4px] bg-white px-4 py-2.5 text-sm font-black text-slate-700 no-underline shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[3px] active:border-b-[1px]"><i class="ph-bold ph-arrow-left"></i> Все группы</a>
+                    <a href="{{ url_for('groups.group_export_csv', group_id=group.group_id) }}" class="inline-flex w-auto items-center gap-2 rounded-xl border border-slate-200 border-b-[4px] bg-white px-4 py-2.5 text-sm font-black text-slate-700 no-underline shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[3px] active:border-b-[1px]"><i class="ph-bold ph-file-csv"></i> CSV</a>
+                    <a href="{{ url_for('groups.group_export_pdf', group_id=group.group_id) }}" class="inline-flex w-auto items-center gap-2 rounded-xl border border-slate-200 border-b-[4px] bg-white px-4 py-2.5 text-sm font-black text-slate-700 no-underline shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[3px] active:border-b-[1px]"><i class="ph-bold ph-file-pdf"></i> PDF</a>
+                    {% if can_manage %}<a href="{{ url_for('groups.group_edit', group_id=group.group_id) }}" class="inline-flex w-auto items-center gap-2 rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-4 py-2.5 text-sm font-black text-white no-underline shadow-[0_4px_10px_rgba(79,70,229,0.2)] transition-all hover:bg-indigo-500 active:translate-y-[3px] active:border-b-[1px]"><i class="ph-bold ph-pencil-simple"></i> Редактировать</a>{% endif %}
+                </div>
             </div>
-            <h1 class="text-3xl md:text-lg font-bold text-primary dark:text-white tracking-tight mb-2">{{ group.title }}</h1>
-            <div class="text-xs font-bold text-muted dark:text-dark-muted flex items-center gap-3">
-                <span>Статус: <strong class="text-secondary dark:text-zinc-200">{{ group.status }}</strong></span>
-                {% if group.subject %}
-                <span>• Предмет: <strong class="text-secondary dark:text-zinc-200">{{ group.subject }}</strong></span>
+        </section>
+
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+            <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-5 shadow-[0_4px_0_#DAE1E9] sm:p-6">
+                <div class="mb-5 flex items-center justify-between gap-3">
+                    <div><p class="text-xs font-black uppercase tracking-widest text-slate-400">Состав</p><h2 class="mt-1 text-2xl font-black text-slate-900">Участники</h2></div>
+                    <span class="flex h-9 min-w-9 items-center justify-center rounded-full border border-indigo-200 bg-indigo-100 px-2 text-sm font-black text-indigo-700">{{ members|length }}</span>
+                </div>
+                {% if members %}
+                <div class="grid gap-3">
+                    {% for m in members %}
+                    <article class="flex flex-col gap-4 rounded-[1.5rem] border-2 border-slate-200 bg-white p-4 shadow-[0_3px_0_#DAE1E9] sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex min-w-0 items-center gap-3"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-indigo-200 bg-indigo-100 text-lg font-black text-indigo-700">{{ (m.student.name if m.student else 'У')[:1]|upper }}</span><div class="min-w-0"><p class="truncate font-black text-slate-900">{{ m.student.name if m.student else ('Ученик #' ~ m.student_id) }}</p><p class="mt-0.5 text-xs font-bold text-slate-400">ID ученика: {{ m.student_id }}</p></div></div>
+                        <div class="flex shrink-0 gap-2">{% if m.student %}<a href="{{ url_for('students.student_profile', student_id=m.student.student_id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 border-b-[3px] bg-white px-3 py-2 text-xs font-black text-slate-700 no-underline transition-all hover:bg-slate-50 active:translate-y-[2px] active:border-b"><i class="ph-bold ph-user-focus"></i> Профиль</a>{% endif %}{% if can_manage %}<form method="POST" action="{{ url_for('groups.group_member_remove', group_id=group.group_id, member_id=m.id) }}" data-no-ajax="1" data-confirm-message="Удалить ученика из группы?">{% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}<button type="submit" class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-200 border-b-[3px] bg-rose-50 text-rose-700 transition-all hover:bg-rose-100 active:translate-y-[2px] active:border-b" aria-label="Удалить ученика"><i class="ph-bold ph-trash"></i></button></form>{% endif %}</div>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="flex min-h-64 flex-col items-center justify-center rounded-[1.5rem] border-2 border-dashed border-slate-200 bg-white px-6 text-center"><span class="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-2xl text-indigo-600"><i class="ph-bold ph-users-three"></i></span><h3 class="text-lg font-black text-slate-900">В группе пока никого нет</h3><p class="mt-1 max-w-sm text-sm text-slate-500">Добавьте ученика справа — он сразу появится в этом списке.</p></div>
                 {% endif %}
-            </div>
-            {% if group.description %}
-            <p class="text-sm text-muted dark:text-dark-muted font-medium mt-3 leading-relaxed max-w-3xl">{{ group.description }}</p>
-            {% endif %}
-        </div>
-        <div class="relative z-10 flex flex-wrap items-center gap-3 shrink-0">
-            <a href="{{ url_for('groups.groups_list') }}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
-                <i class="ph-bold ph-arrow-left"></i> Все группы
-            </a>
-            <a href="{{ url_for('groups.group_export_csv', group_id=group.group_id) }}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
-                <i class="ph-bold ph-file-csv"></i> CSV
-            </a>
-            <a href="{{ url_for('groups.group_export_pdf', group_id=group.group_id) }}" class="h-9 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
-                <i class="ph-bold ph-file-pdf"></i> PDF
-            </a>
-            {% if can_manage %}
-            <a href="{{ url_for('groups.group_edit', group_id=group.group_id) }}" class="h-9 px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm no-underline">
-                <i class="ph-bold ph-pencil-simple"></i> Редактировать
-            </a>
-            {% endif %}
-        </div>
-    </section>
+            </section>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-zinc-800/80 border-b-4 border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 lg:p-6">
-            <div class="flex justify-between items-center mb-3">
-                <div>
-                    <p class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-0.5">состав</p>
-                    <h2 class="text-lg font-bold text-primary dark:text-white tracking-tight">Участники ({{ members|length }})</h2>
-                </div>
-            </div>
+            <aside class="flex flex-col gap-6">
+                {% if can_manage %}
+                <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-5 shadow-[0_4px_0_#DAE1E9]"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Управление</p><h2 class="mt-1 text-xl font-black text-slate-900">Добавить ученика</h2><form method="POST" action="{{ url_for('groups.group_member_add', group_id=group.group_id) }}" data-no-ajax="1" class="mt-5 space-y-4">{% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}<label class="block"><span class="mb-1.5 block text-xs font-black uppercase tracking-widest text-slate-500">Ученик</span><select name="student_id" required class="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-400"><option value="">Выберите ученика</option>{% for s in available_students %}<option value="{{ s.student_id }}">{{ s.name }} · #{{ s.student_id }}</option>{% endfor %}</select></label><button type="submit" class="inline-flex w-auto items-center gap-2 rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-[0_4px_10px_rgba(79,70,229,0.2)] transition-all hover:bg-indigo-500 active:translate-y-[3px] active:border-b-[1px]"><i class="ph-bold ph-user-plus"></i> Добавить</button></form></section>
 
-            {% if members and members|length > 0 %}
-            <div class="grid gap-3">
-                {% for m in members %}
-                <div class="bg-surface-alt dark:bg-white/[0.02] border border-slate-250/50 dark:border-zinc-800/60 rounded-2xl p-4 flex justify-between items-center gap-4 hover:shadow-sm transition-all">
-                    <div>
-                        <div class="font-black text-secondary dark:text-zinc-200">{{ m.student.name if m.student else ('Student #' ~ m.student_id) }}</div>
-                        <div class="text-small font-bold text-muted dark:text-dark-muted mt-0.5">ID ученика: {{ m.student_id }}</div>
-                    </div>
-                    <div class="flex gap-2 items-center">
-                        {% if m.student %}
-                        <a class="h-9 px-3.5 py-1.5 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800/80 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-extrabold text-xs transition-all duration-150 active-scale-098 no-underline flex items-center justify-center gap-1.5" href="{{ url_for('students.student_profile', student_id=m.student.student_id) }}">
-                            <i class="ph-bold ph-user-focus"></i> Профиль
-                        </a>
-                        {% endif %}
-                        {% if can_manage %}
-                        <form method="POST" action="{{ url_for('groups.group_member_remove', group_id=group.group_id, member_id=m.id) }}" data-no-ajax="1" class="inline">
-                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                            <button type="submit" class="h-9 w-9 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 text-red-650 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl font-extrabold transition-all duration-150 active-scale-098 cursor-pointer flex items-center justify-center shrink-0" onclick="return confirm('Удалить ученика из группы?')">
-                                <i class="ph-bold ph-trash"></i>
-                            </button>
-                        </form>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="py-3 text-center flex flex-col items-center justify-center bg-slate-50/50 dark:bg-white/[0.01] rounded-2xl border border-dashed border-slate-200 dark:border-dark-light">
-                <div class="text-2xl text-muted dark:text-dark-muted mb-3"><i class="ph-bold ph-users-three"></i></div>
-                <h3 class="text-base font-bold text-secondary dark:text-white mb-1">Пока пусто</h3>
-                <p class="text-sm text-muted dark:text-dark-muted">В этой группе пока нет учеников</p>
-            </div>
-            {% endif %}
-        </div>
-
-        <div class="flex flex-col gap-6">
-            {% if can_manage %}
-            <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-zinc-800/80 border-b-4 border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 lg:p-6">
-                <div class="mb-5">
-                    <p class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-0.5">управление</p>
-                    <h2 class="text-base font-bold text-primary dark:text-white tracking-tight">Добавить ученика</h2>
-                </div>
-
-                <form method="POST" action="{{ url_for('groups.group_member_add', group_id=group.group_id) }}" data-no-ajax="1" class="space-y-4">
-                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <div class="space-y-1.5">
-                        <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Ученик</label>
-                        <select name="student_id" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl px-4 py-3 font-semibold text-sm focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat" required>
-                            <option value="">— выбрать ученика —</option>
-                            {% for s in available_students %}
-                            <option value="{{ s.student_id }}">{{ s.name }} ({{ s.student_id }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <button type="submit" class="w-full h-9 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
-                        <i class="ph-bold ph-user-plus text-base"></i> Добавить в группу
-                    </button>
-                </form>
-            </div>
-
-            <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-zinc-800/80 border-b-4 border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 lg:p-6">
-                <div class="mb-5">
-                    <p class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-0.5">массовое действие</p>
-                    <h2 class="text-base font-bold text-primary dark:text-white tracking-tight">Массовое ДЗ</h2>
-                </div>
-
-                <form method="POST" action="{{ url_for('groups.group_mass_assignment', group_id=group.group_id) }}" data-no-ajax="1" class="space-y-4">
-                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <div class="space-y-1.5">
-                        <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Источник задач (урок)</label>
-                        <select name="lesson_id" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl px-4 py-3 font-semibold text-sm focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat" required>
-                            <option value="">— выбрать урок —</option>
-                            {% for l in available_lessons %}
-                            <option value="{{ l.lesson_id }}">#{{ l.lesson_id }} · {{ l.topic or 'Урок' }} · {{ l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else '—' }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Название работы</label>
-                        <input type="text" name="title" placeholder="Например: Массовое ДЗ для группы" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input" required>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Тип выдачи</label>
-                        <select name="assignment_type" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl px-4 py-3 font-semibold text-sm focus:outline-none focus:border-boo-primary cursor-pointer appearance-none bg-urldata-image-svgxmlcharsetutf-8-3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22m6 9 6 6 6-6%22/%3E%3C/svg%3E')] bg-length-16px bg-right-12px-center bg-no-repeat">
-                            <option value="homework" selected>Домашнее задание</option>
-                            <option value="classwork">Классная работа</option>
-                            <option value="exam">Проверочная работа</option>
-                        </select>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-small font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest ml-1">Срок выполнения (дедлайн)</label>
-                        <input type="datetime-local" name="deadline" class="w-full bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-xl px-4 py-3 font-semibold text-secondary dark:text-zinc-300 text-sm focus:outline-none focus:border-boo-primary transition-all shadow-input" required>
-                    </div>
-                    <button type="submit" class="w-full h-9 bg-orange-50 dark:bg-amber-950/30 border border-orange-200 dark:border-orange-950/50 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-amber-900/40 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 select-none cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
-                        <i class="ph-bold ph-paper-plane-right text-base"></i> Выдать работу группе
-                    </button>
-                </form>
-            </div>
-            {% else %}
-            <div class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-zinc-800/80 border-b-4 border-b-slate-300 dark:border-b-zinc-800/40 shadow-tactile p-6 text-center">
-                <div class="text-muted dark:text-dark-muted">У вас нет прав на управление этой группой.</div>
-            </div>
-            {% endif %}
+                <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-5 shadow-[0_4px_0_#DAE1E9]"><p class="text-xs font-black uppercase tracking-widest text-slate-400">Массовая выдача</p><h2 class="mt-1 text-xl font-black text-slate-900">Выдать работу группе</h2><form method="POST" action="{{ url_for('groups.group_mass_assignment', group_id=group.group_id) }}" data-no-ajax="1" class="mt-5 space-y-4">{% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}<label class="block"><span class="mb-1.5 block text-xs font-black uppercase tracking-widest text-slate-500">Урок-источник</span><select name="lesson_id" required class="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-400"><option value="">Выберите урок</option>{% for l in available_lessons %}<option value="{{ l.lesson_id }}">#{{ l.lesson_id }} · {{ l.topic or 'Урок' }} · {{ l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else 'без даты' }}</option>{% endfor %}</select></label><label class="block"><span class="mb-1.5 block text-xs font-black uppercase tracking-widest text-slate-500">Название</span><input type="text" name="title" required placeholder="Например: домашняя работа" class="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-400"></label><div class="grid grid-cols-2 gap-3"><label class="block"><span class="mb-1.5 block text-xs font-black uppercase tracking-widest text-slate-500">Тип</span><select name="assignment_type" class="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-400"><option value="homework">Домашняя</option><option value="classwork">Классная</option><option value="exam">Проверочная</option></select></label><label class="block"><span class="mb-1.5 block text-xs font-black uppercase tracking-widest text-slate-500">Дедлайн</span><input type="datetime-local" name="deadline" required class="w-full rounded-xl border-2 border-slate-200 bg-white px-3 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-indigo-400"></label></div><button type="submit" class="inline-flex w-auto items-center gap-2 rounded-xl border border-amber-700 border-b-[4px] bg-amber-500 px-5 py-3 text-sm font-black text-white shadow-[0_4px_10px_rgba(217,119,6,0.2)] transition-all hover:bg-amber-400 active:translate-y-[3px] active:border-b-[1px]"><i class="ph-bold ph-paper-plane-right"></i> Выдать работу</button></form></section>
+                {% else %}
+                <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 text-center shadow-[0_4px_0_#DAE1E9]"><span class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-200 text-xl text-slate-500"><i class="ph-bold ph-lock"></i></span><h2 class="mt-3 font-black text-slate-900">Только просмотр</h2><p class="mt-1 text-sm text-slate-500">У вас нет прав на изменение этой группы.</p></section>
+                {% endif %}
+            </aside>
         </div>
     </div>
-</div>
 </main>
 {% endblock %}

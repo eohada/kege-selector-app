@@ -179,10 +179,6 @@
             <i class="ph-bold ph-user-circle"></i>
             <span>Мой профиль</span>
         </a>
-        <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="bottom-sheet-list-item">
-            <i class="ph-bold ph-bell-ringing"></i>
-            <span>Уведомления</span>
-        </a>
         {% if current_user.is_admin() or current_user.is_creator() %}
             <a {{ spa_main_nav_attrs(url_for('admin.admin_panel'), 'admin_panel') }} class="bottom-sheet-list-item">
                 <i class="ph-bold ph-gear-six"></i>

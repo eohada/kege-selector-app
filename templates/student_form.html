@@ -2,7 +2,33 @@
 {% block title %}{{ title }} · BooStudy{% endblock %}
 {% set active_page = 'dashboard' %}
 
+{% block extra_head %}
+<style>
+  #student-form-v2{width:min(1400px,100%);margin:0 auto;padding:2rem 1rem 5rem;display:grid;gap:1.5rem}
+  #student-form-v2 .form-hero,#student-form-v2 .form-section{background:#F4F7FA!important;border:2px solid #E2E8F0!important;border-radius:2rem!important;box-shadow:0 4px 0 #DAE1E9!important;padding:1.5rem!important}
+  #student-form-v2 .form-hero{display:flex;align-items:center;min-height:9rem;background:linear-gradient(135deg,#EEF2FF,#F4F7FA 55%,#ECFDF5)!important}
+  #student-form-v2 .hero-eyebrow{margin:0;color:#4F46E5;font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+  #student-form-v2 .hero-title{margin:.4rem 0 0;color:#0F172A;font-size:clamp(1.65rem,4vw,2.35rem);font-weight:900;line-height:1.05}
+  #student-form-v2 form{display:grid;gap:1.5rem}
+  #student-form-v2 .form-section-title{color:#0F172A;font-size:1.05rem;font-weight:900;border-bottom:1px solid #E2E8F0;padding-bottom:1rem}
+  #student-form-v2 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.15rem;margin-top:1.25rem}
+  #student-form-v2 .form-grid-full{grid-column:1/-1}
+  #student-form-v2 .neo-field{display:grid;gap:.45rem}
+  #student-form-v2 .neo-label{color:#475569;font-size:.73rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+  #student-form-v2 .neo-input,#student-form-v2 .neo-select{width:100%;min-height:3rem;border:2px solid #E2E8F0!important;border-radius:.9rem!important;background:#fff!important;padding:.72rem .9rem!important;color:#0F172A!important;font:700 .92rem/1.45 inherit;outline:0;box-shadow:none!important}
+  #student-form-v2 textarea.neo-input{min-height:7rem;resize:vertical}
+  #student-form-v2 .neo-input:focus,#student-form-v2 .neo-select:focus{border-color:#6366F1!important;box-shadow:0 0 0 3px #E0E7FF!important}
+  #student-form-v2 small{color:#64748B!important;font-size:.78rem!important;line-height:1.4}
+  #student-form-v2 .form-actions{display:flex;gap:.75rem;justify-content:flex-end}
+  #student-form-v2 .neo-button{display:inline-flex;align-items:center;justify-content:center;min-height:3rem;border:2px solid #C7D2FE;border-bottom-width:4px;border-radius:.9rem;padding:.7rem 1.15rem;background:#fff;color:#334155;font-weight:900;text-decoration:none;cursor:pointer;transition:.15s}
+  #student-form-v2 .neo-button.accent{background:#4F46E5!important;border-color:#3730A3!important;color:#fff!important;box-shadow:0 4px 10px rgba(79,70,229,.18)}
+  #student-form-v2 .neo-button:active{transform:translateY(3px);border-bottom-width:1px}
+  @media(max-width:720px){#student-form-v2{padding:1rem .75rem 5rem}#student-form-v2 .form-grid{grid-template-columns:1fr}#student-form-v2 .form-grid-full{grid-column:auto}#student-form-v2 .form-actions{flex-direction:column-reverse}}
+</style>
+{% endblock %}
+
 {% block sandbox_content %}
+<main id="student-form-v2">
         <section class="glass-panel form-hero w-full">
             <div>
                 <p class="hero-eyebrow">форма ученика</p>
@@ -130,6 +156,7 @@
                 </div>
             </section>
         </form>
+</main>
 {% endblock %}
 
 {% block extra_scripts %}

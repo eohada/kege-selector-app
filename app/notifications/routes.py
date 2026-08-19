@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from flask import render_template, request, jsonify, redirect, url_for, flash
+from flask import request, jsonify, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from app.notifications import notifications_bp
@@ -15,14 +15,8 @@ logger = logging.getLogger(__name__)
 @notifications_bp.route('/notifications')
 @login_required
 def notifications_list():
-    show_all = (request.args.get('all') or '').strip() in ('1', 'true', 'yes', 'on')
-    q = UserNotification.query.filter_by(user_id=current_user.id)
-    if not show_all:
-        q = q.filter_by(is_read=False)
-    notifications = q.order_by(UserNotification.created_at.desc(), UserNotification.notification_id.desc()).limit(200).all()
-
-    unread_count = UserNotification.query.filter_by(user_id=current_user.id, is_read=False).count()
-    return render_template('notifications.html', notifications=notifications, unread_count=unread_count, show_all=show_all)
+    """Retired web notification centre kept only for old bookmarks."""
+    return redirect(url_for('main.dashboard'))
 
 
 @notifications_bp.route('/notifications/unread-count')
@@ -78,8 +72,7 @@ def notifications_mark_all_read():
         logger.error(f"Failed to mark all notifications read: {e}", exc_info=True)
         audit_logger.log_error(action='notifications_mark_all_read', entity='UserNotification', error=str(e))
         flash('Не удалось отметить уведомления прочитанными.', 'danger')
-        return redirect(url_for('notifications.notifications_list'))
+        return redirect(url_for('main.dashboard'))
 
     flash('Уведомления отмечены как прочитанные.', 'success')
-    return redirect(url_for('notifications.notifications_list'))
-
+    return redirect(url_for('main.dashboard'))

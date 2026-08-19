@@ -411,6 +411,13 @@
     input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
         opacity: 0.8;
     }
+/* Canonical V2 override: preserve the lesson form DOM and scheduling handlers. */
+.lf-container{width:min(1400px,100%);margin:0 auto;padding:2rem 1rem 5rem}
+.lf-hero,.lf-card,.lf-errors{background:#F4F7FA!important;border:2px solid #E2E8F0!important;border-radius:2rem!important;box-shadow:0 4px 0 #DAE1E9!important}
+.lf-hero{padding:1.5rem 2rem!important;color:#0F172A!important;background:linear-gradient(135deg,#EEF2FF,#F4F7FA 55%,#ECFDF5)!important}
+.lf-hero::before{display:none!important}.lf-hero-label,.lf-hero-name{color:#0F172A!important}.lf-hero-label{color:#4F46E5!important}
+.lf-hero-avatar{border:2px solid #C7D2FE!important;background:#fff!important}.lf-hero-back{background:#fff!important;border:2px solid #E2E8F0!important;border-bottom-width:4px!important;border-radius:.9rem!important;color:#334155!important}
+.lf-card{padding:1.5rem!important}.lf-card-title{color:#0F172A!important;border-bottom-color:#E2E8F0!important}.lf-card .neo-label{color:#475569!important}.lf-card .neo-input,.lf-card .neo-select,.lf-card .neo-textarea,.lf-title-input{background:#fff!important;border:2px solid #E2E8F0!important;border-radius:.9rem!important;color:#0F172A!important;box-shadow:none!important}.lf-card .neo-input:focus,.lf-card .neo-select:focus,.lf-card .neo-textarea:focus,.lf-title-input:focus{border-color:#6366F1!important;box-shadow:0 0 0 3px #E0E7FF!important}.lf-hint{color:#64748B!important}.lf-preset-pill{background:#EEF2FF!important;border:1px solid #C7D2FE!important;color:#4338CA!important}.lf-errors{background:#FFF1F2!important;border-color:#FECDD3!important;color:#9F1239!important}.lf-errors strong,.lf-errors li{color:#9F1239!important}
 </style>
 {% endblock %}
 

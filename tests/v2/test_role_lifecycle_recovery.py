@@ -1,5 +1,7 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
+from io import BytesIO
 from pathlib import Path
+import re
 
 import pytest
 
@@ -28,6 +30,9 @@ def test_live_layouts_use_neutral_local_avatar_fallbacks():
 
 def test_active_v2_navigation_layouts_do_not_reference_sandbox_routes():
     project_root = Path(__file__).resolve().parents[2]
+    # Only templates reached by user-facing routes belong here. Preview/demo files
+    # and the RBAC-protected dev role switcher intentionally retain their own
+    # internal sandbox endpoints and are covered separately.
     active_templates = (
         'layout_student.html', 'layout_teacher.html', 'layout_admin.html',
         'profile.html', 'task_detail.html', 'theory.html',
@@ -85,6 +90,66 @@ def test_legacy_compatibility_entries_redirect_to_v2_surfaces(app, client, role_
     assert anonymous_index.status_code == 302
     assert anonymous_index.headers['Location'] in {'/landing', '/dashboard'}
 
+    legacy_room = client.get('/sandbox/lesson_room/999999', follow_redirects=False)
+    assert legacy_room.status_code == 302
+    assert legacy_room.headers['Location'].endswith('/lesson/999999/room')
+
+
+def test_legacy_template_library_urls_redirect_to_the_v2_template_list(client, role_users):
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    for legacy_url in ('/templates_library', '/teacher/templates'):
+        response = client.get(legacy_url, follow_redirects=False)
+        assert response.status_code == 302
+        assert response.headers['Location'].endswith('/templates')
+
+
+def test_retired_web_notifications_redirect_to_the_dashboard(client, role_users):
+    login_as(client, role_users['student_user_id'], 'student')
+
+    response = client.get('/notifications', follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers['Location'].endswith('/dashboard')
+
+
+def test_retired_student_chat_redirects_to_the_v2_teacher_dashboard(client, role_users):
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    response = client.get(f"/student/{role_users['student_id']}/chat", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers['Location'].endswith(f"/students/{role_users['student_id']}/dashboard")
+
+
+def test_legacy_tutor_review_url_redirects_to_the_filtered_v2_queue(client, role_users):
+    login_as(client, role_users['tutor_id'], 'tutor')
+    response = client.get('/tutor/reviews?course_id=42', follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers['Location'].startswith('/reviews/queue?')
+    assert 'source=assignments' in response.headers['Location']
+    assert 'manual_only=1' in response.headers['Location']
+    assert 'course_id=42' in response.headers['Location']
+
+
+def test_course_crud_uses_the_light_v2_bento_contract(client, role_users):
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    for url in (
+        f"/student/{role_users['student_id']}/courses",
+        f"/student/{role_users['student_id']}/courses/new",
+    ):
+        assert client.get(url).status_code == 200
+
+    project_root = Path(__file__).resolve().parents[2]
+    for template_name in ('courses_list.html', 'course_view.html', 'course_form.html', 'course_module_form.html'):
+        content = (project_root / 'templates' / template_name).read_text(encoding='utf-8')
+        assert "sandbox/layout_teacher.html" in content
+        assert 'neo-button' not in content
+        assert 'glass-panel' not in content
+        assert 'onsubmit="return confirm' not in content
+
 
 def test_group_creation_uses_the_v2_form_and_persists_the_group(client, app, role_users):
     login_as(client, role_users['tutor_id'], 'tutor')
@@ -115,6 +180,119 @@ def test_group_creation_uses_the_v2_form_and_persists_the_group(client, app, rol
         assert group.status == 'active'
 
 
+def test_group_detail_uses_the_v2_shell_and_legacy_detail_redirects(client, app, role_users):
+    from app import db
+    from app.models import SchoolGroup
+
+    with app.app_context():
+        group = SchoolGroup(
+            title='V2 detail group',
+            owner_user_id=role_users['tutor_id'],
+            status='active',
+        )
+        db.session.add(group)
+        db.session.commit()
+        group_id = group.group_id
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    response = client.get(f'/groups/{group_id}')
+    assert response.status_code == 200
+    assert 'sandbox/layout_teacher.html'.encode('utf-8') not in response.data
+    assert 'Участники'.encode('utf-8') in response.data
+    assert b'max-w-[1400px]' in response.data
+    assert b'dark:from-zinc' not in response.data
+
+    legacy = client.get(f'/teacher/group/{group_id}', follow_redirects=False)
+    assert legacy.status_code == 302
+    assert legacy.headers['Location'].endswith(f'/groups/{group_id}')
+
+
+def test_group_mass_assignment_creates_a_submission_for_every_member(client, app, role_users):
+    from app import db
+    from app.models import Assignment, AssignmentTask, GroupStudent, Lesson, LessonTask, SchoolGroup, Student, Submission, Tasks, User
+
+    with app.app_context():
+        second_user = User(username='group_mass_second', role='student', password_hash='test', is_active=True)
+        db.session.add(second_user)
+        db.session.flush()
+        second_student = Student(name='Второй участник', user_id=second_user.id, is_active=True)
+        task = Tasks(task_number=9, content_html='<p>Групповая задача</p>', answer='42', is_active=True)
+        db.session.add_all([second_student, task])
+        db.session.flush()
+
+        group = SchoolGroup(title='Массовая выдача V2', owner_user_id=role_users['tutor_id'], status='active')
+        lesson = Lesson(
+            student_id=role_users['student_id'],
+            lesson_date=datetime.now(),
+            duration=60,
+            status='planned',
+            topic='Источник для массовой выдачи',
+        )
+        db.session.add_all([group, lesson])
+        db.session.flush()
+        db.session.add_all([
+            GroupStudent(group_id=group.group_id, student_id=role_users['student_id'], added_by_user_id=role_users['tutor_id']),
+            GroupStudent(group_id=group.group_id, student_id=second_student.student_id, added_by_user_id=role_users['tutor_id']),
+            LessonTask(lesson_id=lesson.lesson_id, task_id=task.task_id, assignment_type='homework', status='pending'),
+        ])
+        db.session.commit()
+        group_id = group.group_id
+        lesson_id = lesson.lesson_id
+        second_student_id = second_student.student_id
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    response = client.post(
+        f'/groups/{group_id}/mass-assignment',
+        data={
+            'lesson_id': lesson_id,
+            'title': 'Домашняя работа для группы',
+            'assignment_type': 'homework',
+            'deadline': (datetime.now() + timedelta(days=2)).strftime('%Y-%m-%dT%H:%M'),
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers['Location'].startswith('/assignments/')
+
+    with app.app_context():
+        assignment = Assignment.query.filter_by(title='Домашняя работа для группы').one()
+        assert AssignmentTask.query.filter_by(assignment_id=assignment.assignment_id).count() == 1
+        submissions = Submission.query.filter_by(assignment_id=assignment.assignment_id).all()
+        assert {item.student_id for item in submissions} == {role_users['student_id'], second_student_id}
+        assert {item.status for item in submissions} == {'ASSIGNED'}
+
+
+def test_legacy_route_handlers_do_not_render_retired_group_or_qa_templates():
+    project_root = Path(__file__).resolve().parents[2]
+    checks = {
+        'app/main/routes.py': ('main/group_detail.html', 'platform_bug_reports.html'),
+        'app/admin/qa_management.py': ('admin/qa/dashboard.html', 'admin/qa/test_cases.html', 'admin/qa/report_detail.html'),
+        'app/qa/routes.py': ('qa_tester/execute.html', 'qa_tester/history.html'),
+    }
+
+    for relative_path, retired_templates in checks.items():
+        content = (project_root / relative_path).read_text(encoding='utf-8')
+        for retired_template in retired_templates:
+            assert retired_template not in content, f'{relative_path} still renders {retired_template}'
+
+
+def test_service_surfaces_from_the_legacy_audit_have_v2_templates():
+    template_root = Path(__file__).resolve().parents[2] / 'templates'
+    required_templates = {
+        'onboarding_invites.html',
+        'invite_accept.html',
+        'rubrics_list.html',
+        'rubric_form.html',
+        'designer_assets.html',
+    }
+
+    for template_name in required_templates:
+        template_path = template_root / template_name
+        assert template_path.is_file(), f'Missing active template: {template_name}'
+        content = template_path.read_text(encoding='utf-8')
+        assert 'sandbox/layout_teacher.html' in content or template_name == 'invite_accept.html'
+
+
 def test_v2_feedback_renders_a_flash_in_the_current_response(client, role_users):
     login_as(client, role_users['tutor_id'], 'tutor')
     with client.session_transaction() as session:
@@ -135,6 +313,145 @@ def test_classwork_compatibility_route_redirects_to_the_v2_lesson_room(client, r
 
     assert response.status_code == 302
     assert response.headers['Location'].endswith(f"/lesson/{role_users['student_id']}/room?pane=work")
+
+
+def test_lesson_room_v3_preserves_canonical_shell_and_student_controls(client, app, role_users):
+    from app import db
+    from app.models import Lesson, Student
+
+    with app.app_context():
+        student = db.session.get(Student, role_users['student_id'])
+        student.mentor_id = role_users['tutor_id']
+        lesson = Lesson(
+            student_id=student.student_id,
+            lesson_date=datetime.now(),
+            duration=60,
+            status='in_progress',
+            topic='Room V3 regression lesson',
+        )
+        db.session.add(lesson)
+        db.session.commit()
+        lesson_id = lesson.lesson_id
+
+    login_as(client, role_users['student_user_id'], 'student')
+    room = client.get(f'/lesson/{lesson_id}/room?pane=materials')
+    assert room.status_code == 200
+    assert b'room-v3' in room.data
+    assert b'room-video-dock' in room.data
+    assert b'data-view="meeting"' not in room.data
+    assert b'room-checkpoint-save' in room.data
+    assert b'os-material-dropzone' not in room.data
+
+    signal = client.post(f'/lesson/{lesson_id}/studio/signal', json={'signal': 'need_hint'})
+    assert signal.status_code == 200
+    assert signal.get_json()['state']['student_signal'] == 'need_hint'
+
+    checkpoint = client.post(
+        f'/lesson/{lesson_id}/studio/checkpoint',
+        json={'understanding': 4, 'blocker': 'Нужно повторить один пример'},
+    )
+    assert checkpoint.status_code == 200
+    assert checkpoint.get_json()['state']['student_checkpoint']['understanding'] == 4
+
+    notes = client.post(f'/lesson/{lesson_id}/studio/student-notes', json={'notes': 'Личная заметка ученика'})
+    assert notes.status_code == 200
+    assert notes.get_json()['notes'] == 'Личная заметка ученика'
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    teacher_state = client.get(f'/lesson/{lesson_id}/studio/state')
+    assert teacher_state.status_code == 200
+    assert teacher_state.get_json()['state']['student_signal'] == 'need_hint'
+    assert teacher_state.get_json()['state']['student_checkpoint']['blocker'] == 'Нужно повторить один пример'
+
+    teacher_room = client.get(f'/lesson/{lesson_id}/room?pane=materials')
+    assert teacher_room.status_code == 200
+    assert b'os-material-dropzone' in teacher_room.data
+
+    uploaded = client.post(
+        f'/lesson/{lesson_id}/upload',
+        data={'file': (BytesIO(b'Room V3 material'), 'lesson-notes.txt')},
+        content_type='multipart/form-data',
+    )
+    assert uploaded.status_code == 200
+    uploaded_material = uploaded.get_json()['material']
+    assert uploaded_material['name'] == 'lesson-notes.txt'
+    assert uploaded_material['type'] == 'txt'
+    assert uploaded_material['size'] == len(b'Room V3 material')
+    assert uploaded_material['uploaded_by']
+    assert uploaded_material['url'].startswith(f'/files/lessons/{lesson_id}/')
+
+    served_material = client.get(uploaded_material['url'])
+    assert served_material.status_code == 200
+    assert served_material.data == b'Room V3 material'
+    assert 'attachment' in served_material.headers['Content-Disposition']
+    served_material.close()
+
+    inline_material = client.get(f"{uploaded_material['url']}?inline=1")
+    assert inline_material.status_code == 200
+    assert inline_material.data == b'Room V3 material'
+    assert inline_material.headers['Content-Disposition'].startswith('inline;')
+    inline_material.close()
+
+    removed = client.post(
+        f'/lesson/{lesson_id}/material/delete',
+        json={'url': uploaded_material['url']},
+    )
+    assert removed.status_code == 200
+    assert removed.get_json()['success'] is True
+
+    deleted_material = client.get(uploaded_material['url'])
+    assert deleted_material.status_code == 404
+
+    finished = client.post(
+        f'/lesson/{lesson_id}/studio/finish',
+        json={'outcome': {'completed': ['Циклы'], 'repeat': ['Границы диапазона'], 'homework': 'Решить два задания'}},
+    )
+    assert finished.status_code == 200
+    assert finished.get_json()['status'] == 'completed'
+    assert finished.get_json()['state']['outcome']['published'] is True
+
+    teacher_note = client.post(f'/lesson/{lesson_id}/studio/state', json={'teacher_private_note': 'Только преподавателю'})
+    assert teacher_note.status_code == 200
+
+    login_as(client, role_users['student_user_id'], 'student')
+    student_state = client.get(f'/lesson/{lesson_id}/studio/state')
+    assert student_state.status_code == 200
+    assert 'teacher_private_note' not in student_state.get_json()['state']
+
+
+def test_lesson_room_v3_client_keeps_task_markup_safe_and_daily_is_not_a_tab():
+    project_root = Path(__file__).resolve().parents[2]
+    template = (project_root / 'templates' / 'sandbox' / 'lesson_room.html').read_text(encoding='utf-8')
+    client = (project_root / 'static' / 'lesson-studio-os.js').read_text(encoding='utf-8')
+    styles = (project_root / 'static' / 'lesson-studio-os.css').read_text(encoding='utf-8')
+
+    assert 'safeTaskHtml' in client
+    assert "task.description)||'Условие отсутствует.'" in client
+    assert "n.setAttribute('aria-live','polite')" in client
+    assert "data-view=\"meeting\"" not in template
+    assert 'room-video-dock-toggle' in template
+    assert 'role="dialog"' in template
+    assert 'os-code-highlight' in template
+    assert 'highlightPython' in client
+    assert 'taskPanelIsOpen' in client
+    assert '.room-canvas.tasks-collapsed' in styles
+    assert '.os-token-keyword' in styles
+    assert 'max-width:1680px' in styles
+    assert 'room-mission-progress' in template
+    assert 'room-v3-page-teacher' in template
+    assert 'Шаг ${taskIndex+1} из ${tasks.length}' in client
+    assert '.room-mission-footer' in styles
+    assert '.room-v3-page-teacher{padding-left:110px}' in styles
+    assert '.room-v3-page{padding:8px 8px calc(82px + env(safe-area-inset-bottom,0px))}' in styles
+    assert 'room-lesson-header' in template
+    assert 'room-teacher-tools' in template
+    assert 'room-mission-orb' in template
+    assert 'room-console-hint' in template
+    assert 'learning-flow-ui' in client
+    assert 'full learning-flow redesign' in styles
+    assert '.room-v3{max-width:1400px;gap:14px}' in styles
+    assert '.room-tab{flex:0 0 auto;min-width:auto;justify-content:center;padding:7px 9px;font-size:10px;white-space:nowrap}' in styles
+    assert 'All room spaces share the same quiet bento grammar' in styles
 
 
 def test_homework_compatibility_route_sends_student_to_v2_submissions(client, role_users):
@@ -201,7 +518,7 @@ def test_student_info_activity_summary_renders_for_the_assigned_tutor(client, ro
 def test_student_management_auxiliary_screens_use_v2_shells():
     project_root = Path(__file__).resolve().parents[2]
     teacher_templates = (
-        'student_form.html', 'lesson_form.html', 'student_chat.html',
+        'student_form.html', 'lesson_form.html',
         'student_call_request.html', 'student_info.html',
         'student_learning_plan.html', 'student_gradebook.html',
         'student_diagnostics.html',
@@ -211,9 +528,6 @@ def test_student_management_auxiliary_screens_use_v2_shells():
         assert "{% extends 'sandbox/layout_teacher.html' %}" in content
         assert "{% extends 'base.html' %}" not in content
 
-    notifications = (project_root / 'templates' / 'notifications.html').read_text(encoding='utf-8')
-    assert "{% extends 'base.html' %}" not in notifications
-    assert "sandbox/layout_student.html" in notifications
     assert "{% extends 'base.html' %}" not in content
 
 
@@ -254,7 +568,11 @@ def test_assignment_management_list_uses_the_v2_teacher_layout():
 
 def test_assignment_management_create_edit_and_view_use_the_v2_teacher_layout():
     project_root = Path(__file__).resolve().parents[2]
-    for template_name in ('assignment_create.html', 'assignment_edit.html', 'assignment_view.html'):
+    create_content = (project_root / 'templates' / 'assignment_create.html').read_text(encoding='utf-8')
+    assert '{% extends "sandbox/create_assignment.html" %}' in create_content
+    assert 'assignmentCreateWizard' not in create_content
+
+    for template_name in ('assignment_edit.html', 'assignment_view.html'):
         content = (project_root / 'templates' / template_name).read_text(encoding='utf-8')
         assert "{% extends 'sandbox/layout_teacher.html' %}" in content
         assert "{% block sandbox_content %}" in content
@@ -526,6 +844,7 @@ def test_legacy_generator_url_redirects_to_canonical_v2(client, role_users):
 
     assert response.status_code == 302
     assert '/task-generator' in response.headers['Location']
+
     assert 'assignment_type=classwork' in response.headers['Location']
 
 
@@ -1017,3 +1336,146 @@ def test_workspace_rejects_unrelated_student(app, role_users):
     outsider_client = app.test_client()
     login_as(outsider_client, outsider_id, 'student')
     assert outsider_client.get('/task-workspace/api/state', query_string=workspace_query).status_code == 403
+
+
+def test_student_analytics_uses_functional_v2_template_not_reference_mock():
+    project_root = Path(__file__).resolve().parents[2]
+    route_source = (project_root / 'app' / 'students' / 'routes.py').read_text(encoding='utf-8')
+
+    assert "render_template('sandbox/analytics_canonical.html'" in route_source
+    assert 'sandbox_reference/analytics.html' not in route_source
+    assert (project_root / 'templates' / 'sandbox' / 'analytics_canonical.html').is_file()
+    assert not (project_root / 'templates' / 'sandbox_reference' / 'analytics.html').exists()
+
+
+def test_live_routes_and_templates_never_use_sandbox_reference():
+    project_root = Path(__file__).resolve().parents[2]
+    app_root = project_root / 'app'
+    forbidden_renderer = re.compile(r"render_template\(\s*['\"]sandbox_reference/")
+
+    offending_routes = []
+    for route_file in app_root.rglob('*.py'):
+        source = route_file.read_text(encoding='utf-8')
+        if forbidden_renderer.search(source):
+            offending_routes.append(route_file.relative_to(project_root).as_posix())
+    assert not offending_routes, f'Live routes render sandbox_reference: {offending_routes}'
+
+    offending_templates = []
+    for template_file in (project_root / 'templates').rglob('*.html'):
+        if 'sandbox_reference' in template_file.parts:
+            continue
+        if '/sandbox_reference/' in template_file.read_text(encoding='utf-8'):
+            offending_templates.append(template_file.relative_to(project_root).as_posix())
+    assert not offending_templates, f'Live templates link to sandbox_reference: {offending_templates}'
+
+
+def test_student_mistakes_uses_the_canonical_bento_contract():
+    project_root = Path(__file__).resolve().parents[2]
+    template = (project_root / 'templates' / 'student_mistakes.html').read_text(encoding='utf-8')
+
+    assert 'max-w-[1400px]' in template
+    assert 'shadow-[0_4px_0_#DAE1E9]' in template
+    assert 'glass-panel' not in template
+    assert 'neo-button' not in template
+    assert 'neo-input' not in template
+    assert '/student/mistakes/${ansId}/retry' in template
+    assert 'name="new_answer"' in template
+
+
+def test_student_gradebook_uses_the_canonical_bento_contract():
+    project_root = Path(__file__).resolve().parents[2]
+    template = (project_root / 'templates' / 'student_gradebook.html').read_text(encoding='utf-8')
+
+    assert 'max-w-[1400px]' in template
+    assert 'shadow-[0_4px_0_#DAE1E9]' in template
+    assert 'glass-panel' not in template
+    assert 'neo-button' not in template
+    assert 'neo-input' not in template
+    assert 'data-confirm-message="Удалить запись журнала?"' in template
+    assert 'onclick="return confirm' not in template
+    assert "students.student_gradebook_create" in template
+    assert "students.student_gradebook_update" in template
+    assert "students.student_gradebook_delete" in template
+
+
+def test_student_info_uses_the_canonical_bento_contract():
+    project_root = Path(__file__).resolve().parents[2]
+    template = (project_root / 'templates' / 'student_info.html').read_text(encoding='utf-8')
+
+    assert 'max-w-[1400px]' in template
+    assert 'shadow-[0_4px_0_#DAE1E9]' in template
+    assert 'glass-panel' not in template
+    assert 'neo-button' not in template
+    assert 'dark:' not in template
+    assert "students.student_analytics" in template
+    assert "students.student_learning_plan" in template
+    assert "students.student_gradebook" in template
+    assert '/api/user/${userId}/lessons-remaining' in template
+
+
+def test_submission_grade_keeps_actions_inside_the_canonical_v2_shell():
+    project_root = Path(__file__).resolve().parents[2]
+    template = (project_root / 'templates' / 'submission_grade.html').read_text(encoding='utf-8')
+
+    assert '.grade-page-inner { width: min(1400px, 100%)' in template
+    assert 'box-shadow: 0 4px 0 #dae1e9' in template
+    assert 'id="grade-form"' in template
+    assert 'id="save-comments-btn"' in template
+    assert 'id="save-scores-draft-btn"' in template
+    assert 'id="return-btn"' in template
+    assert 'id="grade-btn"' in template
+    assert "assignments.submission_grade_save" in template
+    assert "assignments.submission_save_comments" in template
+
+
+def test_student_form_keeps_its_live_api_inside_the_canonical_v2_shell():
+    project_root = Path(__file__).resolve().parents[2]
+    template = (project_root / 'templates' / 'student_form.html').read_text(encoding='utf-8')
+
+    assert 'id="student-form-v2"' in template
+    assert 'width:min(1400px,100%)' in template
+    assert "api.api_student_create" in template
+    assert "api.api_student_update" in template
+    assert 'studentForm.addEventListener' in template
+
+
+def test_templates_library_uses_canonical_v2_shell_and_existing_actions():
+    project_root = Path(__file__).resolve().parents[2]
+    template = (project_root / 'templates' / 'templates_list.html').read_text(encoding='utf-8')
+
+    assert 'template-library-v2' in template
+    assert 'width: min(1400px, 100%)' in template
+    assert 'function applyFilters()' in template
+    assert 'function confirmDeleteTemplate(templateId)' in template
+
+
+def test_live_templates_do_not_link_to_legacy_profile_routes():
+    project_root = Path(__file__).resolve().parents[2]
+    offending_templates = []
+    for template_file in (project_root / 'templates').rglob('*.html'):
+        if 'sandbox_reference' in template_file.parts:
+            continue
+        content = template_file.read_text(encoding='utf-8')
+        if 'href="/profile"' in content or "href='/profile'" in content:
+            offending_templates.append(template_file.relative_to(project_root).as_posix())
+    assert not offending_templates, f'Live templates still link to legacy profile route: {offending_templates}'
+
+
+def test_non_archival_templates_do_not_link_to_retired_sandbox_assignment_builder():
+    project_root = Path(__file__).resolve().parents[2]
+    offending_templates = []
+    for template_file in (project_root / 'templates').rglob('*.html'):
+        if 'sandbox_reference' in template_file.parts:
+            continue
+        if '/sandbox/create_assignment' in template_file.read_text(encoding='utf-8'):
+            offending_templates.append(template_file.relative_to(project_root).as_posix())
+    assert not offending_templates, f'Non-archival templates still link to retired assignment builder: {offending_templates}'
+
+
+def test_assignment_detail_uses_only_canonical_notification_dialogs():
+    project_root = Path(__file__).resolve().parents[2]
+    template = (project_root / 'templates' / 'sandbox' / 'assignment_detail.html').read_text(encoding='utf-8')
+
+    assert 'window.BooNotify?.confirm' in template
+    assert 'window.confirm(' not in template
+    assert 'window.alert(' not in template

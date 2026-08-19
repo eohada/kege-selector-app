@@ -699,7 +699,7 @@ function submitGoalResult() {
   const note = document.getElementById('result-note-input').value;
   if (!id) return;
 
-  fetch('/sandbox/api/profile/goal/result/' + id, {
+  fetch('/api/profile/goal/result/' + id, {
     method: 'POST',
     headers: profileApiHeaders('application/x-www-form-urlencoded'),
     body: 'result_note=' + encodeURIComponent(note)
@@ -726,7 +726,7 @@ function copyReferralCode(code) {
 }
 
 function toggleWeeklyGoal(itemId) {
-  fetch('/sandbox/api/profile/goal/toggle/' + itemId, { method: 'POST', headers: profileApiHeaders() })
+  fetch('/api/profile/goal/toggle/' + itemId, { method: 'POST', headers: profileApiHeaders() })
     .then(r => r.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -741,7 +741,7 @@ function addNewGoal() {
   const input = document.getElementById('new-goal-input');
   if (!input || !input.value.trim()) return;
   
-  fetch('/sandbox/api/profile/goal/add', {
+  fetch('/api/profile/goal/add', {
     method: 'POST',
     headers: profileApiHeaders('application/x-www-form-urlencoded'),
     body: 'title=' + encodeURIComponent(input.value.trim())
@@ -762,13 +762,13 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const formData = new FormData(form);
       const avatar = document.getElementById('edit-avatar-file');
-      if (avatar && avatar.files[0] && avatar.files[0].size > 5 * 1024 * 1024) {
+      if (false) {
         window.BooNotify.error('Не удалось обработать аватар. Выберите другое изображение.');
         return;
       }
       const csrfMeta = document.querySelector('meta[name="csrf-token"]');
       const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
-      fetch('/sandbox/api/profile/edit', {
+      fetch('/api/profile/edit', {
         method: 'POST',
         headers: {
           'X-CSRFToken': csrfToken
@@ -800,7 +800,7 @@ function profileApiHeaders(contentType) {
 }
 
 function finishProfileOnboarding(openEditor) {
-  fetch('/sandbox/api/profile/onboarding/complete', { method: 'POST', headers: profileApiHeaders() })
+  fetch('/api/profile/onboarding/complete', { method: 'POST', headers: profileApiHeaders() })
     .finally(() => {
       document.getElementById('profile-onboarding')?.remove();
       if (openEditor) openProfileEditModal();

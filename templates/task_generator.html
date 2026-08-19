@@ -1384,9 +1384,14 @@
                 const taskIdRaw = card.getAttribute('data-task-id');
                 const taskId = parseInt(taskIdRaw, 10);
                 if (!taskId) return;
-                const sure = window.confirm(
-                    `Удалить задание #${taskId} из базы безвозвратно?\n\nБудут удалены связи с уроками, шаблонами, работами (если есть) и история использования этой задачи. Действие нельзя отменить.`
-                );
+                const sure = window.BooNotify && typeof window.BooNotify.confirm === 'function'
+                    ? await window.BooNotify.confirm({
+                        title: `Удалить задание #${taskId}?`,
+                        message: 'Будут удалены связи с уроками, шаблонами, работами (если есть) и история использования задачи. Действие нельзя отменить.',
+                        confirmText: 'Удалить',
+                        variant: 'danger',
+                    })
+                    : false;
                 if (!sure) return;
                 delBtn.disabled = true;
                 try {

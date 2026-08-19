@@ -1194,8 +1194,22 @@ def export_data():
         return redirect(url_for('main.dashboard'))
     try:
         logger.info('Начало экспорта данных')
+        # A backup must remain internally consistent: lessons of archived
+        # students are still historical data and therefore need their owner
+        # in the same payload.
+        students = Student.query.order_by(Student.student_id).all()
+        student_export_keys = {
+            student.student_id: f'student:{student.student_id}'
+            for student in students
+        }
         export_data_dict = {
+            'export_schema_version': 2,
             'students': [{
+                # This is a payload-scoped key. It is deliberately not used as
+                # a database ID during import: the importer maps it to the new
+                # local student_id before restoring related lessons.
+                'student_source_id': s.student_id,
+                'student_key': student_export_keys[s.student_id],
                 'name': s.name,
                 'platform_id': s.platform_id,
                 'category': s.category,
@@ -1210,10 +1224,15 @@ def export_data():
                 'overall_rating': s.overall_rating,
                 'school_class': s.school_class,
                 'goal_text': s.goal_text,
-                'programming_language': s.programming_language
-            } for s in Student.query.filter_by(is_active=True).all()],
+                'programming_language': s.programming_language,
+                'is_active': s.is_active,
+            } for s in students],
             'lessons': [{
+                # student_id remains for compatibility with existing backups;
+                # new imports prefer the payload-scoped fields below.
                 'student_id': l.student_id,
+                'student_source_id': l.student_id,
+                'student_key': student_export_keys.get(l.student_id),
                 'lesson_type': l.lesson_type,
                 'lesson_date': l.lesson_date.isoformat() if l.lesson_date else None,
                 'duration': l.duration,
@@ -1274,10 +1293,16 @@ def import_data():
             flash('Поддерживаются только JSON файлы', 'error')
             return redirect(url_for('main.import_data'))
         data = json.loads(file.read().decode('utf-8'))
+        if not isinstance(data, dict):
+            raise ValueError('Некорректная структура JSON-экспорта.')
+
         imported_students = 0
         imported_lessons = 0
+        imported_student_ids = {}
         if 'students' in data:
             for student_data in data['students']:
+                if not isinstance(student_data, dict):
+                    continue
                 existing = Student.query.filter_by(
                     name=student_data.get('name'),
                     platform_id=student_data.get('platform_id')
@@ -1299,13 +1324,37 @@ def import_data():
                         school_class=normalize_school_class(student_data.get('school_class')),
                         goal_text=student_data.get('goal_text'),
                         programming_language=student_data.get('programming_language'),
-                        is_active=True
+                        # Never resurrect an archived profile just because it
+                        # was restored from a backup. Existing profiles are
+                        # deliberately not changed by an import.
+                        is_active=bool(student_data.get('is_active', True))
                     )
                     db.session.add(student)
+                    db.session.flush()
+                    existing = student
                     imported_students += 1
+                source_id = student_data.get('student_source_id')
+                source_key = student_data.get('student_key')
+                if source_id is not None:
+                    imported_student_ids[f'id:{source_id}'] = existing.student_id
+                if source_key:
+                    imported_student_ids[f'key:{source_key}'] = existing.student_id
         if 'lessons' in data:
             for lesson_data in data['lessons']:
-                if Student.query.get(lesson_data.get('student_id')):
+                if not isinstance(lesson_data, dict):
+                    continue
+                source_key = lesson_data.get('student_key')
+                source_id = lesson_data.get('student_source_id')
+                target_student_id = (
+                    imported_student_ids.get(f'key:{source_key}') if source_key else None
+                ) or (
+                    imported_student_ids.get(f'id:{source_id}') if source_id is not None else None
+                )
+                # Old exports have only student_id and therefore can be
+                # restored only into the same database where that ID exists.
+                if target_student_id is None:
+                    target_student_id = lesson_data.get('student_id')
+                if Student.query.get(target_student_id):
                     imported_type = lesson_data.get('lesson_type')
                     imported_homework_status = normalize_homework_status_value(lesson_data.get('homework_status'))
                     imported_homework = lesson_data.get('homework')
@@ -1313,7 +1362,7 @@ def import_data():
                         imported_homework = ''
                         imported_homework_status = 'not_assigned'
                     lesson = Lesson(
-                        student_id=lesson_data.get('student_id'),
+                        student_id=target_student_id,
                         lesson_type=imported_type,
                         lesson_date=datetime.fromisoformat(lesson_data['lesson_date']) if lesson_data.get('lesson_date') else moscow_now(),
                         duration=lesson_data.get('duration', 60),
@@ -1415,7 +1464,7 @@ def platform_bug_reports():
     if not (current_user.is_creator() or current_user.is_admin() or current_user.is_chief_admin()):
         flash('Доступ запрещен', 'error')
         return redirect(url_for('main.dashboard'))
-    return render_template('platform_bug_reports.html', active_page='bug_reports')
+    return redirect(url_for('admin.admin_testers_page'), code=302)
 
 
 @main_bp.route('/api/student/<int:student_id>/debug-streak', methods=['POST'])
@@ -1776,34 +1825,8 @@ def teacher_groups():
 @main_bp.route('/teacher/group/<int:group_id>', methods=['GET'])
 @login_required
 def teacher_group_detail(group_id):
-    """Детализация конкретной группы учеников."""
-    active_role = get_active_role()
-    if active_role not in ['tutor', 'teacher', 'admin', 'creator']:
-        flash("Раздел доступен только для преподавателей", "warning")
-        return redirect(url_for('main.dashboard'))
-
-    group = SchoolGroup.query.get_or_404(group_id)
-
-    if active_role not in ['admin', 'creator'] and group.owner_user_id != current_user.id:
-        flash("У вас нет доступа к этой группе", "warning")
-        return redirect(url_for('main.teacher_groups'))
-
-    attached_students = [gs.student for gs in group.students if gs.student]
-
-    if active_role in ['admin', 'creator']:
-        all_tutor_students = Student.query.all()
-    else:
-        all_tutor_students = Student.query.all()
-
-    attached_ids = {s.student_id for s in attached_students}
-    available_students = [s for s in all_tutor_students if s.student_id not in attached_ids]
-
-    return render_template(
-        'main/group_detail.html',
-        group=group,
-        attached_students=attached_students,
-        available_students=available_students
-    )
+    """Совместимый адрес: старый экран группы больше не должен рендериться."""
+    return redirect(url_for('groups.group_view', group_id=group_id), code=302)
 
 
 @main_bp.route('/api/teacher/groups', methods=['POST'])
@@ -1978,32 +2001,12 @@ def api_remove_student_from_group(group_id, student_id):
 @main_bp.route('/teacher/templates', methods=['GET'])
 @login_required
 def teacher_templates_library():
-    """Библиотека шаблонов заданий преподавателя."""
+    """Совместимые старые адреса списка шаблонов ведут в V2-контур."""
     active_role = get_active_role()
     if active_role not in ['tutor', 'teacher', 'admin', 'creator']:
         flash("Раздел доступен только для преподавателей", "warning")
         return redirect(url_for('main.dashboard'))
-
-    if active_role in ['admin', 'creator']:
-        templates = TaskTemplate.query.filter_by(is_active=True).order_by(TaskTemplate.created_at.desc()).all()
-    else:
-        templates = TaskTemplate.query.filter_by(created_by=current_user.id, is_active=True).order_by(TaskTemplate.created_at.desc()).all()
-
-    count_all = len(templates)
-    count_hw = len([t for t in templates if t.template_type == 'homework'])
-    count_cw = len([t for t in templates if t.template_type == 'classwork'])
-    count_mock = len([t for t in templates if (t.template_type == 'mock_exam' or t.template_type == 'exam')])
-    count_quiz = len([t for t in templates if t.template_type == 'quiz'])
-
-    return render_template(
-        'main/templates_library.html',
-        templates=templates,
-        count_all=count_all,
-        count_hw=count_hw,
-        count_cw=count_cw,
-        count_mock=count_mock,
-        count_quiz=count_quiz
-    )
+    return redirect(url_for('templates.templates_list'), code=302)
 
 
 @main_bp.route('/api/teacher/templates/<int:template_id>/preview', methods=['GET'])
@@ -2145,7 +2148,7 @@ def edit_template_view(template_id):
     template = TaskTemplate.query.get_or_404(template_id)
     if active_role not in ['admin', 'creator'] and template.created_by != current_user.id:
         flash("Чужой шаблон нельзя редактировать", "warning")
-        return redirect(url_for('main.teacher_templates_library'))
+        return redirect(url_for('templates.templates_list'))
 
     return redirect(url_for('templates.template_edit', template_id=template_id))
 
@@ -3125,13 +3128,19 @@ def _require_dev_tools(*, administrator_only=False):
     is_dev_env = bool(current_app.config.get('DEBUG') or current_app.config.get('TESTING'))
     is_privileged_user = False
 
-    if current_user and getattr(current_user, 'is_authenticated', False):
-        user_role = (getattr(current_user, 'role', '') or '').lower()
+    session_user_id = session.get('_user_id')
+    try:
+        authenticated_user = db.session.get(User, int(session_user_id)) if session_user_id else None
+    except (TypeError, ValueError):
+        authenticated_user = None
+
+    if authenticated_user and authenticated_user.is_active:
+        user_role = (authenticated_user.role or '').lower()
         if (
-            getattr(current_user, 'is_admin', lambda: False)() or 
-            getattr(current_user, 'is_creator', lambda: False)() or 
-            getattr(current_user, 'is_chief_tester', lambda: False)() or
-            getattr(current_user, 'is_tester', lambda: False)() or
+            authenticated_user.is_admin() or
+            authenticated_user.is_creator() or
+            authenticated_user.is_chief_tester() or
+            authenticated_user.is_tester() or
             user_role in ['creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'] or
             session.get('is_impersonating', False) or
             session.get('impersonator_id') is not None
@@ -3141,7 +3150,7 @@ def _require_dev_tools(*, administrator_only=False):
     if not (is_dev_env or is_privileged_user):
         abort(404)
 
-    if not current_user or not current_user.is_authenticated:
+    if not authenticated_user:
         abort(403)
 
 
@@ -3190,6 +3199,17 @@ def dev_get_users_api():
         {'username': 'demo_auditor', 'role': 'admin', 'custom_status': '👁️ Внешний Аудитор', 'email': 'auditor@boostudy.ru'},
     ]
 
+    # The switcher may show only real, already active accounts.  It must never
+    # create demo identities or encode a fixture pool in production.
+    target_pool = [
+        {
+            'username': user.username,
+            'role': user.role,
+            'custom_status': getattr(user, 'custom_status', None) or '',
+            'email': user.email,
+        }
+        for user in User.query.filter(User.is_active.is_(True)).order_by(User.id.asc()).limit(200).all()
+    ]
     target_usernames = [t['username'] for t in target_pool]
     try:
         existing = User.query.filter(User.username.in_(target_usernames)).all()

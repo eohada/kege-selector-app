@@ -1,6 +1,7 @@
 """Regression checks for the canonical V2 workspace and navigation surfaces."""
 
 from pathlib import Path
+import re
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -42,5 +43,5 @@ def test_active_workspace_templates_do_not_use_browser_blocking_dialogs():
         'sandbox/assignment_detail.html',
     ):
         content = _read_template(relative_path)
-        assert 'confirm(' not in content, relative_path
-        assert 'alert(' not in content, relative_path
+        assert not re.search(r'(?<![\w.])confirm\s*\(', content), relative_path
+        assert not re.search(r'(?<![\w.])alert\s*\(', content), relative_path

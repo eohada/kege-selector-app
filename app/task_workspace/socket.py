@@ -84,7 +84,7 @@ def _cache_workspace_snapshot(
 def register_task_workspace_socket(socketio) -> None:
     from flask import request
     from flask_login import current_user
-    from flask_socketio import join_room
+    from flask_socketio import join_room, leave_room
 
     def _resolve_room(data: dict[str, Any]) -> tuple[str, Any] | tuple[None, None]:
         from .service import resolve_workspace_context
@@ -279,7 +279,6 @@ def register_task_workspace_socket(socketio) -> None:
                 _emit_presence(room)
                 if not members:
                     del _workspace_rooms[room]
-                break
 
     @socketio.on("join_workspace", namespace="/task-workspace")
     def _on_join_workspace(data):
@@ -288,8 +287,20 @@ def register_task_workspace_socket(socketio) -> None:
         room, ctx = _resolve_room(data or {})
         if not room or not ctx:
             return
-        join_room(room)
         sid = getattr(request, "sid", 0)
+        # A browser can work with exactly one task at a time. Leave previous
+        # task rooms before joining the new one so presence and patches cannot
+        # leak across tasks when the user switches the current exercise.
+        for previous_room, members in list(_workspace_rooms.items()):
+            if previous_room == room or sid not in members:
+                continue
+            leave_room(previous_room)
+            members.pop(sid, None)
+            _emit_presence(previous_room)
+            if not members:
+                del _workspace_rooms[previous_room]
+
+        join_room(room)
         participants = _workspace_rooms.setdefault(room, {})
         participants[sid] = {**_participant_payload(), "cursor": {**_participant_payload()["cursor"]}}
         state = _ensure_room_state(room, ctx)

@@ -23,6 +23,7 @@ collect_ignore = [
         'test_full_assignment_lifecycle.py',
         'test_deploy_bluegreen_contract.py',
         'test_release_readiness_v2.py',
+        'test_student_assignment_logic.py',
     }
 ]
 

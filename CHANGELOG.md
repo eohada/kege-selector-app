@@ -1,3 +1,66 @@
+## [2026-08-17 18:10:00] — «Работа над ошибками» в каноничном V2
+
+- Ученический экран повторения переведён с legacy `glass-panel`/`neo-*` на светлый Bento-интерфейс BooStudy.
+- Сохранены повторная проверка ответа, CSRF, связанный endpoint и корректное удаление решённой карточки.
+- Добавлены единая ширина холста, тактильные карточки, читаемая иерархия и безопасная пустая стадия без хардкода.
+- Добавлена V2-регрессия, запрещающая возврат legacy-классов и потерю endpoint повторной проверки.
+
+## [2026-08-17 17:50:00] — Полный экспорт исторических учебных данных
+
+- В резервную копию включаются не только активные, но и архивные ученики: их история уроков больше не теряет владельца при переносе в другую БД.
+- Экспорт сохраняет `is_active`, а импорт применяет его только при создании нового профиля — существующие данные не подменяются.
+- Добавлена регрессия для сценария «архивный ученик → исторический урок».
+
+## [2026-08-17 17:35:00] — Единый контур подтверждений действий
+
+- Очистка принятых заданий и безвозвратное удаление задания из генератора больше не вызывают нативный `window.confirm`.
+- Оба действия используют каноничную Bento-модалку `BooNotify.confirm`; при недоступности UI опасное действие блокируется.
+- Поиск по рабочим шаблонам подтвердил отсутствие `window.alert/confirm/prompt` вне архивных и preview-контуров.
+
+## [2026-08-17 17:20:00] — Импорт/экспорт: сохранность связей уроков
+
+- JSON-экспорт получил версию формата и payload-scoped ключи ученика.
+- При импорте урок связывается с фактически созданным или найденным учеником, а не с устаревшим числовым ID из другой БД.
+- Старые экспортные JSON по-прежнему принимаются через безопасный fallback.
+- Добавлена регрессия восстановления связи «ученик → урок».
+
+## [2026-08-17 17:05:00] — RBAC: сохранение прав без 500
+
+- `/admin/permissions/toggle` теперь валидирует редактируемую роль, существующее право и boolean-флаг, а затем действительно создаёт или обновляет `RolePermission` в БД.
+- В `AuditLogger` восстановлен совместимый `log_event`, поэтому старые административные вызовы аудита больше не пытаются вызвать отсутствующий метод и не роняют HTTP-обработчик.
+- Добавлена регрессия для некорректного payload матрицы прав.
+- Полный pytest ожидает восстановления локального Python: базовый интерпретатор текущего `venv` отсутствует.
+
+## [2026-08-17 16:05:00] — Защита конструктора работ от legacy-навигации
+
+- `templates/sandbox/templates_library.html`: все ссылки на снятый `/sandbox/create_assignment` переведены на каноничный функциональный `/assignments/create` через `url_for`.
+- Добавлена регрессия: неархивные шаблоны не могут содержать ссылку на retired builder; `sandbox_reference/` остаётся изолированным архивом и не участвует в live-rendering.
+- Добавлена сквозная регрессия групп: массовая выдача создаёт одну работу из задач урока и отдельную submission для каждого участника.
+- Карточка работы больше не использует нативные `confirm`/`alert`: архивирование и ошибки проходят через единый `BooNotify`-диалог.
+
+## [2026-08-17 15:10:00] — Завершение sandbox legacy-переходов
+
+- Последние ссылки из V2-шаблонов на `/sandbox/task_detail` и `/sandbox/mentor_profile` заменены на каноничные `/submissions`, `return_url` и `/review-queue`.
+- Удалён неиспользуемый retired API `/sandbox/api/task_detail/*`; V2 работает только через API и маршруты `submissions`.
+- Прямой `/sandbox/task_detail/<id>` сохранён исключительно как безопасный redirect старой закладки на V2-сдачу.
+- Регрессионный тест разделяет пользовательский V2-контур и изолированные preview/dev-шаблоны, чтобы не допустить legacy-навигацию без поломки QA role-switcher.
+- Старый QA-скрипт работ переведён на изолированный pytest: он больше не обращается к developer-БД при импорте и проверяет только каноничную V2-сдачу.
+- Контроль blocking-dialog уточнён: запрещает нативные `confirm`/`alert`, но разрешает каноничную модалку `BooNotify.confirm`.
+
+## [2026-08-15 19:45:00] - 🧩 УРОК V3: ЗАКРЕПЛЁННАЯ ПАНЕЛЬ И СТАТУСЫ УЧЕНИКА
+
+- **Панель урока**:
+  - Исправлена desktop-сетка: скрытие списка заданий больше не отправляет панель урока вниз страницы.
+  - Правая панель стала закреплённым компактным Bento-инструментом с независимой прокруткой: этап, маршрут, заметки, статус, самооценка и итог урока.
+  - Для ученика итог урока теперь read-only, поэтому интерфейс не предлагает редактировать данные, которые сохраняет только преподаватель.
+- **Статусы ученика**:
+  - Кнопки «Подсказка / Пауза / Готов» получили честное выбранное состояние, \`aria-pressed\`, защиту от повторного нажатия и подтверждение отправки.
+  - Состояние всех трёх статусов сохраняется через существующий Studio API и доступно преподавателю в реальном времени.
+- **Проверка**:
+  - \`node --check static/lesson-studio-os.js\` — успешно.
+  - \`pytest tests/v2/test_lesson_studio.py -q\` — **11 passed**.
+  - \`git diff --check\` — успешно.
+
 ## [2026-08-13 15:08:00] - 🔗 УСТРАНЕНИЕ ДУБЛИРОВАНИЯ РЕФЕРАЛЬНОГО КОДА И ПРОКСИРОВАНИЕ DAILY.CO
 
 - **👤 Профиль пользователя (V2)**:
@@ -5949,3 +6012,408 @@ outes.py for correct timezone handling.
 
 - Added a project-wide rule requiring a written plan and recorded result before and after every independent implementation step.
 - Created the active Obsidian release-polish journal and linked it from the current-work note.
+
+## [2026-08-14 13:20:00] - Legacy audit: group detail moved to V2
+
+- Rebuilt the live group-detail surface (`/groups/<id>`) in the canonical BooStudy V2 layout while preserving member management, exports and mass assignment.
+- The former `/teacher/group/<id>` page now performs a compatibility redirect to `/groups/<id>` and can no longer render `main/group_detail.html`.
+- Replaced the remaining native group deletion confirmation with the global V2 confirmation modal and added a regression scenario for the detail route.
+
+## [2026-08-14 13:35:00] - Legacy audit: canonical cross-links
+
+- Moved historical trainer entry points, login redirects and access-gate redirects to `/trainer/v2`; the old `/trainer` endpoint is now a compatibility redirect.
+- Redirected the global command palette from the legacy bug-report page to the active V2 QA centre.
+
+## [2026-08-14 13:50:00] - Legacy audit: QA compatibility routes
+
+- Legacy QA administrator pages and individual tester pages now redirect into the active V2 QA centre or V2 tester cabinet instead of rendering base-layout templates.
+- Existing state-changing QA POST endpoints stay available; only obsolete GET presentation endpoints were replaced.
+
+## [2026-08-14 15:10:00] - Lifecycle regression: all reproduced V2 failures closed
+
+- Closed eight reproduced release-flow failures: neutral avatar fallback, residual sandbox profile APIs, classwork and homework compatibility transitions, role-switcher account seeding, submission autosave/session ownership, returned-task reopening, and submission rewards.
+- Final submission now returns the awarded XP and records the persisted base learning reward exactly once; repeat submission remains blocked.
+- Dev-session checks resolve the signed-in account from the session instead of dereferencing a detached ORM object.
+- The historical `/sandbox/lesson_room/<id>` address now redirects to the canonical `/lesson/<id>/room` surface and does not render a separate page.
+- Verification: `tests/v2/test_role_lifecycle_recovery.py` — 56 passed.
+
+## [2026-08-14 15:35:00] - Lesson Room V3: unified working shell
+
+- Rebuilt the lesson room visual structure around a compact persistent shell, stage timeline, viewport-first workspace and collapsible lesson panel.
+- Moved Daily from a workspace tab to a floating dock available above every workspace, while preserving the existing room/token contract.
+- Preserved the practice, theory, board, materials, Socket.IO, timer and permissions contracts; local panel and workspace selections now survive view changes.
+- Verification: JavaScript syntax check, diff whitespace check and canonical/legacy room compatibility tests pass.
+
+## [2026-08-14 16:05:00] - Lesson Room V3: persistent workspace controls
+
+- Added local, restart-safe workspace restoration: the active Room V3 tab is reflected in `?pane=` and restored on direct links or refresh.
+- Added a mobile task-panel launcher and a truly collapsing lesson panel; desktop users can resize both side panels and their dimensions are kept as local UI preferences.
+- Connected the existing lesson Studio signal and checkpoint APIs to the student interface, and surfaced their live state in the teacher lesson panel.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 56 passed.
+
+## [2026-08-14 16:25:00] - Lesson Room V3: material viewer and regression coverage
+
+- Materials workspace now has safe, context-preserving preview for images and PDF files, explicit external opening for other formats, and a useful empty state.
+- Added a Room V3 regression covering the canonical room shell, absence of the old meeting tab, and the student signal/checkpoint flow visible to the teacher.
+- Verification: `tests/v2/test_role_lifecycle_recovery.py` — 57 passed.
+
+## [2026-08-14 16:35:00] - Lesson Room V3: visible lesson scenario
+
+- Exposed the persisted lesson agenda in the room: teachers can mark steps complete and students see the same current plan.
+- Added a teacher-controlled “next step” that is immediately visible to the student without opening another page or chat.
+- Verification: JavaScript syntax and diff-whitespace checks pass.
+
+## [2026-08-14 16:50:00] - Lesson Room V3: resilient collaboration UX
+
+- Added a visible connection state, reconnect feedback, local student notes, keyboard workspace shortcuts, and a persisted enlarged Daily video mode.
+- Student notes stay private and use the existing protected lesson-notes endpoint; their route is covered by the Room V3 regression.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 57 passed.
+
+## [2026-08-14 17:05:00] - Lesson Room V3: completion flow
+
+- Replaced the bare completion confirmation with a structured result flow for mastered topics, follow-up topics, homework and the teacher’s private note.
+- Completion reuses the existing protected finish contract, retains timer stop/status/notification/reward behavior and is covered by the Room V3 lifecycle regression.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 57 passed.
+
+## [2026-08-14 17:20:00] - Lesson Room V3: board controls and upload resilience
+
+- Added visible board context, explicit undo, and an author label for the shared laser pointer.
+- File uploads for lesson materials and board images now have consistent network/non-JSON/size error handling instead of failing with an unhandled browser error.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 57 passed.
+
+## [2026-08-14 17:35:00] - Lesson Room V3: reconnect and accessibility pass
+
+- Reconnect now refreshes authoritative room state before re-applying follow mode, preventing stale teacher/student views after a dropped Socket.IO connection.
+- Added an empty task state, keyboard focus styles, hover/disabled feedback, and reduced-motion support.
+- Expanded the Room V3 regression to prove that a teacher private note never appears in the student state.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 57 passed.
+
+## [2026-08-14 17:50:00] - Lesson Room V3: material management
+
+- Rebuilt the materials interaction around a drop zone, selected-file state, persisted metadata and safe open/download/delete actions.
+- Material deletion uses the Room V3 confirmation modal rather than a browser-native prompt; upload records size, author and timestamp for newly attached files.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 57 passed.
+
+## [2026-08-14 18:05:00] - Lesson Room V3: release audit
+
+- Added a requirement-by-requirement Room V3 audit and a two-session browser release checklist in the Obsidian knowledge base.
+- Automated verification proves the server contracts and canonical UI structure; a final authenticated visual/Daily check remains intentionally separated because it cannot be truthfully inferred from unit tests.
+
+## [2026-08-14 18:20:00] - Lesson Room V3: complete material previews
+
+- Added safe in-room previews for text/code files in addition to images and PDF, with a bounded payload and explicit fallback for unsupported formats.
+- Confirmed the Room V3 client has no native alert/confirm usage; destructive material actions use the V3 modal.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 57 passed.
+
+## [2026-08-14 18:35:00] - Lesson Room V3: material lifecycle verification
+
+- Material removal now resolves the generated persisted filename from its metadata before deleting the file, while keeping compatibility with older URL-only records.
+- The Room V3 lifecycle regression now proves upload metadata, protected file delivery and physical deletion after a material is removed.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 57 passed.
+
+## [2026-08-14 18:55:00] - Lesson Room V3: Daily modes and safe task rendering
+
+- Daily video now supports collapsed, right-docked, movable floating and enlarged modes. The floating position is persisted only when drag ends, preserving the existing single iframe lifecycle.
+- Task statements are sanitized before insertion into the workspace so stored markup cannot execute scripts or inline handlers in the lesson room.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 58 passed.
+
+## [2026-08-14 19:10:00] - Lesson Room V3: accessible modal flow
+
+- Completion and destructive-action dialogs now expose `role=dialog`, modal semantics, labels, initial focus and Escape handling.
+- This removes another browser-native interaction edge and makes modal actions usable from keyboard-only sessions.
+- Verification: JavaScript syntax and diff-whitespace checks pass; the V2 regression suite collects 58 checks and completes successfully.
+
+## [2026-08-14 19:20:00] - Lesson Room V3: accessible feedback
+
+- Room toasts now use a polite live-region status so success and failure feedback is announced without stealing keyboard focus.
+- Static Room V3 regression additionally protects the daily dock, dialog semantics and safe task rendering contract.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 58 passed.
+
+## [2026-08-14 19:30:00] - Lesson Room V3: semantic workspace navigation
+
+- The four workspace views now form a real accessible tab interface with tablist/tab/tabpanel semantics and synchronized `aria-selected` state.
+- The visual layout and canonical V3 navigation remain unchanged.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 58 passed.
+
+## [2026-08-14 19:40:00] - Lesson Room V3: mobile geometry correction
+
+- Removed the desktop sidebar offset from narrow Room V3 screens, added safe-area spacing and made task overlay, sticky workspace navigation and video dock fit mobile geometry.
+- The regression protects the mobile page padding contract along with the existing Room V3 controls.
+- Verification: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 58 passed.
+
+## [2026-08-14 19:55:00] - Lesson Room V3: legacy source cleanup
+
+- Removed the unreachable historical classwork implementation that remained after the V2 room redirect and removed its orphaned imports.
+- Historical classwork and room URLs still redirect only to canonical V2 surfaces; no legacy template remains reachable through this path.
+- Verification: `compileall app/lessons/routes.py`, `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_role_lifecycle_recovery.py` — 58 passed.
+
+## [2026-08-14 20:10:00] - Room V3: workspace room-switch isolation
+
+- Switching the current task now leaves all previous task-workspace Socket.IO rooms before joining the selected task, so presence and patches cannot leak across exercises.
+- Disconnect cleanup now removes the session from every tracked workspace room rather than stopping after the first one.
+- Verification: `compileall app/task_workspace/socket.py app/lessons/routes.py`, Room/role regression suites — 64 passed.
+
+## [2026-08-14 20:25:00] - Room V3: realtime task-switch regression
+
+- Added an actual Socket.IO test client scenario: a student joins task A, switches to task B and disconnects; the server proves that the old room and then the active room are both cleaned up.
+- This protects the workspace isolation fix with a runtime socket test rather than only a source assertion.
+- Verification: `compileall`, JS syntax, diff whitespace; Room and role regressions — 65 passed.
+
+## [2026-08-14 20:35:00] - Room V3: teacher-to-student state broadcast regression
+
+- Added a two-role Socket.IO test: teacher and student join the same lesson, the teacher changes phase/pane/follow state, and the student receives the update without the teacher’s private note.
+- This proves the server-side realtime and privacy contract independently of a page refresh.
+- Verification: `compileall`, JS syntax, diff whitespace; Room and role regressions — 66 passed.
+
+## [2026-08-14 20:50:00] - Room V3: global laser broadcast regression
+
+- Added a two-role Socket.IO regression: the teacher sends a laser position and the joined student receives the exact transient pointer payload, including author and normalized coordinates.
+- Verification: `compileall`, JS syntax, diff whitespace; Room and role regressions — 67 passed.
+
+## [2026-08-14 21:05:00] - Room V3: lesson-room switching isolation
+
+- A lesson Socket.IO connection now leaves prior lesson rooms before joining the active lesson and disconnect cleanup removes all remaining presence entries.
+- Added regression coverage for sequential lesson switching, preventing presence and transient events from leaking to a previously opened lesson.
+- Verification: `compileall`, JS syntax, diff whitespace; Room and role regressions — 68 passed.
+[2026-08-14 14:10:00] - Legacy route audit: restored missing V2 templates for onboarding invites, invitation acceptance, rubric management, and designer assets. Active routes no longer depend on missing legacy-era templates.
+[2026-08-14 14:30:00] - Legacy audit verification: direct template-reference scan reports no missing active templates; V2 regression checks cover group detail redirects and service template availability.
+## [2026-08-14 21:35:00] — Room V3: облегчение рабочего пространства и светлый редактор
+
+- В комнате урока боковые зоны «Задания» и «Панель урока» стали управляемыми drawers: второстепенный интерфейс не занимает постоянную ширину, а кнопка «Задания» гарантированно открывает и закрывает очередь.
+- Workspace получил светлый Python-редактор с локальной подсветкой ключевых слов, встроенных функций, строк, чисел и комментариев; вывод выполнения приведён к светлой компактной консоли.
+- Высота блоков материалов и предпросмотра ограничена, чтобы пустые области не вытесняли основной учебный сценарий.
+- Обновлены версии подключаемых room-ассетов (`room-v3-ux2`) для корректного сброса браузерного кэша.
+- Проверка: `node --check static/lesson-studio-os.js`, `git diff --check`, `tests/v2/test_lesson_studio.py tests/v2/test_role_lifecycle_recovery.py` — **68 passed**; локальная browser-приёмка подтвердила toggle «Задания» и подсветку кода.
+## [2026-08-14 21:52:00] — Room V3: облегчённый bento-flow и безопасная геометрия
+
+- Холст Room V3 ограничен `max-width: 1680px`, получил безопасный отступ от глобального левого меню и адаптивные поля на узких экранах.
+- Убран принудительный полноэкранный пустой canvas: практика, редактор и результат занимают ровно нужную высоту, а доска и видео сохраняют собственную рабочую геометрию.
+- Задача оформлена как лёгкая карточка «Миссия урока»; добавлены мягкие акценты прогресса, bento-карточки и упрощённая иерархия без изменения бизнес-логики.
+- Живая browser-проверка на ширине 955px: рабочее поле начинается с 104px, не заходит под левую навигацию; при закрытых заданиях центральная область занимает 831px; «Задания» остаются доступным drawer.
+- Проверка: `tests/v2/test_lesson_studio.py tests/v2/test_role_lifecycle_recovery.py` — **68 passed**, `git diff --check` — успешно.
+## [2026-08-14 22:07:00] — Room V3: устранение перекрытия с teacher-навигацией
+
+- Исправлен конфликт mobile-стилей комнаты с вертикальным dock преподавателя: при ширине до 820px Room V3 больше не сбрасывает левый отступ под фиксированное меню.
+- Поля сделаны ролевыми: `room-v3-page-teacher` сохраняет 110px слева рядом с teacher dock, а `room-v3-page-student` использует полноценную ширину мобильного интерфейса с верхней/нижней навигацией ученика.
+- Миссия урока получила живой прогресс `Шаг N из M`, построенный из фактической очереди заданий; это добавляет лёгкую геймификацию без фиктивных баллов или хардкода.
+- Живая проверка на 782px: teacher dock `16–96px`, room `110–757px`, CSS `room-v3-ux4` загружен; перекрытия нет.
+## [2026-08-14 22:15:00] — Room V3: ролевой контракт адаптивной геометрии
+
+- Добавлена регрессия рендеринга Room V3: преподаватель получает `room-v3-page-teacher`, ученик — только `room-v3-page-student`.
+- Это закрепляет отсутствие teacher-sidebar offset на student mobile-shell и предотвращает возврат контента под левый dock преподавателя.
+- Проверка: Room V3 suite — **68 passed**, `git diff --check` — успешно.
+
+## [2026-08-14 22:35:00] — Room V3: полная перестройка учебного сценария
+
+- Комната переработана из плотного «пульта управления» в лёгкий learning flow: контекст урока, маршрут, время и одно центральное действие — решение текущей задачи.
+- Очередь заданий и панель урока остаются доступными по кнопке, но больше не конкурируют с рабочей зоной; преподавательские Laser и Follow собраны в компактное раскрываемое меню.
+- Задача получила игровой, но не вымышленный слой «миссии»: индикатор шага строится из реальной очереди заданий, без XP или демо-метрик.
+- Workspace оформлен как светлая рабочая пара «Напишите решение → Результат»: Python-подсветка сохранена, редактор и консоль имеют ограниченную высоту и больше не создают большой пустой белый холст.
+- Изменён ключ локальных UI-предпочтений Room V3, поэтому ранее раскрытые тяжёлые панели не переносятся в новый сценарий. Серверные данные урока и состояние синхронизации не затрагиваются.
+- Холст Room V3 приведён к обязательной каноничной ширине `1400px`; мобильные вкладки сохраняют названия и прокручиваются горизонтально вместо скрытия подписей.
+- Теория, доска, материалы, очередь и панель урока получили тот же спокойный bento-язык: компактные действия, одинаковые рельефные поверхности и без смены визуальной «личности» при переключении вкладки.
+- Высота светлой пары «код / результат» ограничена: редактор остаётся удобным для решения, но не доминирует над уроком пустым полотном.
+- Регрессия закрепляет каноничную ширину `1400px`, читаемые mobile-вкладки и единый bento-язык для всех пространств комнаты.
+
+## [2026-08-14 23:10:00] — Room V3: предпросмотр материалов, drawer и бесконечная доска
+
+- Защищённая выдача материалов урока теперь разделяет загрузку и встроенный просмотр: обычная ссылка сохраняет attachment, а запрос inline=1 отдаёт тот же файл только авторизованному участнику урока с inline-disposition. PDF, изображения и текстовые материалы снова могут открываться внутри Room V3 без новой вкладки.
+- На ширине до 1180px «Задания» и «Панель урока» переведены в независимые fixed drawers. Они больше не участвуют в потоке документа и не могут падать под рабочее поле при любой комбинации раскрытых панелей.
+- Панель урока получила компактные bento-секции «Сейчас», «Маршрут», «Следующий шаг» и заметки, со sticky-заголовком и независимой прокруткой.
+- Доска получила сглаженный рендер перемещения и рисования через requestAnimationFrame, устойчивый режим руки, визуальную метку бесконечного полотна и более уместную высоту рабочей области.
+- Проверка: Room V3 regression-suite, node --check static/lesson-studio-os.js, git diff --check; browser-приёмка подтвердила fixed drawer и рабочий canvas 764×597px во встроенном окне.
+## [2026-08-15 20:18:00] — Lesson Studio V3: читаемая ширина навигатора
+
+- Стандартная desktop-ширина правого навигатора увеличена с 260 до 320px; старое сохранённое узкое значение автоматически приводится к читаемому размеру.
+- При ручном изменении ширины навигатор теперь не сжимается ниже 280px, поэтому статусы, подписи и элементы самооценки не превращаются в вертикальный «пульт».
+- Проверка: `node --check static/lesson-studio-os.js`, `pytest tests/v2/test_lesson_studio.py -q` — 11 passed, `git diff --check`.
+
+## [2026-08-15 20:10:00] — Lesson Studio V3: UX-пересборка навигатора урока
+
+- Правая панель комнаты урока переработана из длинной технической формы в компактный навигатор: текущий этап, главный статус ученика и маршрут видны сразу, а заметки, самооценка, подсказки и итог открываются по необходимости.
+- Для преподавателя сохранены управление временем этапов, маршрут, следующий шаг, приватная заметка и итог; для ученика — личные заметки, честные статусы, самооценка и read-only итог.
+- Раскрытие секций не конфликтует с изменением ширины панели; скрытие списка заданий продолжает сохранять панель в правой колонке.
+- Проверка: `node --check static/lesson-studio-os.js`, `pytest tests/v2/test_lesson_studio.py -q` — 11 passed, `git diff --check`.
+## [2026-08-15 21:10:00] — Доска Studio: иконный тулбар, локальный выбор вкладки и читаемая панель
+
+- **Доска:** текстовые кнопки инструментов заменены на компактный иконный toolbar. Настройки стали контекстными: перо и фигуры показывают цвет и толщину, ластик — свой размер, текст — поле и размер, указатель и перемещение — только короткое пояснение. Отмена, вставка изображения и очистка убраны в компактные действия; очистка остаётся доступна только преподавателю.
+- **Надёжность жестов:** pointer/click-события холста изолированы от навигации. Явный выбор вкладки учеником теперь не перетирается запоздалшим initial refresh; новое переключение преподавателя в режиме ведения ученика по-прежнему синхронизируется.
+- **Полотно и навигатор:** удалена служебная надпись в центре доски. Навигатор урока получил единую типографическую шкалу, увеличенные читаемые кегли и более спокойные интервалы без микролейблов.
+- **Проверка:** `node --check static/lesson-studio-os.js`, `pytest tests/v2/test_lesson_studio.py -q` — **11 passed**, `git diff --check` — успешно. Browser-QA: штрих на доске не переключает в «Материалы», контекстные блоки пера/текста переключаются корректно.
+## [2026-08-15 21:35:00] — Studio: светлая доска и непрерывное рисование
+
+- Тулбар общей доски возвращён в светлый 3D Bento-канон: бело-голубая поверхность, контрастные иконки, светлое контекстное меню и аккуратные активные состояния.
+- Убрана причина «гигантских» штрихов: координатное пространство каждого штриха теперь хранится явно (`canvas` или `relative`), а не определяется ошибочно по первой точке возле левого края.
+- Рисование и стирание стали непрерывными: обрабатываются coalesced pointer-события, путь сглаживается, а готовый штрих остаётся видимым оптимистично до ответа сервера.
+- Поля правого навигатора урока получили единый внутренний отступ; статусный chip и три быстрых статуса больше не сжимаются у края.
+- Загрузка изображения на доску теперь проверяет реальное содержимое файла, а не только расширение и заголовок PNG.
+- Проверка: `node --check static/lesson-studio-os.js`; `pytest tests/v2/test_lesson_studio.py tests/v2/test_lesson_room_interactive.py -q` — **14 passed**; `git diff --check` — успешно.
+## [2026-08-17] — Studio: устойчивый ластик общей доски
+
+- Исправлен откат ластика после отпускания кнопки: короткий штрих теперь корректно принимается API.
+- В браузере добавлена гарантированная финальная точка жеста и fallback для пустого списка coalesced pointer-событий.
+- Проверка: `node --check static/lesson-studio-os.js`, `pytest tests/v2/test_lesson_studio.py tests/v2/test_lesson_room_interactive.py -q` — **14 passed**; `git diff --check` — успешно.
+## [2026-08-17] — Studio: длинные штрихи доски
+
+- Устранён плавающий `400` при долгом стирании: клиент ограничивает штрих 320 равномерно распределёнными точками без заметной потери траектории.
+- Серверный предел расширен до 1200 точек как защитный запас для уже открытых вкладок и совместимых клиентов.
+- Добавлена API-регрессия для штриха ластика из 700 точек.
+- Проверка: `node --check static/lesson-studio-os.js`, Studio-регрессия — **14 passed**, `git diff --check` — успешно.
+## [2026-08-17] — Studio: неограниченный жест общей доски
+
+- Убрано прореживание длинного штриха: траектория ластика сохраняет все полученные точки.
+- Длинный путь автоматически делится только для передачи и сохраняется одним атомарным действием `append_batch`; пользовательского лимита длины жеста нет.
+- Убрано прежнее ограничение истории доски в 400 штрихов, которое могло удалить ранние части очень длинной операции.
+- Проверка: `node --check static/lesson-studio-os.js`, Studio-регрессия — **14 passed**, `git diff --check` — успешно.
+# [2026-08-17 13:10] — Конструктор работ: live V2 вместо legacy
+
+- Каноничный `/assignments/create` переведён с legacy `assignment_create.html` на функциональный V2-макет `templates/sandbox/create_assignment.html`.
+- Удалены обращения V2-экрана к несуществующим `/sandbox/api/create_assignment/*`: добавлены защищённые live API для выбора задач по ID, пробника по реальному курсу, реальных шаблонов и сохранения черновика.
+- Черновик создаётся как неактивная `Assignment`, доступен только автору/администратору, корректно возвращается из генератора и атомарно удаляется при успешной публикации работы.
+- Убраны фиктивные шаблоны с жёстко заданными ID задач; список шаблонов и состав задач берутся из БД.
+- В публикацию передаётся реальный курс и состав адресатов выбранных групп, а не названия групп или sandbox-параметры.
+- Проверка: новый V2-regression `test_v2_assignment_builder_uses_live_contracts_and_publishes_draft` — **1 passed**; Python/Jinja syntax и `git diff --check` — успешно.
+## [2026-08-17 13:20] — V2-маршруты работ: конструктор и просмотр
+
+- `/assignments/create` переведён на функциональный `sandbox/create_assignment.html`: реальные задачи, курсы, шаблоны, адресаты, черновики и публикация работают через защищённые live API, без `/sandbox/api/...`.
+- `/assignments/<id>` теперь отдаёт `sandbox/assignment_detail.html` с реальными сдачами, фильтрами и правами доступа.
+- В V2-просмотре исправлены действия: «Дублировать» открывает V2-конструктор с реальными задачами и получателями, «Очередь проверки» ведёт на существующий маршрут, архивирование использует подтверждение и живой API.
+- Проверка: `tests/v2/test_full_assignment_lifecycle.py -k "v2_assignment_builder or assignment_detail_renders"` — **2 passed**; Jinja parse, `compileall` и `git diff --check` — успешно.
+## [2026-08-17 14:10] — Защита V2-конструктора работ от возврата legacy
+
+- Добавлен регрессионный контроль для `/assignments/create`: маршрут обязан отдавать V2-конструктор и не может снова показать legacy-блок «Откуда берём задания?».
+- Подтверждено, что `/assignments/<id>/edit` уже является функциональным V2-редактором через `sandbox/layout_teacher.html`; не создавался опасный второй клон редактора.
+- Проверка: V2-тесты конструктора и просмотра работ — `2 passed`.
+
+## [2026-08-17] — Аналитика ученика: V2-макет выведен из sandbox_reference
+
+- Живой маршрут `/student/<id>/analytics` больше не рендерит файл из `templates/sandbox_reference`.
+- Утверждённый визуал перенесён без изменения разметки в `templates/sandbox/analytics_canonical.html`; в него продолжают передаваться реальные метрики, готовность, графики и ELO.
+- Добавлена регрессия: live-аналитика не может снова сослаться на reference-макет.
+
+## [2026-08-17] — Контроль legacy-рендеров
+
+- Добавлен общий V2-тест: боевые маршруты не могут рендерить `sandbox_reference`, а рабочие шаблоны — ссылаться на него.
+- Архивные макеты остаются только как неисполняемый источник сравнения.
+## [2026-08-17 15:35:00] — Конструктор работ V2 и устойчивый review-cycle
+
+- Корневой `assignment_create.html` больше не содержит retired трёхшаговый мастер с экраном «Ввести ID вручную»: он стал совместимой оболочкой актуального функционального V2-конструктора `sandbox/create_assignment.html`.
+- Это исключает возврат к прежнему UI при любом historical/internal renderer-е, сохраняя все реальные API черновиков, источников задач, получателей и публикации.
+- Исправлен HTTP 500 на странице проверки преподавателя после сдачи работы: ownership, шаблоны рубрик и непрочитанные комментарии используют устойчивый идентификатор авторизованной сессии, а не потенциально отсоединённый ORM-экземпляр пользователя.
+- Regression: `11 passed` для конструктора, legacy-redirect и полного цикла «создать → сдать → проверить»; Python-компиляция и `git diff --check` успешны.
+## [2026-08-17 16:35:00] — Закрытие legacy-дубля библиотеки шаблонов
+
+- Старые адреса `/templates_library` и `/teacher/templates` больше не рендерят `main/templates_library.html`: они безопасно перенаправляют в каноничный функциональный список `/templates`.
+- Все возвраты и переходы из формы шаблона переведены на `templates.templates_list`, чтобы legacy URL не возвращался через JavaScript или кнопку отмены.
+## [2026-08-17 16:50:00] — Ручная проверка без legacy-очереди
+
+- Старый `/tutor/reviews` больше не рендерит `tutor_reviews.html`: он открывает единый V2-журнал `/reviews/queue` с сохранением фильтра курса.
+- V2-журнал получил режим `manual_only`: показывает только `NEEDS_MANUAL_REVIEW`, сохраняет фильтр курса и не смешивает ручную проверку с задачами комнаты или обычными сдачами.
+## [2026-08-17 17:55:00] — Снятие веб-уведомлений и встроенного чата
+
+- Страница `/notifications` больше не является пользовательским экраном: старая закладка безопасно переводит в каноничный `/dashboard`, а ссылки на центр уведомлений убраны из desktop-, dock- и mobile-навигации.
+- Веб-чат ученика снят с продукта: `/student/<id>/chat` сохраняет RBAC-проверку и переадресует в V2-дашборд ученика преподавателя (`/students/<id>/dashboard`).
+- Telegram-уведомления, API счётчика и контекстные подтверждения действий не менялись.
+- Добавлены регрессии redirect-ов; выборочный набор — `4 passed`.
+## [2026-08-17 18:30:00] — V2-журнал оценок без legacy-диалогов
+
+- Активный экран журнала ученика переведён с `glass-panel`/`neo-*` на каноничный светлый Bento-интерфейс BooStudy.
+- Сохранены создание, редактирование, удаление, привязки к уроку и сдаче, права ролей и экспорт CSV/PDF.
+- Удаление записи больше не вызывает нативный browser-confirm: используется общий каноничный модальный контракт формы.
+- Добавлена регрессия, запрещающая вернуть старые классы, native confirm или потерять CRUD-endpoint журнала.
+## [2026-08-17 18:45:00] — Карточка ученика переведена в V2
+
+- Активная карточка ученика больше не использует mixed legacy/dark-классы: она собрана как единый светлый Bento-экран.
+- Сохранены реальные показатели, достижения с фильтром, связь с Telegram, данные семьи и преподавателей, подписка и управление балансом занятий для разрешённых ролей.
+- Ссылки ведут только на актуальные контуры комнаты, аналитики, плана и V2-журнала; добавлена защита от возврата legacy-классов.
+## [2026-08-17 19:00:00] — Безопасное удаление пунктов траектории
+
+- Удаление пункта учебного плана переведено с нативного browser-confirm на единый каноничный `BooNotify`-контракт формы.
+- Интерактивная карта и все CRUD/API-контракты плана оставлены без изменений до полной V2-замены визуального слоя.
+## [2026-08-17 19:15:00] — V2-оболочка интерактивной траектории
+
+- Экран плана обучения получил изолированную светлую Bento-оболочку: единый холст, тактильные карточки, единые поля и 3D-кнопки.
+- Сохранены список пунктов, интерактивная карта, масштабирование, перетаскивание, связи между узлами и все CRUD/API-контракты.
+- Удаление пункта использует общий V2-диалог, без `window.confirm`.
+## [2026-08-17 19:30:00] — Проверка работ в каноничной V2-оболочке
+
+- Активный экран ручной проверки `submission_grade.html` переведён на светлую Bento-оболочку: единый холст 1400px, тактильные карточки, единые поля, 3D-кнопки и адаптивная раскладка.
+- Существующие асинхронные операции сохранения оценок, комментариев, возврата на доработку и финализации не менялись: сохранены их DOM-id и маршруты.
+- Добавлена статическая регрессия, которая блокирует потерю V2-контракта и ключевых teacher-actions.
+## [2026-08-17 19:45:00] — Инвентаризация live-маршрутов V2
+
+- Зафиксирован реестр активных экранов: переведённые карточка ученика и журнал оценок помечены как V2, интерактивный план и проверка — как V2-оболочки с отдельным browser-smoke долгом.
+- Аудит `/sandbox/*` подтвердил: рабочие старые адреса направляются на каноничные V2-endpoint, а `sandbox_reference/` изолирован от live-rendering.
+- Следующий безопасный этап — удалить недостижимые legacy-render ветки, скрытые после совместимых redirect.
+## [2026-08-17 20:00:00] — Удалён недостижимый legacy-render статистики
+
+- Совместимый `/student/<id>/statistics` теперь содержит только redirect на каноничную V2-аналитику `/student/<id>/analytics`.
+- Удалён оставшийся за ранним `return` код, который мог снова отрендерить устаревший `student_statistics.html`.
+## [2026-08-17 20:15:00] — Форма ученика в каноничном V2
+
+- Активная форма создания и редактирования ученика получила светлый Bento-контейнер, единые поля и тактильные действия на 1400px-холсте.
+- Сохранены имена полей, CSRF, AJAX-API создания/обновления и текущие редиректы после успешного сохранения.
+- Добавлена статическая регрессия V2-контейнера и API-контрактов формы.
+## [2026-08-17 20:30:00] — Форма урока в светлом V2-контуре
+
+- Тёмный legacy-hero и поверхности формы урока заменены изолированным светлым Bento-слоем: карточки, поля, пресеты и ошибки приведены к единому V2-контракту.
+- Логика планирования, CSRF, полей формы и существующие JavaScript-пресеты не менялись.
+## [2026-08-17 20:45:00] — Библиотека шаблонов в V2
+
+- Активная библиотека шаблонов получила изолированную светлую V2-оболочку на 1400px-холсте: карточки, фильтры и действия приведены к каноничным токенам.
+- Фильтрация, создание работы из шаблона, редактирование и модальное удаление сохранены без изменения JavaScript-контрактов.
+## [2026-08-17 21:00:00] — Закрыта legacy-ссылка профиля из maintenance
+
+- Экран обслуживания больше не ведёт на `/profile`: он использует каноничный `main.workspace_profile`.
+- Добавлена регрессия, запрещающая любому live-шаблону возвращать ссылку на старый личный профиль.
+## [2026-08-17 21:15:00] — Статический V2-аудит и состояние тестового окружения
+
+- Повторный аудит неархивных live-шаблонов подтвердил отсутствие retired legacy-навигации.
+- `git diff --check` проходит; недостижимый `student_statistics.html` больше не встречается в runtime-маршруте.
+- Системный Python восстановлен, но в нём пока нет зависимостей проекта (`pytest`, `flask`), поэтому исполняемые V2-тесты отложены до восстановления проектного окружения.
+## [2026-08-17 21:30:00] — Исполняемая V2-регрессия пройдена
+
+- Восстановлено использование проектного `venv`; точечный набор `tests/v2/test_role_lifecycle_recovery.py` прошёл: 75 passed.
+- Проверены V2-роли, совместимые redirect, группы, жизненный цикл работ, комната урока и новые запретительные регрессии навигации.
+## [2026-08-17 21:40:00] — Навигация и lifecycle V2 подтверждены
+
+- `tests/v2/test_dynamic_workspace_and_navigation.py` и `tests/v2/test_full_assignment_lifecycle.py` прошли: 6 passed.
+- Проверены каноничные endpoint для выдачи/сдачи работ, V2-конструктор и отсутствие возврата в legacy-navigation.
+## [2026-08-17 21:50:00] — Корректный fixture исторического урока
+
+- Исправлена V2-регрессия экспорта архивного ученика: тест создаёт урок с обязательным `lesson_date`, как и реальная модель.
+- Это устраняет ложное падение полного набора до исполнения проверяемой логики импорта/экспорта.
+## [2026-08-17 22:00:00] — Единый контракт административного экспорта
+
+- `/admin/export_db_json` теперь отдаёт версию схемы `2` и реальные разделы курсов, уроков и задач наряду с пользователями и настройками.
+- Payload использует фактические поля моделей (`Course.id`, `Tasks.task_id`, `Tasks.content_html`) и совместим с проверкой резервного экспорта.
+## [2026-08-17 22:10:00] — Исправлен runtime-контракт экспорта курсов
+
+- Исправлена 500-ошибка `/admin/export_db_json`: модель `Course` хранит ключ в `id` и активность в `is_active`, а не в legacy-полях `course_id`/`status`.
+- В экспорт добавляется совместимый статус `active`/`archived`, вычисленный из фактического состояния курса.
+## [2026-08-17 22:20:00] — V2-форма создания темы больше не даёт 500
+
+- Обработчик `/admin/topics/create` принимает как JSON-запросы API, так и стандартные form-data V2-формы.
+- Убрана ошибка `415 Unsupported Media Type`, которая ошибочно превращалась в серверную 500-ошибку.
+## [2026-08-17 22:30:00] — Статусы проверки банка заданий стали сохраняться
+
+- `/admin/task-formator/status` теперь создаёт или обновляет реальную запись `TaskReview`, сохраняет автора проверки и корректно отвечает 404 для несуществующей задачи.
+- Убрана нерабочая запись в несуществующее поле `Tasks.review_status`.
+## [2026-08-17 22:40:00] — V2-модалка пользователя получила полноценный API-контракт
+
+- Редактирование пользователя из Bento-модалки теперь принимает полное имя, email и явное `is_active=false`, не требует повторно передавать username и возвращает JSON при запросе интерфейса.
+- Добавлена проверка уникальности email; обычная серверная форма сохраняет прежний redirect-поток.
+## [2026-08-17 22:50:00] — Создание пользователей защищено границами ролей
+
+- Администратор больше не может создать пользователя с ролью `creator`; проверяются допустимые роли.
+- Новый пользователь получает `UserProfile`, запись `UserRole` и корректный HTTP 201, а ученик — связанный профиль `Student`.
+## [2026-08-17 23:00:00] — Активный статус QA-сущности по умолчанию
+
+- Новая QA-сущность остаётся активной, если интерфейс не прислал отдельный checkbox; явное выключение по-прежнему поддерживается.
+## [2026-08-17 23:10:00] — Полный lifecycle промокодов в V2-админке
+
+- Список промокодов принимает создание через основной V2 URL, добавлены обновление и безопасное удаление.
+- Использованный промокод не удаляется физически: он деактивируется с сохранением истории `PromoCodeUsage`.
+## [2026-08-17 23:20:00] — Валидация кода промокода
+
+- Создание промокода отклоняет пробелы и другие недопустимые символы; разрешены только 3–50 латинских букв, цифр, дефис и подчёркивание.

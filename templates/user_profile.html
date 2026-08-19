@@ -288,7 +288,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                     {% endif %}
 
                     {% if has_permission(current_user, 'trainer.use') %}
-                    <a href="{{ url_for('trainer.trainer_embed') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
+                    <a href="{{ url_for('trainer.trainer_v2') }}" class="py-3 px-4 bg-surface hover:bg-surface-alt dark:bg-dark-inner/50 dark:hover:bg-white/[0.08] text-secondary dark:text-white rounded-xl font-bold flex flex-col items-center justify-center gap-2 shadow-sm border border-slate-200 dark:border-white/[0.1] hover-scale-102 transition-all no-underline">
                         <i class="ph-bold ph-game-controller text-2xl text-boo-primary"></i>
                         <span>Тренажёр</span>
                     </a>

@@ -13,10 +13,20 @@
     .bg-urldata-image-svgxmlcharsetutf-8-3Csvg { background-image: url('data:image/svg+xml;charset=utf-8,%3Csvg; }
     .bg-right-12px-center { background-color: right 12px center; }
     .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
+    /* Canonical V2 layer: behaviour stays in the existing filter/action handlers. */
+    .template-library-v2 { width: min(1400px, 100%); margin: 0 auto; padding: 2rem 1rem 5rem; }
+    .template-library-v2 > section { background: #F4F7FA !important; border: 2px solid #E2E8F0 !important; border-radius: 2rem !important; box-shadow: 0 4px 0 #DAE1E9 !important; }
+    .template-library-v2 .dark\\:from-zinc-950\\/40, .template-library-v2 .dark\\:to-purple-950\\/20 { background-image: none !important; }
+    .template-library-v2 .dark\\:text-white, .template-library-v2 .dark\\:text-zinc-300, .template-library-v2 .dark\\:text-dark-muted { color: #334155 !important; }
+    .template-library-v2 input, .template-library-v2 select { background: #fff !important; border: 2px solid #E2E8F0 !important; color: #0F172A !important; border-radius: .9rem !important; }
+    .template-library-v2 input:focus, .template-library-v2 select:focus { border-color: #6366F1 !important; box-shadow: 0 0 0 3px #E0E7FF !important; }
+    .template-library-v2 a[class*="bg-purple"], .template-library-v2 button[class*="bg-purple"] { background: #4F46E5 !important; border: 2px solid #3730A3 !important; border-bottom-width: 4px !important; color: #fff !important; box-shadow: 0 4px 10px rgba(79,70,229,.18) !important; }
+    .template-library-v2 a:active, .template-library-v2 button:active { transform: translateY(3px); border-bottom-width: 1px !important; }
+    @media (max-width: 640px) { .template-library-v2 { padding: 1rem .75rem 5rem; } .template-library-v2 > section { border-radius: 1.5rem !important; } }
 </style>
 {% block sandbox_content %}
 {% set can_manage_templates = (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage'))) %}
-<div class="flex flex-col gap-6 pb-6 w-full">
+<main class="template-library-v2"><div class="flex flex-col gap-6 pb-6 w-full">
 <section class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-zinc-950/40 dark:to-purple-950/20 backdrop-blur-md rounded-2xl p-6 border border-slate-200/50 dark:border-zinc-800/80 shadow-soft relative overflow-hidden flex flex-col md:flex-row justify-between md:items-center gap-6">
     <div class="absolute -right-20 -top-20 w-80 h-80 bg-boo-primary/10 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none"></div>
     <div class="relative z-10 max-w-3xl">
@@ -159,7 +169,7 @@
 </section>
 {% endif %}
 {% endfor %}
-</div>
+</div></main>
 {% endblock %}
 
 {% block extra_scripts %}

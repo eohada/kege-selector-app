@@ -51,16 +51,15 @@ def kege_generator(lesson_id=None):
     student = None
     if lesson_id is None:
         lesson_id = request.args.get('lesson_id', type=int)
-    
     assignment_type = request.args.get('assignment_type') or request.form.get('assignment_type') or 'homework'
     assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
     template_id = request.args.get('template_id', type=int)  # Получаем template_id из запроса
     seed_task_id = request.args.get('seed_task_id', type=int)
     seed_task = None
-    
+
     if not lesson_id and assignment_type == 'classwork':
         assignment_type = 'homework'
-    
+
     if lesson_id:
         lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
         student = lesson.student

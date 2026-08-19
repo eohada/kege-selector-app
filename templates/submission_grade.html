@@ -525,6 +525,22 @@
             color: #92400e;
             box-shadow: inset 0 -2px 0 rgba(180, 83, 9, 0.18);
         }
+        /* Canonical V2 layer: keeps grading DOM/actions intact while unifying the live workflow. */
+        .grade-app-content { background: #f8fafc !important; }
+        .grade-page-inner { width: min(1400px, 100%); margin: 0 auto; }
+        .grade-hero, .task-card-grade, .feedback-section, .grade-comments { border: 2px solid #e2e8f0 !important; border-radius: 2rem !important; background: #f4f7fa !important; box-shadow: 0 4px 0 #dae1e9 !important; }
+        .grade-hero { padding: 1.5rem !important; } .task-header-grade { background: #f8fafc !important; border-bottom-color: #e2e8f0 !important; } .grade-card-body { background: #f4f7fa; }
+        .answer-section, .feedback-section > *, .grade-comments-list { border-color: #e2e8f0 !important; }
+        .answer-section, .feedback-section { background: #fff !important; }
+        .task-nav-grade { border: 2px solid #e2e8f0 !important; border-radius: 1.35rem !important; background: rgba(255,255,255,.96) !important; box-shadow: 0 4px 0 #dae1e9 !important; }
+        .task-nav-grade .task-nav-btn { border: 2px solid #e2e8f0 !important; background: #fff !important; color: #475569 !important; }
+        .task-nav-grade .task-nav-btn.active { border-color: #4338ca !important; background: #4f46e5 !important; color: #fff !important; box-shadow: 0 3px 0 #3730a3 !important; }
+        .score-input, .comment-input, #grade-comment-input, #return-modal input { border: 2px solid #e2e8f0 !important; border-radius: .9rem !important; background: #fff !important; color: #1e293b !important; }
+        .submit-section { border: 2px solid #e2e8f0 !important; border-radius: 1.25rem !important; background: rgba(248,250,252,.97) !important; box-shadow: 0 4px 0 #dae1e9 !important; }
+        .submit-section .neo-button, .grade-app-content .neo-button { border: 1px solid #cbd5e1; border-bottom: 4px solid #cbd5e1; border-radius: .85rem; background: #fff; color: #334155; font-weight: 900; }
+        .submit-section .neo-button.accent, .grade-app-content .neo-button.accent { border-color: #4338ca; border-bottom-color: #3730a3; background: #4f46e5; color: #fff; }
+        .submit-section .neo-button:active, .grade-app-content .neo-button:active { transform: translateY(3px); border-bottom-width: 1px; }
+        @media (max-width: 640px) { .grade-app-content { padding: 1rem 1rem 8rem !important; } .grade-hero, .task-card-grade, .feedback-section, .grade-comments { border-radius: 1.5rem !important; } }
     </style>
 {% endblock %}
 

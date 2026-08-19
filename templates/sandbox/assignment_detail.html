@@ -50,9 +50,9 @@
                   <a href="/assignments/{{ assignment.assignment_id }}/edit" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline">
                       <i class="ph-bold ph-pencil-simple text-sm"></i> Редактировать
                   </a>
-                  <button type="button" onclick="duplicateAssignment({{ assignment.assignment_id }})" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline cursor-pointer border-none">
+                  <a href="{{ url_for('assignments.assignment_create', source='generator', task_ids=assignment.tasks|sort(attribute='order_index')|map(attribute='task_id')|join(','), recipient_ids=submissions|map(attribute='student_id')|join(','), assignment_type=assignment.assignment_type) }}" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-xs px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline cursor-pointer">
                       <i class="ph-bold ph-copy text-sm"></i> Дублировать
-                  </button>
+                  </a>
                   {% if assignment.is_active %}
                   <button type="button" onclick="archiveAssignment({{ assignment.assignment_id }})" class="btn-3d bg-rose-50 hover:bg-rose-100 text-rose-700 font-black text-xs px-5 py-3 rounded-xl border border-rose-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline cursor-pointer border-none">
                       <i class="ph-bold ph-archive text-sm text-rose-600"></i> В архив
@@ -60,7 +60,7 @@
                   {% endif %}
               </div>
               {% endif %}
-              <a href="/assignments/{{ assignment.assignment_id }}/queue?status=submitted" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline w-full justify-center">
+              <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted', assignment_type=assignment.assignment_type, assignment_id=assignment.assignment_id) }}" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 no-underline w-full justify-center">
                   <i class="ph-bold ph-check-circle text-sm text-indigo-300"></i> Очередь проверки
               </a>
           </div>
@@ -196,6 +196,40 @@
 </dialog>
 
 <script>
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+  async function archiveAssignment(assignmentId) {
+    if (!assignmentId) return;
+    if (!window.BooNotify?.confirm) return;
+    const accepted = await window.BooNotify.confirm({
+      title: 'Архивировать работу?',
+      message: 'Она исчезнет из активного списка, но останется доступной в архиве.',
+      confirmText: 'В архив',
+      variant: 'danger',
+    });
+    if (!accepted) return;
+
+    try {
+      const response = await fetch(`/assignments/${encodeURIComponent(String(assignmentId))}/archive`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+        },
+        body: '{}',
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'Не удалось архивировать работу');
+      }
+      window.BooNotify?.success?.('Работа перенесена в архив.');
+      window.location.assign('{{ url_for('assignments.assignments_list', status='archived', archived=1) }}');
+    } catch (error) {
+      window.BooNotify?.error?.(error.message || 'Ошибка архивации.');
+    }
+  }
+
   let revokeSubmissionForm = null;
 
   function openRevokeDialog(form) {

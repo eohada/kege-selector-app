@@ -90,10 +90,6 @@
             </div>
 
             <div class="relative z-10 flex flex-wrap gap-3">
-                <a href="{{ url_for('notifications.notifications_list') }}"
-                   class="clay-interactive neo-button ghost sm">
-                    <i class="ph-bold ph-bell"></i> Уведомления{% if unread_notifications %} ({{ unread_notifications }}){% endif %}
-                </a>
                 <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
                    class="clay-interactive neo-button ghost sm">
                     <i class="ph-bold ph-chart-line-up"></i> Аналитика

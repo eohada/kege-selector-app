@@ -327,6 +327,28 @@ class AuditLogger:
             metadata={'page_name': page_name, **(metadata or {})}
         )
 
+    def log_event(
+        self,
+        action: str,
+        user_id: Optional[int] = None,
+        source: str = 'web',
+        entity: Optional[str] = None,
+        status: str = 'success',
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        """Compatibility entry point for older administrative handlers.
+
+        Audit events are intentionally queued through the same request-aware
+        pipeline as ``log``.  ``user_id`` is accepted for the historical
+        callers; within a request the active user remains the authoritative
+        identity and mismatches are retained as metadata for diagnostics.
+        """
+        metadata = dict(details or {})
+        metadata['source'] = source
+        if user_id is not None:
+            metadata['requested_user_id'] = user_id
+        self.log(action=action, entity=entity, status=status.lower(), metadata=metadata)
+
     def log_error(self, action: str, entity: Optional[str] = None, error: Optional[str] = None,
                   traceback: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
 

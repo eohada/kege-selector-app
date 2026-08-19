@@ -49,7 +49,7 @@ def _redirect_after_login(user):
         if eff.status == 'expired':
             return url_for('main.workspace_profile')
         if (allow_lessons is False) and (allow_trainer is True):
-            return url_for('trainer.trainer_embed')
+            return url_for('trainer.trainer_v2')
         if (allow_lessons is False) and (allow_trainer is False):
             return url_for('main.workspace_profile')
         return url_for('main.dashboard')
@@ -167,7 +167,7 @@ def login():
                             next_page = url_for('main.workspace_profile')
 
                         elif (allow_lessons is False) and (allow_trainer is True):
-                            next_page = url_for('trainer.trainer_embed')
+                            next_page = url_for('trainer.trainer_v2')
                         elif (allow_lessons is False) and (allow_trainer is False):
                             next_page = url_for('main.workspace_profile')
                         else:

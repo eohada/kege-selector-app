@@ -930,39 +930,9 @@ def student_update_balance(student_id: int):
 @students_bp.route('/student/<int:student_id>/chat')
 @login_required
 def student_chat(student_id: int):
-    """Студенческий чат. Используем диалог LessonMessages по ближайшему/последнему уроку."""
+    """Retired web chat kept as a compatible redirect to the V2 student dashboard."""
     student = _guard_student_access(student_id)
-
-    now = moscow_now()
-    in_progress = None
-    upcoming = None
-    latest = None
-    try:
-        in_progress = Lesson.query.filter_by(student_id=student.student_id, status='in_progress').order_by(Lesson.lesson_date.desc()).first()
-    except Exception:
-        in_progress = None
-    try:
-        upcoming = (
-            Lesson.query
-            .filter(Lesson.student_id == student.student_id, Lesson.status == 'planned', Lesson.lesson_date >= now)
-            .order_by(Lesson.lesson_date.asc())
-            .first()
-        )
-    except Exception:
-        upcoming = None
-    try:
-        latest = Lesson.query.filter_by(student_id=student.student_id).order_by(Lesson.lesson_date.desc()).first()
-    except Exception:
-        latest = None
-
-    lesson = in_progress or upcoming or latest
-    if not lesson:
-        flash('Пока нет уроков, к которым можно привязать чат.', 'info')
-        return redirect(url_for('students.student_profile', student_id=student.student_id))
-
-    student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
-    student_profile_obj = UserProfile.query.filter_by(user_id=student_user_obj.id).first() if student_user_obj else None
-    return render_template('student_chat.html', student=student, student_user=student_user_obj, lesson=lesson, active_page='student_profile')
+    return redirect(url_for('students.teacher_student_dashboard', student_id=student.student_id))
 
 
 @students_bp.route('/student/<int:student_id>/call-request', methods=['GET', 'POST'])
@@ -1891,94 +1861,8 @@ def student_diagnostics_checkpoint_create(student_id: int):
 @students_bp.route('/student/<int:student_id>/statistics')
 @login_required
 def student_statistics(student_id):
-    """Редирект на единую страницу статистики"""
+    """Совместимый URL: статистика доступна только на каноничном V2-экране."""
     return redirect(url_for('students.student_analytics', student_id=student_id))
-    
-    lessons = Lesson.query.filter_by(student_id=student_id).options(
-        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
-    ).all()
-    
-    task_stats = {}
-    
-    for lesson in lessons:
-        for assignment_type in ['homework', 'classwork', 'exam']:
-            assignments = get_sorted_assignments(lesson, assignment_type)
-            weight = 2 if assignment_type == 'exam' else 1
-            
-            for lt in assignments:
-                if not lt.task or not lt.task.task_number:
-                    continue
-                
-                task_num = lt.task.task_number
-                
-                if task_num not in task_stats:
-                    task_stats[task_num] = {
-                        'auto_correct': 0, 
-                        'auto_total': 0,
-                        'manual_correct': 0, 
-                        'manual_incorrect': 0,
-                        'correct': 0,
-                        'total': 0
-                    }
-                
-                if lt.submission_correct is not None:
-                    task_stats[task_num]['auto_total'] += weight
-                    if lt.submission_correct:
-                        task_stats[task_num]['auto_correct'] += weight
-    
-    manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
-    manual_stats_dict = {stat.task_number: stat for stat in manual_stats}
-    
-    logger.info(f"Автоматическая статистика для ученика {student_id}: {[(k, v['auto_correct'], v['auto_total']) for k, v in task_stats.items()]}")
-    logger.info(f"Ручные изменения для ученика {student_id}: {[(s.task_number, s.manual_correct, s.manual_incorrect) for s in manual_stats]}")
-    
-    for task_num in list(task_stats.keys()):
-        if task_num in manual_stats_dict:
-            manual_stat = manual_stats_dict[task_num]
-            task_stats[task_num]['manual_correct'] = manual_stat.manual_correct
-            task_stats[task_num]['manual_incorrect'] = manual_stat.manual_incorrect
-        
-        task_stats[task_num]['correct'] = task_stats[task_num]['auto_correct'] + task_stats[task_num]['manual_correct']
-        task_stats[task_num]['total'] = task_stats[task_num]['auto_total'] + task_stats[task_num]['manual_correct'] + task_stats[task_num]['manual_incorrect']
-    
-    for task_num, manual_stat in manual_stats_dict.items():
-        if task_num not in task_stats:
-            task_stats[task_num] = {
-                'auto_correct': 0,
-                'auto_total': 0,
-                'correct': manual_stat.manual_correct,
-                'total': manual_stat.manual_correct + manual_stat.manual_incorrect,
-                'manual_correct': manual_stat.manual_correct,
-                'manual_incorrect': manual_stat.manual_incorrect
-            }
-    
-    logger.info(f"Итоговая статистика для ученика {student_id}: {[(k, v['correct'], v['total']) for k, v in task_stats.items()]}")
-    
-    chart_data = []
-    for task_num in sorted(task_stats.keys()):
-        stats = task_stats[task_num]
-        if stats['total'] > 0:
-            percent = round((stats['correct'] / stats['total']) * 100, 1)
-            if percent < 40:
-                color = '#ef4444'  # красный
-            elif percent < 80:
-                color = '#eab308'  # желтый
-            else:
-                color = '#22c55e'  # зеленый
-            
-            chart_data.append({
-                'task_number': task_num,
-                'percent': percent,
-                'correct': stats['correct'],
-                'total': stats['total'],
-                'color': color,
-                'manual_correct': stats.get('manual_correct', 0),
-                'manual_incorrect': stats.get('manual_incorrect', 0)
-            })
-    
-    return render_template('student_statistics.html', 
-                         student=student, 
-                         chart_data=chart_data)
 
 @students_bp.route('/student/<int:student_id>/statistics/update', methods=['POST'])
 @login_required
@@ -2393,9 +2277,10 @@ def student_analytics(student_id):
         can_edit = False
     
     try:
-        # The V2 sandbox prototype is the approved visual contract. Functional
-        # data is bound into this exact layout; it must not be redesigned.
-        return render_template('sandbox_reference/analytics.html',
+        # The approved V2 visual contract lives in the functional sandbox
+        # namespace. `sandbox_reference` is archival-only and never rendered
+        # by a live route.
+        return render_template('sandbox/analytics_canonical.html',
                              student=student,
                              charts=charts_context,
                              metrics=metrics,

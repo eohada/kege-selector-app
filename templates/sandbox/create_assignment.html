@@ -157,14 +157,9 @@
             </label>
 
             <label class="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" id="assignment-hide-before-start" onchange="toggleStartDateField()" class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
-              <span class="text-xs font-bold text-slate-700">Скрывать задания до наступления даты старта</span>
+              <input type="checkbox" id="assignment-hide-before-start" class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
+              <span class="text-xs font-bold text-slate-700">Показывать условие только после нажатия учеником «Начать»</span>
             </label>
-
-            <div id="start-date-container" class="hidden pl-8 space-y-1 pt-1">
-              <label class="text-[10px] font-black uppercase text-slate-500">Дата и время старта:</label>
-              <input type="datetime-local" id="assignment-start-date" class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-2 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none text-xs text-slate-800">
-            </div>
           </div>
         </div>
 
@@ -297,17 +292,7 @@
       </button>
     </div>
 
-    <div class="space-y-3">
-      <div onclick="applyTemplate('standard-27')" class="p-4 bg-white hover:bg-indigo-50/50 border-2 border-slate-200 hover:border-indigo-300 shadow-[0_3px_0_#DAE1E9] rounded-2xl cursor-pointer transition-all space-y-1">
-        <span class="text-xs font-black text-slate-800">⚡ Полный вариант КЕГЭ 2026 (27 задач)</span>
-        <p class="text-[11px] text-slate-500">По 1 задаче каждого типа №1–27</p>
-      </div>
-
-      <div onclick="applyTemplate('logic-block')" class="p-4 bg-white hover:bg-indigo-50/50 border-2 border-slate-200 hover:border-indigo-300 shadow-[0_3px_0_#DAE1E9] rounded-2xl cursor-pointer transition-all space-y-1">
-        <span class="text-xs font-black text-slate-800">🧩 Блок Алгебра Логики (№2, №15)</span>
-        <p class="text-[11px] text-slate-500">Подборка задач на таблицы истинности и предикаты</p>
-      </div>
-    </div>
+    <div id="templates-list" class="space-y-3 max-h-[55vh] overflow-y-auto pr-1"></div>
   </div>
 </div>
 
@@ -329,13 +314,28 @@
       {% endfor %}
     {% endif %}
   ],
-  "groups": {
+  "groups": [
     {% if available_groups %}
       {% for grp in available_groups %}
-      {{ grp.title | tojson | safe }}: {{ group_members_map.get(grp.group_id | string, []) | tojson | safe }}{% if not loop.last %},{% endif %}
+      {
+        "group_id": {{ grp.group_id | tojson | safe }},
+        "title": {{ grp.title | tojson | safe }},
+        "member_ids": {{ group_members_map.get(grp.group_id | string, []) | tojson | safe }}
+      }{% if not loop.last %},{% endif %}
       {% endfor %}
     {% endif %}
-  },
+  ],
+  "templates": [
+    {% for template in templates or [] %}
+      {
+        "template_id": {{ template.template_id | tojson | safe }},
+        "name": {{ template.name | tojson | safe }},
+        "description": {{ (template.description or 'Без описания') | tojson | safe }},
+        "type": {{ template.template_type | tojson | safe }},
+        "tasks_count": {{ (template.tasks_count or 0) | tojson | safe }}
+      }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
   "existingAssignment": {{ (existing_assignment if existing_assignment is defined else None) | tojson | safe }},
   "initialTasks": [
     {% if tasks %}
@@ -361,7 +361,7 @@ const rawDataEl = document.getElementById('create-assignment-data');
 const pageData = rawDataEl ? JSON.parse(rawDataEl.textContent) : {};
 
 let attachedTasks = [];
-let selectedGroupNames = new Set();
+let selectedGroupIds = new Set();
 let selectedStudentIds = new Set();
 let activeRecipientTab = 'groups';
 
@@ -438,18 +438,6 @@ function applyPreset(presetType) {
     allowSeparateCheckbox.disabled = false;
     allowSeparateCheckbox.checked = true;
     maxAttemptsInput.value = 3;
-  }
-}
-
-function toggleStartDateField() {
-  const checkbox = document.getElementById('assignment-hide-before-start');
-  const container = document.getElementById('start-date-container');
-  if (checkbox && container) {
-    if (checkbox.checked) {
-      container.classList.remove('hidden');
-    } else {
-      container.classList.add('hidden');
-    }
   }
 }
 
@@ -594,7 +582,7 @@ async function handleFetchTasksByIds() {
   if (!idsVal.trim()) return;
 
   try {
-    const res = await fetch(`/sandbox/api/create_assignment/get_tasks_by_ids?ids=${encodeURIComponent(idsVal)}`);
+    const res = await fetch(`/assignments/api/create/tasks?ids=${encodeURIComponent(idsVal)}`);
     const data = await res.json();
     if (data.success && data.tasks) {
       data.tasks.forEach(t => {
@@ -613,8 +601,13 @@ async function handleFetchTasksByIds() {
 }
 
 async function loadQuickMockVariant() {
+  const courseId = document.getElementById('assignment-course').value;
+  if (!courseId) {
+    show3DToast('Сначала выберите курс для пробника');
+    return;
+  }
   try {
-    const res = await fetch('/sandbox/api/create_assignment/quick_mock_variant');
+    const res = await fetch(`/assignments/api/create/probnik?course_id=${encodeURIComponent(courseId)}`);
     const data = await res.json();
     if (data.success && data.tasks) {
       attachedTasks = data.tasks;
@@ -627,30 +620,39 @@ async function loadQuickMockVariant() {
 }
 
 function openTemplatesModal() {
+  renderTemplates();
   document.getElementById('templates-modal').classList.remove('hidden');
 }
 function closeTemplatesModal() {
   document.getElementById('templates-modal').classList.add('hidden');
 }
 
-function applyTemplate(tplName) {
-  if (tplName === 'standard-27') {
-    loadQuickMockVariant();
-  } else if (tplName === 'logic-block') {
-    handleFetchTasksByIdsDirect('1, 2, 3');
-  }
-  closeTemplatesModal();
+function renderTemplates() {
+  const container = document.getElementById('templates-list');
+  const templates = pageData.templates || [];
+  container.innerHTML = templates.length ? templates.map(template => `
+    <button type="button" onclick="applyTemplate(${template.template_id})" class="w-full text-left p-4 bg-white hover:bg-indigo-50/50 border-2 border-slate-200 hover:border-indigo-300 shadow-[0_3px_0_#DAE1E9] rounded-2xl cursor-pointer transition-all space-y-1">
+      <span class="block text-xs font-black text-slate-800">${template.name}</span>
+      <span class="block text-[11px] text-slate-500">${template.description}</span>
+      <span class="inline-flex mt-1 px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 text-[10px] font-black">${template.tasks_count} задач · ${template.type}</span>
+    </button>
+  `).join('') : '<p class="text-sm text-slate-500 text-center py-8">Доступных шаблонов пока нет.</p>';
 }
 
-async function handleFetchTasksByIdsDirect(idsStr) {
+async function applyTemplate(templateId) {
   try {
-    const res = await fetch(`/sandbox/api/create_assignment/get_tasks_by_ids?ids=${encodeURIComponent(idsStr)}`);
+    const res = await fetch(`/assignments/api/create/templates/${encodeURIComponent(templateId)}`);
     const data = await res.json();
     if (data.success && data.tasks) {
       attachedTasks = data.tasks;
       renderAttachedTasks();
+      closeTemplatesModal();
+    } else {
+      show3DToast(data.message || 'Не удалось загрузить шаблон');
     }
-  } catch (e) {}
+  } catch (e) {
+    show3DToast('Ошибка загрузки шаблона');
+  }
 }
 
 async function goToTaskGenerator(e) {
@@ -678,7 +680,7 @@ async function goToTaskGenerator(e) {
 
   sessionStorage.setItem(`draft_recipients_${draftId}`, JSON.stringify({
     students: Array.from(selectedStudentIds),
-    groups: Array.from(selectedGroupNames)
+    groups: Array.from(selectedGroupIds)
   }));
 
   window.location.href = `/task-generator?assignment_id=${draftId}`;
@@ -709,21 +711,20 @@ function renderRecipients() {
   const groupsArea = document.getElementById('recipients-groups-area');
   const studentsArea = document.getElementById('recipients-students-area');
 
-  const groups = pageData.groups || {};
+  const groups = pageData.groups || [];
   const students = pageData.students || [];
 
   // Render Groups
   let gHtml = '';
-  Object.keys(groups).forEach(gName => {
-    const members = groups[gName];
-    const isChecked = selectedGroupNames.has(gName);
+  groups.forEach(group => {
+    const isChecked = selectedGroupIds.has(group.group_id);
     gHtml += `
       <label class="flex items-center justify-between p-3 bg-white border-2 border-slate-200 rounded-xl cursor-pointer hover:border-indigo-300 transition-all shadow-xs">
         <div class="flex items-center gap-3">
-          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleGroupSelection('${gName}', this.checked)" class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
+          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleGroupSelection(${group.group_id}, this.checked)" class="w-5 h-5 text-indigo-600 rounded-lg border-2 border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
           <div>
-            <p class="text-xs font-black text-slate-800">${gName}</p>
-            <p class="text-[10px] font-bold text-slate-400">${members.length} учеников в группе</p>
+            <p class="text-xs font-black text-slate-800">${group.title}</p>
+            <p class="text-[10px] font-bold text-slate-400">${group.member_ids.length} учеников в группе</p>
           </div>
         </div>
         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[10px] font-black uppercase">Группа</span>
@@ -759,11 +760,11 @@ function renderRecipients() {
   updateSelectedRecipientsCount();
 }
 
-function toggleGroupSelection(gName, isChecked) {
+function toggleGroupSelection(groupId, isChecked) {
   if (isChecked) {
-    selectedGroupNames.add(gName);
+    selectedGroupIds.add(groupId);
   } else {
-    selectedGroupNames.delete(gName);
+    selectedGroupIds.delete(groupId);
   }
   updateSelectedRecipientsCount();
 }
@@ -779,11 +780,11 @@ function toggleStudentSelection(stId, isChecked) {
 
 function toggleSelectAllRecipients() {
   if (activeRecipientTab === 'groups') {
-    const groups = pageData.groups || {};
-    if (selectedGroupNames.size === Object.keys(groups).length) {
-      selectedGroupNames.clear();
+    const groups = pageData.groups || [];
+    if (selectedGroupIds.size === groups.length) {
+      selectedGroupIds.clear();
     } else {
-      Object.keys(groups).forEach(g => selectedGroupNames.add(g));
+      groups.forEach(group => selectedGroupIds.add(group.group_id));
     }
   } else {
     const students = pageData.students || [];
@@ -798,7 +799,7 @@ function toggleSelectAllRecipients() {
 
 function updateSelectedRecipientsCount() {
   const badge = document.getElementById('selected-recipients-count');
-  const count = selectedGroupNames.size + selectedStudentIds.size;
+  const count = selectedGroupIds.size + selectedStudentIds.size;
   if (badge) badge.textContent = count;
 }
 
@@ -820,14 +821,16 @@ async function saveAssignmentDraft(showAlert = true) {
     time_limit_minutes: document.getElementById('assignment-time-limit').value,
     max_attempts_default: document.getElementById('assignment-max-attempts').value,
     hard_deadline: document.getElementById('assignment-hard-deadline').checked,
+    hide_before_start: document.getElementById('assignment-hide-before-start').checked,
     allow_separate_submission: document.getElementById('assignment-allow-separate').checked,
+    course_id: document.getElementById('assignment-course').value || null,
     target_students: Array.from(selectedStudentIds),
-    target_groups: Array.from(selectedGroupNames),
+    target_groups: Array.from(selectedGroupIds),
     tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1 }))
   };
 
   try {
-    const res = await fetch('/sandbox/api/create_assignment/save_draft', {
+    const res = await fetch('/assignments/api/create/draft', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -853,23 +856,29 @@ async function submitAssignmentForm() {
   const presetCard = document.querySelector('.preset-card.border-indigo-600');
   const presetType = presetCard ? presetCard.id.replace('preset-card-', '') : 'homework';
 
+  const selectedGroups = (pageData.groups || []).filter(group => selectedGroupIds.has(group.group_id));
+  const recipientIds = new Set(Array.from(selectedStudentIds));
+  selectedGroups.forEach(group => (group.member_ids || []).forEach(studentId => recipientIds.add(studentId)));
+  const titleInput = document.getElementById('assignment-title').value.trim();
+  const title = titleInput || `${presetType === 'exam' ? 'Пробник' : presetType === 'test' ? 'Контрольная работа' : 'Домашняя работа'} — ${new Intl.DateTimeFormat('ru-RU').format(new Date())}`;
   const body = {
-    assignment_id: pageData.assignmentId,
-    title: document.getElementById('assignment-title').value,
+    draft_id: pageData.assignmentId,
+    title,
     description: document.getElementById('assignment-description').value,
-    assignment_type: presetType,
+    type: presetType,
     deadline: document.getElementById('assignment-deadline').value,
     time_limit_minutes: document.getElementById('assignment-time-limit').value,
     max_attempts_default: document.getElementById('assignment-max-attempts').value,
     hard_deadline: document.getElementById('assignment-hard-deadline').checked,
+    hide_before_start: document.getElementById('assignment-hide-before-start').checked,
     allow_separate_submission: document.getElementById('assignment-allow-separate').checked,
+    exam_course_id: document.getElementById('assignment-course').value || null,
     tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1 })),
-    target_students: Array.from(selectedStudentIds),
-    target_groups: Array.from(selectedGroupNames)
+    recipientIds: Array.from(recipientIds)
   };
 
   try {
-    const res = await fetch('/sandbox/api/create_assignment/submit', {
+    const res = await fetch('/assignments/distribute', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -879,9 +888,9 @@ async function submitAssignmentForm() {
     });
     const data = await res.json();
     if (data.success) {
-      show3DToast(data.message || 'Работа создана!', '/assignments');
+      show3DToast('Работа создана и отправлена ученикам!', '/assignments');
     } else {
-      show3DToast(data.message || 'Ошибка создания работы');
+      show3DToast(data.error || data.message || 'Ошибка создания работы');
     }
   } catch (e) {
     show3DToast('Ошибка соединения при отправке работы');
@@ -916,7 +925,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ea.time_limit_minutes) document.getElementById('assignment-time-limit').value = ea.time_limit_minutes;
     if (ea.max_attempts_default) document.getElementById('assignment-max-attempts').value = ea.max_attempts_default;
     document.getElementById('assignment-hard-deadline').checked = !!ea.hard_deadline;
+    document.getElementById('assignment-hide-before-start').checked = !!ea.hide_before_start;
     document.getElementById('assignment-allow-separate').checked = !!ea.allow_separate_submission;
+    if (ea.course_id) document.getElementById('assignment-course').value = String(ea.course_id);
 
     if (ea.assignment_type) applyPreset(ea.assignment_type);
     if (ea.tasks && ea.tasks.length > 0) {
@@ -932,7 +943,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const parsed = JSON.parse(savedRecipients);
         if (parsed.students) parsed.students.forEach(id => selectedStudentIds.add(id));
-        if (parsed.groups) parsed.groups.forEach(name => selectedGroupNames.add(name));
+        if (parsed.groups) parsed.groups.forEach(id => selectedGroupIds.add(Number(id)));
       } catch (e) {}
     }
   }

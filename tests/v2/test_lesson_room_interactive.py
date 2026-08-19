@@ -73,6 +73,7 @@ def test_student_room_hides_private_teacher_state_and_preserves_shared_board(app
     })
     assert stroke.status_code == 200
     assert stroke.get_json()['board']['strokes'][-1]['author'] == 'student'
+    assert stroke.get_json()['board']['strokes'][-1]['coordinate_space'] == 'relative'
     assert client.post(f'/lesson/{lesson_id}/studio/board', json={'action': 'clear'}).status_code == 403
 
     signal = client.post(f'/lesson/{lesson_id}/studio/signal', json={'signal': 'need_hint'})
@@ -99,7 +100,10 @@ def test_tutor_room_can_manage_materials_and_task_comments(app, client, role_use
 
     uploaded = client.post(
         f'/lesson/{lesson_id}/studio/board/image',
-        data={'file': (io.BytesIO(b'\x89PNG\r\n\x1a\n' + b'fixture'), 'board.png')},
+        data={'file': (io.BytesIO(
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89'
+            b'\x00\x00\x00\x0dIDATx\x9cc\xf8\xcf\xc0\xf0\x1f\x00\x05\x00\x01\xff\x89\x99=\x1d\x00\x00\x00\x00IEND\xaeB`\x82'
+        ), 'board.png')},
         content_type='multipart/form-data',
     )
     assert uploaded.status_code == 200, uploaded.get_json()

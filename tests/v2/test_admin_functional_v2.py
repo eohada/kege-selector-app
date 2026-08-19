@@ -1,6 +1,10 @@
+import json
+from datetime import datetime, timezone
+from io import BytesIO
+
 from app import db
 from app.auth.rbac_utils import has_permission
-from app.models import Course, Enrollment, FamilyTie, MaintenanceMode, PromoCode, PromoCodeUsage, RolePermission, TaskReview, Tasks, Tester as QaEntity, Topic, User, UserRole
+from app.models import Course, Enrollment, FamilyTie, Lesson, MaintenanceMode, PromoCode, PromoCodeUsage, RolePermission, Student, TaskReview, Tasks, Tester as QaEntity, Topic, User, UserRole
 from core.db_models import BugReport as QaBugReport, TestCase as QaTestCase
 
 def login_as(client, user_id: int, role: str):
@@ -37,6 +41,88 @@ def test_permissions_matrix_reads_and_persists_real_role_permissions(app, client
         assert record.is_enabled is True
 
 
+def test_permissions_matrix_rejects_invalid_toggle_payload(app, client):
+    admin_id = _admin(app)
+    login_as(client, admin_id, 'admin')
+
+    response = client.post('/admin/permissions/toggle', json={
+        'permission_key': 'unknown.permission', 'role': 'admin', 'enabled': 'true',
+    })
+    assert response.status_code == 400
+    assert response.get_json()['success'] is False
+
+
+def test_data_export_import_preserves_student_lesson_relation(app, client):
+    admin_id = _admin(app)
+    login_as(client, admin_id, 'admin')
+
+    payload = {
+        'export_schema_version': 2,
+        'students': [{
+            'student_source_id': 901,
+            'student_key': 'student:901',
+            'name': 'Imported relation student',
+            'platform_id': 'imported-relation-student',
+            'school_class': 11,
+        }],
+        'lessons': [{
+            'student_source_id': 901,
+            'student_key': 'student:901',
+            'student_id': 901,
+            'lesson_type': 'regular',
+            'lesson_date': '2026-08-17T12:00:00',
+            'duration': 60,
+            'status': 'planned',
+            'topic': 'Связанный импорт',
+        }],
+    }
+    imported = client.post(
+        '/import-data',
+        data={'file': (BytesIO(json.dumps(payload).encode('utf-8')), 'export.json')},
+        content_type='multipart/form-data',
+    )
+    assert imported.status_code == 302
+
+    with app.app_context():
+        student = Student.query.filter_by(platform_id='imported-relation-student').one()
+        lesson = Lesson.query.filter_by(topic='Связанный импорт').one()
+        assert lesson.student_id == student.student_id
+
+
+def test_data_export_keeps_archived_student_for_historical_lessons(app, client):
+    admin_id = _admin(app)
+    with app.app_context():
+        student = Student(
+            name='Archived export student',
+            platform_id='archived-export-student',
+            is_active=False,
+        )
+        db.session.add(student)
+        db.session.flush()
+        db.session.add(Lesson(
+            student_id=student.student_id,
+            lesson_type='regular',
+            topic='Исторический урок архивного ученика',
+            lesson_date=datetime(2026, 8, 17, 12, 0, tzinfo=timezone.utc),
+        ))
+        db.session.commit()
+
+    login_as(client, admin_id, 'admin')
+    response = client.get('/export-data')
+    assert response.status_code == 200
+    exported = json.loads(response.get_data(as_text=True))
+    archived_student = next(
+        item for item in exported['students']
+        if item['platform_id'] == 'archived-export-student'
+    )
+    historical_lesson = next(
+        item for item in exported['lessons']
+        if item['topic'] == 'Исторический урок архивного ученика'
+    )
+    assert archived_student['is_active'] is False
+    assert historical_lesson['student_key'] == archived_student['student_key']
+
+
 def test_explicit_permission_denial_overrides_role_default(app):
     with app.app_context():
         user = User(username='tutor_permission_v2', email='tutor_permission_v2@example.test', role='tutor', is_active=True)
@@ -71,7 +157,7 @@ def test_diagnostics_and_export_use_real_platform_data(app, client):
     exported = client.get('/admin/export_db_json')
     assert exported.status_code == 200
     payload = exported.get_json()
-    assert payload['export_schema_version'] == 1
+    assert payload['export_schema_version'] == 2
     assert any(course['slug'] == 'export-v2-course' for course in payload['courses'])
     assert {'users', 'lessons', 'tasks', 'system_settings'} <= payload.keys()
 

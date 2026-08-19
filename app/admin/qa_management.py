@@ -1,6 +1,5 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
+from flask import Blueprint, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import func
 from core.db_models import db, QATestCase, QAReport, QAReportHistory, User
 from app.auth.rbac_utils import require_role
 from app.qa.routes import QA_AREAS
@@ -22,75 +21,8 @@ QA_CYCLES = [
 @login_required
 @qa_admin_required
 def dashboard():
-    """Главный дашборд QA: сводка по багам и тестам."""
-    total_tests = QATestCase.query.count()
-    all_reports_count = QAReport.query.count()
-    active_reports = QAReport.query.filter(QAReport.status.in_(['pending', 'in_progress'])).count()
-    retest_reports = QAReport.query.filter(QAReport.status == 'retest').count()
-
-    # Фильтры
-    status_filter = request.args.get('status')
-    area_filter = request.args.get('area')
-    reporter_id_filter = request.args.get('reporter_id')
-    cycle_filter = request.args.get('cycle_id')
-
-    query = QAReport.query
-
-    if status_filter:
-        query = query.filter(QAReport.status == status_filter)
-    if area_filter:
-        query = query.filter(QAReport.area == area_filter)
-    if reporter_id_filter and reporter_id_filter.isdigit():
-        query = query.filter(QAReport.reporter_id == int(reporter_id_filter))
-    if cycle_filter and cycle_filter.isdigit():
-        query = query.filter(QAReport.cycle_id == int(cycle_filter))
-
-    reports = query.order_by(QAReport.created_at.desc()).all()
-
-    # Для фильтра тестеров
-    testers = User.query.filter(User.role.in_(['tester', 'chief_tester'])).all()
-
-    # Топ багхантеров (лидерборд): GROUP BY reporter_id COUNT за всё время
-    leaderboard_rows = (
-        db.session.query(
-            QAReport.reporter_id,
-            func.count(QAReport.id).label('total'),
-            func.sum(
-                db.cast(QAReport.verdict == 'critical', db.Integer)
-            ).label('critical_count'),
-        )
-        .filter(QAReport.reporter_id.isnot(None))
-        .group_by(QAReport.reporter_id)
-        .order_by(func.count(QAReport.id).desc())
-        .limit(5)
-        .all()
-    )
-
-    # Подгружаем пользователей для лидерборда
-    leaderboard_user_ids = [r.reporter_id for r in leaderboard_rows]
-    leaderboard_users = {u.id: u for u in User.query.filter(User.id.in_(leaderboard_user_ids)).all()}
-    leaderboard = []
-    for row in leaderboard_rows:
-        u = leaderboard_users.get(row.reporter_id)
-        if u:
-            leaderboard.append({
-                'user': u,
-                'total': row.total,
-                'critical_count': row.critical_count or 0,
-            })
-
-    return render_template(
-        'admin/qa/dashboard.html',
-        total_tests=total_tests,
-        active_reports=active_reports,
-        all_reports_count=all_reports_count,
-        retest_reports=retest_reports,
-        reports=reports,
-        all_areas=QA_AREAS,
-        testers=testers,
-        qa_cycles=QA_CYCLES,
-        leaderboard=leaderboard,
-    )
+    """Совместимый URL: единый QA-центр рендерится только V2-маршрутом."""
+    return redirect(url_for('admin.admin_testers_page'), code=302)
 
 
 @qa_bp.route('/tests', methods=['GET', 'POST'])
@@ -98,6 +30,8 @@ def dashboard():
 @qa_admin_required
 def manage_tests():
     """Управление тест-кейсами (создание, редактирование)."""
+    if request.method == 'GET':
+        return redirect(url_for('admin.admin_testers_page'), code=302)
     if request.method == 'POST':
         action = request.form.get('action')
         title = request.form.get('title')
@@ -136,20 +70,16 @@ def manage_tests():
         db.session.commit()
         return redirect(url_for('qa_admin.manage_tests'))
 
-    tests = QATestCase.query.order_by(QATestCase.area, QATestCase.id).all()
-    return render_template('admin/qa/test_cases.html', tests=tests, all_areas=QA_AREAS)
+    return redirect(url_for('admin.admin_testers_page'), code=302)
 
 
 @qa_bp.route('/reports/<int:report_id>')
 @login_required
 @qa_admin_required
 def view_report(report_id):
-    """Просмотр конкретного бага."""
-    report = QAReport.query.get_or_404(report_id)
-    history = QAReportHistory.query.filter_by(
-        report_id=report.id
-    ).order_by(QAReportHistory.created_at.asc()).all()
-    return render_template('admin/qa/report_detail.html', report=report, history=history)
+    """Совместимый URL: отчёты открываются внутри V2 QA-центра."""
+    QAReport.query.get_or_404(report_id)
+    return redirect(url_for('admin.admin_testers_page', report_id=report_id), code=302)
 
 
 @qa_bp.route('/reports/<int:report_id>/status', methods=['POST'])

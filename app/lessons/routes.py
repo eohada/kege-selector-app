@@ -20,8 +20,8 @@ from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
-from app.lessons.utils import get_sorted_assignments, get_assignment_blocks, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, TheoryBlock, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, TheoryBlock, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
@@ -482,6 +482,8 @@ def auto_complete_overdue_lessons():
 @lessons_bp.route('/lesson/<int:lesson_id>/homework-tasks')
 @login_required
 def lesson_homework_view(lesson_id):
+    if current_user.is_student():
+        return redirect(url_for('assignments.submissions_list'))
     """Домашние задания выдаются через раздел «Задания». Редирект на создание работы по уроку."""
     return redirect(url_for(
         'assignments.assignment_create',
@@ -737,8 +739,11 @@ def _normalize_lesson_board_stroke(raw_stroke: object) -> dict | None:
     if tool not in {'pen', 'eraser', 'line', 'rectangle', 'ellipse', 'text', 'image'}:
         return None
     raw_points = raw_stroke.get('points')
-    minimum_points = 1 if tool in {'text', 'image'} else 2
-    if not isinstance(raw_points, list) or not minimum_points <= len(raw_points) <= 350:
+    # A click with an eraser is a valid action: it removes a small area just
+    # like a short drag. Requiring a second move event made browsers that
+    # coalesce pointer events reject the stroke on pointerup.
+    minimum_points = 1 if tool in {'text', 'image', 'eraser'} else 2
+    if not isinstance(raw_points, list) or not minimum_points <= len(raw_points) <= 1200:
         return None
     points = []
     for raw_point in raw_points:
@@ -758,7 +763,18 @@ def _normalize_lesson_board_stroke(raw_stroke: object) -> dict | None:
         width = int(raw_stroke.get('width', 4))
     except (TypeError, ValueError):
         width = 4
-    stroke = {'tool': tool, 'points': points, 'color': color, 'width': max(1, min(width, 48))}
+    coordinate_space = str(raw_stroke.get('coordinate_space') or '').strip().lower()
+    if coordinate_space not in {'canvas', 'relative'}:
+        # Earlier board records used 0..1 coordinates. Preserve them as relative
+        # rather than guessing from the first point in the browser.
+        coordinate_space = 'relative' if all(abs(point['x']) <= 1 and abs(point['y']) <= 1 for point in points) else 'canvas'
+    stroke = {
+        'tool': tool,
+        'points': points,
+        'color': color,
+        'width': max(1, min(width, 48)),
+        'coordinate_space': coordinate_space,
+    }
     if tool == 'text':
         text_value = str(raw_stroke.get('text') or '').strip()
         if not text_value or len(text_value) > 500:
@@ -804,12 +820,19 @@ def lesson_studio_board_update(lesson_id: int):
     elif action == 'undo':
         if len(strokes) > 0:
             strokes.pop()
-    elif action == 'append':
-        stroke = _normalize_lesson_board_stroke(payload.get('stroke'))
-        if not stroke:
+    elif action in {'append', 'append_batch'}:
+        raw_strokes = [payload.get('stroke')] if action == 'append' else payload.get('strokes')
+        if not isinstance(raw_strokes, list) or not raw_strokes:
             return jsonify({'success': False, 'error': 'Некорректный штрих доски'}), 400
-        stroke['author'] = 'teacher' if _lesson_studio_is_teacher() else 'student'
-        strokes = [*strokes[-399:], stroke]
+        normalized_strokes = []
+        author = 'teacher' if _lesson_studio_is_teacher() else 'student'
+        for raw_stroke in raw_strokes:
+            stroke = _normalize_lesson_board_stroke(raw_stroke)
+            if not stroke:
+                return jsonify({'success': False, 'error': 'Некорректный штрих доски'}), 400
+            stroke['author'] = author
+            normalized_strokes.append(stroke)
+        strokes = [*strokes, *normalized_strokes]
     else:
         return jsonify({'success': False, 'error': 'Неизвестное действие доски'}), 400
     try:
@@ -830,6 +853,13 @@ def lesson_studio_board_image(lesson_id: int):
     file = request.files.get('file')
     if not file or not file.filename:
         return jsonify({'success': False, 'error': 'Выберите изображение'}), 400
+    try:
+        from PIL import Image
+        with Image.open(file.stream) as image:
+            image.verify()
+        file.stream.seek(0)
+    except Exception:
+        return jsonify({'success': False, 'error': 'Файл не является корректным изображением'}), 400
     try:
         filename, file_path, _size = save_uploaded_file(
             file=file,
@@ -990,7 +1020,6 @@ def lesson_studio_student_notes_save(lesson_id: int):
     return jsonify({'success': True, 'notes': notes})
 
 
-@lessons_bp.route('/sandbox/lesson_room/<int:lesson_id>')
 @lessons_bp.route('/lesson/<int:lesson_id>/room')
 @login_required
 def lesson_interactive_room(lesson_id: int):
@@ -1087,136 +1116,18 @@ def lesson_interactive_room(lesson_id: int):
     )
 
 
+@lessons_bp.route('/sandbox/lesson_room/<int:lesson_id>')
+@login_required
+def legacy_lesson_room_redirect(lesson_id: int):
+    """Keep historical bookmarks without ever rendering the retired sandbox URL."""
+    return redirect(url_for('lessons.lesson_interactive_room', lesson_id=lesson_id), code=302)
+
+
 @lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks')
 @login_required
 def lesson_classwork_view(lesson_id):
-    """Просмотр заданий классной работы"""
-    lesson = Lesson.query.options(
-        db.joinedload(Lesson.student),
-        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task),
-        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.attempts),
-    ).get_or_404(lesson_id)
-    student = lesson.student
-    stud = Student.query.filter_by(user_id=current_user.id).first() if (current_user and current_user.is_authenticated) else None
-    student_user_id = getattr(student, 'user_id', None)
-    student_platform_id = getattr(student, 'student_id', None)
-    can_access = can_user_access_student(
-        current_user,
-        student_user_id=student_user_id,
-        student_platform_id=student_platform_id,
-    )
-    if not can_access and current_user.is_student():
-        try:
-            if student_user_id and int(current_user.id) == int(student_user_id):
-                can_access = True
-            elif stud and student_platform_id and int(stud.student_id) == int(student_platform_id):
-                can_access = True
-        except Exception:
-            can_access = False
-    if not can_access:
-        from flask import abort
-        abort(403)
-
-    classwork_tasks = get_sorted_assignments(lesson, 'classwork')
-
-    if current_user.is_student():
-        try:
-            from core.db_models import Assignment, Submission, AssignmentTask
-            from datetime import timedelta, datetime
-            assign = Assignment.query.filter_by(lesson_id=lesson_id, is_active=True).first()
-            if not assign:
-                assign = Assignment(
-                    title=f"Классная работа: {lesson.topic or 'Урок ' + str(lesson_id)}",
-                    assignment_type='classwork',
-                    deadline=(lesson.lesson_date + timedelta(days=7)) if lesson.lesson_date else (datetime.utcnow() + timedelta(days=7)),
-                    created_by_id=getattr(student, 'tutor_id', None) or getattr(lesson, 'created_by_id', None) or current_user.id,
-                    lesson_id=lesson_id,
-                    is_active=True
-                )
-                db.session.add(assign)
-                db.session.flush()
-                for idx, lt in enumerate(classwork_tasks or []):
-                    if lt.task_id:
-                        at = AssignmentTask(
-                            assignment_id=assign.assignment_id,
-                            task_id=lt.task_id,
-                            order_index=idx + 1,
-                            max_score=getattr(lt, 'max_score', 1) or 1
-                        )
-                        db.session.add(at)
-                db.session.commit()
-
-            sub = Submission.query.filter_by(assignment_id=assign.assignment_id, student_id=student.student_id).first()
-            if not sub:
-                sub = Submission(
-                    assignment_id=assign.assignment_id,
-                    student_id=student.student_id,
-                    status='ASSIGNED'
-                )
-                db.session.add(sub)
-                db.session.commit()
-
-            return redirect(url_for('assignments.submission_view', submission_id=sub.submission_id))
-        except Exception as e:
-            logger.warning(f"Failed to auto-redirect student to submission for lesson {lesson_id}: {e}")
-    content_blocks = []
-    try:
-        cb = lesson.content_blocks
-        if isinstance(cb, str):
-            cb = json.loads(cb)
-        if isinstance(cb, list):
-            content_blocks = cb
-    except Exception:
-        content_blocks = []
-    classwork_tasks = get_sorted_assignments(lesson, 'classwork')  # comment
-    library_materials = []
-    try:
-        links = LessonMaterialLink.query.filter_by(lesson_id=lesson.lesson_id).options(
-            db.joinedload(LessonMaterialLink.asset)
-        ).order_by(LessonMaterialLink.order_index.asc(), LessonMaterialLink.link_id.asc()).all()
-        for link in links:
-            if not link.asset or not link.asset.is_active:
-                continue
-            a = link.asset
-            library_materials.append({
-                'link_id': link.link_id,
-                'asset_id': a.asset_id,
-                'name': a.title,
-                'url': a.file_url,
-                'type': (a.file_name.split('.')[-1].lower() if a.file_name and '.' in a.file_name else 'file'),
-                'source': 'library'
-            })
-    except Exception as e:
-        logger.warning(f"Failed to load library materials for lesson {lesson_id}: {e}")
-    is_student_view = current_user.is_student()  # comment
-    is_parent_view = current_user.is_parent()  # comment
-    is_read_only = False  # comment
-    if is_parent_view:  # comment
-        is_read_only = True  # comment
-    elif is_student_view:  # comment
-        is_read_only = not any(_is_task_editable_for_student(lesson, classwork_tasks, t) for t in (classwork_tasks or []))
-    viewer_timezone = 'Europe/Moscow'  # comment
-    try:  # comment
-        if current_user and getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
-            viewer_timezone = current_user.profile.timezone  # comment
-    except Exception:  # comment
-        viewer_timezone = 'Europe/Moscow'  # comment
-    homework_task_blocks = get_assignment_blocks(lesson, 'classwork')
-    return render_template('lesson_homework.html',
-                           lesson=lesson,
-                           student=student,
-                           homework_tasks=classwork_tasks,
-                           homework_task_blocks=homework_task_blocks,
-                           assignment_type='classwork',  # comment
-                           is_student_view=is_student_view,  # comment
-                           is_parent_view=is_parent_view,  # comment
-                           is_read_only=is_read_only,  # comment
-                           attempts_default=_get_lesson_attempts_default(lesson, 'classwork'),
-                           allow_task_submit=_is_task_submit_enabled(lesson, 'classwork'),
-                           viewer_timezone=viewer_timezone,  # comment
-                           review_summary=(getattr(lesson, 'review_summaries', None) or {}).get('classwork', {}),  # comment
-                           library_materials=library_materials,  # comment
-                           content_blocks=content_blocks)  # comment
+    """Совместимый адрес: классная работа живёт только в V2-комнате урока."""
+    return redirect(url_for('lessons.lesson_interactive_room', lesson_id=lesson_id, pane='work'))
 
 @lessons_bp.route('/lesson/<int:lesson_id>/exam-tasks')
 @login_required
@@ -1381,6 +1292,8 @@ def review_queue():
     student_query = (request.args.get('student') or '').strip()
     lesson_id = request.args.get('lesson_id', type=int)
     assignment_id = request.args.get('assignment_id', type=int)
+    course_id = request.args.get('course_id', type=int)
+    manual_only = (request.args.get('manual_only') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
     try:
         lesson_id = int(lesson_id) if lesson_id else None
@@ -1397,6 +1310,12 @@ def review_queue():
 
     if source not in {'all', 'lessons', 'assignments'}:
         source = 'all'
+
+    if manual_only:
+        # Compatibility with the retired tutor queue: it contained only work
+        # explicitly sent to manual checking, never lesson-task attempts.
+        source = 'assignments'
+        status = 'submitted'
 
     allowed_types = {'homework', 'classwork', 'exam'}
     if assignment_type and assignment_type not in allowed_types:
@@ -1433,6 +1352,8 @@ def review_queue():
         qs0 = Submission.query.join(Student, Student.student_id == Submission.student_id).join(Assignment, Assignment.assignment_id == Submission.assignment_id)
         if assignment_id:
             qs0 = qs0.filter(Assignment.assignment_id == int(assignment_id))
+        if course_id:
+            qs0 = qs0.filter(Assignment.exam_course_id == int(course_id))
         if student_query:
             qs0 = qs0.filter(Student.name.ilike(f'%{student_query}%'))
         if not scope.get('can_see_all'):
@@ -1444,10 +1365,13 @@ def review_queue():
                     qs0 = qs0.filter(Submission.student_id.in_(accessible_student_ids))
         rows2 = qs0.with_entities(Submission.status, db.func.count(Submission.submission_id)).group_by(Submission.status).all()
         raw = { (s or '').upper(): int(c or 0) for s, c in rows2 }
-        status_counts_assignments['submitted'] = raw.get('SUBMITTED', 0) + raw.get('NEEDS_MANUAL_REVIEW', 0)
-        status_counts_assignments['returned'] = raw.get('RETURNED', 0)
-        status_counts_assignments['graded'] = raw.get('GRADED', 0)
-        status_counts_assignments['pending'] = raw.get('ASSIGNED', 0) + raw.get('IN_PROGRESS', 0)
+        if manual_only:
+            status_counts_assignments['submitted'] = raw.get('NEEDS_MANUAL_REVIEW', 0)
+        else:
+            status_counts_assignments['submitted'] = raw.get('SUBMITTED', 0) + raw.get('NEEDS_MANUAL_REVIEW', 0)
+            status_counts_assignments['returned'] = raw.get('RETURNED', 0)
+            status_counts_assignments['graded'] = raw.get('GRADED', 0)
+            status_counts_assignments['pending'] = raw.get('ASSIGNED', 0) + raw.get('IN_PROGRESS', 0)
     except Exception:
         pass
 
@@ -1500,10 +1424,12 @@ def review_queue():
                 'graded': ['GRADED'],
                 'pending': ['ASSIGNED', 'IN_PROGRESS'],
             }
-            statuses = status_map.get(status, ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'])
+            statuses = ['NEEDS_MANUAL_REVIEW'] if manual_only else status_map.get(status, ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'])
             qs_tab = qs_tab.filter(Submission.status.in_(statuses))
             if assignment_id:
                 qs_tab = qs_tab.filter(Assignment.assignment_id == int(assignment_id))
+            if course_id:
+                qs_tab = qs_tab.filter(Assignment.exam_course_id == int(course_id))
             if student_query:
                 qs_tab = qs_tab.filter(or_(
                     Student.name.ilike(f'%{student_query}%'),
@@ -1590,7 +1516,7 @@ def review_queue():
             'graded': ['GRADED'],
             'pending': ['ASSIGNED', 'IN_PROGRESS'],
         }
-        statuses = status_map.get(status, ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'])
+        statuses = ['NEEDS_MANUAL_REVIEW'] if manual_only else status_map.get(status, ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'])
 
         qs = Submission.query.options(
             db.joinedload(Submission.assignment),
@@ -1600,6 +1526,8 @@ def review_queue():
         qs = qs.filter(Submission.status.in_(statuses))
         if assignment_id:
             qs = qs.filter(Assignment.assignment_id == int(assignment_id))
+        if course_id:
+            qs = qs.filter(Assignment.exam_course_id == int(course_id))
         if assignment_type:
             qs = qs.filter(Assignment.assignment_type == assignment_type)
         if student_query:
@@ -1664,6 +1592,8 @@ def review_queue():
         tab_counts=tab_counts,
         lesson_id=lesson_id,
         assignment_id=assignment_id,
+        course_id=course_id,
+        manual_only=manual_only,
     )
 
 
@@ -1671,49 +1601,15 @@ def review_queue():
 @login_required
 @check_access('assignment.grade')
 def tutor_manual_reviews():
-    """
-    Панель ручной проверки: все сдачи со статусом NEEDS_MANUAL_REVIEW.
-    Фильтр по курсу (course_id) — опционально.
-    """
+    """Старый URL ручной проверки: сохранить фильтр, но открыть V2-журнал."""
     course_id = request.args.get('course_id', type=int)
-    scope = get_user_scope(current_user)
-    accessible_student_ids = None
-    if not scope.get('can_see_all'):
-        accessible_student_ids = _resolve_accessible_student_ids(scope) or []
-
-    q = (
-        Submission.query
-        .options(
-            db.joinedload(Submission.assignment).joinedload(Assignment.exam_course),
-            db.joinedload(Submission.student),
-        )
-        .join(Student, Student.student_id == Submission.student_id)
-        .join(Assignment, Assignment.assignment_id == Submission.assignment_id)
-        .filter(Submission.status == 'NEEDS_MANUAL_REVIEW')
-    )
-
-    if course_id:
-        q = q.filter(Assignment.exam_course_id == course_id)
-
-    if not scope.get('can_see_all'):
-        q = q.filter(Assignment.created_by_id == current_user.id)
-        if accessible_student_ids is not None:
-            if not accessible_student_ids:
-                q = q.filter(False)
-            else:
-                q = q.filter(Submission.student_id.in_(accessible_student_ids))
-
-    submissions = q.order_by(Submission.submitted_at.desc().nullslast(), Submission.assigned_at.desc()).limit(500).all()
-
-    courses = Course.query.filter(Course.is_active == True).order_by(Course.title).all()
-
-    return render_template(
-        'tutor_reviews.html',
-        submissions=submissions,
-        courses=courses,
+    return redirect(url_for(
+        'lessons.review_queue',
+        source='assignments',
+        status='submitted',
+        manual_only='1',
         course_id=course_id,
-        active_page='tutor_reviews',
-    )
+    ), code=302)
 
 
 @lessons_bp.route('/reviews/lesson-task/<int:lesson_task_id>')
@@ -3449,6 +3345,9 @@ def lesson_upload_material(lesson_id):
             'name': filename,
             'url': url_for('uploads.lesson_file', lesson_id=lesson_id, stored_name=stored_name),
             'type': filename.split('.')[-1].lower() if '.' in filename else 'file',
+            'size': int(_size),
+            'uploaded_at': moscow_now().isoformat(),
+            'uploaded_by': current_user.username or 'Преподаватель',
             'storage_path': os.path.join('lessons', str(lesson_id), stored_name),
         }
         materials.append(new_material)
@@ -3482,7 +3381,11 @@ def lesson_delete_material(lesson_id):
             except:
                 materials = []
                 
-    new_materials = [m for m in materials if m.get('url') != url_to_delete]
+    material_to_delete = next(
+        (material for material in materials if material.get('url') == url_to_delete),
+        None,
+    )
+    new_materials = [material for material in materials if material.get('url') != url_to_delete]
     
     if len(new_materials) != len(materials):
         lesson.materials = new_materials
@@ -3491,10 +3394,24 @@ def lesson_delete_material(lesson_id):
         db.session.commit()
         
         try:
-             filename = (url_to_delete.split('?')[0] or '').split('/')[-1]
-             file_path = os.path.join(_lesson_material_root(lesson_id), secure_filename(filename))
+             # New Room V3 records store the generated filename explicitly.
+             # Fall back to the URL only for materials created before that contract.
+             storage_path = str((material_to_delete or {}).get('storage_path') or '')
+             filename = os.path.basename(storage_path) or (url_to_delete.split('?')[0] or '').split('/')[-1]
+             safe_filename = secure_filename(filename)
+             if not safe_filename:
+                 raise ValueError('Некорректный путь материала')
+
+             file_path = os.path.join(_lesson_material_root(lesson_id), safe_filename)
              if not os.path.exists(file_path):
-                 file_path = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id), secure_filename(filename))
+                 file_path = os.path.join(
+                     current_app.root_path,
+                     'static',
+                     'uploads',
+                     'lessons',
+                     str(lesson_id),
+                     safe_filename,
+                 )
              if os.path.exists(file_path):
                  os.remove(file_path)
         except Exception as e:

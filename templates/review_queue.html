@@ -35,6 +35,7 @@
             </p>
         </div>
         
+        {% if not manual_only %}
         <!-- 3-Column Stats Grid -->
         <div class="lg:w-2/3 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <!-- Submitted (Ждут оценки) -->
@@ -106,39 +107,48 @@
                 </div>
             </a>
         </div>
+        {% else %}
+        <div class="lg:w-2/3 rounded-2xl border-2 border-amber-200 bg-amber-50 p-6 shadow-[0_4px_0_#FDE68A]">
+            <p class="text-[10px] font-black uppercase tracking-[.16em] text-amber-700">Ручная проверка</p>
+            <div class="mt-2 flex flex-wrap items-center gap-3"><strong class="text-3xl font-black text-slate-800">{{ status_counts.submitted if status_counts else 0 }}</strong><span class="text-sm font-bold text-slate-600">сдач ждут ручной оценки</span></div>
+            <p class="mt-2 text-xs font-bold text-slate-500">Показаны только работы со статусом «Нужна ручная проверка».</p>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Filters Form -->
     <form method="GET" class="bg-surface dark:bg-dark-card rounded-xl p-4 border border-slate-200 dark:border-zinc-800 border-b-4 border-b-slate-300 dark:border-b-zinc-700 shadow-tactile flex flex-col md:flex-row gap-4 items-center justify-between">
         {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
         {% if assignment_id %}<input type="hidden" name="assignment_id" value="{{ assignment_id }}">{% endif %}
+        {% if course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
+        {% if manual_only %}<input type="hidden" name="manual_only" value="1">{% endif %}
         <input type="hidden" name="status" value="{{ status }}">
 
         <!-- Filter Tab Buttons -->
         <div class="bg-slate-100/80 dark:bg-zinc-800/40 p-1.5 rounded-xl flex w-full md:w-auto overflow-x-auto hide-scroll border border-slate-200/50 dark:border-zinc-700/50 items-center">
             {% set tc = tab_counts | default({'all': 0, 'homework': 0, 'classwork': 0, 'exam': 0}) %}
-            <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
+            <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id, course_id=course_id, manual_only=manual_only) }}"
                class="px-4 py-2 flex items-center gap-1.5 {% if not assignment_type %}bg-surface dark:bg-zinc-800 text-primary shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
                 Все
                 <span class="px-1.5 py-0.5 rounded-md text-tiny font-extrabold {% if not assignment_type %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
                     {{ tc.all }}
                 </span>
             </a>
-            <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='homework', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
+            <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='homework', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id, course_id=course_id, manual_only=manual_only) }}"
                class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'homework' %}bg-surface dark:bg-zinc-800 text-primary shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
                 Домашки
                 <span class="px-1.5 py-0.5 rounded-md text-tiny font-extrabold {% if assignment_type == 'homework' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
                     {{ tc.homework }}
                 </span>
             </a>
-            <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='classwork', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
+            <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='classwork', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id, course_id=course_id, manual_only=manual_only) }}"
                class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'classwork' %}bg-surface dark:bg-zinc-800 text-primary shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
                 Классная работа
                 <span class="px-1.5 py-0.5 rounded-md text-tiny font-extrabold {% if assignment_type == 'classwork' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">
                     {{ tc.classwork }}
                 </span>
             </a>
-            <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='exam', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id) }}"
+            <a href="{{ url_for('lessons.review_queue', status=status, source=source, assignment_type='exam', student=student_query, lesson_id=lesson_id, assignment_id=assignment_id, course_id=course_id, manual_only=manual_only) }}"
                class="px-4 py-2 flex items-center gap-1.5 {% if assignment_type == 'exam' %}bg-surface dark:bg-zinc-800 text-primary shadow-0-8px-24px--4px-rgba15-23-42-005 dark:shadow-none border border-slate-200/50 dark:border-zinc-700/50{% else %}text-muted hover:text-primary{% endif %} rounded-lg font-bold text-sm transition-all whitespace-nowrap">
                 Тесты
                 <span class="px-1.5 py-0.5 rounded-md text-tiny font-extrabold {% if assignment_type == 'exam' %}bg-boo-primary/15 dark:bg-purple-500/30 text-boo-primary dark:text-purple-400{% else %}bg-slate-200/50 dark:bg-zinc-700/50 text-muted{% endif %}">

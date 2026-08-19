@@ -64,7 +64,7 @@
       
       <!-- Навигация и название сессии -->
       <div class="flex items-center gap-4">
-        <a id="back-to-task-btn" href="/sandbox/task_detail" class="px-4 py-2.5 bg-[#F4F7FA] hover:bg-slate-200 text-slate-800 font-extrabold text-xs rounded-xl border-2 border-slate-200 border-b-[3px] transition-all shadow-2xs flex items-center gap-2 shrink-0 cursor-pointer no-underline active:translate-y-[1px]">
+        <a id="back-to-task-btn" href="/submissions" class="px-4 py-2.5 bg-[#F4F7FA] hover:bg-slate-200 text-slate-800 font-extrabold text-xs rounded-xl border-2 border-slate-200 border-b-[3px] transition-all shadow-2xs flex items-center gap-2 shrink-0 cursor-pointer no-underline active:translate-y-[1px]">
           <i class="ph-bold ph-arrow-left"></i> Назад к задаче
         </a>
 
@@ -308,7 +308,7 @@ function renderWorkspace() {
   if (!WORKSPACE_DATA || !WORKSPACE_DATA.assignment_id) return;
 
   const backBtn = document.getElementById('back-to-task-btn');
-  if (backBtn) backBtn.href = `/sandbox/task_detail/${WORKSPACE_DATA.assignment_id}`;
+  if (backBtn) backBtn.href = WORKSPACE_DATA.return_url || '/submissions';
 
   const titleLbl = document.getElementById('assignment-title-label');
   if (titleLbl) titleLbl.textContent = WORKSPACE_DATA.assignment_title || 'Домашнее задание';

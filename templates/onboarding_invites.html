@@ -1,0 +1,32 @@
+{% extends 'sandbox/layout_teacher.html' %}
+{% block title %}Приглашения | BooStudy{% endblock %}
+{% block content %}
+<main class="ml-24 px-5 py-8 lg:px-10">
+  <div class="mx-auto max-w-[1400px] space-y-6">
+    <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
+      <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Онбординг</p>
+      <div class="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div><h1 class="font-display text-3xl font-black text-slate-900">Приглашения на платформу</h1><p class="mt-2 text-slate-500">Создайте персональную ссылку. Она действует 7 дней и может быть использована один раз.</p></div>
+        <a href="{{ url_for('workspace.profile') }}" class="btn-3d rounded-xl border-b-4 border-slate-300 bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700">В профиль</a>
+      </div>
+    </section>
+    <div class="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+      <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9]">
+        <h2 class="font-display text-xl font-black text-slate-900">Новое приглашение</h2>
+        <form class="mt-5 space-y-4" method="post" action="{{ url_for('onboarding.invites_create') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="block text-sm font-bold text-slate-700">Логин или e-mail<input required name="login" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 outline-none focus:border-indigo-400" placeholder="student@example.ru"></label>
+          <label class="block text-sm font-bold text-slate-700">Роль<select name="role" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3"><option value="student">Ученик</option><option value="tutor">Преподаватель</option><option value="parent">Родитель</option><option value="admin">Администратор</option></select></label>
+          <label class="block text-sm font-bold text-slate-700">Привязать к карточке ученика (необязательно)<input name="student_id" inputmode="numeric" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3" placeholder="ID ученика"></label>
+          <label class="block text-sm font-bold text-slate-700">Комментарий<input name="note" maxlength="500" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3" placeholder="Например: группа ЕГЭ, сентябрь"></label>
+          <button class="btn-3d w-full rounded-xl border-b-4 border-indigo-800 bg-indigo-600 px-4 py-3 font-black text-white">Создать ссылку</button>
+        </form>
+      </section>
+      <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9]">
+        <div class="flex items-center justify-between"><h2 class="font-display text-xl font-black text-slate-900">История приглашений</h2><span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-black text-indigo-600">{{ invites|length }}</span></div>
+        {% if invites %}<div class="mt-5 overflow-x-auto"><table class="w-full min-w-[720px] text-left text-sm"><thead class="text-xs uppercase tracking-wider text-slate-400"><tr><th class="pb-3">Кому</th><th class="pb-3">Роль</th><th class="pb-3">Создано</th><th class="pb-3">Статус</th><th class="pb-3">Комментарий</th></tr></thead><tbody>{% for invite in invites %}<tr class="border-t border-slate-100"><td class="py-4 font-bold text-slate-800">{{ invite.email }}</td><td class="py-4 text-slate-600">{{ invite.role }}</td><td class="py-4 text-slate-600">{{ invite.created_at.strftime('%d.%m.%Y %H:%M') if invite.created_at else '—' }}</td><td class="py-4">{% if invite.used_at %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Использовано</span>{% else %}<span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Ожидает</span>{% endif %}</td><td class="py-4 text-slate-500">{{ invite.note or '—' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="mt-5 rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center text-slate-500">Приглашений ещё нет.</div>{% endif %}
+      </section>
+    </div>
+  </div>
+</main>
+{% endblock %}

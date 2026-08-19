@@ -9,9 +9,6 @@
         <span>BooStudy</span>
     </a>
     <div class="mobile-topbar-actions">
-        <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="mobile-topbar-btn" aria-label="Уведомления">
-            <i class="ph-bold ph-bell-ringing"></i>
-        </a>
         <a {{ spa_main_nav_attrs(url_for('main.workspace_profile'), 'profile') }} class="mobile-topbar-btn" aria-label="Профиль">
             <i class="ph-bold ph-user-circle"></i>
         </a>
@@ -206,10 +203,6 @@
                             <span>Что нового</span>
                         </button>
                         {% endif %}
-                        <a {{ spa_main_nav_attrs(url_for('notifications.notifications_list'), 'notifications') }} class="profile-item">
-                            <i class="ph-bold ph-bell text-base text-muted"></i>
-                            <span>Уведомления</span>
-                        </a>
                         {% if current_user.is_admin() or current_user.is_creator() %}
                         <a {{ spa_main_nav_attrs(url_for('admin.admin_panel'), 'admin_panel') }} class="profile-item">
                             <i class="ph-bold ph-gear text-base text-muted"></i>

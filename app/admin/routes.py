@@ -2,6 +2,7 @@
 Маршруты администрирования
 """
 import logging
+import re
 import sys
 import csv
 from io import StringIO
@@ -21,7 +22,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from werkzeug.security import generate_password_hash  # Хешируем пароль как в scripts/create_tester_user.py. # comment
 
 from app.admin import admin_bp
-from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask, Topic
+from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, TaskReview, Lesson, LessonTask, Topic, Course
 from app.models import UserProfile, FamilyTie, Enrollment, Student, UserRole
 from app.telegram.role_management import (
     actor_can_assign_role,
@@ -30,7 +31,7 @@ from app.telegram.role_management import (
     set_single_role,
 )
 from app.models import Submission, Answer, UserSubscription, UserNotification, BotAdmin, SubmissionComment, Assignment
-from core.db_models import Tester, task_topics, TestCase, TestStep, BugReport, PromoCode, TariffPlan, SystemSetting
+from core.db_models import Tester, task_topics, TestCase, TestStep, BugReport, PromoCode, PromoCodeUsage, TariffPlan, SystemSetting
 from core.audit_logger import audit_logger
 from app import csrf
 from app.auth.rbac_utils import require_admin, has_permission, check_access
@@ -1750,7 +1751,7 @@ def admin_tester_entities_create():
                 ip_address=request.form.get('ip_address', '').strip() or None,
                 user_agent=request.form.get('user_agent', '').strip() or None,
                 session_id=request.form.get('session_id', '').strip() or None,
-                is_active=request.form.get('is_active') == 'on'
+                is_active=request.form.get('is_active', 'on').strip().lower() in {'on', 'true', '1', 'yes'}
             )
             
             db.session.add(tester)
@@ -1925,7 +1926,9 @@ def admin_topic_create():
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
     try:
-        data = request.get_json() or {}
+        # V2-form may submit a regular HTML form while API clients use JSON.
+        # `silent=True` keeps the form flow from becoming a 415/500 response.
+        data = request.get_json(silent=True) or request.form
         name = (data.get('name') or '').strip()
         description = (data.get('description') or '').strip() or None
         
@@ -2769,9 +2772,11 @@ def admin_user_edit(user_id):
     if request.method == 'POST':
         logger.info("admin_user_edit POST user_id=%s form_keys=%s", user_id, list(request.form.keys()))
         try:
-            username = request.form.get('username', '').strip()
+            wants_json = request.accept_mimetypes.best == 'application/json'
+            username = request.form.get('username', '').strip() or user.username
+            full_name = request.form.get('full_name', '').strip()
             role = request.form.get('role', '').strip()
-            is_active = request.form.get('is_active') == 'on'
+            is_active = request.form.get('is_active', 'on').strip().lower() in {'on', 'true', '1', 'yes'}
             
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
@@ -2809,6 +2814,14 @@ def admin_user_edit(user_id):
             new_password = request.form.get('password', '').strip()
             if new_password:
                 user.password_hash = generate_password_hash(new_password)
+
+            email = request.form.get('email', '').strip() or None
+            existing_email_user = User.query.filter_by(email=email).first() if email else None
+            if existing_email_user and existing_email_user.id != user.id:
+                if wants_json:
+                    return jsonify({'success': False, 'error': 'Пользователь с таким email уже существует'}), 400
+                flash('Пользователь с таким email уже существует.', 'error')
+                return redirect(url_for('admin.admin_user_edit', user_id=user.id))
             
             old_role = user.role
             if role != old_role:
@@ -2818,6 +2831,7 @@ def admin_user_edit(user_id):
                     return redirect(url_for('admin.admin_user_edit', user_id=user.id))
 
             user.username = username
+            user.email = email
             if role != old_role:
                 set_single_role(user, role)
             elif not UserRole.query.filter_by(user_id=user.id).first():
@@ -2841,9 +2855,10 @@ def admin_user_edit(user_id):
                 
                 logger.info(f"Updated custom permissions for user {user.id}: {user.custom_permissions}")
 
+            name_parts = full_name.split(maxsplit=1)
             profile_data = {
-                'first_name': request.form.get('first_name', '').strip() or None,
-                'last_name': request.form.get('last_name', '').strip() or None,
+                'first_name': request.form.get('first_name', '').strip() or (name_parts[0] if name_parts else None),
+                'last_name': request.form.get('last_name', '').strip() or (name_parts[1] if len(name_parts) > 1 else None),
                 'middle_name': request.form.get('middle_name', '').strip() or None,
                 'phone': request.form.get('phone', '').strip() or None,
                 'telegram_id': request.form.get('telegram_id', '').strip() or None,
@@ -2995,6 +3010,8 @@ def admin_user_edit(user_id):
             
             flash(f'Пользователь "{username}" обновлен.', 'success')
             logger.info(f"Redirecting to admin_user_edit for user {user.id}")
+            if wants_json:
+                return jsonify({'success': True, 'user_id': user.id, 'message': 'Пользователь обновлён'})
             r = redirect(url_for('admin.admin_user_edit', user_id=user.id))
             r.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
             return r
@@ -3317,11 +3334,17 @@ def admin_users_create():
     full_name = request.form.get('full_name')
     username = request.form.get('username')
     email = request.form.get('email')
-    role = request.form.get('role', 'student')
+    role = request.form.get('role', 'student').strip().lower()
     password = request.form.get('password')
 
     if not username or not email or not password:
         return jsonify({'success': False, 'message': 'Заполните обязательные поля.'}), 400
+
+    allowed_roles = {'creator', 'chief_admin', 'admin', 'chief_tester', 'content_maker', 'tutor', 'designer', 'tester', 'student', 'parent'}
+    if role not in allowed_roles:
+        return jsonify({'success': False, 'message': 'Недопустимая роль.'}), 400
+    if role == 'creator' and not current_user.is_creator():
+        return jsonify({'success': False, 'message': 'Только создатель может назначать роль создателя.'}), 403
 
     if User.query.filter((User.username == username) | (User.email == email)).first():
         return jsonify({'success': False, 'message': 'Пользователь с таким логином или email уже существует.'}), 400
@@ -3330,20 +3353,28 @@ def admin_users_create():
         username=username.strip(),
         email=email.strip(),
         full_name=full_name.strip() if full_name else username.strip(),
-        role=role.lower(),
+        role=role,
         password_hash=generate_password_hash(password.strip())
     )
     db.session.add(new_user)
-    db.session.commit()
+    db.session.flush()
 
-    if role.lower() == 'student':
+    name_parts = (full_name or username).strip().split(maxsplit=1)
+    db.session.add(UserProfile(
+        user_id=new_user.id,
+        first_name=name_parts[0] if name_parts else None,
+        last_name=name_parts[1] if len(name_parts) > 1 else None,
+    ))
+    db.session.add(UserRole(user_id=new_user.id, role=role))
+
+    if role == 'student':
         st = Student(user_id=new_user.id, name=new_user.full_name)
         db.session.add(st)
-        db.session.commit()
+    db.session.commit()
 
     audit_logger.log_event('create_user', user_id=current_user.id, entity=f"User #{new_user.id}", details={'created_user': new_user.username, 'role': new_user.role})
 
-    return jsonify({'success': True, 'message': f'Пользователь {new_user.username} успешно создан!'})
+    return jsonify({'success': True, 'user_id': new_user.id, 'message': f'Пользователь {new_user.username} успешно создан!'}), 201
 
 
 @admin_bp.route('/admin/permissions', methods=['GET'])
@@ -3400,10 +3431,28 @@ def admin_permissions_toggle():
     data = request.get_json(silent=True) or {}
     perm_key = data.get('permission_key')
     role = data.get('role')
-    enabled = data.get('enabled', False)
+    enabled = data.get('enabled')
+
+    from app.auth.permissions import ALL_PERMISSIONS
+    from app.models import RolePermission
+
+    editable_roles = {
+        'chief_admin', 'chief_tester', 'content_maker', 'tutor',
+        'designer', 'tester', 'student', 'parent',
+    }
+    if perm_key not in ALL_PERMISSIONS or role not in editable_roles or not isinstance(enabled, bool):
+        return jsonify({'success': False, 'message': 'Некорректные параметры права.'}), 400
+
+    permission = RolePermission.query.filter_by(role=role, permission_name=perm_key).first()
+    if permission is None:
+        permission = RolePermission(role=role, permission_name=perm_key, is_enabled=enabled)
+        db.session.add(permission)
+    else:
+        permission.is_enabled = enabled
+    db.session.commit()
     
     audit_logger.log_event('toggle_permission', user_id=current_user.id, details={'perm_key': perm_key, 'role': role, 'enabled': enabled})
-    return jsonify({'success': True, 'message': 'Права обновлены.'})
+    return jsonify({'success': True, 'enabled': permission.is_enabled, 'message': 'Права обновлены.'})
 
 
 @admin_bp.route('/admin/audit', methods=['GET'])
@@ -3647,9 +3696,17 @@ def admin_task_formator_status():
     status = data.get('status')
     
     task = Tasks.query.get(task_id) if task_id else None
-    if task and hasattr(task, 'review_status'):
-        task.review_status = status
-        db.session.commit()
+    if not task:
+        return jsonify({'success': False, 'message': 'Задача не найдена'}), 404
+
+    review = TaskReview.query.filter_by(task_id=task.task_id).first()
+    if review is None:
+        review = TaskReview(task_id=task.task_id, reviewer_user_id=current_user.id)
+        db.session.add(review)
+
+    review.status = status or 'new'
+    review.reviewer_user_id = current_user.id
+    db.session.commit()
     
     audit_logger.log(action='task_formator_status', entity='Tasks', entity_id=task_id, status='success', metadata={'status': status})
     return jsonify({'success': True, 'message': f'Статус задачи #{task_id if task_id else "песочницы"} сохранён: [{status.upper()}]'})
@@ -3698,8 +3755,31 @@ def admin_export_db_json():
     import json
     from core.db_models import SystemSetting
     data = {
+        'export_schema_version': 2,
         'exported_at': datetime.utcnow().isoformat(),
         'users': [{'id': u.id, 'username': u.username, 'role': u.role, 'email': u.email} for u in User.query.all()],
+        'courses': [
+            {
+                'id': c.id,
+                'title': c.title,
+                'slug': c.slug,
+                'status': 'active' if c.is_active else 'archived',
+            }
+            for c in Course.query.all()
+        ],
+        'lessons': [{
+            'id': lesson.lesson_id,
+            'student_id': lesson.student_id,
+            'topic': lesson.topic,
+            'lesson_type': lesson.lesson_type,
+            'lesson_date': lesson.lesson_date.isoformat() if lesson.lesson_date else None,
+            'status': lesson.status,
+        } for lesson in Lesson.query.all()],
+        'tasks': [{
+            'id': task.task_id,
+            'task_number': task.task_number,
+            'content_html': task.content_html,
+        } for task in Tasks.query.all()],
         'system_settings': [{'key': s.setting_key, 'value': s.setting_value} for s in SystemSetting.query.all()]
     }
     res = make_response(json.dumps(data, indent=2, ensure_ascii=False))
@@ -3708,13 +3788,16 @@ def admin_export_db_json():
     return res
 
 
-@admin_bp.route('/admin/promocodes', methods=['GET'])
+@admin_bp.route('/admin/promocodes', methods=['GET', 'POST'])
 @login_required
 def admin_promocodes_list():
     """Список промокодов (только для администраторов)"""
     if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен.', 'danger')
         return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        return admin_promocodes_create()
 
     promos = PromoCode.query.order_by(PromoCode.created_at.desc()).all()
     plans = TariffPlan.query.filter_by(is_active=True).all()
@@ -3729,8 +3812,8 @@ def admin_promocodes_create():
         return jsonify({'error': 'Forbidden'}), 403
 
     code = (request.form.get('code') or '').strip().upper()
-    if not code:
-        flash('Код промокода не может быть пустым.', 'danger')
+    if not code or not re.fullmatch(r'[A-Z0-9_-]{3,50}', code):
+        flash('Код промокода должен содержать 3–50 латинских букв, цифр, «-» или «_».', 'danger')
         return redirect(url_for('admin.admin_promocodes_list'))
 
     existing = PromoCode.query.filter_by(code=code).first()
@@ -3780,4 +3863,53 @@ def admin_promocodes_toggle(promo_id: int):
     promo.is_active = not promo.is_active
     db.session.commit()
     return jsonify({'success': True, 'is_active': promo.is_active})
+
+
+@admin_bp.route('/admin/promocodes/<int:promo_id>', methods=['POST'])
+@login_required
+def admin_promocodes_update(promo_id: int):
+    """Обновление параметров промокода из V2-списка."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    promo = PromoCode.query.get_or_404(promo_id)
+    code = (request.form.get('code') or promo.code).strip().upper()
+    duplicate = PromoCode.query.filter(PromoCode.code == code, PromoCode.id != promo.id).first()
+    if not code or duplicate:
+        flash('Код промокода пустой или уже занят.', 'danger')
+        return redirect(url_for('admin.admin_promocodes_list'))
+
+    try:
+        promo.code = code
+        for field in ('discount_percent', 'discount_rub', 'bonus_lessons', 'bonus_days', 'usage_limit'):
+            raw_value = request.form.get(field)
+            if raw_value is not None:
+                setattr(promo, field, int(raw_value) if raw_value.strip() else None)
+        if 'is_active' in request.form:
+            promo.is_active = request.form.get('is_active', '').strip().lower() in {'on', 'true', '1', 'yes'}
+        db.session.commit()
+        flash(f'Промокод {promo.code} обновлён.', 'success')
+    except (TypeError, ValueError):
+        db.session.rollback()
+        flash('Числовые параметры промокода заполнены некорректно.', 'danger')
+    return redirect(url_for('admin.admin_promocodes_list'))
+
+
+@admin_bp.route('/admin/promocodes/<int:promo_id>/delete', methods=['POST'])
+@login_required
+def admin_promocodes_delete(promo_id: int):
+    """Удаляет неиспользованный код или деактивирует код с историей применений."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    promo = PromoCode.query.get_or_404(promo_id)
+    if PromoCodeUsage.query.filter_by(promocode_id=promo.id).first():
+        promo.is_active = False
+        db.session.commit()
+        flash('Использованный промокод деактивирован: история сохранена.', 'success')
+    else:
+        db.session.delete(promo)
+        db.session.commit()
+        flash('Промокод удалён.', 'success')
+    return redirect(url_for('admin.admin_promocodes_list'))
 

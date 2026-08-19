@@ -9,7 +9,7 @@
         <!-- HEADER & BACK BUTTON -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-slate-100 mb-6">
             <div>
-                <a href="{{ url_for('main.teacher_templates_library') }}" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 mb-2 transition-colors no-underline">
+                <a href="{{ url_for('templates.templates_list') }}" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 mb-2 transition-colors no-underline">
                     <i class="ph-bold ph-arrow-left"></i>
                     <span>К библиотеке шаблонов</span>
                 </a>
@@ -123,7 +123,7 @@
             {% else %}
                 <!-- ACTION BUTTONS -->
                 <div class="pt-6 border-t border-slate-100 flex items-center justify-end gap-3 flex-wrap">
-                    <a href="{{ url_for('main.teacher_templates_library') }}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-3 rounded-xl transition-all cursor-pointer no-underline">
+                    <a href="{{ url_for('templates.templates_list') }}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-3 rounded-xl transition-all cursor-pointer no-underline">
                         Отмена
                     </a>
                     <button type="submit" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 font-extrabold text-xs px-5 py-3 rounded-xl transition-all cursor-pointer flex items-center gap-2 shadow-2xs" data-after="generator">
@@ -183,7 +183,7 @@
                     return;
                 }
                 setTimeout(() => {
-                    window.location.href = '{{ url_for('main.teacher_templates_library') }}';
+                    window.location.href = '{{ url_for('templates.templates_list') }}';
                 }, 400);
             } else {
                 alert(data.error || 'Ошибка при сохранении');
@@ -242,7 +242,7 @@
             const data = await res.json();
             if (data && data.success) {
                 setTimeout(() => {
-                    window.location.href = '{{ url_for('main.teacher_templates_library') }}';
+                    window.location.href = '{{ url_for('templates.templates_list') }}';
                 }, 400);
             } else {
                 alert((data && data.error) ? data.error : 'Ошибка при сохранении');

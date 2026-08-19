@@ -108,7 +108,8 @@
                             {% if st and st.user and st.user.avatar_url %}
                             <img class="inline-block h-8 w-8 rounded-xl border-2 border-white object-cover shadow-sm" src="{{ st.user.avatar_url }}" alt="Ученик">
                             {% else %}
-                            <div class="inline-flex h-8 w-8 items-center justify-center rounded-xl border-2 border-white bg-indigo-100 text-indigo-700 font-black text-xs shadow-sm">
+                            <img class="inline-block h-8 w-8 rounded-xl border-2 border-white object-cover shadow-sm" src="{{ url_for('static', filename='images/default-avatar.svg') }}" alt="Avatar fallback">
+                            <div class="hidden">
                                 {{ st.user.username[0]|upper if (st and st.user and st.user.username) else '?' }}
                             </div>
                             {% endif %}
@@ -144,7 +145,7 @@
                         </button>
                     </form>
 
-                    <form method="POST" action="{{ url_for('groups.group_delete', group_id=g.group_id) }}" class="inline shrink-0" onsubmit="return confirm('Удалить группу {{ g.title|e }}?');">
+                    <form method="POST" action="{{ url_for('groups.group_delete', group_id=g.group_id) }}" class="inline shrink-0" data-confirm-message="Удалить группу «{{ g.title|e }}»?">
                         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                         <button type="submit" class="h-10 w-10 bg-rose-50 hover:bg-rose-100 text-rose-600 border-2 border-rose-200 rounded-xl font-black transition-all flex items-center justify-center cursor-pointer shrink-0" title="Удалить">
                             <i class="ph-bold ph-trash text-sm"></i>

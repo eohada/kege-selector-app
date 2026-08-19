@@ -31,11 +31,6 @@
                         <span>Профиль</span>
                     </a>
 
-                    <a href="{{ url_for('notifications.notifications_list') }}" class="profile-item">
-                        {{ ui_icon('profile.bell', 'sm', title='Уведомления') }}
-                        <span>Уведомления</span>
-                    </a>
-
                     {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
                     <a href="{{ config.ADMIN_URL }}" class="profile-item" target="_blank" rel="noopener">
                         {{ ui_icon('action.admin', 'sm', title='Админ панель') }}

@@ -43,7 +43,6 @@ def register_lesson_socket(socketio) -> None:
                     room=_room(lid),
                     namespace="/lesson",
                 )
-                break
 
     @socketio.on("join_lesson", namespace="/lesson")
     def _on_join_lesson(data):
@@ -78,7 +77,22 @@ def register_lesson_socket(socketio) -> None:
                 if lesson.student_id not in allowed:
                     return
         room = _room(lesson_id)
-        from flask_socketio import join_room
+        from flask_socketio import join_room, leave_room
+        # One browser connection represents one active lesson room. Leaving an old
+        # room prevents presence and transient events leaking after navigation.
+        for previous_lesson_id, users in list(_lesson_presence.items()):
+            if previous_lesson_id == lesson_id or current_user.id not in users:
+                continue
+            leave_room(_room(previous_lesson_id))
+            del users[current_user.id]
+            if not users:
+                del _lesson_presence[previous_lesson_id]
+            socketio.emit(
+                "lesson_presence",
+                {"lesson_id": previous_lesson_id, "presence": list(users.values())},
+                room=_room(previous_lesson_id),
+                namespace="/lesson",
+            )
         join_room(room)
         if lesson_id not in _lesson_presence:
             _lesson_presence[lesson_id] = {}

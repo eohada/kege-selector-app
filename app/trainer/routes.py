@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import logging
-import os
-from urllib.parse import urlencode
 from typing import Any
 
 import json as _json
 
-from flask import current_app, render_template, request, abort, jsonify, send_file, session, make_response
+from flask import current_app, render_template, request, abort, jsonify, send_file, session, make_response, redirect, url_for
 from flask_login import login_required, current_user
 
 from app.trainer import trainer_bp
@@ -183,33 +181,8 @@ def _audit_log_token_user(
 @trainer_bp.route('/trainer', strict_slashes=False)
 @login_required
 def trainer_embed():
-    if not has_permission(current_user, 'trainer.use'):
-        abort(403)
-
-    trainer_url = (os.environ.get('TRAINER_URL') or '').strip()
-    if not trainer_url:
-        return render_template('trainer_embed.html', trainer_url=None, iframe_url=None, config_error='TRAINER_URL не задан')
-
-    try:
-        token = issue_trainer_token(user_id=current_user.id, ttl_seconds=10 * 60)
-    except Exception as e:
-        return render_template('trainer_embed.html', trainer_url=trainer_url, iframe_url=None, config_error=str(e))
-
-    passthrough = {}
-    for k in ('lesson_id', 'task_id', 'task_type', 'template_id', 'assignment_type', 'course_id'):
-        v = (request.args.get(k) or '').strip()
-        if v:
-            passthrough[k] = v
-
-    qs = urlencode({'token': token, **passthrough})
-    iframe_url = f"{trainer_url.rstrip('/')}/?{qs}"
-
-    try:
-        audit_logger.log(action='trainer_open', entity='Trainer', entity_id=current_user.id, status='success')
-    except Exception:
-        pass
-
-    return render_template('trainer_embed.html', trainer_url=trainer_url, iframe_url=iframe_url, config_error=None)
+    """Совместимый адрес: встроенный legacy-тренажёр заменён V2-поверхностью."""
+    return redirect(url_for('trainer.trainer_v2'), code=302)
 
 
 @trainer_bp.route('/trainer/v2', strict_slashes=False)

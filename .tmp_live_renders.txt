@@ -1,0 +1,211 @@
+app\kege_generator\routes.py:295:    return render_template('kege_generator.html',
+app\auth\routes.py:134:                        return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form)
+app\auth\routes.py:200:            return render_template('remote_admin/login.html', form=form)
+app\auth\routes.py:202:        return render_template('auth/login.html', form=form)
+app\auth\routes.py:208:        return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form), 500
+app\auth\routes.py:236:    return render_template('demo_choose.html')
+app\auth\routes.py:850:        return render_template(
+app\auth\routes.py:859:        return render_template(
+app\auth\routes.py:867:    return render_template(
+app\auth\routes.py:1193:            return render_template('auth/register.html', error='Все обязательные поля должны быть заполнены.',
+app\auth\routes.py:1198:            return render_template('auth/register.html', error='Пароли не совпадают.',
+app\auth\routes.py:1212:            return render_template('auth/register.html', error='Пользователь с таким логином уже существует.',
+app\auth\routes.py:1217:            return render_template('auth/register.html', error='Пользователь с таким email уже существует.',
+app\auth\routes.py:1225:            return render_template('auth/register.html', error=str(error),
+app\auth\routes.py:1293:            return render_template('auth/register.html', error=f'Ошибка при регистрации: {str(e)}',
+app\auth\routes.py:1297:    return render_template('auth/register.html', tutor=tutor, invite_student=invite_student, ref=ref_param)
+app\auth\routes.py:1309:        return render_template('auth/register_student_invite.html', error='Приглашение не найдено. Пожалуйста, попросите преподавателя отправить вам новую ссылку.', invite=None), 404
+app\auth\routes.py:1313:            return render_template('auth/register_student_invite.html', error='Эта ссылка-приглашение уже была использована.', invite=None), 400
+app\auth\routes.py:1315:            return render_template('auth/register_student_invite.html', error='Эта ссылка-приглашение была отозвана преподавателем.', invite=None), 400
+app\auth\routes.py:1316:        return render_template('auth/register_student_invite.html', error='Срок действия ссылки-приглашения истёк. Запросите новую ссылку у преподавателя.', invite=None), 410
+app\auth\routes.py:1328:            return render_template('auth/register_student_invite.html', error='Все обязательные поля должны быть заполнены.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+app\auth\routes.py:1331:            return render_template('auth/register_student_invite.html', error='Пароли не совпадают.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+app\auth\routes.py:1334:            return render_template('auth/register_student_invite.html', error='Пользователь с таким логином уже существует.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+app\auth\routes.py:1337:            return render_template('auth/register_student_invite.html', error='Пользователь с таким email уже существует.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+app\auth\routes.py:1385:            return render_template('auth/register_student_invite.html', error=f'Ошибка при регистрации: {str(e)}', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 500
+app\auth\routes.py:1387:    return render_template('auth/register_student_invite.html', invite=invite, teacher=teacher)
+app\auth\routes.py:1399:        return render_template('auth/register_parent_invite.html', error='Приглашение не найдено. Пожалуйста, попросите преподавателя отправить вам новую ссылку.', invite=None), 404
+app\auth\routes.py:1403:            return render_template('auth/register_parent_invite.html', error='Эта ссылка-приглашение уже была использована.', invite=None), 400
+app\auth\routes.py:1405:            return render_template('auth/register_parent_invite.html', error='Эта ссылка-приглашение была отозвана.', invite=None), 400
+app\auth\routes.py:1406:        return render_template('auth/register_parent_invite.html', error='Срок действия ссылки-приглашения истёк. Запросите новую ссылку.', invite=None), 410
+app\auth\routes.py:1419:            return render_template('auth/register_parent_invite.html', error='Все обязательные поля должны быть заполнены.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+app\auth\routes.py:1422:            return render_template('auth/register_parent_invite.html', error='Пароли не совпадают.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+app\auth\routes.py:1425:            return render_template('auth/register_parent_invite.html', error='Пользователь с таким логином уже существует.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+app\auth\routes.py:1428:            return render_template('auth/register_parent_invite.html', error='Пользователь с таким email уже существует.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+app\auth\routes.py:1468:            return render_template('auth/register_parent_invite.html', error=f'Ошибка при регистрации: {str(e)}', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 500
+app\auth\routes.py:1470:    return render_template('auth/register_parent_invite.html', invite=invite, student=target_student, student_user=target_student_user)
+app\auth\routes.py:1587:    return render_template('auth/forgot_password.html')
+app\auth\routes.py:1620:    return render_template('auth/reset_password_confirm.html')
+app\__init__.py:840:        return render_template(
+app\courses\routes.py:79:    return render_template('courses_list.html', student=student, courses=courses)
+app\courses\routes.py:105:    return render_template('course_form.html', form=form, student=student, title='Создать курс', is_new=True)
+app\courses\routes.py:127:    return render_template('course_form.html', form=form, student=student, course=course, title='Редактировать курс', is_new=False)
+app\courses\routes.py:152:    return render_template(
+app\courses\routes.py:187:    return render_template('course_module_form.html', form=form, student=student, course=course, title='Добавить модуль')
+app\assignments\routes.py:2218:    return render_template(
+app\assignments\routes.py:2279:        return render_template(
+app\assignments\routes.py:2343:        return render_template(
+app\assignments\routes.py:2447:    return render_template(
+app\assignments\routes.py:2761:    return render_template(
+app\assignments\routes.py:2807:    return render_template(
+app\assignments\routes.py:3304:        return render_template(
+app\assignments\routes.py:3393:    return render_template('submissions_list.html', submissions=submissions, student=student, lesson_workspaces=lesson_workspaces, submission_display_status=submission_display_status)
+app\assignments\routes.py:3577:        return render_template('sandbox/task_detail.html',
+app\assignments\routes.py:4709:    return render_template('submission_grade.html',
+app\chief_tester\routes.py:526:    return render_template(
+app\chief_tester\routes.py:569:            return render_template("chief_tester/task_form.html", testers=testers, task=None, form=form)
+app\chief_tester\routes.py:588:    return render_template("chief_tester/task_form.html", testers=testers, task=None, form={})
+app\chief_tester\routes.py:629:            return render_template("chief_tester/task_form.html", testers=testers, task=task, form=form)
+app\chief_tester\routes.py:653:    return render_template("chief_tester/task_form.html", testers=testers, task=task, form=form)
+app\chief_tester\routes.py:674:    return render_template("chief_tester/testers.html", testers_list=testers_list)
+app\billing\routes.py:30:    return render_template('billing_plans_public.html')
+app\billing\routes.py:50:    return render_template('billing_plans.html', groups=groups, plans_by_group=plans_by_group, ungrouped_plans=ungrouped_plans)
+app\billing\routes.py:204:    return render_template('billing_subscriptions.html', subs=subs, groups=groups, plans=plans, plans_by_group=plans_by_group, ungrouped_plans=ungrouped_plans, users=users, q=q, preselect_plan_id=preselect_plan_id)
+app\library\routes.py:103:    return render_template('library_materials.html', assets=assets, q=q, tag=tag)
+app\library\routes.py:350:    return render_template('library_lesson_templates.html', templates=templates, q=q, lesson=lesson)
+app\groups\routes.py:125:    return render_template(
+app\groups\routes.py:181:    return render_template('group_form.html', is_new=True, group=None)
+app\groups\routes.py:212:    return render_template(
+app\groups\routes.py:353:    return render_template('group_form.html', is_new=False, group=group)
+app\groups\routes.py:528:    html = render_template('group_roster_print.html', group=group, members=members)
+app\designer\routes.py:251:    return render_template("designer_assets.html", assets=assets, slots=slot_cards)
+app\lessons\export.py:276:        return render_template('markdown_export.html', markdown_content=markdown_content, lesson=lesson, student=student)
+app\lessons\routes.py:226:    return render_template('lesson_form.html', form=form, student=student, title='Редактировать урок',
+app\lessons\routes.py:1098:    return render_template(
+app\lessons\routes.py:1583:    return render_template(
+app\lessons\routes.py:1653:    return render_template(
+app\lessons\routes.py:3219:    return render_template('lesson_manual_create.html', lesson=lesson, assignment_type=assignment_type, task_numbers=get_task_numbers(None))
+app\remote_admin\routes.py:32:    return render_template('remote_admin/dashboard.html',
+app\remote_admin\routes.py:164:    return render_template('remote_admin/users_list.html',
+app\remote_admin\routes.py:255:                return render_template('remote_admin/user_edit.html', user=None,
+app\remote_admin\routes.py:265:                return render_template('remote_admin/user_edit.html', user=None,
+app\remote_admin\routes.py:287:    return render_template('remote_admin/user_edit.html', user=None,
+app\remote_admin\routes.py:360:    r = make_response(render_template('remote_admin/user_edit.html', user=user_data,
+app\remote_admin\routes.py:419:    return render_template('remote_admin/testers.html',
+app\remote_admin\routes.py:513:    return render_template(
+app\remote_admin\routes.py:768:    return render_template('remote_admin/audit_logs.html',
+app\remote_admin\routes.py:839:    return render_template('remote_admin/maintenance.html',
+app\remote_admin\routes.py:955:        result = render_template('remote_admin/permissions.html',
+app\remote_admin\routes.py:1010:    return render_template(
+app\remote_admin\routes.py:1055:    return render_template(
+app\remote_admin\routes.py:1113:    resp = make_response(render_template(
+app\remote_admin\routes.py:1177:    return render_template('remote_admin/create_pack.html',
+app\schedule\routes.py:650:    return render_template(
+app\rubrics\routes.py:86:    return render_template('rubrics_list.html', templates=templates, q=q, assignment_type=assignment_type)
+app\rubrics\routes.py:94:        return render_template('rubric_form.html', rubric=None, items_json='[]', is_new=True)
+app\rubrics\routes.py:103:        return render_template('rubric_form.html', rubric=None, items_json=json.dumps(items, ensure_ascii=False), is_new=True), 400
+app\rubrics\routes.py:123:        return render_template('rubric_form.html', rubric=None, items_json=json.dumps(items, ensure_ascii=False), is_new=True), 500
+app\rubrics\routes.py:144:        return render_template('rubric_form.html', rubric=rubric, items_json=items_json, is_new=False)
+app\rubrics\routes.py:153:        return render_template('rubric_form.html', rubric=rubric, items_json=json.dumps(items, ensure_ascii=False), is_new=False), 400
+app\rubrics\routes.py:168:        return render_template('rubric_form.html', rubric=rubric, items_json=json.dumps(items, ensure_ascii=False), is_new=False), 500
+app\trainer\routes.py:203:        return render_template('sandbox/trainer.html', trainer_token=None, config_error=str(e), zen_mode=False, passthrough={}, task_numbers=get_task_numbers(None))
+app\trainer\routes.py:219:    return render_template(
+app\trainer\routes.py:752:        response = make_response(render_template(
+app\theory\routes.py:825:    return render_template('sandbox/theory.html', **_build_catalog_context(course_id))
+app\theory\routes.py:847:    return render_template('sandbox/theory.html', **context)
+app\theory\routes.py:943:    return render_template(
+app\theory\routes.py:1066:        return render_template(
+app\theory\routes.py:1364:    return render_template(
+app\theory\routes.py:1560:                return render_template(
+app\theory\routes.py:1572:            return render_template(
+app\theory\routes.py:1606:    return render_template(
+app\theory\routes.py:1656:                return render_template(
+app\theory\routes.py:1677:    return render_template(
+app\theory\routes.py:1984:    return render_template(
+app\theory\routes.py:2046:    return render_template(
+app\theory\routes.py:2066:    return render_template('sandbox/course_map.html', blocks=blocks, course_id=course_id)
+app\reminders\routes.py:83:        return render_template('reminders.html', 
+app\reminders\routes.py:92:        return render_template('reminders.html', 
+app\admin\task_formator.py:213:    return render_template(
+app\utils\hooks.py:525:                return render_template('sandbox/maintenance.html')
+app\routes\tma.py:48:    return render_template('tma/student_schedule.html')
+app\routes\tma.py:52:    return render_template('tma/qa_checklist.html')
+app\routes\tma.py:56:    return render_template('tma/parent_digest.html')
+app\admin\routes_permissions.py:78:    return render_template('sandbox/admin/permissions.html', 
+app\qa\routes.py:70:    return render_template(
+app\admin\routes.py:828:            return render_template('admin_audit.html',
+app\admin\routes.py:1028:        return render_template('admin_audit.html',
+app\admin\routes.py:1051:            return render_template('admin_audit.html',
+app\admin\routes.py:1115:        return render_template('admin_testers.html', users=users)
+app\admin\routes.py:1124:            return render_template('admin_testers.html', users=users)
+app\admin\routes.py:1182:    return render_template('admin_testers_edit.html', user=user)
+app\admin\routes.py:1437:    return render_template('maintenance.html', message=message)
+app\admin\routes.py:1676:    return render_template('admin/debug_export.html',
+app\admin\routes.py:1718:        return render_template('sandbox/admin/tester_entities.html', entities=testers)
+app\admin\routes.py:1739:                return render_template('admin/tester_entities_form.html', tester=None)
+app\admin\routes.py:1744:                return render_template('admin/tester_entities_form.html', tester=None)
+app\admin\routes.py:1773:            return render_template('admin/tester_entities_form.html', tester=None)
+app\admin\routes.py:1775:    return render_template('admin/tester_entities_form.html', tester=None)
+app\admin\routes.py:1793:                return render_template('admin/tester_entities_form.html', tester=tester)
+app\admin\routes.py:1798:                return render_template('admin/tester_entities_form.html', tester=tester)
+app\admin\routes.py:1823:            return render_template('admin/tester_entities_form.html', tester=tester)
+app\admin\routes.py:1825:    return render_template('admin/tester_entities_form.html', tester=tester)
+app\admin\routes.py:1917:    return render_template('sandbox/admin/topics.html', topics=topics)
+app\admin\routes.py:2208:        return render_template('sandbox/admin/users.html',
+app\admin\routes.py:2783:                return render_template('admin_user_edit.html',
+app\admin\routes.py:2800:                return render_template('admin_user_edit.html',
+app\admin\routes.py:3016:            return render_template('admin_user_edit.html',
+app\admin\routes.py:3028:        resp = make_response(render_template('admin_user_edit.html',
+app\admin\routes.py:3071:                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+app\admin\routes.py:3080:                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+app\admin\routes.py:3089:                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+app\admin\routes.py:3095:                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+app\admin\routes.py:3100:                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+app\admin\routes.py:3231:    return render_template('admin_user_edit.html', 
+app\admin\routes.py:3387:    return render_template('sandbox/admin/permissions.html',
+app\admin\routes.py:3477:    return render_template('sandbox/admin/audit.html', logs=logs_list, audit_stats=stats, current_source=source, user_id_filter=user_id_filter)
+app\admin\routes.py:3511:    return render_template('sandbox/admin/qa_dashboard.html', stats=stats, test_cases=test_cases, bug_reports=bug_reports, testers=testers)
+app\admin\routes.py:3618:    return render_template('sandbox/admin/tester_entities.html', entities=entities)
+app\admin\routes.py:3629:    return render_template('sandbox/admin/topics.html', topics=topics_list)
+app\admin\routes.py:3653:    return render_template('sandbox/admin/task_formator.html', tasks=tasks_list, stats=stats)
+app\admin\routes.py:3706:    return render_template('sandbox/admin/diagnostics.html', env_info=env_info, is_maint=is_maint)
+app\admin\routes.py:3739:    return render_template('sandbox/admin/promocodes.html', promos=promos, plans=plans)
+app\templates_manager\routes.py:155:    return render_template('templates_list.html',
+app\templates_manager\routes.py:244:    return render_template('template_form.html', template=None, is_new=True, preset_type=preset_type, preset_category=preset_category, mode=mode, task_numbers=get_task_numbers(None))
+app\templates_manager\routes.py:258:    return render_template('template_view.html',
+app\templates_manager\routes.py:322:    return render_template('template_form.html',
+app\parents\routes.py:41:            return render_template('parent_dashboard.html',
+app\parents\routes.py:214:        return render_template('parent_dashboard.html',
+app\parents\routes.py:235:        return render_template('parent_dashboard.html',
+app\onboarding\routes.py:41:    return render_template('onboarding_invites.html', invites=invites)
+app\onboarding\routes.py:113:        return render_template('invite_accept.html', invite=None), 404
+app\onboarding\routes.py:118:            return render_template('invite_accept.html', invite=None), 410
+app\onboarding\routes.py:127:        return render_template('invite_accept.html', invite=invite, token=token)
+app\onboarding\routes.py:135:        return render_template('invite_accept.html', invite=invite, token=token), 400
+app\onboarding\routes.py:138:        return render_template('invite_accept.html', invite=invite, token=token), 400
+app\onboarding\routes.py:192:        return render_template('invite_accept.html', invite=invite, token=token), 500
+app\admin\diagnostics.py:25:    return render_template('admin_diagnostics.html', 
+app\main\routes.py:202:    return render_template('legal_offer.html')
+app\main\routes.py:207:    return render_template('legal_privacy.html')
+app\main\routes.py:413:        return render_template('demo_choose.html')
+app\main\routes.py:414:    return render_template('landing.html')
+app\main\routes.py:464:    return render_template(
+app\main\routes.py:863:        return render_template(
+app\main\routes.py:874:    return render_template(
+app\main\routes.py:1134:    return render_template(
+app\main\routes.py:1264:        return render_template('import_data.html')
+app\main\routes.py:1408:    return render_template('faq.html', active_page='faq')
+app\main\routes.py:1661:    return render_template('student_mistakes.html', student=student, mistakes=mistakes)
+app\main\routes.py:1766:    return render_template(
+app\main\routes.py:2215:    return render_template(
+app\main\routes.py:2537:    return render_template(
+app\main\routes.py:2873:    return render_template('sandbox/profile.html', **context)
+app\main\routes.py:3386:    return render_template(
+app\main\routes.py:3495:    return render_template(
+app\main\routes.py:3511:    return render_template('sandbox/parents_faq.html')
+app\task_workspace\routes.py:51:    return render_template("task_workspace.html", workspace=ctx.as_payload())
+app\telegram\mini_app.py:258:    return render_template('telegram/mini_app.html')
+app\students\routes.py:649:    return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
+app\students\routes.py:881:    return render_template(
+app\students\routes.py:987:    return render_template('student_call_request.html', student=student, student_user=student_user_obj, recent_requests=recent, active_page='student_profile')
+app\students\routes.py:1071:    return render_template(
+app\students\routes.py:1120:    return render_template(
+app\students\routes.py:1383:    return render_template(
+app\students\routes.py:1676:    html = render_template('student_gradebook_print.html', student=student, entries=entries)
+app\students\routes.py:1787:    return render_template(
+app\students\routes.py:1949:    return render_template('student_statistics.html', 
+app\students\routes.py:2369:        return render_template('sandbox/analytics_canonical.html',
+app\students\routes.py:2405:                    return render_template('student_form.html', form=form, title='Редактировать ученика',
+app\students\routes.py:2455:    return render_template('student_form.html', form=form, title='Редактировать ученика',
+app\students\routes.py:2760:    return render_template('lesson_form.html', form=form, student=student, title='Добавить урок', is_new=True)
+app\task_generator\routes.py:672:    return render_template('sandbox/task_generator.html',

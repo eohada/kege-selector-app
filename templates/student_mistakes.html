@@ -3,63 +3,80 @@
 {% block title %}Работа над ошибками · BooStudy{% endblock %}
 
 {% block sandbox_content %}
-<section class="glass-panel mb-5 w-full">
-    <p class="hero-eyebrow">тренажер</p>
-    <h1 class="hero-title mb-1">Работа над ошибками</h1>
-    <div style="color: var(--text-muted);">Здесь собраны все задачи из домашних заданий, в которых вы допустили ошибки. Исправьте их!</div>
-</section>
-
-{% if mistakes %}
-<div class="grid gap-6" style="grid-template-columns: 1fr;">
-    {% for ans in mistakes %}
-    {% set task = ans.assignment_task.task %}
-    <div class="glass-panel p-6" id="mistake-card-{{ ans.answer_id }}">
-        <div class="flex justify-between items-start mb-3 flex-wrap gap-2">
-            <span class="px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full font-bold text-xs">
-                Задача №{{ task.task_number }} (Задание #{{ ans.submission.assignment_id }})
-            </span>
-            <span class="text-xs text-muted">Макс. балл: {{ ans.assignment_task.max_score or 1 }}</span>
-        </div>
-
-        <div class="task-content mb-3 prose dark:prose-invert max-w-none text-zinc-950 dark:text-zinc-50">
-            {{ task.content_html | safe }}
-        </div>
-
-        {% if task.attached_files %}
-        <div class="mb-3">
-            <p class="text-xs font-bold text-muted mb-2">Файлы к задаче:</p>
-            <div class="flex gap-2 flex-wrap">
-                {% for f in task.attached_files.split(',') %}
-                <a href="{{ url_for('static', filename='uploads/' ~ f.strip()) }}" class="neo-button outline sm" target="_blank">
-                    <i class="ph ph-file"></i> {{ f.strip() }}
-                </a>
-                {% endfor %}
+<main class="mx-auto w-full max-w-[1400px] px-4 py-6 pb-12 sm:px-6 lg:px-8">
+    <section class="mb-6 flex flex-col gap-5 rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div>
+            <div class="mb-3 inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-black uppercase tracking-widest text-amber-800">
+                <i class="ph-bold ph-arrow-counter-clockwise"></i> Повторение
             </div>
+            <h1 class="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Работа над ошибками</h1>
+            <p class="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500 sm:text-base">Вернись к задачам, где ответ был неверным, и закрепи тему новой попыткой.</p>
         </div>
-        {% endif %}
-
-        <div class="p-4 bg-surface-alt dark:bg-dark-inner/40 rounded-xl border border-stroke mb-3">
-            <p class="text-xs text-muted mb-1">Ваш прошлый ответ:</p>
-            <p class="font-mono text-sm text-red-500 font-semibold">{{ ans.value or 'Пусто' }}</p>
+        <div class="inline-flex items-center gap-2 self-start rounded-[1.25rem] border border-indigo-200 bg-indigo-100 px-4 py-3 text-sm font-black text-indigo-700 sm:self-auto">
+            <i class="ph-bold ph-list-checks text-lg"></i>
+            {{ mistakes|length if mistakes else 0 }} к повторению
         </div>
+    </section>
 
-        <form class="mistake-retry-form" data-answer-id="{{ ans.answer_id }}">
-            <div class="flex gap-3 flex-wrap">
-                <input class="neo-input" style="flex: 1; min-width: 200px;" name="new_answer" placeholder="Введите ваш новый ответ" required>
-                <button type="submit" class="neo-button accent">Проверить</button>
+    {% if mistakes %}
+    <section class="grid gap-5" aria-label="Задачи для повторения">
+        {% for ans in mistakes %}
+        {% set task = ans.assignment_task.task %}
+        <article class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-5 shadow-[0_4px_0_#DAE1E9] sm:p-7" id="mistake-card-{{ ans.answer_id }}">
+            <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                <div class="flex min-w-0 items-start gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-200 bg-rose-100 text-lg text-rose-700"><i class="ph-bold ph-warning-circle"></i></span>
+                    <div>
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-100 px-3 py-1 text-xs font-black uppercase tracking-widest text-rose-800">Задача №{{ task.task_number }}</span>
+                        <p class="mt-2 text-sm font-bold text-slate-500">Из работы #{{ ans.submission.assignment_id }}</p>
+                    </div>
+                </div>
+                <span class="inline-flex items-center gap-1.5 self-start rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-600">Макс. балл: {{ ans.assignment_task.max_score or 1 }}</span>
             </div>
-            <div class="result-message mt-3 text-sm font-semibold hidden"></div>
-        </form>
-    </div>
-    {% endfor %}
-</div>
-{% else %}
-<div class="glass-panel text-center py-16">
-    <div class="text-3xl mb-3">🎉</div>
-    <h2>Нет нерешенных ошибок!</h2>
-    <p class="text-muted mt-2">Вы великолепны, все задачи решены верно!</p>
-</div>
-{% endif %}
+
+            <div class="task-content prose mt-5 max-w-none text-slate-800 prose-headings:text-slate-900 prose-p:leading-7">
+                {{ task.content_html | safe }}
+            </div>
+
+            {% if task.attached_files %}
+            <div class="mt-5 rounded-[1.25rem] border-2 border-slate-200 bg-white p-4">
+                <p class="mb-3 text-xs font-black uppercase tracking-widest text-slate-400">Файлы к задаче</p>
+                <div class="flex flex-wrap gap-2">
+                    {% for f in task.attached_files.split(',') %}
+                    <a href="{{ url_for('static', filename='uploads/' ~ f.strip()) }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 border-b-[3px] bg-[#F4F7FA] px-3 py-2 text-xs font-black text-slate-700 transition-all hover:bg-white active:translate-y-[2px] active:border-b-[1px]">
+                        <i class="ph-bold ph-file"></i>{{ f.strip() }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mt-5 rounded-[1.25rem] border border-rose-200 bg-rose-50 p-4">
+                <p class="text-xs font-black uppercase tracking-widest text-rose-500">Прошлый ответ</p>
+                <p class="mt-2 break-words font-mono text-sm font-bold text-rose-700">{{ ans.value or 'Пусто' }}</p>
+            </div>
+
+            <form class="mistake-retry-form mt-5" data-answer-id="{{ ans.answer_id }}">
+                <label class="block text-sm font-black text-slate-700" for="mistake-answer-{{ ans.answer_id }}">Новая попытка</label>
+                <div class="mt-2 flex flex-col gap-3 sm:flex-row">
+                    <input id="mistake-answer-{{ ans.answer_id }}" class="min-w-0 flex-1 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-indigo-400" name="new_answer" placeholder="Введите новый ответ" required>
+                    <button type="submit" class="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-5 py-3 text-sm font-black text-white shadow-[0_4px_10px_rgba(79,70,229,0.2)] transition-all hover:bg-indigo-500 active:translate-y-[3px] active:border-b-[1px] sm:self-auto">
+                        <i class="ph-bold ph-check-circle"></i> Проверить
+                    </button>
+                </div>
+                <p class="result-message mt-3 hidden text-sm font-bold" aria-live="polite"></p>
+            </form>
+        </article>
+        {% endfor %}
+    </section>
+    {% else %}
+    <section class="flex flex-col items-center rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] px-6 py-16 text-center shadow-[0_4px_0_#DAE1E9] sm:px-10">
+        <span class="flex h-16 w-16 items-center justify-center rounded-[1.35rem] border border-emerald-200 bg-emerald-100 text-3xl text-emerald-600"><i class="ph-bold ph-confetti"></i></span>
+        <h2 class="mt-5 text-2xl font-black text-slate-900">Ошибок для повторения нет</h2>
+        <p class="mt-2 max-w-md text-sm font-medium leading-6 text-slate-500">Отличная работа: новые неверные ответы появятся здесь, когда будет что разобрать.</p>
+    </section>
+    {% endif %}
+</main>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -71,9 +88,10 @@
             const newAnswer = this.querySelector('input[name="new_answer"]').value;
             const msgDiv = this.querySelector('.result-message');
             const submitBtn = this.querySelector('button[type="submit"]');
+            const originalButton = submitBtn.innerHTML;
 
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Проверка...';
+            submitBtn.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin"></i> Проверка…';
 
             try {
                 const response = await fetch(`/student/mistakes/${ansId}/retry`, {
@@ -86,31 +104,28 @@
                 });
 
                 const data = await response.json();
-                msgDiv.classList.remove('hidden', 'text-red-500', 'text-emerald-500');
-                
+                msgDiv.classList.remove('hidden', 'text-rose-600', 'text-emerald-600');
                 if (data.success) {
-                    msgDiv.classList.add('text-emerald-500');
+                    msgDiv.classList.add('text-emerald-600');
                     msgDiv.textContent = data.message;
                     setTimeout(() => {
-                        document.getElementById(`mistake-card-${ansId}`).remove();
+                        document.getElementById(`mistake-card-${ansId}`)?.remove();
                         if (document.querySelectorAll('[id^="mistake-card-"]').length === 0) {
                             location.reload();
                         }
-                    }, 1500);
-                } else {
-                    msgDiv.classList.add('text-red-500');
-                    msgDiv.textContent = data.message;
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Проверить';
+                    }, 1200);
+                    return;
                 }
+                msgDiv.classList.add('text-rose-600');
+                msgDiv.textContent = data.message || 'Не удалось проверить ответ.';
             } catch (err) {
-                console.error(err);
-                msgDiv.classList.remove('hidden');
-                msgDiv.classList.add('text-red-500');
+                msgDiv.classList.remove('hidden', 'text-emerald-600');
+                msgDiv.classList.add('text-rose-600');
                 msgDiv.textContent = 'Ошибка связи с сервером.';
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Проверить';
             }
+
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalButton;
         });
     });
 </script>

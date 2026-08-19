@@ -93,9 +93,9 @@
                               {% endif %}
 
                               {% if card.can_retry %}
-                              <button onclick="startNewAttempt('{{ card.assignment_id }}')" class="btn-3d bg-amber-50 hover:bg-amber-100 text-amber-900 font-black text-xs px-5 py-3.5 rounded-xl border border-amber-300 border-b-[4px] shadow-sm active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 cursor-pointer">
+                              <a href="/submissions/{{ card.submission_id }}" class="btn-3d bg-amber-50 hover:bg-amber-100 text-amber-900 font-black text-xs px-5 py-3.5 rounded-xl border border-amber-300 border-b-[4px] shadow-sm active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center justify-center gap-2 cursor-pointer no-underline">
                                   <i class="ph-bold ph-arrows-counter-clockwise text-base"></i> Пройти повторно (Попытка {{ card.attempt_count + 1 }} из {{ card.max_attempts }})
-                              </button>
+                              </a>
                               {% endif %}
                           </div>
                       </div>
@@ -217,30 +217,6 @@ function switchTaskTab(targetTab) {
     if (emptyRight) {
         if (visibleRight === 0) emptyRight.classList.remove('hidden');
         else emptyRight.classList.add('hidden');
-    }
-}
-
-async function startNewAttempt(assignmentId) {
-    try {
-        const res = await fetch(`/sandbox/api/assignment/${assignmentId}/start_new_attempt`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': (typeof getCsrfToken === 'function' ? getCsrfToken() : '')
-            }
-        });
-        const data = await res.json();
-        if (data.success) {
-            window.location.href = `/sandbox/task_detail/${assignmentId}`;
-        } else {
-            if (typeof show3DToast === 'function') {
-                show3DToast(data.message || 'Ошибка старта попытки');
-            }
-        }
-    } catch (err) {
-        console.error(err);
-        if (typeof show3DToast === 'function') {
-            show3DToast('Ошибка при соединении с сервером');
-        }
     }
 }
 
