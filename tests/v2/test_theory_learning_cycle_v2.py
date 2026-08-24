@@ -108,6 +108,21 @@ def test_student_theory_learning_cycle(app, client, role_users):
         assert TheoryStudyAssignment.query.filter_by(student_id=role_users['student_id'], block_id=fixture['first_id']).one().status == 'completed'
 
 
+def test_boolean_interactive_offers_two_mutually_exclusive_answers():
+    from app.theory.routes import _render_theory_content_html
+
+    rendered = _render_theory_content_html(
+        '[INTERACTIVE type="boolean" key="boolean-regression" '
+        'prompt="Верно ли утверждение?" answer="true"]'
+    )
+
+    assert 'Да, утверждение верно' in rendered
+    assert 'Нет, утверждение неверно' in rendered
+    assert 'data-interactive-option="true"' in rendered
+    assert 'data-interactive-option="false"' in rendered
+    assert 'role="radio"' in rendered
+
+
 def test_tutor_can_assign_theory_to_scoped_student(app, client, role_users):
     from app import db
     from app.models import TheoryStudyAssignment

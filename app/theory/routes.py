@@ -534,7 +534,16 @@ def _render_theory_content_html(content_value):
                 f'<input data-table-cell="{i}" class="rounded-xl border-2 border-white bg-white px-3 py-2 text-sm font-bold text-slate-700" placeholder="Значение {i + 1}">' for i in range(rows)
             ) + '</div>'
         elif kind == 'boolean':
-            controls = '<label class="mt-4 flex items-center gap-3 rounded-xl border-2 border-white bg-white px-4 py-3 text-sm font-bold text-slate-700"><input type="checkbox" data-interactive-boolean class="h-5 w-5 accent-emerald-600"> Да, утверждение верно</label>'
+            controls = (
+                '<div class="mt-4 grid max-w-xl gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Выберите ответ">'
+                '<button type="button" data-interactive-option="true" role="radio" aria-checked="false" '
+                'class="rounded-xl border-2 border-white bg-white px-4 py-3 text-left text-sm font-bold text-slate-700 shadow-sm transition hover:border-emerald-400">'
+                'Да, утверждение верно</button>'
+                '<button type="button" data-interactive-option="false" role="radio" aria-checked="false" '
+                'class="rounded-xl border-2 border-white bg-white px-4 py-3 text-left text-sm font-bold text-slate-700 shadow-sm transition hover:border-emerald-400">'
+                'Нет, утверждение неверно</button>'
+                '</div>'
+            )
         elif kind in {'code', 'debug'}:
             code = html.escape(attrs.get('code', 'print(42)'))
             controls = f'<textarea data-interactive-code class="mt-4 min-h-32 w-full rounded-xl border-2 border-white bg-white p-3 font-mono text-sm text-slate-800" spellcheck="false">{code}</textarea>'

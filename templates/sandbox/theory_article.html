@@ -91,13 +91,15 @@ window.fetch = (input, init = {}) => {
     card.addEventListener('click', async event => {
       const option = event.target.closest('[data-interactive-option]');
       if (option) {
-        if (kind === 'choice') {
+        if (kind === 'choice' || kind === 'boolean') {
           card.querySelectorAll('[data-interactive-option]').forEach(item => {
             item.classList.remove('bg-emerald-200', 'border-emerald-500');
             item.setAttribute('aria-pressed', 'false');
+            if (item.getAttribute('role') === 'radio') item.setAttribute('aria-checked', 'false');
           });
           option.classList.add('bg-emerald-200', 'border-emerald-500');
           option.setAttribute('aria-pressed', 'true');
+          if (option.getAttribute('role') === 'radio') option.setAttribute('aria-checked', 'true');
           card.dataset.selected = option.dataset.interactiveOption;
         } else {
           option.classList.toggle('bg-emerald-200');
@@ -119,7 +121,7 @@ window.fetch = (input, init = {}) => {
       else if (kind === 'multi' || kind === 'classify' || kind === 'hotspot') answer = [...card.querySelectorAll('[data-interactive-option].bg-emerald-200')].map(x => x.dataset.interactiveOption).join('|');
       else if (kind === 'order' || kind === 'sequence') answer = card.dataset.order || '';
       else if (kind === 'table' || kind === 'trace') answer = [...card.querySelectorAll('[data-table-cell]')].map(x => x.value.trim()).join('|');
-      else if (kind === 'boolean') answer = card.querySelector('[data-interactive-boolean]')?.checked ? 'true' : 'false';
+      else if (kind === 'boolean') answer = card.dataset.selected || '';
       else if (kind === 'slider') answer = card.querySelector('[data-interactive-slider]')?.value || '';
       else if (kind === 'match') {
         const left = card.querySelector('[data-match-left]')?.value.trim() || '';

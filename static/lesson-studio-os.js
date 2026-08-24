@@ -100,7 +100,38 @@
   function refreshCodeHighlight(){const editor=$('#os-code'),layer=$('#os-code-highlight');if(!editor||!layer)return;layer.innerHTML=`<code>${highlightPython(editor.value)}\n</code>`;layer.scrollTop=editor.scrollTop;layer.scrollLeft=editor.scrollLeft;}
   function connectWorkspace(id){workspace.id=id;$('#os-code').value='';$('#os-answer').value='';refreshCodeHighlight();$('#os-output').textContent='Подключаемся к совместному коду…';if(!workspace.socket){workspace.socket=io('/task-workspace');workspace.socket.on('connect',()=>workspace.socket.emit('join_workspace',ctx()));workspace.socket.on('workspace_snapshot',p=>applySnapshot(p.state));workspace.socket.on('workspace_patch',p=>{if(p.client_id===clientId||!p.code_after)return;workspace.applying=true;$('#os-code').value=p.code_after;refreshCodeHighlight();workspace.applying=false;workspace.version=p.version||workspace.version});workspace.socket.on('workspace_presence',p=>$('#os-presence').textContent=(p.participants||[]).map(x=>x.display_name||x.username).join(' · ')||'Нет участников')}else if(workspace.socket.connected)workspace.socket.emit('join_workspace',ctx());}
   function applySnapshot(s){if(!s)return;workspace.applying=true;$('#os-code').value=s.code||'';$('#os-answer').value=s.answer||'';refreshCodeHighlight();workspace.applying=false;workspace.version=s.version||0;$('#os-presence').textContent='Совместный режим'}
-  async function run(){if(!workspace.id)return;const r=await post('/task-workspace/api/run',{...ctx(),code:$('#os-code').value});$('#os-output').textContent=r.stderr||r.stdout||r.error||'Выполнено без вывода'}
+  async function run(){
+    const output=$('#os-output'), button=$('#os-run'), code=$('#os-code')?.value||'';
+    if(!workspace.id){
+      const selected=tasks.find(task=>task.lesson_task_id===activeTask)||tasks[0];
+      if(!selected){
+        output.textContent='Сначала преподаватель должен добавить задачу в урок.';
+        return toast('Для запуска нужен выбранный материал задачи.');
+      }
+      openTask(selected.lesson_task_id);
+    }
+    if(!workspace.id){
+      output.textContent='Не удалось подключить рабочее пространство задачи.';
+      return toast('Не удалось открыть рабочее пространство. Выберите задачу ещё раз.');
+    }
+    if(!code.trim()){
+      output.textContent='Напишите код перед запуском.';
+      return toast('Код пока пустой.');
+    }
+    if(button){button.disabled=true;button.textContent='Запуск…'}
+    output.textContent='Запускаем код…';
+    try{
+      const r=await post('/task-workspace/api/run',{...ctx(),code});
+      if(!r.success){
+        output.textContent=`Не удалось запустить код: ${r.error||'неизвестная ошибка'}`;
+        return toast(r.error||'Запуск кода не удался.');
+      }
+      const explanation=r.stderr_explained?.message||r.stderr_explained?.hint||'';
+      output.textContent=[r.stdout,r.stderr,explanation].filter(Boolean).join('\n')||'Выполнено без вывода';
+    }finally{
+      if(button){button.disabled=false;button.textContent='Запустить'}
+    }
+  }
   
   function bindWorkspace(){const codeEditor=$('#os-code');codeEditor.addEventListener('input',()=>{refreshCodeHighlight();if(workspace.applying||!workspace.socket||!workspace.id)return;workspace.socket.emit('workspace_patch',{...ctx(),base_version:workspace.version,full_code:codeEditor.value,next:codeEditor.value,op_id:crypto.randomUUID(),updated_at:Date.now()})});codeEditor.addEventListener('scroll',refreshCodeHighlight);$('#os-save').onclick=async()=>{if(!workspace.id)return;const r=await post('/task-workspace/api/save',{...ctx(),code:codeEditor.value,answer:$('#os-answer').value});toast(r.success?'Сохранено':r.error||'Ошибка')};$('#os-run').onclick=run;$('#os-versions').onclick=async()=>{if(!workspace.id)return;const r=await fetch(`/task-workspace/api/versions?context_type=lesson_task&context_id=${workspace.id}`).then(x=>x.json());const items=r.versions?.items||[];const box=$('#os-versions-list');box.innerHTML='';if(!items.length){box.textContent='Версий пока нет.';return}items.forEach((item,index)=>{const b=document.createElement('button');b.className='os-version';b.textContent=`Версия ${items.length-index} · ${item.source||'сохранение'}`;b.onclick=async()=>{const restored=await post(`/task-workspace/api/versions/${item.version_id}/restore`,ctx());if(!restored.success)return toast(restored.error||'Не удалось восстановить');workspace.applying=true;codeEditor.value=restored.code||'';$('#os-answer').value=restored.answer||'';refreshCodeHighlight();workspace.applying=false;toast('Версия восстановлена')};box.append(b)})}}
   

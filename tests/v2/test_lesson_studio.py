@@ -190,6 +190,25 @@ def test_individual_lesson_studio_separates_teacher_and_student_controls(app, cl
     assert timer_state.get_json()['state']['timer']['seconds'] == 1234
 
 
+def test_lesson_studio_workspace_run_executes_selected_task_code(app, client, role_users):
+    _lesson_id, lesson_task_id = _studio_fixture(app, role_users)
+    login_as(client, role_users['student_user_id'], 'student')
+
+    response = client.post(
+        '/task-workspace/api/run',
+        json={
+            'context_type': 'lesson_task',
+            'context_id': lesson_task_id,
+            'code': 'print(42)',
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['success'] is True
+    assert payload['stdout'].strip() == '42'
+
+
 def test_lesson_studio_keeps_sidebar_column_and_renders_selected_student_signal():
     root = Path(__file__).resolve().parents[2]
     css = (root / 'static' / 'lesson-studio-os.css').read_text(encoding='utf-8')
