@@ -177,7 +177,15 @@ deploy() {
 
     if [[ -f "docker-compose.yml" ]]; then
         echo "Ensuring primary infrastructure (redis, db) is running..."
-        docker compose up -d db redis || true
+        # A stale Compose client can wait forever even after both containers
+        # report Running. Infrastructure is verified again by /ready, so this
+        # best-effort wake-up must never block the blue-green target build.
+        if command -v timeout >/dev/null 2>&1; then
+            timeout 45s docker compose up -d db redis || \
+                echo "Primary infrastructure wake-up timed out; continuing to target readiness checks."
+        else
+            docker compose up -d db redis || true
+        fi
     fi
 
     compose build "$target_service"
