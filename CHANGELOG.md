@@ -6746,6 +6746,7 @@ outes.py for correct timezone handling.
 # fix: ship canonical EGE theory package with application image (2026-08-24)
 
 - Added `data/theory/ege_informatics_curriculum.json` to the tracked release payload. The curriculum importer now has the same source package locally and in blue-green production containers; temporary export and smoke files remain excluded.
+- Released commit `44f1892` through blue-green and imported the package into production course `1` (EGE Informatics): 9 blocks created and 26 updated; `/ready` stayed fully healthy.
 
 - Removed empty Markdown paragraphs created around imported blocks so theory articles no longer contain unexplained blank gaps between sections.
 - Preserved empty result placeholders required by interactive/checkpoint controls.
