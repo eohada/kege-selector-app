@@ -327,9 +327,7 @@ layout-teacher bg-boo-bg text-boo-textMain
 
             <!-- Синхронизация календаря -->
             {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
-            {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
-            {% set ics_tz_param = ('tomsk' if tz_name == 'Asia/Tomsk' else 'moscow') %}
-            <div id="ics-config" style="display:none" data-tz="{{ ics_tz_param }}" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ current_user.schedule_ics_token or '' }}"></div>
+            <div id="ics-config" style="display:none" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ current_user.schedule_ics_token or '' }}"></div>
             
             <section class="bg-surface dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-dark-light border-b-4 border-b-slate-300 dark:border-b-0 shadow-tactile dark:shadow-glass-dark p-6">
                 <h2 class="text-xs font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -438,7 +436,10 @@ layout-teacher bg-boo-bg text-boo-textMain
                         <option value="Asia/Novosibirsk" {% if profile_tz == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск</option>
                         <option value="Asia/Krasnoyarsk" {% if profile_tz == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск</option>
                         <option value="Asia/Irkutsk" {% if profile_tz == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск</option>
+                        <option value="Asia/Yakutsk" {% if profile_tz == 'Asia/Yakutsk' %}selected{% endif %}>Якутск</option>
                         <option value="Asia/Vladivostok" {% if profile_tz == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток</option>
+                        <option value="Asia/Magadan" {% if profile_tz == 'Asia/Magadan' %}selected{% endif %}>Магадан</option>
+                        <option value="Asia/Kamchatka" {% if profile_tz == 'Asia/Kamchatka' %}selected{% endif %}>Камчатка</option>
                         <option value="UTC" {% if profile_tz == 'UTC' %}selected{% endif %}>UTC</option>
                     </select>
                     <div class="mt-2 flex items-center justify-between gap-3">
@@ -838,9 +839,8 @@ layout-teacher bg-boo-bg text-boo-textMain
         if (!cfg) return;
         var origin = window.location.origin;
         var token = (cfg.getAttribute('data-token') || '').trim() || null;
-        var icsTzParam = cfg.getAttribute('data-tz') || 'moscow';
         var regenUrl = cfg.getAttribute('data-regenerate-url') || '';
-        var link = token ? origin + '/schedule/ics/' + token + '?timezone=' + icsTzParam : '';
+        var link = token ? origin + '/schedule/ics/' + token : '';
         var el = document.querySelector('.js-ics-input');
         if (el) el.value = link || '(нажмите кнопку обновить)';
         
@@ -861,7 +861,7 @@ layout-teacher bg-boo-bg text-boo-textMain
                 var r = await fetch(regenUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' }, body: '{}' });
                 var data = await r.json().catch(function() { return {}; });
                 if (!r.ok || data.success === false) throw new Error(data.error || 'HTTP ' + r.status);
-                var newLink = origin + '/schedule/ics/' + data.token + '?timezone=' + icsTzParam;
+                var newLink = origin + '/schedule/ics/' + data.token;
                 var inp = document.querySelector('.js-ics-input');
                 if (inp) inp.value = newLink;
                 if (window.toast) window.toast.success('Ссылка успешно обновлена');

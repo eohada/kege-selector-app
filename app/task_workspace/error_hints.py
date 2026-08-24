@@ -55,7 +55,7 @@ def explain_python_error(stderr: str) -> str:
     if "Timeout" in text or "Превышено время" in text:
         add("Timeout", "Код выполнялся слишком долго. Обычно причина в бесконечном цикле или слишком большом переборе.")
     if "turtle" in text.lower() and ("tk" in text.lower() or "xvfb" in text.lower()):
-        add("turtle", "Обычный графический turtle недоступен на сервере, поэтому BooStudy использует запасной headless-режим для простых рисунков.")
+        add("turtle", "В BooStudy Turtle рисует в безопасный SVG внутри результата. Системное окно не требуется.")
 
     if not hints:
         add("Подсказка", "Посмотри на последнюю строку ошибки: там обычно указан тип ошибки и место, где Python остановился.")

@@ -43,6 +43,7 @@ from app.utils.relationship_scope import (
     get_family_ties_for_parent,
     get_family_ties_for_student,
 )
+from app.utils.reserved_creator import is_reserved_creator
 
 logger = logging.getLogger(__name__)
 
@@ -690,7 +691,7 @@ def sandbox_internal_user_set_password(user_id):
     if not user:
         return jsonify({'success': False, 'error': 'user not found'}), 404
 
-    if user.is_creator():
+    if user.is_creator() or is_reserved_creator(user):
         return jsonify({'success': False, 'error': 'cannot change creator password'}), 403
 
     try:
@@ -1997,7 +1998,7 @@ def admin_user_delete(user_id):
         return redirect(url_for('main.dashboard'))
 
     user = User.query.get_or_404(user_id)
-    if user.is_creator():
+    if user.is_creator() or is_reserved_creator(user):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
             return jsonify({'success': False, 'message': 'Нельзя удалить создателя.'}), 400
         flash('Нельзя удалить создателя.', 'error')
@@ -2768,6 +2769,12 @@ def admin_user_edit(user_id):
         return redirect(url_for('main.dashboard'))
     
     user = User.query.get_or_404(user_id)
+
+    if is_reserved_creator(user) and request.method == 'POST':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or request.accept_mimetypes.accept_json:
+            return jsonify({'success': False, 'error': 'Системный creator защищён от редактирования.'}), 403
+        flash('Системный creator защищён от редактирования.', 'error')
+        return redirect(url_for('admin.admin_user_edit', user_id=user.id))
     
     if request.method == 'POST':
         logger.info("admin_user_edit POST user_id=%s form_keys=%s", user_id, list(request.form.keys()))

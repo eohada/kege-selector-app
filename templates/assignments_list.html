@@ -149,7 +149,7 @@
                                 </div>
                                 {% else %}
                                 <div class="flex items-center gap-2 px-3 py-2 bg-white border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-600 shrink-0 shadow-[0_2px_0_#E2E8F0]">
-                                    <i class="ph-bold ph-clock"></i> {{ item.assignment.deadline.strftime('%d.%m %H:%M') }}
+                                    <i class="ph-bold ph-clock"></i> {{ item.assignment.deadline|user_dt('%d.%m %H:%M') }}
                                 </div>
                                 {% endif %}
 
@@ -169,7 +169,7 @@
                                                 data-title="{{ item.assignment.title or '' }}"
                                                 data-description="{{ item.assignment.description or '' }}"
                                                 data-assignment-type="{{ item.assignment.assignment_type or 'homework' }}"
-                                                data-deadline="{{ item.assignment.deadline.strftime('%Y-%m-%dT%H:%M') if item.assignment.deadline else '' }}"
+                                                data-deadline="{{ item.assignment.deadline|user_dt('%Y-%m-%dT%H:%M') if item.assignment.deadline else '' }}"
                                                 data-max-attempts="{{ item.assignment.max_attempts_default or 1 }}"
                                                 data-time-limit-minutes="{{ item.assignment.time_limit_minutes or '' }}"
                                                 data-hard-deadline="{{ 1 if item.assignment.hard_deadline else 0 }}"
@@ -193,7 +193,7 @@
                         <div class="flex items-center gap-6 text-xs font-bold text-slate-500 mb-6 flex-wrap">
                             <span class="flex items-center gap-1.5"><i class="ph-bold ph-users text-indigo-500 text-sm"></i>{{ total }} учеников</span>
                             <span class="flex items-center gap-1.5"><i class="ph-bold ph-list-numbers text-indigo-500 text-sm"></i>{{ item.tasks_count }} задач</span>
-                            <span class="flex items-center gap-1.5"><i class="ph-bold ph-calendar text-indigo-500 text-sm"></i>{{ item.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span>
+                            <span class="flex items-center gap-1.5"><i class="ph-bold ph-calendar text-indigo-500 text-sm"></i>{{ item.assignment.deadline|user_dt('%d.%m.%Y %H:%M') }}</span>
                         </div>
 
                         <!-- Progress Bar Block -->

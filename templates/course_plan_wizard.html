@@ -1,0 +1,57 @@
+{% extends 'sandbox/layout_teacher.html' %}
+{% set active_page = 'students' %}
+{% block title %}Мастер маршрута · {{ course.title }}{% endblock %}
+{% block sandbox_content %}
+<main class="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+  <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
+    <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Мастер программы</p>
+    <h1 class="mt-2 text-3xl font-black text-slate-900">Собрать маршрут для {{ course.student.name }}</h1>
+    <p class="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500">Укажите цель и стартовый уровень. Платформа распределит навыки по практике, повторению и контролю.</p>
+  </section>
+  <form id="plan-form" class="space-y-6">
+    <section class="grid gap-4 rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] md:grid-cols-4">
+      <label class="text-sm font-black text-slate-700">Целевой балл<input name="target_score" type="number" min="1" max="100" value="{{ course.target_score or '' }}" placeholder="85" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3"></label>
+      <label class="text-sm font-black text-slate-700">Дата экзамена<input name="exam_date" type="date" value="{{ course.exam_date.isoformat() if course.exam_date else '' }}" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3"></label>
+      <label class="text-sm font-black text-slate-700">Текущий прогноз<input name="current_forecast" type="number" min="0" max="100" value="{{ course.current_forecast or '' }}" placeholder="54" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3"></label>
+      <label class="text-sm font-black text-slate-700">Примечание диагностики<input name="diagnostic_note" placeholder="Что проверили" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3"></label>
+    </section>
+    <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9]">
+      <div class="flex items-center justify-between gap-3"><div><p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Шаг 2</p><h2 class="mt-1 text-2xl font-black text-slate-900">Режим обучения</h2></div><span class="text-xs font-bold text-slate-400">Сохраняется в программе</span></div>
+      <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label class="text-sm font-black text-slate-700">Занятий в неделю<input name="lessons_per_week" type="number" min="1" max="14" value="{{ course.lessons_per_week or 2 }}" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3"></label>
+        <label class="text-sm font-black text-slate-700">Длительность, минут<input name="lesson_duration_minutes" type="number" min="15" max="240" value="{{ course.lesson_duration_minutes or course.default_lesson_duration or 60 }}" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3"></label>
+        <label class="text-sm font-black text-slate-700">ДЗ в неделю, часов<input name="homework_hours_per_week" type="number" min="0" max="40" step="0.5" value="{{ course.homework_hours_per_week or 3 }}" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3"></label>
+        <label class="text-sm font-black text-slate-700">Стартовый уровень<select name="diagnostic_mode" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3"><option value="manual" {% if course.diagnostic_mode != 'test' %}selected{% endif %}>Определить вручную</option><option value="test" {% if course.diagnostic_mode == 'test' %}selected{% endif %}>Провести диагностику</option></select></label>
+      </div>
+      <label class="mt-4 block text-sm font-black text-slate-700">Стартовый прогноз, баллов<input name="starting_forecast" type="number" min="0" max="100" value="{{ course.starting_forecast or course.current_forecast or '' }}" placeholder="Рассчитать после диагностики" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-4 py-3 sm:max-w-xs"></label>
+    </section>
+    <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9]">
+      <div class="flex items-center justify-between"><div><p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Шаг 3</p><h2 class="mt-1 text-2xl font-black text-slate-900">Стартовый уровень</h2></div><span class="text-xs font-bold text-slate-400">0–100%</span></div>
+      <div class="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {% for skill in skills %}{% set row = mastery.get(skill.skill_id) %}<label class="rounded-2xl border-2 border-slate-200 bg-white p-4 text-sm font-black text-slate-700">{{ skill.title }}<input name="skill_{{ skill.skill_id }}" type="number" min="0" max="100" value="{{ row.mastery_percent if row else 0 }}" class="mt-2 w-full rounded-xl border-2 border-slate-200 px-3 py-2"></label>{% else %}<div class="rounded-[1.5rem] border-2 border-dashed border-indigo-200 bg-indigo-50 p-6 md:col-span-2 lg:col-span-3"><p class="text-lg font-black text-slate-900">Сначала добавьте навыки программы</p><p class="mt-2 max-w-xl text-sm font-medium leading-6 text-slate-600">Генератор не подставляет случайные темы: ему нужны реальные проверяемые умения, по которым будет строиться маршрут.</p><a href="{{ skills_manage_url }}" class="btn-3d mt-4 inline-flex rounded-xl border-2 border-indigo-700 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white no-underline">Настроить навыки →</a></div>{% endfor %}
+      </div>
+    </section>
+    <div class="flex flex-wrap justify-between gap-3"><a href="{{ url_for('courses.course_view', course_id=course.course_id) }}" class="rounded-xl border-2 border-slate-200 bg-white px-5 py-3 font-black text-slate-700 no-underline">← Вернуться к программе</a>{% if skills %}<button class="btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-600 px-6 py-3 font-black text-white" type="submit">Сгенерировать маршрут</button>{% else %}<a href="{{ skills_manage_url }}" class="btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-600 px-6 py-3 font-black text-white no-underline">Добавить навыки</a>{% endif %}</div>
+  </form>
+</main>
+<script>
+document.getElementById('plan-form')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = Object.fromEntries(new FormData(form).entries());
+  const diagnostic = {};
+  Object.keys(data).filter((key) => key.startsWith('skill_')).forEach((key) => { diagnostic[key.slice(6)] = Number(data[key] || 0); delete data[key]; });
+  data.diagnostic = diagnostic;
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const response = await fetch('{{ url_for('courses.course_plan_generate', course_id=course.course_id) }}', {method:'POST', headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRFToken':csrf}, body: JSON.stringify(data)});
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload.success) {
+    window.BooNotify?.error(payload.error || 'Не удалось собрать маршрут');
+    if (payload.manage_url) window.setTimeout(() => { window.location.href = payload.manage_url; }, 700);
+    return;
+  }
+  window.BooNotify?.success('Маршрут собран по диагностике');
+  window.location.href = '{{ url_for('courses.course_view', course_id=course.course_id) }}';
+});
+</script>
+{% endblock %}

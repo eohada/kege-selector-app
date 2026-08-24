@@ -53,7 +53,7 @@
                                 {% elif assignment.assignment_type == 'manual_review' %}Без ответов
                                 {% else %}{{ assignment.assignment_type }}{% endif %}
                             </span>
-                            <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-fill ph-clock text-boo-coral"></i> Дедлайн: {{ assignment_deadline_display if assignment_deadline_display is defined else (assignment.deadline.strftime('%d.%m.%Y %H:%M') if assignment.deadline else 'без дедлайна') }}</span>
+                            <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-fill ph-clock text-boo-coral"></i> Дедлайн: {{ assignment_deadline_display if assignment_deadline_display is defined else (assignment.deadline|user_dt('%d.%m.%Y %H:%M') if assignment.deadline else 'без дедлайна') }}</span>
                             <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-bold ph-list-numbers text-boo-primary"></i> Задач: {{ assignment.tasks|length }}</span>
                             <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-bold ph-arrows-clockwise text-boo-primary"></i> Попыток: {{ assignment.max_attempts_default or 1 }}</span>
                             <span class="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"><i class="ph-fill ph-users text-boo-primary"></i> Учеников: {{ total_students }}</span>
@@ -201,7 +201,7 @@
                                                 {% else %}{{ submission.status }}{% endif %}
                                             </span>
                                             {% if submission.submitted_at %}
-                                            <span class="text-xs font-bold text-slate-400 flex items-center gap-1"><i class="ph-fill ph-clock"></i> {{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                                            <span class="text-xs font-bold text-slate-400 flex items-center gap-1"><i class="ph-fill ph-clock"></i> {{ submission.submitted_at|user_dt('%d.%m.%Y %H:%M') }}</span>
                                             {% endif %}
                                             </div>
                                         </div>
@@ -550,7 +550,7 @@
                         title: {{ (assignment.title or '')|tojson }},
                         description: {{ (assignment.description or '')|tojson }},
                         assignmentType: {{ ((assignment.assignment_type or 'homework')|lower)|tojson }},
-                        deadline: {{ (assignment_deadline_input_value if assignment_deadline_input_value is defined else (assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else ''))|tojson }},
+                        deadline: {{ (assignment_deadline_input_value if assignment_deadline_input_value is defined else (assignment.deadline|user_dt('%Y-%m-%dT%H:%M') if assignment.deadline else ''))|tojson }},
                         maxAttempts: {{ assignment.max_attempts_default or 1 }},
                         timeLimitMinutes: {{ assignment.time_limit_minutes|tojson }},
                         hardDeadline: {{ 'true' if assignment.hard_deadline else 'false' }},

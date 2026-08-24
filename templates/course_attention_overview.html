@@ -1,0 +1,25 @@
+{% extends 'sandbox/layout_teacher.html' %}
+{% set active_page = 'students' %}
+{% block title %}Центр внимания · BooStudy{% endblock %}
+{% block sandbox_content %}
+<main class="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+  <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
+    <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Центр внимания</p>
+    <h1 class="mt-2 text-3xl font-black text-slate-900">Что требует действия сегодня</h1>
+    <p class="mt-2 text-sm font-medium text-slate-500">Ошибки, повторения, просроченные элементы и неподготовленные занятия по всем маршрутам.</p>
+  </section>
+  <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    {% for key, label in [('students','учеников'),('errors','ошибок'),('reviews_due','повторов'),('overdue_items','просрочено'),('unfinished_lessons','занятий')] %}
+      <article class="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]"><p class="text-xs font-black uppercase tracking-wider text-slate-400">{{ label }}</p><p class="mt-2 text-3xl font-black text-slate-900">{{ payload.totals[key] }}</p></article>
+    {% endfor %}
+  </section>
+  <section class="space-y-3">
+    {% for row in payload.courses %}
+      <article class="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
+        <div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-black uppercase tracking-wider text-indigo-500">{{ row.student_name }}</p><h2 class="mt-1 text-xl font-black text-slate-900">{{ row.course_title }}</h2></div><a href="{{ url_for('courses.course_attention', course_id=row.course_id, view=1) }}" class="rounded-xl border-2 border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-black text-indigo-700 no-underline">Открыть маршрут →</a></div>
+        <div class="mt-4 flex flex-wrap gap-2 text-sm font-bold"><span class="rounded-full bg-rose-50 px-3 py-1 text-rose-700">Ошибки: {{ row.errors }}</span><span class="rounded-full bg-amber-50 px-3 py-1 text-amber-700">Повторы: {{ row.reviews_due }}</span><span class="rounded-full bg-orange-50 px-3 py-1 text-orange-700">Просрочено: {{ row.overdue_items }}</span><span class="rounded-full bg-indigo-50 px-3 py-1 text-indigo-700">Занятия: {{ row.unfinished_lessons }}</span></div>
+      </article>
+    {% else %}<div class="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-10 text-center font-bold text-slate-500">Сейчас ни один маршрут не требует внимания.</div>{% endfor %}
+  </section>
+</main>
+{% endblock %}

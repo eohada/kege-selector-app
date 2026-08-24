@@ -32,7 +32,7 @@ window.initPremiumSchedule = () => {
   const totalSlots = parseInt(scheduleRoot.dataset.totalSlots || '48', 10);
   const pxPerSlot = parseFloat(scheduleRoot.dataset.pxPerSlot || '28');
 
-  const tz = scheduleRoot.dataset.timezone || 'moscow';
+  const tz = scheduleRoot.dataset.timezone || 'Europe/Moscow';
   const rescheduleUrlTpl = scheduleRoot.dataset.rescheduleUrlTpl || '';
   const setStatusUrlTpl = scheduleRoot.dataset.setStatusUrlTpl || '';
   const updateUrlTpl = scheduleRoot.dataset.updateUrlTpl || '';
@@ -275,7 +275,7 @@ window.initPremiumSchedule = () => {
         const nextTopic = topicInput?.value ?? '';
         const nextDate = dateInput?.value || '';
         const nextTime = timeInput?.value || '';
-        const currentTz = scheduleRoot.dataset.timezone || 'moscow';
+        const currentTz = scheduleRoot.dataset.timezone || 'Europe/Moscow';
 
         try {
           if (nextStatus && nextStatus !== meta.status_code) {
@@ -691,7 +691,7 @@ window.initPremiumSchedule = () => {
     document.addEventListener('pointercancel', window.__onPointerCancel, true);
   }
 
-  const tzName = tz === 'tomsk' ? 'Asia/Tomsk' : 'Europe/Moscow';
+  const tzName = tz || 'Europe/Moscow';
 
   const getNowInTz = () => {
     try {

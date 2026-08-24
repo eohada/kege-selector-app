@@ -570,7 +570,7 @@
                     </span>
 
                     <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold shadow-xs text-slate-700">
-                        <i class="ph-bold ph-calendar-blank text-indigo-500"></i> Дедлайн: {{ deadline_display if deadline_display is defined else assignment.deadline.strftime('%d.%m.%Y %H:%M') }}
+                        <i class="ph-bold ph-calendar-blank text-indigo-500"></i> Дедлайн: {{ deadline_display if deadline_display is defined else assignment.deadline|user_dt('%d.%m.%Y %H:%M') }}
                     </span>
 
                     <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold shadow-xs text-slate-700">
@@ -1131,7 +1131,7 @@
                         <div class="comment-content" style="background: var(--surface-2); padding: 0.8rem 1rem; border-radius: 12px; max-width: 80%;">
                             <div class="comment-header" style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.85em;">
                                 <a href="{{ url_for('auth.user_public_profile', user_id=comment.author.id) }}" style="font-weight: 600; margin-right: 1rem; color: var(--accent-1); text-decoration: none;">{{ comment.author.username }}</a>
-                                <span style="color: var(--text-muted);">{{ comment.created_at.strftime('%d.%m %H:%M') }}</span>
+                                <span style="color: var(--text-muted);">{{ comment.created_at|user_dt('%d.%m %H:%M') }}</span>
                             </div>
                             <div class="comment-text" style="line-height: 1.5; color: var(--text-primary);">{{ comment.text }}</div>
                         </div>

@@ -13,6 +13,7 @@ from core.audit_logger import audit_logger
 from flask_login import current_user
 from app.telegram.role_management import actor_can_assign_role, notify_role_changed, set_single_role
 from app.utils.relationship_scope import get_family_ties_for_parent, get_family_ties_for_student
+from app.utils.reserved_creator import is_reserved_creator
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +243,8 @@ def api_users_update(user_id):
     """API: Обновление пользователя (только для администратора)"""
     try:
         user = User.query.get_or_404(user_id)
+        if is_reserved_creator(user):
+            return jsonify({'success': False, 'error': 'Системный creator защищён от редактирования'}), 403
         data = request.get_json()
         
         if 'username' in data:
@@ -322,6 +325,8 @@ def api_users_reset_password(user_id):
     """API: Сброс пароля пользователя (только для администратора)"""
     try:
         user = User.query.get_or_404(user_id)
+        if is_reserved_creator(user):
+            return jsonify({'success': False, 'error': 'Системный creator защищён от смены пароля'}), 403
         data = request.get_json()
         
         new_password = data.get('password', '')

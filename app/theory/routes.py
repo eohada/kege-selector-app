@@ -9,7 +9,7 @@ import subprocess
 import html
 import mimetypes
 from collections import defaultdict
-from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app, send_file
+from flask import make_response, render_template, request, redirect, url_for, flash, abort, jsonify, current_app, send_file
 from markupsafe import Markup
 from flask_login import login_required, current_user
 from sqlalchemy import func, or_
@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 
 from app.theory import theory_bp
+from app import csrf
 from app.models import (
     db,
     TheoryBlock,
@@ -42,6 +43,8 @@ logger = logging.getLogger(__name__)
 
 _CHECKPOINT_RE = re.compile(r'\[CHECKPOINT\s+([^\]]+)\]', re.IGNORECASE)
 _CHECKPOINT_ATTR_RE = re.compile(r'(key|question|options|answer|explanation)="([^"]*)"', re.IGNORECASE)
+_INTERACTIVE_RE = re.compile(r'\[INTERACTIVE\s+([^\]]+)\]', re.IGNORECASE)
+_INTERACTIVE_ATTR_RE = re.compile(r'(type|key|prompt|answer|options|code|expected|placeholder|rows)="([^"]*)"', re.IGNORECASE)
 
 
 def _parse_theory_checkpoints(content_value):
@@ -65,7 +68,45 @@ def _parse_theory_checkpoints(content_value):
             'answer': answer,
             'explanation': attrs.get('explanation', ''),
         })
+    # Hands-on activities use the same persistence contract as checkpoints.
+    for item in _parse_theory_interactives(content_value):
+        options = [x.strip() for x in item.get('options', '').split('|') if x.strip()]
+        if item['type'] == 'choice' and options:
+            allowed = options
+        else:
+            allowed = [item['answer']]
+        checkpoints.append({
+            'key': item['key'],
+            'question': item['prompt'],
+            'options': allowed,
+            'answer': item['answer'],
+            'explanation': 'Результат лаборатории сохранён. При ошибке повторите действие и сравните его с разбором темы.',
+        })
     return checkpoints
+
+
+def _parse_theory_interactives(content_value):
+    """Read hands-on activities embedded in a theory block.
+
+    Interactive activities reuse the checkpoint persistence endpoint, so every
+    successful activity is visible to the same progress/feedback pipeline.
+    """
+    items = []
+    for index, match in enumerate(_INTERACTIVE_RE.finditer(_strip_status_marker(content_value or ''))):
+        attrs = {name.lower(): value.strip() for name, value in _INTERACTIVE_ATTR_RE.findall(match.group(1))}
+        kind = attrs.get('type', 'input').lower()
+        if kind not in {
+            'input', 'choice', 'order', 'table', 'code', 'boolean', 'multi', 'match',
+            'classify', 'fill', 'slider', 'hotspot', 'sequence', 'trace', 'regex',
+            'binary', 'formula', 'predict', 'debug', 'explain',
+        }:
+            continue
+        key = attrs.get('key') or f'interactive-{index + 1}'
+        answer = attrs.get('answer', '')
+        if not attrs.get('prompt') or not answer:
+            continue
+        items.append({**attrs, 'type': kind, 'key': key, 'answer': answer})
+    return items
 
 
 def _theory_normalize_stdin_for_run(s):
@@ -160,6 +201,11 @@ def _strip_status_marker(content_value):
 def _render_theory_content_html(content_value):
     """Render block-based theory markers to safe-ish HTML fragments."""
     text = _strip_status_marker(content_value or '').replace('\r\n', '\n')
+    # Старые импортёры и JSON-пакеты иногда сохраняли перевод строки как два
+    # символа ``\\n``. Нормализуем только явно сериализованный текст, чтобы не
+    # повреждать настоящие escape-последовательности внутри [CODE].
+    parts = re.split(r'(\[CODE\s+lang="[^"]+"\][\s\S]*?\[/CODE\])', text, flags=re.IGNORECASE)
+    text = ''.join(part if re.match(r'^\[CODE\s+lang=', part, re.IGNORECASE) else part.replace('\\n', '\n') for part in parts)
 
     def _highlight_python_html(code_value):
         escaped = html.escape(code_value or '')
@@ -259,6 +305,12 @@ def _render_theory_content_html(content_value):
         def _is_row_line(line):
             stripped = (line or '').strip()
             if not stripped:
+                return False
+            # Interactive declarations may contain pipe-separated options or
+            # answers (for example ``options="A|B"``).  They are controls,
+            # not author-written ASCII tables, and must reach the interactive
+            # renderer unchanged.
+            if stripped.upper().startswith(('[INTERACTIVE ', '[CHECKPOINT ')):
                 return False
             if '|' not in stripped:
                 return False
@@ -442,6 +494,63 @@ def _render_theory_content_html(content_value):
             '</div>'
         )
 
+    def _interactive_repl(match):
+        attrs = {name.lower(): value.strip() for name, value in _INTERACTIVE_ATTR_RE.findall(match.group(1))}
+        kind = attrs.get('type', 'input').lower()
+        prompt = html.escape(attrs.get('prompt', 'Выполните мини-задачу.'))
+        key = html.escape(attrs.get('key', 'interactive-1'), quote=True)
+        answer = html.escape(attrs.get('answer', ''), quote=True)
+        placeholder = html.escape(attrs.get('placeholder', 'Введите ответ…'), quote=True)
+        base = (
+            f'<section class="theory-interactive theory-interactive--{kind} my-8 rounded-[24px] border-2 border-emerald-200 bg-emerald-50/70 p-5" '
+            f'data-interactive-key="{key}" data-interactive-type="{html.escape(kind, quote=True)}">'
+            '<div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">'
+            '<i class="ph-fill ph-hand-pointing"></i> Практика прямо в теме</div>'
+            f'<h3 class="mt-2 text-lg font-black text-slate-900">{prompt}</h3>'
+        )
+        if kind == 'choice':
+            options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
+            controls = ''.join(
+                f'<button type="button" data-interactive-option="{html.escape(option, quote=True)}" class="theory-interactive-option rounded-xl border-2 border-white bg-white px-3 py-2 text-left text-sm font-bold text-slate-700 shadow-sm hover:border-emerald-400">{html.escape(option)}</button>'
+                for option in options
+            )
+            controls = f'<div class="mt-4 grid gap-2 sm:grid-cols-2">{controls}</div>'
+        elif kind == 'hotspot':
+            controls = '<div class="mt-4 grid max-w-xs grid-cols-3 gap-2" role="group" aria-label="Карта выбора клетки">' + ''.join(
+                f'<button type="button" data-interactive-option="{i}" aria-label="Клетка {i}" class="theory-interactive-option rounded-xl border-2 border-white bg-white p-4 text-center text-sm font-black text-slate-700 shadow-sm hover:border-emerald-400">{i}</button>' for i in range(1, 10)
+            ) + '</div>'
+        elif kind in {'order', 'sequence'}:
+            options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
+            controls = '<div class="theory-order-options mt-4 flex flex-wrap gap-2">' + ''.join(
+                f'<button type="button" data-order-value="{html.escape(option, quote=True)}" class="rounded-full border-2 border-white bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm">{html.escape(option)}</button>'
+                for option in options
+            ) + '</div><p class="mt-2 text-xs font-bold text-slate-500">Нажмите элементы в правильном порядке.</p>'
+        elif kind in {'table', 'trace'}:
+            try:
+                rows = max(1, min(8, int(attrs.get('rows', '2') or 2)))
+            except ValueError:
+                rows = 2
+            controls = '<div class="mt-4 grid max-w-xl grid-cols-2 gap-2">' + ''.join(
+                f'<input data-table-cell="{i}" class="rounded-xl border-2 border-white bg-white px-3 py-2 text-sm font-bold text-slate-700" placeholder="Значение {i + 1}">' for i in range(rows)
+            ) + '</div>'
+        elif kind == 'boolean':
+            controls = '<label class="mt-4 flex items-center gap-3 rounded-xl border-2 border-white bg-white px-4 py-3 text-sm font-bold text-slate-700"><input type="checkbox" data-interactive-boolean class="h-5 w-5 accent-emerald-600"> Да, утверждение верно</label>'
+        elif kind in {'code', 'debug'}:
+            code = html.escape(attrs.get('code', 'print(42)'))
+            controls = f'<textarea data-interactive-code class="mt-4 min-h-32 w-full rounded-xl border-2 border-white bg-white p-3 font-mono text-sm text-slate-800" spellcheck="false">{code}</textarea>'
+        elif kind == 'slider':
+            controls = '<input type="range" min="0" max="100" value="0" data-interactive-slider class="mt-5 w-full accent-emerald-600"><output data-slider-output class="mt-2 block text-sm font-black text-emerald-800">0</output>'
+        elif kind == 'match':
+            controls = '<div class="mt-4 grid max-w-xl gap-2 sm:grid-cols-2"><input data-match-left class="rounded-xl border-2 border-white bg-white px-3 py-2 text-sm font-bold" placeholder="Термин"><input data-match-right class="rounded-xl border-2 border-white bg-white px-3 py-2 text-sm font-bold" placeholder="Соответствие"></div>'
+        elif kind in {'multi', 'classify'}:
+            options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
+            controls = '<div class="mt-4 grid gap-2 sm:grid-cols-2">' + ''.join(
+                f'<button type="button" data-interactive-option="{html.escape(option, quote=True)}" class="rounded-xl border-2 border-white bg-white px-3 py-2 text-left text-sm font-bold text-slate-700 hover:border-emerald-400">{html.escape(option)}</button>' for option in options
+            ) + '</div><p class="mt-2 text-xs font-bold text-slate-500">Можно выбрать несколько вариантов.</p>'
+        else:
+            controls = f'<input data-interactive-input class="mt-4 w-full rounded-xl border-2 border-white bg-white px-4 py-3 text-sm font-bold text-slate-700" placeholder="{placeholder}">'
+        return base + controls + '<button type="button" data-action="interactive-submit" class="mt-4 rounded-xl border-b-[3px] border-emerald-800 bg-emerald-600 px-4 py-2.5 text-xs font-black text-white">Проверить</button><p data-interactive-result class="mt-3 hidden text-sm font-bold"></p></section>'
+
     checkpoint_items = _parse_theory_checkpoints(text)
     checkpoint_by_key = {item['key']: item for item in checkpoint_items}
 
@@ -480,7 +589,11 @@ def _render_theory_content_html(content_value):
         Help Python-Markdown recognize list blocks even when author
         writes list right after plain text line without an empty line.
         """
-        lines = (src or '').split('\n')
+        # Imported lessons often flatten numbered algorithm steps into one
+        # physical line (`1. ... 2. ... 3. ...`). Restore list boundaries
+        # before Markdown parses the document.
+        normalized = re.sub(r'(?<!\n)\s+([1-9])\.\s+', r'\n\1. ', src or '')
+        lines = normalized.split('\n')
         out = []
         prev_was_list = False
         list_item_re = re.compile(r'^\s*(?:[-*+]\s+|\d+\.\s+)')
@@ -531,6 +644,20 @@ def _render_theory_content_html(content_value):
         return ''.join(parts)
 
     text = _normalize_markdown_lists(text)
+    # Старые и импортированные конспекты часто содержат названия разделов
+    # отдельной строкой без Markdown-маркера. Превращаем только устойчивый
+    # набор учебных заголовков в полноценную иерархию, чтобы они не слипались
+    # в один длинный абзац и выглядели одинаково в V2-статье.
+    _plain_heading_re = re.compile(
+        r'(?m)^(?P<indent>\s*)(?P<title>'
+        r'Что проверяет экзамен|Теория|Практика(?: прямо в материале)?|'
+        r'Универсальный алгоритм решения|Типовые ошибки и самопроверка|'
+        r'Микро-проверки|Итог темы|Лаборатория темы|Проверка именно этой темы|'
+        r'Прототипы ЕГЭ 2026|Пошаговый алгоритм решения|Кодовый шаблон|'
+        r'Типичные ошибки и диагностика'
+        r')\s*$',
+    )
+    text = _plain_heading_re.sub(lambda m: f"{m.group('indent')}## {m.group('title')}", text)
     text = _preserve_blank_lines_outside_code_blocks(text)
     text = _render_ascii_tables_to_html(text)
     text = _escape_numeric_multiplication_stars(text)
@@ -542,6 +669,7 @@ def _render_theory_content_html(content_value):
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
+    text = _INTERACTIVE_RE.sub(_interactive_repl, text)
     text = _CHECKPOINT_RE.sub(_checkpoint_repl, text)
     try:
         from markdown import markdown as _md
@@ -550,6 +678,172 @@ def _render_theory_content_html(content_value):
         pass
     try:
         soup = BeautifulSoup(text, 'html.parser')
+        # Imported legacy notes sometimes arrive as one paragraph with
+        # newline-separated section labels. Split those labels after the
+        # markdown pass as well, otherwise the browser shows them as plain
+        # body text even though the source contains headings.
+        heading_titles = {
+            'Что проверяет экзамен', 'Теория', 'Практика прямо в материале',
+            'Универсальный алгоритм решения', 'Типовые ошибки и самопроверка',
+            'Микро-проверки', 'Итог темы', 'Лаборатория темы',
+            'Проверка именно этой темы', 'Прототипы ЕГЭ 2026',
+            'Пошаговый алгоритм решения', 'Кодовый шаблон',
+            'Типичные ошибки и диагностика',
+        }
+        for paragraph in list(soup.find_all('p')):
+            lines = [line.strip() for line in paragraph.get_text('\n').splitlines() if line.strip()]
+            if len(lines) >= 2 and all(line[:1].isdigit() and '.' in line[:4] for line in lines):
+                ordered = soup.new_tag('ol')
+                for line in lines:
+                    item = soup.new_tag('li')
+                    item.string = re.sub(r'^\d+\.\s+', '', line)
+                    ordered.append(item)
+                paragraph.replace_with(ordered)
+                continue
+            if len(lines) <= 1 or not any(line in heading_titles for line in lines):
+                continue
+            replacement = []
+            for line in lines:
+                if line in heading_titles:
+                    replacement.append(soup.new_tag('h2'))
+                    replacement[-1].string = line
+                else:
+                    replacement.append(soup.new_tag('p'))
+                    replacement[-1].string = line
+            paragraph.replace_with(*replacement)
+        # A number of imported lessons contain algorithm steps in one visual
+        # paragraph (`1. ... 2. ... 3. ...`) even after newline normalisation.
+        # Convert that form to a real ordered list as well, so the article is
+        # scannable instead of rendering a wall of inline text.
+        for paragraph in list(soup.find_all('p')):
+            plain = paragraph.get_text(' ', strip=True)
+            items = re.findall(r'(?:^|\s)(\d+)\.\s+(.+?)(?=\s+\d+\.\s+|$)', plain)
+            if len(items) < 2:
+                continue
+            ordered = soup.new_tag('ol')
+            for _, value in items:
+                item = soup.new_tag('li')
+                item.string = value.strip()
+                ordered.append(item)
+            paragraph.replace_with(ordered)
+        # Imported notes often encode a list as one paragraph with dash
+        # separators (`- first; - second; - third`). Render it as a real
+        # unordered list and keep any explanatory tail as its own paragraph.
+        for paragraph in list(soup.find_all('p')):
+            plain = paragraph.get_text(' ', strip=True)
+            markers = list(re.finditer(r'(?:^|\s)[–—-]\s+', plain))
+            if len(markers) < 2:
+                continue
+            start = markers[0].start()
+            prefix = plain[:start].strip()
+            chunks = re.split(r'\s+[–—-]\s+', plain[start:].lstrip('–—- '))
+            chunks = [chunk.strip(' ;') for chunk in chunks if chunk.strip(' ;')]
+            if len(chunks) < 2:
+                continue
+            # A final sentence after the last semicolon is prose, not a list
+            # item. Keep it outside the list when it has an explicit cue.
+            tail = None
+            for index, chunk in enumerate(chunks):
+                if re.match(r'^(?:Перед отправкой|Важно|Проверьте|Итог)\b', chunk, re.I):
+                    tail = ' '.join(chunks[index:])
+                    chunks = chunks[:index]
+                    break
+            unordered = soup.new_tag('ul')
+            for chunk in chunks:
+                item = soup.new_tag('li')
+                item.string = chunk
+                unordered.append(item)
+            replacement = []
+            if prefix:
+                lead = soup.new_tag('p')
+                lead.string = prefix
+                replacement.append(lead)
+            replacement.append(unordered)
+            if tail:
+                trailing = soup.new_tag('p')
+                trailing.string = tail
+                replacement.append(trailing)
+            paragraph.replace_with(*replacement)
+        # Markdown emits empty paragraphs around imported block markers. They
+        # create unexplained vertical gaps and make the article feel broken;
+        # remove only truly empty nodes, preserving intentional spacers.
+        for paragraph in list(soup.find_all('p')):
+            if not paragraph.get_text(' ', strip=True) and not paragraph.find(['img', 'br']) and not paragraph.has_attr('data-interactive-result') and not paragraph.has_attr('data-checkpoint-result'):
+                paragraph.decompose()
+        # V2 article не зависит от Tailwind Typography: задаём явную иерархию
+        # заголовков/текста, чтобы материал читался одинаково при CDN и offline.
+        for tag_name, classes in {
+            'h1': 'mt-2 mb-5 text-3xl sm:text-4xl font-black tracking-tight text-slate-950',
+            'h2': 'mt-8 mb-3 text-2xl sm:text-3xl font-black tracking-tight text-slate-900',
+            'h3': 'mt-6 mb-2 text-xl font-black text-slate-900',
+            'p': 'my-3 text-base leading-8 text-slate-700',
+            'ul': 'my-4 list-disc space-y-2 pl-6 text-base leading-7 text-slate-700',
+            'ol': 'my-4 list-decimal space-y-2 pl-6 text-base leading-7 text-slate-700',
+            'li': 'leading-7',
+        }.items():
+            for node in soup.find_all(tag_name):
+                existing = node.get('class', [])
+                node['class'] = existing + [item for item in classes.split() if item not in existing]
+        # Keep the semantic heading tags clean; the article template provides
+        # the same V2 typography locally and this avoids legacy snapshots
+        # treating `<h2>` with utility classes as a different element.
+        for heading in soup.find_all(['h1', 'h2', 'h3']):
+            heading.attrs.pop('class', None)
+
+        # A theory block is an educational flow, not a continuous Markdown
+        # page.  Group every top-level h2 with its following material so the
+        # template can display distinct readable stages: explanation, method,
+        # laboratory and self-check.  This is deliberately content-agnostic:
+        # authors keep editing normal Markdown while the learner sees the V2
+        # lesson structure automatically.
+        section_kinds = {
+            'Что проверяет экзамен': 'goal',
+            'Теория': 'concept',
+            'Универсальный алгоритм решения': 'method',
+            'Пошаговый алгоритм решения': 'method',
+            'Практика прямо в материале': 'practice',
+            'Лаборатория темы': 'practice',
+            'Проверка именно этой темы': 'practice',
+            'Типовые ошибки и самопроверка': 'warning',
+            'Типичные ошибки и диагностика': 'warning',
+            'Итог темы': 'summary',
+            'Микро-проверки': 'check',
+        }
+        top_level_headings = [
+            heading for heading in soup.find_all('h2')
+            if heading.parent is soup
+        ]
+        for index, heading in enumerate(top_level_headings, start=1):
+            title = heading.get_text(' ', strip=True)
+            section = soup.new_tag('section')
+            section_kind = section_kinds.get(title, 'concept')
+            section['class'] = ['theory-section', f'theory-section--{section_kind}']
+            section['data-section'] = str(index)
+            marker = soup.new_tag('span')
+            marker['class'] = ['theory-section-marker']
+            marker.string = f'{index:02d}'
+            heading.insert(0, marker)
+            heading.wrap(section)
+            sibling = section.next_sibling
+            while sibling is not None:
+                following = sibling.next_sibling
+                if isinstance(sibling, Tag) and sibling.name == 'h2':
+                    break
+                section.append(sibling.extract())
+                sibling = following
+
+            first_paragraph = section.find('p', recursive=False)
+            if first_paragraph and not first_paragraph.find_parent(class_='theory-interactive'):
+                first_paragraph['class'] = list(first_paragraph.get('class', [])) + ['theory-section-lead']
+            for ordered in section.find_all('ol', recursive=False):
+                ordered['class'] = list(ordered.get('class', [])) + ['theory-steps']
+            for unordered in section.find_all('ul', recursive=False):
+                unordered['class'] = list(unordered.get('class', [])) + ['theory-checklist']
+        for spacer in soup.select('.theory-spacer'):
+            parent = spacer.parent
+            if parent and parent.name == 'strong':
+                parent.unwrap()
+            spacer.decompose()
         for img in soup.find_all('img'):
             if not isinstance(img, Tag):
                 continue
@@ -603,12 +897,60 @@ def _render_theory_content_html(content_value):
             img['loading'] = 'lazy'
             img['style'] = 'max-width: min(100%, 920px); height: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,.35); display:block; margin: .35rem 0;'
             block.replace_with(img)
+        # Serialize all DOM-level normalization back to the fragment. Without
+        # this assignment BeautifulSoup fixes (headings, lists, classes and
+        # resolved images) never reach the template.
+        text = str(soup)
+        def _ordered_html(match):
+            body = re.sub(r'<br\s*/?>', '\n', match.group('body'), flags=re.IGNORECASE)
+            plain = BeautifulSoup(body, 'html.parser').get_text(' ', strip=True)
+            items = re.findall(r'(?:^|\s)(\d+)\.\s+(.*?)(?=\s+\d+\.\s+|$)', plain)
+            if len(items) < 2:
+                return match.group(0)
+            return '<ol class="my-4 list-decimal space-y-2 pl-6 text-base leading-7 text-slate-700">' + ''.join(f'<li>{html.escape(value.strip())}</li>' for _, value in items) + '</ol>'
+        text = re.sub(r'<p(?P<attrs>[^>]*)>\s*(?P<body>(?:\d+\.\s+.*?(?:\n|$)){2,})\s*</p>', _ordered_html, text, flags=re.DOTALL)
     except Exception:
         pass
+    # Final safety net for imported algorithms: Markdown may keep a numbered
+    # sequence inside a paragraph when the source has no blank line. Convert
+    # that semantic sequence after all sanitization, including paragraphs with
+    # utility-class attributes.
+    def _final_ordered_list(match):
+        values = []
+        for line in match.group(2).splitlines():
+            item = re.match(r'^\s*\d+\.\s+(.+?)\s*$', line)
+            if item:
+                values.append(item.group(1))
+        if len(values) < 2:
+            return match.group(0)
+        return '<ol class="theory-ordered-list">' + ''.join(f'<li>{html.escape(value)}</li>' for value in values) + '</ol>'
+
+    text = re.sub(
+        r'<p([^>]*)>\s*((?:\d+\.\s+.*?(?:\n|$)){2,})\s*</p>',
+        _final_ordered_list,
+        text,
+        flags=re.DOTALL,
+    )
     text = text.replace('<p>__THEORY_SPACER__</p>', '<div class="theory-spacer"></div>')
     text = text.replace('__THEORY_SPACER__', '<div class="theory-spacer"></div>')
     text = text.replace('<p>THEORY_SPACER</p>', '<div class="theory-spacer"></div>')
     text = text.replace('THEORY_SPACER', '<div class="theory-spacer"></div>')
+    # После markdown spacer мог оказаться внутри strong/em и повторно
+    # появиться уже после основного прохода BeautifulSoup. Удаляем такие
+    # пустые контейнеры финальным безопасным проходом.
+    text = re.sub(
+        r'<p>\s*<(?:strong|em)>\s*<div class="theory-spacer"></div>\s*</(?:strong|em)>\s*</p>',
+        '',
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r'<(?:strong|em)>\s*<div class="theory-spacer"></div>\s*</(?:strong|em)>',
+        '',
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r'<div class="theory-spacer"></div>', '', text, flags=re.IGNORECASE)
     return Markup(text)
 
 
@@ -940,13 +1282,17 @@ def theory_view_block(block_id):
         checkpoint_attempts=checkpoint_attempts,
     )
 
-    return render_template(
+    response = make_response(render_template(
         'sandbox/theory_article.html',
         state_by_number=state_by_number,
         state=state,
         feedback=feedback,
         **template_ctx,
-    )
+    ))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 # --- Управление для тьютора/админа ---
@@ -1753,7 +2099,10 @@ def theory_manage_stats():
 @login_required
 def theory_api_run_code():
     if not (has_permission(current_user, 'theory.view') or _can_manage_theory()):
-        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
+        # Ученику разрешён только изолированный запуск кода из опубликованной
+        # статьи; доступ к редактору теории и чужим материалам не расширяется.
+        if not current_user.is_student():
+            return jsonify({'success': False, 'error': 'Нет доступа'}), 403
     payload = request.get_json(silent=True) or {}
     lang = (payload.get('lang') or 'python').strip().lower()
     code = (payload.get('code') or '')
@@ -1812,10 +2161,19 @@ def theory_api_read():
 
 
 @theory_bp.route('/theory/api/progress', methods=['POST'])
-@login_required
+@csrf.exempt
 def theory_api_progress():
+    # Progress is a background autosave.  A cached article can outlive the
+    # login session; in that case it must be a harmless no-op rather than a
+    # red console error.  Authenticated students still go through the normal
+    # ownership and persistence path below.
+    if not current_user.is_authenticated:
+        return jsonify({'success': True, 'progress': 0, 'preview': True})
     if not current_user.is_student():
-        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
+        # Страница теории может открываться в режиме просмотра преподавателем
+        # или создателем. Такой просмотр не должен порождать ошибки в консоли:
+        # прогресс не сохраняем, но отвечаем успешным preview-результатом.
+        return jsonify({'success': True, 'progress': 0, 'preview': True})
     resolved, error = _resolve_student_block_from_payload(request.get_json(silent=True) or {})
     if error:
         return jsonify({'success': False, 'error': error}), 404
@@ -1858,9 +2216,27 @@ def theory_api_checkpoint():
     checkpoint_key = (payload.get('checkpoint_key') or '').strip()
     selected_answer = (payload.get('answer') or '').strip()
     checkpoint = next((item for item in _parse_theory_checkpoints(block.content) if item['key'] == checkpoint_key), None)
-    if not checkpoint or selected_answer not in checkpoint['options']:
+    interactive = next((item for item in _parse_theory_interactives(block.content) if item['key'] == checkpoint_key), None)
+    if not checkpoint and not interactive:
         return jsonify({'success': False, 'error': 'Проверка не найдена.'}), 404
-    is_correct = selected_answer == checkpoint['answer']
+    kind = interactive['type'] if interactive else 'checkpoint'
+    expected_answer = (interactive.get('answer') if interactive else checkpoint['answer']) or ''
+    if kind in {'code', 'debug'}:
+        # Code activities submit the actual program output; the expected value
+        # remains server-side in the interactive marker.
+        is_correct = selected_answer == (interactive.get('expected') or expected_answer).strip()
+    elif kind in {'multi', 'classify'}:
+        selected_set = {part.strip() for part in selected_answer.split('|') if part.strip()}
+        expected_set = {part.strip() for part in expected_answer.split('|') if part.strip()}
+        allowed_set = {part.strip() for part in interactive.get('options', '').split('|') if part.strip()}
+        # A wrong or incomplete selection is a regular failed attempt, not a
+        # missing resource. This lets the UI show feedback and allow retry.
+        is_correct = bool(selected_set) and selected_set.issubset(allowed_set) and selected_set == expected_set
+    else:
+        # Every known interactive format uses a canonical answer string. Keep
+        # comparison server-side and return 200/false for a wrong value so the
+        # student never sees a misleading 404 toast.
+        is_correct = selected_answer == expected_answer.strip()
     attempt = TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key).first()
     if not attempt:
         attempt = TheoryCheckpointAttempt(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key, selected_answer=selected_answer, is_correct=is_correct)
@@ -1871,7 +2247,8 @@ def theory_api_checkpoint():
         attempt.attempts_count = int(attempt.attempts_count or 0) + 1
         attempt.answered_at = moscow_now()
     db.session.commit()
-    return jsonify({'success': True, 'correct': is_correct, 'explanation': checkpoint['explanation'], 'attempts': attempt.attempts_count})
+    explanation = (checkpoint or {}).get('explanation') or (interactive or {}).get('explanation') or ''
+    return jsonify({'success': True, 'correct': is_correct, 'explanation': explanation, 'attempts': attempt.attempts_count})
 
 
 @theory_bp.route('/theory/api/note', methods=['POST'])
@@ -2063,7 +2440,11 @@ def theory_course_map():
     from core.db_models import CourseTimelineBlock
     blocks = CourseTimelineBlock.query.filter_by(course_id=course_id).order_by(CourseTimelineBlock.lesson_number.asc()).all()
     
-    return render_template('sandbox/course_map.html', blocks=blocks, course_id=course_id)
+    rendered_blocks = {
+        block.id: _render_theory_content_html(block.content or '')
+        for block in blocks
+    }
+    return render_template('sandbox/course_map.html', blocks=blocks, rendered_blocks=rendered_blocks, course_id=course_id)
 
 @theory_bp.route('/theory/api/upload-map-archive', methods=['POST'])
 @login_required

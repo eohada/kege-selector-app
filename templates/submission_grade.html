@@ -592,7 +592,7 @@
                     <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Дедлайн</div>
                     <div class="min-h-9 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none">
                         {% if assignment.deadline %}
-                        <i class="ph-bold ph-calendar-blank text-boo-coral shrink-0"></i>{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}
+                        <i class="ph-bold ph-calendar-blank text-boo-coral shrink-0"></i>{{ assignment.deadline|user_dt('%d.%m.%Y %H:%M') }}
                         {% else %}
                         <span class="text-muted font-semibold">—</span>
                         {% endif %}
@@ -602,7 +602,7 @@
                     <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Сдано</div>
                     <div class="min-h-9 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none">
                         {% if submission.submitted_at %}
-                        <i class="ph-bold ph-upload-simple text-boo-primary shrink-0"></i>{{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}
+                        <i class="ph-bold ph-upload-simple text-boo-primary shrink-0"></i>{{ submission.submitted_at|user_dt('%d.%m.%Y %H:%M') }}
                         {% else %}
                         <span class="text-muted font-semibold">—</span>
                         {% endif %}
@@ -739,7 +739,7 @@
                                         <div>
                                             <span class="text-sm font-black text-primary dark:text-white block">Код ученика (Python)</span>
                                             {% if g.answer.student_code_saved_at %}
-                                            <small class="text-xs text-muted dark:text-dark-muted block">Сохранён: {{ g.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                                            <small class="text-xs text-muted dark:text-dark-muted block">Сохранён: {{ g.answer.student_code_saved_at|user_dt('%d.%m.%Y %H:%M') }}</small>
                                             {% endif %}
                                         </div>
                                     </div>
@@ -976,7 +976,7 @@
                         <div class="grade-comment-bubble">
                             <div class="grade-comment-meta">
                                 <strong>{{ comment.author.username if comment.author else 'Пользователь' }}</strong>
-                                <span>{{ comment.created_at.strftime('%d.%m.%Y %H:%M') if comment.created_at else '' }}</span>
+                                <span>{{ comment.created_at|user_dt('%d.%m.%Y %H:%M') if comment.created_at else '' }}</span>
                             </div>
                             <div class="grade-comment-text">{{ comment.text }}</div>
                         </div>
@@ -1039,7 +1039,7 @@
 
 {% block extra_scripts %}
     <script>
-    var assignmentDeadline = {% if assignment.deadline %}"{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') }}"{% else %}null{% endif %};
+    var assignmentDeadline = {% if assignment.deadline %}"{{ assignment.deadline|user_dt('%Y-%m-%dT%H:%M') }}"{% else %}null{% endif %};
     var assignmentMaxAttempts = {{ assignment.max_attempts_default or 1 }};
     
     // Инициализация пошагового воспроизведения кода ученика (для преподавателя)

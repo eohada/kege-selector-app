@@ -11,6 +11,7 @@
       </div>
       <div class="flex flex-wrap gap-2">
         {% if student %}
+        <a href="{{ url_for('courses.student_courses', student_id=student.student_id) }}" class="btn-3d inline-flex items-center gap-2 rounded-xl border-2 border-emerald-700 border-b-4 bg-emerald-600 px-4 py-2.5 text-xs font-black text-white no-underline shadow-[0_4px_0_#047857] transition hover:bg-emerald-500 active:translate-y-1 active:shadow-none"><i class="ph-bold ph-map-trifold"></i> Программа обучения</a>
         <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="btn-3d inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 border-b-4 bg-[#F4F7FA] px-4 py-2.5 text-xs font-black text-slate-700 no-underline shadow-[0_4px_0_#DAE1E9] transition hover:bg-slate-100 active:translate-y-1 active:shadow-none"><i class="ph-bold ph-chart-bar text-indigo-600"></i> Аналитика</a>
         {% endif %}
         {% if trainer_available %}<a href="{{ url_for('trainer.trainer_v2') }}" class="btn-3d inline-flex items-center gap-2 rounded-xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-4 py-2.5 text-xs font-black text-white no-underline shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none"><i class="ph-bold ph-lightning"></i> В тренажёр</a>{% endif %}
@@ -25,6 +26,13 @@
           <article class="rounded-[1.5rem] border-2 border-emerald-200 bg-[#ECFDF5] p-4 shadow-[0_4px_0_#A7F3D0]"><p class="text-[10px] font-black uppercase tracking-wider text-emerald-700">Средний результат</p><p class="mt-1 text-3xl font-black text-slate-800">{{ avg_score }}{% if avg_score != '—' %}%{% endif %}</p><p class="text-xs font-bold text-emerald-800/70">по последним проверкам</p></article>
         </section>
 
+        {% if selected_course %}
+        <section class="rounded-[2rem] border-2 border-indigo-100 bg-indigo-50 p-5 shadow-[0_4px_0_#C7D2FE] sm:p-6">
+          <div class="flex items-center justify-between gap-3"><div><p class="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-500">План на неделю</p><h2 class="font-display text-xl font-black text-slate-800">{{ selected_course.title }}</h2></div><a href="{{ url_for('courses.course_weekly_plan', course_id=selected_course.course_id, view=1) }}" class="text-xs font-black text-indigo-700 no-underline">Весь план →</a></div>
+          {% if course_weekly_items %}<div class="mt-4 grid gap-2">{% for item in course_weekly_items[:3] %}<div class="flex items-center justify-between gap-3 rounded-xl border-2 border-white bg-white px-3 py-2.5"><span class="truncate text-xs font-black text-slate-700">{{ item.title }}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">{{ item.due_at|user_dt('%d.%m') if item.due_at else 'без даты' }}</span></div>{% endfor %}</div>{% else %}<p class="mt-4 rounded-xl bg-white p-4 text-sm font-bold text-slate-500">На этой неделе новых элементов нет.</p>{% endif %}
+        </section>
+        {% endif %}
+
         <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] sm:p-6">
           {% set lesson = active_lesson or upcoming_lesson %}
           <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -32,7 +40,7 @@
               <p class="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-500">{% if active_lesson %}Урок идёт сейчас{% elif upcoming_lesson %}Следующий урок{% else %}Свободное время{% endif %}</p>
               {% if lesson %}
                 <h2 class="mt-1 font-display text-2xl font-black text-slate-800">{{ lesson.topic or 'Занятие без темы' }}</h2>
-                <p class="mt-1 text-sm font-bold text-slate-500">{{ lesson.lesson_date.strftime('%d.%m в %H:%M') if lesson.lesson_date else 'Время будет уточнено преподавателем' }}</p>
+                <p class="mt-1 text-sm font-bold text-slate-500">{{ lesson.lesson_date|user_dt('%d.%m в %H:%M') if lesson.lesson_date else 'Время будет уточнено преподавателем' }}</p>
               {% else %}
                 <h2 class="mt-1 font-display text-2xl font-black text-slate-800">Продолжай изучение теории</h2>
                 <p class="mt-1 text-sm font-bold text-slate-500">Ближайших занятий пока нет. Открой материалы и подготовься к следующей теме.</p>
@@ -58,7 +66,7 @@
 
         <section class="rounded-[1.5rem] border-2 border-emerald-200 bg-[#ECFDF5] p-4 shadow-[0_4px_0_#A7F3D0]"><div class="flex items-center gap-3"><i class="ph-fill ph-telegram-logo text-2xl text-emerald-500"></i><div><p class="text-xs font-black text-slate-800">Telegram-уведомления</p><p class="text-[10px] font-bold text-emerald-800">{% if tg_connected %}Подключены{% else %}Не подключены{% endif %}</p></div></div></section>
 
-        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]"><p class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">История</p><h2 class="mb-3 font-display text-xl font-black text-slate-800">Недавние уроки</h2>{% if recent_lessons %}<div class="grid gap-2">{% for item in recent_lessons[:4] %}<a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=item.lesson_id) }}" class="flex items-center justify-between gap-2 rounded-xl bg-[#F8FAFC] px-3 py-2.5 no-underline"><span class="min-w-0 truncate text-xs font-black text-slate-700">{{ item.topic or 'Занятие без темы' }}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">{{ item.lesson_date.strftime('%d.%m') if item.lesson_date else '' }}</span></a>{% endfor %}</div>{% else %}<p class="text-sm font-bold text-slate-500">Здесь появится история занятий.</p>{% endif %}</section>
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]"><p class="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">История</p><h2 class="mb-3 font-display text-xl font-black text-slate-800">Недавние уроки</h2>{% if recent_lessons %}<div class="grid gap-2">{% for item in recent_lessons[:4] %}<a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=item.lesson_id) }}" class="flex items-center justify-between gap-2 rounded-xl bg-[#F8FAFC] px-3 py-2.5 no-underline"><span class="min-w-0 truncate text-xs font-black text-slate-700">{{ item.topic or 'Занятие без темы' }}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">{{ item.lesson_date|user_dt('%d.%m') if item.lesson_date else '' }}</span></a>{% endfor %}</div>{% else %}<p class="text-sm font-bold text-slate-500">Здесь появится история занятий.</p>{% endif %}</section>
       </aside>
     </section>
   </div>

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from celery_app import celery
 
@@ -87,26 +87,29 @@ def telegram_lesson_reminders_task() -> dict:
     Если напоминание ещё не отправлено — отправляет и ставит флаг.
     """
     from app.models import Lesson, Student, db
-    from core.db_models import moscow_now
+    from app.utils.lesson_time import lesson_storage_to_utc
 
-    now = moscow_now().replace(microsecond=0)
-    window_start = (now + timedelta(minutes=29, seconds=20)).replace(tzinfo=None)
-    window_end = (now + timedelta(minutes=30, seconds=40)).replace(tzinfo=None)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    window_start = now + timedelta(minutes=29, seconds=20)
+    window_end = now + timedelta(minutes=30, seconds=40)
     sent = 0
 
     try:
-        lessons = (
+        candidates = (
             Lesson.query
             .join(Student, Student.student_id == Lesson.student_id)
             .filter(
                 Lesson.status == 'planned',
-                Lesson.lesson_date >= window_start,
-                Lesson.lesson_date <= window_end,
                 Lesson.tg_reminder_30min_sent == False,
                 Student.user_id.isnot(None),
             )
             .all()
         )
+        lessons = [
+            lesson for lesson in candidates
+            if (lesson_storage_to_utc(lesson.lesson_date) is not None
+                and window_start <= lesson_storage_to_utc(lesson.lesson_date) <= window_end)
+        ]
         logger.info(
             'lesson_reminder scan window=%s..%s candidates=%s',
             window_start,

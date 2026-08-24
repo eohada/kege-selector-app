@@ -43,11 +43,19 @@ def upgrade():
         )
     '''))
     if not _unique_constraint_exists(bind):
-        op.create_unique_constraint(
-            CONSTRAINT_NAME,
-            TABLE_NAME,
-            ['referral_code_id', 'user_id'],
-        )
+        if bind.dialect.name == 'sqlite':
+            # SQLite cannot ALTER TABLE ADD CONSTRAINT directly.
+            with op.batch_alter_table(TABLE_NAME) as batch:
+                batch.create_unique_constraint(
+                    CONSTRAINT_NAME,
+                    ['referral_code_id', 'user_id'],
+                )
+        else:
+            op.create_unique_constraint(
+                CONSTRAINT_NAME,
+                TABLE_NAME,
+                ['referral_code_id', 'user_id'],
+            )
 
 
 def downgrade():

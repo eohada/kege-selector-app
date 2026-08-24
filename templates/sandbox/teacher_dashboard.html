@@ -201,6 +201,11 @@
                         </div>
                     </div>
 
+                    <a href="{{ url_for('courses.student_courses', student_id=student.student_id) }}" class="btn-3d flex items-center justify-center gap-2 rounded-xl border-2 border-emerald-700 border-b-[4px] bg-emerald-600 px-4 py-3 text-center text-xs font-black text-white no-underline shadow-[0_4px_0_#047857] transition hover:bg-emerald-500 active:translate-y-1 active:shadow-none">
+                        <i class="ph-bold ph-map-trifold text-base"></i>
+                        Программа обучения
+                    </a>
+
                     <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="btn-3d flex items-center justify-center gap-2 rounded-xl border-2 border-indigo-700 border-b-[4px] bg-indigo-600 px-4 py-3 text-center text-xs font-black text-white no-underline shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none">
                         <i class="ph-bold ph-chart-polar text-base"></i>
                         Открыть траекторию и аналитику

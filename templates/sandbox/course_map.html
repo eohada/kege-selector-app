@@ -30,7 +30,7 @@
         <!-- The Map Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {% for block in blocks %}
-            <div class="hidden" id="content-{{ block.id }}">{{ block.content or 'Нет описания' }}</div>
+            <template id="content-{{ block.id }}">{% if rendered_blocks.get(block.id) %}{{ rendered_blocks[block.id]|safe }}{% else %}<p class="text-slate-500">Нет описания</p>{% endif %}</template>
             <div class="relative group cursor-pointer" onclick="openContentModal('{{ block.title | escape }}', 'content-{{ block.id }}')">
                 
                 <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-5 h-full flex flex-col transition-transform group-hover:-translate-y-1 group-hover:shadow-[0_6px_0_#DAE1E9] active:translate-y-[2px] active:shadow-[0_2px_0_#DAE1E9]">
@@ -83,7 +83,7 @@
         
         <div class="flex-1 bg-[#F4F7FA] overflow-y-auto rounded-b-[2rem] p-8">
             <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-8">
-                <div id="content-modal-body" class="whitespace-pre-wrap text-slate-700 text-lg leading-relaxed font-medium"></div>
+                <div id="content-modal-body" class="prose prose-slate max-w-none text-slate-700"></div>
             </div>
         </div>
     </div>
@@ -95,7 +95,9 @@
         const box = document.getElementById('content-modal-box');
         
         document.getElementById('content-modal-title').textContent = title || 'Описание урока';
-        document.getElementById('content-modal-body').textContent = document.getElementById(contentId).textContent.trim();
+        const source = document.getElementById(contentId);
+        const body = document.getElementById('content-modal-body');
+        body.replaceChildren(source.content.cloneNode(true));
         
         modal.classList.remove('hidden');
         // Trigger reflow

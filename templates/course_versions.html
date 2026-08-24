@@ -1,0 +1,15 @@
+{% extends 'sandbox/layout_teacher.html' %}
+{% set active_page = 'students' %}
+{% block title %}Версии маршрута · {{ course.title }}{% endblock %}
+{% block sandbox_content %}
+<main class="mx-auto max-w-[1400px] px-4 py-8">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div><p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">История программы</p><h1 class="mt-1 text-3xl font-black text-slate-900">Версии маршрута</h1><p class="mt-1 text-sm font-semibold text-slate-500">{{ course.title }} · текущая версия {{ course.current_version or 1 }}</p></div>
+    <a href="{{ url_for('courses.course_view', course_id=course.course_id) }}" class="rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-700 no-underline shadow-[0_3px_0_#dae1e9]">← К программе</a>
+  </div>
+  <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-5 shadow-[0_4px_0_#DAE1E9]">
+    {% if versions %}<div class="grid gap-4 md:grid-cols-2">{% for version in versions %}<article class="rounded-2xl border-2 border-slate-200 bg-white p-5 shadow-[0_3px_0_#DAE1E9]"><div class="flex items-center justify-between"><span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-black text-indigo-700">Версия {{ version.version_number }}</span><time class="text-xs font-bold text-slate-400">{{ version.created_at.strftime('%d.%m.%Y %H:%M') if version.created_at else '—' }}</time></div><h2 class="mt-4 text-lg font-black text-slate-900">{{ version.reason or 'Изменение маршрута' }}</h2><div class="mt-3 flex flex-wrap gap-2"><a href="{{ url_for('courses.course_versions', course_id=course.course_id, view=1, compare_a=version.version_id, compare_b=versions[0].version_id) }}" class="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 no-underline">Сравнить с текущей</a><details><summary class="cursor-pointer rounded-lg bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">Snapshot</summary><pre class="mt-3 max-h-72 overflow-auto rounded-xl bg-slate-900 p-3 text-xs text-slate-100">{{ version.snapshot|tojson(indent=2) }}</pre></details></div></article>{% endfor %}</div>{% else %}<div class="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-12 text-center text-sm font-bold text-slate-500">Версий пока нет. Они появятся после первого изменения маршрута.</div>{% endif %}
+    {% if diff %}<section class="mt-6 rounded-2xl border-2 border-amber-200 bg-amber-50 p-5"><h2 class="text-lg font-black text-amber-900">Изменения между версиями</h2><div class="mt-3 grid gap-3">{% for change in diff %}<div class="rounded-xl border border-amber-200 bg-white p-3"><p class="text-xs font-black uppercase tracking-wider text-amber-700">{{ change.key }}</p><div class="mt-2 grid gap-2 text-xs md:grid-cols-2"><pre class="overflow-auto rounded-lg bg-rose-50 p-2 text-rose-800">{{ change.before|tojson(indent=2) }}</pre><pre class="overflow-auto rounded-lg bg-emerald-50 p-2 text-emerald-800">{{ change.after|tojson(indent=2) }}</pre></div></div>{% endfor %}</div></section>{% endif %}
+  </section>
+</main>
+{% endblock %}

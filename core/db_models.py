@@ -205,6 +205,176 @@ class CourseTaskTemplate(db.Model):
         return f'<CourseTaskTemplate course={self.course_id} task={self.task_number}>'
 
 
+class ExamSkill(db.Model):
+    """Атомарный экзаменационный навык, общий для всех индивидуальных планов."""
+    __tablename__ = 'ExamSkills'
+    skill_id = db.Column(db.Integer, primary_key=True)
+    exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=True, index=True)
+    title = db.Column(db.String(300), nullable=False)
+    subject = db.Column(db.String(120), nullable=True, index=True)
+    topic = db.Column(db.String(200), nullable=True, index=True)
+    subtopic = db.Column(db.String(200), nullable=True)
+    difficulty = db.Column(db.Integer, nullable=True)
+    weight = db.Column(db.Float, nullable=False, default=1.0)
+    theory_ref = db.Column(db.String(300), nullable=True)
+    mastery_criteria = db.Column(db.JSON, nullable=True)
+    prerequisite_skill_id = db.Column(db.Integer, db.ForeignKey('ExamSkills.skill_id'), nullable=True, index=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+
+    course = db.relationship('Course', foreign_keys=[exam_course_id])
+    prerequisite = db.relationship('ExamSkill', remote_side=[skill_id], uselist=False)
+
+
+class StudentSkill(db.Model):
+    """Текущее состояние освоения конкретного навыка учеником."""
+    __tablename__ = 'StudentSkills'
+    student_skill_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    skill_id = db.Column(db.Integer, db.ForeignKey('ExamSkills.skill_id'), nullable=False, index=True)
+    mastery_percent = db.Column(db.Integer, nullable=False, default=0)
+    state = db.Column(db.String(30), nullable=False, default='not_started', index=True)
+    theory_done = db.Column(db.Boolean, nullable=False, default=False)
+    practice_done = db.Column(db.Boolean, nullable=False, default=False)
+    homework_total = db.Column(db.Integer, nullable=False, default=0)
+    homework_done = db.Column(db.Integer, nullable=False, default=0)
+    last_checked_at = db.Column(db.DateTime, nullable=True, index=True)
+    next_review_at = db.Column(db.DateTime, nullable=True, index=True)
+    source = db.Column(db.String(40), nullable=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    skill = db.relationship('ExamSkill', foreign_keys=[skill_id])
+    __table_args__ = (db.UniqueConstraint('student_id', 'skill_id', name='uq_student_skill'),)
+
+
+class LearningError(db.Model):
+    """Журнал ошибок ученика с повторяемостью и планом исправления."""
+    __tablename__ = 'LearningErrors'
+    error_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    skill_id = db.Column(db.Integer, db.ForeignKey('ExamSkills.skill_id'), nullable=True, index=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=True, index=True)
+    error_type = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    occurrences = db.Column(db.Integer, nullable=False, default=1)
+    last_seen_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    resolved_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    next_review_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    skill = db.relationship('ExamSkill', foreign_keys=[skill_id])
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+
+class LearningItem(db.Model):
+    """Универсальный элемент программы; Lesson — один из его типов."""
+    __tablename__ = 'LearningItems'
+    item_id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=False, index=True)
+    module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True, index=True)
+    skill_id = db.Column(db.Integer, db.ForeignKey('ExamSkills.skill_id'), nullable=True, index=True)
+    item_type = db.Column(db.String(30), nullable=False, default='lesson', index=True)
+    title = db.Column(db.String(300), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default='planned', index=True)
+    due_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
+    why_now = db.Column(db.Text, nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0)
+    metadata_json = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    course = db.relationship('LearningTrajectory', foreign_keys=[course_id], overlaps='items')
+    module = db.relationship('TrajectoryModule', foreign_keys=[module_id])
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    skill = db.relationship('ExamSkill', foreign_keys=[skill_id])
+
+
+class LearningTrajectoryVersion(db.Model):
+    """Снимок маршрута перед изменением программы."""
+    __tablename__ = 'CourseVersions'
+    version_id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=False, index=True)
+    version_number = db.Column(db.Integer, nullable=False)
+    reason = db.Column(db.String(300), nullable=True)
+    snapshot = db.Column(db.JSON, nullable=False, default=dict)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    course = db.relationship('LearningTrajectory', foreign_keys=[course_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    __table_args__ = (db.UniqueConstraint('course_id', 'version_number', name='uq_course_version'),)
+
+
+class LearningTrajectoryTemplate(db.Model):
+    """Переиспользуемая программа, из которой строится персональный маршрут."""
+    __tablename__ = 'CourseTemplates'
+    template_id = db.Column(db.Integer, primary_key=True)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    title = db.Column(db.String(240), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    target_score = db.Column(db.Integer, nullable=True)
+    estimated_lessons = db.Column(db.Integer, nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
+    exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
+    modules = db.relationship('LearningTrajectoryTemplateModule', back_populates='template', lazy=True, cascade='all, delete-orphan')
+
+
+class LearningTrajectoryTemplateModule(db.Model):
+    __tablename__ = 'CourseTemplateModules'
+    template_module_id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('CourseTemplates.template_id'), nullable=False, index=True)
+    title = db.Column(db.String(240), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0)
+
+    template = db.relationship('LearningTrajectoryTemplate', back_populates='modules')
+    items = db.relationship('LearningTrajectoryTemplateItem', back_populates='module', lazy=True, cascade='all, delete-orphan')
+
+
+class LearningTrajectoryTemplateItem(db.Model):
+    __tablename__ = 'CourseTemplateItems'
+    template_item_id = db.Column(db.Integer, primary_key=True)
+    template_module_id = db.Column(db.Integer, db.ForeignKey('CourseTemplateModules.template_module_id'), nullable=False, index=True)
+    skill_id = db.Column(db.Integer, db.ForeignKey('ExamSkills.skill_id'), nullable=True, index=True)
+    item_type = db.Column(db.String(30), nullable=False, default='practice')
+    title = db.Column(db.String(300), nullable=False)
+    duration_minutes = db.Column(db.Integer, nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0)
+    metadata_json = db.Column(db.JSON, nullable=True)
+
+    module = db.relationship('LearningTrajectoryTemplateModule', back_populates='items')
+    skill = db.relationship('ExamSkill', foreign_keys=[skill_id])
+
+
+class LessonOutcome(db.Model):
+    """Структурированный итог занятия для аналитики и следующего шага."""
+    __tablename__ = 'LessonOutcomes'
+    outcome_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, unique=True, index=True)
+    covered = db.Column(db.JSON, nullable=True)
+    mastery = db.Column(db.String(20), nullable=True)
+    next_action = db.Column(db.String(30), nullable=True)
+    homework_assigned = db.Column(db.Boolean, nullable=False, default=False)
+    teacher_note = db.Column(db.Text, nullable=True)
+    content_snapshot = db.Column(db.JSON, nullable=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
 class Tasks(db.Model):
     __tablename__ = 'Tasks'
     task_id = db.Column(db.Integer, primary_key=True)
@@ -582,6 +752,21 @@ class LearningTrajectory(db.Model):
     title = db.Column(db.String(200), nullable=False)
     subject = db.Column(db.String(100), nullable=True)
     description = db.Column(db.Text, nullable=True)
+    learning_goal = db.Column(db.Text, nullable=True)
+    expected_result = db.Column(db.Text, nullable=True)
+    exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    target_score = db.Column(db.Integer, nullable=True)
+    exam_date = db.Column(db.Date, nullable=True)
+    current_forecast = db.Column(db.Integer, nullable=True)
+    forecast_low = db.Column(db.Integer, nullable=True)
+    forecast_high = db.Column(db.Integer, nullable=True)
+    current_version = db.Column(db.Integer, nullable=False, default=1)
+    default_lesson_duration = db.Column(db.Integer, default=60, nullable=False)
+    lessons_per_week = db.Column(db.Integer, nullable=True)
+    lesson_duration_minutes = db.Column(db.Integer, nullable=True)
+    homework_hours_per_week = db.Column(db.Numeric(5, 2), nullable=True)
+    diagnostic_mode = db.Column(db.String(30), nullable=True)  # test|manual
+    starting_forecast = db.Column(db.Integer, nullable=True)
 
     status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|archived
     created_at = db.Column(db.DateTime, default=moscow_now)
@@ -589,7 +774,9 @@ class LearningTrajectory(db.Model):
 
     student = db.relationship('Student', foreign_keys=[student_id])
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
     modules = db.relationship('TrajectoryModule', back_populates='trajectory', lazy=True, cascade='all, delete-orphan')
+    items = db.relationship('LearningItem', foreign_keys='LearningItem.course_id', lazy=True, overlaps='course')
 
 
 class TrajectoryModule(db.Model):
@@ -600,6 +787,7 @@ class TrajectoryModule(db.Model):
 
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    learning_result = db.Column(db.Text, nullable=True)
     order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
 
     created_at = db.Column(db.DateTime, default=moscow_now)
@@ -733,7 +921,9 @@ class RecurringLessonSlot(db.Model):
     time_hhmm = db.Column(db.String(5), nullable=False)          # "HH:MM" в выбранной timezone
     duration = db.Column(db.Integer, default=60, nullable=False) # minutes
     lesson_type = db.Column(db.String(50), default='regular', nullable=False)
-    timezone = db.Column(db.String(20), default='moscow', nullable=False)  # moscow|tomsk
+    # IANA-зона автора слота: например, Asia/Krasnoyarsk.
+    # Старые значения moscow/tomsk распознаются утилитой lesson_time.
+    timezone = db.Column(db.String(64), default='Europe/Moscow', nullable=False)
 
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
@@ -795,11 +985,13 @@ class Lesson(db.Model):
     __tablename__ = 'Lessons'
     lesson_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    learning_trajectory_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=True, index=True)
     course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
     exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
     lesson_type = db.Column(db.String(50), default='regular')
-    lesson_date = db.Column(db.DateTime(timezone=True), nullable=False)
+    lesson_date = db.Column(db.DateTime(timezone=True), nullable=True)
     duration = db.Column(db.Integer, default=60)
+    course_order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
     status = db.Column(db.String(50), default='planned')
     topic = db.Column(db.String(300), nullable=True)
     notes = db.Column(db.Text, nullable=True)

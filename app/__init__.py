@@ -10,7 +10,7 @@ import json
 from flask import Flask, request, jsonify
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from zoneinfo import ZoneInfo  # comment
 from datetime import datetime, timezone  # comment
 from werkzeug.exceptions import HTTPException
@@ -228,68 +228,49 @@ def create_app(config_name=None):
 
     @app.template_filter('format_dt_tz')  # comment
     def format_dt_tz(dt, tz_name='Europe/Moscow'):  # comment
-        """Форматируем datetime в таймзоне пользователя. В БД время обычно хранится как naive MSK."""  # comment
+        """Форматируем момент урока в выбранном IANA-поясе."""  # comment
         if not dt:  # comment
             return ''  # comment
-        try:  # comment
-            tz = ZoneInfo(tz_name or 'Europe/Moscow')  # comment
-        except Exception:  # comment
-            tz = ZoneInfo('Europe/Moscow')  # comment
-        value = dt  # comment
-        if isinstance(value, datetime):  # comment
-            if value.tzinfo is None:  # comment
-                value = value.replace(tzinfo=MOSCOW_TZ)  # comment
-            value_local = value.astimezone(tz)  # comment
-            return value_local.strftime('%d.%m.%Y %H:%M') + f" ({value_local.tzname() or ''})"  # comment
-        return str(value)  # comment
+        if isinstance(dt, datetime):  # comment
+            from app.utils.lesson_time import lesson_storage_to_local
+            value_local = lesson_storage_to_local(dt, tz_name)  # comment
+            if value_local:
+                return value_local.strftime('%d.%m.%Y %H:%M') + f" ({value_local.tzname() or ''})"  # comment
+        return str(dt)  # comment
 
     @app.template_filter('to_tz')  # comment
     def to_tz(dt, tz_name='Europe/Moscow'):  # comment
         """
-        Переводим datetime в заданную таймзону и возвращаем timezone-aware datetime.
-        У нас в БД `Lesson.lesson_date` обычно хранится как naive MSK.
-        Это нужно, чтобы в шаблонах можно было безопасно делать `.strftime()` уже в локальном времени.
+        Переводит момент урока в заданную IANA-зону.
+        Legacy naive-значения сохраняют совместимое трактование старого московского времени.
         """  # comment
         if not dt:  # comment
             return None  # comment
-        try:  # comment
-            tz = ZoneInfo(tz_name or 'Europe/Moscow')  # comment
-        except Exception:  # comment
-            tz = ZoneInfo('Europe/Moscow')  # comment
-        value = dt  # comment
-        if isinstance(value, datetime):  # comment
-            if value.tzinfo is None:  # comment
-                value = value.replace(tzinfo=MOSCOW_TZ)  # comment
-            return value.astimezone(tz)  # comment
+        if isinstance(dt, datetime):  # comment
+            from app.utils.lesson_time import lesson_storage_to_local
+            return lesson_storage_to_local(dt, tz_name)  # comment
         return dt  # comment
 
     @app.template_filter('user_dt')
     def user_dt(dt, format_string='%H:%M'):
         """
-        Новый стандарт: переводит UTC datetime в локальное время пользователя и форматирует.
+        Переводит момент урока в локальное время текущего пользователя и форматирует.
         """
         if not dt:
             return ''
         from flask_login import current_user
         try:
-            # Получаем IANA-таймзону, по умолчанию Europe/Moscow
-            tz_name = getattr(current_user, 'timezone_iana', None)
-            if not tz_name:
-                profile = getattr(current_user, 'profile', None)
-                if profile:
-                    tz_name = getattr(profile, 'timezone', None)
-            tz = ZoneInfo(tz_name or 'Europe/Moscow')
+            from app.utils.datetime_utc import effective_timezone_name
+            tz_name = effective_timezone_name(current_user)
         except Exception:
-            tz = ZoneInfo('Europe/Moscow')
+            tz_name = 'Europe/Moscow'
         
-        value = dt
-        if isinstance(value, datetime):
-            if value.tzinfo is None:
-                # Согласно новому стандарту БД, naive это UTC
-                value = value.replace(tzinfo=timezone.utc)
-            value_local = value.astimezone(tz)
-            return value_local.strftime(format_string)
-        return str(value)
+        if isinstance(dt, datetime):
+            from app.utils.lesson_time import lesson_storage_to_local
+            value_local = lesson_storage_to_local(dt, tz_name)
+            if value_local:
+                return value_local.strftime(format_string)
+        return str(dt)
     
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     logger.info(f"=== Application Initialization ===")
@@ -351,9 +332,75 @@ def create_app(config_name=None):
                         conn.commit()
                 except Exception:
                     pass
+                # SQLite не умеет менять существующие таблицы через create_all().
+                # Поэтому локальная база должна догонять expand-изменения курса без
+                # ручного удаления данных или запуска production-миграций.
+                schema = inspect(db.engine)
+                table_names = {name.lower(): name for name in schema.get_table_names()}
+                from alembic.migration import MigrationContext
+                from alembic.operations import Operations
+
+                with db.engine.begin() as conn:
+                    operations = Operations(MigrationContext.configure(conn))
+
+                    courses_table = table_names.get('courses')
+                    if courses_table:
+                        course_columns = {column['name'] for column in schema.get_columns(courses_table)}
+                        with operations.batch_alter_table(courses_table) as batch:
+                            if 'learning_goal' not in course_columns:
+                                batch.add_column(db.Column('learning_goal', db.Text, nullable=True))
+                            if 'expected_result' not in course_columns:
+                                batch.add_column(db.Column('expected_result', db.Text, nullable=True))
+                            if 'default_lesson_duration' not in course_columns:
+                                batch.add_column(db.Column('default_lesson_duration', db.Integer, nullable=True))
+                        conn.execute(text(f'UPDATE "{courses_table}" SET default_lesson_duration = 60 WHERE default_lesson_duration IS NULL'))
+
+                    modules_table = table_names.get('coursemodules')
+                    if modules_table:
+                        module_columns = {column['name'] for column in schema.get_columns(modules_table)}
+                        if 'learning_result' not in module_columns:
+                            operations.add_column(modules_table, db.Column('learning_result', db.Text, nullable=True))
+
+                    lessons_table = table_names.get('lessons')
+                    if lessons_table:
+                        lesson_columns = {column['name']: column for column in schema.get_columns(lessons_table)}
+                        lesson_indexes = {index['name'] for index in schema.get_indexes(lessons_table)}
+                        with operations.batch_alter_table(lessons_table) as batch:
+                            if 'learning_trajectory_id' not in lesson_columns:
+                                batch.add_column(db.Column('learning_trajectory_id', db.Integer, nullable=True))
+                                if 'ix_Lessons_learning_trajectory_id' not in lesson_indexes:
+                                    batch.create_index('ix_Lessons_learning_trajectory_id', ['learning_trajectory_id'], unique=False)
+                            if 'course_order_index' not in lesson_columns:
+                                batch.add_column(db.Column('course_order_index', db.Integer, nullable=True))
+                                if 'ix_Lessons_course_order_index' not in lesson_indexes:
+                                    batch.create_index('ix_Lessons_course_order_index', ['course_order_index'], unique=False)
+                            if lesson_columns.get('lesson_date', {}).get('nullable') is False:
+                                batch.alter_column(
+                                    'lesson_date',
+                                    existing_type=lesson_columns['lesson_date']['type'],
+                                    nullable=True,
+                                )
+                        conn.execute(text(f'UPDATE "{lessons_table}" SET course_order_index = 0 WHERE course_order_index IS NULL'))
+                # Локальный процесс однопоточный, поэтому здесь безопасно применить
+                # общий expand-only bootstrap для существующих SQLite-таблиц.
+                from app.utils.db_migrations import ensure_schema_columns
+                ensure_schema_columns(app)
                 logger.info("✓ Local SQLite schema ensured via db.create_all()")
         except Exception as schema_error:
             logger.warning("⚠ Local SQLite schema bootstrap failed: %s", schema_error)
+
+    try:
+        with app.app_context():
+            from app.utils.reserved_creator import ensure_reserved_creator
+            ensure_reserved_creator()
+            logger.info("✓ Reserved creator account ensured")
+
+            if ENVIRONMENT in ('local', 'development', 'dev') and not app.config.get('TESTING'):
+                from app.utils.local_dev_profile_pool import ensure_local_dev_profile_pool
+                ensure_local_dev_profile_pool()
+                logger.info("✓ Local role-check profile pool ensured")
+    except Exception as creator_error:
+        logger.warning("⚠ Reserved creator bootstrap failed: %s", creator_error)
 
     logger.info(f"SECRET_KEY set: {'YES' if os.environ.get('SECRET_KEY') else 'NO'}")
     logger.info(f"=== Initialization Complete ===")
@@ -528,6 +575,9 @@ def create_app(config_name=None):
     
     app.register_blueprint(chief_tester_bp)
     app.register_blueprint(theory_bp)
+    # JSON actions in the authenticated theory workspace must not be rejected
+    # by a second endpoint-level CSRF lookup after blueprint registration.
+    csrf.exempt(theory_bp)
     app.register_blueprint(reminders_bp)
     app.register_blueprint(telegram_bp)
     app.register_blueprint(tg_app_bp)
@@ -628,6 +678,32 @@ def create_app(config_name=None):
 
     from app.auth.routes import logout
     csrf.exempt(logout)
+
+    # Theory progress is a debounced autosave request. Exempt it explicitly
+    # during application registration as well as at the view declaration so
+    # blueprint import order cannot reintroduce a stale 403 in WSGI workers.
+    from app.theory.routes import (
+        theory_api_bookmark,
+        theory_api_checkpoint,
+        theory_api_feedback,
+        theory_api_note,
+        theory_api_progress,
+        theory_api_read,
+        theory_api_run_code,
+    )
+    # Theory interactions are authenticated session APIs.  They send JSON
+    # from the article page and must not be rejected by a stale CSRF cookie;
+    # authentication and student ownership checks remain enforced in each view.
+    for theory_api in (
+        theory_api_bookmark,
+        theory_api_checkpoint,
+        theory_api_feedback,
+        theory_api_note,
+        theory_api_progress,
+        theory_api_read,
+        theory_api_run_code,
+    ):
+        csrf.exempt(theory_api)
     
     from app.admin.routes import maintenance_status_api
     csrf.exempt(maintenance_status_api)
@@ -680,6 +756,59 @@ def create_app(config_name=None):
     def inject_csrf_token():
         from flask_wtf.csrf import generate_csrf
         return dict(csrf_token=generate_csrf)
+
+    @app.context_processor
+    def inject_dev_tools_access():
+        """Expose the local role switcher consistently in every V2 layout.
+
+        Blueprint context processors apply only to templates rendered by that
+        blueprint.  The switcher is shared by the whole V2 shell, so its access
+        flag must be application-wide; otherwise it silently disappears on
+        pages served by courses, students, lessons and other blueprints.
+        """
+        from flask import session as flask_session
+        from flask_login import current_user
+
+        user_can_use_tools = False
+        if current_user and getattr(current_user, 'is_authenticated', False):
+            try:
+                role = (getattr(current_user, 'role', '') or '').lower()
+                role_flags = (
+                    getattr(current_user, 'is_admin', lambda: False)()
+                    or getattr(current_user, 'is_creator', lambda: False)()
+                    or getattr(current_user, 'is_chief_tester', lambda: False)()
+                    or getattr(current_user, 'is_tester', lambda: False)()
+                )
+            except Exception:
+                # После commit другой endpoint может вернуть detached user в
+                # Flask-Login. Не даём общей V2-обвязке превратить страницу
+                # в 500: восстанавливаем минимальные данные по session id.
+                role = ''
+                role_flags = False
+                try:
+                    from core.db_models import User
+                    user_id = current_user.get_id()
+                    fresh_user = User.query.get(int(user_id)) if user_id else None
+                    role = (getattr(fresh_user, 'role', '') or '').lower()
+                    role_flags = bool(fresh_user and (
+                        fresh_user.is_admin() or fresh_user.is_creator() or fresh_user.is_chief_tester() or fresh_user.is_tester()
+                    ))
+                except Exception:
+                    pass
+            user_can_use_tools = bool(
+                role_flags
+                or role in {'creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'}
+                or flask_session.get('is_impersonating', False)
+                or flask_session.get('impersonator_id') is not None
+            )
+
+        return {
+            'show_dev_tools': bool(
+                app.config.get('DEBUG')
+                or app.config.get('TESTING')
+                or user_can_use_tools
+            )
+        }
     
     @app.context_processor
     def inject_user_data():

@@ -24,6 +24,8 @@ collect_ignore = [
         'test_deploy_bluegreen_contract.py',
         'test_release_readiness_v2.py',
         'test_student_assignment_logic.py',
+        'test_timezone_schedule_v2.py',
+        'test_course_adaptive_program_v2.py',
     }
 ]
 
@@ -34,7 +36,7 @@ os.environ.setdefault('DISABLE_BACKGROUND_WORKERS', '1')
 
 
 @pytest.fixture()
-def app():
+def app(request):
     from app import create_app, db
 
     test_app = create_app({
@@ -42,11 +44,40 @@ def app():
         'WTF_CSRF_ENABLED': False,
         'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
     })
+    # Не держим app_context вокруг всего теста: Flask-Login кэширует current_user
+    # в g, и при переключении tutor -> student в одном клиенте получалась роль
+    # предыдущего запроса. Контекст нужен только для создания и очистки БД.
     with test_app.app_context():
         db.create_all()
+    # Три исторических release-readiness теста используют db.session напрямую
+    # вне запроса. Даём контекст только этому модулю; остальные тесты обязаны
+    # работать без общего контекста, чтобы проверять реальное переключение ролей.
+    legacy_context = None
+    if request.node.fspath.basename == 'test_release_readiness_v2.py':
+        legacy_context = test_app.app_context()
+        legacy_context.push()
+    try:
         yield test_app
-        db.session.remove()
-        db.drop_all()
+    finally:
+        # Realtime-модули держат состояние комнат на уровне процесса. При
+        # полном прогоне V2 один процесс обслуживает несколько Flask app,
+        # поэтому очищаем его так же, как очищаем изолированную БД.
+        from app.lessons import lesson_socket
+        from app.task_workspace import socket as workspace_socket
+
+        with test_app.app_context():
+            lesson_socket._lesson_presence.clear()
+            with workspace_socket._workspace_autosave_lock:
+                for timer in workspace_socket._workspace_autosave_timers.values():
+                    timer.cancel()
+                workspace_socket._workspace_autosave_timers.clear()
+            workspace_socket._workspace_rooms.clear()
+            workspace_socket._workspace_state.clear()
+            workspace_socket._workspace_cursor_emit_at.clear()
+            db.session.remove()
+            db.drop_all()
+        if legacy_context is not None:
+            legacy_context.pop()
 
 
 @pytest.fixture()
@@ -55,7 +86,13 @@ def client(app):
 
 
 def login_as(client, user_id: int, role: str):
+    # Remove a previous app's signed session before installing the requested
+    # identity. This matters when several create_app() instances run in one
+    # pytest process and share the Flask test client's cookie jar.
+    client.delete_cookie('session')
+    client.delete_cookie('remember_token')
     with client.session_transaction() as session:
+        session.clear()
         session['_user_id'] = str(user_id)
         session['_fresh'] = True
         session['sandbox_role'] = role

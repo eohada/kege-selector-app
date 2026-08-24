@@ -94,6 +94,18 @@
                             </div>
                         </div>
 
+                        {% if child.active_course %}
+                        <div class="rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div><p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Активный курс</p><p class="mt-1 text-base font-black text-slate-900">{{ child.active_course.title }}</p></div>
+                                <span class="rounded-full bg-white px-3 py-1 text-xs font-black text-indigo-700">{{ child.course_mastery }}% освоения</span>
+                            </div>
+                            {% if child.course_next_lesson %}<p class="mt-2 text-xs font-bold text-indigo-700">Следующий урок: {{ child.course_next_lesson.topic or 'Без темы' }}</p>{% endif %}
+                            <div class="mt-3 flex flex-wrap gap-2"><a href="{{ url_for('courses.course_skills', course_id=child.active_course.course_id, view=1) }}" class="inline-flex rounded-xl border-2 border-indigo-200 bg-white px-3 py-2 text-xs font-black text-indigo-700 no-underline">Открыть карту знаний →</a><a href="{{ url_for('courses.course_weekly_plan', course_id=child.active_course.course_id, view=1) }}" class="inline-flex rounded-xl border-2 border-indigo-200 bg-white px-3 py-2 text-xs font-black text-indigo-700 no-underline">План недели →</a></div>
+                        </div>
+                        {% if child.course_cards|length > 1 %}<div class="mt-3 grid gap-2 sm:grid-cols-2">{% for card in child.course_cards %}<div class="rounded-xl border-2 border-slate-200 bg-white p-3"><p class="text-xs font-black text-slate-800">{{ card.course.title }}</p><p class="mt-1 text-[11px] font-bold text-indigo-600">{{ card.mastery }}% освоения</p>{% if card.next_lesson %}<p class="mt-1 text-[11px] font-bold text-slate-400">Следующее: {{ card.next_lesson.topic }}</p>{% endif %}<div class="mt-2 flex flex-wrap gap-2"><a href="{{ url_for('courses.course_skills', course_id=card.course.course_id, view=1) }}" class="text-[11px] font-black text-indigo-600 no-underline">Карта</a><a href="{{ url_for('courses.course_parent_summary', course_id=card.course.course_id) }}" class="text-[11px] font-black text-indigo-600 no-underline">Сводка</a></div></div>{% endfor %}</div>{% endif %}
+                        {% endif %}
+
                         <!-- Mentor Info & Actions -->
                         <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
                             {% if child.mentor %}

@@ -42,7 +42,7 @@
           {% endif %}
 
           <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
-            <i class="ph-bold ph-clock text-indigo-500"></i> Дедлайн: {{ deadline_display or (assignment.deadline.strftime('%d.%m %H:%M') if (assignment and assignment.deadline) else 'Без дедлайна') }}
+            <i class="ph-bold ph-clock text-indigo-500"></i> Дедлайн: {{ deadline_display or (assignment.deadline|user_dt('%d.%m %H:%M') if (assignment and assignment.deadline) else 'Без дедлайна') }}
           </span>
 
           {% if assignment and assignment.time_limit_minutes %}

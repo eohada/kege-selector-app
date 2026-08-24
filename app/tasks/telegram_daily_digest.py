@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from celery_app import celery
 
@@ -15,13 +16,10 @@ def telegram_daily_digest_task() -> dict:
     краткий план на сегодня: уроки + кол-во незакрытых заданий.
     """
     from app.models import Student, Lesson, Submission, Assignment, db
-    from core.db_models import MOSCOW_TZ, moscow_now
     from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user
     from app.telegram.notifications import notify_daily_digest
-
-    now = moscow_now()
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    from app.utils.datetime_utc import effective_timezone_name
+    from app.utils.lesson_time import lesson_storage_to_local, timezone_from_name
     sent = 0
 
     try:
@@ -36,19 +34,23 @@ def telegram_daily_digest_task() -> dict:
                 if not user_allows_telegram_notification(profile, 'daily_digest'):
                     continue
 
+                tz_name = effective_timezone_name(student.user) if getattr(student, 'user', None) else 'Europe/Moscow'
+                today = datetime.now(timezone.utc).astimezone(timezone_from_name(tz_name)).date()
+
                 # Уроки сегодня
-                today_lessons = Lesson.query.filter(
+                candidate_lessons = Lesson.query.filter(
                     Lesson.student_id == student.student_id,
-                    Lesson.lesson_date >= today_start.replace(tzinfo=None),
-                    Lesson.lesson_date <= today_end.replace(tzinfo=None),
                     Lesson.status == 'planned',
                 ).order_by(Lesson.lesson_date).all()
+                today_lessons = [
+                    lesson for lesson in candidate_lessons
+                    if (lesson_storage_to_local(lesson.lesson_date, tz_name) is not None
+                        and lesson_storage_to_local(lesson.lesson_date, tz_name).date() == today)
+                ]
 
                 lessons_data = []
                 for l in today_lessons:
-                    ld = l.lesson_date
-                    if hasattr(ld, 'tzinfo') and ld.tzinfo:
-                        ld = ld.astimezone(MOSCOW_TZ)
+                    ld = lesson_storage_to_local(l.lesson_date, tz_name)
                     lessons_data.append({
                         'time': ld.strftime('%H:%M') if ld else '—',
                         'topic': l.topic or 'Занятие',

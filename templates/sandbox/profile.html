@@ -34,6 +34,7 @@
 {% set user_avatar = profile_avatar_url if (profile_avatar_url is defined and profile_avatar_url) else '/static/images/default-avatar.svg' %}
 {% set user_cover = (current_user.cover_url if (current_user is defined and current_user and current_user.cover_url) else (current_user.profile.cover_url if (current_user is defined and current_user and current_user.profile and current_user.profile.cover_url) else none)) %}
 {% set user_bio = profile_bio if (profile_bio is defined and profile_bio) else '' %}
+{% set profile_timezone = current_user.timezone_iana or (current_user.profile.timezone if (current_user.profile and current_user.profile.timezone) else 'Europe/Moscow') %}
 
 {% set school_class_display = school_class_display if (school_class_display is defined and school_class_display) else '—' %}
 {% set user_streak = user_streak if (user_streak is defined and user_streak is not none) else 0 %}
@@ -88,6 +89,11 @@
             <button onclick="openProfileEditModal()" class="px-2.5 sm:px-3 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white shadow-xs rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0" title="Редактировать">
               <i class="ph-bold ph-pencil-simple text-xs"></i> <span class="hidden sm:inline">Редактировать</span>
             </button>
+            {% if is_student and student_obj %}
+            <a href="{{ url_for('courses.student_courses', student_id=student_obj.student_id) }}" class="px-2.5 sm:px-3 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white shadow-xs rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer no-underline" title="Программа обучения">
+              <i class="ph-bold ph-map-trifold text-xs"></i> <span class="hidden sm:inline">Программа</span>
+            </a>
+            {% endif %}
             <a href="{{ url_for('auth.logout') if url_for else '/auth/logout' }}" class="px-2.5 sm:px-3 py-1 bg-rose-600/80 hover:bg-rose-600 backdrop-blur-md border border-rose-400/40 text-white shadow-xs rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer no-underline" title="Выход">
               <i class="ph-bold ph-sign-out text-xs"></i> <span class="hidden sm:inline">Выход</span>
             </a>
@@ -572,11 +578,19 @@
         <div class="space-y-1.5">
           <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Часовой пояс</label>
           <select name="timezone_iana" id="edit-timezone" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-            <option value="Europe/Moscow" selected>Москва (UTC+3)</option>
-            <option value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</option>
-            <option value="Asia/Novosibirsk">Новосибирск (UTC+7)</option>
-            <option value="Asia/Vladivostok">Владивосток (UTC+10)</option>
-            <option value="Europe/Kaliningrad">Калининград (UTC+2)</option>
+            <option value="Europe/Kaliningrad" {% if profile_timezone == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград (UTC+2)</option>
+            <option value="Europe/Moscow" {% if profile_timezone == 'Europe/Moscow' %}selected{% endif %}>Москва (UTC+3)</option>
+            <option value="Asia/Yekaterinburg" {% if profile_timezone == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург (UTC+5)</option>
+            <option value="Asia/Omsk" {% if profile_timezone == 'Asia/Omsk' %}selected{% endif %}>Омск (UTC+6)</option>
+            <option value="Asia/Novosibirsk" {% if profile_timezone == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск (UTC+7)</option>
+            <option value="Asia/Tomsk" {% if profile_timezone == 'Asia/Tomsk' %}selected{% endif %}>Томск (UTC+7)</option>
+            <option value="Asia/Krasnoyarsk" {% if profile_timezone == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск (UTC+7)</option>
+            <option value="Asia/Irkutsk" {% if profile_timezone == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск (UTC+8)</option>
+            <option value="Asia/Yakutsk" {% if profile_timezone == 'Asia/Yakutsk' %}selected{% endif %}>Якутск (UTC+9)</option>
+            <option value="Asia/Vladivostok" {% if profile_timezone == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток (UTC+10)</option>
+            <option value="Asia/Magadan" {% if profile_timezone == 'Asia/Magadan' %}selected{% endif %}>Магадан (UTC+11)</option>
+            <option value="Asia/Kamchatka" {% if profile_timezone == 'Asia/Kamchatka' %}selected{% endif %}>Камчатка (UTC+12)</option>
+            <option value="UTC" {% if profile_timezone == 'UTC' %}selected{% endif %}>UTC</option>
           </select>
         </div>
         <div class="space-y-1.5">

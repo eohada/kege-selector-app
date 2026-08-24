@@ -151,6 +151,331 @@ def test_course_crud_uses_the_light_v2_bento_contract(client, role_users):
         assert 'onsubmit="return confirm' not in content
 
 
+def test_course_builder_creates_an_undated_lesson_with_studio_scenario_and_homework(client, app, role_users):
+    from app import db
+    from app.models import LearningTrajectory, Lesson, TrajectoryModule
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    course_response = client.post(
+        f"/student/{role_users['student_id']}/courses/new",
+        data={
+            'title': 'Индивидуальная программа',
+            'subject': 'Информатика',
+            'description': 'Полный маршрут ученика',
+            'learning_goal': 'Освоить алгоритмы',
+            'expected_result': 'Решать задачи №19–21',
+            'default_lesson_duration': '75',
+            'status': 'active',
+        },
+        follow_redirects=False,
+    )
+    assert course_response.status_code == 302
+
+    with app.app_context():
+        course = LearningTrajectory.query.filter_by(title='Индивидуальная программа').one()
+        course_id = course.course_id
+
+    module_response = client.post(
+        f'/courses/{course_id}/modules/new',
+        data={
+            'title': 'Динамическое программирование',
+            'description': 'Базовые состояния',
+            'learning_result': 'Строит переходы самостоятельно',
+            'order_index': '10',
+        },
+        follow_redirects=False,
+    )
+    assert module_response.status_code == 302
+
+    with app.app_context():
+        module = TrajectoryModule.query.filter_by(course_id=course_id).one()
+
+    lesson_response = client.post(
+        f'/courses/{course_id}/lessons/new',
+        data={
+            'module_id': str(module.module_id),
+            'topic': 'Одномерная динамика',
+            'course_order_index': '30',
+            'lesson_date': '',
+            'duration': '75',
+            'lesson_type': 'regular',
+            'status': 'planned',
+            'scenario': 'Цель урока\nРазбор переходов\nПрактика',
+            'content': 'Опорный конспект',
+            'homework': 'Решить две задачи',
+            'teacher_note': 'Начать с диагностики',
+        },
+        follow_redirects=False,
+    )
+    assert lesson_response.status_code == 302
+
+    with app.app_context():
+        course = db.session.get(LearningTrajectory, course_id)
+        lesson = Lesson.query.filter_by(student_id=role_users['student_id'], topic='Одномерная динамика').one()
+        assert course.learning_goal == 'Освоить алгоритмы'
+        assert course.expected_result == 'Решать задачи №19–21'
+        assert lesson.course_module_id == module.module_id
+        assert lesson.course_order_index == 30
+        assert lesson.lesson_date is None
+        assert lesson.homework == 'Решить две задачи'
+        assert lesson.content == 'Опорный конспект'
+        assert [item['title'] for item in lesson.review_summaries['_studio']['agenda']] == [
+            'Цель урока', 'Разбор переходов', 'Практика'
+        ]
+        module_id = module.module_id
+        lesson_id = lesson.lesson_id
+
+    view_response = client.get(f'/courses/{course_id}')
+    assert view_response.status_code == 200
+    assert 'Одномерная динамика'.encode('utf-8') in view_response.data
+
+    assert client.get(f'/courses/{course_id}/edit').status_code == 200
+    assert client.get(f'/courses/{course_id}/modules/{module_id}/edit').status_code == 200
+    lesson_editor = client.get(f'/courses/{course_id}/lessons/{lesson_id}/edit')
+    assert lesson_editor.status_code == 200
+    assert f'/task-generator/{lesson_id}?assignment_type=homework'.encode('utf-8') in lesson_editor.data
+
+    login_as(client, role_users['creator_id'], 'creator')
+    generator_response = client.get(f'/task-generator/{lesson_id}?assignment_type=homework')
+    assert generator_response.status_code == 200
+    assert b'/sandbox/task_generator' not in generator_response.data
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    assert client.post(
+        f'/courses/{course_id}/edit',
+        data={
+            'title': 'Индивидуальная программа — обновлена',
+            'subject': 'Информатика',
+            'description': 'Полный маршрут ученика',
+            'learning_goal': 'Сдать экзамен уверенно',
+            'expected_result': 'Решать задачи №19–27',
+            'default_lesson_duration': '90',
+            'status': 'active',
+        },
+        follow_redirects=False,
+    ).status_code == 302
+    assert client.post(
+        f'/courses/{course_id}/modules/{module_id}/edit',
+        data={
+            'title': 'Динамика — практика',
+            'description': 'Базовые состояния и переходы',
+            'learning_result': 'Уверенно строит переходы',
+            'order_index': '20',
+        },
+        follow_redirects=False,
+    ).status_code == 302
+    assert client.post(
+        f'/courses/{course_id}/lessons/{lesson_id}/edit',
+        data={
+            'module_id': str(module_id),
+            'topic': 'Одномерная динамика — практика',
+            'course_order_index': '40',
+            'lesson_date': '',
+            'duration': '90',
+            'lesson_type': 'regular',
+            'status': 'planned',
+            'scenario': 'Повторение\nСамостоятельная практика',
+            'content': 'Обновлённый конспект',
+            'homework': 'Решить три задачи',
+            'teacher_note': 'Проверить переходы',
+        },
+        follow_redirects=False,
+    ).status_code == 302
+
+    with app.app_context():
+        course = db.session.get(LearningTrajectory, course_id)
+        module = db.session.get(TrajectoryModule, module_id)
+        lesson = db.session.get(Lesson, lesson_id)
+        assert course.title == 'Индивидуальная программа — обновлена'
+        assert course.default_lesson_duration == 90
+        assert module.title == 'Динамика — практика'
+        assert module.learning_result == 'Уверенно строит переходы'
+        assert lesson.topic == 'Одномерная динамика — практика'
+        assert lesson.course_order_index == 40
+        assert lesson.lesson_date is None
+        assert lesson.duration == 90
+        assert lesson.homework == 'Решить три задачи'
+        assert [item['title'] for item in lesson.review_summaries['_studio']['agenda']] == [
+            'Повторение', 'Самостоятельная практика'
+        ]
+
+
+def test_course_drafts_are_isolated_between_courses_of_the_same_student(client, app, role_users):
+    from app import db
+    from app.models import LearningTrajectory, Lesson, TrajectoryModule
+
+    with app.app_context():
+        first_course = LearningTrajectory(
+            student_id=role_users['student_id'],
+            created_by_user_id=role_users['tutor_id'],
+            title='Первый маршрут',
+            status='active',
+        )
+        second_course = LearningTrajectory(
+            student_id=role_users['student_id'],
+            created_by_user_id=role_users['tutor_id'],
+            title='Второй маршрут',
+            status='active',
+        )
+        db.session.add_all([first_course, second_course])
+        db.session.flush()
+        second_draft = Lesson(
+            student_id=role_users['student_id'],
+            learning_trajectory_id=second_course.course_id,
+            topic='Черновик второго маршрута',
+            duration=60,
+            status='planned',
+        )
+        db.session.add(second_draft)
+        first_module = TrajectoryModule(course_id=first_course.course_id, title='Модуль первого курса')
+        db.session.add(first_module)
+        db.session.commit()
+        first_course_id = first_course.course_id
+        first_module_id = first_module.module_id
+        second_draft_id = second_draft.lesson_id
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    direct_draft = client.post(
+        f'/courses/{first_course_id}/lessons/new',
+        data={
+            'module_id': '0',
+            'topic': 'Черновик первого маршрута',
+            'course_order_index': '25',
+            'lesson_date': '',
+            'duration': '60',
+            'lesson_type': 'regular',
+            'status': 'planned',
+            'scenario': '',
+            'content': '',
+            'homework': '',
+            'teacher_note': '',
+        },
+        follow_redirects=False,
+    )
+    assert direct_draft.status_code == 302
+
+    with app.app_context():
+        first_draft = Lesson.query.filter_by(
+            student_id=role_users['student_id'],
+            topic='Черновик первого маршрута',
+        ).one()
+        assert first_draft.learning_trajectory_id == first_course_id
+        assert first_draft.course_module_id is None
+        assert first_draft.course_order_index == 25
+        first_draft_id = first_draft.lesson_id
+
+    first_view = client.get(f'/courses/{first_course_id}')
+    assert first_view.status_code == 200
+    content = first_view.get_data(as_text=True)
+    assert 'Черновик первого маршрута' in content
+    assert 'Черновик второго маршрута' not in content
+    assert '0/1' in content
+
+    own_edit = client.get(f'/courses/{first_course_id}/lessons/{first_draft_id}/edit')
+    assert own_edit.status_code == 200
+
+    attach_own_lesson = client.post(
+        f'/courses/{first_course_id}/assign-lesson',
+        data={'lesson_id': first_draft_id, 'module_id': first_module_id},
+        follow_redirects=False,
+    )
+    assert attach_own_lesson.status_code == 302
+    with app.app_context():
+        attached_lesson = db.session.get(Lesson, first_draft_id)
+        assert attached_lesson.course_module_id == first_module_id
+        assert attached_lesson.learning_trajectory_id == first_course_id
+
+    cannot_move_other_course_lesson = client.post(
+        f'/courses/{first_course_id}/assign-lesson',
+        data={'lesson_id': second_draft_id, 'module_id': first_module_id},
+        follow_redirects=True,
+    )
+    assert cannot_move_other_course_lesson.status_code == 200
+    with app.app_context():
+        other_lesson = db.session.get(Lesson, second_draft_id)
+        assert other_lesson.learning_trajectory_id != first_course_id
+
+    other_edit = client.get(f'/courses/{first_course_id}/lessons/{second_draft_id}/edit')
+    assert other_edit.status_code == 404
+
+
+def test_course_delete_detaches_its_draft_without_deleting_the_lesson(client, app, role_users):
+    from app import db
+    from app.models import LearningTrajectory, Lesson
+
+    with app.app_context():
+        course = LearningTrajectory(
+            student_id=role_users['student_id'],
+            created_by_user_id=role_users['tutor_id'],
+            title='Маршрут для удаления',
+            status='active',
+        )
+        db.session.add(course)
+        db.session.flush()
+        lesson = Lesson(
+            student_id=role_users['student_id'],
+            learning_trajectory_id=course.course_id,
+            topic='Сохранённый урок',
+            duration=60,
+            status='planned',
+        )
+        db.session.add(lesson)
+        db.session.commit()
+        course_id = course.course_id
+        lesson_id = lesson.lesson_id
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    response = client.post(f'/courses/{course_id}/delete', follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers['Location'].endswith(f"/student/{role_users['student_id']}/courses")
+    with app.app_context():
+        assert db.session.get(LearningTrajectory, course_id) is None
+        preserved_lesson = db.session.get(Lesson, lesson_id)
+        assert preserved_lesson is not None
+        assert preserved_lesson.learning_trajectory_id is None
+
+
+def test_parent_can_view_a_child_course_but_cannot_change_the_program(client, app, role_users):
+    from app import db
+    from app.models import LearningTrajectory, User
+    from core.db_models import FamilyTie
+
+    with app.app_context():
+        course = LearningTrajectory(
+            student_id=role_users['student_id'],
+            created_by_user_id=role_users['tutor_id'],
+            title='Только для просмотра родителем',
+            status='active',
+        )
+        parent = User(
+            username='course_view_parent',
+            email='course_view_parent@example.test',
+            role='parent',
+            is_active=True,
+        )
+        db.session.add_all([course, parent])
+        db.session.flush()
+        db.session.add(FamilyTie(
+            parent_id=parent.id,
+            student_id=role_users['student_user_id'],
+            is_confirmed=True,
+        ))
+        db.session.commit()
+        course_id = course.course_id
+        parent_id = parent.id
+
+    login_as(client, parent_id, 'parent')
+    assert client.get(f'/courses/{course_id}').status_code == 200
+    for route in (
+        f"/student/{role_users['student_id']}/courses/new",
+        f'/courses/{course_id}/edit',
+        f'/courses/{course_id}/modules/new',
+        f'/courses/{course_id}/lessons/new',
+    ):
+        assert client.get(route).status_code == 403
+
+
 def test_group_creation_uses_the_v2_form_and_persists_the_group(client, app, role_users):
     login_as(client, role_users['tutor_id'], 'tutor')
 
@@ -656,9 +981,19 @@ def test_role_switcher_user_list_is_admin_only_and_never_seeds_demo_users(client
     payload = response.get_json()
     assert payload['success'] is True
     assert {user['username'] for user in payload['users']} == {
-        'v2_creator', 'v2_student', 'v2_tutor'
+        'creator', 'v2_creator', 'v2_student', 'v2_tutor'
     }
     assert all('/static/images/default-avatar.svg' == user['avatar'] or user['avatar'] for user in payload['users'])
+
+
+def test_dev_switcher_is_available_from_non_main_v2_blueprints(client, role_users):
+    """The shared role tool must not disappear on a V2 page outside main_bp."""
+    login_as(client, role_users['creator_id'], 'creator')
+
+    response = client.get('/students')
+
+    assert response.status_code == 200
+    assert 'id="dev-role-switcher-modal"' in response.get_data(as_text=True)
 
 
 def test_dev_switcher_rejects_student_and_anonymous_impersonation(app, client, role_users):

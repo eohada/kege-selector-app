@@ -163,7 +163,7 @@
           </div>
           <div class="text-xs font-bold text-slate-400 mt-1 flex items-center gap-1.5">
             <i class="ph-bold ph-calendar"></i>
-            {{ item.lesson.lesson_date.strftime('%d.%m.%Y в %H:%M') if item.lesson.lesson_date else 'Дата уточняется' }}
+            {{ item.lesson.lesson_date|user_dt('%d.%m.%Y в %H:%M') if item.lesson.lesson_date else 'Дата уточняется' }}
           </div>
         </div>
 

@@ -21,7 +21,7 @@ from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, TheoryBlock, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, TheoryBlock, LessonOutcome, LearningItem, StudentSkill, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
@@ -975,6 +975,37 @@ def lesson_studio_finish(lesson_id: int):
     )
     if outcome_text and outcome_text not in (lesson.notes or ''):
         lesson.notes = ((lesson.notes or '').rstrip() + '\n\n' + outcome_text).strip()
+    structured_outcome = LessonOutcome.query.filter_by(lesson_id=lesson.lesson_id).first()
+    if not structured_outcome:
+        structured_outcome = LessonOutcome(lesson_id=lesson.lesson_id, created_by_user_id=current_user.id)
+        db.session.add(structured_outcome)
+    structured_outcome.covered = state['outcome']['completed']
+    structured_outcome.mastery = 'good' if state['outcome']['completed'] and not state['outcome']['repeat'] else ('needs_repeat' if state['outcome']['repeat'] else None)
+    structured_outcome.next_action = 'repeat' if state['outcome']['repeat'] else ('continue' if state['outcome']['completed'] else None)
+    structured_outcome.homework_assigned = bool(state['outcome']['homework'])
+    structured_outcome.teacher_note = str(outcome.get('private_note') or state.get('teacher_private_note') or '').strip()[:10_000] or None
+    # Сохраняем именно тот контент и набор материалов, который был доступен
+    # на момент завершения: будущие изменения живых ссылок не меняют историю.
+    structured_outcome.content_snapshot = {
+        'topic': lesson.topic,
+        'content': lesson.content,
+        'content_blocks': lesson.content_blocks,
+        'materials': lesson.materials,
+        'review_summaries': lesson.review_summaries,
+        'task_ids': [item.task_id for item in lesson.homework_tasks],
+    }
+    # Обновляем Student Knowledge для навыков, привязанных к этому занятию.
+    for item in LearningItem.query.filter_by(lesson_id=lesson.lesson_id).all():
+        if not item.skill_id:
+            continue
+        mastery = StudentSkill.query.filter_by(student_id=lesson.student_id, skill_id=item.skill_id).first()
+        if not mastery:
+            mastery = StudentSkill(student_id=lesson.student_id, skill_id=item.skill_id)
+            db.session.add(mastery)
+        mastery.mastery_percent = 85 if state['outcome']['completed'] and not state['outcome']['repeat'] else (50 if state['outcome']['repeat'] else mastery.mastery_percent)
+        mastery.state = 'mastered' if mastery.mastery_percent >= 85 else ('reinforcing' if mastery.mastery_percent >= 50 else 'learning')
+        mastery.practice_done = True
+        mastery.last_checked_at = moscow_now()
     try:
         _save_lesson_studio_state(lesson, state)
     except Exception as exc:

@@ -3,7 +3,7 @@
 
 Раннер в subprocess; файлы задания — в cwd. Доступны только: re, itertools, collections,
 ipaddress, functools, math, sys (setrecursionlimit/getrecursionlimit), turtle; остальное через __import__ недоступно.
-При наличии xvfb-run в PATH — turtle/tkinter.
+Turtle реализован headless-вектором: запуск кода никогда не открывает системное окно.
 """
 from __future__ import annotations
 
@@ -230,33 +230,10 @@ class _FakeTurtleModule(_types.SimpleNamespace):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(''.join(parts))
 
-try:
-    import turtle
-except Exception:
-    turtle = _FakeTurtleModule()
-else:
-    # В headless/песочнице done()/mainloop() блокируют процесс, ожидая закрытия окна — таймаут.
-    def _turtle_noop(*_a, **_k):
-        return None
-    turtle.done = _turtle_noop
-    turtle.mainloop = _turtle_noop
-    turtle.exitonclick = _turtle_noop
-    for _cls_name in ('TurtleScreen', '_Screen', 'Screen'):
-        if hasattr(turtle, _cls_name):
-            _c = getattr(turtle, _cls_name)
-            if isinstance(_c, type):
-                _c.mainloop = lambda self, *_a, **_k: None
-    # turtle внутри вызывает tkinter mainloop(0) — вечный цикл, пока «живо» окно; режем здесь.
-    try:
-        import tkinter as _tki
-        _turtle_orig_tk_mloop = _tki.Misc.mainloop
-        def _turtle_tk_mloop(self, n=0):
-            if n == 0:
-                return None
-            return _turtle_orig_tk_mloop(self, n)
-        _tki.Misc.mainloop = _turtle_tk_mloop
-    except Exception:
-        pass
+# В песочнице не импортируем стандартный turtle: его tkinter-окно может кратко
+# появиться на машине разработчика и нестабильно ведёт себя внутри web-worker.
+# Векторная реализация покрывает допустимый учебный API и экспортируется как SVG.
+turtle = _FakeTurtleModule()
 
 _ALLOWED_MODULES = {
     're': re,
@@ -409,18 +386,6 @@ TURTLE_PS_NAME = '.boostudy_turtle.ps'
 TURTLE_SVG_NAME = '.boostudy_turtle.svg'
 _MAX_TURTLE_PNG = 2_500_000  # ~3.3MB base64
 
-# Выполняется внутри exec ДО кода ученика: холст по умолчанию 400×300 — обрезка. Ниже — запас, чтобы сетка/прямоугольники
-# не уперлись в край; код может вызвать screensize() снова.
-# Не вызывать screensize в раннере до exec — ломалось; префикс в stdin.
-_TURTLE_CANVAS_PREFIX = (
-    "try:\n"
-    "    import turtle as _boostudy_turtle_sz\n"
-    "    _boostudy_turtle_sz.screensize(3000, 3000, 'white')\n"
-    "except Exception:\n"
-    "    pass\n\n"
-)
-
-
 def _postscript_to_png_b64(ps_path: str) -> str | None:
     """PostScript → PNG (нужен ghostscript: gs) или ImageMagick: convert."""
     if not os.path.isfile(ps_path) or os.path.getsize(ps_path) < 8:
@@ -509,13 +474,8 @@ def run_python_sandbox(
 ) -> tuple[str, str, str | None]:
     """Запуск кода Python в песочнице. Возвращает (stdout, stderr, base64 png или None)."""
     code_in = code or ''
-    if 'turtle' in code_in.lower():
-        code_in = _TURTLE_CANVAS_PREFIX + code_in
     tsec = _sandbox_timeout_seconds(code, timeout_sec)
-    xvfb = shutil.which('xvfb-run')
     cmd: list[str] = [sys.executable, '-c', PYTHON_RUNNER]
-    if xvfb:
-        cmd = [xvfb, '-a'] + cmd
     try:
         with tempfile.TemporaryDirectory(prefix='boostudy_sandbox_') as tmpdir:
             if task_files:
@@ -540,8 +500,7 @@ def run_python_sandbox(
                 turtle_b64 = _postscript_to_png_b64(ps) or _svg_to_b64(svg)
             if not turtle_b64 and (not stdout) and (not stderr) and 'turtle' in (code or '').lower():
                 stdout = (
-                    '[turtle] Код выполнен. Рисунок не сгенерировался (нужен ghostscript: «gs» в '
-                    'образе) или в программе нет рисования. Можно добавить print(...).'
+                    '[turtle] Код выполнен. В программе нет видимых линий или точек. Можно добавить print(...).'
                 )
             return stdout, stderr, turtle_b64
     except subprocess.TimeoutExpired:

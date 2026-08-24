@@ -14,7 +14,7 @@ from app.notifications.service import notify_student_and_parents
 from app.telegram.user_notify import notify_user_by_id
 from app.utils.relationship_scope import get_parent_user_ids_for_student
 from app.utils.datetime_utc import effective_timezone_name
-from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local, lesson_storage_to_utc
+from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local, lesson_storage_to_utc, timezone_from_name, timezone_name
 from core.audit_logger import audit_logger
 import secrets
 
@@ -39,13 +39,9 @@ def _add_months(src: date, months: int) -> date:
 
 def _schedule_timezone_from_user() -> str:
     try:
-        tz = effective_timezone_name(current_user)
-        tz_l = (tz or '').lower()
-        if 'tomsk' in tz_l or tz_l == 'asia/tomsk':
-            return 'tomsk'
+        return timezone_name(effective_timezone_name(current_user))
     except Exception:
-        pass
-    return 'moscow'
+        return 'Europe/Moscow'
 
 def _resolve_accessible_student_ids_for_current_user() -> list[int] | None:
     """
@@ -171,36 +167,29 @@ def _parse_date(value: str | None):
     except Exception:
         return None
 
-def _dt_to_ics_utc(dt_naive_msk: datetime) -> str:
-    """Lessons.lesson_date хранится naive как MSK. Конвертим в UTC для .ics."""
-    try:
-        from zoneinfo import ZoneInfo
-        if getattr(dt_naive_msk, 'tzinfo', None) is None:
-            dt = dt_naive_msk.replace(tzinfo=MOSCOW_TZ).astimezone(ZoneInfo("UTC"))
-        else:
-            dt = dt_naive_msk.astimezone(ZoneInfo("UTC"))
-    except Exception:
-        if getattr(dt_naive_msk, 'tzinfo', None) is None:
-            dt = dt_naive_msk.replace(tzinfo=MOSCOW_TZ)
-        else:
-            dt = dt_naive_msk
+def _dt_to_ics_utc(value: datetime) -> str:
+    """Сериализация момента урока в обязательный UTC-формат iCalendar."""
+    dt = lesson_storage_to_utc(value) or datetime.now(dt_timezone.utc)
     return dt.strftime('%Y%m%dT%H%M%SZ')
 
 
-def _dt_to_ics_local(dt_naive_msk: datetime, tz) -> str:
+def _dt_to_ics_local(value: datetime, timezone: str) -> str:
     """
     Возвращаем datetime в локальной таймзоне (без 'Z'), чтобы импорт в Google Calendar
     совпадал с отображением в UI (wall time).
     """
-    try:
-        if getattr(dt_naive_msk, 'tzinfo', None) is None:
-            aware = dt_naive_msk.replace(tzinfo=MOSCOW_TZ)
-        else:
-            aware = dt_naive_msk
-        local = aware.astimezone(tz)
-    except Exception:
-        local = dt_naive_msk
-    return local.strftime('%Y%m%dT%H%M%S')
+    local = lesson_storage_to_local(value, timezone)
+    return local.strftime('%Y%m%dT%H%M%S') if local else ''
+
+
+def _lessons_in_local_window(query, timezone: str, start_day: date, end_day: date):
+    """Фильтрует уроки по датам зрителя без небезопасного смешения aware/naive SQL."""
+    result = []
+    for lesson in query.all():
+        local = lesson_storage_to_local(lesson.lesson_date, timezone)
+        if local and start_day <= local.date() <= end_day:
+            result.append(lesson)
+    return result
 
 
 def _parse_local_datetime(date_str: str, time_str: str, timezone: str):
@@ -353,12 +342,14 @@ def schedule():
         view_mode = 'week'
     status_filter = request.args.get('status', '')
     category_filter = request.args.get('category', '')
-    timezone = request.args.get('timezone') or _schedule_timezone_from_user()
+    # Время — свойство зрителя, а не query-параметра: вручную оно меняется в профиле.
+    timezone = _schedule_timezone_from_user()
     student_filter = request.args.get('student_id', type=int)
 
-    display_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
+    timezone = timezone_name(timezone)
+    display_tz = timezone_from_name(timezone)
 
-    today = moscow_now().date()
+    today = datetime.now(dt_timezone.utc).astimezone(display_tz).date()
     month_weeks = []
     month_start = None
     month_end = None
@@ -408,7 +399,7 @@ def schedule():
     is_creator = (user_role in ['creator', 'admin', 'chief_admin'] or sb_role in ['creator', 'admin'] or (current_user and current_user.is_authenticated and current_user.is_creator()))
 
     allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
-    if is_creator or request.args.get('view') == 'all':
+    if is_creator:
         query = Lesson.query.order_by(Lesson.lesson_date.desc())
     else:
         query = Lesson.query.order_by(Lesson.lesson_date.desc())
@@ -1295,16 +1286,13 @@ def schedule_api_events():
 
     start_date = _parse_date(request.args.get('start'))
     end_date = _parse_date(request.args.get('end'))
-    timezone = (request.args.get('timezone') or 'moscow').strip()
-    display_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
+    timezone = _schedule_timezone_from_user()
+    display_tz = timezone_from_name(timezone)
 
     if not start_date or not end_date:
         return jsonify({'success': False, 'error': 'start/end обязательны (YYYY-MM-DD)'}), 400
 
-    start_dt = datetime.combine(start_date, time.min)
-    end_dt = datetime.combine(end_date, time.max)
-
-    q = Lesson.query.filter(Lesson.lesson_date >= start_dt, Lesson.lesson_date <= end_dt).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
     allowed = _resolve_accessible_student_ids_for_current_user()
     if allowed is not None:
         if not allowed:
@@ -1318,6 +1306,8 @@ def schedule_api_events():
         if not l.student:
             continue
         dt_display = lesson_storage_to_local(l.lesson_date, timezone)
+        if not dt_display or not (start_date <= dt_display.date() <= end_date):
+            continue
         out.append({
             'lesson_id': l.lesson_id,
             'student_id': l.student.student_id,
@@ -1375,17 +1365,10 @@ def schedule_export_ics():
         flash('У вас недостаточно прав для экспорта расписания.', 'danger')
         return redirect(url_for('schedule.schedule'))
 
-    tz_param = (request.args.get('timezone') or '').strip().lower()
-    if tz_param not in ('moscow', 'tomsk'):
-        tz_param = 'moscow'
-    export_tz = TOMSK_TZ if tz_param == 'tomsk' else MOSCOW_TZ
-    export_tzid = 'Asia/Tomsk' if tz_param == 'tomsk' else 'Europe/Moscow'
+    export_tzid = _schedule_timezone_from_user()
+    today = datetime.now(dt_timezone.utc).astimezone(timezone_from_name(export_tzid)).date()
 
-    today = moscow_now().date()
-    start_dt = datetime.combine(today - timedelta(days=14), time.min)
-    end_dt = datetime.combine(today + timedelta(days=60), time.max)
-
-    q = Lesson.query.filter(Lesson.lesson_date >= start_dt, Lesson.lesson_date <= end_dt).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
     allowed = _resolve_accessible_student_ids_for_current_user()
     if allowed is not None:
         if not allowed:
@@ -1393,7 +1376,7 @@ def schedule_export_ics():
         else:
             q = q.filter(Lesson.student_id.in_(allowed))
 
-    lessons = q.all()
+    lessons = _lessons_in_local_window(q, export_tzid, today - timedelta(days=14), today + timedelta(days=60))
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -1405,8 +1388,8 @@ def schedule_export_ics():
     for l in lessons:
         if not l.student:
             continue
-        dt_start_local = _dt_to_ics_local(l.lesson_date, export_tz)
-        dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tz)
+        dt_start_local = _dt_to_ics_local(l.lesson_date, export_tzid)
+        dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tzid)
         summary = f"Урок: {l.student.name}"
         if l.topic:
             summary = f"{summary} · {l.topic}"
@@ -1414,7 +1397,7 @@ def schedule_export_ics():
         lines.extend([
             "BEGIN:VEVENT",
             f"UID:{uid}",
-            f"DTSTAMP:{_dt_to_ics_utc(moscow_now().replace(tzinfo=None))}",
+            f"DTSTAMP:{_dt_to_ics_utc(datetime.now(dt_timezone.utc))}",
             f"DTSTART;TZID={export_tzid}:{dt_start_local}",
             f"DTEND;TZID={export_tzid}:{dt_end_local}",
             f"SUMMARY:{summary}",
@@ -1444,17 +1427,10 @@ def schedule_export_ics_by_token(token: str):
         from flask import abort
         abort(404)
 
-    tz_param = (request.args.get('timezone') or '').strip().lower()
-    if tz_param not in ('moscow', 'tomsk'):
-        tz_param = 'moscow'
-    export_tz = TOMSK_TZ if tz_param == 'tomsk' else MOSCOW_TZ
-    export_tzid = 'Asia/Tomsk' if tz_param == 'tomsk' else 'Europe/Moscow'
+    export_tzid = timezone_name(effective_timezone_name(user))
+    today = datetime.now(dt_timezone.utc).astimezone(timezone_from_name(export_tzid)).date()
 
-    today = moscow_now().date()
-    start_dt = datetime.combine(today - timedelta(days=14), time.min)
-    end_dt = datetime.combine(today + timedelta(days=60), time.max)
-
-    q = Lesson.query.filter(Lesson.lesson_date >= start_dt, Lesson.lesson_date <= end_dt).options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
+    q = Lesson.query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date.asc())
     allowed = _resolve_accessible_student_ids_for_user(user)
     if allowed is not None:
         if not allowed:
@@ -1462,7 +1438,7 @@ def schedule_export_ics_by_token(token: str):
         else:
             q = q.filter(Lesson.student_id.in_(allowed))
 
-    lessons = q.all()
+    lessons = _lessons_in_local_window(q, export_tzid, today - timedelta(days=14), today + timedelta(days=60))
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -1474,8 +1450,8 @@ def schedule_export_ics_by_token(token: str):
     for l in lessons:
         if not l.student:
             continue
-        dt_start_local = _dt_to_ics_local(l.lesson_date, export_tz)
-        dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tz)
+        dt_start_local = _dt_to_ics_local(l.lesson_date, export_tzid)
+        dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tzid)
         summary = f"Урок: {l.student.name}"
         if l.topic:
             summary = f"{summary} · {l.topic}"
@@ -1483,7 +1459,7 @@ def schedule_export_ics_by_token(token: str):
         lines.extend([
             "BEGIN:VEVENT",
             f"UID:{uid}",
-            f"DTSTAMP:{_dt_to_ics_utc(moscow_now().replace(tzinfo=None))}",
+            f"DTSTAMP:{_dt_to_ics_utc(datetime.now(dt_timezone.utc))}",
             f"DTSTART;TZID={export_tzid}:{dt_start_local}",
             f"DTEND;TZID={export_tzid}:{dt_end_local}",
             f"SUMMARY:{summary}",
@@ -1584,9 +1560,7 @@ def schedule_templates_create():
     if lesson_type not in ('regular', 'exam', 'introductory'):
         lesson_type = 'regular'
 
-    timezone = (data.get('timezone') or 'moscow').strip().lower()
-    if timezone not in ('moscow', 'tomsk'):
-        timezone = 'moscow'
+    timezone = timezone_name(data.get('timezone') or _schedule_timezone_from_user())
 
     allowed = _resolve_accessible_student_ids_for_current_user()
     if allowed is not None and student_id not in allowed:
@@ -1642,9 +1616,7 @@ def schedule_templates_create_from_lesson(lesson_id: int):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     data = request.get_json(silent=True) or {}
-    timezone = (data.get('timezone') or 'moscow').strip().lower()
-    if timezone not in ('moscow', 'tomsk'):
-        timezone = 'moscow'
+    timezone = timezone_name(data.get('timezone') or _schedule_timezone_from_user())
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
     if not _require_lesson_in_scope(lesson):
@@ -1695,7 +1667,8 @@ def schedule_templates_apply_week():
     except Exception:
         week_offset = 0
 
-    today = moscow_now().date()
+    viewer_timezone = _schedule_timezone_from_user()
+    today = datetime.now(dt_timezone.utc).astimezone(timezone_from_name(viewer_timezone)).date()
     week_start = today - timedelta(days=today.weekday()) + timedelta(weeks=week_offset)
     week_end = week_start + timedelta(days=6)
 
@@ -1716,11 +1689,12 @@ def schedule_templates_apply_week():
         day = week_start + timedelta(days=int(t.weekday))
         dt = _parse_local_datetime(day.strftime('%Y-%m-%d'), t.time_hhmm, t.timezone)
 
-        exists = Lesson.query.filter(
-            Lesson.student_id == t.student_id,
-            Lesson.lesson_date >= (dt - timedelta(minutes=1)),
-            Lesson.lesson_date <= (dt + timedelta(minutes=1)),
-        ).first()
+        target_utc = lesson_storage_to_utc(dt)
+        exists = next((
+            lesson for lesson in Lesson.query.filter_by(student_id=t.student_id).all()
+            if lesson_storage_to_utc(lesson.lesson_date)
+            and abs((lesson_storage_to_utc(lesson.lesson_date) - target_utc).total_seconds()) <= 60
+        ), None)
         if exists:
             continue
 
@@ -1743,7 +1717,7 @@ def schedule_templates_apply_week():
             db.session.rollback()
             continue
 
-        dt_display = lesson_storage_to_local(l.lesson_date, data.get('timezone') or 'moscow')
+        dt_display = lesson_storage_to_local(l.lesson_date, viewer_timezone)
         st = Student.query.get(t.student_id)
         if not st:
             continue

@@ -30,7 +30,7 @@
                   </span>
                   
                   <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
-                    <i class="ph-bold ph-clock text-indigo-500"></i> Дедлайн: {{ assignment_deadline_display if assignment_deadline_display is defined else (assignment.deadline.strftime('%d.%m.%Y %H:%M') if assignment.deadline else 'без дедлайна') }}
+                    <i class="ph-bold ph-clock text-indigo-500"></i> Дедлайн: {{ assignment_deadline_display if assignment_deadline_display is defined else (assignment.deadline|user_dt('%d.%m.%Y %H:%M') if assignment.deadline else 'без дедлайна') }}
                   </span>
                   <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs">
                     <i class="ph-bold ph-list-numbers text-indigo-500"></i> Задач: {{ assignment.tasks|length }}

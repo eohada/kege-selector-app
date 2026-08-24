@@ -433,7 +433,7 @@
   };
 
   window.changeTimezone = function(value) {
-    const timezone = value.includes('Novosibirsk') ? 'tomsk' : 'moscow';
+    const timezone = value || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow';
     const params = new URLSearchParams(window.location.search);
     params.set('timezone', timezone);
     window.location.assign(`${RAW.base_url || '/schedule'}?${params.toString()}`);
@@ -637,7 +637,7 @@
       topic: topic,
       duration: duration,
       lesson_type: type,
-      timezone: RAW.timezone || 'moscow'
+      timezone: RAW.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow'
     };
 
     try {

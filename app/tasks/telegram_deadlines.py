@@ -16,6 +16,8 @@ def telegram_deadline_reminders_task() -> dict:
     from core.db_models import SubmissionTelegramDeadlineSent, utc_now, MOSCOW_TZ
     from app.telegram.notifications import _esc
     from app.telegram.user_notify import notify_user_by_id
+    from app.utils.datetime_utc import effective_timezone_name
+    from app.utils.lesson_time import lesson_storage_to_local
 
     now = utc_now()
     sent = 0
@@ -60,6 +62,10 @@ def telegram_deadline_reminders_task() -> dict:
                     continue
 
                 title = (assignment.title or 'Работа').strip()
+                recipient = sub.student.user
+                recipient_tz = effective_timezone_name(recipient) if recipient else 'Europe/Moscow'
+                deadline_local = lesson_storage_to_local(dl_utc, recipient_tz)
+                deadline_line = deadline_local.strftime('%d.%m в %H:%M') if deadline_local else ''
                 base = (os.environ.get('APP_URL') or '').strip().rstrip('/')
                 link = f'{base}/submissions/{sub.submission_id}' if base else ''
                 if window_key == '24h':
@@ -69,6 +75,7 @@ def telegram_deadline_reminders_task() -> dict:
                 msg = (
                     f'⏰ <b>{_esc(head)}</b>\n\n'
                     f'📄 {_esc(title)}\n'
+                    f'🗓 До: {_esc(deadline_line)}\n'
                 )
                 if link:
                     msg += f'\n🔗 {link}'

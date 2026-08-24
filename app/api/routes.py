@@ -1003,23 +1003,31 @@ def api_me_timezone():
 
         if mode in ('auto', 'manual'):
             current_user.timezone_mode = mode
+        selected_timezone = None
         if iana:
             try:
                 ZoneInfo(iana)
-                current_user.timezone_iana = iana[:64]
+                selected_timezone = iana[:64]
+                current_user.timezone_iana = selected_timezone
             except Exception:
                 return jsonify({'success': False, 'error': 'Некорректный часовой пояс IANA'}), 400
         elif mode == 'auto':
             current_user.timezone_iana = None
 
-        if browser:
+        # User.timezone_iana is the source of truth for display.  Keep the
+        # legacy profile field in sync too: schedules and teacher dashboards
+        # still use it while their data is being migrated to the shared helper.
+        profile_timezone = selected_timezone
+        if not profile_timezone and browser:
             try:
                 ZoneInfo(browser)
-                prof = UserProfile.query.filter_by(user_id=current_user.id).first()
-                if prof:
-                    prof.timezone = browser[:50]
+                profile_timezone = browser[:50]
             except Exception:
                 pass
+        if profile_timezone:
+            prof = UserProfile.query.filter_by(user_id=current_user.id).first()
+            if prof:
+                prof.timezone = profile_timezone
 
         db.session.commit()
         return jsonify({'success': True, 'effective': effective_timezone_name(current_user)})

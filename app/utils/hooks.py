@@ -641,6 +641,12 @@ def register_hooks(app):
         # Public uploaded media must stay accessible without a session.
         if request.path.startswith('/avatars/') or request.path.startswith('/covers/'):
             return
+
+        # Теоретическая страница сохраняет прогресс в фоне. Для гостевого
+        # предпросмотра этот запрос должен дойти до view и получить JSON
+        # preview-ответ, а не превратиться в HTML-редирект на /login.
+        if request.path == '/theory/api/progress':
+            return
         
         if not current_user.is_authenticated:
             if request.endpoint and request.endpoint != 'auth.login':

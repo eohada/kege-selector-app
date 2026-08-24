@@ -82,7 +82,7 @@
                 <div class="submission-meta">
                     {{ s.assignment.title if s.assignment else '—' }}
                     ·
-                    {% if s.submitted_at %}сдано: {{ s.submitted_at.strftime('%d.%m.%Y %H:%M') }}{% elif s.assigned_at %}назначено: {{ s.assigned_at.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
+                    {% if s.submitted_at %}сдано: {{ s.submitted_at|user_dt('%d.%m.%Y %H:%M') }}{% elif s.assigned_at %}назначено: {{ s.assigned_at|user_dt('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
                     {% if s.assignment and s.assignment.exam_course %}
                     · {{ s.assignment.exam_course.title }}
                     {% endif %}

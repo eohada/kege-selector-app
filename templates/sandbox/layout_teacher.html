@@ -116,6 +116,12 @@
                 {% endif %}
             </a>
 
+            <!-- Гайдбук -->
+            <a href="{{ url_for('main.guidebook') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/guidebook') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📘 Гайдбук">
+                <i class="ph-bold ph-question text-xl"></i>
+                {% if request.path.startswith('/guidebook') %}<div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>{% endif %}
+            </a>
+
             <!-- 6. Карта курса -->
             <a href="/theory/course-map" class="w-full aspect-square rounded-[1rem] {% if request.path == '/theory/course-map' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🗺️ Карта курса">
                 <i class="ph-bold ph-map-trifold text-xl"></i>
@@ -191,6 +197,7 @@
       });
     </script>
 
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}?v=20260822-course-actions"></script>
     {% include 'sandbox/components/_feedback_system.html' %}
     {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
     {% block extra_scripts %}{% endblock %}
