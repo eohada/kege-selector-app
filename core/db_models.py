@@ -3423,3 +3423,134 @@ class CourseTimelineBlock(db.Model):
     created_at = db.Column(db.DateTime, default=moscow_now)
 
     course = db.relationship('Course', backref=db.backref('timeline_blocks', lazy='dynamic', cascade='all, delete-orphan'))
+
+
+class GuestSession(db.Model):
+    """Изолированная гостевая сессия для вводного урока или пробной диагностики."""
+    __tablename__ = 'GuestSessions'
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    session_type = db.Column(db.String(24), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default='active', index=True)
+    access_code = db.Column(db.String(16), nullable=False, unique=True, index=True)
+    access_token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    template_key = db.Column(db.String(80), nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    max_participants = db.Column(db.Integer, nullable=False, default=1)
+    settings = db.Column(JSONBCompat, nullable=False, default=dict)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+    closed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    teacher = db.relationship('User', foreign_keys=[teacher_id])
+    participants = db.relationship('GuestParticipant', back_populates='session', cascade='all, delete-orphan')
+    tasks = db.relationship('GuestTask', back_populates='session', cascade='all, delete-orphan', order_by='GuestTask.position')
+
+
+class GuestParticipant(db.Model):
+    """Анонимный участник. Токен хранится только в виде SHA-256 отпечатка."""
+    __tablename__ = 'GuestParticipants'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('GuestSessions.id', ondelete='CASCADE'), nullable=False, index=True)
+    display_name = db.Column(db.String(160), nullable=False)
+    guest_token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    status = db.Column(db.String(20), nullable=False, default='active', index=True)
+    joined_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    last_seen_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    submitted_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    converted_student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+    onboarding_state = db.Column(JSONBCompat, nullable=False, default=dict)
+    session = db.relationship('GuestSession', back_populates='participants')
+    converted_student = db.relationship('Student', foreign_keys=[converted_student_id])
+    responses = db.relationship('GuestResponse', back_populates='participant', cascade='all, delete-orphan')
+    activities = db.relationship('GuestActivity', back_populates='participant', cascade='all, delete-orphan')
+
+
+class GuestTask(db.Model):
+    """Снимок задания в гостевой сессии, чтобы банк не менял попытку задним числом."""
+    __tablename__ = 'GuestTasks'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('GuestSessions.id', ondelete='CASCADE'), nullable=False, index=True)
+    source_task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=True, index=True)
+    position = db.Column(db.Integer, nullable=False)
+    task_type = db.Column(db.String(24), nullable=False, default='short_text')
+    prompt = db.Column(db.Text, nullable=False)
+    options = db.Column(JSONBCompat, nullable=False, default=list)
+    expected_answer = db.Column(db.Text, nullable=True)
+    skill_key = db.Column(db.String(120), nullable=True)
+    max_score = db.Column(db.Integer, nullable=False, default=1)
+    metadata_json = db.Column(JSONBCompat, nullable=False, default=dict)
+    session = db.relationship('GuestSession', back_populates='tasks')
+    source_task = db.relationship('Tasks', foreign_keys=[source_task_id])
+    responses = db.relationship('GuestResponse', back_populates='task', cascade='all, delete-orphan')
+
+
+class GuestResponse(db.Model):
+    __tablename__ = 'GuestResponses'
+    id = db.Column(db.Integer, primary_key=True)
+    participant_id = db.Column(db.Integer, db.ForeignKey('GuestParticipants.id', ondelete='CASCADE'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('GuestTasks.id', ondelete='CASCADE'), nullable=False, index=True)
+    answer_text = db.Column(db.Text, nullable=True)
+    answer_json = db.Column(JSONBCompat, nullable=True)
+    comment = db.Column(db.Text, nullable=True)
+    flagged = db.Column(db.Boolean, nullable=False, default=False)
+    score = db.Column(db.Integer, nullable=True)
+    teacher_comment = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='draft')
+    auto_checked = db.Column(db.Boolean, nullable=False, default=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+    submitted_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    graded_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    participant = db.relationship('GuestParticipant', back_populates='responses')
+    task = db.relationship('GuestTask', back_populates='responses')
+    attachments = db.relationship('GuestAttachment', back_populates='response', cascade='all, delete-orphan')
+    drawings = db.relationship('GuestDrawing', back_populates='response', cascade='all, delete-orphan')
+    __table_args__ = (UniqueConstraint('participant_id', 'task_id', name='uq_guest_response_participant_task'),)
+
+
+class GuestAttachment(db.Model):
+    __tablename__ = 'GuestAttachments'
+    id = db.Column(db.Integer, primary_key=True)
+    response_id = db.Column(db.Integer, db.ForeignKey('GuestResponses.id', ondelete='CASCADE'), nullable=False, index=True)
+    original_name = db.Column(db.String(255), nullable=False)
+    storage_key = db.Column(db.String(500), nullable=False, unique=True)
+    mime_type = db.Column(db.String(120), nullable=False)
+    size_bytes = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    response = db.relationship('GuestResponse', back_populates='attachments')
+
+
+class GuestDrawing(db.Model):
+    __tablename__ = 'GuestDrawings'
+    id = db.Column(db.Integer, primary_key=True)
+    response_id = db.Column(db.Integer, db.ForeignKey('GuestResponses.id', ondelete='CASCADE'), nullable=False, index=True)
+    payload = db.Column(JSONBCompat, nullable=False, default=dict)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    response = db.relationship('GuestResponse', back_populates='drawings')
+
+
+class GuestActivity(db.Model):
+    __tablename__ = 'GuestActivities'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('GuestSessions.id', ondelete='CASCADE'), nullable=False, index=True)
+    participant_id = db.Column(db.Integer, db.ForeignKey('GuestParticipants.id', ondelete='CASCADE'), nullable=True, index=True)
+    event = db.Column(db.String(80), nullable=False, index=True)
+    payload = db.Column(JSONBCompat, nullable=False, default=dict)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False, index=True)
+    session = db.relationship('GuestSession')
+    participant = db.relationship('GuestParticipant', back_populates='activities')
+
+
+class GuestReview(db.Model):
+    __tablename__ = 'GuestReviews'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('GuestSessions.id', ondelete='CASCADE'), nullable=False, index=True)
+    participant_id = db.Column(db.Integer, db.ForeignKey('GuestParticipants.id', ondelete='CASCADE'), nullable=False, unique=True, index=True)
+    status = db.Column(db.String(20), nullable=False, default='pending')
+    total_score = db.Column(db.Integer, nullable=True)
+    max_score = db.Column(db.Integer, nullable=True)
+    recommendation = db.Column(db.Text, nullable=True)
+    teacher_comment = db.Column(db.Text, nullable=True)
+    completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+    session = db.relationship('GuestSession')
+    participant = db.relationship('GuestParticipant')

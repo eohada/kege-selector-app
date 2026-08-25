@@ -501,6 +501,7 @@ def create_app(config_name=None):
     from app.routes.tma import tma_bp
     from app.workspace import workspace_bp
     from app.task_workspace import task_workspace_bp
+    from app.guest import guest_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -583,6 +584,7 @@ def create_app(config_name=None):
     app.register_blueprint(tg_app_bp)
     app.register_blueprint(workspace_bp)
     app.register_blueprint(task_workspace_bp)
+    app.register_blueprint(guest_bp)
 
     try:
         from app.utils.dev_logger import init_dev_logger

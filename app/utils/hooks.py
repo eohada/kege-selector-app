@@ -599,6 +599,11 @@ def register_hooks(app):
         if is_demo and request.path in ('/demo', '/demo/start'):
             return
 
+        # Guest links authenticate by a signed, scoped session token and must be
+        # reachable before Flask-Login redirects anonymous participants.
+        if request.path.startswith('/guest/'):
+            return
+
         if request.path.startswith('/sandbox/') or request.path == '/sandbox' or request.path.startswith('/sandbox_reference/') or request.path == '/sandbox_reference' or request.path.startswith('/u/') or request.path.startswith('/profile') or request.path.startswith('/mentor/') or request.path.startswith('/teacher/'):
             return
 
