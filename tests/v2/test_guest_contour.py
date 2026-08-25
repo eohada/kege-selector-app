@@ -8,7 +8,7 @@ from io import BytesIO
 from urllib.parse import urlparse
 
 from app import db
-from app.models import GuestDemoSnapshot, GuestSession, GuestTask, GuestTemplate
+from app.models import GuestDemoSnapshot, GuestResponse, GuestReview, GuestSession, GuestTask, GuestTemplate
 from tests.v2.conftest import login_as
 
 
@@ -125,3 +125,38 @@ def test_guest_state_multi_file_and_scoped_timeline(app, role_users, tmp_path):
     assert timeline.status_code == 200
     assert any(item['event'] == 'response.saved' for item in timeline.get_json()['events'])
     assert teacher.get(f"/teacher/guest-sessions/{payload['id']}/timeline?limit=nope").status_code == 400
+
+
+def test_trial_templates_have_full_variant_and_teacher_report(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_mixed'})
+    assert created.status_code == 200
+    payload = created.get_json()
+    code = payload['code']
+    guest = app.test_client()
+    joined = guest.post(f'/guest/s/{code}/join', json={'display_name': 'Report guest'})
+    assert joined.status_code == 200
+    with app.app_context():
+        session_obj = GuestSession.query.filter_by(access_code=code).one()
+        assert len(session_obj.tasks) == 19
+        first = session_obj.tasks[0]
+        participant = session_obj.participants[0]
+    assert guest.post(f'/guest/s/{code}/api/responses/{first.id}', json={'answer_text': first.expected_answer}).status_code == 200
+    submitted = guest.post(f'/guest/s/{code}/submit', json={'force': True})
+    assert submitted.status_code == 200
+    with app.app_context():
+        response = GuestResponse.query.filter_by(participant_id=participant.id, task_id=first.id).one()
+        assert response.score == first.max_score
+        response_ids = [item.id for item in GuestResponse.query.filter_by(participant_id=participant.id).all()]
+    reviewed = teacher.post(
+        f'/teacher/guest-sessions/{session_obj.id}/participants/{participant.id}/review',
+        json={'responses': [{'id': response_ids[0], 'score': 0, 'error_reason': 'KNOWLEDGE_GAP', 'teacher_comment': 'Повторить тему'}], 'recommendation': 'Повторить базовые конструкции'},
+    )
+    assert reviewed.status_code == 200
+    with app.app_context():
+        response = GuestResponse.query.get(response_ids[0])
+        review = GuestReview.query.filter_by(session_id=session_obj.id, participant_id=participant.id).one()
+        assert response.teacher_score == 0 and response.error_reason == 'KNOWLEDGE_GAP'
+        assert review.status == 'completed' and review.report['skills']
+        assert review.report['loss_reasons']['KNOWLEDGE_GAP'] == 1

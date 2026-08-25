@@ -73,7 +73,29 @@ def _task_specs(template_key):
         'trial_mixed': mixed,
         'intro_platform_tour': intro,
     }
-    return catalogs.get(template_key, python_start)
+    base = catalogs.get(template_key, python_start)
+    if template_key.startswith('trial_'):
+        # Каждый системный вариант — полноценный диагностический пробник из
+        # 19 коротких заданий. Базовые задания сохраняются, хвост добирается
+        # тематическими заданиями без привязки к демонстрационным данным.
+        extras = [
+            {'type': 'short_text', 'prompt': 'Что выведет программа: print(10 - 4)?', 'options': [], 'expected': '6', 'skill': 'python.arithmetic'},
+            {'type': 'choice', 'prompt': 'Как обозначается комментарий в Python?', 'options': ['#', '//', '<!--', '--'], 'expected': '#', 'skill': 'python.syntax'},
+            {'type': 'code', 'prompt': 'Запишите выражение, которое вычисляет квадрат x.', 'options': [], 'expected': 'x**2', 'skill': 'python.arithmetic'},
+            {'type': 'boolean', 'prompt': 'Верно ли: len([4, 5, 6]) равен 3?', 'options': ['Да', 'Нет'], 'expected': 'Да', 'skill': 'python.collections'},
+            {'type': 'choice', 'prompt': 'Какой тип данных хранит последовательность элементов?', 'options': ['list', 'int', 'float', 'None'], 'expected': 'list', 'skill': 'python.collections'},
+            {'type': 'short_text', 'prompt': 'Чему равен остаток от деления 17 на 5?', 'options': [], 'expected': '2', 'skill': 'python.arithmetic'},
+            {'type': 'choice', 'prompt': 'Какой оператор логически означает «и»?', 'options': ['and', 'or', 'not', 'in'], 'expected': 'and', 'skill': 'python.conditions'},
+            {'type': 'code', 'prompt': 'Напишите вызов print для вывода строки Hello.', 'options': [], 'expected': 'print("Hello")', 'skill': 'python.io'},
+            {'type': 'boolean', 'prompt': 'Верно ли: цикл while повторяется, пока условие истинно?', 'options': ['Да', 'Нет'], 'expected': 'Да', 'skill': 'python.loops'},
+            {'type': 'short_text', 'prompt': 'Переведите число 8 в двоичную запись.', 'options': [], 'expected': '1000', 'skill': 'ege.binary'},
+            {'type': 'choice', 'prompt': 'Какая функция считывает строку с клавиатуры?', 'options': ['input', 'print', 'len', 'range'], 'expected': 'input', 'skill': 'python.io'},
+            {'type': 'code', 'prompt': 'Запишите условие, проверяющее, что n равно 10.', 'options': [], 'expected': 'n == 10', 'skill': 'python.conditions'},
+            {'type': 'boolean', 'prompt': 'Верно ли: индексация списка в Python начинается с нуля?', 'options': ['Да', 'Нет'], 'expected': 'Да', 'skill': 'python.collections'},
+            {'type': 'choice', 'prompt': 'Что возвращает функция len?', 'options': ['Количество элементов', 'Последний элемент', 'Тип переменной'], 'expected': 'Количество элементов', 'skill': 'python.basics'},
+        ]
+        return (base + extras)[:19]
+    return base
 
 
 def _template_seed_rows():
@@ -98,6 +120,15 @@ def _ensure_guest_templates():
         elif item.is_active is False:
             item.is_active = True
             changed = True
+        # System templates are versioned snapshots.  If an older deployment
+        # seeded the short five-task catalog, upgrade only that system row;
+        # teacher-authored templates are never rewritten here.
+        elif item.version < version or (key.startswith('trial_') and len((item.config or {}).get('tasks', [])) < 19):
+            item.version = version
+            item.config = config
+            item.title = meta['title']
+            item.description = meta['description']
+            changed = True
     if changed:
         db.session.commit()
 
@@ -107,7 +138,11 @@ def _session_link(session, raw_token):
 
 
 def _new_code():
-    return secrets.token_urlsafe(6).replace('_', '').replace('-', '').upper()[:8]
+    for _ in range(20):
+        candidate = secrets.token_urlsafe(6).replace('_', '').replace('-', '').upper()[:8]
+        if candidate and not GuestSession.query.filter_by(access_code=candidate).first():
+            return candidate
+    raise RuntimeError('Не удалось создать уникальный код гостевой сессии')
 
 
 def _session_by_token(raw_token):
@@ -138,6 +173,34 @@ def _guest_context(session_obj):
 
 def _event(session_obj, participant, name, payload=None):
     db.session.add(GuestActivity(session_id=session_obj.id, participant_id=getattr(participant, 'id', None), event=name, payload=payload or {}))
+
+
+def _diagnostic_report(participant):
+    """Строит объяснимый отчёт из сохранённых ответов, а не из demo-данных."""
+    buckets = {}
+    for response in participant.responses:
+        skill = response.task.skill_key or 'общие навыки'
+        bucket = buckets.setdefault(skill, {'skill': skill, 'earned': 0, 'maximum': 0, 'answered': 0, 'errors': 0})
+        bucket['maximum'] += response.task.max_score
+        final = response.teacher_score if response.teacher_score is not None else response.score
+        if final is not None:
+            bucket['earned'] += final
+        if (response.answer_text or '').strip() or response.answer_json:
+            bucket['answered'] += 1
+        if final is not None and final < response.task.max_score:
+            bucket['errors'] += 1
+    for bucket in buckets.values():
+        bucket['percent'] = round(bucket['earned'] / bucket['maximum'] * 100) if bucket['maximum'] else 0
+    ordered = sorted(buckets.values(), key=lambda value: (-value['percent'], value['skill']))
+    return {
+        'skills': ordered,
+        'strong': [value['skill'] for value in ordered if value['percent'] >= 70][:5],
+        'attention': [value['skill'] for value in ordered if value['percent'] < 70][:5],
+        'loss_reasons': {
+            reason: sum(1 for response in participant.responses if response.error_reason == reason)
+            for reason in ('KNOWLEDGE_GAP', 'CALCULATION_ERROR', 'FORMATTING_ERROR', 'INATTENTION', 'INCOMPLETE_SOLUTION', 'OTHER')
+        },
+    }
 
 
 @guest_bp.get('/teacher/guest-sessions')
@@ -194,16 +257,48 @@ def create_session():
     template = GuestTemplate.query.filter_by(template_key=template_key, session_type=session_type, is_active=True).first()
     if template is None:
         return jsonify(error='Шаблон не найден'), 400
+    try:
+        duration_hours = int(data.get('duration_hours', 24 if session_type == 'INTRO_LESSON' else 24 * 7))
+        max_participants = int(data.get('max_participants', 1))
+    except (TypeError, ValueError):
+        return jsonify(error='Срок и лимит участников должны быть числами'), 400
+    if not 1 <= duration_hours <= 24 * 90:
+        return jsonify(error='Срок должен быть от 1 часа до 90 дней'), 400
+    if not 1 <= max_participants <= 100:
+        return jsonify(error='Лимит участников должен быть от 1 до 100'), 400
+    title = str(data.get('title') or template.title).strip()[:180] or template.title
+    settings = {
+        'title': title,
+        'template_version': template.version,
+        'flow': template.config.get('flow', []),
+        'allow_photos': bool(data.get('allow_photos', True)),
+        'allow_drawings': bool(data.get('allow_drawings', True)),
+        'allow_comments': bool(data.get('allow_comments', True)),
+        'timed': bool(data.get('timed', False)),
+        'expected_duration_minutes': int((template.config or {}).get('expected_duration_minutes', 180 if session_type == 'TRIAL_EXAM' else 30)),
+    }
     raw_token = secrets.token_urlsafe(32)
-    expires = utc_now() + timedelta(hours=24 if session_type == 'INTRO_LESSON' else 24 * 7)
-    session_obj = GuestSession(teacher_id=current_user.id, session_type=session_type, access_code=_new_code(), access_token_hash=_hash(raw_token), template_key=template_key, template_id=template.id, expires_at=expires, settings={'title': template.title, 'template_version': template.version, 'flow': template.config.get('flow', [])})
+    expires = utc_now() + timedelta(hours=duration_hours)
+    session_obj = GuestSession(teacher_id=current_user.id, session_type=session_type, access_code=_new_code(), access_token_hash=_hash(raw_token), template_key=template_key, template_id=template.id, expires_at=expires, max_participants=max_participants, settings=settings)
     db.session.add(session_obj)
     db.session.flush()
     specs = list((template.config or {}).get('tasks') or _task_specs(template_key))
     for position, spec in enumerate(specs, start=1):
-        db.session.add(GuestTask(session_id=session_obj.id, position=position, task_type=spec['type'], prompt=spec['prompt'], options=spec['options'], expected_answer=spec['expected'], skill_key=spec['skill'], metadata_json={'template': template_key}))
+        db.session.add(GuestTask(session_id=session_obj.id, position=position, task_type=spec['type'], prompt=spec['prompt'], options=spec['options'], expected_answer=spec['expected'], skill_key=spec['skill'], metadata_json={'template': template_key, 'phase': spec.get('phase', 'practice')}))
     if session_type == 'INTRO_LESSON':
-        db.session.add(GuestDemoSnapshot(session_id=session_obj.id, source_template_key=template.template_key, source_template_version=template.version, payload={'title': template.title, 'sections': [{'key': 'welcome', 'title': 'Добро пожаловать', 'body': 'Познакомимся с платформой и первой задачей.'}, {'key': 'program', 'title': 'Программа обучения', 'body': 'Здесь собраны модули и уроки ученика.'}, {'key': 'theory', 'title': 'Теория', 'body': 'Материал можно читать и сразу проверять практикой.'}, {'key': 'analytics', 'title': 'Прогресс', 'body': 'После выполнения результат появляется в аналитике.'}], 'template_version': template.version}))
+        db.session.add(GuestDemoSnapshot(session_id=session_obj.id, source_template_key=template.template_key, source_template_version=template.version, payload={
+            'title': template.title,
+            'sections': [
+                {'key': 'welcome', 'label': 'СТАРТ', 'title': 'Добро пожаловать', 'body': 'За несколько минут вы увидите путь ученика: цель, программа, теория, практика и результат.'},
+                {'key': 'dashboard', 'label': 'ДЕМО', 'title': 'Личный dashboard', 'body': 'В нём собраны ближайшие занятия, текущие работы, прогресс, сильные темы и подсказки наставника.'},
+                {'key': 'program', 'label': 'МАРШРУТ', 'title': 'Индивидуальная программа', 'body': 'Программа состоит из модулей и уроков. После диагностики порядок тем уточняется по вашим ответам и навыкам.'},
+                {'key': 'theory', 'label': 'ТЕОРИЯ', 'title': 'Теория с практикой', 'body': 'Каждая тема объясняется короткими блоками и сразу закрепляется мини-задачей, кодом или проверкой понимания.'},
+                {'key': 'analytics', 'label': 'АНАЛИТИКА', 'title': 'Прогресс и прогноз', 'body': 'Результаты проверок превращаются в метрики: выполнение, баллы, навыки, пробелы и следующий рекомендуемый шаг.'},
+                {'key': 'next', 'label': 'ДАЛЬШЕ', 'title': 'Предварительный маршрут', 'body': 'После вводного задания вы получите первый ориентир. Это не финальная оценка, а точка старта для полноценной диагностики.'},
+            ],
+            'dashboard': {'goal': '80+ баллов', 'forecast': 62, 'progress': 37, 'strong_topics': ['№1', '№5', '№6'], 'attention_topics': ['№13', '№15', '№16'], 'last_trial': 59},
+            'template_version': template.version,
+        }))
     _event(session_obj, None, 'session.created', {'type': session_type, 'template': template_key})
     db.session.commit()
     return jsonify(id=session_obj.id, code=session_obj.access_code, link=_session_link(session_obj, raw_token), expires_at=session_obj.expires_at.isoformat())
@@ -525,6 +620,9 @@ def submit_session(token):
             accepted = {expected, 'print(2+2)', 'print(4)', '4'}
             response_obj.score = response_obj.task.max_score if normalized in accepted else 0
             response_obj.auto_checked = True
+        response_obj.error_reason = None if response_obj.score == response_obj.task.max_score else (
+            'INCOMPLETE_SOLUTION' if not actual and not response_obj.answer_json else 'KNOWLEDGE_GAP'
+        )
     participant.status = 'submitted'
     participant.submitted_at = utc_now()
     total = sum((r.score or 0) for r in responses)
@@ -536,6 +634,7 @@ def submit_session(token):
     review.status = 'pending'
     review.total_score = total
     review.max_score = maximum
+    review.report = _diagnostic_report(participant)
     _event(item, participant, 'session.submitted', {'total_score': total, 'max_score': maximum})
     db.session.commit()
     return jsonify(status='submitted', result_url=url_for('guest.guest_result', token=token), total_score=total, max_score=maximum)
@@ -552,7 +651,14 @@ def review_participant(session_id, participant_id):
     for value in data.get('responses', []) if isinstance(data.get('responses'), list) else []:
         response_obj = GuestResponse.query.filter_by(id=value.get('id'), participant_id=participant.id).first()
         if response_obj:
-            response_obj.score = max(0, min(response_obj.task.max_score, int(value.get('score', 0))))
+            try:
+                teacher_score = int(value.get('score', 0))
+            except (TypeError, ValueError):
+                return jsonify(error='Баллы должны быть целым числом'), 400
+            response_obj.teacher_score = max(0, min(response_obj.task.max_score, teacher_score))
+            response_obj.error_reason = str(value.get('error_reason') or '').upper() or None
+            if response_obj.error_reason not in {None, 'KNOWLEDGE_GAP', 'CALCULATION_ERROR', 'FORMATTING_ERROR', 'INATTENTION', 'INCOMPLETE_SOLUTION', 'OTHER'}:
+                return jsonify(error='Неизвестная причина потери баллов'), 400
             response_obj.teacher_comment = str(value.get('teacher_comment', ''))[:4000]
             response_obj.status = 'graded'
             response_obj.graded_at = utc_now()
@@ -563,8 +669,9 @@ def review_participant(session_id, participant_id):
     review.status = 'completed'
     review.recommendation = str(data.get('recommendation', ''))[:4000]
     review.teacher_comment = str(data.get('teacher_comment', ''))[:4000]
-    review.total_score = sum((r.score or 0) for r in participant.responses)
+    review.total_score = sum((r.teacher_score if r.teacher_score is not None else (r.score or 0)) for r in participant.responses)
     review.max_score = sum(r.task.max_score for r in participant.responses) or sum(t.max_score for t in item.tasks)
+    review.report = _diagnostic_report(participant)
     review.completed_at = utc_now()
     db.session.commit()
     return jsonify(status='completed', total_score=review.total_score, max_score=review.max_score)
