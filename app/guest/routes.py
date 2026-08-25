@@ -37,6 +37,22 @@ def _hash(value):
     return hashlib.sha256(value.encode('utf-8')).hexdigest()
 
 
+def _as_bool(value, default=False):
+    """Нормализует JSON и значения HTML FormData без ловушки bool('false')."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    normalized = str(value).strip().lower()
+    if normalized in {'1', 'true', 'yes', 'on', 'да'}:
+        return True
+    if normalized in {'0', 'false', 'no', 'off', 'нет', ''}:
+        return False
+    return default
+
+
 def _task_specs(template_key):
     python_start = [
         {'type': 'choice', 'prompt': 'Какой тип хранит целое число в Python?', 'options': ['int', 'str', 'list', 'bool'], 'expected': 'int', 'skill': 'python.types'},
@@ -271,10 +287,10 @@ def create_session():
         'title': title,
         'template_version': template.version,
         'flow': template.config.get('flow', []),
-        'allow_photos': bool(data.get('allow_photos', True)),
-        'allow_drawings': bool(data.get('allow_drawings', True)),
-        'allow_comments': bool(data.get('allow_comments', True)),
-        'timed': bool(data.get('timed', False)),
+        'allow_photos': _as_bool(data.get('allow_photos'), True),
+        'allow_drawings': _as_bool(data.get('allow_drawings'), True),
+        'allow_comments': _as_bool(data.get('allow_comments'), True),
+        'timed': _as_bool(data.get('timed'), False),
         'expected_duration_minutes': int((template.config or {}).get('expected_duration_minutes', 180 if session_type == 'TRIAL_EXAM' else 30)),
     }
     raw_token = secrets.token_urlsafe(32)
@@ -490,6 +506,9 @@ def save_response(token, task_id):
     if not task:
         abort(404)
     data = request.get_json(silent=True) or {}
+    settings = item.settings or {}
+    if not _as_bool(settings.get('allow_comments'), True) and str(data.get('comment', '')).strip():
+        return jsonify(error='Комментарии отключены для этой сессии'), 403
     response_obj = GuestResponse.query.filter_by(participant_id=participant.id, task_id=task.id).first()
     if not response_obj:
         response_obj = GuestResponse(participant_id=participant.id, task_id=task.id)
@@ -509,6 +528,8 @@ def save_drawing(token, task_id):
     item, participant = _require_guest(token)
     if participant.status == 'submitted':
         return jsonify(error='Сессия уже отправлена'), 409
+    if not _as_bool((item.settings or {}).get('allow_drawings'), True):
+        return jsonify(error='Рисунки отключены для этой сессии'), 403
     task = GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
     response_obj = GuestResponse.query.filter_by(participant_id=participant.id, task_id=task.id).first()
     if not response_obj:
@@ -549,6 +570,8 @@ def upload_file(token, task_id):
         file.stream.seek(0, 2)
         size = file.stream.tell()
         file.stream.seek(0)
+        if file.mimetype and file.mimetype.startswith('image/') and not _as_bool((item.settings or {}).get('allow_photos'), True):
+            return jsonify(error='Загрузка фотографий отключена для этой сессии'), 403
         if size > max_size:
             return jsonify(error=f'Файл {secure_filename(file.filename)} превышает допустимый размер'), 413
         sizes.append(size)
@@ -626,7 +649,7 @@ def submit_session(token):
     participant.status = 'submitted'
     participant.submitted_at = utc_now()
     total = sum((r.score or 0) for r in responses)
-    maximum = sum(r.task.max_score for r in responses) if responses else sum(t.max_score for t in item.tasks)
+    maximum = sum(t.max_score for t in item.tasks)
     review = GuestReview.query.filter_by(session_id=item.id, participant_id=participant.id).first()
     if not review:
         review = GuestReview(session_id=item.id, participant_id=participant.id)
@@ -670,7 +693,7 @@ def review_participant(session_id, participant_id):
     review.recommendation = str(data.get('recommendation', ''))[:4000]
     review.teacher_comment = str(data.get('teacher_comment', ''))[:4000]
     review.total_score = sum((r.teacher_score if r.teacher_score is not None else (r.score or 0)) for r in participant.responses)
-    review.max_score = sum(r.task.max_score for r in participant.responses) or sum(t.max_score for t in item.tasks)
+    review.max_score = sum(t.max_score for t in item.tasks)
     review.report = _diagnostic_report(participant)
     review.completed_at = utc_now()
     db.session.commit()
@@ -681,7 +704,8 @@ def review_participant(session_id, participant_id):
 @require_role('tutor', 'creator', 'admin', 'chief_admin')
 def convert_participant(session_id, participant_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
-    participant = GuestParticipant.query.filter_by(id=participant_id, session_id=item.id).first_or_404()
+    participant = (GuestParticipant.query.filter_by(id=participant_id, session_id=item.id)
+                   .with_for_update().first_or_404())
     if participant.converted_student_id:
         return jsonify(status='converted', student_id=participant.converted_student_id)
     base = ''.join(ch.lower() if ch.isalnum() else '_' for ch in participant.display_name).strip('_') or 'guest'

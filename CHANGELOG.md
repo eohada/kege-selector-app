@@ -6886,3 +6886,11 @@ outes.py for correct timezone handling.
 - На green применена expand-only миграция `guest_diagnostic_report`; schema contract прошёл.
 - Трафик переключён на `127.0.0.1:8002`; `/ready` вернул HTTP 200, все проверки `db/migrations/redis/schema/socketio=true`.
 - Старый blue-контур оставлен запущенным на safety window для быстрого rollback.
+
+## 2026-08-26 — Укрепление ограничений гостевых сессий
+
+- Добавлен безопасный разбор boolean-параметров из JSON и HTML FormData без ошибки `bool("false") == True`.
+- Сервер теперь реально применяет настройки `allow_comments`, `allow_drawings` и `allow_photos` для guest API.
+- Максимальный балл forced-submit и teacher review считается по всем заданиям шаблона, включая пропущенные.
+- Конвертация участника защищена транзакционной блокировкой для идемпотентных повторных запросов.
+- Добавлены регрессионные тесты настроек контента, cross-session isolation и полного максимума отчёта; guest suite: 6 тестов успешно.

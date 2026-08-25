@@ -160,3 +160,57 @@ def test_trial_templates_have_full_variant_and_teacher_report(app, role_users):
         assert response.teacher_score == 0 and response.error_reason == 'KNOWLEDGE_GAP'
         assert review.status == 'completed' and review.report['skills']
         assert review.report['loss_reasons']['KNOWLEDGE_GAP'] == 1
+
+
+def test_session_content_settings_are_enforced_and_form_booleans_normalized(app, role_users, tmp_path):
+    app.config['GUEST_UPLOAD_ROOT'] = str(tmp_path)
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', data={
+        'session_type': 'TRIAL_EXAM',
+        'template_key': 'trial_python_start',
+        'allow_comments': 'false',
+        'allow_drawings': 'false',
+        'allow_photos': 'false',
+    })
+    assert created.status_code == 200
+    payload = created.get_json()
+    guest = app.test_client()
+    assert guest.post(f"/guest/s/{payload['code']}/join", json={'display_name': 'Настройки'}).status_code == 200
+    with app.app_context():
+        session_obj = GuestSession.query.filter_by(access_code=payload['code']).one()
+        task_id = session_obj.tasks[0].id
+        assert session_obj.settings['allow_comments'] is False
+        assert session_obj.settings['allow_drawings'] is False
+        assert session_obj.settings['allow_photos'] is False
+    assert guest.post(f"/guest/s/{payload['code']}/api/responses/{task_id}", json={'comment': 'запрещено'}).status_code == 403
+    assert guest.post(f"/guest/s/{payload['code']}/api/responses/{task_id}/drawing", json={'dataUrl': 'data:image/png;base64,AA=='}).status_code == 403
+    photo = guest.post(
+        f"/guest/s/{payload['code']}/api/responses/{task_id}/files",
+        data={'file': (BytesIO(b'png'), 'answer.png')},
+        content_type='multipart/form-data',
+    )
+    assert photo.status_code == 403
+
+
+def test_forced_submit_report_uses_all_tasks_and_cross_session_task_isolation(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    first = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_python_start'}).get_json()
+    second = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_algorithms'}).get_json()
+    guest = app.test_client()
+    assert guest.post(f"/guest/s/{first['code']}/join", json={'display_name': 'Изоляция'}).status_code == 200
+    with app.app_context():
+        first_session = GuestSession.query.filter_by(access_code=first['code']).one()
+        second_session = GuestSession.query.filter_by(access_code=second['code']).one()
+        own_task = first_session.tasks[0]
+        foreign_task = second_session.tasks[0]
+    assert guest.post(f"/guest/s/{first['code']}/api/responses/{foreign_task.id}", json={'answer_text': 'x'}).status_code == 404
+    assert guest.post(f"/guest/s/{first['code']}/api/responses/{own_task.id}", json={'answer_text': own_task.expected_answer}).status_code == 200
+    submitted = guest.post(f"/guest/s/{first['code']}/submit", json={'force': True})
+    assert submitted.status_code == 200
+    with app.app_context():
+        persisted_session = GuestSession.query.filter_by(access_code=first['code']).one()
+        participant = persisted_session.participants[0]
+        review = GuestReview.query.filter_by(session_id=persisted_session.id, participant_id=participant.id).one()
+        assert review.max_score == sum(task.max_score for task in persisted_session.tasks)
