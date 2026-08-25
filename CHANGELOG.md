@@ -6879,3 +6879,10 @@ outes.py for correct timezone handling.
 - Добавлена expand-only миграция `guest_diagnostic_report`.
 - Добавлен сквозной тест полного 19-заданного варианта, ручной оценки и skill-based отчёта.
 - Полный набор `tests/v2` прошёл: 158 тестов успешно.
+
+## 2026-08-26 — Production deploy гостевого диагностического контура
+
+- Commit `0229e6d` отправлен в production через blue-green без прямого рестарта web-сервиса.
+- На green применена expand-only миграция `guest_diagnostic_report`; schema contract прошёл.
+- Трафик переключён на `127.0.0.1:8002`; `/ready` вернул HTTP 200, все проверки `db/migrations/redis/schema/socketio=true`.
+- Старый blue-контур оставлен запущенным на safety window для быстрого rollback.
