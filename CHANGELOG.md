@@ -2531,6 +2531,7 @@ equire_tutor to use get_active_role().
 ## [Unreleased]
 
 - **2026-08-26** — Добавлена expand-only миграция `guest_template_snapshot_index_contract` для индекса `GuestDemoSnapshots.ix_GuestDemoSnapshots_session_id`, необходимого schema-audit перед blue-green switch.
+- **2026-08-26** — Идентификатор ревизии сокращён до `guest_snapshot_idx_contract`, чтобы соответствовать лимиту 32 символа в таблице Alembic.
 
 ### Changed
 - Redirected /assignments/<id>/edit to the new assignment wizard (/assignments/create?assignment_id=<id>) to migrate the settings editing page to the new UI Canon.

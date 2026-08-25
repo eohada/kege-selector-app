@@ -4,7 +4,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = 'guest_template_snapshot_index_contract'
+revision = 'guest_snapshot_idx_contract'
 down_revision = 'guest_template_index_contract'
 branch_labels = None
 depends_on = None
