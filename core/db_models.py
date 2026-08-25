@@ -3441,6 +3441,8 @@ class GuestSession(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
     closed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    reopened_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    access_token_rotated_at = db.Column(db.DateTime(timezone=True), nullable=True)
     teacher = db.relationship('User', foreign_keys=[teacher_id])
     participants = db.relationship('GuestParticipant', back_populates='session', cascade='all, delete-orphan')
     tasks = db.relationship('GuestTask', back_populates='session', cascade='all, delete-orphan', order_by='GuestTask.position')

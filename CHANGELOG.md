@@ -6840,3 +6840,10 @@ outes.py for correct timezone handling.
 - Сквозной smoke: создание сессии → join → response → drawing/save/load → submit → teacher detail/review → convert → повторная convert пройден (HTTP 200).
 - В teacher detail добавлен безопасный просмотр вложений по полной цепочке владения и превью последнего рисунка участника.
 - Проверка маршрутов и Python-компиляция после добавления attachment route пройдены.
+## [2026-08-26] — Guest session lifecycle hardening
+
+- Добавлены операции преподавателя для продления, повторного открытия и перевыпуска ссылки гостевой сессии.
+- Короткий код получил вход через `/guest/code/<code>`; рабочие endpoints по-прежнему требуют participant-cookie.
+- Добавлена expand-only миграция `guest_session_lifecycle` с audit-полями reopen/rotate-link.
+- Добавлен heartbeat присутствия гостя и блокировка ответа/файлов/рисунков после сдачи.
+- Сдача стала идемпотентной и возвращает список незаполненных заданий до подтверждения отправки с пропусками.

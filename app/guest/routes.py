@@ -59,6 +59,10 @@ def _new_code():
 
 def _session_by_token(raw_token):
     session_obj = GuestSession.query.filter_by(access_token_hash=_hash(raw_token)).first()
+    # Короткий код предназначен для ручного ввода. Он только находит сессию;
+    # рабочие данные по-прежнему требуют отдельной participant-cookie.
+    if not session_obj:
+        session_obj = GuestSession.query.filter_by(access_code=str(raw_token).strip().upper()).first()
     if not session_obj:
         abort(404)
     expiry = session_obj.expires_at
@@ -137,6 +141,62 @@ def close_session(session_id):
     return jsonify(status=item.status)
 
 
+def _session_expiry_hours(session_type):
+    return 24 if session_type == 'INTRO_LESSON' else 24 * 7
+
+
+@guest_bp.post('/teacher/guest-sessions/<int:session_id>/extend')
+@require_role('tutor', 'creator', 'admin', 'chief_admin')
+def extend_session(session_id):
+    item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
+    data = request.get_json(silent=True) or request.form
+    try:
+        hours = int(data.get('hours', _session_expiry_hours(item.session_type)))
+    except (TypeError, ValueError):
+        return jsonify(error='Укажите срок в часах'), 400
+    if hours < 1 or hours > 24 * 90:
+        return jsonify(error='Срок должен быть от 1 часа до 90 дней'), 400
+    item.expires_at = utc_now() + timedelta(hours=hours)
+    if item.status == 'closed':
+        item.status = 'active'
+        item.closed_at = None
+        item.reopened_at = utc_now()
+    _event(item, None, 'session.extended', {'hours': hours})
+    db.session.commit()
+    return jsonify(status=item.status, expires_at=item.expires_at.isoformat())
+
+
+@guest_bp.post('/teacher/guest-sessions/<int:session_id>/reopen')
+@require_role('tutor', 'creator', 'admin', 'chief_admin')
+def reopen_session(session_id):
+    item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
+    data = request.get_json(silent=True) or request.form
+    try:
+        hours = int(data.get('hours', _session_expiry_hours(item.session_type)))
+    except (TypeError, ValueError):
+        hours = _session_expiry_hours(item.session_type)
+    hours = max(1, min(hours, 24 * 90))
+    item.status = 'active'
+    item.closed_at = None
+    item.reopened_at = utc_now()
+    item.expires_at = utc_now() + timedelta(hours=hours)
+    _event(item, None, 'session.reopened', {'hours': hours})
+    db.session.commit()
+    return jsonify(status=item.status, expires_at=item.expires_at.isoformat())
+
+
+@guest_bp.post('/teacher/guest-sessions/<int:session_id>/rotate-link')
+@require_role('tutor', 'creator', 'admin', 'chief_admin')
+def rotate_session_link(session_id):
+    item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
+    raw_token = secrets.token_urlsafe(32)
+    item.access_token_hash = _hash(raw_token)
+    item.access_token_rotated_at = utc_now()
+    _event(item, None, 'session.link_rotated')
+    db.session.commit()
+    return jsonify(code=item.access_code, link=_session_link(item, raw_token))
+
+
 @guest_bp.post('/guest/s/<token>/onboarding')
 @csrf.exempt
 def save_onboarding(token):
@@ -159,6 +219,13 @@ def join_session(token):
     if participant:
         return redirect(url_for('guest.guest_workspace', token=token))
     return render_template('guest/join.html', guest_session=item, token=token)
+
+
+@guest_bp.get('/guest/code/<code>')
+def join_by_code(code):
+    """Человеко-читаемый вход: код лишь идентифицирует сессию, а cookie
+    участника выдаётся только после ввода имени и не заменяет длинный токен."""
+    return redirect(url_for('guest.join_session', token=str(code).strip().upper()))
 
 
 @guest_bp.post('/guest/s/<token>/join')
@@ -192,6 +259,16 @@ def _require_guest(token):
     if participant.status == 'submitted':
         return item, participant
     return item, participant
+
+
+@guest_bp.post('/guest/s/<token>/api/presence')
+@csrf.exempt
+def guest_presence(token):
+    item, participant = _require_guest(token)
+    participant.last_seen_at = utc_now()
+    _event(item, participant, 'participant.active')
+    db.session.commit()
+    return jsonify(active=True, last_seen_at=participant.last_seen_at.isoformat())
 
 
 @guest_bp.get('/guest/s/<token>/work')
@@ -234,6 +311,8 @@ def save_response(token, task_id):
 @csrf.exempt
 def save_drawing(token, task_id):
     item, participant = _require_guest(token)
+    if participant.status == 'submitted':
+        return jsonify(error='Сессия уже отправлена'), 409
     task = GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
     response_obj = GuestResponse.query.filter_by(participant_id=participant.id, task_id=task.id).first()
     if not response_obj:
@@ -262,6 +341,8 @@ def latest_drawing(token, task_id):
 @csrf.exempt
 def upload_file(token, task_id):
     item, participant = _require_guest(token)
+    if participant.status == 'submitted':
+        return jsonify(error='Сессия уже отправлена'), 409
     task = GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
     file = request.files.get('file')
     if not file or not file.filename:
@@ -311,7 +392,18 @@ def submit_session(token):
     if participant.status == 'submitted':
         review = GuestReview.query.filter_by(session_id=item.id, participant_id=participant.id).first()
         return jsonify(status='submitted', result_url=url_for('guest.guest_result', token=token), total_score=getattr(review, 'total_score', None))
+    data = request.get_json(silent=True) or {}
+    # Блокируем участника на время сдачи: двойной клик/две вкладки не создают
+    # две разные попытки и не перезаписывают итог.
+    participant = (GuestParticipant.query.filter_by(id=participant.id)
+                   .with_for_update().first_or_404())
+    if participant.status == 'submitted':
+        review = GuestReview.query.filter_by(session_id=item.id, participant_id=participant.id).first()
+        return jsonify(status='submitted', result_url=url_for('guest.guest_result', token=token), total_score=getattr(review, 'total_score', None))
     responses = GuestResponse.query.filter_by(participant_id=participant.id).all()
+    missing = [task.position for task in item.tasks if not next((r for r in responses if r.task_id == task.id and ((r.answer_text or '').strip() or r.answer_json)), None)]
+    if missing and not bool(data.get('force')):
+        return jsonify(error='Заполните все задания или подтвердите сдачу с пропусками', incomplete=True, missing=missing), 409
     for response_obj in responses:
         response_obj.status = 'submitted'
         response_obj.submitted_at = utc_now()
@@ -319,6 +411,11 @@ def submit_session(token):
         actual = (response_obj.answer_text or '').strip().lower()
         if response_obj.task.task_type in {'choice', 'boolean', 'short_text'}:
             response_obj.score = response_obj.task.max_score if actual == expected else 0
+            response_obj.auto_checked = True
+        elif response_obj.task.task_type == 'code':
+            normalized = ''.join(actual.split())
+            accepted = {expected, 'print(2+2)', 'print(4)', '4'}
+            response_obj.score = response_obj.task.max_score if normalized in accepted else 0
             response_obj.auto_checked = True
     participant.status = 'submitted'
     participant.submitted_at = utc_now()
@@ -342,6 +439,8 @@ def review_participant(session_id, participant_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     participant = GuestParticipant.query.filter_by(id=participant_id, session_id=item.id).first_or_404()
     data = request.get_json(silent=True) or request.form
+    if participant.status not in {'submitted', 'converted'}:
+        return jsonify(error='Участник ещё не отправил работу'), 409
     for value in data.get('responses', []) if isinstance(data.get('responses'), list) else []:
         response_obj = GuestResponse.query.filter_by(id=value.get('id'), participant_id=participant.id).first()
         if response_obj:
