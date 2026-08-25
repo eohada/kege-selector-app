@@ -120,6 +120,8 @@ from core.db_models import (
     StudentCourseEnrollment,
     GradingScale,
     PlatformBugReport,
+    GuestTemplate,
+    GuestDemoSnapshot,
     GuestSession,
     GuestParticipant,
     GuestTask,
@@ -134,6 +136,8 @@ from core.db_models import (
 
 __all__ = [
     'db',
+    'GuestTemplate',
+    'GuestDemoSnapshot',
     'Course',
     'ExamSkill',
     'StudentSkill',

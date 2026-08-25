@@ -6847,3 +6847,15 @@ outes.py for correct timezone handling.
 - Добавлена expand-only миграция `guest_session_lifecycle` с audit-полями reopen/rotate-link.
 - Добавлен heartbeat присутствия гостя и блокировка ответа/файлов/рисунков после сдачи.
 - Сдача стала идемпотентной и возвращает список незаполненных заданий до подтверждения отправки с пропусками.
+## [2026-08-26] — Persisted guest templates and intro snapshots
+
+- Added versioned `GuestTemplate` records and idempotent system seed for three trial variants plus intro tour.
+- Added `GuestDemoSnapshot` and nullable `GuestSession.template_id` with expand-only migration `guest_templates_snapshots`.
+- Intro sessions now snapshot structured demo sections and create six phase-tagged tasks; session settings retain template version and flow.
+- Added regression assertions for template linkage, snapshot isolation and intro task count.
+## [2026-08-26] — Восстановление workspace и лента событий гостевой сессии
+
+- workspace гостя восстанавливает ответы, комментарии, флаги и рисунки после обновления, показывает прогресс и guided-фазы вводного сценария;
+- загрузка принимает несколько файлов за один раз, состояние доступно через scoped `/api/state`;
+- преподавателю добавлена лента событий сессии и валидация параметра лимита;
+- добавлены регрессионные проверки state, multi-file и timeline.

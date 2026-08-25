@@ -15,7 +15,8 @@ from werkzeug.utils import secure_filename
 
 from app.guest import guest_bp
 from app import csrf
-from app.models import (db, GuestActivity, GuestAttachment, GuestDrawing,
+from app.models import (db, GuestActivity, GuestAttachment, GuestDemoSnapshot,
+                        GuestDrawing, GuestTemplate,
                         GuestParticipant, GuestResponse, GuestReview,
                         GuestSession, GuestTask, Student, User, UserRole, utc_now)
 from app.auth.rbac_utils import require_role
@@ -37,16 +38,68 @@ def _hash(value):
 
 
 def _task_specs(template_key):
-    common = [
+    python_start = [
         {'type': 'choice', 'prompt': 'Какой тип хранит целое число в Python?', 'options': ['int', 'str', 'list', 'bool'], 'expected': 'int', 'skill': 'python.types'},
         {'type': 'short_text', 'prompt': 'Что выведет программа: print(2 + 3)?', 'options': [], 'expected': '5', 'skill': 'python.io'},
         {'type': 'boolean', 'prompt': 'Верно ли утверждение: 10 <= 10?', 'options': ['Да, утверждение верно', 'Нет, утверждение неверно'], 'expected': 'Да, утверждение верно', 'skill': 'python.conditions'},
         {'type': 'code', 'prompt': 'Напишите выражение, которое выводит число 4.', 'options': [], 'expected': '4', 'skill': 'python.expressions'},
         {'type': 'choice', 'prompt': 'Какой оператор используется для ветвления?', 'options': ['if', 'for', 'def', 'import'], 'expected': 'if', 'skill': 'python.conditions'},
     ]
-    if template_key.startswith('intro_'):
-        return common[:1] + [{'type': 'short_text', 'prompt': 'Какая страница открывает учебную программу?', 'options': [], 'expected': 'программа', 'skill': 'platform.program'}]
-    return common * 4  # 20 вопросов в диагностике, ответы остаются снимком сессии
+    algorithms = [
+        {'type': 'choice', 'prompt': 'Что делает цикл for?', 'options': ['Повторяет действия для элементов последовательности', 'Создаёт файл', 'Удаляет переменную'], 'expected': 'Повторяет действия для элементов последовательности', 'skill': 'python.loops'},
+        {'type': 'short_text', 'prompt': 'Что выведет программа: print(len("ЕГЭ"))?', 'options': [], 'expected': '3', 'skill': 'python.strings'},
+        {'type': 'code', 'prompt': 'Запишите условие, проверяющее, что x больше 0.', 'options': [], 'expected': 'x > 0', 'skill': 'python.conditions'},
+        {'type': 'boolean', 'prompt': 'Верно ли: список [1, 2] содержит два элемента?', 'options': ['Да', 'Нет'], 'expected': 'Да', 'skill': 'python.collections'},
+        {'type': 'choice', 'prompt': 'Какой оператор сравнивает равенство значений?', 'options': ['==', '=', '!=', '=>'], 'expected': '==', 'skill': 'python.conditions'},
+    ]
+    mixed = [
+        {'type': 'choice', 'prompt': 'Какой результат имеет 2 ** 3?', 'options': ['5', '6', '8', '9'], 'expected': '8', 'skill': 'python.arithmetic'},
+        {'type': 'short_text', 'prompt': 'Переведите число 5 в двоичную запись.', 'options': [], 'expected': '101', 'skill': 'ege.binary'},
+        {'type': 'boolean', 'prompt': 'Истинно ли условие: 7 % 2 == 1?', 'options': ['Да', 'Нет'], 'expected': 'Да', 'skill': 'python.arithmetic'},
+        {'type': 'code', 'prompt': 'Напишите код, выводящий числа 1 и 2 через пробел.', 'options': [], 'expected': 'print(1, 2)', 'skill': 'python.io'},
+        {'type': 'choice', 'prompt': 'С чего начинается выполнение программы?', 'options': ['С первой команды', 'С последней команды', 'С комментария'], 'expected': 'С первой команды', 'skill': 'python.basics'},
+    ]
+    intro = [
+        {'type': 'choice', 'prompt': 'Где ученик видит свою учебную программу?', 'options': ['В разделе «Курсы»', 'Только в профиле преподавателя', 'В настройках браузера'], 'expected': 'В разделе «Курсы»', 'skill': 'platform.program', 'phase': 'orientation'},
+        {'type': 'choice', 'prompt': 'Что открывает теоретический материал?', 'options': ['Карточка урока или темы', 'Только чат', 'Панель администратора'], 'expected': 'Карточка урока или темы', 'skill': 'platform.theory', 'phase': 'theory'},
+        {'type': 'code', 'prompt': 'Выполните первую мини-задачу: выведите число 2.', 'options': [], 'expected': '2', 'skill': 'python.first_task', 'phase': 'practice'},
+        {'type': 'short_text', 'prompt': 'Какой раздел показывает прогресс обучения?', 'options': [], 'expected': 'аналитика', 'skill': 'platform.analytics', 'phase': 'analytics'},
+        {'type': 'boolean', 'prompt': 'Можно ли вернуться к незавершённой гостевой сессии по ссылке?', 'options': ['Да', 'Нет'], 'expected': 'Да', 'skill': 'platform.return', 'phase': 'return'},
+        {'type': 'short_text', 'prompt': 'Что бы вы хотели изучить первым?', 'options': [], 'expected': '', 'skill': 'platform.goal', 'phase': 'finish'},
+    ]
+    catalogs = {
+        'trial_python_start': python_start,
+        'trial_algorithms': algorithms,
+        'trial_mixed': mixed,
+        'intro_platform_tour': intro,
+    }
+    return catalogs.get(template_key, python_start)
+
+
+def _template_seed_rows():
+    return [
+        ('trial_python_start', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_python_start'], 1),
+        ('trial_algorithms', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_algorithms'], 1),
+        ('trial_mixed', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_mixed'], 1),
+        ('intro_platform_tour', 'INTRO_LESSON', INTRO_TEMPLATES['intro_platform_tour'], 1),
+    ]
+
+
+def _ensure_guest_templates():
+    """Идемпотентно создаёт системные версии сценариев в БД."""
+    changed = False
+    for key, session_type, meta, version in _template_seed_rows():
+        item = GuestTemplate.query.filter_by(template_key=key).first()
+        config = {'tasks': _task_specs(key), 'flow': [task.get('phase') for task in _task_specs(key) if task.get('phase')]}
+        if item is None:
+            item = GuestTemplate(template_key=key, session_type=session_type, title=meta['title'], description=meta['description'], version=version, config=config, is_active=True)
+            db.session.add(item)
+            changed = True
+        elif item.is_active is False:
+            item.is_active = True
+            changed = True
+    if changed:
+        db.session.commit()
 
 
 def _session_link(session, raw_token):
@@ -90,6 +143,7 @@ def _event(session_obj, participant, name, payload=None):
 @guest_bp.get('/teacher/guest-sessions')
 @require_role('tutor', 'creator', 'admin', 'chief_admin')
 def teacher_sessions():
+    _ensure_guest_templates()
     status = request.args.get('status')
     kind = request.args.get('type')
     query = GuestSession.query.filter_by(teacher_id=current_user.id)
@@ -108,24 +162,48 @@ def teacher_session_detail(session_id):
     return render_template('guest/teacher_detail.html', guest_session=item)
 
 
+@guest_bp.get('/teacher/guest-sessions/<int:session_id>/timeline')
+@require_role('tutor', 'creator', 'admin', 'chief_admin')
+def teacher_session_timeline(session_id):
+    item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
+    try:
+        limit = min(max(int(request.args.get('limit', 100)), 1), 500)
+    except (TypeError, ValueError):
+        return jsonify(error='Параметр limit должен быть числом от 1 до 500'), 400
+    events = (GuestActivity.query.filter_by(session_id=item.id)
+              .order_by(GuestActivity.created_at.desc(), GuestActivity.id.desc())
+              .limit(limit).all())
+    return jsonify(events=[{
+        'id': event.id,
+        'event': event.event,
+        'payload': event.payload or {},
+        'participant_id': event.participant_id,
+        'created_at': event.created_at.isoformat(),
+    } for event in events])
+
+
 @guest_bp.post('/teacher/guest-sessions')
 @require_role('tutor', 'creator', 'admin', 'chief_admin')
 def create_session():
+    _ensure_guest_templates()
     data = request.get_json(silent=True) or request.form
     session_type = str(data.get('session_type', 'TRIAL_EXAM')).upper()
     template_key = str(data.get('template_key', 'trial_python_start'))
     if session_type not in SESSION_TYPES:
         return jsonify(error='Неверный тип гостевой сессии'), 400
-    catalog = INTRO_TEMPLATES if session_type == 'INTRO_LESSON' else TRIAL_TEMPLATES
-    if template_key not in catalog:
+    template = GuestTemplate.query.filter_by(template_key=template_key, session_type=session_type, is_active=True).first()
+    if template is None:
         return jsonify(error='Шаблон не найден'), 400
     raw_token = secrets.token_urlsafe(32)
     expires = utc_now() + timedelta(hours=24 if session_type == 'INTRO_LESSON' else 24 * 7)
-    session_obj = GuestSession(teacher_id=current_user.id, session_type=session_type, access_code=_new_code(), access_token_hash=_hash(raw_token), template_key=template_key, expires_at=expires, settings={'title': catalog[template_key]['title']})
+    session_obj = GuestSession(teacher_id=current_user.id, session_type=session_type, access_code=_new_code(), access_token_hash=_hash(raw_token), template_key=template_key, template_id=template.id, expires_at=expires, settings={'title': template.title, 'template_version': template.version, 'flow': template.config.get('flow', [])})
     db.session.add(session_obj)
     db.session.flush()
-    for position, spec in enumerate(_task_specs(template_key), start=1):
+    specs = list((template.config or {}).get('tasks') or _task_specs(template_key))
+    for position, spec in enumerate(specs, start=1):
         db.session.add(GuestTask(session_id=session_obj.id, position=position, task_type=spec['type'], prompt=spec['prompt'], options=spec['options'], expected_answer=spec['expected'], skill_key=spec['skill'], metadata_json={'template': template_key}))
+    if session_type == 'INTRO_LESSON':
+        db.session.add(GuestDemoSnapshot(session_id=session_obj.id, source_template_key=template.template_key, source_template_version=template.version, payload={'title': template.title, 'sections': [{'key': 'welcome', 'title': 'Добро пожаловать', 'body': 'Познакомимся с платформой и первой задачей.'}, {'key': 'program', 'title': 'Программа обучения', 'body': 'Здесь собраны модули и уроки ученика.'}, {'key': 'theory', 'title': 'Теория', 'body': 'Материал можно читать и сразу проверять практикой.'}, {'key': 'analytics', 'title': 'Прогресс', 'body': 'После выполнения результат появляется в аналитике.'}], 'template_version': template.version}))
     _event(session_obj, None, 'session.created', {'type': session_type, 'template': template_key})
     db.session.commit()
     return jsonify(id=session_obj.id, code=session_obj.access_code, link=_session_link(session_obj, raw_token), expires_at=session_obj.expires_at.isoformat())
@@ -271,17 +349,40 @@ def guest_presence(token):
     return jsonify(active=True, last_seen_at=participant.last_seen_at.isoformat())
 
 
+@guest_bp.get('/guest/s/<token>/api/state')
+def guest_state(token):
+    """Полный продолжимый снимок текущей попытки для восстановления после reload."""
+    item, participant = _require_guest(token)
+    responses = GuestResponse.query.filter_by(participant_id=participant.id).all()
+    return jsonify(
+        session={'id': item.id, 'type': item.session_type, 'status': item.status,
+                 'template_key': item.template_key, 'template_version': (item.settings or {}).get('template_version'),
+                 'flow': (item.settings or {}).get('flow', [])},
+        participant={'id': participant.id, 'status': participant.status, 'onboarding_state': participant.onboarding_state or {}},
+        snapshot=(item.demo_snapshot.payload if item.demo_snapshot else None),
+        responses=[{
+            'task_id': response.task_id,
+            'answer_text': response.answer_text or '',
+            'answer_json': response.answer_json,
+            'comment': response.comment or '',
+            'flagged': bool(response.flagged),
+            'attachments': [{'name': attachment.original_name, 'size': attachment.size_bytes} for attachment in response.attachments],
+            'drawing': (response.drawings[-1].payload if response.drawings else None),
+        } for response in responses],
+    )
+
+
 @guest_bp.get('/guest/s/<token>/work')
 def guest_workspace(token):
     item, participant = _require_guest(token)
-    return render_template('guest/workspace.html', guest_session=item, participant=participant, token=token)
+    return render_template('guest/workspace.html', guest_session=item, participant=participant, snapshot=item.demo_snapshot, token=token)
 
 
 @guest_bp.get('/guest/s/<token>/result')
 def guest_result(token):
     item, participant = _require_guest(token)
     review = GuestReview.query.filter_by(session_id=item.id, participant_id=participant.id).first()
-    return render_template('guest/result.html', guest_session=item, participant=participant, review=review, token=token)
+    return render_template('guest/result.html', guest_session=item, participant=participant, review=review, snapshot=item.demo_snapshot, token=token)
 
 
 @guest_bp.post('/guest/s/<token>/api/responses/<int:task_id>')
@@ -344,15 +445,18 @@ def upload_file(token, task_id):
     if participant.status == 'submitted':
         return jsonify(error='Сессия уже отправлена'), 409
     task = GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
-    file = request.files.get('file')
-    if not file or not file.filename:
+    files = [file for file in request.files.getlist('file') if file and file.filename]
+    if not files:
         return jsonify(error='Файл не выбран'), 400
-    file.stream.seek(0, 2)
-    size = file.stream.tell()
-    file.stream.seek(0)
     max_size = int(current_app.config.get('GUEST_MAX_FILE_BYTES', 10 * 1024 * 1024))
-    if size > max_size:
-        return jsonify(error='Файл превышает допустимый размер'), 413
+    sizes = []
+    for file in files:
+        file.stream.seek(0, 2)
+        size = file.stream.tell()
+        file.stream.seek(0)
+        if size > max_size:
+            return jsonify(error=f'Файл {secure_filename(file.filename)} превышает допустимый размер'), 413
+        sizes.append(size)
     response_obj = GuestResponse.query.filter_by(participant_id=participant.id, task_id=task.id).first()
     if not response_obj:
         response_obj = GuestResponse(participant_id=participant.id, task_id=task.id)
@@ -361,13 +465,17 @@ def upload_file(token, task_id):
     root = current_app.config.get('GUEST_UPLOAD_ROOT') or current_app.instance_path
     import os
     os.makedirs(root, exist_ok=True)
-    storage_key = f'guest/{item.id}/{participant.id}/{secrets.token_hex(12)}_{secure_filename(file.filename)}'
-    absolute = os.path.join(root, storage_key)
-    os.makedirs(os.path.dirname(absolute), exist_ok=True)
-    file.save(absolute)
-    db.session.add(GuestAttachment(response_id=response_obj.id, original_name=secure_filename(file.filename), storage_key=storage_key, mime_type=file.mimetype or 'application/octet-stream', size_bytes=size))
+    saved = []
+    for file, size in zip(files, sizes):
+        safe_name = secure_filename(file.filename)
+        storage_key = f'guest/{item.id}/{participant.id}/{secrets.token_hex(12)}_{safe_name}'
+        absolute = os.path.join(root, storage_key)
+        os.makedirs(os.path.dirname(absolute), exist_ok=True)
+        file.save(absolute)
+        db.session.add(GuestAttachment(response_id=response_obj.id, original_name=safe_name, storage_key=storage_key, mime_type=file.mimetype or 'application/octet-stream', size_bytes=size))
+        saved.append({'name': safe_name, 'size': size})
     db.session.commit()
-    return jsonify(saved=True, name=secure_filename(file.filename), size=size)
+    return jsonify(saved=True, files=saved)
 
 
 @guest_bp.get('/teacher/guest-sessions/<int:session_id>/participants/<int:participant_id>/responses/<int:response_id>/files/<int:attachment_id>')

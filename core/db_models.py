@@ -3425,6 +3425,22 @@ class CourseTimelineBlock(db.Model):
     course = db.relationship('Course', backref=db.backref('timeline_blocks', lazy='dynamic', cascade='all, delete-orphan'))
 
 
+class GuestTemplate(db.Model):
+    """Версионируемый сценарий гостевого урока или пробника."""
+    __tablename__ = 'GuestTemplates'
+    id = db.Column(db.Integer, primary_key=True)
+    template_key = db.Column(db.String(80), nullable=False, unique=True, index=True)
+    session_type = db.Column(db.String(24), nullable=False, index=True)
+    title = db.Column(db.String(180), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    version = db.Column(db.Integer, nullable=False, default=1)
+    config = db.Column(JSONBCompat, nullable=False, default=dict)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+    sessions = db.relationship('GuestSession', back_populates='template')
+
+
 class GuestSession(db.Model):
     """Изолированная гостевая сессия для вводного урока или пробной диагностики."""
     __tablename__ = 'GuestSessions'
@@ -3443,9 +3459,23 @@ class GuestSession(db.Model):
     closed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     reopened_at = db.Column(db.DateTime(timezone=True), nullable=True)
     access_token_rotated_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('GuestTemplates.id'), nullable=True, index=True)
     teacher = db.relationship('User', foreign_keys=[teacher_id])
+    template = db.relationship('GuestTemplate', back_populates='sessions')
     participants = db.relationship('GuestParticipant', back_populates='session', cascade='all, delete-orphan')
     tasks = db.relationship('GuestTask', back_populates='session', cascade='all, delete-orphan', order_by='GuestTask.position')
+
+
+class GuestDemoSnapshot(db.Model):
+    """Неизменяемый снимок демо-данных для конкретной вводной сессии."""
+    __tablename__ = 'GuestDemoSnapshots'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('GuestSessions.id', ondelete='CASCADE'), nullable=False, unique=True, index=True)
+    source_template_key = db.Column(db.String(80), nullable=False)
+    source_template_version = db.Column(db.Integer, nullable=False, default=1)
+    payload = db.Column(JSONBCompat, nullable=False, default=dict)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    session = db.relationship('GuestSession', backref=db.backref('demo_snapshot', uselist=False, cascade='all, delete-orphan'))
 
 
 class GuestParticipant(db.Model):
