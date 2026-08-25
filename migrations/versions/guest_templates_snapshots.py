@@ -51,7 +51,7 @@ def upgrade():
             sa.UniqueConstraint('session_id', name='uq_guest_demo_snapshot_session'),
         )
         op.create_index('ix_guest_demo_snapshot_session', 'GuestDemoSnapshots', ['session_id'])
-    if 'template_id' not in {c['name'] for c in sa.inspect(bind).get_columns('GuestSessions')}: 
+    if 'template_id' not in {c['name'] for c in sa.inspect(bind).get_columns('GuestSessions')}:
         op.add_column('GuestSessions', sa.Column('template_id', sa.Integer(), sa.ForeignKey('GuestTemplates.id'), nullable=True))
         op.create_index('ix_guest_session_template', 'GuestSessions', ['template_id'])
 
