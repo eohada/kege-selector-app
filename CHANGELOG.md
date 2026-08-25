@@ -6862,3 +6862,7 @@ outes.py for correct timezone handling.
 ## [2026-08-26] — Миграция без trailing whitespace
 
 - Нормализована строка условия в `guest_templates_snapshots` без изменения поведения миграции.
+## [2026-08-26] — Согласование индексов guest schema
+
+- После dry-run blue-green schema-audit выявил расхождение имён индексов гостевых шаблонов.
+- Добавлена expand-only миграция `guest_template_index_contract`, создающая имена индексов по ORM-контракту; старые индексы не удаляются.
