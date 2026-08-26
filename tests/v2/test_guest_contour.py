@@ -367,7 +367,8 @@ def test_guest_result_and_teacher_review_render_workspace_evidence(app, role_use
         'comment': 'Проверил решение в редакторе.',
     }).status_code == 200
     assert guest.post(f"/guest/s/{created['code']}/api/responses/{task.id}/drawing", json={
-        'version': 2, 'shapes': [{'type': 'line', 'a': {'x': 1, 'y': 1}, 'b': {'x': 2, 'y': 2}}],
+        'version': 2, 'dataUrl': 'data:image/jpeg;base64,aGVsbG8=',
+        'shapes': [{'type': 'line', 'a': {'x': 1, 'y': 1}, 'b': {'x': 2, 'y': 2}}],
     }).status_code == 200
     assert guest.post(
         f"/guest/s/{created['code']}/api/responses/{task.id}/files",
@@ -385,7 +386,20 @@ def test_guest_result_and_teacher_review_render_workspace_evidence(app, role_use
     assert 'Привет, BooStudy!' in review_html
     assert 'Вложения ученика' in review_html and 'solution.txt' in review_html
     assert 'Холст ученика' in review_html
+    assert 'data:image/jpeg;base64,aGVsbG8=' in review_html
     assert 'review-task group' in review_html
+
+
+def test_trial_join_hides_access_deadline_but_keeps_exam_timer(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_1',
+    }).get_json()
+    join_html = teacher.get(f"/guest/code/{created['code']}", follow_redirects=True).get_data(as_text=True)
+    assert 'видит только преподаватель' in join_html
+    assert '⌛ до ' not in join_html
+    assert 'guest-session-timer.js' in join_html
 
 
 def test_timed_trial_force_submits_on_next_guest_request(app, role_users):

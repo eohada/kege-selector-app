@@ -141,6 +141,10 @@ def create_app(config_name=None):
     app.config['ANSWER_ATTACHMENTS_ROOT'] = os.environ.get('ANSWER_ATTACHMENTS_ROOT') or os.path.join(base_dir, 'uploads', 'answer_attachments')
 
     app.config['MAX_CONTENT_LENGTH'] = None
+    # Гостю разрешены исходные файлы КЕГЭ: ограничение отдельного файла и
+    # суммарного запроса остаётся конечным, но не режет типовые .xlsx/.zip.
+    app.config['GUEST_MAX_FILE_BYTES'] = int(os.environ.get('GUEST_MAX_FILE_BYTES') or 25 * 1024 * 1024)
+    app.config['GUEST_MAX_UPLOAD_BYTES'] = int(os.environ.get('GUEST_MAX_UPLOAD_BYTES') or 50 * 1024 * 1024)
 
     app.config['S3_ENDPOINT_URL'] = (os.environ.get('S3_ENDPOINT_URL') or '').strip() or None
     app.config['S3_ACCESS_KEY'] = (os.environ.get('S3_ACCESS_KEY') or '').strip() or None

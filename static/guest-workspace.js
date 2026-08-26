@@ -118,7 +118,13 @@
     const load = async () => { const url = card.querySelector('[data-drawing-read-url]')?.dataset.drawingReadUrl; if (!url) return; try { const data = await guestJson(url); if (data.drawing?.shapes) { board.shapes = data.drawing.shapes; render(); } } catch (_) {} finally { board.loaded = true; } };
     toolbar.querySelectorAll('[data-board-tool]').forEach((button) => button.addEventListener('click', () => { board.tool = button.dataset.boardTool; toolbar.querySelectorAll('[data-board-tool]').forEach((item) => item.classList.toggle('is-active', item === button)); canvas.style.cursor = board.tool === 'pan' ? 'grab' : 'crosshair'; }));
     toolbar.querySelector('[data-board-color]')?.addEventListener('input', (event) => board.color = event.target.value); toolbar.querySelector('[data-board-size]')?.addEventListener('input', (event) => board.size = Number(event.target.value));
-    const saveDrawing = async () => { const button = toolbar.querySelector('[data-drawing-url]'); if (!button) return; try { await guestJson(button.dataset.drawingUrl, {method:'POST', body:JSON.stringify({version:2, shapes:board.shapes})}); setStatus(card, 'Холст сохранён'); } catch (error) { setStatus(card, error.message); } };
+    const drawingPreview = () => {
+      const preview = document.createElement('canvas'); const maxWidth = 1200;
+      const scale = Math.min(1, maxWidth / canvas.width); preview.width = Math.max(1, Math.round(canvas.width * scale)); preview.height = Math.max(1, Math.round(canvas.height * scale));
+      const previewContext = preview.getContext('2d'); previewContext.fillStyle = '#ffffff'; previewContext.fillRect(0, 0, preview.width, preview.height); previewContext.drawImage(canvas, 0, 0, preview.width, preview.height);
+      return preview.toDataURL('image/jpeg', .88);
+    };
+    const saveDrawing = async () => { const button = toolbar.querySelector('[data-drawing-url]'); if (!button) return; try { await guestJson(button.dataset.drawingUrl, {method:'POST', body:JSON.stringify({version:2, shapes:board.shapes, dataUrl:drawingPreview()})}); setStatus(card, 'Холст сохранён'); } catch (error) { setStatus(card, error.message); } };
     card._saveDrawing = saveDrawing;
     toolbar.querySelector('[data-board-undo]')?.addEventListener('click', () => { board.shapes.pop(); render(); }); toolbar.querySelector('[data-board-clear]')?.addEventListener('click', () => { board.shapes = []; render(); });
     toolbar.querySelector('[data-drawing-url]')?.addEventListener('click', saveDrawing);

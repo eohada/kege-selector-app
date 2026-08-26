@@ -790,7 +790,8 @@ def upload_file(token, task_id):
     files = [file for file in request.files.getlist('file') if file and file.filename]
     if not files:
         return jsonify(error='Файл не выбран'), 400
-    max_size = int(current_app.config.get('GUEST_MAX_FILE_BYTES', 10 * 1024 * 1024))
+    max_size = int(current_app.config.get('GUEST_MAX_FILE_BYTES', 25 * 1024 * 1024))
+    max_upload_size = int(current_app.config.get('GUEST_MAX_UPLOAD_BYTES', max_size))
     sizes = []
     for file in files:
         file.stream.seek(0, 2)
@@ -801,6 +802,8 @@ def upload_file(token, task_id):
         if size > max_size:
             return jsonify(error=f'Файл {secure_filename(file.filename)} превышает допустимый размер'), 413
         sizes.append(size)
+    if sum(sizes) > max_upload_size:
+        return jsonify(error='Суммарный размер выбранных файлов превышает допустимый лимит'), 413
     response_obj = GuestResponse.query.filter_by(participant_id=participant.id, task_id=task.id).first()
     if not response_obj:
         response_obj = GuestResponse(participant_id=participant.id, task_id=task.id)

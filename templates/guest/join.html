@@ -7,7 +7,7 @@
   <span class="guest-eyebrow">{{ 'ВВОДНЫЙ УРОК' if guest_session.session_type == 'INTRO_LESSON' else 'ПРОБНАЯ ДИАГНОСТИКА' }}</span>
   <h1>{{ guest_session.settings.title }}</h1>
   <p class="guest-lead">{{ 'Познакомимся с платформой и сделаем первый шаг.' if guest_session.session_type == 'INTRO_LESSON' else 'Полный вариант КЕГЭ: решайте в своём темпе, черновики сохраняются автоматически.' }}</p>
-  <div class="guest-join-meta"><span>⌛ до {{ guest_session.expires_at.strftime('%d.%m.%Y %H:%M') }}</span><span>🔒 видит только преподаватель</span></div>
+  <div class="guest-join-meta"><span>🔒 видит только преподаватель</span></div>
   <form id="join" class="guest-join-form">
     <label for="display-name">Как к вам обращаться?</label>
     <input id="display-name" name="display_name" required minlength="2" maxlength="160" autocomplete="name" placeholder="Например, Саша">
