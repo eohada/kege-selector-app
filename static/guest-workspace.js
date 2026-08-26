@@ -30,6 +30,12 @@
       button.classList.toggle('is-draft', card?.dataset.draft === '1' && card?.dataset.done !== '1');
     });
   };
+  const syncProgressFromFields = (card) => {
+    const current = payload(card);
+    card.dataset.done = current.answer_text ? '1' : '0';
+    card.dataset.draft = !current.answer_text && (current.comment || current.answer_json?.workspace_code) ? '1' : '0';
+    updateProgress();
+  };
   const save = async (card, silent = false) => {
     if (!card || card.dataset.saving === '1') return;
     const button = card.querySelector('[data-save-url]'); if (!button) return;
@@ -86,7 +92,7 @@
       if (button.dataset.toolTab === 'board') initBoard(card);
     }));
     card.querySelector('[data-flag-toggle]')?.addEventListener('click', (event) => { const button = event.currentTarget; button.setAttribute('aria-pressed', String(button.getAttribute('aria-pressed') !== 'true')); save(card, true); });
-    card.querySelectorAll('input, textarea').forEach((field) => { let timer; field.addEventListener(field.type === 'radio' ? 'change' : 'input', () => { clearTimeout(timer); timer = setTimeout(() => save(card, true), 800); }); });
+    [fields(card).answer, fields(card).comment, fields(card).code, ...card.querySelectorAll('input[type=radio]')].filter(Boolean).forEach((field) => { let timer; field.addEventListener(field.type === 'radio' ? 'change' : 'input', () => { syncProgressFromFields(card); clearTimeout(timer); timer = setTimeout(() => save(card, true), 800); }); });
     card.querySelector('[data-save-url]')?.addEventListener('click', () => save(card));
     card.querySelector('[data-prev-task]')?.addEventListener('click', () => activate(cards[Math.max(0, index - 1)].dataset.task));
     card.querySelector('[data-next-task]')?.addEventListener('click', () => activate(cards[Math.min(cards.length - 1, index + 1)].dataset.task));
