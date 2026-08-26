@@ -368,6 +368,9 @@ def test_guest_result_and_teacher_review_render_workspace_evidence(app, role_use
     result_html = guest.get(submitted['result_url']).get_data(as_text=True)
     assert 'guest-result-hero' in result_html
     assert 'guest-result-card' in result_html
+    assert 'Задание №1' in result_html
+    assert 'без ответа' in result_html
+    assert 'ege.task_' not in result_html
     review_html = teacher.get(f"/teacher/guest-sessions/{created['id']}").get_data(as_text=True)
     assert 'Код ученика' in review_html
     assert 'Привет, BooStudy!' in review_html
@@ -378,7 +381,7 @@ def test_timed_trial_force_submits_on_next_guest_request(app, role_users):
     teacher = app.test_client()
     login_as(teacher, role_users['tutor_id'], 'tutor')
     created = teacher.post('/teacher/guest-sessions', json={
-        'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_1', 'timed': True,
+        'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_1',
     }).get_json()
     guest = app.test_client()
     assert guest.post(f"/guest/s/{created['code']}/join", json={'display_name': 'Таймер'}).status_code == 200
@@ -386,6 +389,8 @@ def test_timed_trial_force_submits_on_next_guest_request(app, role_users):
         session_obj = GuestSession.query.get(created['id'])
         participant = session_obj.participants[0]
         participant_id = participant.id
+        assert session_obj.settings['timed'] is True
+        assert session_obj.settings['expected_duration_minutes'] == 235
         participant.joined_at = utc_now() - timedelta(minutes=session_obj.settings['expected_duration_minutes'] + 1)
         task_id = session_obj.tasks[0].id
         db.session.commit()

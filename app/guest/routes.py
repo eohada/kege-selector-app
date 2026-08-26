@@ -325,26 +325,41 @@ def _event(session_obj, participant, name, payload=None):
 def _diagnostic_report(participant):
     """Строит объяснимый отчёт из сохранённых ответов, а не из demo-данных."""
     buckets = {}
+    task_items = []
+    summary = {'correct': 0, 'incorrect': 0, 'unanswered': 0, 'total': 0}
     for response in participant.responses:
         skill = response.task.skill_key or 'общие навыки'
-        bucket = buckets.setdefault(skill, {'skill': skill, 'earned': 0, 'maximum': 0, 'answered': 0, 'errors': 0})
+        task_number = (response.task.metadata_json or {}).get('task_number') or response.task.position
+        task_label = f'Задание №{task_number}'
+        bucket = buckets.setdefault(skill, {'skill': skill, 'label': task_label, 'earned': 0, 'maximum': 0, 'answered': 0, 'correct': 0, 'incorrect': 0, 'unanswered': 0})
         bucket['maximum'] += response.task.max_score
         final = response.teacher_score if response.teacher_score is not None else response.score
+        answered = bool((response.answer_text or '').strip() or response.answer_json)
         if final is not None:
             bucket['earned'] += final
-        if (response.answer_text or '').strip() or response.answer_json:
+        if answered:
             bucket['answered'] += 1
-        if final is not None and final < response.task.max_score:
-            bucket['errors'] += 1
+        summary['total'] += 1
+        if not answered:
+            status = 'unanswered'
+        elif final is not None and final >= response.task.max_score:
+            status = 'correct'
+        else:
+            status = 'incorrect'
+        summary[status] += 1
+        bucket[status] += 1
+        task_items.append({'label': task_label, 'status': status})
     for bucket in buckets.values():
         bucket['percent'] = round(bucket['earned'] / bucket['maximum'] * 100) if bucket['maximum'] else 0
     ordered = sorted(buckets.values(), key=lambda value: (-value['percent'], value['skill']))
     return {
         'skills': ordered,
-        'strong': [value['skill'] for value in ordered if value['percent'] >= 70][:5],
-        'attention': [value['skill'] for value in ordered if value['percent'] < 70][:5],
+        'summary': summary,
+        'task_items': task_items,
+        'strong': [item['label'] for item in task_items if item['status'] == 'correct'][:5],
+        'attention': [item['label'] for item in task_items if item['status'] == 'incorrect'][:5],
         'loss_reasons': {
-            reason: sum(1 for response in participant.responses if response.error_reason == reason)
+            reason: sum(1 for response in participant.responses if response.error_reason == reason and ((response.answer_text or '').strip() or response.answer_json))
             for reason in ('KNOWLEDGE_GAP', 'CALCULATION_ERROR', 'FORMATTING_ERROR', 'INATTENTION', 'INCOMPLETE_SOLUTION', 'OTHER')
         },
     }
@@ -421,8 +436,8 @@ def create_session():
         'allow_photos': _as_bool(data.get('allow_photos'), True),
         'allow_drawings': _as_bool(data.get('allow_drawings'), True),
         'allow_comments': _as_bool(data.get('allow_comments'), True),
-        'timed': _as_bool(data.get('timed'), False),
-        'expected_duration_minutes': int((template.config or {}).get('expected_duration_minutes', 180 if session_type == 'TRIAL_EXAM' else 30)),
+        'timed': session_type == 'TRIAL_EXAM' or _as_bool(data.get('timed'), False),
+        'expected_duration_minutes': 235 if session_type == 'TRIAL_EXAM' else int((template.config or {}).get('expected_duration_minutes', 30)),
     }
     raw_token = secrets.token_urlsafe(32)
     expires = utc_now() + timedelta(hours=duration_hours)
@@ -643,7 +658,8 @@ def guest_workspace(token):
 def guest_result(token):
     item, participant = _require_guest(token)
     review = GuestReview.query.filter_by(session_id=item.id, participant_id=participant.id).first()
-    return render_template('guest/result.html', guest_session=item, participant=participant, review=review, snapshot=item.demo_snapshot, token=token)
+    return render_template('guest/result.html', guest_session=item, participant=participant, review=review,
+                           report=_diagnostic_report(participant), snapshot=item.demo_snapshot, token=token)
 
 
 @guest_bp.post('/guest/s/<token>/api/responses/<int:task_id>')
