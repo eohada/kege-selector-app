@@ -1,5 +1,10 @@
 {% extends 'sandbox/layout_teacher.html' %}
 
+{% block extra_head %}<style>
+  .guest-review-condition{overflow-x:auto;line-height:1.6}.guest-review-condition table{min-width:680px;border-collapse:collapse}.guest-review-condition td,.guest-review-condition th{min-width:48px;padding:.3rem;border:1px solid #94a3b8}.guest-review-condition img{max-width:100%;height:auto}.review-task summary::-webkit-details-marker{display:none}.review-task summary::marker{display:none}
+  @media (max-width:640px){.guest-review-condition table{min-width:540px}}
+</style>{% endblock %}
+
 {% block sandbox_content %}
 <main class="lg:ml-24 px-4 sm:px-8 py-8 sm:py-12">
   <div class="max-w-[1400px] mx-auto space-y-6">
@@ -34,21 +39,26 @@
         <button class="convert btn-3d bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[4px] self-start" data-participant="{{ participant.id }}" type="button" {% if participant.converted_student_id %}disabled{% endif %}>{{ 'Ученик создан' if participant.converted_student_id else 'Создать ученика' }}</button>
       </div>
       <form class="review mt-6" data-participant="{{ participant.id }}">
-        <div class="grid lg:grid-cols-2 gap-4">
+        <div class="space-y-3">
           {% for response in participant.responses %}
-          <article class="review-task bg-white border-2 border-slate-200 rounded-[1.5rem] p-5" data-response="{{ response.id }}">
-            <span class="inline-flex px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-black">Задание №{{ response.task.metadata_json.get('task_number', loop.index) if response.task.metadata_json else loop.index }}</span>
-            <div class="mt-3 font-black text-slate-900">{{ response.task.prompt|normalize_task_content_assets(response.task.metadata_json.get('attachments', []) if response.task.metadata_json else [], response.task.metadata_json.get('source_url') if response.task.metadata_json else none)|sanitize_html }}</div>
+          {% set workspace_code = (response.answer_json or {}).get('workspace_code', '') %}
+          {% set has_evidence = response.attachments or response.drawings or workspace_code or response.comment %}
+          <details class="review-task group bg-white border-2 border-slate-200 rounded-[1.5rem] overflow-hidden" data-response="{{ response.id }}" {% if has_evidence or loop.first %}open{% endif %}>
+            <summary class="cursor-pointer list-none flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5"><span class="inline-flex px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-black">Задание №{{ response.task.metadata_json.get('task_number', loop.index) if response.task.metadata_json else loop.index }}</span><span class="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500"><span>Ответ: {{ response.answer_text or '—' }}</span>{% if workspace_code %}<span class="px-2 py-1 rounded-md bg-violet-50 text-violet-700">Код</span>{% endif %}{% if response.drawings %}<span class="px-2 py-1 rounded-md bg-sky-50 text-sky-700">Холст</span>{% endif %}{% if response.attachments %}<span class="px-2 py-1 rounded-md bg-amber-50 text-amber-700">Файлы: {{ response.attachments|length }}</span>{% endif %}<span class="text-indigo-600 group-open:rotate-180 transition-transform">⌄</span></span></summary>
+            <div class="border-t border-slate-200 p-5">
+            <div class="guest-review-condition text-slate-800">{{ response.task.prompt|prepare_guest_task_content(response.task.metadata_json.get('task_number', loop.index) if response.task.metadata_json else loop.index, response.task.metadata_json.get('source_url') if response.task.metadata_json else none)|normalize_task_content_assets(response.task.metadata_json.get('attachments', []) if response.task.metadata_json else [], response.task.metadata_json.get('source_url') if response.task.metadata_json else none)|sanitize_html }}</div>
             <p class="mt-2 text-sm text-slate-700"><strong>Ответ:</strong> {{ response.answer_text or '—' }}</p>
             <p class="mt-2 text-sm text-slate-700"><strong>Эталон:</strong> {{ response.task.expected_answer or 'Ручная проверка по условию' }}</p>
             {% if response.task.metadata_json and response.task.metadata_json.get('source_url') %}<p class="mt-2 text-xs"><a class="font-bold text-indigo-600 underline" href="{{ response.task.metadata_json.get('source_url') }}" target="_blank" rel="noopener noreferrer">Открыть источник условия</a></p>{% endif %}
             {% if response.comment %}<p class="mt-2 text-sm text-slate-600"><strong>Комментарий гостя:</strong> {{ response.comment }}</p>{% endif %}
-            {% if response.attachments %}<p class="mt-3 text-sm"><strong>Файлы:</strong>{% for attachment in response.attachments %} <a class="font-bold text-indigo-600 underline" href="{{ url_for('guest.teacher_attachment', session_id=guest_session.id, participant_id=participant.id, response_id=response.id, attachment_id=attachment.id) }}" target="_blank" rel="noopener">{{ attachment.original_name }}</a>{% endfor %}</p>{% endif %}
-            {% if response.drawings %}<details class="mt-3"><summary class="cursor-pointer font-bold text-indigo-600">Показать рисунок</summary><img class="mt-3 max-w-full rounded-xl border border-slate-200" alt="Рисунок участника" src="{{ response.drawings[-1].payload.get('dataUrl','') }}"></details>{% endif %}
+            {% if workspace_code %}<section class="mt-3"><strong class="text-sm text-slate-800">Код ученика</strong><pre class="mt-2 max-h-72 overflow-auto rounded-xl border-2 border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-800"><code>{{ workspace_code }}</code></pre></section>{% endif %}
+            {% if response.attachments %}<section class="mt-3"><strong class="text-sm text-slate-800">Вложения ученика</strong><div class="mt-2 flex flex-wrap gap-2">{% for attachment in response.attachments %}<a class="inline-flex items-center rounded-lg border-2 border-indigo-100 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-100" href="{{ url_for('guest.teacher_attachment', session_id=guest_session.id, participant_id=participant.id, response_id=response.id, attachment_id=attachment.id) }}" target="_blank" rel="noopener">↓ {{ attachment.original_name }}</a>{% endfor %}</div></section>{% endif %}
+            {% if response.drawings %}<section class="mt-3"><strong class="text-sm text-slate-800">Холст ученика</strong><img class="mt-2 max-w-full rounded-xl border-2 border-slate-200 bg-white" alt="Рисунок участника" src="{{ response.drawings[-1].payload.get('dataUrl','') }}"></section>{% endif %}
             <p class="mt-3 text-xs font-bold text-slate-500">Автопроверка: {{ response.score if response.score is not none else 'не проверено' }} / {{ response.task.max_score }}</p>
             <div class="mt-3 grid sm:grid-cols-2 gap-3"><label class="text-sm font-bold">Баллы <input class="score mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" type="number" min="0" max="{{ response.task.max_score }}" value="{{ response.teacher_score if response.teacher_score is not none else (response.score if response.score is not none else 0) }}"></label><label class="text-sm font-bold">Причина <select class="error-reason mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"><option value="">Не выбрана</option>{% for reason,label in [('KNOWLEDGE_GAP','Пробел в теме'),('CALCULATION_ERROR','Вычислительная ошибка'),('FORMATTING_ERROR','Ошибка оформления'),('INATTENTION','Невнимательность'),('INCOMPLETE_SOLUTION','Неполное решение'),('OTHER','Другое')] %}<option value="{{ reason }}" {% if response.error_reason == reason %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label></div>
             <textarea class="teacher-comment mt-3 w-full rounded-xl border border-slate-300 p-3" placeholder="Комментарий преподавателя">{{ response.teacher_comment or '' }}</textarea>
-          </article>
+            </div>
+          </details>
           {% endfor %}
         </div>
         <div class="mt-5 flex flex-col sm:flex-row gap-3"><input name="recommendation" class="flex-1 rounded-xl border-2 border-slate-200 px-4 py-3" placeholder="Рекомендация по следующему шагу"><button class="btn-3d bg-indigo-600 text-white font-black px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] self-start" type="submit">Сохранить проверку</button><span class="review-state text-sm font-bold text-slate-500"></span></div>

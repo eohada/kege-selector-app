@@ -347,6 +347,33 @@ def test_intro_guest_onboarding_review_and_conversion_e2e(app, role_users):
         assert persisted.converted_student_id == converted.get_json()['student_id']
 
 
+def test_guest_result_and_teacher_review_render_workspace_evidence(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'INTRO_LESSON', 'template_key': 'intro_platform_tour',
+    }).get_json()
+    guest = app.test_client()
+    assert guest.post(f"/guest/s/{created['code']}/join", json={'display_name': 'Кодер'}).status_code == 200
+    with app.app_context():
+        session_obj = GuestSession.query.get(created['id'])
+        participant_id = session_obj.participants[0].id
+        task = session_obj.tasks[0]
+    assert guest.post(f"/guest/s/{created['code']}/api/responses/{task.id}", json={
+        'answer_text': task.expected_answer,
+        'answer_json': {'workspace_code': 'print(\"Привет, BooStudy!\")'},
+        'comment': 'Проверил решение в редакторе.',
+    }).status_code == 200
+    submitted = guest.post(f"/guest/s/{created['code']}/submit", json={'force': True}).get_json()
+    result_html = guest.get(submitted['result_url']).get_data(as_text=True)
+    assert 'guest-result-hero' in result_html
+    assert 'guest-result-card' in result_html
+    review_html = teacher.get(f"/teacher/guest-sessions/{created['id']}").get_data(as_text=True)
+    assert 'Код ученика' in review_html
+    assert 'Привет, BooStudy!' in review_html
+    assert 'review-task group' in review_html
+
+
 def test_timed_trial_force_submits_on_next_guest_request(app, role_users):
     teacher = app.test_client()
     login_as(teacher, role_users['tutor_id'], 'tutor')
