@@ -423,6 +423,7 @@ def test_timed_trial_force_submits_on_next_guest_request(app, role_users):
     assert state.status_code == 200 and state.get_json()['participant']['status'] == 'submitted'
     assert state.get_json()['session']['timed'] is True
     assert state.get_json()['session']['deadline']
+    assert state.get_json()['session']['expected_duration_minutes'] == 235
     assert guest.post(f"/guest/s/{created['code']}/api/responses/{task_id}", json={'answer_text': 'int'}).status_code == 409
     with app.app_context():
         assert GuestReview.query.filter_by(session_id=created['id'], participant_id=participant_id).one().status == 'pending'

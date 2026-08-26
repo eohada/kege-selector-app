@@ -635,6 +635,7 @@ def guest_state(token):
                  'template_key': item.template_key, 'template_version': (item.settings or {}).get('template_version'),
                  'flow': (item.settings or {}).get('flow', []),
                  'timed': bool(deadline), 'deadline': deadline.isoformat() if deadline else None,
+                 'expected_duration_minutes': int((item.settings or {}).get('expected_duration_minutes') or 0),
                  'server_now': utc_now().isoformat()},
         participant={'id': participant.id, 'status': participant.status, 'onboarding_state': participant.onboarding_state or {}},
         snapshot=(item.demo_snapshot.payload if item.demo_snapshot else None),

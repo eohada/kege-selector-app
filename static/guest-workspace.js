@@ -19,8 +19,9 @@
   const setStatus = (card, message) => card.querySelectorAll('[data-save-state]').forEach((node) => { node.textContent = message; });
   const updateProgress = () => {
     const done = cards.filter((card) => card.dataset.done === '1').length;
-    document.querySelector('#progress-label').textContent = `${done} / ${cards.length}`;
+    document.querySelector('#progress-label').textContent = done;
     document.querySelector('#progress-bar').style.width = `${cards.length ? done / cards.length * 100 : 0}%`;
+    document.querySelector('#progress-percent').textContent = `${cards.length ? Math.round(done / cards.length * 100) : 0}%`;
     const current = cards.find((card) => card.dataset.done !== '1');
     document.querySelector('#phase-label').textContent = current ? (phaseNames[current.dataset.phase] || 'Практика') : 'Все задания готовы к сдаче';
     switches.forEach((button) => {

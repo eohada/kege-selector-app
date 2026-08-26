@@ -12,6 +12,7 @@
     host.appendChild(badge);
     const offset = Date.parse(state.session.server_now) - Date.now();
     const deadline = Date.parse(state.session.deadline);
+    const totalSeconds = Math.max(1, Number(state.session.expected_duration_minutes || 0) * 60);
     const render = () => {
       const seconds = Math.max(0, Math.floor((deadline - (Date.now() + offset)) / 1000));
       const hours = Math.floor(seconds / 3600);
@@ -19,14 +20,15 @@
       const remainder = seconds % 60;
       badge.classList.toggle('is-warning', seconds > 0 && seconds <= 15 * 60);
       badge.classList.toggle('is-expired', seconds === 0);
+      badge.style.setProperty('--timer-progress', `${Math.max(0, Math.min(1, seconds / totalSeconds)) * 360}deg`);
       badge.innerHTML = seconds
-        ? `<small>Осталось времени</small><strong>${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}</strong>`
-        : '<small>Время истекло</small><strong>Работа отправляется</strong>';
+        ? `<span class="guest-timer-dial" aria-hidden="true"></span><span class="guest-timer-copy"><small>${seconds <= 15 * 60 ? 'Меньше 15 минут' : 'До отправки'}</small><strong>${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}</strong><span>Черновики сохранены</span></span>`
+        : '<span class="guest-timer-dial" aria-hidden="true"></span><span class="guest-timer-copy"><small>Время истекло</small><strong>Работа отправляется</strong><span>Не закрывайте страницу</span></span>';
       if (!seconds) {
         window.clearInterval(timer);
         window.guestJson(`/guest/s/${encodeURIComponent(match[1])}/submit`, {method: 'POST', body: JSON.stringify({force: true})})
           .then((result) => { window.location.replace(result.result_url); })
-          .catch(() => { badge.innerHTML = '<small>Время истекло</small><strong>Откройте результат</strong>'; });
+          .catch(() => { badge.innerHTML = '<span class="guest-timer-dial" aria-hidden="true"></span><span class="guest-timer-copy"><small>Время истекло</small><strong>Откройте результат</strong><span>Попробуйте обновить страницу</span></span>'; });
       }
     };
     render();
