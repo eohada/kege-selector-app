@@ -153,6 +153,31 @@ def test_guest_state_multi_file_and_scoped_timeline(app, role_users, tmp_path):
     assert teacher.get(f"/teacher/guest-sessions/{payload['id']}/timeline?limit=nope").status_code == 400
 
 
+def test_guest_python_workspace_uses_safe_ege_libraries_and_own_task(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_1',
+    }).get_json()
+    guest = app.test_client()
+    assert guest.post(f"/guest/s/{created['code']}/join", json={'display_name': 'Кодер'}).status_code == 200
+    with app.app_context():
+        session_obj = GuestSession.query.filter_by(access_code=created['code']).one()
+        own_task = session_obj.tasks[0]
+    ran = guest.post(
+        f"/guest/s/{created['code']}/api/responses/{own_task.id}/run-code",
+        json={'code': 'import math\nprint(math.isqrt(20))'},
+    )
+    assert ran.status_code == 200
+    assert ran.get_json()['stdout'] == '4'
+    forbidden = guest.post(
+        f"/guest/s/{created['code']}/api/responses/{own_task.id}/run-code",
+        json={'code': 'import os'},
+    )
+    assert forbidden.status_code == 200
+    assert 'недоступен в песочнице' in forbidden.get_json()['stderr']
+
+
 def test_trial_templates_have_full_variant_and_teacher_report(app, role_users):
     teacher = app.test_client()
     login_as(teacher, role_users['tutor_id'], 'tutor')

@@ -17,11 +17,13 @@ from werkzeug.utils import secure_filename
 
 from app.guest import guest_bp
 from app import csrf
+from app.limiter import limiter
 from app.models import (db, GuestActivity, GuestAttachment, GuestDemoSnapshot,
                         GuestDrawing, GuestTemplate,
                         GuestParticipant, GuestResponse, GuestReview,
                         GuestSession, GuestTask, Student, User, UserRole, utc_now)
 from app.auth.rbac_utils import require_role
+from app.sandbox.python_runner import normalize_leading_tabs_to_spaces, run_python_sandbox
 
 
 SESSION_TYPES = {'INTRO_LESSON', 'TRIAL_EXAM'}
@@ -662,6 +664,31 @@ def save_response(token, task_id):
     _event(item, participant, 'response.saved', {'task_id': task.id})
     db.session.commit()
     return jsonify(saved=True, response_id=response_obj.id)
+
+
+@guest_bp.post('/guest/s/<token>/api/responses/<int:task_id>/run-code')
+@csrf.exempt
+@limiter.limit('30/minute')
+def run_guest_code(token, task_id):
+    """Запускает черновик гостя в той же безопасной EGE-песочнице, что и V2 workspace."""
+    item, participant = _require_guest(token)
+    if participant.status == 'submitted':
+        return jsonify(error='Сессия уже отправлена'), 409
+    GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
+    data = request.get_json(silent=True) or {}
+    code = normalize_leading_tabs_to_spaces(str(data.get('code') or ''))
+    if not code.strip():
+        return jsonify(error='Введите код для запуска'), 400
+    if len(code) > 40_000:
+        return jsonify(error='Код превышает лимит 40 000 символов'), 413
+    stdout, stderr, turtle_b64 = run_python_sandbox(code, timeout_sec=15)
+    _event(item, participant, 'workspace.code_run', {'task_id': task_id, 'ok': not bool(stderr)})
+    db.session.commit()
+    payload = {'ok': not bool(stderr), 'stdout': stdout, 'stderr': stderr}
+    if turtle_b64:
+        payload['turtle_image_b64'] = turtle_b64
+        payload['turtle_image_mime'] = 'image/svg+xml' if turtle_b64.startswith('PHN2Zy') else 'image/png'
+    return jsonify(payload)
 
 
 @guest_bp.post('/guest/s/<token>/api/responses/<int:task_id>/drawing')
