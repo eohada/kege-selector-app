@@ -5,8 +5,10 @@
 """
 from datetime import timedelta
 import hashlib
+import json
 import secrets
-from functools import wraps
+from functools import lru_cache, wraps
+from pathlib import Path
 
 from flask import (abort, current_app, jsonify, make_response, redirect,
                    render_template, request, send_file, url_for)
@@ -24,12 +26,12 @@ from app.auth.rbac_utils import require_role
 
 SESSION_TYPES = {'INTRO_LESSON', 'TRIAL_EXAM'}
 TRIAL_TEMPLATES = {
-    'trial_python_start': {'title': 'Python с нуля', 'description': 'Переменные, ввод и условия'},
-    'trial_algorithms': {'title': 'Алгоритмы КЕГЭ', 'description': 'Логика, циклы и проверка ответа'},
-    'trial_mixed': {'title': 'Смешанная диагностика', 'description': 'Короткая диагностика по информатике'},
+    'trial_ege_full_1': {'title': 'Полный вариант КЕГЭ №1', 'description': 'Реальные задания №1–27 из локального снимка банка Kompege, включая исходные файлы.', 'duration': '3 ч 55 мин', 'outcome': 'Разбор результата по всем номерам КЕГЭ.'},
+    'trial_ege_full_2': {'title': 'Полный вариант КЕГЭ №2', 'description': 'Второй независимый набор реальных заданий №1–27 с условиями, файлами и эталонами.', 'duration': '3 ч 55 мин', 'outcome': 'Сравнимый диагностический срез по всем номерам.'},
+    'trial_ege_full_3': {'title': 'Полный вариант КЕГЭ №3', 'description': 'Третий независимый набор реальных заданий №1–27 из сохранённого банка.', 'duration': '3 ч 55 мин', 'outcome': 'Повторная диагностика без повтора предыдущих заданий.'},
 }
 INTRO_TEMPLATES = {
-    'intro_platform_tour': {'title': 'Знакомство с BooStudy', 'description': 'Программа, теория и первая задача'},
+    'intro_platform_tour': {'title': 'Вводный урок BooStudy', 'description': 'Знакомство с программой, теорией и первой практикой.', 'duration': '10–15 минут', 'outcome': 'Первый ориентир и предложение следующего шага.'},
 }
 
 
@@ -51,6 +53,69 @@ def _as_bool(value, default=False):
     if normalized in {'0', 'false', 'no', 'off', 'нет', ''}:
         return False
     return default
+
+
+@lru_cache(maxsize=1)
+def _ege_bank():
+    """Возвращает проверенный локальный снимок реальных заданий КЕГЭ.
+
+    Контур не зависит от внешнего запроса во время создания сессии: условия,
+    ответы, источники и URL исходных файлов уже сохранены в tracked JSON.
+    """
+    bank_path = Path(current_app.root_path).parent / 'data' / 'tasks.json'
+    try:
+        with bank_path.open(encoding='utf-8') as source:
+            payload = json.load(source)
+    except (OSError, json.JSONDecodeError) as error:
+        current_app.logger.error('Guest EGE bank is unavailable: %s', error)
+        raise RuntimeError('Локальный снимок банка КЕГЭ недоступен') from error
+    return payload
+
+
+def _source_attachments(raw_value):
+    if isinstance(raw_value, list):
+        items = raw_value
+    elif isinstance(raw_value, str) and raw_value.strip():
+        try:
+            items = json.loads(raw_value)
+        except json.JSONDecodeError:
+            items = []
+    else:
+        items = []
+    return [
+        {'name': str(item.get('name') or 'Исходный файл')[:255], 'url': str(item.get('url') or '')}
+        for item in items if isinstance(item, dict) and str(item.get('url') or '').startswith(('https://', 'http://'))
+    ]
+
+
+def _ege_variant_specs(variant_index):
+    """Собирает один полный вариант №1–27 из независимых записей банка."""
+    payload = _ege_bank()
+    specs = []
+    for task_number in range(1, 28):
+        bank_number = 19 if task_number in {19, 20, 21} else task_number
+        records = list((payload.get(str(bank_number)) or {}).get('tasks') or [])
+        if not records:
+            raise RuntimeError(f'В локальном банке отсутствует задание №{task_number}')
+        source = records[variant_index % len(records)]
+        source_answer = str(source.get('answer') or '').strip()
+        is_game_triplet = task_number in {19, 20, 21}
+        prompt = str(source.get('content_html') or '').strip()
+        if is_game_triplet:
+            prompt = f'<p><strong>Задание №{task_number}.</strong> Используйте составное условие игры ниже.</p>{prompt}'
+        specs.append({
+            'type': 'manual_text' if is_game_triplet else 'short_text',
+            'prompt': prompt,
+            'options': [],
+            'expected': source_answer,
+            'skill': f'ege.task_{task_number:02d}',
+            'source_task_id': source.get('task_id'),
+            'task_number': task_number,
+            'source_url': str(source.get('source_url') or ''),
+            'attachments': _source_attachments(source.get('attached_files')),
+            'manual_review': is_game_triplet,
+        })
+    return specs
 
 
 def _task_specs(template_key):
@@ -83,12 +148,9 @@ def _task_specs(template_key):
         {'type': 'boolean', 'prompt': 'Можно ли вернуться к незавершённой гостевой сессии по ссылке?', 'options': ['Да', 'Нет'], 'expected': 'Да', 'skill': 'platform.return', 'phase': 'return'},
         {'type': 'short_text', 'prompt': 'Что бы вы хотели изучить первым?', 'options': [], 'expected': '', 'skill': 'platform.goal', 'phase': 'finish'},
     ]
-    catalogs = {
-        'trial_python_start': python_start,
-        'trial_algorithms': algorithms,
-        'trial_mixed': mixed,
-        'intro_platform_tour': intro,
-    }
+    if template_key.startswith('trial_ege_full_'):
+        return _ege_variant_specs(int(template_key.rsplit('_', 1)[-1]) - 1)
+    catalogs = {'intro_platform_tour': intro}
     base = catalogs.get(template_key, python_start)
     if template_key.startswith('trial_'):
         # Каждый системный вариант — полноценный диагностический пробник из
@@ -116,9 +178,9 @@ def _task_specs(template_key):
 
 def _template_seed_rows():
     return [
-        ('trial_python_start', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_python_start'], 1),
-        ('trial_algorithms', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_algorithms'], 1),
-        ('trial_mixed', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_mixed'], 1),
+        ('trial_ege_full_1', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_ege_full_1'], 2),
+        ('trial_ege_full_2', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_ege_full_2'], 2),
+        ('trial_ege_full_3', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_ege_full_3'], 2),
         ('intro_platform_tour', 'INTRO_LESSON', INTRO_TEMPLATES['intro_platform_tour'], 1),
     ]
 
@@ -128,7 +190,12 @@ def _ensure_guest_templates():
     changed = False
     for key, session_type, meta, version in _template_seed_rows():
         item = GuestTemplate.query.filter_by(template_key=key).first()
-        config = {'tasks': _task_specs(key), 'flow': [task.get('phase') for task in _task_specs(key) if task.get('phase')]}
+        specs = _task_specs(key)
+        config = {
+            'task_count': len(specs),
+            'expected_duration_minutes': 235 if key.startswith('trial_ege_full_') else 30,
+            'flow': [task.get('phase') for task in specs if task.get('phase')],
+        }
         if item is None:
             item = GuestTemplate(template_key=key, session_type=session_type, title=meta['title'], description=meta['description'], version=version, config=config, is_active=True)
             db.session.add(item)
@@ -139,18 +206,30 @@ def _ensure_guest_templates():
         # System templates are versioned snapshots.  If an older deployment
         # seeded the short five-task catalog, upgrade only that system row;
         # teacher-authored templates are never rewritten here.
-        elif item.version < version or (key.startswith('trial_') and len((item.config or {}).get('tasks', [])) < 19):
+        elif item.version < version or (key.startswith('trial_ege_full_') and (item.config or {}).get('task_count') != 27):
             item.version = version
             item.config = config
             item.title = meta['title']
             item.description = meta['description']
             changed = True
+    for retired_key in ('trial_python_start', 'trial_algorithms', 'trial_mixed'):
+        retired = GuestTemplate.query.filter_by(template_key=retired_key).first()
+        if retired and retired.is_active:
+            retired.is_active = False
+            changed = True
     if changed:
         db.session.commit()
 
 
-def _session_link(session, raw_token):
-    return url_for('guest.join_session', token=raw_token, _external=True)
+def _session_link(session):
+    """Возвращает постоянный публичный адрес сессии.
+
+    Длинный токен по-прежнему хранится для совместимости и изоляции ранее
+    выданных сессий, но не может быть восстановлен из хеша. Короткий код
+    уникален, хранится в модели и потому безопасно показывается преподавателю
+    после любого обновления страницы.
+    """
+    return url_for('guest.join_by_code', code=session.access_code, _external=True)
 
 
 def _new_code():
@@ -187,6 +266,50 @@ def _guest_context(session_obj):
     return participant
 
 
+def _participant_deadline(session_obj, participant):
+    settings = session_obj.settings or {}
+    if not _as_bool(settings.get('timed'), False):
+        return None
+    minutes = int(settings.get('expected_duration_minutes') or 0)
+    if not minutes:
+        return None
+    joined_at = participant.joined_at
+    if joined_at.tzinfo is None:
+        joined_at = joined_at.replace(tzinfo=utc_now().tzinfo)
+    return joined_at + timedelta(minutes=max(1, minutes))
+
+
+def _force_submit_expired_participant(session_obj, participant):
+    """Фиксирует истёкшую попытку без доверия к клиентскому таймеру."""
+    if participant.status != 'active':
+        return
+    responses = GuestResponse.query.filter_by(participant_id=participant.id).all()
+    for response_obj in responses:
+        response_obj.status = 'submitted'
+        response_obj.submitted_at = utc_now()
+        expected = (response_obj.task.expected_answer or '').strip().lower()
+        actual = (response_obj.answer_text or '').strip().lower()
+        response_obj.auto_checked = response_obj.task.task_type in {'choice', 'boolean', 'short_text', 'code'}
+        if response_obj.auto_checked:
+            response_obj.score = response_obj.task.max_score if actual == expected else 0
+            response_obj.error_reason = None if response_obj.score == response_obj.task.max_score else 'INCOMPLETE_SOLUTION'
+        else:
+            response_obj.score = None
+            response_obj.error_reason = None
+    participant.status = 'submitted'
+    participant.submitted_at = utc_now()
+    review = GuestReview.query.filter_by(session_id=session_obj.id, participant_id=participant.id).first()
+    if not review:
+        review = GuestReview(session_id=session_obj.id, participant_id=participant.id)
+        db.session.add(review)
+    review.status = 'pending'
+    review.total_score = sum((item.score or 0) for item in responses)
+    review.max_score = sum(task.max_score for task in session_obj.tasks)
+    review.report = _diagnostic_report(participant)
+    _event(session_obj, participant, 'session.time_expired', {'deadline': _participant_deadline(session_obj, participant).isoformat()})
+    db.session.commit()
+
+
 def _event(session_obj, participant, name, payload=None):
     db.session.add(GuestActivity(session_id=session_obj.id, participant_id=getattr(participant, 'id', None), event=name, payload=payload or {}))
 
@@ -220,7 +343,7 @@ def _diagnostic_report(participant):
 
 
 @guest_bp.get('/teacher/guest-sessions')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def teacher_sessions():
     _ensure_guest_templates()
     status = request.args.get('status')
@@ -235,14 +358,14 @@ def teacher_sessions():
 
 
 @guest_bp.get('/teacher/guest-sessions/<int:session_id>')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def teacher_session_detail(session_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     return render_template('guest/teacher_detail.html', guest_session=item)
 
 
 @guest_bp.get('/teacher/guest-sessions/<int:session_id>/timeline')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def teacher_session_timeline(session_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     try:
@@ -262,12 +385,12 @@ def teacher_session_timeline(session_id):
 
 
 @guest_bp.post('/teacher/guest-sessions')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def create_session():
     _ensure_guest_templates()
     data = request.get_json(silent=True) or request.form
     session_type = str(data.get('session_type', 'TRIAL_EXAM')).upper()
-    template_key = str(data.get('template_key', 'trial_python_start'))
+    template_key = str(data.get('template_key', 'trial_ege_full_1'))
     if session_type not in SESSION_TYPES:
         return jsonify(error='Неверный тип гостевой сессии'), 400
     template = GuestTemplate.query.filter_by(template_key=template_key, session_type=session_type, is_active=True).first()
@@ -298,9 +421,16 @@ def create_session():
     session_obj = GuestSession(teacher_id=current_user.id, session_type=session_type, access_code=_new_code(), access_token_hash=_hash(raw_token), template_key=template_key, template_id=template.id, expires_at=expires, max_participants=max_participants, settings=settings)
     db.session.add(session_obj)
     db.session.flush()
-    specs = list((template.config or {}).get('tasks') or _task_specs(template_key))
+    specs = _task_specs(template_key)
     for position, spec in enumerate(specs, start=1):
-        db.session.add(GuestTask(session_id=session_obj.id, position=position, task_type=spec['type'], prompt=spec['prompt'], options=spec['options'], expected_answer=spec['expected'], skill_key=spec['skill'], metadata_json={'template': template_key, 'phase': spec.get('phase', 'practice')}))
+        db.session.add(GuestTask(session_id=session_obj.id, source_task_id=spec.get('source_task_id'), position=position, task_type=spec['type'], prompt=spec['prompt'], options=spec['options'], expected_answer=spec['expected'], skill_key=spec['skill'], metadata_json={
+            'template': template_key,
+            'phase': spec.get('phase', 'practice'),
+            'task_number': spec.get('task_number', position),
+            'source_url': spec.get('source_url'),
+            'attachments': spec.get('attachments', []),
+            'manual_review': bool(spec.get('manual_review')),
+        }))
     if session_type == 'INTRO_LESSON':
         db.session.add(GuestDemoSnapshot(session_id=session_obj.id, source_template_key=template.template_key, source_template_version=template.version, payload={
             'title': template.title,
@@ -317,11 +447,11 @@ def create_session():
         }))
     _event(session_obj, None, 'session.created', {'type': session_type, 'template': template_key})
     db.session.commit()
-    return jsonify(id=session_obj.id, code=session_obj.access_code, link=_session_link(session_obj, raw_token), expires_at=session_obj.expires_at.isoformat())
+    return jsonify(id=session_obj.id, code=session_obj.access_code, link=_session_link(session_obj), expires_at=session_obj.expires_at.isoformat())
 
 
 @guest_bp.post('/teacher/guest-sessions/<int:session_id>/close')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def close_session(session_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     item.status = 'closed'
@@ -335,7 +465,7 @@ def _session_expiry_hours(session_type):
 
 
 @guest_bp.post('/teacher/guest-sessions/<int:session_id>/extend')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def extend_session(session_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     data = request.get_json(silent=True) or request.form
@@ -356,7 +486,7 @@ def extend_session(session_id):
 
 
 @guest_bp.post('/teacher/guest-sessions/<int:session_id>/reopen')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def reopen_session(session_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     data = request.get_json(silent=True) or request.form
@@ -375,15 +505,16 @@ def reopen_session(session_id):
 
 
 @guest_bp.post('/teacher/guest-sessions/<int:session_id>/rotate-link')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def rotate_session_link(session_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     raw_token = secrets.token_urlsafe(32)
     item.access_token_hash = _hash(raw_token)
+    item.access_code = _new_code()
     item.access_token_rotated_at = utc_now()
     _event(item, None, 'session.link_rotated')
     db.session.commit()
-    return jsonify(code=item.access_code, link=_session_link(item, raw_token))
+    return jsonify(code=item.access_code, link=_session_link(item))
 
 
 @guest_bp.post('/guest/s/<token>/onboarding')
@@ -414,7 +545,11 @@ def join_session(token):
 def join_by_code(code):
     """Человеко-читаемый вход: код лишь идентифицирует сессию, а cookie
     участника выдаётся только после ввода имени и не заменяет длинный токен."""
-    return redirect(url_for('guest.join_session', token=str(code).strip().upper()))
+    normalized_code = str(code).strip().upper()
+    # Проверяем жизненный цикл до redirect, чтобы закрытая или истёкшая ссылка
+    # сразу отдала корректный HTTP-статус, а не временный 302.
+    _session_by_token(normalized_code)
+    return redirect(url_for('guest.join_session', token=normalized_code))
 
 
 @guest_bp.post('/guest/s/<token>/join')
@@ -445,6 +580,10 @@ def _require_guest(token):
     participant = _guest_context(item)
     if not participant:
         abort(401)
+    deadline = _participant_deadline(item, participant)
+    if deadline and utc_now() >= deadline and participant.status == 'active':
+        _force_submit_expired_participant(item, participant)
+        participant = GuestParticipant.query.get(participant.id)
     if participant.status == 'submitted':
         return item, participant
     return item, participant
@@ -465,10 +604,13 @@ def guest_state(token):
     """Полный продолжимый снимок текущей попытки для восстановления после reload."""
     item, participant = _require_guest(token)
     responses = GuestResponse.query.filter_by(participant_id=participant.id).all()
+    deadline = _participant_deadline(item, participant)
     return jsonify(
         session={'id': item.id, 'type': item.session_type, 'status': item.status,
                  'template_key': item.template_key, 'template_version': (item.settings or {}).get('template_version'),
-                 'flow': (item.settings or {}).get('flow', [])},
+                 'flow': (item.settings or {}).get('flow', []),
+                 'timed': bool(deadline), 'deadline': deadline.isoformat() if deadline else None,
+                 'server_now': utc_now().isoformat()},
         participant={'id': participant.id, 'status': participant.status, 'onboarding_state': participant.onboarding_state or {}},
         snapshot=(item.demo_snapshot.payload if item.demo_snapshot else None),
         responses=[{
@@ -597,7 +739,7 @@ def upload_file(token, task_id):
 
 
 @guest_bp.get('/teacher/guest-sessions/<int:session_id>/participants/<int:participant_id>/responses/<int:response_id>/files/<int:attachment_id>')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def teacher_attachment(session_id, participant_id, response_id, attachment_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     participant = GuestParticipant.query.filter_by(id=participant_id, session_id=item.id).first_or_404()
@@ -643,9 +785,13 @@ def submit_session(token):
             accepted = {expected, 'print(2+2)', 'print(4)', '4'}
             response_obj.score = response_obj.task.max_score if normalized in accepted else 0
             response_obj.auto_checked = True
-        response_obj.error_reason = None if response_obj.score == response_obj.task.max_score else (
-            'INCOMPLETE_SOLUTION' if not actual and not response_obj.answer_json else 'KNOWLEDGE_GAP'
-        )
+        if response_obj.auto_checked:
+            response_obj.error_reason = None if response_obj.score == response_obj.task.max_score else (
+                'INCOMPLETE_SOLUTION' if not actual and not response_obj.answer_json else 'KNOWLEDGE_GAP'
+            )
+        else:
+            response_obj.score = None
+            response_obj.error_reason = None
     participant.status = 'submitted'
     participant.submitted_at = utc_now()
     total = sum((r.score or 0) for r in responses)
@@ -664,7 +810,7 @@ def submit_session(token):
 
 
 @guest_bp.post('/teacher/guest-sessions/<int:session_id>/participants/<int:participant_id>/review')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def review_participant(session_id, participant_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     participant = GuestParticipant.query.filter_by(id=participant_id, session_id=item.id).first_or_404()
@@ -701,7 +847,7 @@ def review_participant(session_id, participant_id):
 
 
 @guest_bp.post('/teacher/guest-sessions/<int:session_id>/participants/<int:participant_id>/convert')
-@require_role('tutor', 'creator', 'admin', 'chief_admin')
+@require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def convert_participant(session_id, participant_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
     participant = (GuestParticipant.query.filter_by(id=participant_id, session_id=item.id)

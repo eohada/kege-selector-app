@@ -113,6 +113,14 @@
             </span>
         </a>
         {% endif %}
+        {% if current_user.role|lower in ['teacher', 'tutor', 'creator', 'admin', 'chief_admin'] %}
+        <a href="{{ url_for('guest.teacher_sessions') }}" class="nav-link {% if request.path.startswith('/teacher/guest-sessions') %}active{% endif %}">
+            <span class="nav-link-content">
+                {{ ui_icon('nav.groups', 'md', title='Гостевые сессии', extra_class='nav-link-icon') }}
+                <span class="nav-link-label">Гостевые сессии</span>
+            </span>
+        </a>
+        {% endif %}
         {% if trainer_available and current_user.is_authenticated and has_permission(current_user, 'trainer.use') %}
         <a href="{{ url_for('trainer.trainer_v2') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
             <span class="nav-link-content">

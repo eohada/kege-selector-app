@@ -116,6 +116,14 @@
                 {% endif %}
             </a>
 
+            <!-- Гостевые сессии -->
+            {% if current_user is defined and current_user and current_user.is_authenticated and current_user.role|lower in ['teacher', 'tutor', 'creator', 'admin', 'chief_admin'] %}
+            <a href="{{ url_for('guest.teacher_sessions') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/teacher/guest-sessions') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Гостевые сессии">
+                <i class="ph-bold ph-link-simple text-xl"></i>
+                {% if request.path.startswith('/teacher/guest-sessions') %}<div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>{% endif %}
+            </a>
+            {% endif %}
+
             <!-- Гайдбук -->
             <a href="{{ url_for('main.guidebook') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/guidebook') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📘 Гайдбук">
                 <i class="ph-bold ph-question text-xl"></i>

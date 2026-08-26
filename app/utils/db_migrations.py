@@ -441,6 +441,42 @@ def ensure_schema_columns(app):
             inspector = inspect(db.engine)
             
             table_names = inspector.get_table_names()
+            guest_sessions_table = _resolve_table_name(table_names, 'GuestSessions')
+            if guest_sessions_table:
+                guest_columns = {column['name'] for column in inspector.get_columns(guest_sessions_table)}
+                for column_name in ('reopened_at', 'access_token_rotated_at', 'template_id'):
+                    if column_name not in guest_columns:
+                        try:
+                            column_type = 'INTEGER' if column_name == 'template_id' else 'TIMESTAMP'
+                            db.session.execute(text(f'ALTER TABLE "{guest_sessions_table}" ADD COLUMN {column_name} {column_type}'))
+                            db.session.commit()
+                            logger.info(f'GuestSessions.{column_name} column added')
+                        except Exception as error:
+                            db.session.rollback()
+                            logger.warning(f'Could not add GuestSessions.{column_name}: {error}')
+            guest_responses_table = _resolve_table_name(table_names, 'GuestResponses')
+            if guest_responses_table:
+                guest_response_columns = {column['name'] for column in inspector.get_columns(guest_responses_table)}
+                for column_name, column_type in {'teacher_score': 'INTEGER', 'error_reason': 'VARCHAR(40)'}.items():
+                    if column_name not in guest_response_columns:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{guest_responses_table}" ADD COLUMN {column_name} {column_type}'))
+                            db.session.commit()
+                            logger.info(f'GuestResponses.{column_name} column added')
+                        except Exception as error:
+                            db.session.rollback()
+                            logger.warning(f'Could not add GuestResponses.{column_name}: {error}')
+            guest_reviews_table = _resolve_table_name(table_names, 'GuestReviews')
+            if guest_reviews_table:
+                guest_review_columns = {column['name'] for column in inspector.get_columns(guest_reviews_table)}
+                if 'report' not in guest_review_columns:
+                    try:
+                        db.session.execute(text(f'ALTER TABLE "{guest_reviews_table}" ADD COLUMN report JSON'))
+                        db.session.commit()
+                        logger.info('GuestReviews.report column added')
+                    except Exception as error:
+                        db.session.rollback()
+                        logger.warning(f'Could not add GuestReviews.report: {error}')
             if 'LessonTaskTeacherComments' not in table_names and 'lessontaskteachercomments' not in table_names:  # comment
                 try:  # comment
                     LessonTaskTeacherComment.__table__.create(db.engine)  # comment

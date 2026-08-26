@@ -4,11 +4,12 @@
 места, где гостевой режим легко случайно превратить в обычную авторизацию.
 """
 
+from datetime import timedelta
 from io import BytesIO
 from urllib.parse import urlparse
 
 from app import db
-from app.models import GuestDemoSnapshot, GuestResponse, GuestReview, GuestSession, GuestTask, GuestTemplate
+from app.models import GuestDemoSnapshot, GuestResponse, GuestReview, GuestSession, GuestTask, GuestTemplate, utc_now
 from tests.v2.conftest import login_as
 
 
@@ -21,7 +22,7 @@ def test_guest_code_join_incomplete_submit_and_lock(app, role_users):
     login_as(teacher, role_users["tutor_id"], "tutor")
     created = teacher.post(
         "/teacher/guest-sessions",
-        json={"session_type": "TRIAL_EXAM", "template_key": "trial_python_start"},
+        json={"session_type": "TRIAL_EXAM", "template_key": "trial_ege_full_1"},
     )
     assert created.status_code == 200
     payload = created.get_json()
@@ -35,7 +36,7 @@ def test_guest_code_join_incomplete_submit_and_lock(app, role_users):
 
     with app.app_context():
         session_obj = GuestSession.query.filter_by(access_code=code).one()
-        template = GuestTemplate.query.filter_by(template_key='trial_python_start').one()
+        template = GuestTemplate.query.filter_by(template_key='trial_ege_full_1').one()
         assert session_obj.template_id == template.id
         assert session_obj.settings['template_version'] == template.version
         first_task = GuestTask.query.filter_by(session_id=session_obj.id, position=1).one()
@@ -75,6 +76,7 @@ def test_teacher_can_reopen_extend_and_rotate_guest_link(app, role_users):
     payload = created.get_json()
     session_id = payload["id"]
     old_token = _token(payload["link"])
+    assert f"/guest/code/{payload['code']}" in payload['link']
 
     with app.app_context():
         session_obj = GuestSession.query.get(session_id)
@@ -84,8 +86,17 @@ def test_teacher_can_reopen_extend_and_rotate_guest_link(app, role_users):
         assert len(snapshot.payload['sections']) >= 4
         assert len(session_obj.tasks) == 6
 
+    detail = teacher.get(f"/teacher/guest-sessions/{session_id}")
+    assert detail.status_code == 200
+    assert 'id="close"' in detail.get_data(as_text=True)
+    assert 'id="confirm-modal"' in detail.get_data(as_text=True)
+
     closed = teacher.post(f"/teacher/guest-sessions/{session_id}/close")
     assert closed.status_code == 200
+    assert app.test_client().get(f"/guest/code/{payload['code']}").status_code == 410
+    other_teacher = app.test_client()
+    login_as(other_teacher, role_users['creator_id'], 'creator')
+    assert other_teacher.post(f"/teacher/guest-sessions/{session_id}/close").status_code == 404
     reopened = teacher.post(f"/teacher/guest-sessions/{session_id}/reopen", json={"hours": 12})
     assert reopened.status_code == 200
     assert reopened.get_json()["status"] == "active"
@@ -96,15 +107,30 @@ def test_teacher_can_reopen_extend_and_rotate_guest_link(app, role_users):
     assert rotated.status_code == 200
     new_token = _token(rotated.get_json()["link"])
     assert new_token != old_token
+    assert rotated.get_json()['code'] == new_token
     assert app.test_client().get(f"/guest/s/{old_token}").status_code == 404
     assert app.test_client().get(f"/guest/s/{new_token}").status_code == 200
+
+
+def test_teacher_list_can_rebuild_public_link_from_persisted_code(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'INTRO_LESSON',
+        'template_key': 'intro_platform_tour',
+    }).get_json()
+
+    page = teacher.get('/teacher/guest-sessions')
+
+    assert page.status_code == 200
+    assert f'/guest/code/{created["code"]}' in page.get_data(as_text=True)
 
 
 def test_guest_state_multi_file_and_scoped_timeline(app, role_users, tmp_path):
     app.config['GUEST_UPLOAD_ROOT'] = str(tmp_path)
     teacher = app.test_client()
     login_as(teacher, role_users['tutor_id'], 'tutor')
-    created = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_algorithms'})
+    created = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_2'})
     assert created.status_code == 200
     payload = created.get_json()
     code = payload['code']
@@ -130,7 +156,7 @@ def test_guest_state_multi_file_and_scoped_timeline(app, role_users, tmp_path):
 def test_trial_templates_have_full_variant_and_teacher_report(app, role_users):
     teacher = app.test_client()
     login_as(teacher, role_users['tutor_id'], 'tutor')
-    created = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_mixed'})
+    created = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_3'})
     assert created.status_code == 200
     payload = created.get_json()
     code = payload['code']
@@ -139,7 +165,10 @@ def test_trial_templates_have_full_variant_and_teacher_report(app, role_users):
     assert joined.status_code == 200
     with app.app_context():
         session_obj = GuestSession.query.filter_by(access_code=code).one()
-        assert len(session_obj.tasks) == 19
+        assert len(session_obj.tasks) == 27
+        assert [task.metadata_json['task_number'] for task in session_obj.tasks] == list(range(1, 28))
+        assert any(task.metadata_json['attachments'] for task in session_obj.tasks)
+        assert all(task.metadata_json['source_url'].startswith('https://kompege.ru/task') for task in session_obj.tasks)
         first = session_obj.tasks[0]
         participant = session_obj.participants[0]
     assert guest.post(f'/guest/s/{code}/api/responses/{first.id}', json={'answer_text': first.expected_answer}).status_code == 200
@@ -168,7 +197,7 @@ def test_session_content_settings_are_enforced_and_form_booleans_normalized(app,
     login_as(teacher, role_users['tutor_id'], 'tutor')
     created = teacher.post('/teacher/guest-sessions', data={
         'session_type': 'TRIAL_EXAM',
-        'template_key': 'trial_python_start',
+        'template_key': 'trial_ege_full_1',
         'allow_comments': 'false',
         'allow_drawings': 'false',
         'allow_photos': 'false',
@@ -183,6 +212,12 @@ def test_session_content_settings_are_enforced_and_form_booleans_normalized(app,
         assert session_obj.settings['allow_comments'] is False
         assert session_obj.settings['allow_drawings'] is False
         assert session_obj.settings['allow_photos'] is False
+    workspace = guest.get(f"/guest/s/{payload['code']}/work")
+    assert workspace.status_code == 200
+    html = workspace.get_data(as_text=True)
+    assert '<textarea data-comment' not in html
+    assert '<input data-file' not in html
+    assert '<canvas data-canvas' not in html
     assert guest.post(f"/guest/s/{payload['code']}/api/responses/{task_id}", json={'comment': 'запрещено'}).status_code == 403
     assert guest.post(f"/guest/s/{payload['code']}/api/responses/{task_id}/drawing", json={'dataUrl': 'data:image/png;base64,AA=='}).status_code == 403
     photo = guest.post(
@@ -196,8 +231,8 @@ def test_session_content_settings_are_enforced_and_form_booleans_normalized(app,
 def test_forced_submit_report_uses_all_tasks_and_cross_session_task_isolation(app, role_users):
     teacher = app.test_client()
     login_as(teacher, role_users['tutor_id'], 'tutor')
-    first = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_python_start'}).get_json()
-    second = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_algorithms'}).get_json()
+    first = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_1'}).get_json()
+    second = teacher.post('/teacher/guest-sessions', json={'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_2'}).get_json()
     guest = app.test_client()
     assert guest.post(f"/guest/s/{first['code']}/join", json={'display_name': 'Изоляция'}).status_code == 200
     with app.app_context():
@@ -214,3 +249,72 @@ def test_forced_submit_report_uses_all_tasks_and_cross_session_task_isolation(ap
         participant = persisted_session.participants[0]
         review = GuestReview.query.filter_by(session_id=persisted_session.id, participant_id=participant.id).one()
         assert review.max_score == sum(task.max_score for task in persisted_session.tasks)
+
+
+def test_intro_guest_onboarding_review_and_conversion_e2e(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'INTRO_LESSON',
+        'template_key': 'intro_platform_tour',
+    }).get_json()
+    code = created['code']
+    guest = app.test_client()
+
+    assert guest.get(f'/guest/code/{code}').status_code == 302
+    joined = guest.post(f'/guest/s/{code}/join', json={'display_name': 'Будущий ученик'})
+    assert joined.status_code == 200
+    workspace_url = joined.get_json()['link']
+    assert guest.get(workspace_url).status_code == 200
+    onboarding = guest.post(f'/guest/s/{code}/onboarding', json={'completed': True, 'step': 'finish'})
+    assert onboarding.status_code == 200 and onboarding.get_json()['onboarding_state']['completed'] is True
+
+    with app.app_context():
+        session_obj = GuestSession.query.filter_by(access_code=code).one()
+        participant = session_obj.participants[0]
+        first_task = session_obj.tasks[0]
+    assert guest.post(f'/guest/s/{code}/api/responses/{first_task.id}', json={
+        'answer_text': first_task.expected_answer,
+    }).status_code == 200
+    submitted = guest.post(f'/guest/s/{code}/submit', json={'force': True})
+    assert submitted.status_code == 200
+    assert guest.get(submitted.get_json()['result_url']).status_code == 200
+
+    reviewed = teacher.post(
+        f'/teacher/guest-sessions/{created["id"]}/participants/{participant.id}/review',
+        json={'recommendation': 'Запланировать первую полноценную диагностику'},
+    )
+    assert reviewed.status_code == 200
+    converted = teacher.post(f'/teacher/guest-sessions/{created["id"]}/participants/{participant.id}/convert')
+    assert converted.status_code == 200 and converted.get_json()['status'] == 'converted'
+    repeated = teacher.post(f'/teacher/guest-sessions/{created["id"]}/participants/{participant.id}/convert')
+    assert repeated.status_code == 200 and repeated.get_json()['student_id'] == converted.get_json()['student_id']
+
+    with app.app_context():
+        persisted = GuestSession.query.get(created['id']).participants[0]
+        assert persisted.status == 'converted'
+        assert persisted.converted_student_id == converted.get_json()['student_id']
+
+
+def test_timed_trial_force_submits_on_next_guest_request(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_1', 'timed': True,
+    }).get_json()
+    guest = app.test_client()
+    assert guest.post(f"/guest/s/{created['code']}/join", json={'display_name': 'Таймер'}).status_code == 200
+    with app.app_context():
+        session_obj = GuestSession.query.get(created['id'])
+        participant = session_obj.participants[0]
+        participant_id = participant.id
+        participant.joined_at = utc_now() - timedelta(minutes=session_obj.settings['expected_duration_minutes'] + 1)
+        task_id = session_obj.tasks[0].id
+        db.session.commit()
+    state = guest.get(f"/guest/s/{created['code']}/api/state")
+    assert state.status_code == 200 and state.get_json()['participant']['status'] == 'submitted'
+    assert state.get_json()['session']['timed'] is True
+    assert state.get_json()['session']['deadline']
+    assert guest.post(f"/guest/s/{created['code']}/api/responses/{task_id}", json={'answer_text': 'int'}).status_code == 409
+    with app.app_context():
+        assert GuestReview.query.filter_by(session_id=created['id'], participant_id=participant_id).one().status == 'pending'
