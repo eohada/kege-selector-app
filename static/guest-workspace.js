@@ -95,13 +95,15 @@
       try { const result = await guestJson(event.currentTarget.dataset.runUrl, {method:'POST', body:JSON.stringify({code})}); output.textContent = result.stderr || result.stdout || 'Код выполнен без вывода.'; output.classList.toggle('is-error', Boolean(result.stderr)); if (result.turtle_image_b64) output.textContent += '\n\n[turtle] Рисунок сформирован.'; }
       catch (error) { output.textContent = error.message; output.classList.add('is-error'); }
     });
+    const uploadFiles = async () => {
+      const input = card.querySelector('[data-file]'); const note = card.querySelector('[data-file-state]'); const button = card.querySelector('[data-upload-url]'); if (!input?.files.length || !button) { if (note) note.textContent = 'Выберите файл'; return; }
+      const body = new FormData(); [...input.files].forEach((file) => body.append('file', file)); note.textContent = 'Сохраняем файлы…';
+      try { const result = await guestJson(button.dataset.uploadUrl, {method:'POST', body}); note.textContent = `Файлов сохранено: ${(result.files || []).length}`; input.value = ''; } catch (error) { note.textContent = error.message; }
+    };
+    card._uploadFiles = uploadFiles;
     card.querySelector('[data-file-select]')?.addEventListener('click', () => card.querySelector('[data-file]')?.click());
-    card.querySelector('[data-file]')?.addEventListener('change', (event) => { const note = card.querySelector('[data-file-state]'); const count = event.currentTarget.files.length; note.textContent = count ? `Выбрано файлов: ${count}` : 'Файлы не выбраны'; });
-    card.querySelector('[data-upload-url]')?.addEventListener('click', async (event) => {
-      const input = card.querySelector('[data-file]'); const note = card.querySelector('[data-file-state]'); if (!input.files.length) { note.textContent = 'Выберите файл'; return; }
-      const body = new FormData(); [...input.files].forEach((file) => body.append('file', file));
-      try { const result = await guestJson(event.currentTarget.dataset.uploadUrl, {method:'POST', body}); note.textContent = `Файлов сохранено: ${(result.files || []).length}`; } catch (error) { note.textContent = error.message; }
-    });
+    card.querySelector('[data-file]')?.addEventListener('change', (event) => { const note = card.querySelector('[data-file-state]'); const count = event.currentTarget.files.length; if (note) note.textContent = count ? `Выбрано файлов: ${count}` : 'Файлы не выбраны'; if (count) uploadFiles(); });
+    card.querySelector('[data-upload-url]')?.addEventListener('click', uploadFiles);
   });
 
   const boardState = new WeakMap();
@@ -116,11 +118,13 @@
     const load = async () => { const url = card.querySelector('[data-drawing-read-url]')?.dataset.drawingReadUrl; if (!url) return; try { const data = await guestJson(url); if (data.drawing?.shapes) { board.shapes = data.drawing.shapes; render(); } } catch (_) {} finally { board.loaded = true; } };
     toolbar.querySelectorAll('[data-board-tool]').forEach((button) => button.addEventListener('click', () => { board.tool = button.dataset.boardTool; toolbar.querySelectorAll('[data-board-tool]').forEach((item) => item.classList.toggle('is-active', item === button)); canvas.style.cursor = board.tool === 'pan' ? 'grab' : 'crosshair'; }));
     toolbar.querySelector('[data-board-color]')?.addEventListener('input', (event) => board.color = event.target.value); toolbar.querySelector('[data-board-size]')?.addEventListener('input', (event) => board.size = Number(event.target.value));
+    const saveDrawing = async () => { const button = toolbar.querySelector('[data-drawing-url]'); if (!button) return; try { await guestJson(button.dataset.drawingUrl, {method:'POST', body:JSON.stringify({version:2, shapes:board.shapes})}); setStatus(card, 'Холст сохранён'); } catch (error) { setStatus(card, error.message); } };
+    card._saveDrawing = saveDrawing;
     toolbar.querySelector('[data-board-undo]')?.addEventListener('click', () => { board.shapes.pop(); render(); }); toolbar.querySelector('[data-board-clear]')?.addEventListener('click', () => { board.shapes = []; render(); });
-    toolbar.querySelector('[data-drawing-url]')?.addEventListener('click', async (event) => { try { await guestJson(event.currentTarget.dataset.drawingUrl, {method:'POST', body:JSON.stringify({version:2, shapes:board.shapes})}); setStatus(card, 'Холст сохранён'); } catch (error) { setStatus(card, error.message); } });
+    toolbar.querySelector('[data-drawing-url]')?.addEventListener('click', saveDrawing);
     canvas.addEventListener('pointerdown', (event) => { const p = point(event); canvas.setPointerCapture(event.pointerId); if (board.tool === 'text') { board.shapes.push({type:'text',a:p,text:'Заметка',color:board.color,size:board.size}); render(); return; } if (board.tool === 'pan') { board.drawing = {type:'pan'}; return; } board.drawing = board.tool === 'pen' || board.tool === 'erase' ? {type:'pen',points:[p],color:board.color,size:board.tool === 'erase' ? 22 : board.size,erase:board.tool === 'erase'} : {type:board.tool,a:p,b:p,color:board.color,size:board.size}; });
     canvas.addEventListener('pointermove', (event) => { if (!board.drawing) return; if (board.drawing.type === 'pan') { const rect = canvas.getBoundingClientRect(); board.view.x += event.movementX * canvas.width / rect.width; board.view.y += event.movementY * canvas.height / rect.height; render(); return; } const p = point(event); if (board.drawing.type === 'pen') board.drawing.points.push(p); else board.drawing.b = p; render(); });
-    const finish = () => { if (!board.drawing) return; if (board.drawing.type !== 'pan') board.shapes.push(board.drawing); board.drawing = null; render(); };
+    const finish = () => { if (!board.drawing) return; if (board.drawing.type !== 'pan') { board.shapes.push(board.drawing); window.clearTimeout(board.saveTimer); board.saveTimer = window.setTimeout(saveDrawing, 800); } board.drawing = null; render(); };
     canvas.addEventListener('pointerup', finish); canvas.addEventListener('pointercancel', finish); canvas.addEventListener('wheel', (event) => { event.preventDefault(); const rect = canvas.getBoundingClientRect(); const x = (event.clientX - rect.left) * canvas.width / rect.width; const y = (event.clientY - rect.top) * canvas.height / rect.height; const before = point(event); const zoom = Math.max(.35, Math.min(3, board.view.zoom * (event.deltaY > 0 ? .9 : 1.1))); board.view.zoom = zoom; board.view.x = x - before.x * zoom; board.view.y = y - before.y * zoom; render(); }, {passive:false}); resize(); new ResizeObserver(resize).observe(canvas); load();
   }
 

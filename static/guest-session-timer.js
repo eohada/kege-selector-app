@@ -4,7 +4,7 @@
 
   window.guestJson(`/guest/s/${encodeURIComponent(match[1])}/api/state`).then((state) => {
     if (!state.session?.timed || !state.session.deadline) return;
-    const host = document.querySelector('.guest-workspace-header');
+    const host = document.querySelector('[data-guest-timer-slot]');
     if (!host) return;
     const badge = document.createElement('div');
     badge.className = 'guest-timer';
@@ -22,7 +22,12 @@
       badge.innerHTML = seconds
         ? `<small>Осталось времени</small><strong>${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}</strong>`
         : '<small>Время истекло</small><strong>Работа отправляется</strong>';
-      if (!seconds) window.clearInterval(timer);
+      if (!seconds) {
+        window.clearInterval(timer);
+        window.guestJson(`/guest/s/${encodeURIComponent(match[1])}/submit`, {method: 'POST', body: JSON.stringify({force: true})})
+          .then((result) => { window.location.replace(result.result_url); })
+          .catch(() => { badge.innerHTML = '<small>Время истекло</small><strong>Откройте результат</strong>'; });
+      }
     };
     render();
     const timer = window.setInterval(render, 1000);

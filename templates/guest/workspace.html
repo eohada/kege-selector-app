@@ -5,7 +5,7 @@
 <header class="guest-workspace-header">
   <div class="guest-workspace-title"><span class="guest-brand-mark">⌁</span><div><span class="guest-eyebrow">{{ 'ВВОДНЫЙ УРОК' if guest_session.session_type == 'INTRO_LESSON' else 'ПРОБНИК КЕГЭ' }}</span><h1>{{ guest_session.settings.title }}</h1></div></div>
   <div class="guest-progress"><strong id="progress-label">0 / {{ guest_session.tasks|length }}</strong><div class="guest-progress-track"><span id="progress-bar"></span></div><small id="phase-label">Черновики сохраняются автоматически</small></div>
-  <button id="submit" class="guest-submit-button" type="button">Сдать работу</button>
+  <div class="guest-workspace-actions"><div data-guest-timer-slot></div><button id="submit" class="guest-submit-button" type="button">Сдать работу</button></div>
 </header>
 
 <section class="guest-workspace" data-state-url="{{ url_for('guest.guest_state', token=token) }}" data-presence-url="{{ url_for('guest.guest_presence', token=token) }}">

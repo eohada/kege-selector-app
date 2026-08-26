@@ -327,14 +327,16 @@ def _diagnostic_report(participant):
     buckets = {}
     task_items = []
     summary = {'correct': 0, 'incorrect': 0, 'unanswered': 0, 'total': 0}
-    for response in participant.responses:
-        skill = response.task.skill_key or 'общие навыки'
-        task_number = (response.task.metadata_json or {}).get('task_number') or response.task.position
+    responses_by_task = {response.task_id: response for response in participant.responses}
+    for task in participant.session.tasks:
+        response = responses_by_task.get(task.id)
+        skill = task.skill_key or 'общие навыки'
+        task_number = (task.metadata_json or {}).get('task_number') or task.position
         task_label = f'Задание №{task_number}'
         bucket = buckets.setdefault(skill, {'skill': skill, 'label': task_label, 'earned': 0, 'maximum': 0, 'answered': 0, 'correct': 0, 'incorrect': 0, 'unanswered': 0})
-        bucket['maximum'] += response.task.max_score
-        final = response.teacher_score if response.teacher_score is not None else response.score
-        answered = bool((response.answer_text or '').strip() or response.answer_json)
+        bucket['maximum'] += task.max_score
+        final = response.teacher_score if response and response.teacher_score is not None else (response.score if response else None)
+        answered = bool(response and ((response.answer_text or '').strip() or response.answer_json))
         if final is not None:
             bucket['earned'] += final
         if answered:
@@ -342,7 +344,7 @@ def _diagnostic_report(participant):
         summary['total'] += 1
         if not answered:
             status = 'unanswered'
-        elif final is not None and final >= response.task.max_score:
+        elif final is not None and final >= task.max_score:
             status = 'correct'
         else:
             status = 'incorrect'

@@ -221,6 +221,8 @@ def test_trial_templates_have_full_variant_and_teacher_report(app, role_users):
         assert response.teacher_score == 0 and response.error_reason == 'KNOWLEDGE_GAP'
         assert review.status == 'completed' and review.report['skills']
         assert review.report['loss_reasons']['KNOWLEDGE_GAP'] == 1
+        assert review.report['summary']['total'] == 27
+        assert review.report['summary']['unanswered'] == 26
 
 
 def test_guest_workspace_hides_bank_source_and_uses_scoped_attachment_url(app, role_users):
@@ -364,6 +366,13 @@ def test_guest_result_and_teacher_review_render_workspace_evidence(app, role_use
         'answer_json': {'workspace_code': 'print(\"Привет, BooStudy!\")'},
         'comment': 'Проверил решение в редакторе.',
     }).status_code == 200
+    assert guest.post(f"/guest/s/{created['code']}/api/responses/{task.id}/drawing", json={
+        'version': 2, 'shapes': [{'type': 'line', 'a': {'x': 1, 'y': 1}, 'b': {'x': 2, 'y': 2}}],
+    }).status_code == 200
+    assert guest.post(
+        f"/guest/s/{created['code']}/api/responses/{task.id}/files",
+        data={'file': (BytesIO(b'guest notes'), 'solution.txt')}, content_type='multipart/form-data',
+    ).status_code == 200
     submitted = guest.post(f"/guest/s/{created['code']}/submit", json={'force': True}).get_json()
     result_html = guest.get(submitted['result_url']).get_data(as_text=True)
     assert 'guest-result-hero' in result_html
@@ -374,6 +383,8 @@ def test_guest_result_and_teacher_review_render_workspace_evidence(app, role_use
     review_html = teacher.get(f"/teacher/guest-sessions/{created['id']}").get_data(as_text=True)
     assert 'Код ученика' in review_html
     assert 'Привет, BooStudy!' in review_html
+    assert 'Вложения ученика' in review_html and 'solution.txt' in review_html
+    assert 'Холст ученика' in review_html
     assert 'review-task group' in review_html
 
 
