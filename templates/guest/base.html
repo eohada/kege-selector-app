@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}BooStudy Guest{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='katex.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='guest-workspace.css') }}">
 </head>
 <body class="guest-page {% block page_class %}{% endblock %}">

@@ -23,7 +23,11 @@
     document.querySelector('#progress-bar').style.width = `${cards.length ? done / cards.length * 100 : 0}%`;
     const current = cards.find((card) => card.dataset.done !== '1');
     document.querySelector('#phase-label').textContent = current ? (phaseNames[current.dataset.phase] || 'Практика') : 'Все задания готовы к сдаче';
-    switches.forEach((button) => button.classList.toggle('is-done', cards.find((card) => String(card.dataset.task) === button.dataset.taskTarget)?.dataset.done === '1'));
+    switches.forEach((button) => {
+      const card = cards.find((item) => String(item.dataset.task) === button.dataset.taskTarget);
+      button.classList.toggle('is-filled', card?.dataset.done === '1');
+      button.classList.toggle('is-draft', card?.dataset.draft === '1' && card?.dataset.done !== '1');
+    });
   };
   const save = async (card, silent = false) => {
     if (!card || card.dataset.saving === '1') return;
@@ -31,7 +35,7 @@
     card.dataset.saving = '1';
     try {
       await guestJson(button.dataset.saveUrl, {method:'POST', body:JSON.stringify(payload(card))});
-      const p = payload(card); card.dataset.done = p.answer_text || p.comment || p.answer_json?.workspace_code ? '1' : '0';
+      const p = payload(card); card.dataset.done = p.answer_text ? '1' : '0'; card.dataset.draft = !p.answer_text && (p.comment || p.answer_json?.workspace_code) ? '1' : '0';
       if (!silent) setStatus(card, 'Сохранено'); updateProgress();
     } catch (error) { setStatus(card, error.message); }
     finally { delete card.dataset.saving; }
@@ -45,7 +49,36 @@
     initBoard(next); next.scrollIntoView({behavior:'smooth', block:'start'});
   };
   switches.forEach((button) => button.addEventListener('click', () => activate(button.dataset.taskTarget)));
+
+  const escapeHtml = (value) => value.replace(/[&<>]/g, (symbol) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[symbol]));
+  const paintPython = (code) => escapeHtml(code || ' ').replace(/(#[^\n]*|(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(?:and|as|assert|break|class|continue|def|elif|else|except|False|finally|for|from|if|import|in|is|lambda|None|not|or|pass|raise|return|True|try|while|with|yield)\b|\b(?:print|input|len|range|sum|min|max|sorted|enumerate|zip|int|str|float|list|dict|set)\b|\b\d+(?:\.\d+)?\b)/g, (token) => {
+    const type = token.startsWith('#') ? 'comment' : /^["']/.test(token) ? 'string' : /^\d/.test(token) ? 'number' : /^(print|input|len|range|sum|min|max|sorted|enumerate|zip|int|str|float|list|dict|set)$/.test(token) ? 'builtin' : 'keyword';
+    return `<span class="guest-token-${type}">${token}</span>`;
+  });
+  const renderCodeEditor = (card) => {
+    const editor = card.querySelector('[data-code]'); const highlight = card.querySelector('[data-code-highlight]'); const gutter = card.querySelector('[data-code-gutter]');
+    if (!editor || !highlight || !gutter) return;
+    highlight.innerHTML = paintPython(editor.value) + '\n';
+    gutter.textContent = Array.from({length: Math.max(1, editor.value.split('\n').length)}, (_, index) => index + 1).join('\n');
+    highlight.scrollTop = editor.scrollTop; highlight.scrollLeft = editor.scrollLeft; gutter.scrollTop = editor.scrollTop;
+  };
+  const initCodeEditor = (card) => {
+    const editor = card.querySelector('[data-code]'); if (!editor) return;
+    const insert = (text, start, end = start) => { editor.setRangeText(text, start, end, 'end'); editor.dispatchEvent(new Event('input', {bubbles:true})); };
+    editor.addEventListener('input', () => renderCodeEditor(card));
+    editor.addEventListener('scroll', () => renderCodeEditor(card));
+    editor.addEventListener('keydown', (event) => {
+      const pairs = {'(' : ')', '[' : ']', '{' : '}', '"' : '"', "'" : "'"};
+      const closers = new Set(Object.values(pairs)); const start = editor.selectionStart; const end = editor.selectionEnd; const selected = editor.value.slice(start, end);
+      if (event.key === 'Tab') { event.preventDefault(); insert('    ', start, end); return; }
+      if (event.key === 'Enter') { event.preventDefault(); const line = editor.value.slice(0, start).split('\n').pop(); const indent = (line.match(/^\s*/) || [''])[0] + (line.trimEnd().endsWith(':') ? '    ' : ''); insert(`\n${indent}`, start, end); return; }
+      if (pairs[event.key]) { event.preventDefault(); const pair = pairs[event.key]; insert(`${event.key}${selected}${pair}`, start, end); editor.setSelectionRange(start + 1, start + 1 + selected.length); return; }
+      if (closers.has(event.key) && !selected && editor.value[start] === event.key) { event.preventDefault(); editor.setSelectionRange(start + 1, start + 1); }
+    });
+    renderCodeEditor(card);
+  };
   cards.forEach((card, index) => {
+    initCodeEditor(card);
     card.querySelectorAll('[data-tool-tab]').forEach((button) => button.addEventListener('click', () => {
       card.querySelectorAll('[data-tool-tab]').forEach((item) => item.classList.toggle('is-active', item === button));
       card.querySelectorAll('[data-tool-pane]').forEach((item) => item.classList.toggle('is-active', item.dataset.toolPane === button.dataset.toolTab));
@@ -62,6 +95,8 @@
       try { const result = await guestJson(event.currentTarget.dataset.runUrl, {method:'POST', body:JSON.stringify({code})}); output.textContent = result.stderr || result.stdout || 'Код выполнен без вывода.'; output.classList.toggle('is-error', Boolean(result.stderr)); if (result.turtle_image_b64) output.textContent += '\n\n[turtle] Рисунок сформирован.'; }
       catch (error) { output.textContent = error.message; output.classList.add('is-error'); }
     });
+    card.querySelector('[data-file-select]')?.addEventListener('click', () => card.querySelector('[data-file]')?.click());
+    card.querySelector('[data-file]')?.addEventListener('change', (event) => { const note = card.querySelector('[data-file-state]'); const count = event.currentTarget.files.length; note.textContent = count ? `Выбрано файлов: ${count}` : 'Файлы не выбраны'; });
     card.querySelector('[data-upload-url]')?.addEventListener('click', async (event) => {
       const input = card.querySelector('[data-file]'); const note = card.querySelector('[data-file-state]'); if (!input.files.length) { note.textContent = 'Выберите файл'; return; }
       const body = new FormData(); [...input.files].forEach((file) => body.append('file', file));
@@ -90,7 +125,7 @@
   }
 
   guestJson(root.dataset.stateUrl).then((snapshot) => {
-    (snapshot.responses || []).forEach((response) => { const card = cards.find((item) => String(item.dataset.task) === String(response.task_id)); if (!card) return; const f = fields(card); const radio = [...card.querySelectorAll('input[type=radio]')].find((item) => item.value === response.answer_text); if (radio) radio.checked = true; if (f.answer) f.answer.value = response.answer_text || ''; if (f.comment) f.comment.value = response.comment || ''; if (f.code && response.answer_json?.workspace_code) f.code.value = response.answer_json.workspace_code; if (f.flag) f.flag.setAttribute('aria-pressed', String(Boolean(response.flagged))); card.dataset.done = response.answer_text || response.comment || response.answer_json?.workspace_code ? '1' : '0'; }); updateProgress(); initBoard(activeCard);
+    (snapshot.responses || []).forEach((response) => { const card = cards.find((item) => String(item.dataset.task) === String(response.task_id)); if (!card) return; const f = fields(card); const radio = [...card.querySelectorAll('input[type=radio]')].find((item) => item.value === response.answer_text); if (radio) radio.checked = true; if (f.answer) f.answer.value = response.answer_text || ''; if (f.comment) f.comment.value = response.comment || ''; if (f.code && response.answer_json?.workspace_code) { f.code.value = response.answer_json.workspace_code; renderCodeEditor(card); } if (f.flag) f.flag.setAttribute('aria-pressed', String(Boolean(response.flagged))); card.dataset.done = response.answer_text ? '1' : '0'; card.dataset.draft = !response.answer_text && (response.comment || response.answer_json?.workspace_code) ? '1' : '0'; }); updateProgress(); initBoard(activeCard);
   }).catch(() => initBoard(activeCard));
   guestJson(root.dataset.presenceUrl, {method:'POST', body:'{}'}).catch(() => {}); setInterval(() => guestJson(root.dataset.presenceUrl, {method:'POST', body:'{}'}).catch(() => {}), 60000);
   let force = false; const modal = document.querySelector('#submit-modal'); const submit = async () => { try { const result = await guestJson(config.submitUrl, {method:'POST', body:JSON.stringify(force ? {force:true} : {})}); location.href = result.result_url; } catch (error) { if (error.message.includes('Заполните') && !force) { force = true; document.querySelector('#submit-modal-title').textContent = 'Есть незаполненные задания'; document.querySelector('#submit-modal-text').textContent = 'Сдать работу с пропусками?'; modal.showModal(); } } };

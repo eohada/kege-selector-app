@@ -9,8 +9,11 @@ import json
 import secrets
 from functools import lru_cache, wraps
 from pathlib import Path
+from urllib.parse import quote, urlparse
 
-from flask import (abort, current_app, jsonify, make_response, redirect,
+import requests
+
+from flask import (Response, abort, current_app, jsonify, make_response, redirect,
                    render_template, request, send_file, url_for)
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
@@ -24,6 +27,7 @@ from app.models import (db, GuestActivity, GuestAttachment, GuestDemoSnapshot,
                         GuestSession, GuestTask, Student, User, UserRole, utc_now)
 from app.auth.rbac_utils import require_role
 from app.sandbox.python_runner import normalize_leading_tabs_to_spaces, run_python_sandbox
+from app.utils.jinja_filters import prepare_guest_task_content
 
 
 SESSION_TYPES = {'INTRO_LESSON', 'TRIAL_EXAM'}
@@ -102,9 +106,11 @@ def _ege_variant_specs(variant_index):
         source = records[variant_index % len(records)]
         source_answer = str(source.get('answer') or '').strip()
         is_game_triplet = task_number in {19, 20, 21}
-        prompt = str(source.get('content_html') or '').strip()
-        if is_game_triplet:
-            prompt = f'<p><strong>Задание №{task_number}.</strong> Используйте составное условие игры ниже.</p>{prompt}'
+        prompt = prepare_guest_task_content(
+            str(source.get('content_html') or '').strip(),
+            task_number=task_number,
+            source_url=str(source.get('source_url') or ''),
+        )
         specs.append({
             'type': 'manual_text' if is_game_triplet else 'short_text',
             'prompt': prompt,
@@ -689,6 +695,39 @@ def run_guest_code(token, task_id):
         payload['turtle_image_b64'] = turtle_b64
         payload['turtle_image_mime'] = 'image/svg+xml' if turtle_b64.startswith('PHN2Zy') else 'image/png'
     return jsonify(payload)
+
+
+@guest_bp.get('/guest/s/<token>/attachments/<int:task_id>/<int:attachment_index>')
+def download_guest_source_attachment(token, task_id, attachment_index):
+    """Отдаёт только вложение из сохранённого snapshot через guest-сессию.
+
+    Внешний Kompege URL не доступен напрямую из части браузеров, поэтому proxy
+    получает его на сервере. Индекс и домен проверяются до исходящего запроса.
+    """
+    item, _participant = _require_guest(token)
+    task = GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
+    attachments = (task.metadata_json or {}).get('attachments') or []
+    if not 0 <= attachment_index < len(attachments):
+        abort(404)
+    attachment = attachments[attachment_index] if isinstance(attachments[attachment_index], dict) else {}
+    remote_url = str(attachment.get('url') or '')
+    parsed = urlparse(remote_url)
+    if parsed.scheme not in {'http', 'https'} or parsed.hostname not in {'kompege.ru', 'www.kompege.ru'}:
+        abort(404)
+    try:
+        remote = requests.get(remote_url, timeout=(5, 25), headers={'User-Agent': 'BooStudy guest attachment proxy/1.0'})
+        remote.raise_for_status()
+    except requests.RequestException:
+        return jsonify(error='Не удалось получить исходный файл. Попробуйте ещё раз позже.'), 502
+    max_size = 25 * 1024 * 1024
+    content = remote.content
+    if len(content) > max_size:
+        return jsonify(error='Исходный файл слишком большой для гостевой сессии'), 413
+    file_name = secure_filename(str(attachment.get('name') or 'source-file')) or 'source-file'
+    response = Response(content, mimetype=remote.headers.get('Content-Type', 'application/octet-stream'))
+    response.headers['Content-Disposition'] = f"attachment; filename*=UTF-8''{quote(file_name)}"
+    response.headers['Cache-Control'] = 'private, max-age=300'
+    return response
 
 
 @guest_bp.post('/guest/s/<token>/api/responses/<int:task_id>/drawing')

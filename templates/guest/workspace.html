@@ -23,10 +23,9 @@
     {% for task in guest_session.tasks %}
     <article class="guest-task-card" data-task="{{ task.id }}" data-position="{{ loop.index }}" data-phase="{{ task.metadata_json.get('phase','practice') if task.metadata_json else 'practice' }}" {% if not loop.first %}hidden{% endif %}>
       <div class="guest-task-card-head"><div><span class="guest-eyebrow">ЗАДАНИЕ №{{ task.metadata_json.get('task_number', loop.index) if task.metadata_json else loop.index }}</span><span class="guest-task-counter">{{ loop.index }} из {{ guest_session.tasks|length }}</span></div><button class="guest-flag-button" type="button" data-flag-toggle aria-pressed="false">⚑ <span>Важное</span></button></div>
-      <div class="guest-task-condition">{{ task.prompt|normalize_task_content_assets(task.metadata_json.get('attachments', []) if task.metadata_json else [], task.metadata_json.get('source_url') if task.metadata_json else none)|sanitize_html }}</div>
+      <div class="guest-task-condition">{{ task.prompt|prepare_guest_task_content(task.metadata_json.get('task_number', loop.index) if task.metadata_json else loop.index, task.metadata_json.get('source_url') if task.metadata_json else none)|normalize_task_content_assets(task.metadata_json.get('attachments', []) if task.metadata_json else [], task.metadata_json.get('source_url') if task.metadata_json else none)|sanitize_html }}</div>
       <div class="guest-task-links">
-        {% if task.metadata_json and task.metadata_json.get('source_url') %}<a href="{{ task.metadata_json.get('source_url') }}" target="_blank" rel="noopener noreferrer">↗ Источник условия</a>{% endif %}
-        {% if task.metadata_json and task.metadata_json.get('attachments') %}{% for attachment in task.metadata_json.get('attachments', []) %}<a href="{{ attachment.url }}" target="_blank" rel="noopener noreferrer" download>↓ {{ attachment.name }}</a>{% endfor %}{% endif %}
+        {% if task.metadata_json and task.metadata_json.get('attachments') %}{% for attachment in task.metadata_json.get('attachments', []) %}<a href="{{ url_for('guest.download_guest_source_attachment', token=token, task_id=task.id, attachment_index=loop.index0) }}">↓ {{ attachment.name }}</a>{% endfor %}{% endif %}
       </div>
 
       <div class="guest-tool-tabs" role="tablist" aria-label="Инструменты решения">
@@ -43,7 +42,7 @@
       </section>
       <section class="guest-tool-pane" data-tool-pane="code">
         <div class="guest-code-head"><div><strong>Python для ЕГЭ</strong><small>math · re · itertools · collections · functools · ipaddress · fnmatch · sys · turtle</small></div><button class="guest-run-button" type="button" data-run-url="{{ url_for('guest.run_guest_code', token=token, task_id=task.id) }}">▶ Запустить</button></div>
-        <textarea class="guest-code-editor" data-code spellcheck="false" aria-label="Редактор Python" placeholder="# Напишите и проверьте решение&#10;print('Привет, КЕГЭ!')"></textarea>
+        <div class="guest-code-shell"><pre class="guest-code-gutter" data-code-gutter aria-hidden="true">1</pre><pre class="guest-code-highlight" data-code-highlight aria-hidden="true"></pre><textarea class="guest-code-editor" data-code spellcheck="false" aria-label="Редактор Python" placeholder="# Напишите и проверьте решение&#10;print('Привет, КЕГЭ!')"></textarea></div>
         <pre class="guest-code-output" data-code-output aria-live="polite">Результат запуска появится здесь.</pre>
       </section>
       {% if guest_session.settings.get('allow_drawings', True) %}
@@ -57,7 +56,7 @@
       {% endif %}
       <section class="guest-tool-pane" data-tool-pane="notes">
         {% if guest_session.settings.get('allow_comments', True) %}<label class="guest-field-label">Ход решения и заметки<textarea data-comment placeholder="Зафиксируйте рассуждение, формулы или что нужно спросить преподавателя"></textarea></label>{% else %}<p class="guest-muted">Комментарии отключены преподавателем для этой сессии.</p>{% endif %}
-        {% if guest_session.settings.get('allow_photos', True) %}<div class="guest-upload"><input data-file type="file" multiple><button type="button" data-upload-url="{{ url_for('guest.upload_file', token=token, task_id=task.id) }}">Прикрепить файлы</button><span data-file-state></span></div>{% endif %}
+        {% if guest_session.settings.get('allow_photos', True) %}<div class="guest-upload"><input data-file type="file" multiple hidden><button type="button" data-file-select>Выбрать файлы</button><span data-file-state>Файлы не выбраны</span><button type="button" data-upload-url="{{ url_for('guest.upload_file', token=token, task_id=task.id) }}">Прикрепить</button></div>{% endif %}
       </section>
       <div class="guest-task-footer"><button class="guest-secondary-button" type="button" data-save-url="{{ url_for('guest.save_response', token=token, task_id=task.id) }}">Сохранить решение</button><span data-save-state>Автосохранение включено</span><div><button type="button" data-prev-task>← Назад</button><button type="button" data-next-task>Дальше →</button></div></div>
     </article>

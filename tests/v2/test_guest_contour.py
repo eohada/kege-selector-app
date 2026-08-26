@@ -194,6 +194,13 @@ def test_trial_templates_have_full_variant_and_teacher_report(app, role_users):
         assert [task.metadata_json['task_number'] for task in session_obj.tasks] == list(range(1, 28))
         assert any(task.metadata_json['attachments'] for task in session_obj.tasks)
         assert all(task.metadata_json['source_url'].startswith('https://kompege.ru/task') for task in session_obj.tasks)
+        task_six = next(task for task in session_obj.tasks if task.metadata_json['task_number'] == 6)
+        task_nineteen = next(task for task in session_obj.tasks if task.metadata_json['task_number'] == 19)
+        task_twenty = next(task for task in session_obj.tasks if task.metadata_json['task_number'] == 20)
+        task_twenty_one = next(task for task in session_obj.tasks if task.metadata_json['task_number'] == 21)
+        assert 'answerWrap' not in task_six.prompt and '<iframe' not in task_six.prompt and '>38<' not in task_six.prompt
+        assert 'Задание 20' not in task_nineteen.prompt and 'Задание 21' not in task_nineteen.prompt
+        assert 'Задание 21' not in task_twenty.prompt and 'Задание 19' not in task_twenty_one.prompt
         first = session_obj.tasks[0]
         participant = session_obj.participants[0]
     assert guest.post(f'/guest/s/{code}/api/responses/{first.id}', json={'answer_text': first.expected_answer}).status_code == 200
@@ -214,6 +221,25 @@ def test_trial_templates_have_full_variant_and_teacher_report(app, role_users):
         assert response.teacher_score == 0 and response.error_reason == 'KNOWLEDGE_GAP'
         assert review.status == 'completed' and review.report['skills']
         assert review.report['loss_reasons']['KNOWLEDGE_GAP'] == 1
+
+
+def test_guest_workspace_hides_bank_source_and_uses_scoped_attachment_url(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'TRIAL_EXAM', 'template_key': 'trial_ege_full_1',
+    }).get_json()
+    guest = app.test_client()
+    assert guest.post(f"/guest/s/{created['code']}/join", json={'display_name': 'Проверка интерфейса'}).status_code == 200
+    page = guest.get(f"/guest/s/{created['code']}/work")
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    assert 'Источник условия' not in html
+    with app.app_context():
+        session_obj = GuestSession.query.filter_by(access_code=created['code']).one()
+        file_task = next(task for task in session_obj.tasks if task.metadata_json['attachments'])
+    assert f"/guest/s/{created['code']}/attachments/{file_task.id}/0" in html
+    assert guest.get(f"/guest/s/{created['code']}/attachments/{file_task.id}/999").status_code == 404
 
 
 def test_session_content_settings_are_enforced_and_form_booleans_normalized(app, role_users, tmp_path):

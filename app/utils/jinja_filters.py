@@ -379,6 +379,43 @@ def strip_attachment_links(html):
         return html
 
 
+def prepare_guest_task_content(html, task_number=None, source_url=None):
+    """Готовит снимок условия для ученика без ответов, видео-разборов и ссылок на банк."""
+    if not html or not isinstance(html, str):
+        return html or ''
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        for node in soup.select('.answerWrap, iframe, .link'):
+            node.decompose()
+        for anchor in soup.find_all('a', href=True):
+            label = anchor.get_text(' ', strip=True).lower()
+            href = str(anchor.get('href') or '').strip()
+            if 'источник условия' in label or (source_url and href == str(source_url).strip()):
+                anchor.decompose()
+        cleaned = str(soup)
+        try:
+            number = int(task_number)
+        except (TypeError, ValueError):
+            number = None
+        if number in {19, 20, 21}:
+            markers = {}
+            for item in (19, 20, 21):
+                match = re.search(rf'(?is)<b>\s*Задание\s+{item}\.?\s*</b>', cleaned)
+                if match:
+                    markers[item] = match
+            if number == 19:
+                end = markers.get(20)
+                cleaned = cleaned[:end.start()] if end else cleaned
+            elif number == 20 and 20 in markers:
+                end = markers.get(21)
+                cleaned = cleaned[markers[20].start():end.start() if end else None]
+            elif number == 21 and 21 in markers:
+                cleaned = cleaned[markers[21].start():]
+        return strip_attachment_links(cleaned)
+    except Exception:
+        return strip_attachment_links(html)
+
+
 _BLEACH_ALLOWED_TAGS = [
     'p', 'br', 'b', 'i', 'u', 'em', 'strong', 'sub', 'sup', 'small',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -958,6 +995,7 @@ def init_jinja_filters(app):
     app.jinja_env.filters['normalize_task_content_urls'] = normalize_task_content_urls
     app.jinja_env.filters['normalize_task_content_assets'] = normalize_task_content_assets
     app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
+    app.jinja_env.filters['prepare_guest_task_content'] = prepare_guest_task_content
     app.jinja_env.filters['sanitize_html'] = sanitize_html
     app.jinja_env.filters['prepare_task_content_html'] = prepare_task_content_html
     app.jinja_env.filters['strip_task_author_signatures'] = strip_task_author_signatures
