@@ -16,10 +16,6 @@
         --bill-accent-glow: rgba(99, 102, 241, 0.1);
         --bill-tag-hot-bg: #FEE2E2;
         --bill-tag-hot-text: #DC2626;
-        --bill-tag-discount-bg: #E0E7FF;
-        --bill-tag-discount-text: #4F46E5;
-        --bill-promo-bg: #FFFFFF;
-        --bill-promo-border: #E5E7EB;
         --bill-toggle-bg: #E5E7EB;
         --bill-toggle-active: #FFFFFF;
         --bill-toggle-text: #111418;
@@ -37,10 +33,6 @@
         --bill-accent-glow: rgba(129, 140, 248, 0.15);
         --bill-tag-hot-bg: rgba(220, 38, 38, 0.15);
         --bill-tag-hot-text: #FCA5A5;
-        --bill-tag-discount-bg: rgba(99, 102, 241, 0.15);
-        --bill-tag-discount-text: #A5B4FC;
-        --bill-promo-bg: #141518;
-        --bill-promo-border: #272A30;
         --bill-toggle-bg: #272A30;
         --bill-toggle-active: #374151;
         --bill-toggle-text: #F9FAFB;
@@ -225,11 +217,6 @@
         color: var(--bill-tag-hot-text);
     }
 
-    .tag-discount {
-        background-color: var(--bill-tag-discount-bg);
-        color: var(--bill-tag-discount-text);
-    }
-
     .card-desc {
         font-size: 14px;
         color: var(--bill-text-muted);
@@ -255,32 +242,6 @@
         font-size: 20px;
         font-weight: 500;
         color: var(--bill-text-muted);
-    }
-
-    /* Promo Banner */
-    .promo-wrapper {
-        display: flex;
-        justify-content: center;
-        width: 100%;
-        margin-bottom: 32px;
-    }
-
-    .promo {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-        background-color: var(--bill-promo-bg);
-        border: 1px solid var(--bill-promo-border);
-        padding: 16px 24px;
-        border-radius: 100px;
-        font-size: 14px;
-        color: var(--bill-text-muted);
-        box-shadow: 0 4px 20px -10px rgba(0, 0, 0, 0.05);
-        transition: all 0.4s ease;
-    }
-
-    .promo span {
-        font-size: 16px;
     }
 
     /* Theme Toggle */
@@ -419,7 +380,6 @@
     @media (max-width: 640px) {
         .cards-row-top { grid-template-columns: 1fr; }
         .cards-row-bottom .card { flex: 1 1 100%; }
-        .promo { border-radius: 24px; text-align: center; flex-direction: column; }
         .theme-toggle-float { bottom: 16px; right: 16px; }
     }
 </style>
@@ -551,13 +511,6 @@
             <div class="cards-row-top" id="packages-top"></div>
             <!-- Нижний ряд (до 2 карт, по центру) -->
             <div class="cards-row-bottom" id="packages-bottom"></div>
-        </div>
-
-        <div class="promo-wrapper">
-            <div class="promo">
-                <span>✨</span>
-                <strong>Акция:</strong> Специальные цены на пакеты 5 и 10 месяцев действуют до 31 июля 2026 года 23:59
-            </div>
         </div>
 
         <div class="bill-controls">
@@ -736,66 +689,66 @@
             'solo': [
                 { label: 'Sprint (1 мес)', price: 4000, desc: 'Быстрый старт. Только тренажёр.' },
                 { label: 'Season Pass (3 мес)', price: 11000, desc: 'Идеально для рывка.' },
-                { label: 'Career Mode (5 мес)', price: 16000, desc: 'Мощная подготовка.', hot: true },
-                { label: 'Lead (10 мес)', price: 28000, desc: 'Весь учебный год.', hot: true }
+                { label: 'Career Mode (4 мес)', price: 12800, desc: 'Мощная подготовка.', hot: true },
+                { label: 'Lead (9 мес)', price: 25200, desc: 'Весь учебный год.', hot: true }
             ],
             'mentor': [
                 { label: 'Junior (1 мес / 8 ур)', price: 16800, desc: '8 уроков по математике профиль' },
                 { label: 'Middle (2 мес / 16 ур)', price: 32400, desc: '16 уроков' },
                 { label: 'Advanced (3 мес / 24 ур)', price: 46800, desc: '24 урока' },
-                { label: 'Senior (5 мес / 40 ур)', price: 75000, desc: '40 уроков.', hot: true },
-                { label: 'Lead (10 мес / 80 ур)', price: 144000, desc: '80 уроков.', hot: true }
+                { label: 'Senior (4 мес / 32 ур)', price: 60000, desc: '32 урока.', hot: true },
+                { label: 'Lead (9 мес / 72 ур)', price: 129600, desc: '72 урока.', hot: true }
             ],
             'godmode': [
                 { label: 'Junior+ (1 мес / 8 ур)', price: 19000, desc: 'Уроки + Тренажер' },
                 { label: 'Middle+ (2 мес / 16 ур)', price: 36000, desc: 'Уроки + Тренажер' },
                 { label: 'Advanced+ (3 мес / 24 ур)', price: 52000, desc: 'Уроки + Тренажер' },
-                { label: 'Senior+ (5 мес / 40 ур)', price: 82000, desc: 'Уроки + Тренажер.', hot: true },
-                { label: 'Lead+ (10 мес / 80 ур)', price: 155000, desc: 'Уроки + Тренажер.', hot: true }
+                { label: 'Senior+ (4 мес / 32 ур)', price: 65600, desc: 'Уроки + Тренажер.', hot: true },
+                { label: 'Lead+ (9 мес / 72 ур)', price: 139500, desc: 'Уроки + Тренажер.', hot: true }
             ]
         },
         'ege': {
             'solo': [
                 { label: 'Sprint (1 мес)', price: 4000, desc: 'Быстрый старт. Только тренажёр.' },
                 { label: 'Season Pass (3 мес)', price: 11000, desc: 'Идеально для рывка.' },
-                { label: 'Career Mode (5 мес)', price: 16000, desc: 'Мощная подготовка.', hot: true },
-                { label: 'Lead (10 мес)', price: 28000, desc: 'Весь учебный год.', hot: true }
+                { label: 'Career Mode (4 мес)', price: 12800, desc: 'Мощная подготовка.', hot: true },
+                { label: 'Lead (9 мес)', price: 25200, desc: 'Весь учебный год.', hot: true }
             ],
             'mentor': [
                 { label: 'Junior (1 мес / 8 ур)', price: 15200, desc: '8 уроков по информатике' },
                 { label: 'Middle (2 мес / 16 ур)', price: 28800, desc: '16 уроков' },
                 { label: 'Advanced (3 мес / 24 ур)', price: 40800, desc: '24 урока' },
-                { label: 'Senior (5 мес / 40 ур)', price: 64000, desc: '40 уроков.', hot: true },
-                { label: 'Lead (10 мес / 80 ур)', price: 120000, desc: '80 уроков.', hot: true }
+                { label: 'Senior (4 мес / 32 ур)', price: 51200, desc: '32 урока.', hot: true },
+                { label: 'Lead (9 мес / 72 ур)', price: 108000, desc: '72 урока.', hot: true }
             ],
             'godmode': [
                 { label: 'Junior+ (1 мес / 8 ур)', price: 17200, desc: 'Уроки + Тренажер' },
                 { label: 'Middle+ (2 мес / 16 ур)', price: 32000, desc: 'Уроки + Тренажер' },
                 { label: 'Advanced+ (3 мес / 24 ур)', price: 46000, desc: 'Уроки + Тренажер' },
-                { label: 'Senior+ (5 мес / 40 ур)', price: 72000, desc: 'Уроки + Тренажер.', hot: true },
-                { label: 'Lead+ (10 мес / 80 ур)', price: 135000, desc: 'Уроки + Тренажер.', hot: true }
+                { label: 'Senior+ (4 мес / 32 ур)', price: 57600, desc: 'Уроки + Тренажер.', hot: true },
+                { label: 'Lead+ (9 мес / 72 ур)', price: 121500, desc: 'Уроки + Тренажер.', hot: true }
             ]
         },
         'oge': {
             'solo': [
                 { label: 'Sprint (1 мес)', price: 3000, desc: 'Только тренажёр' },
                 { label: 'Season Pass (3 мес)', price: 8000, desc: 'Идеально для рывка.' },
-                { label: 'Career Mode (5 мес)', price: 13000, desc: 'Мощная подготовка.', hot: true },
-                { label: 'Lead (10 мес)', price: 20000, desc: 'Весь учебный год.', hot: true }
+                { label: 'Career Mode (4 мес)', price: 10400, desc: 'Мощная подготовка.', hot: true },
+                { label: 'Lead (9 мес)', price: 18000, desc: 'Весь учебный год.', hot: true }
             ],
             'mentor': [
                 { label: 'Junior (1 мес / 8 ур)', price: 12800, desc: '8 уроков' },
                 { label: 'Middle (2 мес / 16 ур)', price: 24400, desc: '16 уроков' },
                 { label: 'Advanced (3 мес / 24 ур)', price: 34800, desc: '24 урока' },
-                { label: 'Senior (5 мес / 40 ур)', price: 55000, desc: '40 уроков.', hot: true },
-                { label: 'Lead (10 мес / 80 ур)', price: 104000, desc: '80 уроков.', hot: true }
+                { label: 'Senior (4 мес / 32 ур)', price: 44000, desc: '32 урока.', hot: true },
+                { label: 'Lead (9 мес / 72 ур)', price: 93600, desc: '72 урока.', hot: true }
             ],
             'godmode': [
                 { label: 'Junior+ (1 мес / 8 ур)', price: 14300, desc: 'Уроки + Тренажер' },
                 { label: 'Middle+ (2 мес / 16 ур)', price: 27000, desc: 'Уроки + Тренажер' },
                 { label: 'Advanced+ (3 мес / 24 ур)', price: 39000, desc: 'Уроки + Тренажер' },
-                { label: 'Senior+ (5 мес / 40 ур)', price: 61000, desc: 'Уроки + Тренажер.', hot: true },
-                { label: 'Lead+ (10 мес / 80 ур)', price: 115000, desc: 'Уроки + Тренажер.', hot: true }
+                { label: 'Senior+ (4 мес / 32 ур)', price: 48800, desc: 'Уроки + Тренажер.', hot: true },
+                { label: 'Lead+ (9 мес / 72 ур)', price: 103500, desc: 'Уроки + Тренажер.', hot: true }
             ]
         }
     };
@@ -829,7 +782,6 @@
                 tagsHtml = `
                     <div class="tags-wrapper">
                         <div class="tag tag-hot">HOT</div>
-                        <div class="tag tag-discount">Цена ниже*</div>
                     </div>
                 `;
             }
