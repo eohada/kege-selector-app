@@ -1,5 +1,6 @@
 from datetime import timedelta
 from io import BytesIO
+import json
 
 
 def _login_as(client, user_id: int, role: str) -> None:
@@ -141,7 +142,10 @@ def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app,
         'starter_code': "print('Привет, BooStudy!')",
         'max_score': '3',
         'manual_grading': 'true',
-        'files': (BytesIO(b'example input'), 'input.txt'),
+        'files': [
+            (BytesIO(b'example input'), 'input.txt'),
+            (BytesIO(b'not-a-real-image-fixture'), 'diagram.png'),
+        ],
     }, content_type='multipart/form-data')
     assert created.status_code == 201, created.get_json()
     created_task = created.get_json()['task']
@@ -155,7 +159,7 @@ def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app,
         task = db.session.get(Tasks, created_task['task_id'])
         assert task.created_by_id == role_users['tutor_id']
         assert task.starter_code == "print('Привет, BooStudy!')"
-        assert task.attached_files
+        assert len(json.loads(task.attached_files)) == 2
 
     draft = client.post('/assignments/api/create/draft', json={
         'title': 'Авторская задача',
@@ -247,6 +251,45 @@ def test_teacher_can_open_student_file_and_canvas_from_assignment_review(app, cl
     assert review.status_code == 200
     assert attachment_url.encode() in review.data
     assert 'Заметки ученика'.encode('utf-8') in review.data
+
+
+def test_strict_timer_prevents_submission_after_time_limit(app, client, role_users):
+    """Ограничение времени блокирует сдачу, но не теряет сохранённый ответ ученика."""
+    from app import db
+    from core.db_models import Answer, Assignment, AssignmentTask, Submission, Tasks, utc_now
+
+    with app.app_context():
+        task = Tasks(task_number=4, content_html='<p>Задача с таймером</p>', answer='42')
+        db.session.add(task)
+        db.session.flush()
+        assignment = Assignment(
+            title='Строгий таймер', assignment_type='test', deadline=utc_now() + timedelta(days=1),
+            time_limit_minutes=1, time_limit_strict=True, created_by_id=role_users['tutor_id'], is_active=True,
+        )
+        db.session.add(assignment)
+        db.session.flush()
+        assignment_task = AssignmentTask(assignment_id=assignment.assignment_id, task_id=task.task_id, order_index=0, max_score=1)
+        db.session.add(assignment_task)
+        db.session.flush()
+        submission = Submission(
+            assignment_id=assignment.assignment_id, student_id=role_users['student_id'], status='IN_PROGRESS',
+            started_at=utc_now() - timedelta(minutes=2),
+        )
+        db.session.add(submission)
+        db.session.commit()
+        submission_id = submission.submission_id
+        assignment_task_id = assignment_task.assignment_task_id
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    autosaved = client.put(f'/submissions/{submission_id}/autosave', json={
+        'answers': [{'assignment_task_id': assignment_task_id, 'value': '42'}],
+    })
+    assert autosaved.status_code == 200, autosaved.get_json()
+    submitted = client.post(f'/submissions/{submission_id}/submit', json={})
+    assert submitted.status_code == 403, submitted.get_json()
+    with app.app_context():
+        answer = Answer.query.filter_by(submission_id=submission_id, assignment_task_id=assignment_task_id).one()
+        assert answer.value == '42'
 
 
 def test_assignment_detail_renders_canonical_v2_screen(app, client, role_users):
