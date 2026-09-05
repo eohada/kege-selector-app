@@ -88,6 +88,13 @@ def _is_parent_user() -> bool:
 def _workspace_context_scope(task_id: int, context_type: str | None, context_id: int | None) -> dict:
     """Resolve shared student-owned workspace scope for submission/lesson contexts."""
     context_type = (context_type or 'submission').strip().lower()
+    # Task Workspace uses the explicit UI name ``submission_task``.  Canvas
+    # storage is shared by the whole submission task and must resolve to the
+    # protected submission scope, otherwise a teacher cannot view the drawing.
+    if context_type == 'submission_task':
+        context_type = 'submission'
+    elif context_type == 'lesson_task':
+        context_type = 'lesson'
     if context_type == 'submission':
         if not context_id:
             abort(400, description='context_id required')

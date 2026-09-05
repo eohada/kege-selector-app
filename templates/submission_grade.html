@@ -799,9 +799,9 @@
                                 <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem;">Прикреплённые файлы ученика:</div>
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                                     {% for file_info in g.answer.files %}
-                                    <a href="{{ file_info.url if file_info is mapping else file_info }}" target="_blank" download class="neo-button outline sm" style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
+                                    <a href="{{ url_for('assignments.serve_answer_file', submission_id=submission.submission_id, filename=file_info.filename) if file_info is mapping and file_info.filename else file_info }}" target="_blank" download class="neo-button outline sm" style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
                                         {{ ui_icon('action.backup', 'sm') }}
-                                        {{ file_info.name if file_info is mapping and file_info.name else 'Скачать файл' }}
+                                        {{ file_info.original_name if file_info is mapping and file_info.original_name else 'Скачать файл' }}
                                     </a>
                                     {% endfor %}
                                 </div>

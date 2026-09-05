@@ -190,6 +190,65 @@ def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app,
         assert assignment_task.max_score == 3
 
 
+def test_teacher_can_open_student_file_and_canvas_from_assignment_review(app, client, role_users):
+    """Вложения и заметки ученика остаются доступны преподавателю в одном контуре проверки."""
+    from app import db
+    from core.db_models import Assignment, AssignmentTask, Submission, Tasks, utc_now
+
+    with app.app_context():
+        task = Tasks(task_number=9, content_html='<p>Задача с файлом и рисунком</p>', answer=None)
+        db.session.add(task)
+        db.session.flush()
+        assignment = Assignment(
+            title='Вложения и рисунок', assignment_type='homework', deadline=utc_now() + timedelta(days=2),
+            created_by_id=role_users['tutor_id'], is_active=True,
+        )
+        db.session.add(assignment)
+        db.session.flush()
+        assignment_task = AssignmentTask(
+            assignment_id=assignment.assignment_id, task_id=task.task_id, order_index=0,
+            max_score=1, requires_manual_grading=True,
+        )
+        db.session.add(assignment_task)
+        db.session.flush()
+        submission = Submission(assignment_id=assignment.assignment_id, student_id=role_users['student_id'], status='ASSIGNED')
+        db.session.add(submission)
+        db.session.commit()
+        submission_id = submission.submission_id
+        assignment_task_id = assignment_task.assignment_task_id
+        task_id = task.task_id
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    assert client.post(f'/submissions/{submission_id}/start').status_code == 200
+    uploaded = client.post(
+        f'/submissions/{submission_id}/upload-answer-file',
+        data={'assignment_task_id': str(assignment_task_id), 'file': (BytesIO(b'my work'), 'solution.txt')},
+        content_type='multipart/form-data',
+    )
+    assert uploaded.status_code == 200, uploaded.get_json()
+    attachment_url = uploaded.get_json()['url']
+    saved_canvas = client.post('/api/canvas/save', json={
+        'task_id': task_id,
+        'context_type': 'submission_task',
+        'context_id': submission_id,
+        'strokes': [{'color': '#4f46e5', 'width': 3, 'points': [{'x': 10, 'y': 10}, {'x': 20, 'y': 20}]}],
+    })
+    assert saved_canvas.status_code == 200, saved_canvas.get_json()
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    assert client.get(attachment_url).status_code == 200
+    canvas = client.get(
+        f'/api/canvas/view/{role_users["student_user_id"]}',
+        query_string={'task_id': task_id, 'context_type': 'submission', 'context_id': submission_id},
+    )
+    assert canvas.status_code == 200, canvas.get_json()
+    assert canvas.get_json()['exists'] is True
+    review = client.get(f'/submissions/{submission_id}/grade')
+    assert review.status_code == 200
+    assert attachment_url.encode() in review.data
+    assert 'Заметки ученика'.encode('utf-8') in review.data
+
+
 def test_assignment_detail_renders_canonical_v2_screen(app, client, role_users):
     """Teacher assignment details must not fall back to the legacy detail template."""
     from app import db
