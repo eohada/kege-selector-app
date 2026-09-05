@@ -84,7 +84,9 @@ def test_v2_assignment_builder_uses_live_contracts_and_publishes_draft(app, clie
     _login_as(client, role_users['tutor_id'], 'tutor')
     page = client.get('/assignments/create')
     assert page.status_code == 200
-    assert 'Конструктор • Новая работа'.encode('utf-8') in page.data
+    assert 'Работа • выбрать и отправить'.encode('utf-8') in page.data
+    assert 'Выбрать из банка'.encode('utf-8') in page.data
+    assert 'Создать своё'.encode('utf-8') in page.data
     assert 'Откуда берём задания?'.encode('utf-8') not in page.data
     assert b'/sandbox/api/create_assignment' not in page.data
 
@@ -144,6 +146,10 @@ def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app,
     assert created.status_code == 201, created.get_json()
     created_task = created.get_json()['task']
     assert created_task['requires_manual_grading'] is True
+
+    personal_bank = client.get(f'/task-generator/bank/picker/list?exam_course_id={course_id}&only_my=true')
+    assert personal_bank.status_code == 200, personal_bank.get_json()
+    assert [item['task_id'] for item in personal_bank.get_json()['items']] == [created_task['task_id']]
 
     with app.app_context():
         task = db.session.get(Tasks, created_task['task_id'])

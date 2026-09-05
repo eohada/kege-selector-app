@@ -19,14 +19,14 @@
         <div class="space-y-1.5">
           <div class="flex items-center gap-2">
             <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
-              Конструктор • Новая работа
+              Работа • выбрать и отправить
             </span>
             <span id="draft-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
               {% if assignment_id %}Черновик ID #{{ assignment_id }}{% else %}Новая работа{% endif %}
             </span>
           </div>
           <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display flex items-center gap-3">
-            🛠️ Конструктор новых работ
+            🛠️ Создайте и отправьте работу
           </h1>
         </div>
 
@@ -172,20 +172,22 @@
         <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-5">
           <div class="pb-3 border-b-2 border-slate-200/80 flex items-center justify-between">
             <h3 class="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-2">
-              <i class="ph-bold ph-list-numbers text-indigo-600 text-base"></i> 2. Источники & Задачи (<span id="task-count-badge">0</span>)
+              <i class="ph-bold ph-list-numbers text-indigo-600 text-base"></i> 2. Задания в работе (<span id="task-count-badge">0</span>)
             </h3>
             <span class="inline-flex items-center gap-1.5 px-3 py-0.5 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-xs">
               Шаг 2 из 4
             </span>
           </div>
 
-          <!-- 4 Кнопки ИСТОЧНИКОВ ЗАДАЧ (Tactile 3D Buttons) -->
+          <p class="text-xs leading-relaxed text-slate-500">Выберите готовые задания из банка или создайте своё. Всё сразу сохранится в черновике этой работы.</p>
+
+          <!-- Источники заданий без внутренних идентификаторов -->
           <div class="grid grid-cols-2 gap-2.5">
-            <button onclick="openInputIdsModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
-              <i class="ph-bold ph-textbox text-indigo-600"></i> Ввести ID
+            <button type="button" onclick="openBankModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
+              <i class="ph-bold ph-books text-indigo-600"></i> Выбрать из банка
             </button>
-            <button type="button" onclick="goToTaskGenerator(event)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black px-4 py-3 rounded-xl border border-indigo-200 border-b-[4px] shadow-[0_2px_5px_rgba(79,70,229,0.1)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
-              <i class="ph-bold ph-sparkle text-indigo-600"></i> Генератор
+            <button type="button" onclick="openCustomTaskModal()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black px-4 py-3 rounded-xl border border-indigo-200 border-b-[4px] shadow-[0_2px_5px_rgba(79,70,229,0.1)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
+              <i class="ph-bold ph-plus-circle text-indigo-600"></i> Создать своё
             </button>
             <button onclick="loadQuickMockVariant()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black px-4 py-3 rounded-xl border border-emerald-200 border-b-[4px] shadow-[0_2px_5px_rgba(16,185,129,0.1)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
               <i class="ph-bold ph-lightning text-emerald-600"></i> Быстрый пробник
@@ -241,6 +243,11 @@
           </div>
         </div>
 
+        <div id="assignment-summary" class="bg-indigo-50 border-2 border-indigo-200 shadow-[0_3px_0_#C7D2FE] rounded-2xl p-4 space-y-1">
+          <p class="text-[10px] font-black uppercase tracking-wider text-indigo-700">Перед отправкой</p>
+          <p id="assignment-summary-text" class="text-xs font-bold text-slate-700">Добавьте задания и выберите учеников.</p>
+        </div>
+
         <!-- КНОПКА ФИНАЛЬНОГО ДЕЙСТВИЯ (Tactile 3D Main Button) -->
         <button onclick="submitAssignmentForm()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer w-full flex items-center justify-center gap-2 text-base">
           <i class="ph-bold ph-paper-plane-tilt text-xl"></i> Создать и отправить работу!
@@ -252,7 +259,41 @@
   </div>
 </main>
 
-<!-- МОДАЛЬНОЕ ОКНО ВВОДА ID ЗАДАЧ (Tactile 3D Modal) -->
+<!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ИЗ БАНКА -->
+<div id="bank-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-4xl w-full max-h-[90vh] flex flex-col gap-4">
+    <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
+      <div><h3 class="text-base font-black text-slate-800 font-display">📚 Банк заданий</h3><p class="text-xs text-slate-500 mt-1">Найдите и добавьте задание одним нажатием.</p></div>
+      <button onclick="closeBankModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer">&times;</button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+      <input id="bank-search" oninput="scheduleBankSearch()" placeholder="Поиск по условию" class="sm:col-span-2 bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-xs outline-none">
+      <select id="bank-task-number" onchange="loadBankTasks()" class="bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none"><option value="">Все номера</option></select>
+      <label class="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-600"><input id="bank-only-my" type="checkbox" onchange="loadBankTasks()" class="accent-indigo-600"> Только мои</label>
+    </div>
+    <div id="bank-tasks-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto pr-1"></div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО АВТОРСКОГО ЗАДАНИЯ -->
+<div id="custom-task-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+  <form id="custom-task-form" class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200"><div><h3 class="text-base font-black text-slate-800 font-display">✍️ Своё задание</h3><p class="text-xs text-slate-500 mt-1">Оно сохранится в вашем личном банке и добавится в эту работу.</p></div><button type="button" onclick="closeCustomTaskModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer">&times;</button></div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <label class="text-xs font-bold text-slate-700">Номер задания<select id="custom-task-number" name="task_number" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none"></select></label>
+      <label class="text-xs font-bold text-slate-700">Баллы<input name="max_score" type="number" min="1" max="100" value="1" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none"></label>
+      <label class="flex items-end gap-2 pb-2 text-xs font-bold text-slate-700"><input id="custom-manual-grading" name="manual_grading" type="checkbox" onchange="toggleCustomAnswer()" class="accent-indigo-600"> Проверю сам</label>
+    </div>
+    <label class="block text-xs font-bold text-slate-700">Условие<textarea name="content" required rows="6" placeholder="Напишите условие задания…" class="mt-1 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-sm outline-none"></textarea></label>
+    <label id="custom-answer-wrap" class="block text-xs font-bold text-slate-700">Правильный ответ<input name="answer" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none" placeholder="Оставьте пустым, если нужна ручная проверка"></label>
+    <label class="block text-xs font-bold text-slate-700">Пояснение для преподавателя<textarea name="solution" rows="3" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none" placeholder="Разбор или критерии проверки (ученик их не увидит)"></textarea></label>
+    <label class="block text-xs font-bold text-slate-700">Заготовка кода<textarea name="starter_code" rows="3" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 font-mono text-sm outline-none" placeholder="Например: print('Привет, BooStudy!')"></textarea></label>
+    <label class="block text-xs font-bold text-slate-700">Изображения и файлы<input name="files" type="file" multiple class="mt-1 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-3 file:py-2 file:font-bold file:text-indigo-700 hover:file:bg-indigo-200"></label>
+    <div class="flex justify-end gap-3 pt-2"><button type="button" onclick="closeCustomTaskModal()" class="bg-white text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] text-xs">Отмена</button><button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] text-xs">Сохранить и добавить</button></div>
+  </form>
+</div>
+
+<!-- Служебное окно импорта старых ID оставлено без входа в живом сценарии. -->
 <div id="input-ids-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
   <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-md w-full space-y-4">
     <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
@@ -364,6 +405,9 @@ let attachedTasks = [];
 let selectedGroupIds = new Set();
 let selectedStudentIds = new Set();
 let activeRecipientTab = 'groups';
+let draftSaveTimer = null;
+let bankSearchTimer = null;
+let isBuilderReady = false;
 
 // Ensure all sidebar links to generator contain our assignment_id
 document.addEventListener('DOMContentLoaded', () => {
@@ -439,6 +483,21 @@ function applyPreset(presetType) {
     allowSeparateCheckbox.checked = true;
     maxAttemptsInput.value = 3;
   }
+  scheduleDraftSave();
+}
+
+function scheduleDraftSave() {
+  if (!isBuilderReady) return;
+  window.clearTimeout(draftSaveTimer);
+  draftSaveTimer = window.setTimeout(() => saveAssignmentDraft(false), 900);
+}
+
+function addTaskToAssignment(task) {
+  if (!task || !task.task_id || attachedTasks.some(existing => Number(existing.task_id) === Number(task.task_id))) return false;
+  attachedTasks.push(task);
+  renderAttachedTasks();
+  scheduleDraftSave();
+  return true;
 }
 
 /* --- TASKS MANAGEMENT (TACTILE 3D ACCORDION) --- */
@@ -448,12 +507,13 @@ function renderAttachedTasks() {
   if (!container) return;
 
   badge.textContent = attachedTasks.length;
+  updateAssignmentSummary();
 
   if (attachedTasks.length === 0) {
     container.innerHTML = `
       <div class="p-8 border-2 border-dashed border-slate-300 rounded-2xl text-center space-y-2 bg-white/60">
         <p class="text-xs font-bold text-slate-500">Задачи еще не добавлены в работу</p>
-        <p class="text-[11px] text-slate-400">Воспользуйтесь кнопками выше (Ввести ID, Быстрый пробник или Генератор)</p>
+        <p class="text-[11px] text-slate-400">Выберите задание из банка или создайте своё.</p>
       </div>
     `;
     return;
@@ -470,7 +530,6 @@ function renderAttachedTasks() {
             <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-black shadow-xs">
               № ${t.task_number}
             </span>
-            <span class="text-xs font-mono font-bold text-slate-400">ID #${t.task_id}</span>
             <span class="text-xs font-bold text-slate-700 truncate">${snippet}...</span>
           </div>
 
@@ -497,7 +556,7 @@ function renderAttachedTasks() {
             ${t.content_html}
           </div>
           <div class="p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl text-xs font-bold text-amber-900 flex items-center justify-between">
-            <span>Ответ: <strong class="font-mono font-black">${t.answer || '—'}</strong></span>
+            <span>${t.requires_manual_grading ? 'Проверка: <strong>преподавателем</strong>' : `Ответ: <strong class="font-mono font-black">${t.answer || '—'}</strong>`}</span>
             <span class="text-[10px] font-bold text-slate-400">Источник: ${t.source || 'Банк задач'}</span>
           </div>
         </div>
@@ -523,6 +582,8 @@ function toggleTaskExpand(idx) {
 function updateTaskScore(idx, newScore) {
   if (attachedTasks[idx]) {
     attachedTasks[idx].max_score = parseInt(newScore) || 1;
+    scheduleDraftSave();
+    updateAssignmentSummary();
   }
 }
 
@@ -532,6 +593,7 @@ function moveTaskUp(idx) {
   attachedTasks[idx] = attachedTasks[idx - 1];
   attachedTasks[idx - 1] = temp;
   renderAttachedTasks();
+  scheduleDraftSave();
 }
 
 function moveTaskDown(idx) {
@@ -540,11 +602,26 @@ function moveTaskDown(idx) {
   attachedTasks[idx] = attachedTasks[idx + 1];
   attachedTasks[idx + 1] = temp;
   renderAttachedTasks();
+  scheduleDraftSave();
 }
 
 function removeTaskFromAssignment(idx) {
   attachedTasks.splice(idx, 1);
   renderAttachedTasks();
+  scheduleDraftSave();
+}
+
+function updateAssignmentSummary() {
+  const target = document.getElementById('assignment-summary-text');
+  if (!target) return;
+  const selectedGroups = (pageData.groups || []).filter(group => selectedGroupIds.has(group.group_id));
+  const recipientIds = new Set(Array.from(selectedStudentIds));
+  selectedGroups.forEach(group => (group.member_ids || []).forEach(id => recipientIds.add(id)));
+  const manualCount = attachedTasks.filter(task => task.requires_manual_grading).length;
+  const score = attachedTasks.reduce((sum, task) => sum + (Number(task.max_score) || 1), 0);
+  const tasksText = attachedTasks.length ? `${attachedTasks.length} заданий · ${score} баллов` : 'нет заданий';
+  const studentsText = recipientIds.size ? `${recipientIds.size} учеников` : 'ученики не выбраны';
+  target.textContent = `${tasksText} · ${studentsText}${manualCount ? ` · ${manualCount} проверит преподаватель` : ''}`;
 }
 
 /* --- MODALS & APIS --- */
@@ -553,6 +630,104 @@ function openInputIdsModal() {
 }
 function closeInputIdsModal() {
   document.getElementById('input-ids-modal').classList.add('hidden');
+}
+
+function openBankModal() {
+  const courseId = document.getElementById('assignment-course').value;
+  const numberSelect = document.getElementById('bank-task-number');
+  const customNumber = document.getElementById('custom-task-number');
+  if (numberSelect && numberSelect.options.length === 1) {
+    for (let number = 1; number <= 27; number += 1) {
+      numberSelect.add(new Option(`Задание №${number}`, String(number)));
+      customNumber.add(new Option(`Задание №${number}`, String(number)));
+    }
+  }
+  if (!courseId) show3DToast('Выберите курс: так банк покажет подходящие задания');
+  document.getElementById('bank-modal').classList.remove('hidden');
+  loadBankTasks();
+}
+
+function closeBankModal() {
+  document.getElementById('bank-modal').classList.add('hidden');
+}
+
+function scheduleBankSearch() {
+  window.clearTimeout(bankSearchTimer);
+  bankSearchTimer = window.setTimeout(loadBankTasks, 250);
+}
+
+async function loadBankTasks() {
+  const list = document.getElementById('bank-tasks-list');
+  const params = new URLSearchParams({ per_page: '24' });
+  const courseId = document.getElementById('assignment-course').value;
+  const taskNumber = document.getElementById('bank-task-number').value;
+  const query = document.getElementById('bank-search').value.trim();
+  if (courseId) params.set('exam_course_id', courseId);
+  if (taskNumber) params.set('task_number', taskNumber);
+  if (query) params.set('q', query);
+  if (document.getElementById('bank-only-my').checked) params.set('only_my', 'true');
+  list.innerHTML = '<p class="col-span-full text-center text-xs text-slate-500 py-8">Загружаем задания…</p>';
+  try {
+    const response = await fetch(`/task-generator/bank/picker/list?${params.toString()}`);
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось получить задания');
+    const tasks = data.items || [];
+    list.innerHTML = tasks.length ? tasks.map(task => {
+      const text = (task.content_html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+      const added = attachedTasks.some(item => Number(item.task_id) === Number(task.task_id));
+      return `<article class="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-[0_3px_0_#DAE1E9] space-y-3"><div class="flex justify-between gap-2"><span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">Задание №${task.task_number}</span><span class="text-[10px] font-bold text-slate-400">${task.difficulty_label_ru || 'Без уровня'}</span></div><p class="text-xs leading-relaxed text-slate-700">${text || 'Без текста условия'}</p><button type="button" onclick="addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="w-full bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-3 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button></article>`;
+    }).join('') : '<p class="col-span-full text-center text-xs text-slate-500 py-8">По этим фильтрам заданий нет.</p>';
+    window.bankTasksById = Object.fromEntries(tasks.map(task => [task.task_id, task]));
+  } catch (error) {
+    list.innerHTML = `<p class="col-span-full text-center text-xs text-rose-600 py-8">${error.message || 'Ошибка загрузки банка'}</p>`;
+  }
+}
+
+function addBankTask(taskId) {
+  const task = window.bankTasksById && window.bankTasksById[taskId];
+  if (!task) return;
+  addTaskToAssignment({ ...task, max_score: task.max_score || 1, requires_manual_grading: !task.answer });
+  loadBankTasks();
+}
+
+function openCustomTaskModal() {
+  if (!document.getElementById('assignment-course').value) {
+    show3DToast('Сначала выберите курс для авторского задания');
+    return;
+  }
+  const select = document.getElementById('custom-task-number');
+  if (select.options.length === 0) {
+    for (let number = 1; number <= 27; number += 1) select.add(new Option(`Задание №${number}`, String(number)));
+  }
+  document.getElementById('custom-task-modal').classList.remove('hidden');
+}
+
+function closeCustomTaskModal() {
+  document.getElementById('custom-task-modal').classList.add('hidden');
+}
+
+function toggleCustomAnswer() {
+  document.getElementById('custom-answer-wrap').classList.toggle('hidden', document.getElementById('custom-manual-grading').checked);
+}
+
+async function createCustomTask(event) {
+  event.preventDefault();
+  const form = document.getElementById('custom-task-form');
+  const data = new FormData(form);
+  data.set('course_id', document.getElementById('assignment-course').value);
+  try {
+    const response = await fetch('/task-generator/bank/create', {
+      method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: data,
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось сохранить задание');
+    addTaskToAssignment(payload.task);
+    closeCustomTaskModal();
+    form.reset();
+    show3DToast('Задание сохранено в вашем банке и добавлено в работу');
+  } catch (error) {
+    show3DToast(error.message || 'Ошибка сохранения задания');
+  }
 }
 
 /* --- 3D TOAST HELPER (BOOSTUDY UI CANON) --- */
@@ -767,6 +942,7 @@ function toggleGroupSelection(groupId, isChecked) {
     selectedGroupIds.delete(groupId);
   }
   updateSelectedRecipientsCount();
+  scheduleDraftSave();
 }
 
 function toggleStudentSelection(stId, isChecked) {
@@ -776,6 +952,7 @@ function toggleStudentSelection(stId, isChecked) {
     selectedStudentIds.delete(stId);
   }
   updateSelectedRecipientsCount();
+  scheduleDraftSave();
 }
 
 function toggleSelectAllRecipients() {
@@ -801,6 +978,7 @@ function updateSelectedRecipientsCount() {
   const badge = document.getElementById('selected-recipients-count');
   const count = selectedGroupIds.size + selectedStudentIds.size;
   if (badge) badge.textContent = count;
+  updateAssignmentSummary();
 }
 
 function filterRecipients() {
@@ -826,7 +1004,7 @@ async function saveAssignmentDraft(showAlert = true) {
     course_id: document.getElementById('assignment-course').value || null,
     target_students: Array.from(selectedStudentIds),
     target_groups: Array.from(selectedGroupIds),
-    tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1 }))
+    tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1, requires_manual_grading: !!t.requires_manual_grading }))
   };
 
   try {
@@ -873,7 +1051,7 @@ async function submitAssignmentForm() {
     hide_before_start: document.getElementById('assignment-hide-before-start').checked,
     allow_separate_submission: document.getElementById('assignment-allow-separate').checked,
     exam_course_id: document.getElementById('assignment-course').value || null,
-    tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1 })),
+    tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1, requires_manual_grading: !!t.requires_manual_grading })),
     recipientIds: Array.from(recipientIds)
   };
 
@@ -950,6 +1128,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderAttachedTasks();
   renderRecipients();
+  document.getElementById('custom-task-form').addEventListener('submit', createCustomTask);
+  ['assignment-title', 'assignment-description', 'assignment-deadline', 'assignment-time-limit', 'assignment-max-attempts', 'assignment-hard-deadline', 'assignment-hide-before-start', 'assignment-allow-separate'].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) field.addEventListener('input', scheduleDraftSave);
+    if (field) field.addEventListener('change', scheduleDraftSave);
+  });
+  document.getElementById('assignment-course').addEventListener('change', () => {
+    scheduleDraftSave();
+    if (!document.getElementById('bank-modal').classList.contains('hidden')) loadBankTasks();
+  });
+  isBuilderReady = true;
 });
 </script>
 {% endblock %}

@@ -2649,7 +2649,15 @@ def assignment_create():
             'hide_before_start': bool(draft.hide_before_start),
             'allow_separate_submission': bool(draft.allow_separate_submission),
             'course_id': draft.exam_course_id,
-            'tasks': [_assignment_builder_task_payload(row.task, max_score=row.max_score) for row in sorted(draft.tasks or [], key=lambda row: (row.order_index, row.assignment_task_id)) if row.task],
+            'tasks': [
+                _assignment_builder_task_payload(
+                    row.task,
+                    max_score=row.max_score,
+                    requires_manual_grading=bool(row.requires_manual_grading),
+                )
+                for row in sorted(draft.tasks or [], key=lambda row: (row.order_index, row.assignment_task_id))
+                if row.task
+            ],
         }
 
     recipient_options: list[Student] = []
