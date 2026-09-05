@@ -23,6 +23,11 @@ node_modules/
 *.md
 docs/
 scripts/
+!scripts/
+!scripts/import_python_ege_bank.py
+!data/
+!data/task_banks/
+!data/task_banks/python_foundations.json
 admin_tokens.txt
 *.txt
 !requirements.txt
