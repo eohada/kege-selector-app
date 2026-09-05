@@ -82,3 +82,39 @@ def import_package(data: dict, db, *, dry_run=False) -> dict:
 def import_package_file(path: str | Path, db, *, dry_run=False) -> dict:
     with Path(path).open("r", encoding="utf-8") as handle:
         return import_package(json.load(handle), db, dry_run=dry_run)
+
+
+def import_foundations_package(data: dict, db, *, dry_run=False) -> dict:
+    """Импорт тематического банка без экзаменационной нумерации."""
+    tasks = data.get("tasks") or []
+    if len(tasks) < 160 or len({item.get("module") for item in tasks}) < 16:
+        raise ValueError("тематический банк должен содержать минимум 160 заданий и 16 модулей")
+    course = Course.query.filter_by(slug=data["slug"]).first()
+    if not course:
+        course = Course(title=data["title"], slug=data["slug"], is_active=True)
+        db.session.add(course)
+        db.session.flush()
+    created = updated = 0
+    for index, item in enumerate(tasks, 1):
+        source = _key(data["slug"], item, index)
+        task = Tasks.query.filter_by(source_prototype=source).first()
+        values = dict(course_id=course.id, task_number=1000 + index, content_html=item["content_html"], answer=str(item["answer"]),
+                      difficulty_level={"базовый": 1, "средний": 2, "продвинутый": 3}.get(item.get("level"), 2),
+                      bank_origin="imported", starter_code=item.get("starter_code"), source_prototype=source, max_score=1, is_active=True)
+        if task:
+            if not dry_run:
+                for key, value in values.items(): setattr(task, key, value)
+                solution = TaskSolution.query.filter_by(task_id=task.task_id).first()
+                if solution:
+                    solution.solution_text = item["solution"]
+            updated += 1
+        else:
+            if not dry_run:
+                task = Tasks(**values)
+                db.session.add(task)
+                db.session.flush()
+                db.session.add(TaskSolution(task_id=task.task_id, solution_text=item["solution"], source="manual"))
+            created += 1
+    if not dry_run:
+        db.session.commit()
+    return {"course_slug": data["slug"], "created": created, "updated": updated, "total": created + updated}
