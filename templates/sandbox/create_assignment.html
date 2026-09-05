@@ -259,30 +259,39 @@
   </div>
 </main>
 
+<style>
+  .boostudy-scroll { scrollbar-width: thin; scrollbar-color: #a5b4fc transparent; }
+  .boostudy-scroll::-webkit-scrollbar { width: 8px; }
+  .boostudy-scroll::-webkit-scrollbar-track { background: transparent; }
+  .boostudy-scroll::-webkit-scrollbar-thumb { background: #c7d2fe; border: 2px solid #f4f7fa; border-radius: 999px; }
+  .boostudy-scroll::-webkit-scrollbar-thumb:hover { background: #818cf8; }
+</style>
+
 <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА ИЗ БАНКА -->
 <div id="bank-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
-  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-4xl w-full max-h-[90vh] flex flex-col gap-4">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-[1100px] w-full max-h-[90vh] flex flex-col gap-5">
     <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
-      <div><h3 class="text-base font-black text-slate-800 font-display">📚 Банк заданий</h3><p class="text-xs text-slate-500 mt-1">Найдите и добавьте задание одним нажатием.</p></div>
+      <div><h3 class="text-lg font-black text-slate-800 font-display flex items-center gap-2"><span class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center justify-center"><i class="ph-bold ph-books text-lg"></i></span> Банк заданий</h3><p class="text-xs text-slate-500 mt-1">Выберите курс, тему и добавьте нужные задания.</p></div>
       <button onclick="closeBankModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer">&times;</button>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
-      <input id="bank-search" oninput="scheduleBankSearch()" placeholder="Поиск по условию" class="sm:col-span-2 bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-xs outline-none">
-      <select id="bank-task-number" onchange="loadBankTasks()" class="bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none"><option value="">Все номера</option></select>
-      <label class="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-600"><input id="bank-only-my" type="checkbox" onchange="loadBankTasks()" class="accent-indigo-600"> Только мои</label>
+    <div class="space-y-3">
+      <input id="bank-search" oninput="scheduleBankSearch()" placeholder="Поиск по названию, теме или условию" class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm outline-none">
+      <div id="bank-course-tabs" class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
+      <div id="bank-module-tabs" class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
     </div>
-    <div id="bank-tasks-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto pr-1"></div>
+    <div class="flex items-center justify-between text-xs"><span id="bank-result-count" class="font-bold text-slate-500"></span><button id="bank-only-my" type="button" onclick="toggleOnlyMyBankTasks()" class="bg-white text-slate-600 font-black px-3 py-2 rounded-xl border border-slate-200 border-b-[3px]">Мои задания</button></div>
+    <div id="bank-tasks-list" class="boostudy-scroll grid grid-cols-1 md:grid-cols-3 gap-3 overflow-y-auto pr-2"></div>
   </div>
 </div>
 
 <!-- МОДАЛЬНОЕ ОКНО АВТОРСКОГО ЗАДАНИЯ -->
 <div id="custom-task-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
-  <form id="custom-task-form" class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto space-y-4">
-    <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200"><div><h3 class="text-base font-black text-slate-800 font-display">✍️ Своё задание</h3><p class="text-xs text-slate-500 mt-1">Оно сохранится в вашем личном банке и добавится в эту работу.</p></div><button type="button" onclick="closeCustomTaskModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer">&times;</button></div>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <label class="text-xs font-bold text-slate-700">Номер задания<select id="custom-task-number" name="task_number" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none"></select></label>
+  <form id="custom-task-form" class="boostudy-scroll bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200"><div><h3 class="text-lg font-black text-slate-800 font-display flex items-center gap-2"><span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center"><i class="ph-bold ph-pencil-simple-line text-lg"></i></span> Своё задание</h3><p class="text-xs text-slate-500 mt-1">Оно сохранится в вашем личном банке и добавится в эту работу.</p></div><button type="button" onclick="closeCustomTaskModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer">&times;</button></div>
+    <input id="custom-task-number" name="task_number" type="hidden" value="1">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <label class="text-xs font-bold text-slate-700">Баллы<input name="max_score" type="number" min="1" max="100" value="1" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none"></label>
-      <label class="flex items-end gap-2 pb-2 text-xs font-bold text-slate-700"><input id="custom-manual-grading" name="manual_grading" type="checkbox" onchange="toggleCustomAnswer()" class="accent-indigo-600"> Проверю сам</label>
+      <label class="flex items-center gap-2 mt-5 bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700"><input id="custom-manual-grading" name="manual_grading" type="checkbox" onchange="toggleCustomAnswer()" class="accent-indigo-600"> Проверю сам</label>
     </div>
     <label class="block text-xs font-bold text-slate-700">Условие<textarea name="content" required rows="6" placeholder="Напишите условие задания…" class="mt-1 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-sm outline-none"></textarea></label>
     <label id="custom-answer-wrap" class="block text-xs font-bold text-slate-700">Правильный ответ<input name="answer" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none" placeholder="Оставьте пустым, если нужна ручная проверка"></label>
@@ -633,16 +642,9 @@ function closeInputIdsModal() {
 }
 
 function openBankModal() {
-  const courseId = document.getElementById('assignment-course').value;
-  const numberSelect = document.getElementById('bank-task-number');
-  const customNumber = document.getElementById('custom-task-number');
-  if (numberSelect && numberSelect.options.length === 1) {
-    for (let number = 1; number <= 27; number += 1) {
-      numberSelect.add(new Option(`Задание №${number}`, String(number)));
-      customNumber.add(new Option(`Задание №${number}`, String(number)));
-    }
-  }
-  if (!courseId) show3DToast('Выберите курс: так банк покажет подходящие задания');
+  window.bankCourseId = '';
+  window.bankModule = '';
+  document.getElementById('bank-only-my').dataset.active = 'false';
   document.getElementById('bank-modal').classList.remove('hidden');
   loadBankTasks();
 }
@@ -659,29 +661,52 @@ function scheduleBankSearch() {
 async function loadBankTasks() {
   const list = document.getElementById('bank-tasks-list');
   const params = new URLSearchParams({ per_page: '24' });
-  const courseId = document.getElementById('assignment-course').value;
-  const taskNumber = document.getElementById('bank-task-number').value;
+  const courseId = window.bankCourseId || '';
+  const module = window.bankModule || '';
   const query = document.getElementById('bank-search').value.trim();
   if (courseId) params.set('exam_course_id', courseId);
-  if (taskNumber) params.set('task_number', taskNumber);
+  if (module) params.set('module', module);
   if (query) params.set('q', query);
-  if (document.getElementById('bank-only-my').checked) params.set('only_my', 'true');
+  if (document.getElementById('bank-only-my').dataset.active === 'true') params.set('only_my', 'true');
   list.innerHTML = '<p class="col-span-full text-center text-xs text-slate-500 py-8">Загружаем задания…</p>';
   try {
     const response = await fetch(`/task-generator/bank/picker/list?${params.toString()}`);
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось получить задания');
     const tasks = data.items || [];
+    renderBankTabs(data);
+    document.getElementById('bank-result-count').textContent = `Найдено: ${data.total || 0}`;
     list.innerHTML = tasks.length ? tasks.map(task => {
       const text = (task.content_html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
       const added = attachedTasks.some(item => Number(item.task_id) === Number(task.task_id));
-      return `<article class="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-[0_3px_0_#DAE1E9] space-y-3"><div class="flex justify-between gap-2"><span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">Задание №${task.task_number}</span><span class="text-[10px] font-bold text-slate-400">${task.difficulty_label_ru || 'Без уровня'}</span></div><p class="text-xs leading-relaxed text-slate-700">${text || 'Без текста условия'}</p><button type="button" onclick="addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="w-full bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-3 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button></article>`;
+      return `<article class="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-[0_3px_0_#DAE1E9] space-y-3"><div class="flex justify-between gap-2"><span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="text-[10px] font-bold text-slate-400">${task.difficulty_label_ru || 'Средний'}</span></div><h4 class="text-xs font-black text-slate-800">${escapeHtml(task.title || 'Задание')}</h4><p class="text-xs leading-relaxed text-slate-700">${text || 'Без текста условия'}</p><button type="button" onclick="addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="w-full bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-3 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button></article>`;
     }).join('') : '<p class="col-span-full text-center text-xs text-slate-500 py-8">По этим фильтрам заданий нет.</p>';
     window.bankTasksById = Object.fromEntries(tasks.map(task => [task.task_id, task]));
   } catch (error) {
     list.innerHTML = `<p class="col-span-full text-center text-xs text-rose-600 py-8">${error.message || 'Ошибка загрузки банка'}</p>`;
   }
 }
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+}
+
+function renderBankTabs(data) {
+  const courseTabs = document.getElementById('bank-course-tabs');
+  const moduleTabs = document.getElementById('bank-module-tabs');
+  const selectedCourse = String(window.bankCourseId || '');
+  const selectedModule = window.bankModule || '';
+  const tabClass = active => `px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap border transition-all ${active ? 'bg-indigo-600 text-white border-indigo-700 shadow-[0_3px_0_#3730a3]' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`;
+  courseTabs.innerHTML = `<button type="button" class="${tabClass(!selectedCourse)}" onclick="setBankCourse('')">Все курсы</button>${(data.courses || []).map(course => `<button type="button" class="${tabClass(selectedCourse === String(course.id))}" onclick="setBankCourse('${course.id}')">${escapeHtml(course.title)}</button>`).join('')}`;
+  moduleTabs.innerHTML = `<button type="button" class="${tabClass(!selectedModule)}" onclick="setBankModule('')">Все темы</button>${(data.modules || []).map(name => `<button type="button" class="${tabClass(selectedModule === name)}" onclick='setBankModule(${JSON.stringify(name)})'>${escapeHtml(name)}</button>`).join('')}`;
+  const own = document.getElementById('bank-only-my');
+  own.className = tabClass(own.dataset.active === 'true');
+  own.textContent = own.dataset.active === 'true' ? 'Показываю мои' : 'Мои задания';
+}
+
+function setBankCourse(courseId) { window.bankCourseId = String(courseId || ''); window.bankModule = ''; loadBankTasks(); }
+function setBankModule(module) { window.bankModule = module || ''; loadBankTasks(); }
+function toggleOnlyMyBankTasks() { const own = document.getElementById('bank-only-my'); own.dataset.active = own.dataset.active === 'true' ? 'false' : 'true'; loadBankTasks(); }
 
 function addBankTask(taskId) {
   const task = window.bankTasksById && window.bankTasksById[taskId];
@@ -695,10 +720,7 @@ function openCustomTaskModal() {
     show3DToast('Сначала выберите курс для авторского задания');
     return;
   }
-  const select = document.getElementById('custom-task-number');
-  if (select.options.length === 0) {
-    for (let number = 1; number <= 27; number += 1) select.add(new Option(`Задание №${number}`, String(number)));
-  }
+  document.getElementById('custom-task-number').value = '1';
   document.getElementById('custom-task-modal').classList.remove('hidden');
 }
 

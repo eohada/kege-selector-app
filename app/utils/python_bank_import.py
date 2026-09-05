@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from functools import lru_cache
 from pathlib import Path
 
 from core.db_models import Course, CourseTaskTemplate, Tasks, TaskSolution
@@ -11,6 +12,17 @@ from core.db_models import Course, CourseTaskTemplate, Tasks, TaskSolution
 def _key(package_slug: str, item: dict, variant_index: int) -> str:
     raw = f"{package_slug}:{item.get('id') or item.get('task_number')}:{variant_index}"
     return f"author/python-ege/{hashlib.sha1(raw.encode()).hexdigest()[:20]}"
+
+
+@lru_cache(maxsize=1)
+def foundations_metadata():
+    """Resolve thematic labels for existing imports without rewriting student tasks."""
+    path = Path(__file__).resolve().parents[2] / 'data/task_banks/python_foundations.json'
+    with path.open(encoding='utf-8') as handle:
+        package = json.load(handle)
+    return {_key(package['slug'], item, index): {
+        'title': item['title'], 'module': item['module']
+    } for index, item in enumerate(package['tasks'], 1)}
 
 
 def validate_package(data: dict) -> list[str]:

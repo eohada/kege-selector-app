@@ -1002,17 +1002,21 @@ def task_generator_bank_picker_list():
 
     lesson_ids, template_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
 
-    bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by))
+    from app.utils.python_bank_import import foundations_metadata
+    thematic = foundations_metadata()
+    bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by)).filter(Tasks.is_active.is_(True))
     if exam_course_id:
-        # Check if tasks exist for this course before strict filtering
-        if Tasks.query.filter(Tasks.course_id == exam_course_id).first():
-            bq = bq.filter(Tasks.course_id == exam_course_id)
+        bq = bq.filter(Tasks.course_id == exam_course_id)
+    module = (data.get('module') or '').strip()
+    if module:
+        bq = bq.filter(Tasks.source_prototype.in_([key for key, meta in thematic.items() if meta['module'] == module]))
     if task_number is not None:
         bq = bq.filter(Tasks.task_number == task_number)
     if difficulty is not None:
         bq = bq.filter(Tasks.difficulty_level == difficulty)
     if search_query:
-        bq = bq.filter(Tasks.content_html.ilike(f'%{search_query}%'))
+        matched_keys = [key for key, meta in thematic.items() if search_query.casefold() in (meta['title'] + ' ' + meta['module']).casefold()]
+        bq = bq.filter(or_(Tasks.content_html.ilike(f'%{search_query}%'), Tasks.source_prototype.in_(matched_keys)))
     if only_my:
         bq = bq.filter(Tasks.bank_origin == 'manual', Tasks.created_by_id == current_user.id)
     bq = bq.order_by(Tasks.task_id.desc())
@@ -1038,7 +1042,8 @@ def task_generator_bank_picker_list():
             'max_score': getattr(t, 'max_score', 1) or 1,
             'author_name': (getattr(getattr(t, 'created_by', None), 'full_name', None) or 'Автор'),
             'source': getattr(t, 'source_url', None) or getattr(t, 'kege_source_tag', None) or 'Банк задач',
-            'topic': getattr(t, 'topic', None) or f"Задание №{getattr(t, 'task_number', 1)}",
+            'topic': thematic.get(t.source_prototype, {}).get('module') or f"Задание №{t.task_number}",
+            'title': thematic.get(t.source_prototype, {}).get('title') or f"Задание №{t.task_number}",
             'attached_files': getattr(t, 'attached_files', []) or [],
             'can_manage': bool(getattr(current_user, 'is_creator', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)()),
             'student_task_mmr': _get_user_task_mmr(target_user_id, getattr(t, 'task_number', None)),
@@ -1053,6 +1058,8 @@ def task_generator_bank_picker_list():
         'total': total,
         'page': page,
         'per_page': per_page,
+        'courses': [{'id': course.id, 'title': course.title, 'slug': course.slug} for course in Course.query.filter_by(is_active=True).order_by(Course.title).all()],
+        'modules': list(dict.fromkeys(meta['module'] for meta in thematic.values())),
     }), 200
 
 
