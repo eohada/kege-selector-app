@@ -7012,3 +7012,7 @@ outes.py for correct timezone handling.
 
 - Добавлен `data/task_banks/python_foundations.json`: 160 тренировочных заданий, по 10 в каждом из 16 тематических модулей Python.
 - Добавлен режим `--foundations` для повторяемой загрузки тематического курса без привязки к номерам заданий ЕГЭ.
+[2026-09-05] — Исправлена развилка Alembic перед деплоем
+
+- Добавлена merge-ревизия `merge_assignment_guest_heads`, объединяющая головы `assignment_manual_bank_owner` и `guest_diagnostic_report`.
+- Исправлена причина, по которой production `/ready` показывал `migrations: false` и `schema: false`, а blue-green не переключал трафик.
