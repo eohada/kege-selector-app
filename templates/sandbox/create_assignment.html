@@ -280,7 +280,10 @@
       <div id="bank-module-tabs" class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1"></div>
     </div>
     <div class="flex items-center justify-between text-xs"><span id="bank-result-count" class="font-bold text-slate-500"></span><button id="bank-only-my" type="button" onclick="toggleOnlyMyBankTasks()" class="bg-white text-slate-600 font-black px-3 py-2 rounded-xl border border-slate-200 border-b-[3px]">Мои задания</button></div>
-    <div id="bank-tasks-list" class="boostudy-scroll grid grid-cols-1 md:grid-cols-3 gap-3 overflow-y-auto pr-2"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.25fr)_minmax(340px,.75fr)] gap-5 min-h-0 flex-1">
+      <div id="bank-tasks-list" class="boostudy-scroll grid grid-cols-1 md:grid-cols-2 gap-3 overflow-y-auto pr-2"></div>
+      <aside id="bank-task-detail" class="boostudy-scroll bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[1.5rem] p-5 overflow-y-auto min-h-[360px]"><div class="h-full flex flex-col justify-center items-center text-center text-slate-400 gap-3"><span class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-400 flex items-center justify-center"><i class="ph-bold ph-eye text-2xl"></i></span><p class="text-sm font-bold">Выберите задание слева</p><p class="text-xs">Здесь появятся условие, эталонный ответ, код и действия.</p></div></aside>
+    </div>
   </div>
 </div>
 
@@ -679,9 +682,10 @@ async function loadBankTasks() {
     list.innerHTML = tasks.length ? tasks.map(task => {
       const text = (task.content_html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
       const added = attachedTasks.some(item => Number(item.task_id) === Number(task.task_id));
-      return `<article class="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-[0_3px_0_#DAE1E9] space-y-3"><div class="flex justify-between gap-2"><span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="text-[10px] font-bold text-slate-400">${task.difficulty_label_ru || 'Средний'}</span></div><h4 class="text-xs font-black text-slate-800">${escapeHtml(task.title || 'Задание')}</h4><p class="text-xs leading-relaxed text-slate-700">${text || 'Без текста условия'}</p><button type="button" onclick="addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="w-full bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-3 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button></article>`;
+      return `<article onclick="selectBankTask(${task.task_id})" class="cursor-pointer bg-white border-2 border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-[0_3px_0_#DAE1E9] space-y-3 transition-colors"><div class="flex justify-between gap-2"><span class="px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="text-[10px] font-bold text-slate-400">${task.difficulty_label_ru || 'Средний'}</span></div><h4 class="text-sm font-black text-slate-800 leading-snug">${escapeHtml(task.title || 'Задание')}</h4><p class="text-xs leading-relaxed text-slate-600 line-clamp-3">${escapeHtml(text || 'Без текста условия')}</p><button type="button" onclick="event.stopPropagation(); addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="w-full bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-3 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button></article>`;
     }).join('') : '<p class="col-span-full text-center text-xs text-slate-500 py-8">По этим фильтрам заданий нет.</p>';
     window.bankTasksById = Object.fromEntries(tasks.map(task => [task.task_id, task]));
+    if (tasks.length) selectBankTask(window.selectedBankTaskId && window.bankTasksById[window.selectedBankTaskId] ? window.selectedBankTaskId : tasks[0].task_id);
   } catch (error) {
     list.innerHTML = `<p class="col-span-full text-center text-xs text-rose-600 py-8">${error.message || 'Ошибка загрузки банка'}</p>`;
   }
@@ -715,12 +719,36 @@ function addBankTask(taskId) {
   loadBankTasks();
 }
 
-function openCustomTaskModal() {
-  if (!document.getElementById('assignment-course').value) {
+function selectBankTask(taskId) {
+  const task = window.bankTasksById && window.bankTasksById[taskId];
+  if (!task) return;
+  window.selectedBankTaskId = taskId;
+  const detail = document.getElementById('bank-task-detail');
+  const answer = task.answer ? `<div><p class="text-[10px] uppercase tracking-wider font-black text-slate-400">Правильный ответ</p><pre class="mt-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm font-bold text-emerald-800 whitespace-pre-wrap">${escapeHtml(task.answer)}</pre></div>` : `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-bold text-amber-800">Проверяется преподавателем вручную.</div>`;
+  const code = task.starter_code ? `<div><p class="text-[10px] uppercase tracking-wider font-black text-slate-400">Стартовый код</p><pre class="mt-2 bg-slate-900 text-slate-100 rounded-xl p-3 text-xs leading-relaxed overflow-x-auto"><code>${escapeHtml(task.starter_code)}</code></pre></div>` : '';
+  const solution = task.solution ? `<details class="bg-slate-50 border border-slate-200 rounded-xl p-3"><summary class="cursor-pointer text-xs font-black text-slate-700">Показать разбор преподавателя</summary><pre class="mt-3 text-xs leading-relaxed whitespace-pre-wrap text-slate-600">${escapeHtml(task.solution)}</pre></details>` : '';
+  const action = task.can_edit ? `<button type="button" onclick="openCustomTaskModal(window.bankTasksById[${task.task_id}])" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] text-xs">Редактировать</button>` : `<button type="button" onclick="openCustomTaskModal(window.bankTasksById[${task.task_id}])" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] text-xs">Создать копию и изменить</button>`;
+  const added = attachedTasks.some(item => Number(item.task_id) === Number(task.task_id));
+  detail.innerHTML = `<div class="space-y-5"><div><span class="inline-flex px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><h3 class="mt-3 text-lg font-black text-slate-800 leading-snug">${escapeHtml(task.title || 'Задание')}</h3><p class="mt-1 text-xs text-slate-500">${escapeHtml(task.course_title || '')} · ${escapeHtml(task.difficulty_label_ru || 'Средний уровень')}</p></div><div class="border-y border-slate-200 py-4 text-sm leading-relaxed text-slate-700 task-bank-condition">${task.content_html || 'Без текста условия'}</div>${answer}${code}${solution}<div class="flex flex-wrap gap-2 pt-1"><button type="button" onclick="addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button>${action}</div></div>`;
+}
+
+function openCustomTaskModal(sourceTask = null) {
+  const courseSelect = document.getElementById('assignment-course');
+  if (sourceTask && sourceTask.course_id && courseSelect.querySelector(`option[value="${sourceTask.course_id}"]`)) courseSelect.value = String(sourceTask.course_id);
+  if (!courseSelect.value) {
     show3DToast('Сначала выберите курс для авторского задания');
     return;
   }
-  document.getElementById('custom-task-number').value = '1';
+  const form = document.getElementById('custom-task-form');
+  form.reset();
+  form.dataset.editId = sourceTask && sourceTask.can_edit ? String(sourceTask.task_id) : '';
+  form.querySelector('textarea[name="content"]').value = sourceTask ? String(sourceTask.content_html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim() : '';
+  form.querySelector('input[name="answer"]').value = sourceTask?.answer || '';
+  form.querySelector('textarea[name="solution"]').value = sourceTask?.solution || '';
+  form.querySelector('textarea[name="starter_code"]').value = sourceTask?.starter_code || '';
+  form.querySelector('input[name="max_score"]').value = sourceTask?.max_score || 1;
+  document.getElementById('custom-manual-grading').checked = sourceTask ? !sourceTask.answer : false;
+  toggleCustomAnswer();
   document.getElementById('custom-task-modal').classList.remove('hidden');
 }
 
@@ -738,15 +766,16 @@ async function createCustomTask(event) {
   const data = new FormData(form);
   data.set('course_id', document.getElementById('assignment-course').value);
   try {
-    const response = await fetch('/task-generator/bank/create', {
-      method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: data,
-    });
+    const editId = form.dataset.editId;
+    const answer = document.getElementById('custom-manual-grading').checked ? null : data.get('answer');
+    const response = editId ? await fetch(`/task-generator/bank/${editId}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ content: data.get('content'), answer, solution: data.get('solution'), starter_code: data.get('starter_code'), max_score: data.get('max_score') }) }) : await fetch('/task-generator/bank/create', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: data });
     const payload = await response.json();
     if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось сохранить задание');
-    addTaskToAssignment(payload.task);
+    if (!editId) addTaskToAssignment(payload.task);
     closeCustomTaskModal();
     form.reset();
-    show3DToast('Задание сохранено в вашем банке и добавлено в работу');
+    show3DToast(editId ? 'Изменения сохранены' : 'Задание сохранено в вашем банке и добавлено в работу');
+    loadBankTasks();
   } catch (error) {
     show3DToast(error.message || 'Ошибка сохранения задания');
   }

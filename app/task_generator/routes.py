@@ -1030,6 +1030,7 @@ def task_generator_bank_picker_list():
         fully = _picker_fully_added(tid, lesson_id, template_id, assignment_type, lesson_ids, template_ids)
         items.append({
             'task_id': tid,
+            'course_id': getattr(t, 'course_id', None),
             'task_number': getattr(t, 'task_number', 1),
             'course_title': (t.course.title if getattr(t, 'course', None) else None),
             'bank_origin': getattr(t, 'bank_origin', None),
@@ -1039,6 +1040,8 @@ def task_generator_bank_picker_list():
             'difficulty_label_ru': _difficulty_label_ru(t),
             'difficulty_level': getattr(t, 'difficulty_level', 2) or 2,
             'answer': getattr(t, 'answer', '') or '',
+            'starter_code': getattr(t, 'starter_code', '') or '',
+            'solution': (getattr(getattr(t, 'task_solution', None), 'solution_text', None) or ''),
             'max_score': getattr(t, 'max_score', 1) or 1,
             'author_name': (getattr(getattr(t, 'created_by', None), 'full_name', None) or 'Автор'),
             'source': getattr(t, 'source_url', None) or getattr(t, 'kege_source_tag', None) or 'Банк задач',
@@ -1046,6 +1049,7 @@ def task_generator_bank_picker_list():
             'title': thematic.get(t.source_prototype, {}).get('title') or f"Задание №{t.task_number}",
             'attached_files': getattr(t, 'attached_files', []) or [],
             'can_manage': bool(getattr(current_user, 'is_creator', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)()),
+            'can_edit': bool((getattr(t, 'bank_origin', None) == 'manual' and getattr(t, 'created_by_id', None) == current_user.id) or getattr(current_user, 'is_admin', lambda: False)()),
             'student_task_mmr': _get_user_task_mmr(target_user_id, getattr(t, 'task_number', None)),
             'content_html': (normalize_task_content_assets(getattr(t, 'content_html', '') or '', getattr(t, 'attached_files', None), getattr(t, 'source_url', None)))[:12000],
             'already_added': fully,
@@ -1732,18 +1736,23 @@ def task_generator_bank_create():
 @task_generator_bp.route('/task-generator/bank/<int:task_id>/save', methods=['POST'])
 @login_required
 def task_generator_bank_save(task_id: int):
-    """Обновить ответ и/или уровень сложности записи в банке (для преподавателей с task.manage)."""
+    """Обновить личное авторское задание из банка."""
     _require_task_generator_access()
     task = Tasks.query.get(task_id)
     if not task:
         return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
 
+    is_admin = bool(getattr(current_user, 'is_admin', lambda: False)())
+    if task.bank_origin != 'manual' or (task.created_by_id != current_user.id and not is_admin):
+        return jsonify({'success': False, 'error': 'Можно редактировать только свои авторские задания'}), 403
+
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
 
-    if 'answer' not in data and 'difficulty_level' not in data:
-        return jsonify({'success': False, 'error': 'Передайте поля answer и/или difficulty_level'}), 400
+    editable = {'content', 'answer', 'solution', 'starter_code', 'max_score', 'difficulty_level'}
+    if not editable.intersection(data):
+        return jsonify({'success': False, 'error': 'Передайте хотя бы одно поле задания'}), 400
 
     try:
         if 'answer' in data:
@@ -1752,6 +1761,23 @@ def task_generator_bank_save(task_id: int):
                 task.answer = None
             else:
                 task.answer = str(raw_ans).strip() or None
+        if 'content' in data:
+            content_html = _normalize_manual_content_html(data.get('content') or '')
+            if not re.sub(r'<[^>]+>', '', content_html).strip():
+                return jsonify({'success': False, 'error': 'Добавьте условие задания'}), 400
+            task.content_html = content_html
+        if 'starter_code' in data:
+            task.starter_code = str(data.get('starter_code') or '').strip() or None
+        if 'max_score' in data:
+            task.max_score = max(1, min(100, int(data.get('max_score') or 1)))
+        if 'solution' in data:
+            solution_text = str(data.get('solution') or '').strip()
+            solution = TaskSolution.query.filter_by(task_id=task.task_id).first()
+            if solution:
+                solution.solution_text = solution_text
+                solution.source = 'manual'
+            elif solution_text:
+                db.session.add(TaskSolution(task_id=task.task_id, solution_text=solution_text, source='manual'))
 
         if 'difficulty_level' in data:
             raw_d = data.get('difficulty_level')
@@ -1774,7 +1800,7 @@ def task_generator_bank_save(task_id: int):
         entity='Task',
         entity_id=task.task_id,
         status='success',
-        metadata={'updated': [k for k in ('answer', 'difficulty_level') if k in data]},
+        metadata={'updated': sorted(editable.intersection(data))},
     )
     return jsonify({
         'success': True,
