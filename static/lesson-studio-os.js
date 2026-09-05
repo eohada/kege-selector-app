@@ -487,17 +487,20 @@
             btn.disabled = false; btn.textContent = 'Подключиться';
             return toast('Не удалось загрузить видеомодуль Daily. Обновите страницу или проверьте сеть.');
         }
-        if (!dailyFrame) {
+        try {
+          if (!dailyFrame) {
             dailyFrame = DailyIframe.createFrame(container, { showLeaveButton: true, iframeStyle: { width: '100%', height: '100%', border: '0' } });
             dailyFrame.on('left-meeting', () => {
-                $('#os-meeting-placeholder').style.display = 'block';
-                container.style.display = 'none';
-                btn.disabled = false; btn.textContent = 'Подключиться';
+              $('#os-meeting-placeholder').style.display = 'block';
+              container.style.display = 'none';
+              btn.disabled = false; btn.textContent = 'Подключиться';
             });
-        }
-        try {
+          }
           await dailyFrame.join({ url: r.room_url, token: r.token });
         } catch (error) {
+          console.error('Daily connection failed', error);
+          try { await dailyFrame?.destroy(); } catch (_) {}
+          dailyFrame = null;
           container.style.display = 'none';
           $('#os-meeting-placeholder').style.display = 'block';
           btn.disabled = false; btn.textContent = 'Подключиться';
