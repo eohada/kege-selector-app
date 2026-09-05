@@ -150,7 +150,7 @@ def _deadline_payload_to_utc(raw_value) -> datetime:
     return deadline_from_form_to_utc(dt)
 
 
-def _assignment_builder_task_payload(task: Tasks, *, max_score: int = 1) -> dict[str, Any]:
+def _assignment_builder_task_payload(task: Tasks, *, max_score: int = 1, requires_manual_grading: bool = False) -> dict[str, Any]:
     """Serialize a task for the V2 assignment builder without exposing legacy HTML routes."""
     return {
         'task_id': int(task.task_id),
@@ -163,6 +163,7 @@ def _assignment_builder_task_payload(task: Tasks, *, max_score: int = 1) -> dict
             getattr(task, 'attached_files', None),
             task.source_url,
         ),
+        'requires_manual_grading': bool(requires_manual_grading),
     }
 
 
@@ -229,9 +230,14 @@ def _apply_assignment_builder_payload(assignment: Assignment, data: dict[str, An
         if task_id in task_ids:
             continue
         task_ids.append(task_id)
-        normalized.append((index, task_id, max(1, int(row.get('max_score') or 1))))
+        normalized.append((
+            index,
+            task_id,
+            max(1, int(row.get('max_score') or 1)),
+            bool(row.get('requires_manual_grading')),
+        ))
     existing = {row.task_id: row for row in assignment.tasks or []}
-    for order_index, task_id, max_score in normalized:
+    for order_index, task_id, max_score, requires_manual_grading in normalized:
         task = Tasks.query.get(task_id)
         if not task:
             continue
@@ -241,7 +247,9 @@ def _apply_assignment_builder_payload(assignment: Assignment, data: dict[str, An
             db.session.add(assignment_task)
         assignment_task.order_index = order_index
         assignment_task.max_score = max_score
-        assignment_task.requires_manual_grading = _requires_manual_from_template(task, bool((task.answer or '').strip()))
+        assignment_task.requires_manual_grading = _requires_manual_from_template(
+            task, bool((task.answer or '').strip()), explicit_override=requires_manual_grading
+        )
     for removed in existing.values():
         db.session.delete(removed)
 

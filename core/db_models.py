@@ -387,6 +387,8 @@ class Tasks(db.Model):
     content_html = db.Column(db.Text, nullable=False)
     answer = db.Column(db.Text, nullable=True)
     attached_files = db.Column(db.Text, nullable=True)
+    # Автор ручной задачи. Нужен для личного банка преподавателя и не заполняется у импортированных задач.
+    created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True, index=True)
     last_scraped = db.Column(db.DateTime, default=moscow_now)
     knowledge_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='SET NULL'), nullable=True, index=True)
 
@@ -452,6 +454,7 @@ class Tasks(db.Model):
     blacklist_tasks = db.relationship('BlacklistTasks', back_populates='task', lazy=True)
     topics = db.relationship('Topic', secondary=task_topics, backref='tasks', lazy=True)
     knowledge_node = db.relationship('KnowledgeNode', foreign_keys=[knowledge_node_id], backref='tasks')
+    created_by = db.relationship('User', foreign_keys=[created_by_id], backref='manual_bank_tasks')
 
     @property
     def is_manual_bank_task(self) -> bool:

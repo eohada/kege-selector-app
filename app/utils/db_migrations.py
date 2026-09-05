@@ -2041,6 +2041,9 @@ def ensure_schema_columns(app):
                         if 'bank_origin' not in cols:
                             db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN bank_origin VARCHAR(32)'))
                             logger.info("Added bank_origin to Tasks")
+                        if 'created_by_id' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN created_by_id INTEGER'))
+                            logger.info("Added created_by_id to Tasks (personal manual bank)")
                         if 'starter_code' not in cols:
                             db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN starter_code TEXT'))
                             logger.info("Added starter_code to Tasks")
@@ -2073,6 +2076,10 @@ def ensure_schema_columns(app):
                             pass
                         try:
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_tasks_bank_origin ON "{tasks_table_resolved}"(bank_origin)'))
+                        except Exception:
+                            pass
+                        try:
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_created_by_id ON "{tasks_table_resolved}"(created_by_id)'))
                         except Exception:
                             pass
                         if 'kege_source_tag' not in cols:

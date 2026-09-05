@@ -1,4 +1,5 @@
 from datetime import timedelta
+from io import BytesIO
 
 
 def _login_as(client, user_id: int, role: str) -> None:
@@ -116,6 +117,71 @@ def test_v2_assignment_builder_uses_live_contracts_and_publishes_draft(app, clie
     with app.app_context():
         assert db.session.get(Assignment, draft_id) is None
         assert db.session.get(Assignment, published.get_json()['assignment_id']).is_active is True
+
+
+def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app, client, role_users):
+    """Авторская задача из единого конструктора сохраняется, назначается и ждёт ручной проверки."""
+    from app import db
+    from app.models import Course
+    from core.db_models import Assignment, AssignmentTask, Tasks, utc_now
+
+    with app.app_context():
+        course = Course(title='ЕГЭ информатика — авторские задачи', slug='v2-author-bank', is_active=True)
+        db.session.add(course)
+        db.session.commit()
+        course_id = course.id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    created = client.post('/task-generator/bank/create', data={
+        'course_id': str(course_id),
+        'task_number': '6',
+        'content': 'Определите результат работы алгоритма.',
+        'starter_code': "print('Привет, BooStudy!')",
+        'max_score': '3',
+        'manual_grading': 'true',
+        'files': (BytesIO(b'example input'), 'input.txt'),
+    }, content_type='multipart/form-data')
+    assert created.status_code == 201, created.get_json()
+    created_task = created.get_json()['task']
+    assert created_task['requires_manual_grading'] is True
+
+    with app.app_context():
+        task = db.session.get(Tasks, created_task['task_id'])
+        assert task.created_by_id == role_users['tutor_id']
+        assert task.starter_code == "print('Привет, BooStudy!')"
+        assert task.attached_files
+
+    draft = client.post('/assignments/api/create/draft', json={
+        'title': 'Авторская задача',
+        'assignment_type': 'homework',
+        'deadline': (utc_now() + timedelta(days=2)).isoformat(),
+        'course_id': course_id,
+        'tasks': [{
+            'task_id': created_task['task_id'], 'max_score': 3,
+            'requires_manual_grading': True,
+        }],
+    })
+    assert draft.status_code == 200, draft.get_json()
+    draft_id = draft.get_json()['assignment_id']
+
+    published = client.post('/assignments/distribute', json={
+        'draft_id': draft_id,
+        'title': 'Авторская задача',
+        'type': 'homework',
+        'recipientIds': [role_users['student_id']],
+        'deadline': (utc_now() + timedelta(days=2)).isoformat(),
+        'tasks': [{
+            'task_id': created_task['task_id'], 'max_score': 3,
+            'requires_manual_grading': True,
+        }],
+    })
+    assert published.status_code == 201, published.get_json()
+
+    with app.app_context():
+        assignment = db.session.get(Assignment, published.get_json()['assignment_id'])
+        assignment_task = AssignmentTask.query.filter_by(assignment_id=assignment.assignment_id).one()
+        assert assignment_task.requires_manual_grading is True
+        assert assignment_task.max_score == 3
 
 
 def test_assignment_detail_renders_canonical_v2_screen(app, client, role_users):

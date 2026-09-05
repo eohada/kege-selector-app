@@ -189,6 +189,22 @@ def _require_task_generator_access() -> None:
     abort(403)
 
 
+def _require_manual_task_create_access() -> None:
+    """Создание своей задачи доступно преподавателю, который может выдать работу."""
+    try:
+        if current_user and current_user.is_authenticated and (
+            current_user.is_admin()
+            or current_user.is_creator()
+            or has_permission(current_user, 'task.manage')
+            or has_permission(current_user, 'assignment.create')
+        ):
+            return
+    except Exception:
+        pass
+    from flask import abort
+    abort(403)
+
+
 @task_generator_bp.route('/sandbox/task_generator', methods=['GET', 'POST'])
 @task_generator_bp.route('/sandbox/task_generator/<int:lesson_id>', methods=['GET', 'POST'])
 @task_generator_bp.route('/task-generator/<int:lesson_id>', methods=['GET', 'POST'])
@@ -943,7 +959,7 @@ def _stream_accept_tasks_bundle(
 @login_required
 def task_generator_bank_picker_list():
     """Список заданий из банка с пометкой «уже в цели / ещё нет» (урок и/или шаблон)."""
-    _require_task_generator_access()
+    _require_manual_task_create_access()
     data = request.get_json(silent=True) or request.args.to_dict() or {}
 
     assignment_type = (data.get('assignment_type') or 'homework').strip()
@@ -986,7 +1002,7 @@ def task_generator_bank_picker_list():
 
     lesson_ids, template_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
 
-    bq = Tasks.query.options(joinedload(Tasks.course))
+    bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by))
     if exam_course_id:
         # Check if tasks exist for this course before strict filtering
         if Tasks.query.filter(Tasks.course_id == exam_course_id).first():
@@ -998,7 +1014,7 @@ def task_generator_bank_picker_list():
     if search_query:
         bq = bq.filter(Tasks.content_html.ilike(f'%{search_query}%'))
     if only_my:
-        bq = bq.filter(Tasks.bank_origin == 'manual')
+        bq = bq.filter(Tasks.bank_origin == 'manual', Tasks.created_by_id == current_user.id)
     bq = bq.order_by(Tasks.task_id.desc())
 
     total = bq.count()
@@ -1020,7 +1036,7 @@ def task_generator_bank_picker_list():
             'difficulty_level': getattr(t, 'difficulty_level', 2) or 2,
             'answer': getattr(t, 'answer', '') or '',
             'max_score': getattr(t, 'max_score', 1) or 1,
-            'author_name': getattr(t, 'author_name', None) or 'Автор',
+            'author_name': (getattr(getattr(t, 'created_by', None), 'full_name', None) or 'Автор'),
             'source': getattr(t, 'source_url', None) or getattr(t, 'kege_source_tag', None) or 'Банк задач',
             'topic': getattr(t, 'topic', None) or f"Задание №{getattr(t, 'task_number', 1)}",
             'attached_files': getattr(t, 'attached_files', []) or [],
@@ -1591,9 +1607,10 @@ def task_generator_bank_attach(task_id: int):
 @task_generator_bp.route('/task-generator/bank/create', methods=['POST'])
 @login_required
 def task_generator_bank_create():
-    """Создать задание в банке вручную (JSON)."""
-    _require_task_generator_access()
-    data = request.get_json(silent=True) or {}
+    """Создать авторское задание в личном банке из JSON или multipart-формы."""
+    _require_manual_task_create_access()
+    data = request.get_json(silent=True) if request.is_json else request.form.to_dict()
+    data = data or {}
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
 
@@ -1616,7 +1633,10 @@ def task_generator_bank_create():
         return jsonify({'success': False, 'error': f'Номер {task_number} не входит в спецификацию выбранной программы'}), 400
 
     content_html = _normalize_manual_content_html(data.get('content_html') or data.get('content') or '')
+    if not re.sub(r'<[^>]+>', '', content_html).strip():
+        return jsonify({'success': False, 'error': 'Добавьте условие задания'}), 400
     answer = (data.get('answer') or '').strip() or None
+    manual_grading = str(data.get('manual_grading') or data.get('requires_manual_grading') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
     solution_text = (data.get('solution') or '').strip()
     starter_code = (data.get('starter_code') or '').strip() or None
     difficulty_level = _parse_difficulty_level(data.get('difficulty_level'))
@@ -1635,13 +1655,34 @@ def task_generator_bank_create():
             content_html=content_html,
             answer=answer,
             attached_files=None,
+            created_by_id=current_user.id,
             bank_origin='manual',
             starter_code=starter_code,
             difficulty_level=difficulty_level,
+            max_score=max(1, min(100, int(data.get('max_score') or 1))),
             hints=hints,
         )
         db.session.add(task)
         db.session.flush()
+
+        uploaded_files = request.files.getlist('files') + request.files.getlist('files[]')
+        if uploaded_files:
+            from app.uploads.service import save_uploaded_file
+            static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+            upload_folder = os.path.join(static_root, 'uploads', 'task_bank', str(current_user.id), str(task.task_id))
+            allowed_exts = {
+                'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'txt', 'doc', 'docx',
+                'xls', 'xlsx', 'zip', 'rar', '7z', 'py', 'csv',
+            }
+            for file in uploaded_files:
+                if not file or not file.filename:
+                    continue
+                orig_name, abs_path, _size = save_uploaded_file(
+                    file=file, base_folder=upload_folder, allowed_exts=allowed_exts,
+                    max_bytes=30 * 1024 * 1024,
+                )
+                rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
+                _attached_files_append(task, {'name': orig_name, 'url': url_for('static', filename=rel)})
 
         if solution_text:
             sol = TaskSolution.query.filter_by(task_id=task.task_id).first()
@@ -1668,13 +1709,16 @@ def task_generator_bank_create():
         entity='Task',
         entity_id=task.task_id,
         status='success',
-        metadata={'course_id': course_id, 'task_number': task_number, 'site_task_id': site_task_id},
+        metadata={'course_id': course_id, 'task_number': task_number, 'site_task_id': site_task_id, 'owner_id': current_user.id},
     )
 
+    task_payload = _task_to_payload(task)
+    task_payload['max_score'] = task.max_score or 1
+    task_payload['requires_manual_grading'] = manual_grading or not bool(answer)
     return jsonify({
         'success': True,
         'task_id': task.task_id,
-        'task': _task_to_payload(task),
+        'task': task_payload,
     }), 201
 
 
