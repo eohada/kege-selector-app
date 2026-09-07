@@ -183,7 +183,7 @@
 
           <!-- Источники заданий без внутренних идентификаторов -->
           <div class="grid grid-cols-2 gap-2.5">
-            <button type="button" onclick="openBankModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
+            <button type="button" onclick="openTaskBankPage()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
               <i class="ph-bold ph-books text-indigo-600"></i> Выбрать из банка
             </button>
             <button type="button" onclick="openCustomTaskModal()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black px-4 py-3 rounded-xl border border-indigo-200 border-b-[4px] shadow-[0_2px_5px_rgba(79,70,229,0.1)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
@@ -642,6 +642,12 @@ function openInputIdsModal() {
 }
 function closeInputIdsModal() {
   document.getElementById('input-ids-modal').classList.add('hidden');
+}
+
+function openTaskBankPage() {
+  const current = new URL(window.location.href);
+  const returnTo = `${current.pathname}${current.search}`;
+  window.location.href = `/task-generator/bank?return_to=${encodeURIComponent(returnTo)}`;
 }
 
 function openBankModal() {
@@ -1166,6 +1172,25 @@ document.addEventListener('DOMContentLoaded', () => {
     applyPreset('homework');
   }
 
+  // Задания, собранные на отдельной странице банка, возвращаются только в
+  // текущий черновик и сразу становятся частью обычного автосохранения.
+  try {
+    const queued = JSON.parse(sessionStorage.getItem('boostudy.assignment-bank.selection.v1') || '[]');
+    if (Array.isArray(queued)) {
+      let added = 0;
+      queued.forEach(task => {
+        if (task?.task_id && !attachedTasks.some(existing => Number(existing.task_id) === Number(task.task_id))) {
+          attachedTasks.push(task);
+          added += 1;
+        }
+      });
+      sessionStorage.removeItem('boostudy.assignment-bank.selection.v1');
+      if (added) window.pendingBankToast = `Добавлено заданий из банка: ${added}`;
+    }
+  } catch (_) {
+    sessionStorage.removeItem('boostudy.assignment-bank.selection.v1');
+  }
+
   if (pageData.assignmentId) {
     const savedRecipients = sessionStorage.getItem(`draft_recipients_${pageData.assignmentId}`);
     if (savedRecipients) {
@@ -1190,6 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('bank-modal').classList.contains('hidden')) loadBankTasks();
   });
   isBuilderReady = true;
+  if (window.pendingBankToast) show3DToast(window.pendingBankToast);
 });
 </script>
 {% endblock %}

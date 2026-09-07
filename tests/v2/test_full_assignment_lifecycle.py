@@ -122,6 +122,22 @@ def test_v2_assignment_builder_uses_live_contracts_and_publishes_draft(app, clie
         assert db.session.get(Assignment, published.get_json()['assignment_id']).is_active is True
 
 
+def test_task_bank_is_a_separate_v2_page(app, client, role_users):
+    """Банк открывается отдельным V2-экраном и возвращает только на внутренний адрес."""
+    _login_as(client, role_users['tutor_id'], 'tutor')
+
+    page = client.get('/task-generator/bank?return_to=/assignments/create?assignment_id=12')
+    assert page.status_code == 200
+    assert 'Библиотека преподавателя'.encode('utf-8') in page.data
+    assert 'В конструктор'.encode('utf-8') in page.data
+    assert b'boostudy.assignment-bank.selection.v1' in page.data
+    assert b'id="bank-modal"' not in page.data
+
+    unsafe_return = client.get('/task-generator/bank?return_to=https://example.test')
+    assert unsafe_return.status_code == 200
+    assert b'https://example.test' not in unsafe_return.data
+
+
 def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app, client, role_users):
     """Авторская задача из единого конструктора сохраняется, назначается и ждёт ручной проверки."""
     from app import db

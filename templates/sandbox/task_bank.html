@@ -1,0 +1,290 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token else '' }}">
+
+<main class="min-h-screen w-full bg-slate-50/50 p-6 pl-[7.5rem] pb-28">
+  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <header class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8">
+      <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+        <div class="space-y-2">
+          <a href="{{ return_to }}" class="inline-flex items-center gap-1.5 text-xs font-black text-indigo-700 hover:text-indigo-900 no-underline">
+            <i class="ph-bold ph-arrow-left"></i> Вернуться в конструктор
+          </a>
+          <div class="flex items-center gap-3">
+            <span class="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 border-2 border-indigo-200 flex items-center justify-center shadow-[0_3px_0_#C7D2FE]"><i class="ph-bold ph-books text-xl"></i></span>
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Библиотека преподавателя</p>
+              <h1 class="text-2xl sm:text-3xl font-black text-slate-800 font-display tracking-tight">Банк заданий</h1>
+            </div>
+          </div>
+          <p class="text-sm text-slate-500 max-w-2xl">Выбирайте готовые задания, изучайте эталон и код, редактируйте свои материалы и соберите набор для текущей работы.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" onclick="openTaskEditor()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs inline-flex items-center gap-2">
+            <i class="ph-bold ph-plus-circle text-indigo-600 text-base"></i> Создать своё
+          </button>
+          <button type="button" onclick="returnToBuilder()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,.22)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs inline-flex items-center gap-2">
+            <i class="ph-bold ph-arrow-bend-up-left text-base"></i> В конструктор <span id="selected-count" class="min-w-5 h-5 px-1 rounded-md bg-white/20 text-center leading-5">0</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-5 sm:p-6 space-y-4">
+      <label class="block">
+        <span class="sr-only">Поиск заданий</span>
+        <div class="relative">
+          <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input id="bank-search" oninput="scheduleBankSearch()" placeholder="Поиск по названию, теме или условию" class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl pl-11 pr-4 py-3.5 text-sm text-slate-800 outline-none transition-colors">
+        </div>
+      </label>
+      <div class="space-y-2">
+        <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Курс</p>
+        <div id="bank-course-tabs" class="flex gap-2 overflow-x-auto pb-2 boostudy-scroll-horizontal"></div>
+      </div>
+      <div class="space-y-2">
+        <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Тема</p>
+        <div id="bank-module-tabs" class="flex gap-2 overflow-x-auto pb-2 boostudy-scroll-horizontal"></div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <p id="bank-result-count" class="text-xs font-bold text-slate-500">Загружаем задания…</p>
+        <button id="bank-only-my" type="button" onclick="toggleOnlyMyBankTasks()" class="bg-white text-slate-600 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Мои задания</button>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,.65fr)] gap-6 items-start">
+      <div class="space-y-5">
+        <div id="bank-tasks-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        <button id="load-more-button" type="button" onclick="loadMoreBankTasks()" class="hidden w-full bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-3 rounded-xl border-2 border-slate-200 border-b-[4px] shadow-[0_3px_0_#DAE1E9] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs">Показать ещё</button>
+      </div>
+      <aside id="bank-task-detail" class="xl:sticky xl:top-6 bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-7 min-h-[420px]"></aside>
+    </section>
+  </div>
+</main>
+
+<style>
+  .boostudy-scroll-horizontal { scrollbar-width: thin; scrollbar-color: #a5b4fc transparent; }
+  .boostudy-scroll-horizontal::-webkit-scrollbar { height: 7px; }
+  .boostudy-scroll-horizontal::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 999px; }
+  .task-bank-condition img { max-width: 100%; height: auto; border-radius: 1rem; }
+</style>
+
+<script>
+const BANK_SELECTION_KEY = 'boostudy.assignment-bank.selection.v1';
+const BANK_RETURN_TO = {{ return_to | tojson }};
+let bankCourseId = '';
+let bankModule = '';
+let bankSearchTimer = null;
+let bankPage = 1;
+let bankTotal = 0;
+let bankTasksById = {};
+let selectedBankTaskId = null;
+let queuedTasks = new Map();
+
+function getCsrfToken() {
+  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+}
+
+function plainText(html) {
+  const node = document.createElement('div');
+  node.innerHTML = html || '';
+  return (node.textContent || node.innerText || '').replace(/\s+/g, ' ').trim();
+}
+
+function taskForBuilder(task) {
+  return {
+    task_id: task.task_id,
+    task_number: task.task_number,
+    content_html: task.content_html,
+    answer: task.answer || '',
+    starter_code: task.starter_code || '',
+    max_score: task.max_score || 1,
+    source: task.source || 'Банк заданий',
+    requires_manual_grading: !task.answer,
+  };
+}
+
+function loadQueuedTasks() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(BANK_SELECTION_KEY) || '[]');
+    if (Array.isArray(saved)) saved.forEach(task => task?.task_id && queuedTasks.set(Number(task.task_id), task));
+  } catch (_) {
+    sessionStorage.removeItem(BANK_SELECTION_KEY);
+  }
+  updateSelectedCount();
+}
+
+function persistQueuedTasks() {
+  sessionStorage.setItem(BANK_SELECTION_KEY, JSON.stringify([...queuedTasks.values()]));
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  document.getElementById('selected-count').textContent = queuedTasks.size;
+}
+
+function returnToBuilder() {
+  persistQueuedTasks();
+  window.location.href = BANK_RETURN_TO;
+}
+
+function taskCard(task) {
+  const selected = Number(task.task_id) === Number(selectedBankTaskId);
+  const queued = queuedTasks.has(Number(task.task_id));
+  return `<article onclick="selectBankTask(${task.task_id})" class="cursor-pointer bg-white border-2 ${selected ? 'border-indigo-500 shadow-[0_4px_0_#818cf8]' : 'border-slate-200 shadow-[0_3px_0_#DAE1E9] hover:border-indigo-300'} rounded-2xl p-5 space-y-4 transition-all">
+    <div class="flex items-start justify-between gap-3"><span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black leading-tight">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">${escapeHtml(task.difficulty_label_ru || 'Средний')}</span></div>
+    <div class="space-y-2"><h2 class="text-base font-black text-slate-800 leading-snug">${escapeHtml(task.title || 'Задание')}</h2><p class="text-xs leading-relaxed text-slate-600">${escapeHtml(plainText(task.content_html).slice(0, 210) || 'Без текста условия')}</p></div>
+    <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3"><span class="text-[11px] font-bold text-slate-400">${escapeHtml(task.course_title || '')}</span><button type="button" onclick="event.stopPropagation(); toggleQueuedTask(${task.task_id})" class="shrink-0 ${queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-3 py-2 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">${queued ? 'Добавлено' : 'В работу'}</button></div>
+  </article>`;
+}
+
+function renderBankTasks(tasks, append = false) {
+  const list = document.getElementById('bank-tasks-list');
+  if (!append) list.innerHTML = '';
+  if (!tasks.length && !append) {
+    list.innerHTML = '<div class="md:col-span-2 bg-white border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center text-sm font-bold text-slate-500">По этим фильтрам заданий нет.</div>';
+  } else {
+    list.insertAdjacentHTML('beforeend', tasks.map(taskCard).join(''));
+  }
+  const more = document.getElementById('load-more-button');
+  more.classList.toggle('hidden', bankPage * 24 >= bankTotal);
+}
+
+function renderBankTabs(data) {
+  const tabClass = active => `px-4 py-2.5 rounded-xl text-xs font-black whitespace-nowrap border transition-all cursor-pointer ${active ? 'bg-indigo-600 text-white border-indigo-700 shadow-[0_3px_0_#3730a3]' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`;
+  document.getElementById('bank-course-tabs').innerHTML = `<button type="button" class="${tabClass(!bankCourseId)}" onclick="setBankCourse('')">Все курсы</button>${(data.courses || []).map(course => `<button type="button" class="${tabClass(String(course.id) === String(bankCourseId))}" onclick="setBankCourse('${course.id}')">${escapeHtml(course.title)}</button>`).join('')}`;
+  document.getElementById('bank-module-tabs').innerHTML = `<button type="button" class="${tabClass(!bankModule)}" onclick="setBankModule('')">Все темы</button>${(data.modules || []).map(module => `<button type="button" class="${tabClass(module === bankModule)}" onclick='setBankModule(${JSON.stringify(module)})'>${escapeHtml(module)}</button>`).join('')}`;
+  const mine = document.getElementById('bank-only-my');
+  const onlyMine = mine.dataset.active === 'true';
+  mine.className = tabClass(onlyMine);
+  mine.textContent = onlyMine ? 'Показываю мои' : 'Мои задания';
+}
+
+async function loadBankTasks({ append = false } = {}) {
+  const list = document.getElementById('bank-tasks-list');
+  if (!append) list.innerHTML = '<p class="md:col-span-2 py-12 text-center text-sm font-bold text-slate-500">Загружаем задания…</p>';
+  const params = new URLSearchParams({ per_page: '24', page: String(bankPage) });
+  if (bankCourseId) params.set('exam_course_id', bankCourseId);
+  if (bankModule) params.set('module', bankModule);
+  const query = document.getElementById('bank-search').value.trim();
+  if (query) params.set('q', query);
+  if (document.getElementById('bank-only-my').dataset.active === 'true') params.set('only_my', 'true');
+  try {
+    const response = await fetch(`/task-generator/bank/picker/list?${params.toString()}`);
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось получить задания');
+    const tasks = data.items || [];
+    tasks.forEach(task => { bankTasksById[task.task_id] = task; });
+    bankTotal = Number(data.total || 0);
+    document.getElementById('bank-result-count').textContent = `Найдено: ${bankTotal}`;
+    renderBankTabs(data);
+    renderBankTasks(tasks, append);
+    if (tasks.length && (!selectedBankTaskId || !bankTasksById[selectedBankTaskId])) selectBankTask(tasks[0].task_id);
+    else if (selectedBankTaskId) selectBankTask(selectedBankTaskId);
+  } catch (error) {
+    list.innerHTML = `<p class="md:col-span-2 py-12 text-center text-sm font-bold text-rose-600">${escapeHtml(error.message || 'Ошибка загрузки банка')}</p>`;
+  }
+}
+
+function resetAndLoad() {
+  bankPage = 1;
+  bankTasksById = {};
+  selectedBankTaskId = null;
+  loadBankTasks();
+}
+
+function setBankCourse(courseId) { bankCourseId = String(courseId || ''); bankModule = ''; resetAndLoad(); }
+function setBankModule(module) { bankModule = module || ''; resetAndLoad(); }
+function toggleOnlyMyBankTasks() { const button = document.getElementById('bank-only-my'); button.dataset.active = button.dataset.active === 'true' ? 'false' : 'true'; resetAndLoad(); }
+function scheduleBankSearch() { window.clearTimeout(bankSearchTimer); bankSearchTimer = window.setTimeout(resetAndLoad, 250); }
+function loadMoreBankTasks() { bankPage += 1; loadBankTasks({ append: true }); }
+
+function toggleQueuedTask(taskId) {
+  const id = Number(taskId);
+  const task = bankTasksById[id];
+  if (!task) return;
+  if (queuedTasks.has(id)) queuedTasks.delete(id);
+  else queuedTasks.set(id, taskForBuilder(task));
+  persistQueuedTasks();
+  renderBankTasks(Object.values(bankTasksById).filter(task => true), false);
+  selectBankTask(id);
+}
+
+function renderEmptyDetail() {
+  document.getElementById('bank-task-detail').innerHTML = '<div class="h-full min-h-[350px] flex flex-col items-center justify-center text-center gap-3 text-slate-400"><span class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-400 border border-indigo-100 flex items-center justify-center"><i class="ph-bold ph-eye text-2xl"></i></span><p class="text-base font-black text-slate-600">Выберите задание</p><p class="text-sm max-w-xs">Здесь будут видны полное условие, правильный ответ, код и доступные действия.</p></div>';
+}
+
+function selectBankTask(taskId) {
+  const task = bankTasksById[Number(taskId)];
+  if (!task) return renderEmptyDetail();
+  selectedBankTaskId = Number(taskId);
+  const queued = queuedTasks.has(Number(task.task_id));
+  const answer = task.answer ? `<section><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Правильный ответ</p><pre class="mt-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm font-black text-emerald-800 whitespace-pre-wrap">${escapeHtml(task.answer)}</pre></section>` : '<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-bold text-amber-800">Это задание проверяется преподавателем вручную.</div>';
+  const code = task.starter_code ? `<section><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Стартовый код</p><pre class="mt-2 bg-slate-900 text-slate-100 rounded-xl p-4 text-xs leading-relaxed overflow-x-auto"><code>${escapeHtml(task.starter_code)}</code></pre></section>` : '';
+  const solution = task.solution ? `<details class="bg-white border-2 border-slate-200 rounded-xl p-4"><summary class="cursor-pointer text-xs font-black text-slate-700">Показать разбор преподавателя</summary><pre class="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">${escapeHtml(task.solution)}</pre></details>` : '';
+  const edit = task.can_edit ? `<button type="button" onclick="openTaskEditor(${task.task_id})" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Редактировать</button>` : `<button type="button" onclick="openTaskEditor(${task.task_id})" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Создать копию</button>`;
+  document.getElementById('bank-task-detail').innerHTML = `<div class="space-y-5"><div><div class="flex flex-wrap gap-2"><span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-black">${escapeHtml(task.difficulty_label_ru || 'Средний')}</span></div><h2 class="mt-3 text-xl font-black text-slate-800 leading-tight">${escapeHtml(task.title || 'Задание')}</h2><p class="mt-2 text-xs text-slate-500">${escapeHtml(task.course_title || '')}</p></div><div class="task-bank-condition border-y-2 border-slate-200 py-5 text-sm leading-relaxed text-slate-700">${task.content_html || 'Без текста условия'}</div>${answer}${code}${solution}<div class="flex flex-wrap gap-2 pt-1"><button type="button" onclick="toggleQueuedTask(${task.task_id})" class="${queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-4 py-2.5 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">${queued ? 'Убрать из работы' : 'Добавить в работу'}</button>${edit}</div></div>`;
+  renderBankTasks(Object.values(bankTasksById), false);
+}
+
+function openTaskEditor(taskId = null) {
+  const source = taskId ? bankTasksById[Number(taskId)] : null;
+  const isEdit = Boolean(source?.can_edit);
+  const courses = [...new Map(Object.values(bankTasksById).map(task => [String(task.course_id), task.course_title]).filter(([id]) => id && id !== 'undefined')).entries()];
+  const courseOptions = courses.map(([id, title]) => `<option value="${escapeHtml(id)}" ${String(source?.course_id || bankCourseId) === id ? 'selected' : ''}>${escapeHtml(title)}</option>`).join('');
+  document.getElementById('bank-task-detail').innerHTML = `<form id="bank-task-editor" class="space-y-4"><div class="flex items-start justify-between gap-3"><div><p class="text-[10px] font-black uppercase tracking-wider text-indigo-600">${isEdit ? 'Редактирование' : source ? 'Копия в личный банк' : 'Новое авторское задание'}</p><h2 class="mt-1 text-xl font-black text-slate-800">${isEdit ? 'Изменить задание' : 'Создать своё задание'}</h2></div><button type="button" onclick="${source ? `selectBankTask(${source.task_id})` : 'renderEmptyDetail()'}" class="w-9 h-9 rounded-xl bg-white border-2 border-slate-200 text-slate-500 hover:text-slate-700 cursor-pointer"><i class="ph-bold ph-x"></i></button></div><label class="block text-xs font-black text-slate-700">Курс<select name="course_id" ${isEdit ? 'disabled' : ''} required class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm">${courseOptions || '<option value="">Сначала выберите курс в фильтре</option>'}</select></label><input name="task_number" type="hidden" value="${escapeHtml(source?.task_number || '1')}"><label class="block text-xs font-black text-slate-700">Баллы<input name="max_score" type="number" min="1" max="100" value="${escapeHtml(source?.max_score || '1')}" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm"></label><label class="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-xl px-3 py-3 text-xs font-black text-slate-700"><input id="editor-manual-grading" type="checkbox" class="accent-indigo-600" ${source && !source.answer ? 'checked' : ''} onchange="toggleEditorAnswer()"> Проверю сам</label><label class="block text-xs font-black text-slate-700">Условие<textarea name="content" required rows="8" placeholder="Напишите условие задания…" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm leading-relaxed">${escapeHtml(source ? plainText(source.content_html) : '')}</textarea></label><label id="editor-answer-wrap" class="block text-xs font-black text-slate-700">Правильный ответ<input name="answer" value="${escapeHtml(source?.answer || '')}" placeholder="Ответ для автоматической проверки" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm"></label><label class="block text-xs font-black text-slate-700">Пояснение для преподавателя<textarea name="solution" rows="4" placeholder="Разбор или критерии проверки" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm">${escapeHtml(source?.solution || '')}</textarea></label><label class="block text-xs font-black text-slate-700">Стартовый код<textarea name="starter_code" rows="4" placeholder="Например: print('Привет, BooStudy!')" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm font-mono">${escapeHtml(source?.starter_code || '')}</textarea></label>${isEdit ? '' : '<label class="block text-xs font-black text-slate-700">Изображения и файлы<input name="files" type="file" multiple class="mt-1.5 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-3 file:py-2.5 file:font-black file:text-indigo-700"></label>'}<div class="flex flex-wrap justify-end gap-2 pt-2"><button type="button" onclick="${source ? `selectBankTask(${source.task_id})` : 'renderEmptyDetail()'}" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] text-xs cursor-pointer">Отмена</button><button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all text-xs cursor-pointer">${isEdit ? 'Сохранить изменения' : 'Сохранить в банк'}</button></div></form>`;
+  document.getElementById('bank-task-editor').addEventListener('submit', event => saveTaskEditor(event, source, isEdit));
+  toggleEditorAnswer();
+}
+
+function toggleEditorAnswer() {
+  const wrap = document.getElementById('editor-answer-wrap');
+  const manual = document.getElementById('editor-manual-grading');
+  if (wrap && manual) wrap.classList.toggle('hidden', manual.checked);
+}
+
+async function saveTaskEditor(event, source, isEdit) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+  const manual = document.getElementById('editor-manual-grading').checked;
+  try {
+    let response;
+    if (isEdit) {
+      response = await fetch(`/task-generator/bank/${source.task_id}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ content: formData.get('content'), answer: manual ? null : formData.get('answer'), solution: formData.get('solution'), starter_code: formData.get('starter_code'), max_score: formData.get('max_score') }) });
+    } else {
+      formData.set('manual_grading', manual ? 'true' : 'false');
+      response = await fetch('/task-generator/bank/create', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: formData });
+    }
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось сохранить задание');
+    showToast(isEdit ? 'Изменения сохранены' : 'Задание сохранено в личном банке');
+    resetAndLoad();
+    if (!isEdit && payload.task_id) selectedBankTaskId = Number(payload.task_id);
+  } catch (error) {
+    showToast(error.message || 'Ошибка сохранения задания', true);
+  }
+}
+
+function showToast(message, isError = false) {
+  let toast = document.getElementById('boostudy-task-bank-toast');
+  if (!toast) { toast = document.createElement('div'); toast.id = 'boostudy-task-bank-toast'; document.body.appendChild(toast); }
+  toast.className = `${isError ? 'bg-rose-500 border-rose-700 shadow-[0_4px_0_#be123c]' : 'bg-emerald-500 border-emerald-700 shadow-[0_4px_0_#047857]'} fixed bottom-6 right-6 z-50 text-white border-2 rounded-2xl px-5 py-4 font-black text-sm transition-all`;
+  toast.textContent = message;
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => toast.remove(), 2600);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('bank-only-my').dataset.active = 'false';
+  loadQueuedTasks();
+  renderEmptyDetail();
+  loadBankTasks();
+});
+</script>
+{% endblock %}

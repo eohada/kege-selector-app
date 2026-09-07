@@ -1855,39 +1855,19 @@ def task_generator_bank_delete(task_id: int):
 @task_generator_bp.route('/task-generator/bank', methods=['GET'])
 @login_required
 def task_generator_bank():
-    """Старый URL: переносим на страницу генератора с блоком банка (без отдельной страницы)."""
-    _require_task_generator_access()
-    rd = {'bank_open': 1}
-    if request.args.get('course_id') not in (None, ''):
-        try:
-            rd['bank_course_id'] = int(request.args.get('course_id'))
-        except (TypeError, ValueError):
-            pass
-    if request.args.get('task_number') not in (None, ''):
-        try:
-            rd['bank_task_number'] = int(request.args.get('task_number'))
-        except (TypeError, ValueError):
-            pass
-    for _tid_key in ('bank_task_id', 'task_id'):
-        if request.args.get(_tid_key) not in (None, ''):
-            try:
-                rd['bank_task_id'] = int(request.args.get(_tid_key))
-                break
-            except (TypeError, ValueError):
-                pass
-    if request.args.get('page') not in (None, ''):
-        try:
-            rd['bank_page'] = int(request.args.get('page'))
-        except (TypeError, ValueError):
-            pass
-    if request.args.get('per_page') not in (None, ''):
-        try:
-            rd['bank_per_page'] = int(request.args.get('per_page'))
-        except (TypeError, ValueError):
-            pass
-    if request.args.get('only_manual'):
-        rd['bank_only_manual'] = 1
-    return redirect(url_for('task_generator.task_generator', **rd))
+    """Каноничная V2-страница банка заданий."""
+    _require_manual_task_create_access()
+
+    return_to = (request.args.get('return_to') or '').strip()
+    # Возвращаем только на внутренний путь: так ссылка «в конструктор» не может
+    # стать внешним редиректом из query string.
+    if not return_to.startswith('/') or return_to.startswith('//'):
+        return_to = url_for('task_generator.task_generator')
+
+    return render_template(
+        'sandbox/task_bank.html',
+        return_to=return_to,
+    )
 
 
 @task_generator_bp.route('/results')
