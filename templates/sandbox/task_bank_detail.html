@@ -1,0 +1,66 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token else '' }}">
+
+<main class="min-h-screen w-full bg-slate-50/50 p-6 pl-[7.5rem] pb-28">
+  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <header class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+      <div class="space-y-2">
+        <a href="{{ back_to }}" class="inline-flex items-center gap-1.5 text-xs font-black text-indigo-700 hover:text-indigo-900 no-underline"><i class="ph-bold ph-arrow-left"></i> К списку заданий</a>
+        <p class="text-[10px] font-black uppercase tracking-[.16em] text-indigo-600">Полный просмотр</p>
+        <h1 id="task-title" class="text-2xl sm:text-3xl font-black text-slate-800 font-display">Загружаем задание…</h1>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button id="queue-task-button" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,.22)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs">Добавить в работу</button>
+        <a href="{{ return_to }}" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline text-xs">В конструктор</a>
+      </div>
+    </header>
+
+    <div id="task-page-error" class="hidden bg-rose-50 border-2 border-rose-200 shadow-[0_3px_0_#fecdd3] rounded-2xl p-5 text-sm font-bold text-rose-700"></div>
+    <section id="task-page-content" class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,.65fr)] gap-6 items-start">
+      <article class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-7">
+        <div class="flex flex-wrap gap-2"><span id="task-topic" class="px-3 py-1.5 rounded-xl bg-indigo-100 text-indigo-700 text-xs font-black"></span><span id="task-level" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-black"></span></div>
+        <section class="space-y-3"><h2 class="text-lg font-black text-slate-800">Условие</h2><div id="task-condition" class="task-condition text-[15px] leading-7 text-slate-700"></div></section>
+        <section id="task-code-section" class="hidden space-y-3"><h2 class="text-lg font-black text-slate-800">Стартовый код</h2><pre class="python-code"><code id="task-code"></code></pre></section>
+      </article>
+      <aside class="xl:sticky xl:top-6 bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 space-y-5">
+        <div><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Программа</p><p id="task-course" class="mt-1 text-sm font-bold text-slate-700"></p></div>
+        <section id="task-answer-section" class="space-y-2"><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Правильный ответ</p><pre id="task-answer" class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm font-black text-emerald-800 whitespace-pre-wrap"></pre></section>
+        <div id="task-manual-section" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm font-bold text-amber-800">Это задание проверяется преподавателем вручную.</div>
+        <details id="task-solution-section" class="hidden bg-white border-2 border-slate-200 rounded-xl p-4"><summary class="cursor-pointer text-xs font-black text-slate-700">Показать разбор преподавателя</summary><pre id="task-solution" class="mt-4 whitespace-pre-wrap text-xs leading-relaxed text-slate-600"></pre></details>
+      </aside>
+    </section>
+  </div>
+</main>
+
+<style>
+  .task-condition { min-width: 0; overflow-wrap: anywhere; }
+  .task-condition pre,.python-code { max-width:100%; overflow-x:auto; margin:1rem 0; padding:1rem 1.1rem; border-radius:1rem; background:#111827; color:#e5edff; font:500 .88rem/1.7 Consolas,"Courier New",monospace; tab-size:4; white-space:pre; }
+  .task-condition pre code,.python-code code { font:inherit; color:inherit; }
+  .python-keyword { color:#c4b5fd; font-weight:800; }.python-builtin{color:#7dd3fc}.python-string{color:#86efac}.python-number{color:#f9a8d4}.python-comment{color:#94a3b8;font-style:italic}
+</style>
+
+<script>
+const TASK_ID = {{ task_id | tojson }};
+const BANK_RETURN_TO = {{ return_to | tojson }};
+const BANK_SELECTION_KEY = 'boostudy.assignment-bank.selection.v1';
+let bankTask = null;
+
+function escapeHtml(value) { return String(value || '').replace(/[&<>'"]/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[char])); }
+function highlightPython(code) {
+  const token = /(#.*$)|('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")|\b(def|return|if|elif|else|for|while|in|range|print|import|from|as|try|except|raise|with|open|True|False|None|and|or|not|lambda|yield|break|continue)\b|\b\d+(?:\.\d+)?\b/gm;
+  let result = '', last = 0, match;
+  while ((match = token.exec(code)) !== null) { result += escapeHtml(code.slice(last, match.index)); const cls = match[1] ? 'python-comment' : match[2] ? 'python-string' : match[3] ? 'python-keyword' : 'python-number'; result += `<span class="${cls}">${escapeHtml(match[0])}</span>`; last = match.index + match[0].length; }
+  return result + escapeHtml(code.slice(last));
+}
+function decorateCondition() { document.querySelectorAll('#task-condition pre code').forEach(code => { code.innerHTML = highlightPython(code.textContent || ''); }); }
+function taskForBuilder(task) { return { task_id:task.task_id, task_number:task.task_number, content_html:task.content_html, answer:task.answer || '', starter_code:task.starter_code || '', max_score:task.max_score || 1, source:task.source || 'Банк заданий', requires_manual_grading:!task.answer }; }
+function queuedIds() { try { return new Map(JSON.parse(sessionStorage.getItem(BANK_SELECTION_KEY) || '[]').filter(task => task?.task_id).map(task => [Number(task.task_id), task])); } catch (_) { return new Map(); } }
+function syncQueueButton() { const queued = queuedIds().has(Number(TASK_ID)); const button = document.getElementById('queue-task-button'); button.textContent = queued ? 'Убрать из работы' : 'Добавить в работу'; button.className = `${queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-700'} font-black px-5 py-3 rounded-xl border border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,.18)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs`; }
+function toggleTaskQueue() { const tasks = queuedIds(); if (tasks.has(Number(TASK_ID))) tasks.delete(Number(TASK_ID)); else tasks.set(Number(TASK_ID), taskForBuilder(bankTask)); sessionStorage.setItem(BANK_SELECTION_KEY, JSON.stringify([...tasks.values()])); syncQueueButton(); }
+function renderTask(task) { document.getElementById('task-title').textContent = task.title || 'Задание'; document.getElementById('task-topic').textContent = task.topic || 'Банк заданий'; document.getElementById('task-level').textContent = task.difficulty_label_ru || 'Средний'; document.getElementById('task-course').textContent = task.course_title || ''; document.getElementById('task-condition').innerHTML = task.content_html || 'Без текста условия'; decorateCondition(); if (task.starter_code) { document.getElementById('task-code-section').classList.remove('hidden'); document.getElementById('task-code').innerHTML = highlightPython(task.starter_code); } if (task.answer) document.getElementById('task-answer').textContent = task.answer; else { document.getElementById('task-answer-section').classList.add('hidden'); document.getElementById('task-manual-section').classList.remove('hidden'); } if (task.solution) { document.getElementById('task-solution-section').classList.remove('hidden'); document.getElementById('task-solution').textContent = task.solution; } syncQueueButton(); }
+async function loadTask() { try { const response = await fetch(`/task-generator/bank/picker/list?task_id=${TASK_ID}&per_page=5`); const data = await response.json(); if (!response.ok || !data.success || !data.items?.length) throw new Error(data.error || 'Задание не найдено'); bankTask = data.items[0]; renderTask(bankTask); } catch (error) { document.getElementById('task-page-content').classList.add('hidden'); const message = document.getElementById('task-page-error'); message.classList.remove('hidden'); message.textContent = error.message || 'Не удалось загрузить задание'; } }
+document.getElementById('queue-task-button').addEventListener('click', toggleTaskQueue); document.addEventListener('DOMContentLoaded', loadTask);
+</script>
+{% endblock %}

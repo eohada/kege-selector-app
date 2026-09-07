@@ -980,6 +980,11 @@ def task_generator_bank_picker_list():
     except (TypeError, ValueError, KeyError):
         exam_course_id = None
 
+    try:
+        selected_task_id = int(data['task_id']) if data.get('task_id') not in (None, '', False) else None
+    except (TypeError, ValueError, KeyError):
+        selected_task_id = None
+
     task_number = data.get('task_number') or data.get('task_type')
     try:
         task_number = int(task_number) if task_number not in (None, '', False, 'all') else None
@@ -1005,6 +1010,8 @@ def task_generator_bank_picker_list():
     from app.utils.python_bank_import import foundations_metadata
     thematic = foundations_metadata()
     bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by)).filter(Tasks.is_active.is_(True))
+    if selected_task_id is not None:
+        bq = bq.filter(Tasks.task_id == selected_task_id)
     if exam_course_id:
         bq = bq.filter(Tasks.course_id == exam_course_id)
     module = (data.get('module') or '').strip()
@@ -1867,6 +1874,28 @@ def task_generator_bank():
     return render_template(
         'sandbox/task_bank.html',
         return_to=return_to,
+    )
+
+
+@task_generator_bp.route('/task-generator/bank/<int:task_id>', methods=['GET'])
+@login_required
+def task_generator_bank_detail(task_id: int):
+    """Полноразмерный V2-просмотр одного задания из банка."""
+    _require_manual_task_create_access()
+    task = Tasks.query.filter_by(task_id=task_id, is_active=True).first_or_404()
+
+    return_to = (request.args.get('return_to') or '').strip()
+    if not return_to.startswith('/') or return_to.startswith('//'):
+        return_to = url_for('task_generator.task_generator')
+    back_to = (request.args.get('back_to') or '').strip()
+    if not back_to.startswith('/task-generator/bank') or back_to.startswith('//'):
+        back_to = url_for('task_generator.task_generator_bank', return_to=return_to)
+
+    return render_template(
+        'sandbox/task_bank_detail.html',
+        task_id=task.task_id,
+        return_to=return_to,
+        back_to=back_to,
     )
 
 

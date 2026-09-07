@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import html
+import io
 import json
+from contextlib import redirect_stdout
 from functools import lru_cache
 from pathlib import Path
 
@@ -38,93 +40,143 @@ def _foundation_variant_number(item: dict) -> int:
         return 1
 
 
-def _foundation_code(module: str, n: int) -> tuple[str, str]:
-    """Возвращает самостоятельный код и точный вывод для упражнения темы.
+def _output_of(code: str) -> str:
+    """Возвращает вывод контролируемой учебной программы без ручных эталонов."""
+    output = io.StringIO()
+    with redirect_stdout(output):
+        exec(compile(code, '<python-foundations>', 'exec'), {})  # noqa: S102 -- source is hard-coded below
+    return output.getvalue().rstrip('\n')
 
-    Старый пакет содержал десять словесных вариантов одного и того же кода.
-    Здесь номер упражнения меняет и данные, и выполняемое действие, поэтому
-    повторный импорт безопасно обновляет уже созданные записи без смены ID.
-    """
-    if module == 'Переменные и типы данных':
-        code = f"whole = {n * 7}\nratio = {n} + 0.75\nprint(type(whole).__name__, int(ratio))"
-        return code, f'int {n}'
-    if module == 'Ввод и вывод':
-        code = f"raw = '{n + 4} {n * 3}'\na, b = map(int, raw.split())\nprint(a + b)"
-        return code, str(n * 4 + 4)
-    if module == 'Арифметика и логика':
-        a, b = n + 11, n % 4 + 2
-        code = f"a = {a}\nb = {b}\nprint(a * b - a // b)"
-        return code, str(a * b - a // b)
-    if module == 'Условия':
-        value = n * 5 - 12
-        answer = 'положительное' if value > 0 else ('нулевое' if value == 0 else 'отрицательное')
-        code = f"value = {value}\nif value > 0:\n    print('положительное')\nelif value == 0:\n    print('нулевое')\nelse:\n    print('отрицательное')"
-        return code, answer
-    if module == 'Циклы':
-        stop = n + 4
-        code = f"total = 0\nfor number in range(1, {stop}):\n    total += number\nprint(total)"
-        return code, str((stop - 1) * stop // 2)
+
+def _foundation_case(module: str, n: int) -> tuple[str, str, str]:
+    """Десять разных практик для каждой темы, а не один шаблон с другими числами."""
+    cases: dict[str, tuple[tuple[str, str, str], ...]] = {
+        'Переменные и типы данных': (
+            ('Тип значения', 'Определите тип результата целочисленного деления.', "value = 17 // 3\nprint(type(value).__name__)"),
+            ('Преобразование строки', 'Проследите преобразование строки в число.', "text = '08'\nnumber = int(text) + 7\nprint(number)"),
+            ('Обмен значений', 'Какой будет пара после одновременного присваивания?', "left, right = 4, 9\nleft, right = right - left, left + right\nprint(left, right)"),
+            ('Логическое значение', 'Определите результат сравнения.', "age = 16\nprint(age >= 14 and age < 18)"),
+            ('Округление вниз', 'Что напечатает программа после преобразования?', "ratio = 8.95\nprint(int(ratio) * 2)"),
+            ('Составное присваивание', 'Проследите изменение переменной.', "score = 12\nscore += 5\nscore *= 2\nprint(score)"),
+            ('Форматирование текста', 'Определите итоговую строку.', "name = 'Лена'\nplace = 3\nprint(f'{name}: {place} место')"),
+            ('Булево значение', 'Проверьте, во что преобразуется непустая строка.', "word = '0'\nprint(bool(word))"),
+            ('Остаток и тип', 'Определите значение и его тип.', "result = 19 % 6\nprint(result, type(result).__name__)"),
+            ('Цепочка присваиваний', 'Проследите независимое изменение переменных.', "a = b = 5\na += 2\nprint(a, b)"),
+        ),
+        'Ввод и вывод': (
+            ('Два числа в строке', 'Разберите две величины из одной строки.', "raw = '12 7'\na, b = map(int, raw.split())\nprint(a - b)"),
+            ('Имя пользователя', 'Соберите приветствие из введённого имени.', "name = 'Мира'\nprint('Привет, ' + name + '!')"),
+            ('Три значения', 'Найдите среднее трёх введённых чисел.', "raw = '4 9 14'\nvalues = list(map(int, raw.split()))\nprint(sum(values) // len(values))"),
+            ('Разделитель', 'Определите строку с нестандартным разделителем.', "first, second = 'код', 'готов'\nprint(first, second, sep=' → ')"),
+            ('Несколько строк', 'Сложите числа, полученные из двух строк.', "first = int('18')\nsecond = int('24')\nprint(first + second)"),
+            ('Список слов', 'Посчитайте количество введённых слов.', "line = 'путь к ответу'\nprint(len(line.split()))"),
+            ('Вывод без пробела', 'Определите результат параметра end.', "print('A', end='')\nprint('B', end='!')"),
+            ('Число с запятой', 'Преобразуйте запись с десятичной точкой.', "price = float('12.5')\nprint(price * 2)"),
+            ('Распаковка', 'Выведите второе слово из строки.', "city, subject, day = 'Казань Python пятница'.split()\nprint(subject)"),
+            ('Сбор результата', 'Соберите ответ из частей.', "parts = ['ЕГЭ', 'по', 'информатике']\nprint(' '.join(parts))"),
+        ),
+        'Арифметика и логика': (
+            ('Остаток от деления', 'Найдите последнюю цифру числа.', "number = 587\nprint(number % 10)"),
+            ('Степень', 'Вычислите значение выражения.', "print(3 ** 3 - 5)"),
+            ('Приоритет операций', 'Учтите порядок выполнения операций.', "print(18 - 4 * 3 + 2)"),
+            ('Делимость', 'Проверьте, делится ли число на 3.', "number = 42\nprint(number % 3 == 0)"),
+            ('Логическое И', 'Определите значение сложного условия.', "score = 76\nprint(score >= 60 and score < 90)"),
+            ('Логическое ИЛИ', 'Проверьте, подходит ли символ.', "letter = 'ы'\nprint(letter == 'а' or letter == 'ы')"),
+            ('Модуль числа', 'Найдите расстояние до нуля.', "temperature = -13\nprint(abs(temperature))"),
+            ('Округление', 'Округлите число до целой части по правилам Python.', "print(round(7.6))"),
+            ('Целая часть', 'Вычислите количество полных десятков.', "print(97 // 10)"),
+            ('Сравнение', 'Определите результат цепочки сравнений.', "print(4 < 7 <= 7)"),
+        ),
+        'Условия': (
+            ('Знак числа', 'Определите, какой текст будет выведен.', "number = -4\nif number > 0:\n    print('плюс')\nelif number == 0:\n    print('ноль')\nelse:\n    print('минус')"),
+            ('Большее число', 'Найдите большее из двух чисел через условие.', "a, b = 15, 11\nif a > b:\n    print(a)\nelse:\n    print(b)"),
+            ('Чётность', 'Определите, как классифицируется число.', "number = 27\nprint('чётное' if number % 2 == 0 else 'нечётное')"),
+            ('Диапазон', 'Проверьте попадание в диапазон.', "point = 8\nif 1 <= point <= 10:\n    print('внутри')\nelse:\n    print('снаружи')"),
+            ('Минимум трёх', 'Выберите наименьшее значение.', "a, b, c = 8, 3, 5\nif a < b and a < c:\n    print(a)\nelif b < c:\n    print(b)\nelse:\n    print(c)"),
+            ('Високосный год', 'Проверьте условие кратности.', "year = 2024\nif year % 400 == 0 or year % 4 == 0 and year % 100 != 0:\n    print('да')\nelse:\n    print('нет')"),
+            ('Скидка', 'Применится ли скидка?', "total = 1200\nif total >= 1000:\n    total -= 150\nprint(total)"),
+            ('Вложенное условие', 'Определите оценку по баллу.', "score = 68\nif score >= 60:\n    if score >= 85:\n        print('отлично')\n    else:\n        print('зачёт')\nelse:\n    print('повторить')"),
+            ('Количество цифр', 'Определите разрядность числа.', "number = 99\nif number >= 100:\n    print(3)\nelse:\n    print(2)"),
+            ('Выбор тарифа', 'Определите стоимость тарифа.', "lessons = 7\nif lessons >= 10:\n    print(900)\nelif lessons >= 5:\n    print(550)\nelse:\n    print(150)"),
+        ),
+        'Циклы': (
+            ('Сумма диапазона', 'Сложите числа от 1 до 5.', "total = 0\nfor number in range(1, 6):\n    total += number\nprint(total)"),
+            ('Количество чётных', 'Посчитайте чётные числа в диапазоне.', "count = 0\nfor number in range(1, 11):\n    if number % 2 == 0:\n        count += 1\nprint(count)"),
+            ('Произведение', 'Найдите произведение чисел от 1 до 4.', "product = 1\nfor number in range(1, 5):\n    product *= number\nprint(product)"),
+            ('Цикл while', 'Проследите изменение счётчика.', "value = 1\nwhile value < 20:\n    value *= 3\nprint(value)"),
+            ('Шаг range', 'Сложите числа с шагом 3.', "print(sum(range(2, 12, 3)))"),
+            ('continue', 'Какая сумма получится без кратных трём?', "total = 0\nfor number in range(1, 8):\n    if number % 3 == 0:\n        continue\n    total += number\nprint(total)"),
+            ('break', 'На каком числе цикл остановится?', "for number in range(2, 10):\n    if number * number > 30:\n        break\nprint(number)"),
+            ('Вложенные циклы', 'Посчитайте число пар.', "count = 0\nfor a in range(3):\n    for b in range(2):\n        count += 1\nprint(count)"),
+            ('enumerate', 'Сложите индексы букв.', "total = 0\nfor index, letter in enumerate('код', start=1):\n    total += index\nprint(total)"),
+            ('Цифры числа', 'Найдите сумму цифр.', "number = 352\ntotal = 0\nwhile number > 0:\n    total += number % 10\n    number //= 10\nprint(total)"),
+        ),
+    }
+    generic_cases = (
+        ('Индексирование', 'Выполните программу и запишите вывод.', "text = 'алгоритм'\nprint(text[2])"),
+        ('Срез', 'Определите результат среза.', "text = 'информатика'\nprint(text[1:6])"),
+        ('Разворот', 'Разверните последовательность.', "print('Python'[::-1])"),
+        ('Подсчёт', 'Посчитайте вхождения символа.', "print('программирование'.count('р'))"),
+        ('Замена', 'Выполните замену в строке.', "print('кек'.replace('к', 'г'))"),
+        ('Разбиение', 'Посчитайте части строки.', "print(len('один-два-три'.split('-')))"),
+        ('Проверка начала', 'Проверьте начало строки.', "print('алгоритм'.startswith('алг'))"),
+        ('Удаление пробелов', 'Уберите внешние пробелы.', "print('  код  '.strip())"),
+        ('Смена регистра', 'Преобразуйте строку.', "print('PyThOn'.lower())"),
+        ('Палиндром', 'Проверьте слово.', "word = 'топот'\nprint(word == word[::-1])"),
+    )
     if module == 'Строки':
-        text = 'алгоритмика'
-        start = n % 5
-        code = f"text = '{text}'\nprint(text[{start}:{start + 4}][::-1])"
-        return code, text[start:start + 4][::-1]
-    if module == 'Списки и срезы':
-        values = list(range(n, n + 6))
-        result = values[:2] + values[-2:]
-        code = f"values = {values}\npart = values[:2] + values[-2:]\nprint(sum(part))"
-        return code, str(sum(result))
-    if module == 'Словари, множества, кортежи':
-        code = f"data = {{'a': {n}, 'b': {n + 3}, 'c': {n % 4}}}\nkeys = set(data) - {{'c'}}\nprint(sum(data[key] for key in keys))"
-        return code, str(n * 2 + 3)
-    if module == 'Функции':
-        factor, value = n + 1, n + 2
-        code = f"def transform(value):\n    return value * {factor} - 1\n\nprint(transform({value}))"
-        return code, str(value * factor - 1)
-    if module == 'Рекурсия':
-        depth = n % 5 + 3
-        code = f"def count_down(value):\n    if value == 0:\n        return 0\n    return value + count_down(value - 1)\n\nprint(count_down({depth}))"
-        return code, str(depth * (depth + 1) // 2)
-    if module == 'Файлы':
-        values = [n + 2, n * 2, n + 5, n % 4 + 1]
-        text = '\\n'.join(map(str, values))
-        file_text = repr(text)
-        code = f"from io import StringIO\nfile = StringIO({file_text})\nnumbers = [int(line) for line in file]\nprint(max(numbers) - min(numbers))"
-        return code, str(max(values) - min(values))
-    if module == 'Исключения':
-        divisor = n - 5
-        code = f"try:\n    print(20 // {divisor})\nexcept ZeroDivisionError:\n    print('деление на ноль')"
-        return code, 'деление на ноль' if divisor == 0 else str(20 // divisor)
-    if module == 'Сортировка и поиск':
-        values = [n + 7, n % 5, n + 2, n + 4, n % 3 + 1]
-        ordered = sorted(values)
-        code = f"numbers = {values}\nnumbers.sort()\nprint(numbers[2])"
-        return code, str(ordered[2])
-    if module == 'Матрицы':
-        matrix = [[n, n + 1, n + 2], [n + 3, n + 4, n + 5], [n + 6, n + 7, n + 8]]
-        code = f"matrix = {matrix}\nprint(sum(matrix[i][i] for i in range(3)))"
-        return code, str(matrix[0][0] + matrix[1][1] + matrix[2][2])
-    if module == 'Алгоритмы и оптимизация':
-        values = [n + 2, n * 2 + 1, n + 5, n % 4 + 8, n + 3]
-        answer = max(values[i] + values[i + 1] for i in range(len(values) - 1))
-        code = f"values = {values}\nbest = max(values[i] + values[i + 1] for i in range(len(values) - 1))\nprint(best)"
-        return code, str(answer)
-
-    text = 'a' * (n % 4 + 2) + 'b' * (n % 3 + 1) + 'c' * (n % 5 + 1)
-    answer = max(text.count(char) for char in set(text))
-    code = f"text = '{text}'\nprint(max(text.count(char) for char in set(text)))"
-    return code, str(answer)
+        selected = generic_cases[n - 1]
+    elif module == 'Списки и срезы':
+        selected = (
+            ('Срез списка', 'Сложите элементы среза.', "numbers = [3, 8, 1, 6, 4]\nprint(sum(numbers[1:4]))"), ('Добавление', 'Проследите изменение списка.', "items = [2, 5]\nitems.append(7)\nprint(items[-1])"), ('Удаление', 'Какой список останется?', "items = [4, 9, 2]\nitems.pop(1)\nprint(items)"), ('Сортировка', 'Определите первый элемент после сортировки.', "items = [7, 2, 5]\nitems.sort()\nprint(items[0])"), ('Разворот', 'Разверните список.', "items = [1, 2, 3]\nitems.reverse()\nprint(items)"), ('Список квадратов', 'Найдите сумму квадратов.', "squares = [x * x for x in range(1, 5)]\nprint(sum(squares))"), ('Фильтрация', 'Посчитайте чётные элементы.', "items = [1, 4, 6, 9]\nprint(len([x for x in items if x % 2 == 0]))"), ('Минимум', 'Найдите разницу максимума и минимума.', "items = [12, 5, 18, 9]\nprint(max(items) - min(items))"), ('Копия среза', 'Проверьте независимость копии.', "first = [1, 2]\nsecond = first[:]\nsecond.append(3)\nprint(len(first), len(second))"), ('Перечисление', 'Сложите элементы на чётных индексах.', "items = [5, 8, 2, 7, 4]\nprint(sum(items[::2]))"),
+        )[n - 1]
+    elif module == 'Словари, множества, кортежи':
+        selected = (
+            ('Значение словаря', 'Получите значение по ключу.', "marks = {'Аня': 5, 'Боря': 4}\nprint(marks['Аня'])"), ('Добавление ключа', 'Определите размер словаря.', "data = {'x': 1}\ndata['y'] = 2\nprint(len(data))"), ('Безопасный поиск', 'Используйте значение по умолчанию.', "data = {'a': 3}\nprint(data.get('b', 0))"), ('Множество', 'Посчитайте разные буквы.', "print(len(set('математика')))"), ('Пересечение', 'Найдите общие элементы множеств.', "print(len({1, 2, 3} & {2, 3, 4}))"), ('Объединение', 'Найдите размер объединения.', "print(len({'a', 'b'} | {'b', 'c'}))"), ('Кортеж', 'Обратитесь к последнему элементу.', "point = (4, 7, 9)\nprint(point[-1])"), ('Распаковка кортежа', 'Вычислите сумму координат.', "x, y = (6, 8)\nprint(x + y)"), ('Подсчёт слов', 'Соберите частоты слов.', "words = ['код', 'путь', 'код']\ncounts = {}\nfor word in words:\n    counts[word] = counts.get(word, 0) + 1\nprint(counts['код'])"), ('Ключи словаря', 'Сложите длины ключей.', "data = {'one': 1, 'two': 2}\nprint(sum(len(key) for key in data))"),
+        )[n - 1]
+    elif module == 'Функции':
+        selected = (
+            ('Возврат значения', 'Вызовите функцию.', "def twice(value):\n    return value * 2\n\nprint(twice(7))"), ('Два аргумента', 'Найдите результат функции.', "def area(width, height):\n    return width * height\n\nprint(area(4, 6))"), ('Аргумент по умолчанию', 'Используйте значение по умолчанию.', "def greet(name='мир'):\n    return 'Привет, ' + name\n\nprint(greet())"), ('Несколько результатов', 'Распакуйте результат функции.', "def bounds(values):\n    return min(values), max(values)\n\nlow, high = bounds([8, 2, 5])\nprint(high - low)"), ('Локальная переменная', 'Проследите работу локальной переменной.', "value = 10\ndef change():\n    value = 3\n    return value\n\nprint(change() + value)"), ('Именованный аргумент', 'Вызовите функцию с именованным аргументом.', "def power(base, exponent):\n    return base ** exponent\n\nprint(power(exponent=3, base=2))"), ('Проверка функцией', 'Определите результат логической функции.', "def is_even(number):\n    return number % 2 == 0\n\nprint(is_even(13))"), ('Функция и строка', 'Преобразуйте строку в функции.', "def initials(name):\n    return '.'.join(word[0] for word in name.split())\n\nprint(initials('Анна Мария'))"), ('Функция и список', 'Верните количество положительных чисел.', "def positive_count(values):\n    return sum(value > 0 for value in values)\n\nprint(positive_count([-2, 4, 0, 7]))"), ('Композиция функций', 'Выполните вложенный вызов.', "def add_one(value):\n    return value + 1\ndef square(value):\n    return value * value\n\nprint(square(add_one(4)))"),
+        )[n - 1]
+    elif module == 'Рекурсия':
+        selected = (
+            ('Факториал', 'Найдите факториал числа.', "def fact(n):\n    return 1 if n <= 1 else n * fact(n - 1)\n\nprint(fact(5))"), ('Сумма чисел', 'Найдите сумму от 1 до n.', "def total(n):\n    return 0 if n == 0 else n + total(n - 1)\n\nprint(total(6))"), ('Степень двойки', 'Вычислите степень рекурсией.', "def power2(n):\n    return 1 if n == 0 else 2 * power2(n - 1)\n\nprint(power2(4))"), ('Количество цифр', 'Посчитайте цифры числа.', "def digits(n):\n    return 1 if n < 10 else 1 + digits(n // 10)\n\nprint(digits(4821))"), ('Сумма цифр', 'Найдите сумму цифр рекурсией.', "def digit_sum(n):\n    return 0 if n == 0 else n % 10 + digit_sum(n // 10)\n\nprint(digit_sum(531))"), ('Числа Фибоначчи', 'Найдите число Фибоначчи.', "def fib(n):\n    return n if n < 2 else fib(n - 1) + fib(n - 2)\n\nprint(fib(7))"), ('Обратная строка', 'Разверните строку рекурсией.', "def reverse(text):\n    return text if len(text) < 2 else reverse(text[1:]) + text[0]\n\nprint(reverse('код'))"), ('Максимум списка', 'Найдите максимум рекурсией.', "def maximum(values):\n    return values[0] if len(values) == 1 else max(values[0], maximum(values[1:]))\n\nprint(maximum([4, 9, 2]))"), ('Обратный отсчёт', 'Определите итог возвращаемого значения.', "def countdown(n):\n    if n == 0:\n        return 'старт'\n    return countdown(n - 1)\n\nprint(countdown(3))"), ('Чётность', 'Проверьте чётность через рекурсивное вычитание.', "def even(n):\n    return True if n == 0 else False if n == 1 else even(n - 2)\n\nprint(even(14))"),
+        )[n - 1]
+    elif module == 'Файлы':
+        selected = (
+            ('Сумма строк', 'Прочитайте числа из текстового файла.', "from io import StringIO\nfile = StringIO('4\\n7\\n2')\nprint(sum(int(line) for line in file))"), ('Количество строк', 'Посчитайте непустые строки.', "from io import StringIO\nfile = StringIO('код\\n\\nPython\\n')\nprint(sum(bool(line.strip()) for line in file))"), ('Максимум', 'Найдите максимум чисел в файле.', "from io import StringIO\nfile = StringIO('8\\n3\\n11')\nprint(max(int(line) for line in file))"), ('Фильтрация', 'Посчитайте чётные числа файла.', "from io import StringIO\nfile = StringIO('2\\n5\\n8\\n9')\nprint(sum(int(line) % 2 == 0 for line in file))"), ('Длины строк', 'Сложите длины строк без пробелов.', "from io import StringIO\nfile = StringIO('кот\\nдом')\nprint(sum(len(line.strip()) for line in file))"), ('Поиск слова', 'Посчитайте строки со словом Python.', "from io import StringIO\nfile = StringIO('Python\\nкод\\nPython 3')\nprint(sum('Python' in line for line in file))"), ('Среднее', 'Найдите целую часть среднего.', "from io import StringIO\nfile = StringIO('6\\n9\\n12')\nvalues = [int(line) for line in file]\nprint(sum(values) // len(values))"), ('Последняя строка', 'Определите последнюю строку файла.', "from io import StringIO\nfile = StringIO('первый\\nвторой\\nтретий')\nprint(list(file)[-1].strip())"), ('Пары чисел', 'Сложите вторые числа из строк.', "from io import StringIO\nfile = StringIO('2 5\\n4 7')\nprint(sum(map(lambda line: int(line.split()[1]), file)))"), ('Минимальная длина', 'Найдите минимальную длину слова.', "from io import StringIO\nfile = StringIO('код\\nалгоритм\\nЕГЭ')\nprint(min(len(line.strip()) for line in file))"),
+        )[n - 1]
+    elif module == 'Исключения':
+        selected = (
+            ('Деление на ноль', 'Определите ветку обработки ошибки.', "try:\n    print(8 // 0)\nexcept ZeroDivisionError:\n    print('нельзя делить')"), ('Некорректное число', 'Обработайте ошибку преобразования.', "try:\n    print(int('три'))\nexcept ValueError:\n    print('не число')"), ('Ключ словаря', 'Безопасно обратитесь к отсутствующему ключу.', "data = {'a': 1}\ntry:\n    print(data['b'])\nexcept KeyError:\n    print('нет ключа')"), ('Индекс списка', 'Обработайте выход за границы.', "items = [4, 5]\ntry:\n    print(items[3])\nexcept IndexError:\n    print('нет элемента')"), ('else в try', 'Определите, выполнится ли else.', "try:\n    value = int('12')\nexcept ValueError:\n    print('ошибка')\nelse:\n    print(value + 1)"), ('finally', 'Проследите обязательный блок finally.', "try:\n    print('работа')\nfinally:\n    print('готово')"), ('Несколько except', 'Определите нужный обработчик.', "try:\n    value = int('x')\nexcept ZeroDivisionError:\n    print('ноль')\nexcept ValueError:\n    print('текст')"), ('Проверка файла', 'Обработайте отсутствие файла.', "try:\n    raise FileNotFoundError\nexcept FileNotFoundError:\n    print('файл не найден')"), ('Собственная проверка', 'Проследите ручной вызов ошибки.', "score = -1\ntry:\n    if score < 0:\n        raise ValueError('балл')\nexcept ValueError as error:\n    print(error)"), ('Без ошибки', 'Определите результат корректного выражения.', "try:\n    print(18 // 3)\nexcept ZeroDivisionError:\n    print('ошибка')"),
+        )[n - 1]
+    elif module == 'Сортировка и поиск':
+        selected = (
+            ('Порядок чисел', 'Отсортируйте числа и возьмите середину.', "numbers = [8, 2, 5]\nprint(sorted(numbers)[1])"), ('Обратная сортировка', 'Найдите первый элемент обратной сортировки.', "numbers = [4, 9, 1]\nnumbers.sort(reverse=True)\nprint(numbers[0])"), ('Сортировка строк', 'Определите первое слово по алфавиту.', "words = ['зебра', 'аист', 'кот']\nprint(sorted(words)[0])"), ('Поиск индекса', 'Найдите позицию элемента.', "numbers = [3, 7, 4, 9]\nprint(numbers.index(4))"), ('Проверка наличия', 'Определите наличие элемента.', "numbers = [2, 5, 8]\nprint(7 in numbers)"), ('Сортировка по длине', 'Найдите самое короткое слово.', "words = ['алгоритм', 'код', 'цикл']\nprint(sorted(words, key=len)[0])"), ('Второй максимум', 'Найдите второй по величине элемент.', "numbers = [4, 10, 7, 10]\nprint(sorted(set(numbers))[-2])"), ('Двоичный поиск', 'Определите индекс найденного элемента.', "from bisect import bisect_left\nnumbers = [2, 4, 7, 9]\nprint(bisect_left(numbers, 7))"), ('Подсчёт совпадений', 'Посчитайте повторяющийся элемент.', "numbers = [1, 2, 1, 1]\nprint(numbers.count(1))"), ('Сортировка пар', 'Выберите пару с меньшим вторым значением.', "pairs = [('Аня', 8), ('Боря', 5)]\nprint(sorted(pairs, key=lambda pair: pair[1])[0][0])"),
+        )[n - 1]
+    elif module == 'Матрицы':
+        selected = (
+            ('Главная диагональ', 'Сложите главную диагональ матрицы.', "matrix = [[2, 1], [4, 3]]\nprint(matrix[0][0] + matrix[1][1])"), ('Сумма строки', 'Найдите сумму второй строки.', "matrix = [[1, 2], [4, 6]]\nprint(sum(matrix[1]))"), ('Сумма столбца', 'Найдите сумму первого столбца.', "matrix = [[3, 5], [7, 2], [1, 4]]\nprint(sum(row[0] for row in matrix))"), ('Максимум', 'Найдите максимум всей матрицы.', "matrix = [[2, 9], [4, 7]]\nprint(max(max(row) for row in matrix))"), ('Количество чётных', 'Посчитайте чётные элементы.', "matrix = [[1, 2], [6, 7]]\nprint(sum(value % 2 == 0 for row in matrix for value in row))"), ('Побочная диагональ', 'Сложите побочную диагональ.', "matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]\nprint(sum(matrix[i][2 - i] for i in range(3)))"), ('Транспонирование', 'Определите элемент после транспонирования.', "matrix = [[1, 2, 3], [4, 5, 6]]\ntransposed = list(zip(*matrix))\nprint(transposed[2][1])"), ('Минимум строки', 'Найдите минимум второй строки.', "matrix = [[8, 3], [6, 4]]\nprint(min(matrix[1]))"), ('Заполнение', 'Найдите сумму элементов, созданных циклом.', "matrix = [[row + column for column in range(3)] for row in range(2)]\nprint(sum(sum(row) for row in matrix))"), ('Граница матрицы', 'Сложите элементы первой строки и последней строки.', "matrix = [[1, 2], [3, 4], [5, 6]]\nprint(sum(matrix[0]) + sum(matrix[-1]))"),
+        )[n - 1]
+    elif module == 'Алгоритмы и оптимизация':
+        selected = (
+            ('Максимум соседей', 'Найдите максимальную сумму соседних элементов.', "values = [4, 9, 2, 8]\nprint(max(values[i] + values[i + 1] for i in range(len(values) - 1)))"), ('Минимальная разница', 'Найдите минимальную разницу соседей после сортировки.', "values = [8, 2, 11, 5]\nvalues.sort()\nprint(min(values[i + 1] - values[i] for i in range(len(values) - 1)))"), ('Префиксная сумма', 'Найдите наибольшую накопленную сумму.', "values = [3, -2, 5, -1]\ntotal = best = 0\nfor value in values:\n    total += value\n    best = max(best, total)\nprint(best)"), ('Подсчёт пар', 'Посчитайте пары с чётной суммой.', "values = [1, 2, 3, 4]\nprint(sum((values[i] + values[j]) % 2 == 0 for i in range(len(values)) for j in range(i + 1, len(values))))"), ('Уникальные значения', 'Посчитайте числа, встречающиеся один раз.', "values = [1, 2, 2, 3, 4, 4]\nprint(sum(values.count(value) == 1 for value in set(values)))"), ('Лучший отрезок', 'Найдите длину самого длинного блока положительных чисел.', "values = [1, 3, -1, 2, 4, 5]\nbest = current = 0\nfor value in values:\n    current = current + 1 if value > 0 else 0\n    best = max(best, current)\nprint(best)"), ('Два указателя', 'Найдите число пар с суммой не больше 7.', "values = [1, 2, 3, 5]\nprint(sum(values[i] + values[j] <= 7 for i in range(len(values)) for j in range(i + 1, len(values))))"), ('Частота', 'Найдите максимальную частоту числа.', "values = [2, 5, 2, 3, 2, 5]\nprint(max(values.count(value) for value in set(values)))"), ('Накопление минимума', 'Найдите минимальный элемент после первого.', "values = [9, 4, 7, 2]\nbest = values[0]\nfor value in values[1:]:\n    best = min(best, value)\nprint(best)"), ('Оптимальная покупка', 'Выберите максимальное число предметов в бюджете.', "prices = [2, 4, 3, 5]\nbudget = 8\ncount = 0\nfor price in sorted(prices):\n    if price <= budget:\n        budget -= price\n        count += 1\nprint(count)"),
+        )[n - 1]
+    else:
+        selected = generic_cases[n - 1]
+    return selected
 
 
 def foundation_payload(item: dict) -> dict:
     """Строит содержимое тематического задания с оформленным блоком кода."""
     n = _foundation_variant_number(item)
     module = str(item.get('module') or 'Практические мини-задачи')
-    code, answer = _foundation_code(module, n)
+    activity, prompt, code = _foundation_case(module, n)
+    answer = _output_of(code)
     level = 'базовый' if n <= 3 else ('средний' if n <= 7 else 'продвинутый')
-    title = f'{_FOUNDATION_ACTIVITY_TITLES[n - 1]}: {module}'
+    title = f'{activity}: {module}'
     content_html = (
-        f'<p>{_FOUNDATION_PROMPTS[n - 1]}</p>'
+        f'<p>{prompt}</p>'
         f'<pre><code>{html.escape(code)}</code></pre>'
         '<p>Ответ запишите точно, включая регистр и знаки препинания, если они есть.</p>'
     )

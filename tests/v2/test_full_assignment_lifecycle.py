@@ -138,6 +138,36 @@ def test_task_bank_is_a_separate_v2_page(app, client, role_users):
     assert b'https://example.test' not in unsafe_return.data
 
 
+def test_task_bank_detail_is_a_full_v2_page(app, client, role_users):
+    from app import db
+    from app.models import Course
+    from core.db_models import Tasks
+
+    with app.app_context():
+        course = Course(title='Банк для полного просмотра', slug='bank-detail-test', is_active=True)
+        db.session.add(course)
+        db.session.flush()
+        task = Tasks(
+            course_id=course.id,
+            task_number=1,
+            content_html='<p>Определите результат.</p><pre><code>print(2 + 2)</code></pre>',
+            answer='4',
+            bank_origin='imported',
+            source_prototype='test/task-bank-detail',
+            is_active=True,
+        )
+        db.session.add(task)
+        db.session.commit()
+        task_id = task.task_id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    page = client.get(f'/task-generator/bank/{task_id}?return_to=/assignments/create')
+    assert page.status_code == 200
+    assert 'Полный просмотр'.encode('utf-8') in page.data
+    assert b'python-keyword' in page.data
+    assert b'bank-task-detail' not in page.data
+
+
 def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app, client, role_users):
     """Авторская задача из единого конструктора сохраняется, назначается и ждёт ручной проверки."""
     from app import db

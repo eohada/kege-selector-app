@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from app.utils.python_bank_import import foundation_payload, validate_package
+from app.utils.python_bank_import import _output_of, foundation_payload, validate_package
 
 
 def test_python_ege_package_is_complete_and_valid():
@@ -22,4 +22,6 @@ def test_foundations_import_builds_distinct_exercises_with_code_blocks():
         assert len(exercises) == 10
         assert len({exercise["title"] for exercise in exercises}) == 10
         assert len({exercise["content_html"] for exercise in exercises}) == 10
+        assert len({exercise["solution"] for exercise in exercises}) == 10
         assert all("<pre><code>" in exercise["content_html"] for exercise in exercises)
+        assert all(_output_of(exercise["solution"]) == exercise["answer"] for exercise in exercises)
