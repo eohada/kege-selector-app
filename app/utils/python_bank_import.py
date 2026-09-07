@@ -124,7 +124,9 @@ def _foundation_case(module: str, n: int) -> tuple[str, str, str]:
         ('Смена регистра', 'Преобразуйте строку.', "print('PyThOn'.lower())"),
         ('Палиндром', 'Проверьте слово.', "word = 'топот'\nprint(word == word[::-1])"),
     )
-    if module == 'Строки':
+    if module in cases:
+        selected = cases[module][n - 1]
+    elif module == 'Строки':
         selected = generic_cases[n - 1]
     elif module == 'Списки и срезы':
         selected = (
@@ -162,8 +164,21 @@ def _foundation_case(module: str, n: int) -> tuple[str, str, str]:
         selected = (
             ('Максимум соседей', 'Найдите максимальную сумму соседних элементов.', "values = [4, 9, 2, 8]\nprint(max(values[i] + values[i + 1] for i in range(len(values) - 1)))"), ('Минимальная разница', 'Найдите минимальную разницу соседей после сортировки.', "values = [8, 2, 11, 5]\nvalues.sort()\nprint(min(values[i + 1] - values[i] for i in range(len(values) - 1)))"), ('Префиксная сумма', 'Найдите наибольшую накопленную сумму.', "values = [3, -2, 5, -1]\ntotal = best = 0\nfor value in values:\n    total += value\n    best = max(best, total)\nprint(best)"), ('Подсчёт пар', 'Посчитайте пары с чётной суммой.', "values = [1, 2, 3, 4]\nprint(sum((values[i] + values[j]) % 2 == 0 for i in range(len(values)) for j in range(i + 1, len(values))))"), ('Уникальные значения', 'Посчитайте числа, встречающиеся один раз.', "values = [1, 2, 2, 3, 4, 4]\nprint(sum(values.count(value) == 1 for value in set(values)))"), ('Лучший отрезок', 'Найдите длину самого длинного блока положительных чисел.', "values = [1, 3, -1, 2, 4, 5]\nbest = current = 0\nfor value in values:\n    current = current + 1 if value > 0 else 0\n    best = max(best, current)\nprint(best)"), ('Два указателя', 'Найдите число пар с суммой не больше 7.', "values = [1, 2, 3, 5]\nprint(sum(values[i] + values[j] <= 7 for i in range(len(values)) for j in range(i + 1, len(values))))"), ('Частота', 'Найдите максимальную частоту числа.', "values = [2, 5, 2, 3, 2, 5]\nprint(max(values.count(value) for value in set(values)))"), ('Накопление минимума', 'Найдите минимальный элемент после первого.', "values = [9, 4, 7, 2]\nbest = values[0]\nfor value in values[1:]:\n    best = min(best, value)\nprint(best)"), ('Оптимальная покупка', 'Выберите максимальное число предметов в бюджете.', "prices = [2, 4, 3, 5]\nbudget = 8\ncount = 0\nfor price in sorted(prices):\n    if price <= budget:\n        budget -= price\n        count += 1\nprint(count)"),
         )[n - 1]
+    elif module == 'Практические мини-задачи':
+        selected = (
+            ('Билет в кино', 'В кинотеатре билет стоит 350 рублей. Для школьника действует скидка 20%. Выведите стоимость билета для школьника.', "price = 350\nis_student = True\nif is_student:\n    price *= 0.8\nprint(int(price))"),
+            ('Пароль', 'Проверьте, подходит ли пароль: длина не меньше 8 символов и в нём есть цифра.', "password = 'Python2026'\nhas_digit = any(symbol.isdigit() for symbol in password)\nprint(len(password) >= 8 and has_digit)"),
+            ('Температура недели', 'Найдите количество дней с температурой выше нуля.', "temperatures = [-3, 0, 2, 5, -1, 4, 1]\nprint(sum(value > 0 for value in temperatures))"),
+            ('Самое длинное слово', 'Найдите длину самого длинного слова в сообщении.', "message = 'учимся писать понятные программы'\nprint(max(len(word) for word in message.split()))"),
+            ('Сдача в магазине', 'Покупатель дал 1000 рублей. Найдите сдачу после покупки товаров.', "money = 1000\ncart = [179, 245, 130]\nprint(money - sum(cart))"),
+            ('Номер места', 'В ряду 8 мест. По номеру билета определите номер ряда и места.', "ticket = 19\nrow = (ticket - 1) // 8 + 1\nseat = (ticket - 1) % 8 + 1\nprint(row, seat)"),
+            ('Палиндром фразы', 'Проверьте фразу без пробелов и регистра на палиндром.', "phrase = 'А роза упала на лапу Азора'\nprepared = phrase.replace(' ', '').lower()\nprint(prepared == prepared[::-1])"),
+            ('Копилка', 'Сколько монет нужно добавить до цели, если каждая монета по 10 рублей?', "saved = 73\ngoal = 120\ncoins = (goal - saved + 9) // 10\nprint(coins)"),
+            ('Дневник оценок', 'Найдите средний балл, округлённый вниз.', "marks = [5, 4, 5, 3, 4]\nprint(sum(marks) // len(marks))"),
+            ('Шифр Цезаря', 'Сдвиньте каждую букву латинского слова на один шаг вперёд.', "word = 'code'\nresult = ''.join(chr(ord(letter) + 1) for letter in word)\nprint(result)"),
+        )[n - 1]
     else:
-        selected = generic_cases[n - 1]
+        raise ValueError(f'Неизвестный модуль тематического банка: {module}')
     return selected
 
 

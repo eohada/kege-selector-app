@@ -25,3 +25,19 @@ def test_foundations_import_builds_distinct_exercises_with_code_blocks():
         assert len({exercise["solution"] for exercise in exercises}) == 10
         assert all("<pre><code>" in exercise["content_html"] for exercise in exercises)
         assert all(_output_of(exercise["solution"]) == exercise["answer"] for exercise in exercises)
+
+
+def test_practical_mini_tasks_are_real_scenarios_not_a_single_code_template():
+    path = Path(__file__).parents[2] / "data" / "task_banks" / "python_foundations.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    exercises = [
+        foundation_payload(item)
+        for item in data["tasks"]
+        if item["module"] == "Практические мини-задачи"
+    ]
+
+    assert [exercise["title"].split(":", 1)[0] for exercise in exercises] == [
+        "Билет в кино", "Пароль", "Температура недели", "Самое длинное слово", "Сдача в магазине",
+        "Номер места", "Палиндром фразы", "Копилка", "Дневник оценок", "Шифр Цезаря",
+    ]
+    assert all("Закрепите тему" not in exercise["content_html"] for exercise in exercises)
