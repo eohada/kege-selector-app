@@ -67,7 +67,11 @@
   .boostudy-scroll-horizontal { scrollbar-width: thin; scrollbar-color: #a5b4fc transparent; }
   .boostudy-scroll-horizontal::-webkit-scrollbar { height: 7px; }
   .boostudy-scroll-horizontal::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 999px; }
+  .task-bank-condition { min-width: 0; overflow-wrap: anywhere; }
   .task-bank-condition img { max-width: 100%; height: auto; border-radius: 1rem; }
+  .task-bank-condition pre,
+  .task-bank-code { max-width: 100%; overflow-x: auto; margin: 1rem 0; padding: 1rem; border-radius: .9rem; background: #111827; color: #e5edff; font: 500 .8rem/1.65 Consolas, "Courier New", monospace; tab-size: 4; white-space: pre; }
+  .task-bank-condition pre code { font: inherit; color: inherit; }
 </style>
 
 <script>
@@ -93,6 +97,13 @@ function escapeHtml(value) {
 function plainText(html) {
   const node = document.createElement('div');
   node.innerHTML = html || '';
+  return (node.textContent || node.innerText || '').replace(/\s+/g, ' ').trim();
+}
+
+function conditionSummary(html) {
+  const node = document.createElement('div');
+  node.innerHTML = html || '';
+  node.querySelectorAll('pre, code').forEach(element => element.remove());
   return (node.textContent || node.innerText || '').replace(/\s+/g, ' ').trim();
 }
 
@@ -138,8 +149,8 @@ function taskCard(task) {
   const queued = queuedTasks.has(Number(task.task_id));
   return `<article onclick="selectBankTask(${task.task_id})" class="cursor-pointer bg-white border-2 ${selected ? 'border-indigo-500 shadow-[0_4px_0_#818cf8]' : 'border-slate-200 shadow-[0_3px_0_#DAE1E9] hover:border-indigo-300'} rounded-2xl p-5 space-y-4 transition-all">
     <div class="flex items-start justify-between gap-3"><span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black leading-tight">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">${escapeHtml(task.difficulty_label_ru || 'Средний')}</span></div>
-    <div class="space-y-2"><h2 class="text-base font-black text-slate-800 leading-snug">${escapeHtml(task.title || 'Задание')}</h2><p class="text-xs leading-relaxed text-slate-600">${escapeHtml(plainText(task.content_html).slice(0, 210) || 'Без текста условия')}</p></div>
-    <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3"><span class="text-[11px] font-bold text-slate-400">${escapeHtml(task.course_title || '')}</span><button type="button" onclick="event.stopPropagation(); toggleQueuedTask(${task.task_id})" class="shrink-0 ${queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-3 py-2 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">${queued ? 'Добавлено' : 'В работу'}</button></div>
+    <div class="space-y-2 min-w-0"><h2 class="text-base font-black text-slate-800 leading-snug break-words">${escapeHtml(task.title || 'Задание')}</h2><p class="text-xs leading-relaxed text-slate-600 break-words">${escapeHtml(conditionSummary(task.content_html).slice(0, 210) || 'Откройте задание, чтобы посмотреть условие и код.')}</p></div>
+    <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 min-w-0"><span class="text-[11px] font-bold text-slate-400 truncate">${escapeHtml(task.course_title || '')}</span><button type="button" onclick="event.stopPropagation(); toggleQueuedTask(${task.task_id})" class="shrink-0 ${queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-3 py-2 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">${queued ? 'Добавлено' : 'В работу'}</button></div>
   </article>`;
 }
 
@@ -225,7 +236,7 @@ function selectBankTask(taskId) {
   selectedBankTaskId = Number(taskId);
   const queued = queuedTasks.has(Number(task.task_id));
   const answer = task.answer ? `<section><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Правильный ответ</p><pre class="mt-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm font-black text-emerald-800 whitespace-pre-wrap">${escapeHtml(task.answer)}</pre></section>` : '<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-bold text-amber-800">Это задание проверяется преподавателем вручную.</div>';
-  const code = task.starter_code ? `<section><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Стартовый код</p><pre class="mt-2 bg-slate-900 text-slate-100 rounded-xl p-4 text-xs leading-relaxed overflow-x-auto"><code>${escapeHtml(task.starter_code)}</code></pre></section>` : '';
+  const code = task.starter_code ? `<section><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Стартовый код</p><pre class="task-bank-code"><code>${escapeHtml(task.starter_code)}</code></pre></section>` : '';
   const solution = task.solution ? `<details class="bg-white border-2 border-slate-200 rounded-xl p-4"><summary class="cursor-pointer text-xs font-black text-slate-700">Показать разбор преподавателя</summary><pre class="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">${escapeHtml(task.solution)}</pre></details>` : '';
   const edit = task.can_edit ? `<button type="button" onclick="openTaskEditor(${task.task_id})" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Редактировать</button>` : `<button type="button" onclick="openTaskEditor(${task.task_id})" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Создать копию</button>`;
   document.getElementById('bank-task-detail').innerHTML = `<div class="space-y-5"><div><div class="flex flex-wrap gap-2"><span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-black">${escapeHtml(task.difficulty_label_ru || 'Средний')}</span></div><h2 class="mt-3 text-xl font-black text-slate-800 leading-tight">${escapeHtml(task.title || 'Задание')}</h2><p class="mt-2 text-xs text-slate-500">${escapeHtml(task.course_title || '')}</p></div><div class="task-bank-condition border-y-2 border-slate-200 py-5 text-sm leading-relaxed text-slate-700">${task.content_html || 'Без текста условия'}</div>${answer}${code}${solution}<div class="flex flex-wrap gap-2 pt-1"><button type="button" onclick="toggleQueuedTask(${task.task_id})" class="${queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-4 py-2.5 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">${queued ? 'Убрать из работы' : 'Добавить в работу'}</button>${edit}</div></div>`;
