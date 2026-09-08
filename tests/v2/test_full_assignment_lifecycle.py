@@ -166,6 +166,9 @@ def test_task_bank_detail_is_a_full_v2_page(app, client, role_users):
     assert 'Полный просмотр'.encode('utf-8') in page.data
     assert b'python-keyword' in page.data
     assert b'bank-task-detail' not in page.data
+    assert b'id="task-teacher-materials"' in page.data
+    assert b'<details id="task-teacher-materials" open' not in page.data
+    assert 'Эталон и разбор для преподавателя'.encode('utf-8') in page.data
 
 
 def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app, client, role_users):
