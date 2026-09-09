@@ -3459,6 +3459,20 @@ def submission_view(submission_id):
     if not assignment.is_active:
         flash('Это задание было архивировано преподавателем.', 'info')
         return redirect(url_for('assignments.submissions_list'))
+
+    # Ученик выполняет работу только в каноничном Workspace: там находятся
+    # редактор, запуск, вложения, холст и единая навигация карточек.
+    if getattr(current_user, 'is_student', lambda: False)() and student and current_user.id == student.user_id:
+        ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
+        if ordered_tasks:
+            requested_task_id = request.args.get('focus_at', type=int)
+            selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
+            return redirect(url_for(
+                'task_workspace.workspace_page',
+                context_type='submission_task',
+                context_id=submission.submission_id,
+                assignment_task_id=selected_task.assignment_task_id,
+            ))
     
     try:
         now = utc_now()

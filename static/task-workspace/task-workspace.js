@@ -69,7 +69,7 @@
     let pendingInputMeta = null;
     let autosaveTimer = null;
     let dirtySinceAutosave = false;
-    let suggestionsEnabled = true;
+    let suggestionsEnabled = false;
     let lastAppliedServerVersionId = null;
     let lastAppliedServerUpdatedAt = '';
     let liveSyncTimer = null;

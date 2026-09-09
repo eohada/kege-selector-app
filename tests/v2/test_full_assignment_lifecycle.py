@@ -189,26 +189,29 @@ def test_student_can_open_two_task_v2_workflow_and_submit_whole_assignment(app, 
         submission_id = submission.submission_id
 
     _login_as(client, role_users['student_user_id'], 'student')
-    page = client.get(f'/submissions/{submission_id}')
-    assert page.status_code == 200
-    assert b'function switchTask(targetArg)' in page.data
-    assert b"submissionUrl('submit')" in page.data
-    assert f'task-card-1'.encode() in page.data
-    assert f'task-card-2'.encode() in page.data
+    entry = client.get(f'/submissions/{submission_id}', follow_redirects=False)
+    assert entry.status_code == 302
+    assert '/task-workspace/?context_type=submission_task' in entry.headers['Location']
+    assert f'assignment_task_id={assignment_tasks[0].assignment_task_id}' in entry.headers['Location']
 
-    started = client.post(f'/submissions/{submission_id}/start')
-    assert started.status_code == 200, started.get_json()
+    workspace = client.get(entry.headers['Location'])
+    assert workspace.status_code == 200
+    assert b'id="tw-workspace-grid"' in workspace.data
+    assert f'assignment_task_id={assignment_tasks[1].assignment_task_id}'.encode() in workspace.data
+
+    saved_code = client.post('/task-workspace/api/save', json={
+        'context_type': 'submission_task', 'context_id': submission_id,
+        'assignment_task_id': assignment_tasks[0].assignment_task_id,
+        'code': 'print(42)', 'answer': '42',
+    })
+    assert saved_code.status_code == 200, saved_code.get_json()
+    with app.app_context():
+        assert db.session.get(Submission, submission_id).status == 'IN_PROGRESS'
+
     saved = client.put(f'/submissions/{submission_id}/autosave', json={'answers': [
-        {'assignment_task_id': assignment_tasks[0].assignment_task_id, 'value': '42'},
         {'assignment_task_id': assignment_tasks[1].assignment_task_id, 'value': '7'},
     ]})
     assert saved.status_code == 200, saved.get_json()
-    workspace = client.get(
-        f'/task-workspace/?context_type=submission_task&context_id={submission_id}'
-        f'&assignment_task_id={assignment_tasks[1].assignment_task_id}'
-    )
-    assert workspace.status_code == 200
-    assert b'id="tw-workspace-grid"' in workspace.data
     submitted = client.post(f'/submissions/{submission_id}/submit', json={
         'task_times': {str(row.assignment_task_id): 1 for row in assignment_tasks},
     })

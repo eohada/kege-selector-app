@@ -146,6 +146,10 @@ class WorkspaceContext:
     can_review: bool = False
     timer_seconds_left: int | None = None
     mmr_value: int = 1000
+    task_position: int | None = None
+    task_count: int = 1
+    previous_task: dict[str, Any] | None = None
+    next_task: dict[str, Any] | None = None
 
     def as_payload(self) -> dict[str, Any]:
         return {
@@ -176,6 +180,10 @@ class WorkspaceContext:
             "can_review": self.can_review,
             "timer_seconds_left": self.timer_seconds_left,
             "mmr_value": self.mmr_value,
+            "task_position": self.task_position,
+            "task_count": self.task_count,
+            "previous_task": self.previous_task,
+            "next_task": self.next_task,
             "answer_hint": self.task.answer or "",
             "playback": load_workspace_trace_payload(self),
             "versions": load_workspace_versions_payload(self),
@@ -262,7 +270,9 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     can_review = _has_teacher_scope(user)
     is_parent = getattr(user, "is_parent", lambda: False)()
     normalized_status = (submission.status or "").strip().upper()
-    can_edit = is_owner and normalized_status in {"IN_PROGRESS", "RETURNED"} and not is_parent
+    # Открытие Workspace — это начало работы. Нельзя показывать ученику редактор,
+    # а затем бесконечно отвечать 403 на его автосохранения до отдельного клика «Старт».
+    can_edit = is_owner and normalized_status in {"ASSIGNED", "IN_PROGRESS", "RETURNED"} and not is_parent
     if can_edit and normalized_status == "RETURNED":
         revision_task_ids = {
             int(item.assignment_task_id)
@@ -283,6 +293,20 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         elapsed = (_to_aware_utc(utc_now()) - started_at).total_seconds() if started_at else 0
         timer_seconds_left = max(0, int(limit_sec - elapsed))
 
+    ordered_tasks = sorted(submission.assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
+    current_index = next(
+        (index for index, item in enumerate(ordered_tasks) if item.assignment_task_id == assignment_task.assignment_task_id),
+        0,
+    )
+
+    def navigation_item(item: AssignmentTask) -> dict[str, Any]:
+        return {
+            "assignment_task_id": item.assignment_task_id,
+            "task_id": item.task_id,
+            "position": next(index + 1 for index, candidate in enumerate(ordered_tasks) if candidate.assignment_task_id == item.assignment_task_id),
+            "title": (item.task.title if item.task and getattr(item.task, "title", None) else f"Задача {item.task_id}"),
+        }
+
     return WorkspaceContext(
         context_type="submission_task",
         context_id=submission.submission_id,
@@ -291,7 +315,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         title=f"{submission.assignment.title} · задача #{assignment_task.task_id}",
         subtitle=f"{student.user.username if student.user else 'ученик'} · {submission.assignment.assignment_type}",
         source_label="Работа / задание",
-        return_url=f"/submissions/{submission.submission_id}",
+        return_url="/submissions",
         student_id=student.student_id,
         student_user_id=student.user_id,
         submission_id=submission.submission_id,
@@ -303,6 +327,10 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         can_edit=can_edit,
         can_review=can_review,
         timer_seconds_left=timer_seconds_left,
+        task_position=current_index + 1,
+        task_count=len(ordered_tasks),
+        previous_task=navigation_item(ordered_tasks[current_index - 1]) if current_index > 0 else None,
+        next_task=navigation_item(ordered_tasks[current_index + 1]) if current_index + 1 < len(ordered_tasks) else None,
     )
 
 
@@ -350,6 +378,11 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
             db.session.commit()
             return
         if ctx.context_type == "submission_task" and ctx.submission_id and ctx.assignment_task_id:
+            submission = Submission.query.get_or_404(ctx.submission_id)
+            if (submission.status or "").strip().upper() == "ASSIGNED":
+                from core.db_models import utc_now
+                submission.status = "IN_PROGRESS"
+                submission.started_at = submission.started_at or utc_now()
             answer_row = Answer.query.filter_by(
                 submission_id=ctx.submission_id,
                 assignment_task_id=ctx.assignment_task_id,

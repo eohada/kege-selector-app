@@ -57,7 +57,8 @@
         </div>
         <div class="tw-task-navigation">
             <button class="tw-icon-button" type="button" title="Сохранить в закладки" aria-label="Сохранить в закладки"><i class="ph-bold ph-bookmark-simple"></i></button>
-            {% if workspace.return_url %}<a class="tw-icon-button" href="{{ workspace.return_url }}" title="Вернуться к работе" aria-label="Вернуться к работе"><i class="ph-bold ph-arrow-left"></i></a>{% endif %}
+            {% if workspace.previous_task %}<a class="tw-icon-button" href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=workspace.context_id, assignment_task_id=workspace.previous_task.assignment_task_id) }}" title="Предыдущая задача" aria-label="Предыдущая задача"><i class="ph-bold ph-caret-left"></i></a>{% endif %}
+            {% if workspace.next_task %}<a class="tw-icon-button" href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=workspace.context_id, assignment_task_id=workspace.next_task.assignment_task_id) }}" title="Следующая задача" aria-label="Следующая задача"><i class="ph-bold ph-caret-right"></i></a>{% endif %}
         </div>
     </section>
 
@@ -88,9 +89,6 @@
                     <div class="tw-editor-tools">
                     <button id="tw-toggle-canvas" class="tw-btn tw-btn-ghost tw-btn-sm" type="button" title="Рисовать поверх условия" onclick="if(window.BooCanvasOverlay) window.BooCanvasOverlay.toggle();">
                         <i class="ph-bold ph-pencil-line"></i> Холст
-                    </button>
-                    <button id="tw-toggle-suggestions" class="tw-btn tw-btn-primary tw-btn-sm" type="button" title="Показать/скрыть подсказки">
-                        <i class="ph-bold ph-lightbulb"></i> Подсказки
                     </button>
                     <div class="tw-imports">
                         <button id="tw-imports-toggle" class="tw-btn tw-btn-ghost tw-btn-sm" type="button" title="Быстрые импорты">
@@ -137,7 +135,6 @@
                     <button id="tw-save" class="tw-btn tw-btn-ghost" type="button" {% if not workspace.can_edit %}disabled{% endif %}>Сохранить</button>
                 </div>
             </div>
-            <details class="tw-hints-panel" id="tw-hints-panel"><summary><span><i class="ph-bold ph-lightbulb"></i> Подсказки к решению</span><i class="ph-bold ph-caret-down"></i></summary><p>Нажми, чтобы увидеть подсказку — это направление мысли, а не готовое решение.</p></details>
         </section>
 
         <aside class="tw-panel tw-output-panel" id="tw-output-panel">
@@ -239,7 +236,7 @@
     </section>
 
     <footer class="tw-bottom-bar" aria-label="Действия с работой">
-        <div class="tw-bottom-progress"><span class="tw-progress-orb"><i class="ph-bold ph-code"></i></span><div><strong>Черновик задачи</strong><span>Код и короткий ответ сохраняются автоматически</span></div></div>
+        <div class="tw-bottom-progress"><span class="tw-progress-orb"><i class="ph-bold ph-code"></i></span><div><strong>Задача {{ workspace.task_position or 1 }} из {{ workspace.task_count or 1 }}</strong><span>Код и короткий ответ сохраняются автоматически</span></div></div>
         <div class="tw-bottom-actions">
             <button type="button" class="tw-btn tw-btn-ghost" onclick="document.getElementById('tw-save').click()"><i class="ph-bold ph-floppy-disk"></i> Сохранить</button>
             {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Завершить и сдать работу</button>{% elif workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
@@ -273,9 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-{% include '_partials/canvas_overlay.html' %}
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260803-bento-v2"></script>
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260909-workbench-v4"></script>
 {% endblock %}

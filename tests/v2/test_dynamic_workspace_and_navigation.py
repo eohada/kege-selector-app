@@ -22,6 +22,8 @@ def test_workspace_has_a_single_v2_entry_point():
     assert 'sandbox/layout_teacher.html' in workspace
     assert 'sandbox/layout_student.html' in workspace
     assert '{% extends "base.html" %}' not in workspace
+    assert "canvas_overlay.html" not in workspace
+    assert 'workspace.next_task' in workspace
 
 
 def test_active_workspace_templates_do_not_call_legacy_workspace_apis():
