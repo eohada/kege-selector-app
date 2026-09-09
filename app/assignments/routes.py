@@ -4034,8 +4034,9 @@ def submission_autosave(submission_id):
         return jsonify({'success': False, 'error': 'Задание архивировано'}), 403
     
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         answers_data = data.get('answers', [])
+        started_by_first_edit = False
         
         for answer_data in answers_data:
             assignment_task_id = answer_data.get('assignment_task_id')
@@ -4051,6 +4052,13 @@ def submission_autosave(submission_id):
             
             if not assignment_task:
                 continue
+            if normalize_legacy_status(submission.status) == 'ASSIGNED':
+                # Первое осмысленное сохранение — начало работы. Раньше ответ тихо
+                # пропускался, хотя API возвращал success, и ученик терял черновик.
+                transition_submission_status(submission, 'IN_PROGRESS')
+                if not submission.started_at:
+                    submission.started_at = utc_now()
+                started_by_first_edit = True
             if not _can_student_edit_submission_task(submission, assignment_task_id):
                 continue
             
@@ -4072,7 +4080,7 @@ def submission_autosave(submission_id):
         
         db.session.commit()
         
-        return jsonify({'success': True}), 200
+        return jsonify({'success': True, 'started': started_by_first_edit}), 200
         
     except Exception as e:
         db.session.rollback()
@@ -4084,7 +4092,7 @@ def submission_autosave(submission_id):
 @login_required
 @limiter.limit("30 per minute")
 def submission_submit_task(submission_id):
-    """Сдача одного задания (при allow_separate_submission и attempts_per_task). Body: { "assignment_task_id": int, "value": "..." }"""
+    """Сдача одного задания, если преподаватель включил отдельные попытки."""
     try:
         submission = Submission.query.options(
             joinedload(Submission.assignment),

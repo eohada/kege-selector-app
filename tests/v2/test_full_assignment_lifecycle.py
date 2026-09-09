@@ -434,6 +434,46 @@ def test_strict_timer_prevents_submission_after_time_limit(app, client, role_use
         assert answer.value == '42'
 
 
+def test_student_saves_answer_without_separate_attempt_mode(app, client, role_users):
+    """Обычная работа сохраняет ответ как черновик и не вызывает отдельную сдачу."""
+    from app import db
+    from core.db_models import Answer, Assignment, AssignmentTask, Submission, Tasks, utc_now
+
+    with app.app_context():
+        task = Tasks(task_number=3, content_html='<p>Сохраните ответ</p>', answer='42')
+        db.session.add(task)
+        db.session.flush()
+        assignment = Assignment(
+            title='Обычная домашняя работа', assignment_type='homework',
+            deadline=utc_now() + timedelta(days=1), created_by_id=role_users['tutor_id'],
+            allow_separate_submission=True, attempts_per_task=False, is_active=True,
+        )
+        db.session.add(assignment)
+        db.session.flush()
+        assignment_task = AssignmentTask(assignment_id=assignment.assignment_id, task_id=task.task_id, order_index=0, max_score=1)
+        db.session.add(assignment_task)
+        db.session.flush()
+        submission = Submission(assignment_id=assignment.assignment_id, student_id=role_users['student_id'], status='ASSIGNED')
+        db.session.add(submission)
+        db.session.commit()
+        submission_id = submission.submission_id
+        assignment_task_id = assignment_task.assignment_task_id
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    saved = client.put(f'/submissions/{submission_id}/autosave', json={
+        'answers': [{'assignment_task_id': assignment_task_id, 'value': '42'}],
+    })
+    assert saved.status_code == 200, saved.get_json()
+    assert saved.get_json()['started'] is True
+    rejected_separate_submit = client.post(f'/submissions/{submission_id}/submit-task', json={
+        'assignment_task_id': assignment_task_id, 'value': '42',
+    })
+    assert rejected_separate_submit.status_code == 400
+    with app.app_context():
+        answer = Answer.query.filter_by(submission_id=submission_id, assignment_task_id=assignment_task_id).one()
+        assert answer.value == '42'
+
+
 def test_assignment_detail_renders_canonical_v2_screen(app, client, role_users):
     """Teacher assignment details must not fall back to the legacy detail template."""
     from app import db

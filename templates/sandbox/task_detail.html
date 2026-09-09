@@ -190,7 +190,7 @@
                      {% if t.is_locked or is_assignment_submitted %}readonly disabled{% endif %}
                      class="flex-1 bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-lg font-mono font-black text-slate-800 tracking-widest placeholder-slate-400 outline-none shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] disabled:bg-slate-100 disabled:text-slate-500">
               
-              {% if allow_separate_submission or (assignment_meta is defined and assignment_meta.allow_separate_submission) %}
+              {% if (allow_separate_submission or (assignment_meta is defined and assignment_meta.allow_separate_submission)) and assignment and assignment.attempts_per_task %}
               <button id="submit-btn-{{ t.order_index }}"
                       data-order-index="{{ t.order_index }}"
                       data-ass-task-id="{{ t.assignment_task_id }}"
@@ -198,6 +198,14 @@
                       {% if t.is_locked or is_assignment_submitted %}disabled{% endif %}
                       class="single-task-submit-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-3.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer shrink-0 disabled:bg-slate-300 disabled:cursor-not-allowed border-none text-xs">
                 Проверить ответ
+              </button>
+              {% else %}
+              <button type="button"
+                      data-order-index="{{ t.order_index }}"
+                      onclick="saveTaskAnswer(this)"
+                      {% if t.is_locked or is_assignment_submitted %}disabled{% endif %}
+                      class="single-task-submit-btn bg-white hover:bg-slate-50 text-slate-700 font-black px-6 py-3.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer shrink-0 disabled:bg-slate-100 disabled:cursor-not-allowed text-xs">
+                Сохранить ответ
               </button>
               {% endif %}
             </div>
@@ -714,6 +722,25 @@ async function submitSingleTask(btnArg) {
     }
   } catch (err) {
     show3DToast('Ошибка соединения при отправке ответа');
+  }
+}
+
+async function saveTaskAnswer(button) {
+  const orderIndex = Number(button?.dataset?.orderIndex || currentTaskIndex || 1);
+  const input = document.getElementById(`answer-input-${orderIndex}`);
+  if (!input) return;
+
+  button.disabled = true;
+  const initialLabel = button.textContent;
+  button.textContent = 'Сохраняем…';
+  try {
+    await saveDraft(true);
+    show3DToast('Ответ сохранён. Проверка будет после сдачи работы.');
+  } catch (error) {
+    show3DToast('Не удалось сохранить ответ');
+  } finally {
+    button.disabled = false;
+    button.textContent = initialLabel;
   }
 }
 
