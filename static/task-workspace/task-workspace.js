@@ -102,6 +102,7 @@
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
             code: code.value,
+            answer: answer ? answer.value : '',
             playback_frames: playback.frames,
             ui_state: localUiState(),
         };
@@ -825,6 +826,43 @@
                 saveServer(true);
             }
         }, 2500);
+    }
+
+    function bindStandardAnswerRenderer() {
+        const renderer = document.querySelector('[data-answer-renderer]');
+        if (!renderer || !answer) return;
+
+        if (renderer.dataset.answerRenderer === 'single_choice') {
+            renderer.querySelectorAll('input[type="radio"]').forEach((control) => {
+                control.addEventListener('change', () => {
+                    if (!control.checked) return;
+                    answer.value = control.value;
+                    saveLocal();
+                    scheduleAutosave();
+                    emitWorkspaceDraft(false);
+                });
+            });
+            return;
+        }
+
+        if (renderer.dataset.answerRenderer === 'matching') {
+            let saved = {};
+            try { saved = JSON.parse(answer.value || '{}'); } catch (err) { saved = {}; }
+            renderer.querySelectorAll('[data-match-key]').forEach((control) => {
+                const key = control.dataset.matchKey;
+                if (saved[key] != null) control.value = String(saved[key]);
+                control.addEventListener('change', () => {
+                    const values = {};
+                    renderer.querySelectorAll('[data-match-key]').forEach((item) => {
+                        if (item.value) values[item.dataset.matchKey] = item.value;
+                    });
+                    answer.value = JSON.stringify(values);
+                    saveLocal();
+                    scheduleAutosave();
+                    emitWorkspaceDraft(false);
+                });
+            });
+        }
     }
 
     function saveLocal() {
@@ -1647,6 +1685,7 @@
     });
     answer.addEventListener('input', () => {
         saveLocal();
+        scheduleAutosave();
         emitWorkspaceDraft(false);
     });
     notes.addEventListener('input', saveLocal);
@@ -2111,14 +2150,15 @@
         });
     }
 
-    runBtn.addEventListener('click', runCode);
-    saveBtn.addEventListener('click', saveServer);
+    if (runBtn) runBtn.addEventListener('click', runCode);
+    if (saveBtn) saveBtn.addEventListener('click', saveServer);
     if (fileUpload) fileUpload.addEventListener('change', uploadWorkspaceFile);
     if (fileCreate) fileCreate.addEventListener('click', createWorkspaceFile);
     if (fileSave) fileSave.addEventListener('click', saveWorkspaceFile);
     if (commentSend) commentSend.addEventListener('click', sendComment);
     
     // Инициализация оконного менеджера
+    bindStandardAnswerRenderer();
     restoreLocal();
     joinWorkspaceSocket();
     // The visual V2 uses a stable Bento grid instead of draggable legacy windows.

@@ -403,6 +403,9 @@ class Tasks(db.Model):
     bank_origin = db.Column(db.String(32), nullable=True, index=True)
     # Стартовый код для песочницы / подсказки ученику (опционально)
     starter_code = db.Column(db.Text, nullable=True)
+    # Спецификация ответа для универсального Workspace. Формат: {"type": "short_answer|single_choice|matching|long_answer|code", "options": [...], "prompt": "..."}.
+    # NULL означает legacy-карточку: режим определяется обратносуместимым fallback.
+    answer_spec = db.Column(JSONBCompat, nullable=True)
     # Мягкое отключение записей банка (синхронизация КЕГЭ); генераторы выбирают только is_active=True
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     # Метки синхронизации с kompege.ru (API / парсер)

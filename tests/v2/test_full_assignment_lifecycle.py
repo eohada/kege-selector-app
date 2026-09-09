@@ -218,6 +218,59 @@ def test_student_can_open_two_task_v2_workflow_and_submit_whole_assignment(app, 
     assert submitted.status_code == 200, submitted.get_json()
 
 
+def test_standard_workspace_renders_real_answer_contract_and_persists_json(app, client, role_users):
+    """A non-code task has no IDE and saves its structured matching answer through the same workspace API."""
+    from app import db
+    from core.db_models import Answer, Assignment, AssignmentTask, Submission, Tasks, utc_now
+
+    with app.app_context():
+        task = Tasks(
+            task_number=2,
+            content_html='<p>Сопоставьте протокол и назначение.</p>',
+            answer='A1B2',
+            hints=[{'title': 'Направление', 'text': 'Сначала вспомните назначение HTTP.'}],
+            attached_files='[{"name":"scheme.png","url":"https://example.test/scheme.png"}]',
+            answer_spec={
+                'type': 'matching',
+                'prompt': 'Сопоставьте элементы двух столбцов.',
+                'pairs': [{'key': 'A', 'left': 'HTTP'}, {'key': 'B', 'left': 'DNS'}],
+                'options': [{'value': '1', 'label': 'Передача веб-страниц'}, {'value': '2', 'label': 'Имена доменов'}],
+            },
+        )
+        db.session.add(task)
+        db.session.flush()
+        assignment = Assignment(title='Стандартная работа', assignment_type='homework', deadline=utc_now() + timedelta(days=1), created_by_id=role_users['tutor_id'], is_active=True)
+        db.session.add(assignment)
+        db.session.flush()
+        assignment_task = AssignmentTask(assignment_id=assignment.assignment_id, task_id=task.task_id, order_index=0, max_score=1)
+        db.session.add(assignment_task)
+        db.session.flush()
+        submission = Submission(assignment_id=assignment.assignment_id, student_id=role_users['student_id'], status='ASSIGNED')
+        db.session.add(submission)
+        db.session.commit()
+        submission_id = submission.submission_id
+        assignment_task_id = assignment_task.assignment_task_id
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    page = client.get('/task-workspace/', query_string={
+        'context_type': 'submission_task', 'context_id': submission_id, 'assignment_task_id': assignment_task_id,
+    })
+    assert page.status_code == 200
+    assert 'tw-standard-grid'.encode('utf-8') in page.data
+    assert 'Python IDE'.encode('utf-8') not in page.data
+    assert 'Подсказки к задаче'.encode('utf-8') in page.data
+    assert 'scheme.png'.encode('utf-8') in page.data
+
+    value = '{"A":"1","B":"2"}'
+    saved = client.post('/task-workspace/api/save', json={
+        'context_type': 'submission_task', 'context_id': submission_id,
+        'assignment_task_id': assignment_task_id, 'code': '', 'answer': value,
+    })
+    assert saved.status_code == 200, saved.get_json()
+    with app.app_context():
+        assert Answer.query.filter_by(submission_id=submission_id, assignment_task_id=assignment_task_id).one().value == value
+
+
 def test_task_bank_is_a_separate_v2_page(app, client, role_users):
     """Банк открывается отдельным V2-экраном и возвращает только на внутренний адрес."""
     _login_as(client, role_users['tutor_id'], 'tutor')

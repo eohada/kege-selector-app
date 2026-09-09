@@ -9,7 +9,11 @@ from flask import abort
 from app.models import db
 from app.auth.rbac_utils import get_user_scope
 from app.utils.relationship_scope import can_user_access_student
-from app.utils.jinja_filters import normalize_task_content_assets, prepare_task_content_html
+from app.utils.jinja_filters import (
+    normalize_task_attachments,
+    normalize_task_content_assets,
+    prepare_task_content_html,
+)
 from app.runtime_state import get_json, set_json, delete as redis_delete
 from core.db_models import (
     Answer,
@@ -32,6 +36,68 @@ MMR_POLICY_LABELS = {
 
 WORKSPACE_AUTOSAVE_DEBOUNCE_SECONDS = 2.0
 WORKSPACE_CACHE_TTL_SECONDS = 24 * 60 * 60
+ANSWER_TYPES = {"code", "short_answer", "single_choice", "matching", "long_answer"}
+
+
+def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
+    """Expose only a safe, validated answer UI contract to the student."""
+    raw = getattr(task, "answer_spec", None)
+    spec = dict(raw) if isinstance(raw, dict) else {}
+    answer_type = str(spec.get("type") or "").strip().lower()
+    if answer_type not in ANSWER_TYPES:
+        answer_type = "code" if (task.starter_code or "").strip() else "short_answer"
+
+    options = spec.get("options") if isinstance(spec.get("options"), list) else []
+    normalized_options = []
+    for index, option in enumerate(options[:30], start=1):
+        if isinstance(option, dict):
+            value = str(option.get("value") or option.get("id") or index).strip()
+            label = str(option.get("label") or option.get("text") or value).strip()
+        else:
+            value = str(option).strip()
+            label = value
+        if value and label:
+            normalized_options.append({"value": value[:500], "label": label[:1000]})
+
+    pairs = spec.get("pairs") if isinstance(spec.get("pairs"), list) else []
+    normalized_pairs = []
+    for index, pair in enumerate(pairs[:30], start=1):
+        if not isinstance(pair, dict):
+            continue
+        left = str(pair.get("left") or pair.get("label") or "").strip()
+        key = str(pair.get("key") or pair.get("id") or chr(64 + index)).strip()
+        if left and key:
+            normalized_pairs.append({"key": key[:32], "left": left[:1000]})
+
+    if answer_type == "single_choice" and not normalized_options:
+        answer_type = "short_answer"
+    if answer_type == "matching" and (not normalized_pairs or not normalized_options):
+        answer_type = "short_answer"
+
+    return {
+        "type": answer_type,
+        "prompt": str(spec.get("prompt") or "").strip()[:500],
+        "placeholder": str(spec.get("placeholder") or "").strip()[:500],
+        "options": normalized_options,
+        "pairs": normalized_pairs,
+    }
+
+
+def _visible_task_hints(task: Tasks) -> list[dict[str, str]]:
+    """Tasks.hints is teacher-authored data; absent/invalid data produces no UI card."""
+    raw = getattr(task, "hints", None)
+    values = raw if isinstance(raw, list) else []
+    hints = []
+    for index, item in enumerate(values[:10], start=1):
+        if isinstance(item, dict):
+            text = str(item.get("text") or item.get("body") or item.get("hint") or "").strip()
+            title = str(item.get("title") or f"Подсказка {index}").strip()
+        else:
+            text = str(item or "").strip()
+            title = f"Подсказка {index}"
+        if text:
+            hints.append({"title": title[:160], "text": text[:4000]})
+    return hints
 
 
 def _to_aware_utc(dt: datetime | None) -> datetime | None:
@@ -150,8 +216,11 @@ class WorkspaceContext:
     task_count: int = 1
     previous_task: dict[str, Any] | None = None
     next_task: dict[str, Any] | None = None
+    assignment_title: str = ""
 
     def as_payload(self) -> dict[str, Any]:
+        answer_spec = _normalize_answer_spec(self.task)
+        attachments = normalize_task_attachments(self.task.attached_files)
         return {
             "context_type": self.context_type,
             "context_id": self.context_id,
@@ -159,6 +228,7 @@ class WorkspaceContext:
             "title": self.title,
             "subtitle": self.subtitle,
             "source_label": self.source_label,
+            "assignment_title": self.assignment_title or self.title,
             "return_url": self.return_url,
             "student_id": self.student_id,
             "student_user_id": self.student_user_id,
@@ -169,6 +239,13 @@ class WorkspaceContext:
             "code": self.code,
             "plain_answer": self.plain_answer,
             "starter_code": self.task.starter_code or "",
+            "presentation_mode": "code" if answer_spec["type"] == "code" else "standard",
+            "answer_spec": answer_spec,
+            "hints": _visible_task_hints(self.task),
+            "attachments": attachments,
+            "max_score": int(self.task.max_score or 1),
+            "task_number": self.task.task_number,
+            "difficulty": self.task.difficulty_label,
             "content_html": normalize_task_content_assets(
                 prepare_task_content_html(self.task.content_html or ""),
                 self.task.attached_files,
@@ -229,6 +306,7 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
         title=f"{'Классная работа' if lesson_task.assignment_type == 'classwork' else 'Задание урока'} · задача #{lesson_task.task_id}",
         subtitle=f"Урок #{lesson.lesson_id} · {student.user.username if student.user else 'ученик'}",
         source_label="Урок / классная работа",
+        assignment_title=(lesson.title if lesson and getattr(lesson, "title", None) else "Задание урока"),
         return_url=f"/lesson/{lesson.lesson_id}/classwork-tasks",
         student_id=student.student_id,
         student_user_id=student.user_id,
@@ -315,6 +393,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         title=f"{submission.assignment.title} · задача #{assignment_task.task_id}",
         subtitle=f"{student.user.username if student.user else 'ученик'} · {submission.assignment.assignment_type}",
         source_label="Работа / задание",
+        assignment_title=submission.assignment.title or "Работа",
         return_url="/submissions",
         student_id=student.student_id,
         student_user_id=student.user_id,
@@ -370,8 +449,7 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
         if ctx.context_type == "lesson_task" and ctx.lesson_task_id:
             lesson_task = LessonTask.query.get_or_404(ctx.lesson_task_id)
             lesson_task.student_submission = code
-            if answer:
-                lesson_task.student_answer = answer
+            lesson_task.student_answer = answer
             save_workspace_trace(ctx, frames=frames, meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)})
             save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
             cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
@@ -396,8 +474,7 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
                 )
                 db.session.add(answer_row)
             answer_row.student_code = code
-            if answer:
-                answer_row.value = answer
+            answer_row.value = answer
             from core.db_models import utc_now
 
             answer_row.student_code_saved_at = utc_now()

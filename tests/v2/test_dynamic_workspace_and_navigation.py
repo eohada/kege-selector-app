@@ -47,3 +47,17 @@ def test_active_workspace_templates_do_not_use_browser_blocking_dialogs():
         content = _read_template(relative_path)
         assert not re.search(r'(?<![\w.])confirm\s*\(', content), relative_path
         assert not re.search(r'(?<![\w.])alert\s*\(', content), relative_path
+
+
+def test_workspace_declares_universal_standard_and_code_modes():
+    workspace = _read_template('task_workspace.html')
+    script = (PROJECT_ROOT / 'static' / 'task-workspace' / 'task-workspace.js').read_text(encoding='utf-8')
+
+    assert "workspace.presentation_mode == 'code'" in workspace
+    assert 'tw-standard-grid' in workspace
+    assert 'data-answer-renderer="single_choice"' in workspace
+    assert 'data-answer-renderer="matching"' in workspace
+    assert 'workspace.hints' in workspace
+    assert 'workspace.attachments' in workspace
+    assert 'answer: answer ? answer.value' in script
+    assert 'bindStandardAnswerRenderer' in script
