@@ -118,6 +118,21 @@
               <label class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Инструкция / Пояснения для учеников:</label>
               <textarea id="assignment-description" rows="2" placeholder="Добавьте комментарий или указания по выполнению работы..." class="bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 font-medium shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-all w-full text-xs text-slate-800 leading-relaxed"></textarea>
             </div>
+
+            <fieldset class="space-y-2 pt-1" aria-describedby="assignment-grading-help">
+              <legend class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Проверка работы</legend>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label class="flex items-start gap-3 p-3 bg-indigo-50 border-2 border-indigo-200 rounded-xl cursor-pointer transition-colors hover:border-indigo-400">
+                  <input type="radio" name="assignment-grading-mode" value="auto" checked class="mt-0.5 accent-indigo-600" onchange="handleGradingModeChange()">
+                  <span><span class="block text-xs font-black text-indigo-950">Автоматически, где возможно</span><span class="block mt-0.5 text-[11px] font-medium text-indigo-800">Задания без проверяемого ответа всё равно останутся на ручной проверке.</span></span>
+                </label>
+                <label class="flex items-start gap-3 p-3 bg-white border-2 border-slate-200 rounded-xl cursor-pointer transition-colors hover:border-amber-400">
+                  <input type="radio" name="assignment-grading-mode" value="manual" class="mt-0.5 accent-amber-500" onchange="handleGradingModeChange()">
+                  <span><span class="block text-xs font-black text-slate-800">Проверю всю работу вручную</span><span class="block mt-0.5 text-[11px] font-medium text-slate-500">Автоматическая сверка не будет выставлять результаты.</span></span>
+                </label>
+              </div>
+              <p id="assignment-grading-help" class="text-[11px] font-medium text-slate-500">Режим можно изменить до отправки.</p>
+            </fieldset>
           </div>
         </div>
 
@@ -506,10 +521,34 @@ function scheduleDraftSave() {
 
 function addTaskToAssignment(task) {
   if (!task || !task.task_id || attachedTasks.some(existing => Number(existing.task_id) === Number(task.task_id))) return false;
+  task.inherent_manual_grading = Boolean(task.requires_manual_grading);
   attachedTasks.push(task);
   renderAttachedTasks();
   scheduleDraftSave();
   return true;
+}
+
+function selectedGradingMode() {
+  return document.querySelector('input[name="assignment-grading-mode"]:checked')?.value || 'auto';
+}
+
+function requiresManualGrading(task) {
+  const inherent = task.inherent_manual_grading ?? task.requires_manual_grading;
+  return selectedGradingMode() === 'manual' || Boolean(inherent);
+}
+
+function assignmentTaskPayload(task, idx) {
+  return {
+    task_id: task.task_id,
+    max_score: task.max_score || 1,
+    order_index: idx + 1,
+    requires_manual_grading: requiresManualGrading(task),
+  };
+}
+
+function handleGradingModeChange() {
+  renderAttachedTasks();
+  scheduleDraftSave();
 }
 
 /* --- TASKS MANAGEMENT (TACTILE 3D ACCORDION) --- */
@@ -568,7 +607,7 @@ function renderAttachedTasks() {
             ${t.content_html}
           </div>
           <div class="p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl text-xs font-bold text-amber-900 flex items-center justify-between">
-            <span>${t.requires_manual_grading ? 'Проверка: <strong>преподавателем</strong>' : `Ответ: <strong class="font-mono font-black">${t.answer || '—'}</strong>`}</span>
+            <span>${requiresManualGrading(t) ? 'Проверка: <strong>преподавателем</strong>' : `Ответ: <strong class="font-mono font-black">${t.answer || '—'}</strong>`}</span>
             <span class="text-[10px] font-bold text-slate-400">Источник: ${t.source || 'Банк задач'}</span>
           </div>
         </div>
@@ -1061,7 +1100,7 @@ async function saveAssignmentDraft(showAlert = true) {
     course_id: document.getElementById('assignment-course').value || null,
     target_students: Array.from(selectedStudentIds),
     target_groups: Array.from(selectedGroupIds),
-    tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1, requires_manual_grading: !!t.requires_manual_grading }))
+    tasks: attachedTasks.map(assignmentTaskPayload)
   };
 
   try {
@@ -1107,8 +1146,9 @@ async function submitAssignmentForm() {
     hard_deadline: document.getElementById('assignment-hard-deadline').checked,
     hide_before_start: document.getElementById('assignment-hide-before-start').checked,
     allow_separate_submission: document.getElementById('assignment-allow-separate').checked,
+    grading_mode: selectedGradingMode(),
     exam_course_id: document.getElementById('assignment-course').value || null,
-    tasks: attachedTasks.map((t, idx) => ({ task_id: t.task_id, max_score: t.max_score || 1, order_index: idx + 1, requires_manual_grading: !!t.requires_manual_grading })),
+    tasks: attachedTasks.map(assignmentTaskPayload),
     recipientIds: Array.from(recipientIds)
   };
 

@@ -86,6 +86,8 @@ def test_v2_assignment_builder_uses_live_contracts_and_publishes_draft(app, clie
     page = client.get('/assignments/create')
     assert page.status_code == 200
     assert 'Работа • выбрать и отправить'.encode('utf-8') in page.data
+    assert 'Автоматически, где возможно'.encode('utf-8') in page.data
+    assert 'Проверю всю работу вручную'.encode('utf-8') in page.data
     assert 'Выбрать из банка'.encode('utf-8') in page.data
     assert 'Создать своё'.encode('utf-8') in page.data
     assert 'Откуда берём задания?'.encode('utf-8') not in page.data
@@ -120,6 +122,36 @@ def test_v2_assignment_builder_uses_live_contracts_and_publishes_draft(app, clie
     with app.app_context():
         assert db.session.get(Assignment, draft_id) is None
         assert db.session.get(Assignment, published.get_json()['assignment_id']).is_active is True
+
+
+def test_assignment_distribution_accepts_blank_time_limit_and_manual_mode(app, client, role_users):
+    """Пустой лимит времени не должен попадать строкой в integer PostgreSQL."""
+    from app import db
+    from core.db_models import Assignment, AssignmentTask, Tasks, utc_now
+
+    with app.app_context():
+        task = Tasks(task_number=97, content_html='Проверяемая задача', answer='42')
+        db.session.add(task)
+        db.session.commit()
+        task_id = task.task_id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    response = client.post('/assignments/distribute', json={
+        'title': 'Ручная проверка без таймера',
+        'type': 'homework',
+        'deadline': (utc_now() + timedelta(days=2)).isoformat(),
+        'time_limit_minutes': '',
+        'grading_mode': 'manual',
+        'recipientIds': [role_users['student_id']],
+        'tasks': [{'task_id': task_id, 'max_score': 1}],
+    })
+    assert response.status_code == 201, response.get_json()
+
+    with app.app_context():
+        assignment = db.session.get(Assignment, response.get_json()['assignment_id'])
+        assignment_task = AssignmentTask.query.filter_by(assignment_id=assignment.assignment_id).one()
+        assert assignment.time_limit_minutes is None
+        assert assignment_task.requires_manual_grading is True
 
 
 def test_task_bank_is_a_separate_v2_page(app, client, role_users):

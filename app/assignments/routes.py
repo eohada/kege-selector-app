@@ -1751,8 +1751,14 @@ def distribute_assignment():
         attempts_per_task = data.get('attempts_per_task', False)
         if attempts_per_task:
             allow_separate_submission = True  # попытки на каждое задание подразумевают сдачу по одному
-        time_limit_minutes = data.get('time_limit_minutes')
+        raw_time_limit_minutes = data.get('time_limit_minutes')
+        try:
+            time_limit_minutes = max(1, int(raw_time_limit_minutes)) if str(raw_time_limit_minutes or '').strip() else None
+        except (TypeError, ValueError):
+            time_limit_minutes = None
         time_limit_strict = data.get('time_limit_strict', False)
+        grading_mode = str(data.get('grading_mode') or 'auto').strip().lower()
+        force_manual_grading = grading_mode == 'manual'
         max_attempts_default = data.get('max_attempts_default')
         if max_attempts_default is not None:
             try:
@@ -1872,7 +1878,7 @@ def distribute_assignment():
                 continue
             
             has_answer = bool((task.answer or '').strip())
-            if assignment_type == 'manual_review':
+            if assignment_type == 'manual_review' or force_manual_grading:
                 # Special type: student answers are always checked manually by teacher.
                 requires_manual_grading = True
             else:
