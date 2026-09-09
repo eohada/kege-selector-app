@@ -127,6 +127,7 @@ def templates_list():
         return _deny_templates_access()
     template_type = request.args.get('type', '')
     category = request.args.get('category', '')
+    folder_path = request.args.get('folder', '')
     q_text = (request.args.get('q') or '').strip()
     
     query = TaskTemplate.query.filter_by(is_active=True)
@@ -135,12 +136,18 @@ def templates_list():
         query = query.filter_by(template_type=template_type)
     if category:
         query = query.filter_by(category=category)
+    if folder_path:
+        query = query.filter_by(folder_path=folder_path)
     if q_text:
         query = query.filter(TaskTemplate.name.ilike(f'%{q_text}%'))
     
     templates = query.options(
         db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
     ).order_by(TaskTemplate.created_at.desc()).all()
+    folders = [row[0] for row in db.session.query(TaskTemplate.folder_path).filter(
+        TaskTemplate.is_active.is_(True),
+        TaskTemplate.folder_path.isnot(None),
+    ).distinct().order_by(TaskTemplate.folder_path.asc()).all() if row[0]]
     
     templates_by_type = {
         'homework': [],
@@ -157,6 +164,8 @@ def templates_list():
                          templates_by_type=templates_by_type,
                          current_type=template_type,
                          current_category=category,
+                         current_folder=folder_path,
+                         folders=folders,
                          current_q=q_text)
 
 

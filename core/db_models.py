@@ -1940,6 +1940,14 @@ class TaskTemplate(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     estimated_time = db.Column(db.Integer, default=45, nullable=True)  # Время выполнения в минутах
     course_id = db.Column(db.Integer, nullable=True)
+    # Служебные данные библиотечных пакетов. Не влияют на уже созданные работы.
+    external_key = db.Column(db.String(120), nullable=True, unique=True, index=True)
+    folder_path = db.Column(db.String(255), nullable=True, index=True)
+    is_draft = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    is_featured = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    settings_json = db.Column(db.JSON, nullable=True)
+    sections_json = db.Column(db.JSON, nullable=True)
+    attachments_json = db.Column(db.JSON, nullable=True)
     
     template_tasks = db.relationship('TemplateTask', back_populates='template', lazy=True, cascade='all, delete-orphan')
     creator = db.relationship('User', foreign_keys=[created_by])

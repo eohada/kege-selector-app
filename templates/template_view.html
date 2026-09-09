@@ -57,6 +57,9 @@
             {% elif template.category == 'ПРОГРАММИРОВАНИЕ' %}
                 {% set tag_color = 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300' %}
             {% endif %}
+            {% if template.folder_path %}<span class="inline-flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold">{{ template.folder_path }}</span>{% endif %}
+            {% if template.is_draft %}<span class="inline-flex items-center px-3 py-1.5 bg-amber-50 text-amber-700 rounded-xl text-xs font-bold">Черновик</span>{% endif %}
+            {% if template.is_featured %}<span class="inline-flex items-center px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-bold">Закреплён</span>{% endif %}
             <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold {{ tag_color }}">{{ template.category }}</span>
             {% endif %}
             <span class="inline-flex items-center px-3 py-1.5 bg-slate-100 dark:bg-white/[0.06] text-muted dark:text-dark-muted rounded-xl text-xs font-bold">
@@ -64,6 +67,24 @@
             </span>
         </div>
     </section>
+
+    {% if template.sections_json or template.attachments_json %}
+    <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 shadow-sm dark:shadow-glass-dark">
+        <p class="text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Состав и материалы</p>
+        {% if template.sections_json and template.sections_json.sections %}
+        <div class="mt-4 grid gap-3 md:grid-cols-3">
+            {% for section in template.sections_json.sections %}
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4"><div class="text-sm font-black text-slate-800">{{ section.title }}</div><div class="mt-1 text-xs font-bold text-slate-500">{{ section.task_ids|length }} заданий</div></div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if template.attachments_json %}
+        <div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm font-bold text-indigo-800">
+            Раздаточный материал будет доступен ученику вместе с первым заданием работы: {% for file in template.attachments_json %}{{ file.name }}{% if not loop.last %}, {% endif %}{% endfor %}.
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
 
     {% if template_tasks %}
     <section class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-light rounded-2xl p-6 lg:p-6 shadow-sm dark:shadow-glass-dark">

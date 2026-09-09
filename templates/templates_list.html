@@ -75,8 +75,18 @@
                 <option value="ОГЭ" {% if current_category == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
                 <option value="ЛЕВЕЛАП" {% if current_category == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option>
                 <option value="ПРОГРАММИРОВАНИЕ" {% if current_category == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
+                <option value="Python для ЕГЭ" {% if current_category == 'Python для ЕГЭ' %}selected{% endif %}>Python для ЕГЭ</option>
             </select>
         </div>
+        {% if folders %}
+        <div>
+            <label class="block mb-2 text-tiny font-extrabold text-muted dark:text-dark-muted uppercase tracking-widest">Папка</label>
+            <select id="folderFilter" class="no-tomselect w-full min-w-[240px] h-9 px-4 bg-surface-alt dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 text-secondary dark:text-zinc-300 rounded-xl font-bold text-sm focus:outline-none focus:border-boo-primary" onchange="applyFilters()">
+                <option value="">Все папки</option>
+                {% for folder in folders %}<option value="{{ folder }}" {% if current_folder == folder %}selected{% endif %}>{{ folder }}</option>{% endfor %}
+            </select>
+        </div>
+        {% endif %}
         <button type="button" onclick="applyFilters()" class="h-9 px-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 border border-slate-900 dark:border-white rounded-xl font-bold text-sm hover:bg-slate-800 dark:hover:bg-slate-100 transition-all flex items-center gap-2 cursor-pointer shadow-sm"><i class="ph-bold ph-funnel"></i>Применить</button>
     </div>
 </section>
@@ -114,6 +124,11 @@
         {% for template in type_templates %}
         <div class="bg-surface-alt dark:bg-white/[0.02] border border-slate-200/80 dark:border-zinc-800/60 rounded-2xl p-5 flex flex-col justify-between hover:shadow-md dark:hover:shadow-glass-dark-hover hover-translate-y--2px transition-all duration-300">
             <div class="mb-3">
+                <div class="flex flex-wrap gap-2 mb-2">
+                    {% if template.folder_path %}<span class="text-[11px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded-lg">{{ template.folder_path }}</span>{% endif %}
+                    {% if template.is_draft %}<span class="text-[11px] font-black text-amber-700 bg-amber-50 px-2 py-1 rounded-lg">Черновик</span>{% endif %}
+                    {% if template.is_featured %}<span class="text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg">Закреплён</span>{% endif %}
+                </div>
                 <h3 class="text-sm font-bold text-secondary dark:text-white tracking-tight leading-snug mb-2">{{ template.name }}</h3>
                 {% if template.description %}
                 <p class="text-sm text-muted dark:text-dark-muted font-medium line-clamp-2 leading-relaxed">{{ template.description }}</p>
@@ -178,11 +193,13 @@
     function applyFilters() {
         const type = document.getElementById('typeFilter').value;
         const category = document.getElementById('categoryFilter').value;
+        const folder = document.getElementById('folderFilter')?.value || '';
         const q = (document.getElementById('searchFilter')?.value || '').trim();
         const params = new URLSearchParams();
         if (q) params.append('q', q);
         if (type) params.append('type', type);
         if (category) params.append('category', category);
+        if (folder) params.append('folder', folder);
         window.location.href = '{{ url_for('templates.templates_list') }}?' + params.toString();
     }
 
