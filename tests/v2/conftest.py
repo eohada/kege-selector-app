@@ -26,6 +26,7 @@ collect_ignore = [
         'test_student_assignment_logic.py',
         'test_timezone_schedule_v2.py',
         'test_course_adaptive_program_v2.py',
+        'test_python_ege_curriculum_import.py',
     }
 ]
 

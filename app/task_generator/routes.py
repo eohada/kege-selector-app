@@ -1008,7 +1008,8 @@ def task_generator_bank_picker_list():
     lesson_ids, template_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
 
     from app.utils.python_bank_import import foundations_metadata
-    thematic = foundations_metadata()
+    from app.utils.python_ege_curriculum_import import curriculum_metadata
+    thematic = {**foundations_metadata(), **curriculum_metadata()}
     bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by)).filter(Tasks.is_active.is_(True))
     if selected_task_id is not None:
         bq = bq.filter(Tasks.task_id == selected_task_id)
@@ -1022,7 +1023,7 @@ def task_generator_bank_picker_list():
     if difficulty is not None:
         bq = bq.filter(Tasks.difficulty_level == difficulty)
     if search_query:
-        matched_keys = [key for key, meta in thematic.items() if search_query.casefold() in (meta['title'] + ' ' + meta['module']).casefold()]
+        matched_keys = [key for key, meta in thematic.items() if search_query.casefold() in (meta['title'] + ' ' + meta['module'] + ' ' + meta.get('lesson', '')).casefold()]
         bq = bq.filter(or_(Tasks.content_html.ilike(f'%{search_query}%'), Tasks.source_prototype.in_(matched_keys)))
     if only_my:
         bq = bq.filter(Tasks.bank_origin == 'manual', Tasks.created_by_id == current_user.id)

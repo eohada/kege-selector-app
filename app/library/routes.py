@@ -10,11 +10,11 @@ from flask import (
     render_template, request, jsonify, current_app, url_for, flash, redirect
 )
 from flask_login import login_required, current_user
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from app.library import library_bp
 from app.auth.rbac_utils import check_access, get_user_scope
-from app.models import db, User, Student, Lesson, MaterialAsset, LessonMaterialLink, LessonRoomTemplate, moscow_now
+from app.models import db, User, Student, Lesson, LessonTask, MaterialAsset, LessonMaterialLink, LessonRoomTemplate, moscow_now
 from sqlalchemy.orm.attributes import flag_modified
 from app.uploads.service import save_uploaded_file
 
@@ -332,7 +332,10 @@ def lesson_templates():
     lesson_id = request.args.get('lesson_id', type=int)
 
     base = LessonRoomTemplate.query.filter(LessonRoomTemplate.is_active.is_(True))
-    base = base.filter(LessonRoomTemplate.created_by_user_id == current_user.id)
+    base = base.filter(or_(
+        LessonRoomTemplate.created_by_user_id == current_user.id,
+        LessonRoomTemplate.visibility == 'shared',
+    ))
     if q:
         like = f"%{q.lower()}%"
         base = base.filter(func.lower(LessonRoomTemplate.title).like(like))
@@ -453,6 +456,29 @@ def lesson_template_apply(template_id: int):
         lesson.materials = mats
         flag_modified(lesson, "materials")
 
+    assignment_tasks = payload.get('assignment_tasks') or {}
+    if isinstance(assignment_tasks, dict):
+        for assignment_type, task_ids in assignment_tasks.items():
+            if assignment_type not in {'classwork', 'homework'} or not isinstance(task_ids, list):
+                continue
+            for task_id in task_ids:
+                try:
+                    task_id = int(task_id)
+                except (TypeError, ValueError):
+                    continue
+                exists = LessonTask.query.filter_by(
+                    lesson_id=lesson.lesson_id,
+                    task_id=task_id,
+                    assignment_type=assignment_type,
+                ).first()
+                if not exists:
+                    db.session.add(LessonTask(
+                        lesson_id=lesson.lesson_id,
+                        task_id=task_id,
+                        assignment_type=assignment_type,
+                        notes='Добавлено из шаблона курса Python для ЕГЭ.',
+                    ))
+
     asset_ids = payload.get('asset_ids') or []
     if not isinstance(asset_ids, list):
         asset_ids = []
@@ -477,4 +503,3 @@ def lesson_template_apply(template_id: int):
         return jsonify({'success': False, 'error': 'Ошибка применения'}), 500
 
     return jsonify({'success': True})
-
