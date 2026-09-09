@@ -447,25 +447,24 @@ async function startTimedAssignment() {
         'X-CSRFToken': getCsrfToken()
       }
     });
-    {
-      ASSIGNMENT_META.started_at = data.started_at;
-      ASSIGNMENT_META.status = 'IN_PROGRESS';
-      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - Date.parse(data.started_at)) / 1000));
-      currentRemainingSeconds = Math.max(0, (Number(ASSIGNMENT_META.time_limit_minutes || 0) * 60) - elapsedSeconds);
+    ASSIGNMENT_META.started_at = data.started_at;
+    ASSIGNMENT_META.status = 'IN_PROGRESS';
+    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - Date.parse(data.started_at)) / 1000));
+    currentRemainingSeconds = Math.max(0, (Number(ASSIGNMENT_META.time_limit_minutes || 0) * 60) - elapsedSeconds);
 
-      document.getElementById('start-screen-container').classList.add('hidden');
-      document.getElementById('task-stepper-container').classList.remove('hidden');
-      document.getElementById('bento-main-tasks-grid').classList.remove('hidden');
-      document.getElementById('floating-footer').classList.remove('hidden');
+    document.getElementById('start-screen-container').classList.add('hidden');
+    document.getElementById('task-stepper-container').classList.remove('hidden');
+    document.getElementById('bento-main-tasks-grid').classList.remove('hidden');
+    document.getElementById('floating-footer').classList.remove('hidden');
 
-      const statusBadge = document.getElementById('header-status-badge');
-      if (statusBadge) {
-        statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs';
-        statusBadge.innerHTML = '<i class="ph-fill ph-circle text-purple-500 animate-pulse text-[8px]"></i> В процессе';
-      }
+    const statusBadge = document.getElementById('header-status-badge');
+    if (statusBadge) {
+      statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs';
+      statusBadge.innerHTML = '<i class="ph-fill ph-circle text-purple-500 animate-pulse text-[8px]"></i> В процессе';
+    }
 
-      startLiveTimer();
-      show3DToast('Таймер запущен! Удачи в решении работы!');
+    startLiveTimer();
+    show3DToast('Таймер запущен! Удачи в решении работы!');
   } catch (e) {
     show3DToast('Ошибка старта работы');
   }

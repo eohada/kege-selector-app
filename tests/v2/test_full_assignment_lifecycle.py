@@ -154,6 +154,67 @@ def test_assignment_distribution_accepts_blank_time_limit_and_manual_mode(app, c
         assert assignment_task.requires_manual_grading is True
 
 
+def test_student_can_open_two_task_v2_workflow_and_submit_whole_assignment(app, client, role_users):
+    """Две карточки одной работы открываются, сохраняются и сдаются одним ученическим сценарием."""
+    from app import db
+    from core.db_models import AssignmentTask, Submission, Tasks, utc_now
+
+    with app.app_context():
+        first = Tasks(task_number=101, content_html='<p>Первое задание</p>', answer='42')
+        second = Tasks(task_number=102, content_html='<p>Второе задание</p>', answer='7')
+        db.session.add_all([first, second])
+        db.session.commit()
+        first_task_id = first.task_id
+        second_task_id = second.task_id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    published = client.post('/assignments/distribute', json={
+        'title': 'Две карточки для V2 workspace',
+        'type': 'homework',
+        'deadline': (utc_now() + timedelta(days=2)).isoformat(),
+        'recipientIds': [role_users['student_id']],
+        'tasks': [
+            {'task_id': first_task_id, 'max_score': 1, 'order_index': 1},
+            {'task_id': second_task_id, 'max_score': 1, 'order_index': 2},
+        ],
+    })
+    assert published.status_code == 201, published.get_json()
+
+    with app.app_context():
+        submission = Submission.query.filter_by(
+            assignment_id=published.get_json()['assignment_id'],
+            student_id=role_users['student_id'],
+        ).one()
+        assignment_tasks = AssignmentTask.query.filter_by(assignment_id=submission.assignment_id).order_by(AssignmentTask.order_index).all()
+        submission_id = submission.submission_id
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    page = client.get(f'/submissions/{submission_id}')
+    assert page.status_code == 200
+    assert b'function switchTask(targetArg)' in page.data
+    assert b"submissionUrl('submit')" in page.data
+    assert f'task-card-1'.encode() in page.data
+    assert f'task-card-2'.encode() in page.data
+
+    started = client.post(f'/submissions/{submission_id}/start')
+    assert started.status_code == 200, started.get_json()
+    saved = client.put(f'/submissions/{submission_id}/autosave', json={'answers': [
+        {'assignment_task_id': assignment_tasks[0].assignment_task_id, 'value': '42'},
+        {'assignment_task_id': assignment_tasks[1].assignment_task_id, 'value': '7'},
+    ]})
+    assert saved.status_code == 200, saved.get_json()
+    workspace = client.get(
+        f'/task-workspace/?context_type=submission_task&context_id={submission_id}'
+        f'&assignment_task_id={assignment_tasks[1].assignment_task_id}'
+    )
+    assert workspace.status_code == 200
+    assert b'id="tw-workspace-grid"' in workspace.data
+    submitted = client.post(f'/submissions/{submission_id}/submit', json={
+        'task_times': {str(row.assignment_task_id): 1 for row in assignment_tasks},
+    })
+    assert submitted.status_code == 200, submitted.get_json()
+
+
 def test_task_bank_is_a_separate_v2_page(app, client, role_users):
     """Банк открывается отдельным V2-экраном и возвращает только на внутренний адрес."""
     _login_as(client, role_users['tutor_id'], 'tutor')
