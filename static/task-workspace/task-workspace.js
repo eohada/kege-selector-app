@@ -1622,7 +1622,9 @@
         if (!commentsList || ws.context_type !== 'submission_task') return;
         const resp = await fetch(`/submissions/${ws.context_id}/comments?assignment_task_id=${ws.assignment_task_id}`);
         const data = await resp.json().catch(() => ({})); const items = data.comments || [];
-        commentsList.innerHTML = items.length ? items.map((item) => `<div class="tw-version-item"><strong>${escapeHtml(item.author?.name || 'Пользователь')}</strong><div>${escapeHtml(item.text || '')}</div></div>`).join('') : '<div class="tw-empty">Комментариев пока нет.</div>';
+        commentsList.innerHTML = items.length
+            ? items.map((item) => `<div class="tw-version-item"><strong>${escapeHtml(item.author?.name || 'Пользователь')}</strong><div>${escapeHtml(item.text || '')}</div></div>`).join('')
+            : '<p class="tw-comments-empty">Пока нет сообщений.</p>';
     }
 
     async function sendComment() {

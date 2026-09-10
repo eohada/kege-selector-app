@@ -198,6 +198,7 @@ def test_student_can_open_two_task_v2_workflow_and_submit_whole_assignment(app, 
     assert workspace.status_code == 200
     assert b'id="tw-code-workspace-grid"' in workspace.data
     assert b'id="tw-standard-workspace-grid"' in workspace.data
+    assert b'data-workspace-mode-switch' in workspace.data
     assert f'assignment_task_id={assignment_tasks[1].assignment_task_id}'.encode() in workspace.data
 
     saved_code = client.post('/task-workspace/api/save', json={

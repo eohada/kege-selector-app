@@ -83,7 +83,13 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
             if normalized_mode in WORKSPACE_MODES and normalized_mode not in modes:
                 modes.append(normalized_mode)
     if not modes:
-        modes = ["code"] if answer_type == "code" else ["answer"]
+        # Existing EGE cards predate the explicit workspace contract.  Python is
+        # a legitimate calculation tool for their standard answers, while an
+        # explicit teacher configuration still remains authoritative.
+        if raw_modes is None and answer_type != "code":
+            modes = ["answer", "code"]
+        else:
+            modes = ["code"] if answer_type == "code" else ["answer"]
 
     requested_default = str(
         spec.get("default_workspace_mode", spec.get("defaultWorkspaceMode", ""))

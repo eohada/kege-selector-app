@@ -1449,6 +1449,7 @@ body.dark .tw-topbar .tw-btn-primary {
 .tw-comment-description { margin:0 18px 10px; color:#7b879d; font-size:12px; line-height:1.45; }
 .tw-comment-expand { width:30px; height:30px; display:grid; place-items:center; border:1px solid #e4e8f0; border-radius:9px; background:#fff; color:#5b4ee8; cursor:pointer; }
 .tw-comments-card .tw-version-list { margin:0 18px; max-height:190px; }
+.tw-comments-empty { margin:0; color:#9aa5b8; font-size:12px; line-height:1.4; }
 .tw-comments-card .tw-notes { display:none; min-height:92px; width:calc(100% - 36px); margin:0 18px 10px; box-sizing:border-box; }
 .tw-comments-card .tw-files-actions { display:none; padding:0 18px; }
 .tw-comments-card.is-composer-open .tw-notes, .tw-comments-card.is-composer-open .tw-files-actions { display:flex; }
