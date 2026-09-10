@@ -1,6 +1,6 @@
 """Add the answer specification used by the universal student workspace.
 
-Revision ID: python_ege_workspace_answer_specs
+Revision ID: py_ege_ws_answer_spec
 Revises: python_ege_template_library
 Create Date: 2026-09-09 20:10:00.000000
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "python_ege_workspace_answer_specs"
+revision = "py_ege_ws_answer_spec"
 down_revision = "python_ege_template_library"
 branch_labels = None
 depends_on = None
