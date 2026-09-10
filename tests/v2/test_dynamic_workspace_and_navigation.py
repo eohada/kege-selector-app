@@ -17,7 +17,8 @@ def test_workspace_has_a_single_v2_entry_point():
 
     assert '/sandbox/workspace' not in task_detail
     assert 'task_workspace.workspace_page' in task_detail
-    assert 'id="tw-workspace-grid"' in workspace
+    assert 'id="tw-code-workspace-grid"' in workspace
+    assert 'id="tw-standard-workspace-grid"' in workspace
     assert 'task-workspace/task-workspace.css' in workspace
     assert 'sandbox/layout_teacher.html' in workspace
     assert 'sandbox/layout_student.html' in workspace
@@ -53,7 +54,9 @@ def test_workspace_declares_universal_standard_and_code_modes():
     workspace = _read_template('task_workspace.html')
     script = (PROJECT_ROOT / 'static' / 'task-workspace' / 'task-workspace.js').read_text(encoding='utf-8')
 
-    assert "workspace.presentation_mode == 'code'" in workspace
+    assert 'data-workspace-mode-switch' in workspace
+    assert 'data-workspace-mode="answer"' in workspace
+    assert 'data-workspace-mode="code"' in workspace
     assert 'tw-standard-grid' in workspace
     assert 'data-answer-renderer="single_choice"' in workspace
     assert 'data-answer-renderer="matching"' in workspace
@@ -61,3 +64,5 @@ def test_workspace_declares_universal_standard_and_code_modes():
     assert 'workspace.attachments' in workspace
     assert 'answer: answer ? answer.value' in script
     assert 'bindStandardAnswerRenderer' in script
+    assert 'applyWorkspaceMode' in script
+    assert 'workspace_modes' in script

@@ -37,6 +37,7 @@ MMR_POLICY_LABELS = {
 WORKSPACE_AUTOSAVE_DEBOUNCE_SECONDS = 2.0
 WORKSPACE_CACHE_TTL_SECONDS = 24 * 60 * 60
 ANSWER_TYPES = {"code", "short_answer", "single_choice", "matching", "long_answer"}
+WORKSPACE_MODES = {"answer", "code"}
 
 
 def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
@@ -74,12 +75,29 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
     if answer_type == "matching" and (not normalized_pairs or not normalized_options):
         answer_type = "short_answer"
 
+    raw_modes = spec.get("workspace_modes", spec.get("workspaceModes"))
+    modes = []
+    if isinstance(raw_modes, (list, tuple)):
+        for mode in raw_modes:
+            normalized_mode = str(mode or "").strip().lower()
+            if normalized_mode in WORKSPACE_MODES and normalized_mode not in modes:
+                modes.append(normalized_mode)
+    if not modes:
+        modes = ["code"] if answer_type == "code" else ["answer"]
+
+    requested_default = str(
+        spec.get("default_workspace_mode", spec.get("defaultWorkspaceMode", ""))
+    ).strip().lower()
+    default_workspace_mode = requested_default if requested_default in modes else modes[0]
+
     return {
         "type": answer_type,
         "prompt": str(spec.get("prompt") or "").strip()[:500],
         "placeholder": str(spec.get("placeholder") or "").strip()[:500],
         "options": normalized_options,
         "pairs": normalized_pairs,
+        "workspace_modes": modes,
+        "default_workspace_mode": default_workspace_mode,
     }
 
 
@@ -214,6 +232,7 @@ class WorkspaceContext:
     mmr_value: int = 1000
     task_position: int | None = None
     task_count: int = 1
+    completed_task_count: int = 0
     previous_task: dict[str, Any] | None = None
     next_task: dict[str, Any] | None = None
     assignment_title: str = ""
@@ -239,7 +258,7 @@ class WorkspaceContext:
             "code": self.code,
             "plain_answer": self.plain_answer,
             "starter_code": self.task.starter_code or "",
-            "presentation_mode": "code" if answer_spec["type"] == "code" else "standard",
+            "presentation_mode": "code" if answer_spec["default_workspace_mode"] == "code" else "standard",
             "answer_spec": answer_spec,
             "hints": _visible_task_hints(self.task),
             "attachments": attachments,
@@ -259,6 +278,7 @@ class WorkspaceContext:
             "mmr_value": self.mmr_value,
             "task_position": self.task_position,
             "task_count": self.task_count,
+            "completed_task_count": self.completed_task_count,
             "previous_task": self.previous_task,
             "next_task": self.next_task,
             "answer_hint": self.task.answer or "",
@@ -376,6 +396,12 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         (index for index, item in enumerate(ordered_tasks) if item.assignment_task_id == assignment_task.assignment_task_id),
         0,
     )
+    completed_task_ids = {
+        int(item.assignment_task_id)
+        for item in (submission.answers or [])
+        if getattr(item, "assignment_task_id", None) is not None
+        and (str(getattr(item, "value", "") or "").strip() or str(getattr(item, "student_code", "") or "").strip())
+    }
 
     def navigation_item(item: AssignmentTask) -> dict[str, Any]:
         return {
@@ -408,6 +434,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         timer_seconds_left=timer_seconds_left,
         task_position=current_index + 1,
         task_count=len(ordered_tasks),
+        completed_task_count=len(completed_task_ids),
         previous_task=navigation_item(ordered_tasks[current_index - 1]) if current_index > 0 else None,
         next_task=navigation_item(ordered_tasks[current_index + 1]) if current_index + 1 < len(ordered_tasks) else None,
     )

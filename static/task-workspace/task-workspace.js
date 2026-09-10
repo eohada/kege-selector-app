@@ -46,6 +46,12 @@
     const commentsList = document.getElementById('tw-comments-list');
     const commentText = document.getElementById('tw-comment-text');
     const commentSend = document.getElementById('tw-comment-send');
+    const modeSwitch = document.querySelector('[data-workspace-mode-switch]');
+    const codeWorkspace = document.getElementById('tw-code-workspace-grid');
+    const answerWorkspace = document.getElementById('tw-standard-workspace-grid');
+    const commentsCard = document.getElementById('tw-comments-card');
+    const commentsCodeSlot = document.getElementById('tw-output-panel');
+    const commentsAnswerSlot = document.getElementById('tw-standard-comments-slot');
     let selectedWorkspaceFile = null;
     const storageKey = [
         'task-workspace',
@@ -54,6 +60,7 @@
         ws.assignment_task_id || 'none',
         ws.task_id || 'task'
     ].join(':');
+    const modeStorageKey = storageKey + ':workspace-mode';
     const playback = {
         frames: Array.isArray(ws.playback?.frames) ? ws.playback.frames.slice() : [],
         index: 0,
@@ -90,6 +97,69 @@
     const seenWorkspaceOpIds = new Set();
     const workspaceClientId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     let workspaceLocalCode = '';
+    const initialTaskCompleted = Boolean(String(ws.plain_answer || '').trim() || (String(ws.code || '').trim() && String(ws.code || '').trim() !== String(ws.starter_code || '').trim()));
+
+    function isCurrentTaskCompleted() {
+        const hasAnswer = Boolean(String(answer?.value || '').trim());
+        const currentCode = String(code?.value || '').trim();
+        const starterCode = String(ws.starter_code || '').trim();
+        return hasAnswer || Boolean(currentCode && currentCode !== starterCode);
+    }
+
+    function updateWorkspaceProgress() {
+        const total = Math.max(1, Number(ws.task_count || 1));
+        const base = Math.max(0, Number(ws.completed_task_count || 0) - (initialTaskCompleted ? 1 : 0));
+        const completed = Math.min(total, base + (isCurrentTaskCompleted() ? 1 : 0));
+        const percent = Math.round((completed / total) * 100);
+        const orb = document.getElementById('tw-progress-orb');
+        const status = document.getElementById('tw-progress-status');
+        const percentNode = document.getElementById('tw-progress-percent');
+        if (orb) {
+            orb.style.setProperty('--task-progress', String(percent));
+            orb.setAttribute('aria-label', `Выполнено ${percent} процентов`);
+        }
+        if (status) status.textContent = `Выполнено ${completed} из ${total}`;
+        if (percentNode) percentNode.textContent = `${percent}%`;
+    }
+
+    function supportedWorkspaceModes() {
+        const modes = Array.isArray(ws.answer_spec?.workspace_modes) ? ws.answer_spec.workspace_modes : [];
+        return modes.filter((mode) => mode === 'answer' || mode === 'code');
+    }
+
+    function applyWorkspaceMode(mode, { persist = true } = {}) {
+        const available = supportedWorkspaceModes();
+        const next = available.includes(mode) ? mode : (available[0] || 'answer');
+        if (codeWorkspace) codeWorkspace.classList.toggle('is-workspace-hidden', next !== 'code');
+        if (answerWorkspace) answerWorkspace.classList.toggle('is-workspace-hidden', next !== 'answer');
+        modeSwitch?.querySelectorAll('[data-workspace-mode]').forEach((button) => {
+            const active = button.dataset.workspaceMode === next;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', String(active));
+        });
+        if (commentsCard) {
+            const slot = next === 'answer' ? commentsAnswerSlot : commentsCodeSlot;
+            if (slot && commentsCard.parentElement !== slot) slot.appendChild(commentsCard);
+        }
+        root.dataset.workspaceMode = next;
+        if (persist) {
+            try { sessionStorage.setItem(modeStorageKey, next); } catch (err) {}
+        }
+        if (next === 'code') {
+            requestAnimationFrame(updateEditorChrome);
+        }
+    }
+
+    function initializeWorkspaceMode() {
+        const available = supportedWorkspaceModes();
+        if (!available.length) return;
+        let selected = ws.answer_spec?.default_workspace_mode || (ws.presentation_mode === 'code' ? 'code' : 'answer');
+        try { selected = sessionStorage.getItem(modeStorageKey) || selected; } catch (err) {}
+        applyWorkspaceMode(selected, { persist: false });
+        modeSwitch?.querySelectorAll('[data-workspace-mode]').forEach((button) => {
+            button.addEventListener('click', () => applyWorkspaceMode(button.dataset.workspaceMode));
+        });
+    }
 
     function csrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -837,6 +907,7 @@
                 control.addEventListener('change', () => {
                     if (!control.checked) return;
                     answer.value = control.value;
+                    updateWorkspaceProgress();
                     saveLocal();
                     scheduleAutosave();
                     emitWorkspaceDraft(false);
@@ -857,6 +928,7 @@
                         if (item.value) values[item.dataset.matchKey] = item.value;
                     });
                     answer.value = JSON.stringify(values);
+                    updateWorkspaceProgress();
                     saveLocal();
                     scheduleAutosave();
                     emitWorkspaceDraft(false);
@@ -869,6 +941,7 @@
         try {
             localStorage.setItem(storageKey, JSON.stringify({
                 code: code.value,
+                answer: answer ? answer.value : '',
                 notes: notes.value,
                 playback_frames: playback.frames,
                 ui_state: localUiState(),
@@ -975,6 +1048,7 @@
             if (!raw) return;
             const data = JSON.parse(raw);
             if (data.code && !code.value) code.value = data.code;
+            if (answer && data.answer && !answer.value) answer.value = data.answer;
             workspaceLocalCode = code.value || '';
             if (data.notes) notes.value = data.notes;
             if (Array.isArray(data.playback_frames) && data.playback_frames.length) {
@@ -1043,6 +1117,7 @@
                 lastAppliedServerUpdatedAt = data.versions.items[0]?.created_at || lastAppliedServerUpdatedAt;
             }
             setStatus(isAutosave ? 'Автосохранено' : 'Сохранено на сервере', 'ok');
+            updateWorkspaceProgress();
         } catch (err) {
             setStatus(String(err.message || err), 'error');
         }
@@ -2156,9 +2231,17 @@
     if (fileCreate) fileCreate.addEventListener('click', createWorkspaceFile);
     if (fileSave) fileSave.addEventListener('click', saveWorkspaceFile);
     if (commentSend) commentSend.addEventListener('click', sendComment);
+    document.querySelector('.tw-comment-expand')?.addEventListener('click', () => {
+        commentsCard?.classList.add('is-composer-open');
+        commentText?.focus();
+    });
     
     // Инициализация оконного менеджера
     bindStandardAnswerRenderer();
+    initializeWorkspaceMode();
+    answer?.addEventListener('input', updateWorkspaceProgress);
+    code?.addEventListener('input', updateWorkspaceProgress);
+    updateWorkspaceProgress();
     restoreLocal();
     joinWorkspaceSocket();
     // The visual V2 uses a stable Bento grid instead of draggable legacy windows.

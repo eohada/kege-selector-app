@@ -196,7 +196,8 @@ def test_student_can_open_two_task_v2_workflow_and_submit_whole_assignment(app, 
 
     workspace = client.get(entry.headers['Location'])
     assert workspace.status_code == 200
-    assert b'id="tw-workspace-grid"' in workspace.data
+    assert b'id="tw-code-workspace-grid"' in workspace.data
+    assert b'id="tw-standard-workspace-grid"' in workspace.data
     assert f'assignment_task_id={assignment_tasks[1].assignment_task_id}'.encode() in workspace.data
 
     saved_code = client.post('/task-workspace/api/save', json={
@@ -219,7 +220,7 @@ def test_student_can_open_two_task_v2_workflow_and_submit_whole_assignment(app, 
 
 
 def test_standard_workspace_renders_real_answer_contract_and_persists_json(app, client, role_users):
-    """A non-code task has no IDE and saves its structured matching answer through the same workspace API."""
+    """A standard task preserves its answer contract and the optional code view remains opt-in."""
     from app import db
     from core.db_models import Answer, Assignment, AssignmentTask, Submission, Tasks, utc_now
 
@@ -235,6 +236,8 @@ def test_standard_workspace_renders_real_answer_contract_and_persists_json(app, 
                 'prompt': 'Сопоставьте элементы двух столбцов.',
                 'pairs': [{'key': 'A', 'left': 'HTTP'}, {'key': 'B', 'left': 'DNS'}],
                 'options': [{'value': '1', 'label': 'Передача веб-страниц'}, {'value': '2', 'label': 'Имена доменов'}],
+                'workspace_modes': ['answer', 'code'],
+                'default_workspace_mode': 'answer',
             },
         )
         db.session.add(task)
@@ -257,7 +260,8 @@ def test_standard_workspace_renders_real_answer_contract_and_persists_json(app, 
     })
     assert page.status_code == 200
     assert 'tw-standard-grid'.encode('utf-8') in page.data
-    assert 'Python IDE'.encode('utf-8') not in page.data
+    assert 'Python IDE'.encode('utf-8') in page.data
+    assert b'data-workspace-mode-switch' in page.data
     assert 'Подсказки к задаче'.encode('utf-8') in page.data
     assert 'scheme.png'.encode('utf-8') in page.data
 

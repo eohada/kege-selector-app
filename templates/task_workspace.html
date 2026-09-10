@@ -5,7 +5,7 @@
 {% block body_class %}tw-page-workspace{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260909-universal-v1">
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260910-polish-v1">
 {% endblock %}
 
 {% block sandbox_content %}
@@ -33,20 +33,27 @@
         <div>
             <div class="tw-task-meta">
                 <span>№ {{ workspace.task_id }}</span>
-                <span>Тема: {{ workspace.source_label }}</span>
+                {% if workspace.source_label and workspace.source_label|lower not in ['работа', 'задание', 'работа / задание'] %}<span>Тема: {{ workspace.source_label }}</span>{% endif %}
                 <span>Уровень: {{ {'easy': 'База', 'medium': 'Стандарт', 'hard': 'Хард'}[workspace.difficulty] }}</span>
             </div>
             <h1>Задача #{{ workspace.task_id }}</h1>
         </div>
+        <div class="tw-task-heading-actions">
+            {% if workspace.answer_spec.workspace_modes|length > 1 %}
+            <div class="tw-mode-switch" role="group" aria-label="Представление задачи" data-workspace-mode-switch>
+                {% if 'answer' in workspace.answer_spec.workspace_modes %}<button type="button" class="tw-mode-switch-button" data-workspace-mode="answer"><i class="ph-bold ph-check"></i> Ответ</button>{% endif %}
+                {% if 'code' in workspace.answer_spec.workspace_modes %}<button type="button" class="tw-mode-switch-button" data-workspace-mode="code"><i class="ph-bold ph-code"></i> Код</button>{% endif %}
+            </div>
+            {% endif %}
         <div class="tw-task-navigation">
             <button class="tw-icon-button" type="button" title="Закладки пока не поддерживаются" aria-label="Закладки пока не поддерживаются" disabled><i class="ph-bold ph-bookmark-simple"></i></button>
             {% if workspace.previous_task %}<a class="tw-icon-button" href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=workspace.context_id, assignment_task_id=workspace.previous_task.assignment_task_id) }}" title="Предыдущая задача" aria-label="Предыдущая задача"><i class="ph-bold ph-caret-left"></i></a>{% else %}<button class="tw-icon-button" type="button" disabled aria-label="Предыдущей задачи нет"><i class="ph-bold ph-caret-left"></i></button>{% endif %}
             {% if workspace.next_task %}<a class="tw-icon-button" href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=workspace.context_id, assignment_task_id=workspace.next_task.assignment_task_id) }}" title="Следующая задача" aria-label="Следующая задача"><i class="ph-bold ph-caret-right"></i></a>{% else %}<button class="tw-icon-button" type="button" disabled aria-label="Следующей задачи нет"><i class="ph-bold ph-caret-right"></i></button>{% endif %}
         </div>
+        </div>
     </section>
 
-    {% if workspace.presentation_mode == 'code' %}
-    <section class="tw-grid" id="tw-workspace-grid">
+    <section class="tw-grid{% if workspace.presentation_mode != 'code' %} is-workspace-hidden{% endif %}" id="tw-code-workspace-grid" data-workspace-view="code">
         <aside class="tw-panel tw-task-panel" id="tw-task-panel">
             <div class="tw-panel-head">
                 <div>
@@ -109,9 +116,6 @@
                 </div>
             </div>
             <div class="tw-suggestions" id="tw-suggestions"></div>
-            <div class="tw-answer-row">
-                <input id="tw-answer" class="tw-answer-input" value="{{ workspace.plain_answer }}" placeholder="Короткий ответ, если нужен" {% if not workspace.can_edit %}readonly{% endif %}>
-            </div>
             <div class="tw-actionbar">
                 <div class="tw-status">
                     <span id="tw-status-dot" class="tw-status-dot"></span>
@@ -211,8 +215,9 @@
             </div>
             {% endif %}
             {% if workspace.context_type == 'submission_task' %}
-            <section class="tw-comments-card" aria-label="Комментарии к задаче">
-                <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-chat-circle-text"></i></span><span>Комментарии</span></div></div>
+            <section class="tw-comments-card tw-panel" id="tw-comments-card" aria-label="Комментарии к задаче">
+                <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-chat-circle-text"></i></span><span>Комментарии</span></div><button class="tw-comment-expand" type="button" aria-label="Написать комментарий"><i class="ph-bold ph-plus"></i></button></div>
+                <p class="tw-comment-description">Заметка для себя или вопрос куратору.</p>
                 <div id="tw-comments-list" class="tw-version-list"></div>
                 <textarea id="tw-comment-text" class="tw-notes" placeholder="Здесь можно оставить вопрос куратору"></textarea>
                 <div class="tw-files-actions"><button id="tw-comment-send" class="tw-btn tw-btn-primary" type="button">Отправить</button></div>
@@ -220,8 +225,7 @@
             {% endif %}
         </aside>
     </section>
-    {% else %}
-    <section class="tw-standard-grid" id="tw-workspace-grid">
+    <section class="tw-standard-grid{% if workspace.presentation_mode == 'code' %} is-workspace-hidden{% endif %}" id="tw-standard-workspace-grid" data-workspace-view="answer">
         <div class="tw-standard-main">
             <article class="tw-panel tw-standard-condition">
                 <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-file-text"></i></span><span>Условие</span></div><span class="tw-score-pill">{{ workspace.max_score }} балл{{ 'а' if workspace.max_score in [2, 3, 4] else 'ов' }}</span></div>
@@ -245,20 +249,18 @@
                 {% else %}
                 <input id="tw-answer" class="tw-answer-input tw-standard-answer-input" value="{{ workspace.plain_answer }}" placeholder="{{ workspace.answer_spec.placeholder or 'Ваш ответ…' }}" {% if not workspace.can_edit %}readonly{% endif %}>
                 {% endif %}
-                <div class="tw-actionbar"><div class="tw-status"><span id="tw-status-dot" class="tw-status-dot"></span><span id="tw-status-text">Черновик</span></div><button id="tw-save" class="tw-btn tw-btn-ghost" type="button" {% if not workspace.can_edit %}disabled{% endif %}><i class="ph-bold ph-floppy-disk"></i> Сохранить</button></div>
+                <div class="tw-actionbar tw-answer-status"><div class="tw-status"><span id="tw-status-dot" class="tw-status-dot"></span><span id="tw-status-text">Черновик готов</span></div><span class="tw-save-note">Сохранение доступно в нижней панели</span></div>
             </article>
         </div>
         <aside class="tw-standard-sidebar">
             {% if workspace.hints %}<details class="tw-panel tw-hints-card"><summary><span><i class="ph-bold ph-lightbulb"></i> Подсказки к задаче</span><i class="ph-bold ph-caret-down"></i></summary><div class="tw-hints-body">{% for hint in workspace.hints %}<article><strong>{{ hint.title }}</strong><p>{{ hint.text }}</p></article>{% endfor %}</div></details>{% endif %}
-            {% if workspace.attachments %}<section class="tw-panel tw-materials-card"><div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-paperclip"></i></span><span>Материалы</span></div><span class="tw-score-pill">{{ workspace.attachments|length }} файл{{ 'а' if workspace.attachments|length in [2, 3, 4] else 'ов' }}</span></div><div class="tw-material-list">{% for file in workspace.attachments %}<a href="{{ file.download_url }}" class="tw-material-item" target="_blank" rel="noopener"><i class="ph-bold {{ 'ph-image' if file.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')) else 'ph-file' }}"></i><span><strong>{{ file.name }}</strong><small>{{ file.name.rsplit('.', 1)[-1]|upper if '.' in file.name else 'Файл' }}</small></span><i class="ph-bold ph-download-simple"></i></a>{% endfor %}</div></section>{% endif %}
-            {% if workspace.context_type == 'submission_task' %}<section class="tw-panel tw-comments-card"><div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-chat-circle-text"></i></span><span>Комментарии</span></div></div><p class="tw-comment-description">Здесь можно оставить заметку для себя или вопрос куратору.</p><div id="tw-comments-list" class="tw-version-list"></div><textarea id="tw-comment-text" class="tw-notes" placeholder="Напишите комментарий"></textarea><div class="tw-files-actions"><button id="tw-comment-send" class="tw-btn tw-btn-primary" type="button">Отправить</button></div></section>{% endif %}
+            {% if workspace.attachments %}{% set attachment_count = workspace.attachments|length %}<section class="tw-panel tw-materials-card"><div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-paperclip"></i></span><span>Материалы</span></div><span class="tw-score-pill">{{ attachment_count }} {{ 'файл' if attachment_count % 10 == 1 and attachment_count % 100 != 11 else ('файла' if attachment_count % 10 in [2, 3, 4] and attachment_count % 100 not in [12, 13, 14] else 'файлов') }}</span></div><div class="tw-material-list">{% for file in workspace.attachments %}<a href="{{ file.download_url }}" class="tw-material-item" target="_blank" rel="noopener"><i class="ph-bold {{ 'ph-image' if file.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')) else 'ph-file' }}"></i><span><strong>{{ file.name }}</strong><small>{{ file.name.rsplit('.', 1)[-1]|upper if '.' in file.name else 'Файл' }}</small></span><i class="ph-bold ph-download-simple"></i></a>{% endfor %}</div></section>{% endif %}
+            {% if workspace.context_type == 'submission_task' %}<div id="tw-standard-comments-slot"></div>{% endif %}
         </aside>
-        <div class="tw-standard-runtime" hidden aria-hidden="true"><textarea id="tw-code">{{ workspace.code }}</textarea><pre id="tw-highlight"></pre><div id="tw-active-line"></div><div id="tw-pair-hl-1"></div><div id="tw-pair-hl-2"></div><div id="tw-gutter"></div><textarea id="tw-notes"></textarea></div>
     </section>
-    {% endif %}
 
     <footer class="tw-bottom-bar" aria-label="Действия с работой">
-        <div class="tw-bottom-progress"><span class="tw-progress-orb"><i class="ph-bold {{ 'ph-code' if workspace.presentation_mode == 'code' else 'ph-check-circle' }}"></i></span><div><strong>Задача {{ workspace.task_position or 1 }} из {{ workspace.task_count or 1 }}</strong><span>{{ 'Код и короткий ответ сохраняются автоматически' if workspace.presentation_mode == 'code' else 'Ответ сохраняется автоматически' }}</span></div><span class="tw-progress-percent">{{ ((workspace.task_position or 1) * 100 / (workspace.task_count or 1))|round|int }}%</span></div>
+        {% set task_progress = ((workspace.completed_task_count or 0) * 100 / (workspace.task_count or 1))|round|int %}<div class="tw-bottom-progress"><span class="tw-progress-orb" id="tw-progress-orb" style="--task-progress: {{ task_progress }}" aria-label="Выполнено {{ task_progress }} процентов"><i class="ph-bold {{ 'ph-code' if workspace.presentation_mode == 'code' else 'ph-check-circle' }}"></i></span><div><strong id="tw-progress-label">Задача {{ workspace.task_position or 1 }} из {{ workspace.task_count or 1 }}</strong><span id="tw-progress-status">Выполнено {{ workspace.completed_task_count or 0 }} из {{ workspace.task_count or 1 }}</span></div><span class="tw-progress-percent" id="tw-progress-percent">{{ task_progress }}%</span></div>
         <div class="tw-bottom-actions">
             <button type="button" class="tw-btn tw-btn-ghost" onclick="document.getElementById('tw-save').click()"><i class="ph-bold ph-floppy-disk"></i> Сохранить</button>
             {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Завершить и сдать работу</button>{% elif workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
@@ -295,5 +297,5 @@ document.addEventListener('DOMContentLoaded', () => {
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260909-universal-v1"></script>
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260910-polish-v1"></script>
 {% endblock %}
