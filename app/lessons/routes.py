@@ -1121,8 +1121,13 @@ def lesson_interactive_room(lesson_id: int):
         if lesson_course_id else []
     )
     theory_items = [
-        {'id': item.id, 'title': item.title or f'Тема {item.task_number}', 'task_number': item.task_number,
-         'url': url_for('theory.theory_view_block', block_id=item.id, course_id=lesson_course_id)}
+        {
+            'id': item.id,
+            'title': item.title or f'Тема {item.task_number}',
+            'task_number': item.task_number,
+            'content': item.content,
+            'url': url_for('theory.theory_view_block', block_id=item.id, course_id=lesson_course_id),
+        }
         for item in theory_blocks if (item.content or '').strip() and not (item.content or '').lstrip().startswith('<!--status:draft-->')
     ]
 
@@ -3841,7 +3846,7 @@ def lesson_studio_daily_join(lesson_id: int):
     
     try:
         room_url = DailyService.get_or_create_room(room_name)
-        token = DailyService.create_meeting_token(room_name, user_name, is_teacher)
+        token = DailyService.create_meeting_token(room_name, user_name, is_teacher, str(current_user.id))
         return jsonify({'success': True, 'room_url': room_url, 'token': token})
     except ValueError as e:
         logger.warning(f"Daily.co configuration error for lesson {lesson_id}: {e}")

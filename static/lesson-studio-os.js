@@ -58,7 +58,8 @@
     if (!remote) lessonSocket.emit('tab_changed', {lesson_id: lessonId, tab: view});
     localUi.activeWorkspace=view;persistUi();
     if(!remote){hasExplicitWorkspaceChoice=true;const url=new URL(window.location.href);url.searchParams.set('pane',view);window.history.replaceState({},'',url)}
-    if(!remote && teacher && state.follow_student) save({active_pane:view,follow_student:true});
+    // Switching a workspace is private navigation. The teacher explicitly
+    // publishes a workspace through "Показать ученику", never by browsing.
   }
   
   function render(){
@@ -91,8 +92,9 @@
     renderTasks();
   }
   
-  function renderTasks(){const box=$('#os-task-list');box.innerHTML='';$('#os-task-count').textContent=`${tasks.length} шт.`;if(!tasks.length){box.innerHTML='<div class="room-task-empty"><i class="ph-bold ph-list-checks"></i><strong>Заданий пока нет</strong><p>Преподаватель добавит их из генератора или урока.</p></div>';return}tasks.forEach((t,i)=>{const b=document.createElement('button');b.className=`room-task ${activeTask===t.lesson_task_id?'active':''}`;b.innerHTML=`<small>${i+1} · ${t.status||'pending'}</small><b>${t.title}</b>`;b.onclick=()=>openTask(t.lesson_task_id);box.append(b)})}
-  function openTask(id){const task=tasks.find(x=>x.lesson_task_id===Number(id));if(!task)return;activeTask=task.lesson_task_id;const taskIndex=tasks.findIndex(item=>item.lesson_task_id===activeTask);$('#os-task-title').textContent=task.title;$('#os-task-body').innerHTML=safeTaskHtml(task.description)||'Условие отсутствует.';$('#os-task-status').textContent=task.status||'В очереди';$('#room-mission-progress').textContent=`Шаг ${taskIndex+1} из ${tasks.length}`;$('#room-mission-badge').innerHTML=`<i class="ph-bold ph-sparkle"></i> ${task.status==='completed'?'Задача завершена':'Фокус: одна задача'}`;renderTasks();if(teacher)save({active_task_id:id});connectWorkspace(id)}
+  function taskStatusLabel(status){return ({pending:'Не начато',in_progress:'В работе',completed:'Готово',submitted:'На проверке'})[status]||'В очереди'}
+  function renderTasks(){const box=$('#os-task-list');box.innerHTML='';$('#os-task-count').textContent=`${tasks.length} шт.`;if(!tasks.length){box.innerHTML='<div class="room-task-empty"><i class="ph-bold ph-list-checks"></i><strong>Заданий пока нет</strong><p>Преподаватель добавит их из генератора или урока.</p></div>';return}tasks.forEach((t,i)=>{const b=document.createElement('button');b.className=`room-task ${activeTask===t.lesson_task_id?'active':''}`;b.innerHTML=`<small>${i+1} · ${taskStatusLabel(t.status)}</small><b>${t.title}</b>`;b.onclick=()=>openTask(t.lesson_task_id);box.append(b)})}
+  function openTask(id){const task=tasks.find(x=>x.lesson_task_id===Number(id));if(!task)return;activeTask=task.lesson_task_id;const taskIndex=tasks.findIndex(item=>item.lesson_task_id===activeTask);$('#os-task-title').textContent=task.title;$('#os-task-body').innerHTML=safeTaskHtml(task.description)||'Условие отсутствует.';$('#os-task-status').textContent=taskStatusLabel(task.status);$('#room-mission-progress').textContent=`Шаг ${taskIndex+1} из ${tasks.length}`;$('#room-mission-badge').innerHTML=`<i class="ph-bold ph-sparkle"></i> ${task.status==='completed'?'Задача завершена':'Фокус: одна задача'}`;renderTasks();if(teacher)save({active_task_id:id});connectWorkspace(id)}
   
   function ctx(){return {context_type:'lesson_task',context_id:workspace.id,client_id:clientId}}
   const codeEscape=value=>String(value||'').replace(/[&<>]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[char]));
@@ -433,18 +435,18 @@
       const item=items.find(candidate=>Number(candidate.id)===Number(id));
       if(!item)return;
       state.active_theory_block_id=Number(item.id);
-      frame.src=item.url;
+      frame.innerHTML=`<header><span class="room-eyebrow">${item.task_number ? `ТЕМА ${Number(item.task_number)}` : 'МАТЕРИАЛ КУРСА'}</span><h2>${escape(item.title||'Без названия')}</h2></header><div class="room-theory-prose">${safeTaskHtml(item.content)||'<p>Материал пока не заполнен.</p>'}</div>`;
       frame.dataset.blockId=String(item.id);
       frame.classList.remove('hidden');
       empty?.classList.add('hidden');
       show?.classList.toggle('hidden',!teacher);
       renderTheory();
-      if(teacher)save({active_pane:'theory',active_theory_block_id:Number(item.id),follow_student:state.follow_student});
+      if(teacher)save({active_theory_block_id:Number(item.id)});
     };
     box.querySelectorAll('[data-theory-id]').forEach(button=>button.onclick=()=>select(button.dataset.theoryId));
     const active=items.find(item=>Number(item.id)===Number(state.active_theory_block_id))||items[0];
     if(active){
-      if(frame.dataset.blockId!==String(active.id)){frame.src=active.url;frame.dataset.blockId=String(active.id)}
+      if(frame.dataset.blockId!==String(active.id)){frame.innerHTML=`<header><span class="room-eyebrow">${active.task_number ? `ТЕМА ${Number(active.task_number)}` : 'МАТЕРИАЛ КУРСА'}</span><h2>${escape(active.title||'Без названия')}</h2></header><div class="room-theory-prose">${safeTaskHtml(active.content)||'<p>Материал пока не заполнен.</p>'}</div>`;frame.dataset.blockId=String(active.id)}
       frame.classList.remove('hidden');empty?.classList.add('hidden');show?.classList.toggle('hidden',!teacher);
     }else{frame.classList.add('hidden');empty?.classList.remove('hidden');show?.classList.add('hidden')}
   }
@@ -521,6 +523,13 @@
             btn.disabled = false; btn.textContent = 'Подключиться';
             return toast('Не удалось загрузить видеомодуль Daily. Обновите страницу или проверьте сеть.');
         }
+        const resetDailyFrame = async () => {
+          try { await dailyFrame?.destroy(); } catch (_) {}
+          dailyFrame = null;
+          container.style.display = 'none';
+          $('#os-meeting-placeholder').style.display = 'block';
+          btn.disabled = false; btn.textContent = 'Подключиться';
+        };
         try {
           if (!dailyFrame) {
             dailyFrame = DailyIframe.createFrame(container, { showLeaveButton: true, iframeStyle: { width: '100%', height: '100%', border: '0' } });
@@ -529,15 +538,16 @@
               container.style.display = 'none';
               btn.disabled = false; btn.textContent = 'Подключиться';
             });
+            dailyFrame.on('error', async error => {
+              console.error('Daily meeting error', error);
+              await resetDailyFrame();
+              toast('Daily отклонил подключение. Проверьте разрешение на камеру и микрофон, затем повторите попытку.');
+            });
           }
           await dailyFrame.join({ url: r.room_url, token: r.token });
         } catch (error) {
           console.error('Daily connection failed', error);
-          try { await dailyFrame?.destroy(); } catch (_) {}
-          dailyFrame = null;
-          container.style.display = 'none';
-          $('#os-meeting-placeholder').style.display = 'block';
-          btn.disabled = false; btn.textContent = 'Подключиться';
+          await resetDailyFrame();
           toast('Не удалось подключиться к встрече Daily. Повторите попытку.');
         }
     });

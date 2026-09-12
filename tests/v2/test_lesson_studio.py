@@ -53,6 +53,8 @@ def test_individual_lesson_studio_separates_teacher_and_student_controls(app, cl
     assert 'room-materials-layout' in teacher_html
     assert 'os-focus-toggle' in teacher_html
     assert 'room-panel-toggle' in teacher_html
+    assert '<article id="os-theory-frame"' in teacher_html
+    assert '<iframe id="os-theory-frame"' not in teacher_html
 
     updated = client.post(
         f'/lesson/{lesson_id}/studio/state',
@@ -438,7 +440,7 @@ def test_studio_daily_join_uses_canonical_room_and_role_token(app, client, role_
     )
     monkeypatch.setattr(
         'app.lessons.routes.DailyService.create_meeting_token',
-        lambda room_name, user_name, is_owner: calls.append(('token', room_name, user_name, is_owner)) or 'daily-token',
+        lambda room_name, user_name, is_owner, user_id: calls.append(('token', room_name, user_name, is_owner, user_id)) or 'daily-token',
     )
 
     login_as(client, role_users['tutor_id'], 'tutor')
@@ -450,6 +452,7 @@ def test_studio_daily_join_uses_canonical_room_and_role_token(app, client, role_
     assert calls[1][0] == 'token'
     assert calls[1][1] == f'lesson-{lesson_id}'
     assert calls[1][3] is True
+    assert calls[1][4] == str(role_users['tutor_id'])
 
     calls.clear()
     login_as(client, role_users['student_user_id'], 'student')
@@ -457,6 +460,7 @@ def test_studio_daily_join_uses_canonical_room_and_role_token(app, client, role_
 
     assert student_response.status_code == 200
     assert calls[1][3] is False
+    assert calls[1][4] == str(role_users['student_user_id'])
 
 
 def test_studio_daily_join_reports_missing_provider_configuration(app, client, role_users, monkeypatch):

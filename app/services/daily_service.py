@@ -93,7 +93,7 @@ class DailyService:
             raise RuntimeError("Failed to connect to video provider")
 
     @classmethod
-    def create_meeting_token(cls, room_name: str, user_name: str, is_owner: bool) -> str:
+    def create_meeting_token(cls, room_name: str, user_name: str, is_owner: bool, user_id: str | None = None) -> str:
         """
         Creates a meeting token scoped to the room.
         """
@@ -102,13 +102,14 @@ class DailyService:
         proxies = cls._get_proxies()
         create_url = f"{base_url}/meeting-tokens"
         
-        payload = {
-            "properties": {
-                "room_name": room_name,
-                "is_owner": is_owner,
-                "user_name": user_name
-            }
+        properties = {
+            "room_name": room_name,
+            "is_owner": is_owner,
+            "user_name": user_name,
         }
+        if user_id:
+            properties["user_id"] = str(user_id)
+        payload = {"properties": properties}
         
         try:
             resp = requests.post(create_url, headers=headers, json=payload, proxies=proxies, timeout=5)
