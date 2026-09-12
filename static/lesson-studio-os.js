@@ -421,10 +421,44 @@
     box.querySelectorAll('[data-material-open]').forEach(button=>button.addEventListener('click',()=>{const card=button.closest('.room-material-card');box.querySelectorAll('.room-material-card').forEach(item=>item.classList.toggle('active',item===card));previewItem(materials[Number(button.dataset.materialOpen)])}));
     box.querySelectorAll('[data-material-delete]').forEach(button=>button.addEventListener('click',async()=>{const item=materials[Number(button.dataset.materialDelete)];if(!item||!await confirmRoomAction('Удалить материал?',`Файл «${item.name||'материал'}» исчезнет из урока для всех участников.`))return;const r=await post(`/lesson/${lessonId}/material/delete`,{url:item.url});if(!r.success)return toast(r.error||'Не удалось удалить материал');data.materials=materials.filter(candidate=>candidate.url!==item.url);renderMaterials();toast('Материал удалён')}));
   }
-  function renderTheory(){const box=$('#os-theory-list'), frame=$('#os-theory-frame'), items=data.theory_items||[];if(!box||!frame)return;box.innerHTML=items.map(item=>`<button class="os-material ${Number(state.active_theory_block_id)===Number(item.id)?'active':''}" data-theory-id="${item.id}" data-theory-url="${item.url}">№${item.task_number} · ${item.title}</button>`).join('')||'Для курса пока нет опубликованной теории.';box.querySelectorAll('[data-theory-id]').forEach(button=>button.onclick=()=>{const id=Number(button.dataset.theoryId);state.active_theory_block_id=id;frame.src=button.dataset.theoryUrl;frame.dataset.blockId=String(id);frame.classList.remove('hidden');renderTheory();if(teacher)save({active_pane:'theory',active_theory_block_id:id,follow_student:state.follow_student})});const active=items.find(item=>Number(item.id)===Number(state.active_theory_block_id));if(active){if(frame.dataset.blockId!==String(active.id)){frame.src=active.url;frame.dataset.blockId=String(active.id)}frame.classList.remove('hidden')}}
+  function renderTheory(){
+    const box=$('#os-theory-list'),frame=$('#os-theory-frame'),empty=$('#os-theory-empty'),show=$('#os-theory-show-student'),search=$('#os-theory-search'),items=data.theory_items||[];
+    if(!box||!frame)return;
+    const escape=value=>String(value||'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    const query=String(search?.value||'').trim().toLocaleLowerCase('ru-RU');
+    const visible=query?items.filter(item=>`${item.title||''} ${item.task_number||''}`.toLocaleLowerCase('ru-RU').includes(query)):items;
+    const displayedId=Number(state.active_theory_block_id)||Number(items[0]?.id)||0;
+    box.innerHTML=visible.map(item=>`<button class="os-material ${displayedId===Number(item.id)?'active':''}" data-theory-id="${Number(item.id)}" data-theory-url="${escape(item.url)}"><small>${item.task_number ? `Тема ${Number(item.task_number)}` : 'Материал курса'}</small><span>${escape(item.title||'Без названия')}</span></button>`).join('')||'<p class="room-theory-empty-list">По этому запросу материалов нет.</p>';
+    const select=id=>{
+      const item=items.find(candidate=>Number(candidate.id)===Number(id));
+      if(!item)return;
+      state.active_theory_block_id=Number(item.id);
+      frame.src=item.url;
+      frame.dataset.blockId=String(item.id);
+      frame.classList.remove('hidden');
+      empty?.classList.add('hidden');
+      show?.classList.toggle('hidden',!teacher);
+      renderTheory();
+      if(teacher)save({active_pane:'theory',active_theory_block_id:Number(item.id),follow_student:state.follow_student});
+    };
+    box.querySelectorAll('[data-theory-id]').forEach(button=>button.onclick=()=>select(button.dataset.theoryId));
+    const active=items.find(item=>Number(item.id)===Number(state.active_theory_block_id))||items[0];
+    if(active){
+      if(frame.dataset.blockId!==String(active.id)){frame.src=active.url;frame.dataset.blockId=String(active.id)}
+      frame.classList.remove('hidden');empty?.classList.add('hidden');show?.classList.toggle('hidden',!teacher);
+    }else{frame.classList.add('hidden');empty?.classList.remove('hidden');show?.classList.add('hidden')}
+  }
   
   function bindControls(){
     document.querySelectorAll('.room-tab[data-view]').forEach(b=>b.onclick=()=>activate(b.dataset.view));
+    $('#os-theory-search')?.addEventListener('input',renderTheory);
+    $('#os-theory-show-student')?.addEventListener('click',()=>{
+      const activeId=Number(state.active_theory_block_id);
+      if(!teacher||!activeId)return;
+      save({active_pane:'theory',active_theory_block_id:activeId,follow_student:true}).then(result=>{
+        if(result?.success)toast('Тема открыта у ученика.');
+      });
+    });
     document.querySelectorAll('[data-phase]').forEach(b=>b.onclick=()=>phaseChange(b.dataset.phase));
     $('#os-timer-toggle')?.addEventListener('click',()=>{const remaining = Math.max(0, state.timer.seconds - Math.floor((Date.now() - new Date(state.timer.updated_at).getTime()) / 1000)); save({timer:{...(state.timer||{}),seconds: state.timer.running ? remaining : state.timer.seconds, running:!state.timer?.running}});});
     document.querySelectorAll('[data-duration]').forEach(i=>i.onchange=()=>{const d={...(state.phase_durations||{})};d[i.dataset.duration]=Math.max(1,Number(i.value)||1)*60;save({phase_durations:d,phase_timers:{...(state.phase_timers||{}),[i.dataset.duration]:d[i.dataset.duration]}})});
@@ -520,12 +554,20 @@
     const setPanel=open=>{panel?.classList.toggle('is-collapsed',!open);canvas?.classList.toggle('panel-collapsed',!open);$('#room-panel-toggle')?.setAttribute('aria-expanded',String(open));localUi.lessonPanelOpen=open;persistUi()};
     $('#room-panel-toggle')?.addEventListener('click',()=>setPanel(panel?.classList.contains('is-collapsed')));
     $('#room-panel-close')?.addEventListener('click',()=>setPanel(false));
-    if(localUi.lessonPanelOpen!==true)setPanel(false);
+    if(localUi.lessonPanelOpen!==false)setPanel(true);else setPanel(false);
     const taskPanelIsOpen=()=>isMobile()?taskPanel?.classList.contains('is-open'):!taskPanel?.classList.contains('is-collapsed');
     const setTaskPanel=open=>{taskPanel?.classList.toggle('is-open',open);taskPanel?.classList.toggle('is-collapsed',!open);canvas?.classList.toggle('tasks-collapsed',!open);$('#room-task-toggle')?.setAttribute('aria-expanded',String(open));localUi.taskPanelOpen=open;persistUi()};
     $('#room-task-toggle')?.addEventListener('click',()=>setTaskPanel(!taskPanelIsOpen()));
     $('#room-task-close')?.addEventListener('click',()=>setTaskPanel(false));
     if(localUi.taskPanelOpen===true)setTaskPanel(true);else setTaskPanel(false);
+    const setFocusMode=enabled=>{
+      root.classList.toggle('room-focus-mode',enabled);
+      $('#os-focus-toggle')?.setAttribute('aria-pressed',String(enabled));
+      $('#os-focus-toggle')?.setAttribute('title',enabled?'Выйти из фокуса':'Сфокусироваться на задаче');
+      localUi.focusMode=enabled;persistUi();
+    };
+    $('#os-focus-toggle')?.addEventListener('click',()=>setFocusMode(!root.classList.contains('room-focus-mode')));
+    if(localUi.focusMode===true)setFocusMode(true);
     const setWidths=()=>{if(Number(localUi.leftWidth))root.style.setProperty('--room-left-width',`${localUi.leftWidth}px`);if(Number(localUi.rightWidth))root.style.setProperty('--room-right-width',`${localUi.rightWidth}px`)};
     setWidths();
     const resizePanel=(side,event)=>{if(window.innerWidth<=1180)return;event.preventDefault();const startX=event.clientX,start=side==='left'?(Number(localUi.leftWidth)||250):(Number(localUi.rightWidth)||320);const move=e=>{const delta=e.clientX-startX;const minimum=side==='left'?190:280;const width=Math.max(minimum,Math.min(420,side==='left'?start+delta:start-delta));localUi[side==='left'?'leftWidth':'rightWidth']=width;root.style.setProperty(side==='left'?'--room-left-width':'--room-right-width',`${width}px`)};const done=()=>{persistUi();window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',done)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',done)};
@@ -551,7 +593,7 @@
       if(r.success){ toast('Урок завершён'); state = r.state || state; render(); }
       else toast(r.error || 'Не удалось завершить урок');
     });
-    document.addEventListener('keydown',event=>{if(event.key==='Escape'){const finishModal=$('#os-finish-modal'),confirmModal=$('#room-confirm-modal');if(!finishModal?.classList.contains('hidden'))setModalVisible(finishModal,false);if(!confirmModal?.classList.contains('hidden'))$('#room-confirm-cancel')?.click();return}const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag)||event.altKey||event.ctrlKey||event.metaKey)return;if(event.key==='1')activate('work');if(event.key==='2')activate('theory');if(event.key==='3')activate('board');if(event.key==='4')activate('materials');if(event.key.toLowerCase()==='v')setVideoOpen(!videoDock?.classList.contains('hidden'));if(event.key.toLowerCase()==='f'&&teacher)$('#os-follow')?.click()});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'){const finishModal=$('#os-finish-modal'),confirmModal=$('#room-confirm-modal');if(!finishModal?.classList.contains('hidden'))setModalVisible(finishModal,false);if(!confirmModal?.classList.contains('hidden'))$('#room-confirm-cancel')?.click();if(root.classList.contains('room-focus-mode'))$('#os-focus-toggle')?.click();return}const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag)||event.altKey||event.ctrlKey||event.metaKey)return;if(event.key==='1')activate('work');if(event.key==='2')activate('theory');if(event.key==='3')activate('board');if(event.key==='4')activate('materials');if(event.key.toLowerCase()==='v')setVideoOpen(!videoDock?.classList.contains('hidden'));if(event.key.toLowerCase()==='f'&&teacher)$('#os-follow')?.click()});
   }
   
   const lessonSocket=io('/lesson');

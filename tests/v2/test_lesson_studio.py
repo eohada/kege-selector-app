@@ -47,6 +47,12 @@ def test_individual_lesson_studio_separates_teacher_and_student_controls(app, cl
     assert 'ИНДИВИДУАЛЬНЫЙ УРОК' in teacher_html
     assert 'lesson-studio-os' in teacher_html
     assert 'room-v3-page-teacher' in teacher_html
+    assert 'room-task-header' in teacher_html
+    assert 'room-theory-layout' in teacher_html
+    assert 'room-board-surface' in teacher_html
+    assert 'room-materials-layout' in teacher_html
+    assert 'os-focus-toggle' in teacher_html
+    assert 'room-panel-toggle' in teacher_html
 
     updated = client.post(
         f'/lesson/{lesson_id}/studio/state',
