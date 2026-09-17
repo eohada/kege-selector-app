@@ -27,7 +27,7 @@ def upgrade():
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint('teacher_id', 'text', name='uq_teacher_quick_comment_text'),
     )
-    op.create_index('ix_teacher_quick_comments_teacher_id', 'TeacherQuickComments', ['teacher_id'])
+    op.create_index('ix_TeacherQuickComments_teacher_id', 'TeacherQuickComments', ['teacher_id'])
 
 
 def downgrade():
