@@ -1754,6 +1754,16 @@ def test_submission_grade_keeps_actions_inside_the_canonical_v2_shell():
 
     assert '.grade-page-inner { width: min(1400px, 100%)' in template
     assert 'box-shadow: 0 4px 0 #dae1e9' in template
+    assert 'grade-review-v5' in template
+    assert 'Review V5 — target layout' in template
+    assert 'grade-workbench' in template
+    assert 'review-header-progress' in template
+    assert 'review-overview-modal' in template
+    assert 'complete-review-modal' in template
+    assert 'grade-chat-drawer' in template
+    assert 'data-review-current' in template
+    assert 'bindReviewKeyboardShortcuts' in template
+    assert 'teacher_quick_comments' in template
     assert 'id="grade-form"' in template
     assert 'id="save-comments-btn"' in template
     assert 'id="save-scores-draft-btn"' in template

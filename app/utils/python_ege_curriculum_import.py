@@ -72,9 +72,24 @@ def _text(value: Any) -> str:
     return str(value or "").strip()
 
 
+def _student_statement(task: dict[str, Any]) -> str:
+    """Возвращает самодостаточную формулировку для карточки ученика."""
+    statement = _text((task.get("student") or {}).get("statement"))
+    replacements = {
+        "Для задачи ниже предложи три допустимых теста": "Подберите для этой задачи три допустимых теста",
+        "Почему else после проверок n > 0 и n < 0 означает n = 0?": (
+            "В программе последовательно проверяют n > 0 и n < 0. "
+            "Какое значение n попадёт в ветку else? Объясни почему."
+        ),
+    }
+    for source, replacement in replacements.items():
+        statement = statement.replace(source, replacement)
+    return statement
+
+
 def _student_content(task: dict[str, Any]) -> str:
     student = task.get("student") or {}
-    parts = [f"<p>{html.escape(_text(student.get('statement')))}</p>"]
+    parts = [f"<p>{html.escape(_student_statement(task))}</p>"]
     code = _text(student.get("code"))
     if code:
         parts.append(f'<pre><code class="language-python">{html.escape(code)}</code></pre>')

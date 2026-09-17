@@ -98,6 +98,7 @@ from core.db_models import (
     CodePlaybackTrace,
     SubmissionComment,
     SubmissionCommentThreadRead,
+    TeacherQuickComment,
     LessonTaskTeacherComment,
     GradebookEntry,
     LessonTaskAttempt,

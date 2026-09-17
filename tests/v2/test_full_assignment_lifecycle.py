@@ -69,6 +69,116 @@ def test_assignment_lifecycle_uses_only_canonical_v2_endpoints(app, client, role
         assert final_submission.total_score == 1
 
 
+def test_teacher_review_shows_the_exact_student_answer_value(app, client, role_users):
+    """The review page must expose the value the student actually saved, including structured JSON."""
+    from app import db
+    from core.db_models import AssignmentTask, Submission, Tasks, utc_now
+
+    saved_value = '{"A":"north","B":"south"}'
+    with app.app_context():
+        task = Tasks(
+            task_number=902,
+            content_html='Сопоставьте направления',
+            answer_spec={
+                'type': 'matching',
+                'pairs': [{'key': 'A', 'left': 'Первая точка'}, {'key': 'B', 'left': 'Вторая точка'}],
+                'options': [{'value': 'north', 'label': 'Север'}, {'value': 'south', 'label': 'Юг'}],
+            },
+        )
+        db.session.add(task)
+        db.session.commit()
+        task_id = task.task_id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    distributed = client.post('/assignments/distribute', json={
+        'title': 'Visible student response',
+        'type': 'homework',
+        'recipientIds': [role_users['student_id']],
+        'tasks': [{'task_id': task_id, 'max_score': 1}],
+        'deadline': (utc_now() + timedelta(days=2)).isoformat(),
+    })
+    assert distributed.status_code == 201, distributed.get_json()
+
+    with app.app_context():
+        submission = Submission.query.filter_by(assignment_id=distributed.get_json()['assignment_id']).one()
+        assignment_task_id = AssignmentTask.query.filter_by(assignment_id=submission.assignment_id).one().assignment_task_id
+        submission_id = submission.submission_id
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    assert client.post(f'/submissions/{submission_id}/start').status_code == 200
+    assert client.put(f'/submissions/{submission_id}/autosave', json={
+        'answers': [{'assignment_task_id': assignment_task_id, 'value': saved_value}],
+    }).status_code == 200
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    review = client.get(f'/submissions/{submission_id}/grade')
+    assert review.status_code == 200
+    assert 'Введённый ответ ученика'.encode('utf-8') in review.data
+    assert b'north' in review.data and b'south' in review.data
+
+
+def test_teacher_review_state_keeps_zero_score_distinct_from_unreviewed(app, client, role_users):
+    """A deliberate zero is persisted together with review state, without fabricating other answers."""
+    from app import db
+    from core.db_models import Answer, AssignmentTask, Submission, Tasks, utc_now
+
+    with app.app_context():
+        task = Tasks(task_number=401, content_html='Проверка нулевого балла', answer='42')
+        db.session.add(task)
+        db.session.commit()
+        task_id = task.task_id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    distributed = client.post('/assignments/distribute', json={
+        'title': 'Review state without false zero',
+        'type': 'homework',
+        'recipientIds': [role_users['student_id']],
+        'tasks': [{'task_id': task_id, 'max_score': 1}],
+        'deadline': (utc_now() + timedelta(days=2)).isoformat(),
+    })
+    assert distributed.status_code == 201, distributed.get_json()
+
+    with app.app_context():
+        submission = Submission.query.filter_by(assignment_id=distributed.get_json()['assignment_id']).one()
+        assignment_task_id = AssignmentTask.query.filter_by(assignment_id=submission.assignment_id).one().assignment_task_id
+        submission_id = submission.submission_id
+
+    saved = client.post(f'/submissions/{submission_id}/grade', json={
+        'scores_only': True,
+        'scores': [{'assignment_task_id': assignment_task_id, 'score': 0, 'comment': 'Нужно доработать'}],
+        'reviewed_assignment_task_ids': [assignment_task_id],
+    })
+    assert saved.status_code == 200, saved.get_json()
+
+    with app.app_context():
+        answer = Answer.query.filter_by(submission_id=submission_id, assignment_task_id=assignment_task_id).one()
+        submission = db.session.get(Submission, submission_id)
+        assert answer.score == 0
+        assert answer.reviewed_at is not None
+        assert submission.total_score == 0
+        assert submission.max_score == 1
+
+
+def test_teacher_quick_comments_are_private_and_persisted(app, client, role_users):
+    """Teacher snippets are saved per teacher and are unavailable to the student role."""
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    created = client.post('/teacher/quick-comments', json={'text': 'Проверь граничные случаи'})
+    assert created.status_code == 201, created.get_json()
+    item = created.get_json()['item']
+
+    listed = client.get('/teacher/quick-comments')
+    assert listed.status_code == 200
+    assert item in listed.get_json()['items']
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    forbidden = client.get('/teacher/quick-comments')
+    assert forbidden.status_code == 403
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    deleted = client.delete('/teacher/quick-comments', json={'id': item['id']})
+    assert deleted.status_code == 200, deleted.get_json()
+
+
 def test_v2_assignment_builder_uses_live_contracts_and_publishes_draft(app, client, role_users):
     """The public constructor renders the V2 canvas and never calls sandbox-only APIs."""
     from app import db
@@ -122,6 +232,49 @@ def test_v2_assignment_builder_uses_live_contracts_and_publishes_draft(app, clie
     with app.app_context():
         assert db.session.get(Assignment, draft_id) is None
         assert db.session.get(Assignment, published.get_json()['assignment_id']).is_active is True
+
+
+def test_assignment_templates_open_in_a_dedicated_catalog(client, role_users):
+    """Template selection is a separate V2 page and keeps the create flow canonical."""
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    catalog = client.get('/assignments/templates')
+    assert catalog.status_code == 200
+    assert 'Выберите готовый шаблон'.encode('utf-8') in catalog.data
+    assert b'id="template-search"' in catalog.data
+    assert b'/assignments/create?source=template' in catalog.data
+
+    create_page = client.get('/assignments/create')
+    assert create_page.status_code == 200
+    assert b'id="templates-modal"' not in create_page.data
+    assert b'/assignments/templates' in create_page.data
+
+
+def test_assignment_template_preview_exposes_real_task_conditions(app, client, role_users):
+    """A teacher can inspect a template's actual tasks before adding it to an assignment."""
+    from app import db
+    from core.db_models import TaskTemplate, Tasks, TemplateTask
+
+    with app.app_context():
+        task = Tasks(
+            task_number=903,
+            source_prototype='author/python-ege-curriculum/PY-L07-05',
+            content_html='<p>Уникальное условие предпросмотра</p><pre><code>if n &gt; 0:\n    print(1)</code></pre>',
+        )
+        template = TaskTemplate(name='Шаблон для предпросмотра', template_type='homework', is_active=True)
+        db.session.add_all([task, template])
+        db.session.flush()
+        db.session.add(TemplateTask(template_id=template.template_id, task_id=task.task_id, order=1))
+        db.session.commit()
+        template_id = template.template_id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    preview = client.get(f'/assignments/templates/{template_id}')
+    assert preview.status_code == 200
+    assert 'Уникальное условие предпросмотра'.encode('utf-8') in preview.data
+    assert 'Найди и исправь ошибку'.encode('utf-8') in preview.data
+    assert b'.template-preview-task-body pre' in preview.data
+    assert 'Выбрать этот шаблон'.encode('utf-8') in preview.data
+    assert f'/assignments/create?source=template&amp;template_id={template_id}'.encode('utf-8') in preview.data
 
 
 def test_assignment_distribution_accepts_blank_time_limit_and_manual_mode(app, client, role_users):

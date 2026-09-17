@@ -155,8 +155,8 @@
           </div>
           
           <div class="flex items-center gap-3">
-              <a href="/submissions/{{ sub.submission_id }}" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-sm px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline text-center">
-                  Перейти в работу
+              <a href="{{ url_for('assignments.submission_grade_view', submission_id=sub.submission_id) }}" class="btn-3d bg-white hover:bg-slate-50 text-slate-700 font-black text-sm px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline text-center">
+                  Открыть проверку
               </a>
               {% if sub.status != 'REVOKED' %}
               <form action="/submissions/{{ sub.submission_id }}/revoke" method="POST" class="inline" data-revoke-form>

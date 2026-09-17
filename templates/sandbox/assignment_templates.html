@@ -1,0 +1,182 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+<main class="template-catalog-page min-h-screen bg-slate-50 p-4 pb-16 lg:pl-[7.5rem] lg:pr-8 lg:pt-7">
+  <div class="mx-auto max-w-[1400px]">
+    <a href="{{ url_for('assignments.assignment_create') }}" class="template-catalog-back">
+      <i class="ph-bold ph-arrow-left"></i> К созданию работы
+    </a>
+
+    <section class="template-catalog-hero">
+      <div>
+        <p class="template-catalog-kicker"><i class="ph-bold ph-squares-four"></i> Библиотека работ</p>
+        <h1>Выберите готовый шаблон</h1>
+        <p>Подберите основу, а затем при необходимости отредактируйте задания и параметры перед отправкой.</p>
+      </div>
+      <div class="template-catalog-summary">
+        <strong>{{ templates|length }}</strong>
+        <span>доступных шаблонов</span>
+      </div>
+    </section>
+
+    <section class="template-catalog-toolbar" aria-label="Поиск и фильтры шаблонов">
+      <label class="template-search" for="template-search">
+        <i class="ph-bold ph-magnifying-glass"></i>
+        <input id="template-search" type="search" autocomplete="off" placeholder="Поиск по названию, описанию или теме">
+        <kbd>/</kbd>
+      </label>
+      <div class="template-type-filters" role="group" aria-label="Тип работы">
+        <button type="button" class="is-active" data-template-type="all">Все</button>
+        <button type="button" data-template-type="homework">Домашние</button>
+        <button type="button" data-template-type="classwork">На урок</button>
+        <button type="button" data-template-type="exam">Пробники</button>
+      </div>
+      {% if categories %}
+      <label class="template-category-select" for="template-category">
+        <i class="ph-bold ph-funnel"></i>
+        <select id="template-category">
+          <option value="">Все темы</option>
+          {% for category in categories %}<option value="{{ category }}">{{ category }}</option>{% endfor %}
+        </select>
+      </label>
+      {% endif %}
+    </section>
+
+    <p id="template-results-count" class="template-results-count" aria-live="polite">Показаны все {{ templates|length }} шаблонов</p>
+
+    <section id="template-grid" class="template-catalog-grid" aria-label="Шаблоны работ">
+      {% for template in templates %}
+      {% set template_type = (template.template_type or 'homework')|lower %}
+      {% set type_labels = {'homework': 'Домашняя работа', 'classwork': 'Работа на уроке', 'exam': 'Пробник', 'lesson': 'Урок'} %}
+      {% set type_label = type_labels.get(template_type, template.template_type or 'Работа') %}
+      <article class="template-catalog-card{% if template.is_featured %} is-featured{% endif %}" data-template-card data-type="{{ template_type }}" data-category="{{ template.category or '' }}" data-search="{{ ((template.name or '') ~ ' ' ~ (template.description or '') ~ ' ' ~ (template.category or ''))|lower }}">
+        <div class="template-card-topline">
+          <span class="template-type-pill template-type-{{ template_type }}">{{ type_label }}</span>
+          {% if template.is_featured %}<span class="template-featured"><i class="ph-fill ph-star"></i> Рекомендуем</span>{% endif %}
+        </div>
+        <div class="template-card-copy">
+          <h2>{{ template.name }}</h2>
+          <p>{{ template.description or 'Готовая структура работы с подобранными заданиями и настройками.' }}</p>
+        </div>
+        <div class="template-card-meta">
+          <span><i class="ph-bold ph-list-checks"></i> {{ template.tasks_count }} {{ 'задача' if template.tasks_count == 1 else ('задачи' if template.tasks_count in [2, 3, 4] else 'задач') }}</span>
+          {% if template.estimated_time %}<span><i class="ph-bold ph-clock"></i> ~{{ template.estimated_time }} мин</span>{% endif %}
+          {% if template.category %}<span><i class="ph-bold ph-tag"></i> {{ template.category }}</span>{% endif %}
+        </div>
+        <div class="template-card-actions">
+          <a class="template-preview-button" href="{{ url_for('assignments.assignment_template_preview', template_id=template.template_id) }}"><i class="ph-bold ph-eye"></i> Посмотреть</a>
+          <a class="template-select-button" href="{{ url_for('assignments.assignment_create', source='template', template_id=template.template_id, assignment_type=template_type) }}">
+            Выбрать <i class="ph-bold ph-arrow-right"></i>
+          </a>
+        </div>
+      </article>
+      {% else %}
+      <div class="template-catalog-empty"><i class="ph-bold ph-files"></i><strong>Шаблонов пока нет</strong><span>Создайте первый шаблон в библиотеке работ.</span></div>
+      {% endfor %}
+    </section>
+
+    <div id="template-empty-filter" class="template-catalog-empty hidden"><i class="ph-bold ph-magnifying-glass"></i><strong>Ничего не найдено</strong><span>Попробуйте изменить запрос или снять фильтры.</span><button type="button" id="template-reset-filters">Сбросить фильтры</button></div>
+  </div>
+</main>
+
+<style>
+  .template-catalog-page { color:#1d2a44; }
+  .template-catalog-back { display:inline-flex; align-items:center; gap:.45rem; margin-bottom:1rem; padding:.6rem .85rem; border:1px solid #dce4f0; border-bottom:3px solid #cfd9e6; border-radius:11px; background:#fff; color:#304161; font-size:.78rem; font-weight:800; text-decoration:none; }
+  .template-catalog-back:active { transform:translateY(2px); border-bottom-width:1px; }
+  .template-catalog-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:1.5rem; padding:1.8rem 2rem; border:2px solid #dce4ee; border-radius:28px; background:linear-gradient(115deg,#fff 0%,#f6f4ff 100%); box-shadow:0 4px 0 #d7e0ea; }
+  .template-catalog-kicker { display:flex; align-items:center; gap:.4rem; margin:0 0 .45rem; color:#5944e6; font-size:.7rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+  .template-catalog-hero h1 { margin:0; color:#17233c; font-size:clamp(1.55rem,2.4vw,2.2rem); letter-spacing:-.045em; }
+  .template-catalog-hero p:not(.template-catalog-kicker) { max-width:44rem; margin:.55rem 0 0; color:#64748b; font-size:.9rem; line-height:1.55; }
+  .template-catalog-summary { display:flex; min-width:8.5rem; flex-direction:column; align-items:flex-end; padding:.9rem 1rem; border:1px solid #d9d2ff; border-radius:16px; background:rgba(255,255,255,.78); }
+  .template-catalog-summary strong { color:#5540df; font-size:1.6rem; line-height:1; }
+  .template-catalog-summary span { margin-top:.2rem; color:#71809b; font-size:.68rem; font-weight:800; }
+  .template-catalog-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; margin-top:1.5rem; padding:1rem; border:2px solid #dce4ee; border-radius:18px; background:#f4f7fa; box-shadow:0 3px 0 #dbe3ec; }
+  .template-search { display:flex; min-width:min(100%,22rem); flex:1 1 22rem; align-items:center; gap:.6rem; padding:0 .8rem; border:1px solid #d6dfec; border-radius:12px; background:#fff; color:#7a88a2; }
+  .template-search:focus-within { border-color:#7b68f5; box-shadow:0 0 0 3px rgba(112,92,243,.12); }
+  .template-search input { min-width:0; flex:1; padding:.68rem 0; border:0; outline:0; background:transparent; color:#233454; font-size:.8rem; }
+  .template-search kbd { padding:.15rem .35rem; border:1px solid #dce4ee; border-radius:5px; color:#8b99b1; font:800 .66rem/1 ui-monospace,monospace; }
+  .template-type-filters { display:flex; gap:.3rem; padding:.25rem; border:1px solid #dce4ee; border-radius:12px; background:#fff; }
+  .template-type-filters button { min-height:2.2rem; padding:0 .68rem; border:0; border-radius:8px; background:transparent; color:#697891; font-size:.72rem; font-weight:800; cursor:pointer; }
+  .template-type-filters button:hover { color:#4f3fd3; background:#f3f1ff; }
+  .template-type-filters button.is-active { color:#fff; background:#5a43e8; box-shadow:0 2px 0 #4531c8; }
+  .template-category-select { display:flex; align-items:center; gap:.4rem; padding:0 .7rem; border:1px solid #d6dfec; border-radius:12px; background:#fff; color:#697891; }
+  .template-category-select select { min-height:2.35rem; border:0; outline:0; background:transparent; color:#384966; font-size:.75rem; font-weight:800; }
+  .template-results-count { margin:1.1rem 0 .8rem; color:#7888a2; font-size:.76rem; font-weight:700; }
+  .template-catalog-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,18rem),1fr)); gap:1rem; }
+  .template-catalog-card { display:flex; min-height:16.3rem; flex-direction:column; padding:1.15rem; border:2px solid #dce4ee; border-radius:20px; background:#fff; box-shadow:0 4px 0 #d8e1eb; transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease; }
+  .template-catalog-card:hover { transform:translateY(-3px); border-color:#aa9fff; box-shadow:0 8px 0 #ddd8ff; }
+  .template-catalog-card.is-featured { border-color:#b9adff; background:linear-gradient(145deg,#fff 0%,#f9f8ff 100%); }
+  .template-card-topline { display:flex; min-height:1.6rem; align-items:flex-start; justify-content:space-between; gap:.5rem; }
+  .template-type-pill,.template-featured { display:inline-flex; align-items:center; gap:.3rem; padding:.28rem .48rem; border-radius:7px; font-size:.62rem; font-weight:900; }
+  .template-type-pill { background:#edf0f7; color:#50607c; }
+  .template-type-homework { background:#eef0ff; color:#5540db; }
+  .template-type-classwork { background:#e9fbf4; color:#0c8a63; }
+  .template-type-exam { background:#fff3e6; color:#bb6411; }
+  .template-featured { background:#fff4cf; color:#a46500; }
+  .template-card-copy { flex:1; margin-top:.85rem; }
+  .template-card-copy h2 { margin:0; color:#1d2a44; font-size:.95rem; line-height:1.35; }
+  .template-card-copy p { display:-webkit-box; margin:.48rem 0 0; overflow:hidden; color:#6c7c96; font-size:.76rem; line-height:1.5; -webkit-box-orient:vertical; -webkit-line-clamp:4; }
+  .template-card-meta { display:flex; flex-wrap:wrap; gap:.4rem .7rem; margin:1rem 0; color:#75849d; font-size:.67rem; font-weight:750; }
+  .template-card-meta span { display:inline-flex; align-items:center; gap:.25rem; }
+  .template-card-actions { display:grid; grid-template-columns:auto minmax(0,1fr); gap:.55rem; }
+  .template-preview-button,.template-select-button { display:flex; min-height:2.55rem; align-items:center; justify-content:center; gap:.45rem; border-radius:11px; font-size:.74rem; font-weight:900; text-decoration:none; transition:transform .12s ease,border-bottom-width .12s ease; }
+  .template-preview-button { padding:0 .75rem; border:1px solid #d6dfec; border-bottom:3px solid #c8d3e0; background:#fff; color:#455775; }
+  .template-select-button { border:1px solid #5944e5; border-bottom:4px solid #4130bd; background:#5a43e8; color:#fff; }
+  .template-preview-button:active,.template-select-button:active { transform:translateY(2px); border-bottom-width:1px; }
+  .template-catalog-empty { display:flex; min-height:15rem; flex-direction:column; align-items:center; justify-content:center; gap:.45rem; padding:2rem; border:2px dashed #ccd7e5; border-radius:20px; color:#7c8ca5; text-align:center; }
+  .template-catalog-empty i { color:#9f91fa; font-size:2rem; }
+  .template-catalog-empty strong { color:#43536f; font-size:.92rem; }
+  .template-catalog-empty span { font-size:.76rem; }
+  .template-catalog-empty button { margin-top:.55rem; padding:.5rem .8rem; border:1px solid #cfc7ff; border-radius:9px; background:#f5f3ff; color:#5140d3; font-size:.72rem; font-weight:850; cursor:pointer; }
+  @media (max-width:760px) { .template-catalog-page { padding:1rem 1rem 4rem; } .template-catalog-hero { align-items:flex-start; flex-direction:column; padding:1.35rem; } .template-catalog-summary { align-items:flex-start; } .template-type-filters { width:100%; overflow:auto; } .template-type-filters button { flex:0 0 auto; } }
+</style>
+
+<script>
+  (() => {
+    const search = document.getElementById('template-search');
+    const category = document.getElementById('template-category');
+    const buttons = [...document.querySelectorAll('[data-template-type]')];
+    const cards = [...document.querySelectorAll('[data-template-card]')];
+    const count = document.getElementById('template-results-count');
+    const empty = document.getElementById('template-empty-filter');
+    let selectedType = 'all';
+
+    const applyFilters = () => {
+      const query = (search?.value || '').trim().toLocaleLowerCase('ru');
+      const selectedCategory = category?.value || '';
+      let visibleCount = 0;
+      cards.forEach((card) => {
+        const matchesType = selectedType === 'all' || card.dataset.type === selectedType;
+        const matchesCategory = !selectedCategory || card.dataset.category === selectedCategory;
+        const matchesQuery = !query || (card.dataset.search || '').includes(query);
+        const visible = matchesType && matchesCategory && matchesQuery;
+        card.classList.toggle('hidden', !visible);
+        if (visible) visibleCount += 1;
+      });
+      if (count) count.textContent = visibleCount === cards.length ? `Показаны все ${visibleCount} шаблонов` : `Найдено: ${visibleCount}`;
+      empty?.classList.toggle('hidden', visibleCount > 0);
+    };
+
+    search?.addEventListener('input', applyFilters);
+    category?.addEventListener('change', applyFilters);
+    buttons.forEach((button) => button.addEventListener('click', () => {
+      selectedType = button.dataset.templateType || 'all';
+      buttons.forEach((item) => item.classList.toggle('is-active', item === button));
+      applyFilters();
+    }));
+    document.getElementById('template-reset-filters')?.addEventListener('click', () => {
+      selectedType = 'all';
+      if (search) search.value = '';
+      if (category) category.value = '';
+      buttons.forEach((item) => item.classList.toggle('is-active', item.dataset.templateType === 'all'));
+      applyFilters();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'SELECT') {
+        event.preventDefault();
+        search?.focus();
+      }
+    });
+  })();
+</script>
+{% endblock %}

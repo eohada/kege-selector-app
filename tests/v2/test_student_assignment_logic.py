@@ -28,12 +28,14 @@ def test_student_assignment_uses_v2_submission_surface(app, client, role_users):
         )
         db.session.add(assignment)
         db.session.flush()
-        db.session.add(AssignmentTask(
+        assignment_task = AssignmentTask(
             assignment_id=assignment.assignment_id,
             task_id=task.task_id,
             order_index=0,
             max_score=1,
-        ))
+        )
+        db.session.add(assignment_task)
+        db.session.flush()
         submission = Submission(
             assignment_id=assignment.assignment_id,
             student_id=student.student_id,
@@ -43,6 +45,7 @@ def test_student_assignment_uses_v2_submission_surface(app, client, role_users):
         db.session.commit()
         assignment_id = assignment.assignment_id
         submission_id = submission.submission_id
+        assignment_task_id = assignment_task.assignment_task_id
 
     login_as(client, role_users['student_user_id'], 'student')
 
@@ -50,9 +53,24 @@ def test_student_assignment_uses_v2_submission_surface(app, client, role_users):
     assert legacy_page.status_code == 302
     assert legacy_page.headers['Location'].endswith(f'/submissions/{submission_id}')
 
-    canonical_page = client.get(f'/submissions/{submission_id}')
-    assert canonical_page.status_code == 200
-    assert b'V2 assignment regression' in canonical_page.data
+    canonical_entry = client.get(f'/submissions/{submission_id}', follow_redirects=False)
+    assert canonical_entry.status_code == 302
+    assert canonical_entry.headers['Location'].startswith('/task-workspace/?')
+    assert f'context_id={submission_id}' in canonical_entry.headers['Location']
+    assert f'assignment_task_id={assignment_task_id}' in canonical_entry.headers['Location']
+
+    workspace = client.get(canonical_entry.headers['Location'])
+    assert workspace.status_code == 200
+    assert b'V2 assignment regression' in workspace.data
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+    teacher_entry = client.get(f'/submissions/{submission_id}', follow_redirects=False)
+    assert teacher_entry.status_code == 302
+    assert teacher_entry.headers['Location'].endswith(f'/submissions/{submission_id}/grade')
+
+    teacher_review = client.get(teacher_entry.headers['Location'])
+    assert teacher_review.status_code == 200
+    assert b'id="grade-form"' in teacher_review.data
 
     retired_api = client.post(
         f'/sandbox/api/task_detail/{assignment_id}/submit_assignment',

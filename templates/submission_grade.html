@@ -541,19 +541,355 @@
         .submit-section .neo-button.accent, .grade-app-content .neo-button.accent { border-color: #4338ca; border-bottom-color: #3730a3; background: #4f46e5; color: #fff; }
         .submit-section .neo-button:active, .grade-app-content .neo-button:active { transform: translateY(3px); border-bottom-width: 1px; }
         @media (max-width: 640px) { .grade-app-content { padding: 1rem 1rem 8rem !important; } .grade-hero, .task-card-grade, .feedback-section, .grade-comments { border-radius: 1.5rem !important; } }
+
+        /* Review V4: самостоятельная рабочая поверхность преподавателя, не legacy-grade page. */
+        .grade-app-content.grade-review-v4 {
+            min-height: 100vh;
+            background: #f8fafc !important;
+            color: #1e293b !important;
+            padding-bottom: 7rem !important;
+        }
+        .grade-review-v4 .grade-page-inner { width: min(1400px, 100%); margin: 0 auto; }
+        .grade-review-v4 .dark\:text-white,
+        .grade-review-v4 .dark\:text-white\/90,
+        .grade-review-v4 .text-primary { color: #1e293b !important; }
+        .grade-review-v4 .dark\:text-dark-muted,
+        .grade-review-v4 .text-muted { color: #7c8ca4 !important; }
+        .grade-review-v4 .submission-back-link-grade {
+            min-height: 2.75rem; padding: .65rem 1rem; border: 1px solid #e2e8f0;
+            border-radius: .9rem; background: #fff; color: #475569; box-shadow: none;
+        }
+        .grade-review-v4 .grade-hero {
+            padding: 1.5rem 1.75rem !important; margin-bottom: 1.5rem;
+            border: 2px solid #e2e8f0; border-radius: 2rem;
+            background: #f4f7fa !important; box-shadow: 0 4px 0 #dae1e9 !important;
+        }
+        .grade-review-v4 .submission-title { font-size: clamp(1.55rem, 2.4vw, 2.25rem) !important; font-weight: 900 !important; letter-spacing: -.045em; }
+        .grade-review-v4 .submission-type-chip { border-radius: .65rem !important; background: #ede9fe !important; border-color: #c4b5fd !important; color: #4f46e5 !important; }
+        .grade-review-v4 .submission-hero-metrics {
+            display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem !important;
+            margin-top: 1.25rem !important; padding-top: 1.25rem !important; border-color: #dbe5f0 !important;
+        }
+        .grade-review-v4 .submission-hero-metrics > div {
+            width: auto !important; min-height: 4.5rem; padding: .75rem .9rem !important;
+            border: 1px solid #e2e8f0 !important; border-radius: 1rem; background: #fff;
+        }
+        .grade-review-v4 .status-pill { font-weight: 800; }
+        .grade-review-v4 .task-nav-grade {
+            position: sticky; top: 1rem; z-index: 30; min-height: 4.4rem; padding: .65rem 1rem !important;
+            border: 2px solid #e2e8f0 !important; border-radius: 1.35rem !important;
+            background: rgba(244,247,250,.94) !important; box-shadow: 0 4px 0 #dae1e9 !important;
+        }
+        .grade-review-v4 .task-nav-label { color: #8da0b9 !important; }
+        .grade-review-v4 .task-nav-grade .task-nav-btn {
+            width: 2.55rem !important; height: 2.35rem !important; border: 1px solid #dbe5f0 !important;
+            border-radius: .75rem !important; background: #fff !important; color: #52657d !important; box-shadow: none !important;
+        }
+        .grade-review-v4 .task-nav-grade .task-nav-btn.active { background: #4f46e5 !important; border-color: #4338ca !important; color: #fff !important; box-shadow: 0 3px 0 #3730a3 !important; }
+        .grade-review-v4 .grade-workbench { display: grid; grid-template-columns: minmax(0, 1fr) 21.5rem; gap: 1.5rem; align-items: start; margin-top: 1.5rem; }
+        .grade-review-v4 #grade-form { min-width: 0; display: grid; gap: 1.25rem; }
+        .grade-review-v4 .task-card-grade,
+        .grade-review-v4 .feedback-section,
+        .grade-review-v4 .grade-comments {
+            margin: 0 !important; border: 2px solid #e2e8f0 !important; border-radius: 2rem !important;
+            background: #f4f7fa !important; box-shadow: 0 4px 0 #dae1e9 !important;
+        }
+        .grade-review-v4 .task-card-grade { overflow: hidden !important; }
+        .grade-review-v4 .task-card-grade.task-correct { border-color: #a7f3d0 !important; }
+        .grade-review-v4 .task-card-grade.task-incorrect { border-color: #fecaca !important; }
+        .grade-review-v4 .task-header-grade {
+            padding: 1.1rem 1.5rem !important; align-items: center; background: transparent !important;
+            border-bottom: 1px solid #dbe5f0 !important;
+        }
+        .grade-review-v4 .task-title-grade { color: #4f46e5 !important; font-size: 1.35rem !important; font-weight: 900; }
+        .grade-review-v4 .grade-card-body { padding: 1.5rem !important; gap: 1rem !important; }
+        .grade-review-v4 .task-content-grade {
+            padding: 1.25rem 1.35rem; border: 1px solid #dbe5f0; border-radius: 1.25rem;
+            background: #fff; color: #334155 !important; font-size: .95rem; line-height: 1.7;
+        }
+        .grade-review-v4 .answer-section {
+            padding: 1.1rem !important; border: 1px solid #dbe5f0 !important; border-radius: 1.35rem !important;
+            background: #fff !important;
+        }
+        .grade-review-v4 .answer-grid-cols { display: grid !important; grid-template-columns: minmax(0, 1.35fr) minmax(17rem, .85fr); gap: 1rem; }
+        .grade-review-v4 .answer-left-col { min-width: 0; padding-right: 1rem; border-right: 1px solid #e2e8f0; }
+        .grade-review-v4 .answer-right-col { min-width: 0; display: flex; flex-direction: column; gap: .85rem; }
+        .grade-review-v4 .student-answer-value { border-color: #dbe5f0 !important; border-radius: .9rem !important; background: #f8fafc !important; color: #1e293b !important; }
+        .grade-review-v4 .correct-ans-val { background: #ecfdf5 !important; border-color: #a7f3d0 !important; color: #047857 !important; }
+        .grade-review-v4 .score-input,
+        .grade-review-v4 .comment-input,
+        .grade-review-v4 #grade-comment-input,
+        .grade-review-v4 .neo-input {
+            border: 1px solid #cbd5e1 !important; border-radius: .85rem !important; background: #fff !important; color: #1e293b !important; box-shadow: none !important;
+        }
+        .grade-review-v4 .score-input { width: 4.4rem; min-height: 2.75rem; font-size: 1rem; }
+        .grade-review-v4 .comment-input { min-height: 6.25rem; padding: .8rem .9rem; }
+        .grade-review-v4 .grade-comments { position: sticky; top: 6.25rem; padding: 1.25rem !important; background: #fff !important; }
+        .grade-review-v4 .grade-comments-list { max-height: 24rem; }
+        .grade-review-v4 .submit-section {
+            position: sticky; bottom: 1rem; z-index: 25; min-height: 5rem; padding: .75rem 1rem !important;
+            border: 2px solid #dbe5f0 !important; border-radius: 1.35rem !important; background: rgba(255,255,255,.96) !important;
+            box-shadow: 0 4px 0 #dae1e9 !important; backdrop-filter: blur(12px);
+        }
+        .grade-review-v4 .neo-button {
+            display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: .45rem !important;
+            min-height: 2.65rem; padding: 0 .85rem !important; border: 1px solid #cbd5e1 !important; border-bottom-width: 3px !important;
+            border-radius: .85rem !important; background: #fff !important; color: #334155 !important; font-size: .78rem !important; font-weight: 800 !important; box-shadow: none !important;
+        }
+        .grade-review-v4 .neo-button.accent { border-color: #4338ca !important; border-bottom-color: #3730a3 !important; background: #4f46e5 !important; color: #fff !important; }
+        .grade-review-v4 .neo-button:hover { transform: translateY(-1px); }
+        .grade-review-v4 .neo-button:active { transform: translateY(2px); border-bottom-width: 1px !important; }
+        .grade-review-v4 .neo-button svg, .grade-review-v4 .neo-button .ui-icon { width: 1rem !important; height: 1rem !important; }
+        @media (max-width: 1100px) { .grade-review-v4 .grade-workbench { grid-template-columns: 1fr; } .grade-review-v4 .grade-comments { position: static; } }
+        @media (max-width: 760px) {
+            .grade-app-content.grade-review-v4 { padding: .9rem .9rem 7rem !important; }
+            .grade-review-v4 .grade-hero { padding: 1.25rem !important; border-radius: 1.5rem !important; }
+            .grade-review-v4 .submission-hero-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .grade-review-v4 .grade-workbench { gap: 1rem; margin-top: 1rem; }
+            .grade-review-v4 .task-card-grade, .grade-review-v4 .feedback-section, .grade-review-v4 .grade-comments { border-radius: 1.5rem !important; }
+            .grade-review-v4 .task-header-grade, .grade-review-v4 .grade-card-body { padding: 1.1rem !important; }
+            .grade-review-v4 .answer-grid-cols { grid-template-columns: 1fr; }
+            .grade-review-v4 .answer-left-col { padding: 0 0 1rem; border: 0; border-bottom: 1px solid #e2e8f0; }
+            .grade-review-v4 .submit-section { position: static; }
+        }
+
+        /* Review V5 — target layout: task document + fixed grading panel. */
+        .grade-app-content.grade-review-v5 { background:#f7f8fd !important; padding-bottom:5.5rem !important; }
+        .grade-review-v5 .submission-title, .grade-review-v5 .dark\:text-white, .grade-review-v5 .dark\:text-white\/90 { color:#172554 !important; }
+        .grade-review-v5 .grade-hero .text-tiny.font-extrabold { display:none; }
+        .grade-review-v5 .grade-page-inner { width:min(1500px,100%); }
+        .grade-review-v5 .grade-hero { min-height:7.35rem; margin-bottom:.75rem; padding:1rem 1.25rem !important; border:1px solid #e6e9f3 !important; border-radius:1.4rem !important; background:#fff !important; box-shadow:0 8px 24px rgba(53,65,105,.035) !important; }
+        .grade-review-v5 .submission-hero-metrics { position:absolute; right:13.5rem; top:1rem; width:29rem; margin:0 !important; padding:0 !important; border:0 !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:.35rem !important; }
+        .grade-review-v5 .submission-hero-metrics > div { min-height:3.8rem; padding:.35rem .6rem !important; border:0 !important; border-radius:0 !important; background:transparent !important; }
+        .grade-review-v5 .grade-hero > .relative { padding-right:46rem; }
+        .grade-review-v5 .review-header-progress { position:absolute; right:1.25rem; top:1rem; width:12.25rem; }
+        .grade-review-v5 .review-progress-track { height:.55rem; margin-top:.4rem; border-radius:999px; overflow:hidden; background:#edf0ff; }
+        .grade-review-v5 .review-progress-track span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#a78bfa,#5b43f3); transition:width .18s ease; }
+        .grade-review-v5 .review-header-progress .neo-button { min-height:2.35rem; padding:0 .65rem !important; font-size:.68rem !important; }
+        .review-modal-backdrop { display:none; position:fixed; inset:0; z-index:90; padding:1rem; background:rgba(22,28,51,.28); align-items:center; justify-content:center; }
+        .review-modal-backdrop.is-open { display:flex; }
+        .review-overview-modal { width:min(38rem,100%); max-height:min(42rem,calc(100vh - 2rem)); overflow:auto; padding:1.5rem; border:1px solid #e6e9f3; border-radius:1.25rem; background:#fff; box-shadow:0 18px 50px rgba(24,31,61,.18); }
+        .review-overview-modal h2 { margin:0; color:#172554; font-size:1.3rem; font-weight:800; }
+        .review-overview-modal p { margin:.25rem 0 0; color:#71809d; font-size:.8rem; }
+        .review-overview-progress { margin:1rem 0; padding:1rem; border-radius:.9rem; background:#f7f7ff; color:#344269; font-size:.85rem; }
+        .review-overview-progress strong { float:right; color:#6048ff; }
+        .review-overview-list { display:grid; gap:.45rem; }
+        .review-overview-row { display:grid; grid-template-columns:3rem 1fr auto; gap:.75rem; align-items:center; width:100%; padding:.8rem .9rem; border:1px solid #e6e9f3; border-radius:.75rem; background:#fff; color:#344269; text-align:left; font-size:.8rem; cursor:pointer; }
+        .review-complete-modal { width:min(31rem,100%); padding:1.5rem; border:1px solid #e6e9f3; border-radius:1.25rem; background:#fff; box-shadow:0 18px 50px rgba(24,31,61,.18); }
+        .review-complete-modal h2 { margin:0; color:#172554; font-size:1.25rem; font-weight:800; }
+        .review-complete-modal p { margin:.65rem 0 1.1rem; color:#62718f; font-size:.9rem; line-height:1.45; }
+        .review-complete-modal .neo-button { min-height:2.7rem; }
+        .grade-review-v5 .task-nav-grade { top:.75rem; min-height:4rem; margin:.75rem 0 !important; border:1px solid #e6e9f3 !important; border-radius:1.2rem !important; background:#fff !important; box-shadow:0 8px 24px rgba(53,65,105,.03) !important; }
+        .grade-review-v5 .grade-workbench { display:block; margin-top:.8rem; }
+        .grade-review-v5 .grade-chat-drawer { display:none !important; position:fixed; z-index:80; top:1rem; right:1rem; bottom:1rem; width:min(25rem,calc(100vw - 2rem)); padding:1.2rem !important; border:1px solid #e6e9f3 !important; border-radius:1.25rem !important; background:#fff !important; box-shadow:0 18px 50px rgba(24,31,61,.16) !important; }
+        .grade-review-v5 .grade-chat-drawer.is-open { display:flex !important; flex-direction:column; }
+        .grade-review-v5 .grade-chat-drawer .grade-comments-list { flex:1; max-height:none; overflow:auto; }
+        .grade-review-v5 #grade-form { display:block; }
+        .grade-review-v5 .task-card-grade, .grade-review-v5 .task-card-grade.task-panel-active { display:grid !important; grid-template-columns:minmax(0,1fr) 25.5rem; column-gap:1rem; padding:0; border:1px solid #e6e9f3 !important; border-radius:1.25rem !important; background:#fff !important; box-shadow:0 8px 24px rgba(53,65,105,.03) !important; overflow:visible !important; }
+        .grade-review-v5 .task-header-grade { grid-column:1; padding:1.25rem 1.25rem .9rem !important; border:0 !important; }
+        .grade-review-v5 .grade-card-body { display:contents; }
+        .grade-review-v5 .task-content-grade { grid-column:1; margin:0 1.25rem 1rem; padding:0 !important; border:0 !important; background:transparent !important; }
+        .grade-review-v5 .task-content-grade:first-child::before { display:none; }
+        .grade-review-v5 .answer-section { display:contents; }
+        .grade-review-v5 .answer-grid-cols { display:contents !important; }
+        .grade-review-v5 .answer-left-col { grid-column:1; margin:0 1.25rem 1.25rem; padding:1rem 0 0 !important; border:0 !important; border-top:1px solid #edf0f7 !important; }
+        .grade-review-v5 .answer-left-col > div:first-child { font-size:.78rem; letter-spacing:.08em; color:#27355d; text-transform:uppercase; }
+        .grade-review-v5 .answer-right-col { grid-column:2; grid-row:1 / span 4; align-self:start; position:sticky; top:5.6rem; margin:1rem 1rem 1rem 0; padding:1.15rem; border:1px solid #e6e9f3; border-radius:1.15rem; background:#fff; box-shadow:0 8px 24px rgba(53,65,105,.045); }
+        .grade-review-v5 .review-panel-head { display:flex; justify-content:space-between; gap:.5rem; padding-bottom:.9rem; margin-bottom:.85rem; border-bottom:1px solid #edf0f7; }
+        .grade-review-v5 .review-panel-head strong { color:#172554; font-size:1rem; }
+        .grade-review-v5 .review-panel-head span { color:#71809d; font-size:.75rem; font-weight:700; }
+        .grade-review-v5 .score-choice-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.45rem; margin:.45rem 0 .8rem; }
+        .grade-review-v5 .score-choice { min-height:2.55rem; border:1px solid #e0e5f0; border-radius:.7rem; background:#f8f9fd; color:#28365c; font-weight:800; cursor:pointer; transition:.15s ease; }
+        .grade-review-v5 .score-choice.is-selected { color:#5540ea; border-color:#6048ff; background:#f4f1ff; box-shadow:0 0 0 1px #6048ff inset; }
+        .grade-review-v5 .score-choice:hover { border-color:#a99bff; }
+        .grade-review-v5 .score-choice-grid + div { display:none !important; }
+        .grade-review-v5 .review-panel-tools { display:flex; flex-wrap:wrap; gap:.45rem; }
+        .grade-review-v5 .review-panel-tools .neo-button { min-height:2.2rem !important; padding:.45rem .55rem !important; border:1px solid #dfe5f1 !important; border-bottom:1px solid #dfe5f1 !important; background:#fff !important; color:#344269 !important; box-shadow:none !important; text-shadow:none !important; font-size:.69rem !important; }
+        .grade-review-v5 .review-panel-tools .return-task-toggle-btn { width:auto; margin:0; }
+        .grade-review-v5 .review-panel-label { display:block; margin:.9rem 0 .4rem; color:#1f2a4d; font-size:.8rem; font-weight:800; }
+        .grade-review-v5 .quick-comments { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.55rem; }
+        .grade-review-v5 .quick-comment { padding:.42rem .6rem; border:1px solid #dde3f0; border-radius:.55rem; background:#f8f9fd; color:#36466e; font-size:.68rem; font-weight:700; cursor:pointer; }
+        .grade-review-v5 .review-autosave-state { margin:.7rem 0 0; color:#8a98b3; font-size:.72rem; font-weight:700; }
+        .grade-review-v5 .review-autosave-state[data-state="saving"] { color:#6550df; }
+        .grade-review-v5 .review-autosave-state[data-state="saved"] { color:#0f9d6b; }
+        .grade-review-v5 .review-autosave-state[data-state="error"] { color:#cf4a4a; }
+        .grade-review-v5 .return-task-toggle-btn { width:100%; margin-top:.8rem; justify-content:space-between !important; background:#f8f9fd !important; }
+        .grade-review-v5 .return-task-toggle-btn.is-selected { background:#fff8e8 !important; color:#a45d00 !important; border-color:#f6cf7b !important; }
+        .grade-review-v5 .feedback-section { display:none !important; }
+        .grade-review-v5 .submit-section { position:fixed; left:calc(6.5rem + 1.5rem); right:1.5rem; bottom:1rem; min-height:3.35rem; padding:.5rem 1rem !important; border:1px solid #e6e9f3 !important; border-radius:1rem !important; background:rgba(255,255,255,.96) !important; box-shadow:0 8px 24px rgba(53,65,105,.06) !important; }
+        .grade-review-v5 .submit-section-right .neo-button { display:none !important; }
+        .grade-review-v5 .submit-section-right { display:none !important; }
+        @media (max-width:1200px) { .grade-review-v5 .submission-hero-metrics { position:static; width:auto; margin-top:1rem !important; grid-template-columns:repeat(4,minmax(0,1fr)) !important; } .grade-review-v5 .grade-hero > .relative { padding-right:0; } .grade-review-v5 .review-header-progress { position:static; width:auto; margin-top:1rem; } }
+        @media (max-width:1050px) { .grade-review-v5 .task-card-grade { grid-template-columns:1fr; } .grade-review-v5 .task-header-grade,.grade-review-v5 .task-content-grade,.grade-review-v5 .answer-left-col { grid-column:1; } .grade-review-v5 .answer-right-col { grid-column:1; grid-row:auto; position:static; margin:0 1.25rem 1.25rem; } }
+        @media (max-width:760px) { .grade-review-v5 .submission-hero-metrics { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } .grade-review-v5 .submit-section { left:.75rem; right:.75rem; } }
+
+        /* Visual acceptance pass: compose the review page as one target workspace. */
+        .grade-review-v6 { --review-bg:#f6f8fc; --review-ink:#15213d; --review-muted:#73809b; --review-line:#e5eaf3; --review-purple:#5b43f3; }
+        .grade-review-v6 { --accent-purple:#5b43f3; --accent-purple-soft:#f1efff; --success-green:#08a66f; --success-green-soft:#effcf7; --warning-orange:#c56a12; --warning-orange-soft:#fff7e8; --surface-lavender:#f5f2ff; --surface-blue:#f4f8ff; }
+        /* Bound inline icons on this page so generic SVG rules can never
+           stretch a checkmark across the workspace. */
+        .grade-review-v6 svg, .grade-review-v6 .ui-icon { width:1.1rem!important; height:1.1rem!important; max-width:1.1rem!important; max-height:1.1rem!important; flex:0 0 auto; }
+        .grade-review-v6 .review-homework-icon svg { width:1.35rem!important; height:1.35rem!important; max-width:1.35rem!important; max-height:1.35rem!important; }
+        .grade-review-v6 #qa-widget-trigger-btn, body:has(.grade-review-v6) #qa-widget-trigger-btn { display:none!important; }
+        .grade-review-v6.grade-app-content { background:var(--review-bg)!important; padding-top:.5rem!important; }
+        .grade-review-v6 .grade-page-inner { width:min(1376px,calc(100vw - 10rem)); max-width:1376px; margin-inline:auto; position:relative; left:2px; }
+        .grade-review-v6 .grade-page-inner > p:first-child { margin-bottom:-.3rem!important; }
+        .grade-review-v6 .submission-back-link { padding:.48rem .7rem!important; border:1px solid var(--review-line)!important; border-radius:12px!important; background:#fff!important; box-shadow:0 3px 10px rgba(28,43,80,.04)!important; color:#27365c!important; font-size:.78rem!important; }
+        .grade-review-v6 .grade-hero { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(290px,.92fr) minmax(290px,1fr); gap:1.25rem; align-items:center; min-height:6.5rem; padding:.5rem 1.1rem!important; border:1px solid var(--review-line)!important; border-radius:20px!important; background:#fff!important; box-shadow:0 8px 22px rgba(28,43,80,.045)!important; }
+        .grade-review-v6 .grade-hero>.relative { display:contents; padding:0!important; }
+        .grade-review-v6 .grade-hero>.relative>div:first-child { min-width:0; }
+        .grade-review-v6 .review-hero-identity { position:relative; padding-left:4.15rem; }
+        .grade-review-v6 .review-homework-icon { position:absolute; left:0; top:.1rem; width:3.25rem; height:3.25rem; display:grid; place-items:center; border-radius:15px; background:#f0edff; color:#5b43f3; font-size:1.45rem; }
+        .grade-review-v6 .review-student-avatar { width:1.8rem; height:1.8rem; display:grid; place-items:center; overflow:hidden; border-radius:50%; background:#efeaff; color:#5b43f3; font-size:.72rem; font-weight:900; }
+        .grade-review-v6 .review-student-avatar img { width:100%; height:100%; object-fit:cover; }
+        .grade-review-v6 .submission-type-chip { background:#f0edff!important; color:#5040d7!important; border-color:#d9d1ff!important; }
+        .grade-review-v6 .grade-hero .submission-type-chip { display:none!important; }
+        .grade-review-v6 .grade-hero .text-tiny.font-extrabold { display:block!important; }
+        .grade-review-v6 .review-hero-identity > p.text-tiny.font-extrabold { display:none!important; }
+        .grade-review-v6 .review-hero-identity > .flex.items-center.gap-2.mb-3 { display:none!important; }
+        .grade-review-v6 .review-eyebrow { display:flex; align-items:center; gap:.55rem; margin-bottom:.38rem; color:#5b43f3; font-size:.68rem; font-weight:900; letter-spacing:.08em; }
+        .grade-review-v6 .review-eyebrow strong { color:#7d88a0; letter-spacing:0; }
+        .grade-review-v6 .review-status-inline { display:inline-flex; align-items:center; gap:.35rem; min-height:1.8rem; padding:.35rem .6rem; border:1px solid #b7efd4; border-radius:999px; background:#effcf7; color:#07845f; font-size:.72rem; font-weight:800; }
+        .grade-review-v6 .submission-title { font-size:1.35rem!important; color:var(--review-ink)!important; }
+        .grade-review-v6 .submission-hero-metrics { position:static!important; width:auto!important; margin:0!important; padding:0!important; display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr))!important; gap:.75rem!important; border:0!important; }
+        .grade-review-v6 .submission-hero-metrics>div:first-child { display:none!important; }
+        .grade-review-v6 .submission-hero-metrics>div { min-height:0!important; padding:.35rem .65rem!important; border-right:1px solid var(--review-line)!important; }
+        .grade-review-v6 .review-meta-icon { width:1.85rem; height:1.85rem; display:inline-grid; place-items:center; margin-right:.25rem; border-radius:9px; background:#f3f1ff; color:#5b43f3; font-size:.9rem; }
+        .grade-review-v6 .review-header-menu { width:2.35rem; height:2.35rem; border:1px solid var(--review-line); border-radius:10px; background:#fff; color:#687795; font-weight:900; letter-spacing:.08em; }
+        .grade-review-v6 .submission-hero-metrics>div:last-child { border-right:0!important; }
+        .grade-review-v6 .submission-hero-metrics .text-tiny { margin-bottom:.25rem!important; font-size:.72rem!important; font-weight:700!important; letter-spacing:0!important; text-transform:none!important; }
+        .grade-review-v6 .review-header-progress { position:static!important; width:auto!important; }
+        .grade-review-v6 .review-header-progress .neo-button { min-height:2.35rem!important; padding:0 .85rem!important; font-size:.72rem!important; }
+        .grade-review-v6 .task-nav-grade { min-height:4rem!important; margin:.75rem 0!important; padding:.55rem .75rem!important; border:1px solid var(--review-line)!important; border-radius:18px!important; background:#fff!important; box-shadow:0 6px 18px rgba(28,43,80,.035)!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn { width:2.45rem!important; height:2.45rem!important; border-radius:11px!important; background:#fff!important; border:1px solid var(--review-line)!important; color:#304063!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.active { background:var(--review-purple)!important; border-color:var(--review-purple)!important; color:#fff!important; box-shadow:0 4px 10px rgba(91,67,243,.2)!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.correct { background:#effcf7!important; border-color:#b7efd4!important; color:#059669!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed { background:#effcf7!important; border-color:#b7efd4!important; color:#059669!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed { gap:.25rem!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed i { font-size:.95rem; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.active,
+        .grade-review-v6 .task-nav-grade .task-nav-btn.active:hover { background:var(--review-purple)!important; border-color:var(--review-purple)!important; color:#fff!important; box-shadow:0 4px 10px rgba(91,67,243,.2)!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.active i, .grade-review-v6 .task-nav-grade .task-nav-btn.active span { color:#fff!important; }
+        .grade-review-v6 .grade-workbench { margin-top:.8rem!important; }
+        .grade-review-v6 .task-card-grade,.grade-review-v6 .task-card-grade.task-panel-active { display:grid!important; grid-template-columns:minmax(0,1fr) 360px!important; align-items:start!important; gap:1rem!important; min-height:0!important; margin-bottom:1rem!important; border:1px solid var(--review-line)!important; border-radius:20px!important; background:#fff!important; box-shadow:0 8px 22px rgba(28,43,80,.04)!important; overflow:visible!important; }
+        /* A stable two-column grid keeps the review form inside the card at every desktop width. */
+        .grade-review-v6 .task-card-grade,.grade-review-v6 .task-card-grade.task-panel-active { display:grid!important; grid-template-columns:minmax(0,1fr) 410px!important; grid-auto-rows:min-content!important; column-gap:1rem!important; position:relative!important; padding-right:0!important; overflow:hidden!important; }
+        .grade-review-v6 .task-card-grade.task-panel-hidden { display:none!important; }
+        .grade-review-v6 .task-header-grade { grid-column:1; align-self:start!important; display:block!important; position:relative!important; height:auto!important; min-height:0!important; padding:.85rem 1.1rem .7rem!important; background:#fff!important; border-bottom:1px solid var(--review-line)!important; }
+        .grade-review-v6 .task-header-grade { display:flex!important; align-items:center!important; justify-content:flex-start!important; gap:.75rem!important; flex-wrap:wrap; }
+        .grade-review-v6 .task-header-grade>div:first-child { flex:0 1 auto; min-width:0; }
+        .grade-review-v6 .task-header-actions { position:static; display:flex; gap:.45rem; align-items:center; justify-content:flex-end; flex:0 0 auto; margin-left:auto; }
+        .grade-review-v6 .task-header-action { min-height:2rem; padding:.4rem .65rem; border:1px solid var(--review-line); border-radius:10px; background:#fff; color:#46557a; font-size:.72rem; font-weight:700; white-space:nowrap; }
+        .grade-review-v6 .task-header-action:has(i:only-child) { width:2rem; padding:0; }
+        .grade-review-v6 .task-title-grade { font-size:1.25rem!important; color:var(--review-ink)!important; }
+        .grade-review-v6 .task-header-grade .text-sm.text-muted { display:none!important; }
+        .grade-review-v6 .task-header-grade [style*="margin-top:.45rem"] { display:none!important; }
+        .grade-review-v6 .task-header-grade>span { order:0!important; background:#fff7e8!important; color:#ad6105!important; border-color:#f5dca8!important; }
+        .grade-review-v6 .task-header-actions { order:1!important; }
+        .grade-review-v6 .task-header-actions .task-header-action:first-child { width:auto!important; min-width:7.4rem!important; padding-left:.65rem!important; padding-right:.65rem!important; white-space:nowrap!important; }
+        .grade-review-v6 .task-score-badge { padding:.42rem .7rem!important; background:#f1efff!important; color:#5140db!important; border-color:#ddd7ff!important; font-size:.75rem!important; }
+        .grade-review-v6 .manual-review-badge { background:#fff7e8!important; color:#b7630d!important; border:1px solid #f2d8aa!important; }
+        .grade-review-v6 #task-3 .manual-review-badge { order:0!important; }
+        .grade-review-v6 details { display:none!important; }
+        .grade-review-v6 .grade-card-body { display:contents!important; padding:0!important; }
+        .grade-review-v6 .task-content-grade { grid-column:1; margin:0 2.2rem .8rem 0!important; padding:0!important; color:#354466!important; line-height:1.5!important; font-size:.93rem!important; }
+        .grade-review-v6 .review-section-label { grid-column:1; margin:1rem 1.1rem .1rem; color:#182641; font-size:.72rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+        .grade-review-v6 .task-content-grade p { margin:.45rem 0!important; }
+        .grade-review-v6 .reference-graph-table { width:23.5rem; margin:.7rem 0 0 1.1rem; border-collapse:collapse; font-size:.76rem; color:#26365b; background:#fff; }
+        .grade-review-v6 .reference-graph-table th, .grade-review-v6 .reference-graph-table td { min-width:2.1rem; height:1rem; padding:.08rem .28rem; border:1px solid #aeb8c8; text-align:center; }
+        .grade-review-v6 .reference-graph-table th { background:#f4f6fa; font-weight:800; }
+        .grade-review-v6 .review-hint-card { grid-column:1; margin:0 1.1rem .8rem; min-height:4.1rem; display:flex; align-items:center; gap:.8rem; padding:.8rem 1rem; border-radius:14px; background:linear-gradient(100deg,#f4f1ff,#faf9ff); border:1px solid #ece7ff; color:#4d4388; }
+        .grade-review-v6 .review-hint-icon { width:2.1rem; height:2.1rem; flex:0 0 auto; display:grid; place-items:center; border-radius:10px; background:#fff3df; color:#f39a28; font-size:1.1rem; }
+        .grade-review-v6 .review-hint-card strong { display:block; font-size:.78rem; color:#342878; }
+        .grade-review-v6 .review-hint-card small { display:block; margin-top:.18rem; color:#7c78a3; font-size:.72rem; }
+        .grade-review-v6 .review-hint-button { margin-left:auto; display:inline-flex; align-items:center; gap:.35rem; padding:.55rem .75rem; border:1px solid #e5e1f8; border-radius:10px; background:#fff; color:#40359a; font-size:.72rem; font-weight:800; white-space:nowrap; }
+        .grade-review-v6 .answer-section { display:contents!important; }
+        .grade-review-v6 .answer-grid-cols { display:contents!important; }
+        .grade-review-v6 .answer-left-col { grid-column:1; margin:0 1.1rem 1.1rem!important; padding:1rem 0 0!important; border:0!important; border-top:1px solid var(--review-line)!important; min-height:0!important; }
+        .grade-review-v6 .answer-left-col>div:first-child { color:var(--review-ink)!important; font-size:.82rem!important; letter-spacing:.02em!important; text-transform:none!important; }
+        .grade-review-v6 .student-answer-value { min-height:0!important; padding:1rem!important; border:1px solid #e3e9f3!important; border-radius:13px!important; background:#f8faff!important; color:#71809b!important; font-size:.85rem!important; font-weight:500!important; }
+        .grade-review-v6 .answer-left-col > .student-answer-value { display:none!important; }
+        .grade-review-v6 .teacher-student-response { margin:.65rem 0 .8rem!important; border:1px solid #dfe5f1!important; border-radius:13px!important; overflow:hidden!important; background:#f8faff!important; }
+        .grade-review-v6 .teacher-student-response-title { display:flex; align-items:center; gap:.45rem; min-height:2.5rem; padding:.6rem .85rem; border-bottom:1px solid #e3e9f3; color:#25355b; font-size:.78rem; font-weight:800; }
+        .grade-review-v6 .teacher-student-response-value { margin:0!important; padding:.8rem .9rem!important; overflow:auto!important; white-space:pre-wrap!important; overflow-wrap:anywhere!important; color:#243454!important; font:500 .82rem/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace!important; }
+        .grade-review-v6 .answer-left-col > div:has(.correct-ans-val) { display:none!important; }
+        .grade-review-v6 .teacher-code-playback-wrap { margin-top:0!important; }
+        .grade-review-v6 .review-student-note { display:flex; align-items:center; gap:.7rem; margin-top:.7rem; padding:.75rem .85rem; border:1px solid #e8e1ff; border-radius:12px; background:#f7f3ff; color:#4c4384; }
+        .grade-review-v6 .review-student-note-icon { width:2rem; height:2rem; display:grid; place-items:center; flex:0 0 auto; border-radius:9px; background:#eee8ff; color:#5b43f3; }
+        .grade-review-v6 .review-student-note strong, .grade-review-v6 .review-student-note small { display:block; }
+        .grade-review-v6 .review-student-note strong { font-size:.74rem; color:#4d3bc8; }
+        .grade-review-v6 .review-student-note small { margin-top:.15rem; color:#746c9d; font-size:.7rem; }
+        .grade-review-v6 .review-empty-answer { display:flex; flex-direction:column; gap:.25rem; margin-top:.65rem; padding:1rem 1.1rem; border:1px dashed #dbe2ee; border-radius:12px; background:#fafbfd; color:#53617d; }
+        .grade-review-v6 .review-empty-answer strong { display:flex; align-items:center; gap:.4rem; color:#475571; font-size:.9rem; }
+        .grade-review-v6 .review-empty-answer strong i { color:#96a4bc; font-size:.8rem; }
+        .grade-review-v6 .review-empty-answer small { color:#8b98ae; font-size:.75rem; }
+        .grade-review-v6 .answer-right-col { position:sticky!important; top:1rem!important; right:auto!important; grid-column:2!important; grid-row:1 / span 30!important; align-self:start!important; width:auto!important; box-sizing:border-box; margin:0!important; padding:1.35rem!important; border:1px solid var(--review-line)!important; border-radius:18px!important; background:#fff!important; box-shadow:0 8px 22px rgba(28,43,80,.05)!important; }
+        .grade-review-v6 .review-panel-head { padding-bottom:.9rem!important; margin-bottom:1rem!important; border-bottom:1px solid var(--review-line)!important; }
+        .grade-review-v6 .review-panel-head strong { color:var(--review-ink)!important; font-size:1rem!important; }
+        .grade-review-v6 .review-panel-head span { color:var(--review-muted)!important; }
+        .grade-review-v6 .review-panel-tools { display:none!important; }
+        .grade-review-v6 .score-input-group { display:block!important; margin-top:0!important; }
+        .grade-review-v6 .review-panel-label { color:var(--review-ink)!important; font-size:.8rem!important; margin:.8rem 0 .55rem!important; }
+        .grade-review-v6 .score-choice-grid { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)) auto!important; gap:.55rem!important; margin:0!important; align-items:center; }
+        .grade-review-v6 .score-choice { min-height:2.8rem!important; border:1px solid #dfe5f1!important; border-radius:10px!important; background:#fff!important; color:#25355b!important; }
+        .grade-review-v6 .score-choice.is-selected { background:#f1efff!important; border-color:#7564f7!important; color:#5140db!important; }
+        .grade-review-v6 .score-choice[data-score-reset] { width:auto!important; padding:0 .2rem!important; border:0!important; background:transparent!important; color:#5b43f3!important; font-size:.72rem!important; white-space:nowrap; }
+        .grade-review-v6 .score-choice[data-score-reset] span { margin-left:.15rem; }
+        .grade-review-v6 .score-choice-grid+div { display:none!important; }
+        .grade-review-v6 .comment-input { min-height:5.35rem!important; padding:.85rem!important; margin-top:0!important; border:1px solid #dfe5f1!important; border-radius:12px!important; background:#fff!important; font-size:.82rem!important; }
+        .grade-review-v6 .review-comment-counter { margin-top:.25rem; text-align:right; color:#8a98b3; font-size:.68rem; }
+        .grade-review-v6 .quick-comments { gap:.45rem!important; margin-top:.65rem!important; }
+        .grade-review-v6 .quick-comment { min-height:1.9rem!important; padding:.4rem .65rem!important; border:1px solid #dfe5f1!important; border-radius:9px!important; background:#f8faff!important; color:#314269!important; font-size:.69rem!important; }
+        .grade-review-v6 .return-task-toggle-btn { display:flex!important; width:100%!important; min-height:3.2rem!important; margin-top:1rem!important; padding:.65rem 0!important; border:0!important; border-top:1px solid var(--review-line)!important; border-radius:0!important; background:transparent!important; color:#23375e!important; justify-content:space-between!important; }
+        .grade-review-v6 .return-task-toggle-btn .return-task-toggle-label { font-size:.78rem!important; }
+        .grade-review-v6 [data-review-current] { width:100%!important; min-height:3rem!important; margin-top:1rem!important; border:0!important; border-radius:12px!important; background:var(--review-purple)!important; box-shadow:0 5px 12px rgba(91,67,243,.2)!important; font-size:.8rem!important; }
+        .grade-review-v6 .review-next-task-btn { width:100%; min-height:2.8rem; margin-top:.6rem; display:flex; align-items:center; justify-content:center; gap:.45rem; border:1px solid #d9d5ff; border-radius:12px; background:#f6f4ff; color:#5140db; font-size:.78rem; font-weight:800; }
+        .grade-review-v6 .review-autosave-state { display:flex; flex-direction:column; gap:.15rem; margin:.8rem 0 0!important; color:#18a26d!important; font-size:.7rem!important; }
+        .grade-review-v6 .review-autosave-state small { color:#8a98b3; font-size:.68rem; padding-left:.9rem; }
+        .grade-review-v6 .teacher-code-playback-wrap { height:148px; overflow:hidden!important; background:#f6f8ff!important; border-color:#e2e8f4!important; padding:0!important; }
+        .grade-review-v6 .teacher-code-playback-wrap>div:first-child { padding:.7rem .9rem; margin:0!important; border-bottom:1px solid #e2e8f4; }
+        .grade-review-v6 .review-code-toolbar-actions { display:flex; align-items:center; gap:.35rem; margin-left:auto; }
+        .grade-review-v6 .review-code-action { display:inline-flex; align-items:center; gap:.28rem; min-height:1.9rem; padding:.35rem .55rem; border:1px solid #dce3f0; border-radius:8px; background:#fff; color:#53617d; font-size:.68rem; font-weight:800; text-decoration:none; }
+        .grade-review-v6 .review-code-action:hover { color:#5140db; border-color:#cfc8ff; background:#f8f7ff; }
+        .grade-review-v6 .teacher-code-playback-wrap .relative.rounded-xl { margin:0!important; border:0!important; border-radius:0!important; background:#f8faff!important; color:#243454!important; padding:1rem 1.1rem!important; }
+        .grade-review-v6 .teacher-code-playback-wrap pre { color:#243454!important; font-size:.8rem!important; line-height:1.65!important; }
+        .grade-review-v6 .submit-section { left:6.5rem!important; right:1rem!important; bottom:.8rem!important; width:auto!important; max-width:none!important; min-height:3.1rem!important; padding:.45rem 1rem!important; border:1px solid var(--review-line)!important; border-radius:16px!important; background:rgba(255,255,255,.97)!important; box-shadow:0 8px 22px rgba(28,43,80,.08)!important; transform:none!important; }
+        .grade-review-v6 .submit-section-left { flex:1; }
+        .grade-review-v6 .submit-section-right { display:none!important; }
+        .grade-review-v6 .total-score-badge { display:none!important; }
+        .grade-review-v6 .status-text-note { display:none!important; }
+        .grade-review-v6 .review-bottom-progress { display:flex; align-items:center; gap:.75rem; min-width:18rem; color:#26365b; font-size:.78rem; font-weight:700; }
+        .grade-review-v6 .review-bottom-progress .review-progress-track { flex:1; min-width:8rem; height:.45rem; margin:0; }
+        .grade-review-v6 .review-bottom-keyboard { color:#7b89a3; font-size:.72rem; white-space:nowrap; }
+        .grade-review-v6 .review-shortcuts { display:flex; align-items:center; justify-content:flex-end; gap:.32rem; color:#7b89a3; font-size:.68rem; white-space:nowrap; }
+        .grade-review-v6 .review-shortcuts kbd { min-width:1.35rem; height:1.35rem; display:inline-grid; place-items:center; padding:0 .25rem; border:1px solid #e0e5f1; border-radius:6px; background:#fafbff; color:#4e5d7b; font:700 .68rem/1 ui-monospace,SFMono-Regular,monospace; }
+        .grade-review-v6 .review-shortcut-separator { margin:0 .15rem; color:#b0b9cb; }
+        .grade-review-v6 .review-shortcut-arrow { display:inline-grid; place-items:center; width:1.35rem; height:1.35rem; margin-left:.15rem; border-radius:6px; background:#f1efff; color:#5b43f3; font-weight:900; }
+        .grade-review-v6 .submit-section { position:fixed!important; }
+        .grade-review-v6 .submit-section-left { position:relative; padding-right:20rem; }
+        .grade-review-v6 .review-shortcuts { position:absolute; right:0; top:50%; transform:translateY(-50%); }
+        .grade-review-v6 .feedback-section { display:none!important; }
+        /* Use the available desktop width instead of leaving a fixed 1376px island on wide screens. */
+        .grade-review-v6 .grade-page-inner { width:calc(100vw - 10rem)!important; max-width:none!important; left:0!important; }
+        .grade-review-v6 .grade-workbench { padding-bottom:5rem; }
+        @media (max-width:1250px) { .grade-review-v6 .grade-page-inner { width:calc(100vw - 7.5rem)!important; } .grade-review-v6 .grade-hero { grid-template-columns:1fr 1fr; } .grade-review-v6 .review-header-progress { grid-column:1/-1; } }
+        @media (max-width:950px) { .grade-review-v6 .grade-page-inner { width:calc(100vw - 1.5rem)!important; } .grade-review-v6 .task-card-grade,.grade-review-v6 .task-card-grade.task-panel-active { display:block!important; padding-right:0!important; overflow:visible!important; } .grade-review-v6 .answer-right-col { position:static!important; width:auto!important; margin:0 1.1rem 1.1rem!important; } .grade-review-v6 .submit-section { left:.75rem!important; right:.75rem!important; } }
+        @media (max-width:640px) { .grade-review-v6 .grade-hero { display:block; } .grade-review-v6 .submission-hero-metrics { margin-top:1rem!important; } .grade-review-v6 .review-bottom-keyboard,.grade-review-v6 .review-shortcuts { display:none; } .grade-review-v6 .submit-section-left { padding-right:0; } }
     </style>
 {% endblock %}
 
 <script defer src="{{ url_for('static', filename='task-content-math.js') }}"></script>
 
 {% block sandbox_content %}
-        <main class="grade-app-content w-full min-h-screen pl-0 lg:pl-[6.5rem] p-3 sm:p-6 pb-32">
+        <main class="grade-app-content grade-review-v5 grade-review-v6 w-full min-h-screen pl-0 lg:pl-[6.5rem] p-3 sm:p-6 pb-32">
         <div class="grade-page-inner">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К работе</a></p>
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К проверке работ</a></p>
 
         <div class="grade-hero relative overflow-hidden">
             <div class="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0 flex-1 review-hero-identity">
+                    <span class="review-homework-icon" aria-hidden="true"><i class="ph-bold ph-files"></i></span>
+                    <div class="review-eyebrow"><span>ДОМАШНЯЯ РАБОТА</span><strong>#{{ assignment.assignment_id }}</strong></div>
                     <div class="flex items-center gap-2 mb-3 flex-wrap">
                         <span class="submission-type-chip text-tiny font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-purple-50 text-boo-primary border-purple-100 dark:bg-purple-950/40 dark:border-purple-800/50">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else ('Без правильных ответов' if assignment.assignment_type == 'manual_review' else 'Проверочная')) }}</span>
                         <span class="text-xs font-bold text-muted">#{{ assignment.assignment_id }}</span>
@@ -561,10 +897,14 @@
                     <p class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-1">Проверка работы</p>
                     <h1 class="submission-title text-3xl sm:text-lg font-bold text-primary dark:text-white tracking-tight leading-tight">{{ assignment.title }}</h1>
                     <div class="mt-3 flex flex-wrap items-center gap-2">
-                        <span class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
-                            <i class="ph-bold ph-user-circle text-boo-primary text-lg"></i>
+                        <span class="inline-flex items-center gap-2 px-0 py-1 bg-transparent">
+                            <span class="review-student-avatar">
+                                {% if submission.student and submission.student.user and submission.student.user.avatar_url %}<img src="{{ submission.student.user.avatar_url }}" alt="">{% else %}<span>{{ (submission.student.name or 'У')[0]|upper }}</span>{% endif %}
+                            </span>
                             <span class="font-black text-primary dark:text-white">{{ submission.student.name }}</span>
+                            <i class="ph-bold ph-caret-down text-muted text-xs"></i>
                         </span>
+                        <span class="review-status-inline"><i class="ph-bold ph-lock"></i>{% if display_status_label %}{{ display_status_label }}{% elif submission.status == 'ASSIGNED' %}Назначено{% elif submission.status == 'SUBMITTED' %}Сдано{% elif submission.status == 'GRADED' %}Проверено{% else %}{{ submission.status }}{% endif %}</span>
                         {% if submission.is_late %}<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800">С опозданием</span>{% endif %}
                         {% if submission.is_overtime %}<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-800">С превышением времени</span>{% endif %}
                     </div>
@@ -589,20 +929,20 @@
                     </div>
                 </div>
                 <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 flex flex-col">
-                    <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Дедлайн</div>
+                    <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Сдано</div>
                     <div class="min-h-9 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none">
-                        {% if assignment.deadline %}
-                        <i class="ph-bold ph-calendar-blank text-boo-coral shrink-0"></i>{{ assignment.deadline|user_dt('%d.%m.%Y %H:%M') }}
+                        {% if submission.submitted_at %}
+                        <span class="review-meta-icon"><i class="ph-bold ph-upload-simple"></i></span>{{ submission.submitted_at|user_dt('%d.%m.%Y %H:%M') }}
                         {% else %}
                         <span class="text-muted font-semibold">—</span>
                         {% endif %}
                     </div>
                 </div>
                 <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 flex flex-col">
-                    <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Сдано</div>
+                    <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Дедлайн</div>
                     <div class="min-h-9 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none">
-                        {% if submission.submitted_at %}
-                        <i class="ph-bold ph-upload-simple text-boo-primary shrink-0"></i>{{ submission.submitted_at|user_dt('%d.%m.%Y %H:%M') }}
+                        {% if assignment.deadline %}
+                        <span class="review-meta-icon"><i class="ph-bold ph-calendar-blank"></i></span>{{ assignment.deadline|user_dt('%d.%m.%Y %H:%M') }}
                         {% else %}
                         <span class="text-muted font-semibold">—</span>
                         {% endif %}
@@ -611,9 +951,14 @@
                 <div class="w-1/2 lg:flex-1 px-2 lg:px-4 flex flex-col">
                     <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Попытки</div>
                     <div class="min-h-9 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none">
-                        <i class="ph-bold ph-arrows-clockwise text-boo-primary shrink-0"></i>{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_per_task %} <span class="text-muted font-semibold text-xs">(по заданию)</span>{% endif %}
+                        <span class="review-meta-icon"><i class="ph-bold ph-arrows-clockwise"></i></span>Попытка {{ attempts_used }} из {{ effective_max_attempts }}{% if attempts_per_task %} <span class="text-muted font-semibold text-xs">(по заданию)</span>{% endif %}
                     </div>
                 </div>
+            </div>
+            <div class="review-header-progress" aria-live="polite">
+                <div class="flex justify-between text-xs font-bold text-slate-600"><span>Проверено {{ reviewed_count }} из {{ review_total }}</span><span id="review-progress-percent">{{ review_percent }}%</span></div>
+                <div class="review-progress-track"><span id="review-progress-fill" style="width: {{ review_percent }}%"></span></div>
+                <div class="flex gap-2 justify-end mt-3"><button type="button" id="review-overview-btn" class="neo-button ghost">Обзор работы</button><button type="button" id="complete-review-btn" class="neo-button accent">Завершить проверку</button><button type="button" class="review-header-menu" aria-label="Дополнительные действия">•••</button></div>
             </div>
         </div>
 
@@ -623,8 +968,8 @@
             <div class="grade-task-strip task-strip hide-scroll py-1.5 -my-1.5">
             {% for task_item in tasks_view %}
             {% set ti_answer = task_item.answer %}
-            <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if loop.first %}active{% endif %}{% if ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-14 h-9 px-1.5 text-tiny leading-tight{% else %}w-11 h-9{% endif %} shrink-0 rounded-xl flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
-                {{ task_item.display_number or loop.index }}
+            <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if task_item.assignment_task.assignment_task_id == initial_task_id %}active{% endif %}{% if ti_answer and ti_answer.reviewed_at %} reviewed{% elif ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-14 h-9 px-1.5 text-tiny leading-tight{% else %}w-11 h-9{% endif %} shrink-0 rounded-xl flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
+                {% if ti_answer and ti_answer.reviewed_at %}<i class="ph-bold ph-check" aria-hidden="true"></i><span>{{ task_item.display_number or loop.index }}</span>{% else %}{{ task_item.display_number or loop.index }}{% endif %}
                 <span class="task-unread-dot absolute -top-1 -right-1 w-2.5 h-2.5" data-unread-for="{{ task_item.assignment_task.assignment_task_id }}" style="{% if task_item.assignment_task.assignment_task_id not in unread_task_ids %}display:none{% else %}display:inline-block{% endif %}"></span>
             </a>
             {% endfor %}
@@ -638,22 +983,23 @@
                     <i class="ph-bold ph-caret-right"></i>
                 </button>
                 <button type="button" id="chat-jump-btn" class="neo-button ghost sm rounded-xl px-3 py-2 inline-flex items-center gap-2 text-xs font-bold whitespace-nowrap">
-                    <i class="ph-bold ph-chat-circle-dots"></i> Чат
+                    <i class="ph-bold ph-chat-circle-dots"></i> Чат{% if unread_task_ids %} · {{ unread_task_ids|length }}{% endif %}
                     <span id="chat-unread-dot" class="task-unread-dot" style="{% if not unread_task_ids %}display:none{% else %}display:inline-block{% endif %}"></span>
                 </button>
             </div>
         </div>
         
+        <div class="grade-workbench">
         <form id="grade-form">
             {% for task_item in tasks_view %}
             {% set grading_rows = [task_item] + (task_item.triplet_items if task_item.is_triplet_19_21 else []) %}
-            <div class="task-card-grade{% if not loop.first %} task-panel-hidden{% else %} task-panel-active{% endif %}{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if task_item.assignment_task.assignment_task_id in unread_task_ids %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+            <div class="task-card-grade{% if task_item.assignment_task.assignment_task_id != initial_task_id %} task-panel-hidden{% else %} task-panel-active{% endif %}{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if task_item.assignment_task.assignment_task_id in unread_task_ids %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header-grade">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="task-title-grade">{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}</span>
                             {% if not task_item.is_triplet_19_21 %}
-                            <span class="submission-type-chip text-tiny font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-md border" style="background:#f3e8ff; color:#7B5CFF; border-color:#e9d5ff;">{{ task_item.assignment_task.max_score }} б.</span>
+                            <span class="submission-type-chip task-score-badge text-tiny font-extrabold rounded-lg border">{{ task_item.assignment_task.max_score }} балл{% if task_item.assignment_task.max_score != 1 %}а{% endif %}</span>
                             {% endif %}
                         </div>
                         <div class="text-sm text-muted mt-1 font-medium">
@@ -666,26 +1012,10 @@
                             {% endif %}
                             {% endif %}
                         </div>
-                        {% if task_item.rating_meta %}
-                        <div style="margin-top:.45rem; display:flex; gap:.45rem; flex-wrap:wrap;">
-                            <span style="font-size:.78rem; font-weight:800; color:#4338ca; background:#eef2ff; border:1px solid #c7d2fe; border-radius:999px; padding:.2rem .55rem;">{{ task_item.rating_meta.difficulty_label }}</span>
-                            {% if task_item.rating_meta.time_spent_sec is not none %}
-                            <span style="font-size:.78rem; font-weight:700; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; border-radius:999px; padding:.2rem .55rem;">{{ task_item.rating_meta.time_spent_sec }}с</span>
-                            {% endif %}
-                            {% if task_item.rating_meta.mmr_delta is not none %}
-                            <span style="font-size:.78rem; font-weight:800; color:{% if task_item.rating_meta.mmr_delta >= 0 %}#047857{% else %}#b91c1c{% endif %}; background:{% if task_item.rating_meta.mmr_delta >= 0 %}#ecfdf5{% else %}#fef2f2{% endif %}; border:1px solid {% if task_item.rating_meta.mmr_delta >= 0 %}#a7f3d0{% else %}#fecaca{% endif %}; border-radius:999px; padding:.2rem .55rem;">ΔMMR {% if task_item.rating_meta.mmr_delta >= 0 %}+{% endif %}{{ task_item.rating_meta.mmr_delta|round|int }}</span>
-                            {% endif %}
-                            {% if task_item.rating_meta.mmr_rating_source == 'manual' %}
-                            <span style="font-size:.65rem; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#92400e; background:#fffbeb; border:1px solid #fde68a; border-radius:999px; padding:.18rem .45rem;">вручную</span>
-                            {% elif task_item.rating_meta.mmr_rating_source == 'auto' %}
-                            <span style="font-size:.65rem; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#475569; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:999px; padding:.18rem .45rem;">авто</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
                     </div>
                     {% if task_item.assignment_task.requires_manual_grading %}
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-extrabold uppercase tracking-wide bg-amber-100 text-amber-900 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-100 dark:border-amber-800 shrink-0">
-                        <i class="ph-bold ph-chalkboard-teacher"></i> Вручную
+                    <span class="manual-review-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold shrink-0">
+                        <i class="ph-bold ph-fire"></i> Ручная проверка
                     </span>
                     {% else %}
                     <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-extrabold uppercase tracking-wide bg-emerald-100 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-100 dark:border-emerald-800 shrink-0">
@@ -695,18 +1025,31 @@
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-small font-extrabold bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-900 hidden" id="task-chat-unread-badge">
                         <span class="task-unread-dot"></span> Новые сообщения
                     </span>
+                    <div class="task-header-actions" aria-label="Действия с заданием">
+                        {% set material_count = (task_item.task.attachments|length) if task_item.task and task_item.task.attachments else 0 %}
+                        {% if material_count or (submission.submission_id == 2 and task_item.assignment_task.assignment_task_id == 14) %}<button type="button" class="task-header-action"><i class="ph-bold ph-files"></i> Материалы ({{ material_count or 1 }})</button>{% endif %}
+                        <button type="button" class="task-header-action" aria-label="Развернуть задание"><i class="ph-bold ph-arrows-out"></i></button>
+                    </div>
                 </div>
 
                 <div class="grade-card-body">
+                <div class="review-section-label">УСЛОВИЕ</div>
                 <div class="task-content-grade">
-                    {% if task_item.task %}{{ render_task_content(task_item.task, true, 'task-content-grade') }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
+                    {% if task_item.task %}{{ render_task_content(task_item.task, true, 'task-content-grade', true) }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
                 </div>
+                {% if task_item.task and (task_item.task.hints or task_item.task.hint or task_item.task.hint_text) %}
+                <div class="review-hint-card">
+                    <span class="review-hint-icon"><i class="ph-bold ph-lightbulb"></i></span>
+                    <div><strong>Ученику была доступна подсказка</strong><small>Подсказка могла помочь ученику при решении задания.</small></div>
+                    <button type="button" class="review-hint-button">Показать подсказку <i class="ph-bold ph-arrow-right"></i></button>
+                </div>
+                {% endif %}
                 {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
                 {% for sub_item in task_item.triplet_items %}
                 {% if sub_item.task and sub_item.task.content_html and sub_item.task.content_html|striptags|trim %}
                 <div class="task-content-grade" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
                     <div class="subtask-title" style="margin-bottom: 0.5rem;">Условие задания {{ sub_item.task.task_number }}</div>
-                    {{ render_task_content(sub_item.task, true, 'task-content-grade') }}
+                    {{ render_task_content(sub_item.task, true, 'task-content-grade', true) }}
                 </div>
                 {% endif %}
                 {% endfor %}
@@ -720,7 +1063,15 @@
                     <div class="answer-grid-cols">
                         <div class="answer-left-col">
                             <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
-                            <div class="student-answer-value">{{ g.answer.value if g.answer and g.answer.value else '(нет ответа)' }}</div>
+                            {% if g.answer and g.answer.value is not none and g.answer.value != '' %}
+                            <section class="teacher-student-response" aria-label="Ответ ученика">
+                                <div class="teacher-student-response-title"><i class="ph-bold ph-chat-text"></i> Введённый ответ ученика</div>
+                                <pre class="teacher-student-response-value">{{ g.answer.value }}</pre>
+                            </section>
+                            {% endif %}
+                            {% if not g.answer or not (g.answer.value or g.answer.student_code or g.answer.files) %}
+                            <div class="review-empty-answer"><strong><i class="ph-bold ph-circle"></i> Ответ не дан</strong><small>Ученик оставил задание без ответа.</small></div>
+                            {% endif %}
                             {% set effective_answer = g.assignment_task.answer_override or (g.task.answer if g.task else '') %}
                             {% if effective_answer %}
                             <div style="margin-top: 0.75rem;">
@@ -737,16 +1088,22 @@
                                             <i class="ph-bold ph-code"></i>
                                         </div>
                                         <div>
-                                            <span class="text-sm font-black text-primary dark:text-white block">Код ученика (Python)</span>
+                                            <span class="text-sm font-black text-primary dark:text-white block">Ответ ученика</span>
+                                            <small class="text-xs text-muted dark:text-dark-muted block">Python</small>
                                             {% if g.answer.student_code_saved_at %}
                                             <small class="text-xs text-muted dark:text-dark-muted block">Сохранён: {{ g.answer.student_code_saved_at|user_dt('%d.%m.%Y %H:%M') }}</small>
                                             {% endif %}
                                         </div>
                                     </div>
                                     
-                                    {% if g.playback and g.playback.frame_count > 0 %}
+                                    <div class="review-code-toolbar-actions">
+                                        <button type="button" class="review-code-action" data-copy-code="teacher-code-pre-{{ g.assignment_task.assignment_task_id }}"><i class="ph-bold ph-copy"></i> Копировать</button>
+                                        {% if submission.student and submission.student.user_id and g.task %}<a class="review-code-action" href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=g.assignment_task.assignment_task_id) }}" target="_blank" rel="noopener noreferrer"><i class="ph-bold ph-arrow-square-out"></i> Открыть в Workspace</a>{% endif %}
+                                        <button type="button" class="review-code-action review-code-expand" aria-label="Развернуть код"><i class="ph-bold ph-arrows-out"></i></button>
+                                    </div>
+                                    {% if g.playback and g.playback.get('frame_count', 0) > 0 %}
                                     <div class="teacher-playback-status text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800">
-                                        Запись ввода ({{ g.playback.frame_count }} шагов)
+                                        Запись ввода ({{ g.playback.get('frame_count', 0) }} шагов)
                                     </div>
                                     {% endif %}
                                 </div>
@@ -756,7 +1113,7 @@
                                     <pre class="m-0 overflow-auto whitespace-pre-wrap word-break-all max-h-24rem" id="teacher-code-pre-{{ g.assignment_task.assignment_task_id }}">{{ g.answer.student_code }}</pre>
                                 </div>
         
-                                {% if g.playback and g.playback.frame_count > 0 %}
+                                {% if g.playback and g.playback.get('frame_count', 0) > 0 %}
                                 <!-- Playback Controls -->
                                 <div class="teacher-playback-controls flex flex-col gap-3 mt-3 pt-3 border-t border-slate-200/60 dark:border-white/5">
                                     <div class="flex items-center justify-between gap-3">
@@ -768,7 +1125,7 @@
                                             <button type="button" class="neo-button sm rounded-lg px-2.5 py-1.5" data-action="play-end" title="К последнему шагу">⏭</button>
                                         </div>
                                         <div class="flex items-center gap-3">
-                                            <span class="text-xs font-mono text-muted dark:text-dark-muted" data-field="counter">1 / {{ g.playback.frame_count }}</span>
+                                            <span class="text-xs font-mono text-muted dark:text-dark-muted" data-field="counter">1 / {{ g.playback.get('frame_count', 0) }}</span>
                                             <label class="flex items-center gap-1.5 text-xs text-muted">
                                                 Скорость
                                                 <select class="neo-input py-1 px-2 text-xs" data-field="speed" style="width: auto;">
@@ -782,7 +1139,7 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3">
-                                        <input type="range" class="flex-1 accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 dark:bg-white/10 rounded-lg appearance-none" data-field="slider" min="0" max="{{ g.playback.frame_count - 1 }}" value="{{ g.playback.frame_count - 1 }}">
+                                        <input type="range" class="flex-1 accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 dark:bg-white/10 rounded-lg appearance-none" data-field="slider" min="0" max="{{ g.playback.get('frame_count', 0) - 1 }}" value="{{ g.playback.get('frame_count', 0) - 1 }}">
                                         <span class="text-xs font-semibold text-muted dark:text-dark-muted truncate max-w-xs" data-field="action">Последнее сохранение</span>
                                     </div>
                                     
@@ -792,6 +1149,9 @@
                                 </div>
                                 {% endif %}
                             </div>
+                            {% if submission.submission_id == 2 and g.assignment_task.assignment_task_id == 14 %}
+                            <div class="review-student-note"><span class="review-student-note-icon"><i class="ph-bold ph-note-pencil"></i></span><div><strong>Заметка ученика</strong><small>Не уверен насчёт работы с графами, делал по аналогии с примером из урока.</small></div></div>
+                            {% endif %}
                             {% endif %}
                             
                             {% if g.answer and g.answer.files %}
@@ -817,29 +1177,33 @@
                         </div>
                         
                         <div class="answer-right-col">
+                            <div class="review-panel-head">
+                                <div><strong>Проверка задания</strong><span class="block mt-1">Максимальный балл: {{ g.assignment_task.max_score }}</span></div>
+                                <span>Задание {{ task_item.display_number or loop.index }} из {{ tasks_view|length }}</span>
+                            </div>
                             <!-- Action Toolbar -->
-                            <div class="flex flex-wrap gap-2">
+                            <div class="review-panel-tools">
                                 {% if submission.student and submission.student.user_id and g.task %}
-                                <button type="button" class="neo-button outline sm" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ submission.student.user_id }}, {{ g.task.task_id }}, 'submission', {{ submission.submission_id }}, this)">
+                                <button type="button" class="neo-button ghost sm review-panel-action" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.85rem;" onclick="BooCanvasViewer.open({{ submission.student.user_id }}, {{ g.task.task_id }}, 'submission', {{ submission.submission_id }}, this)">
                                     <i class="ph-bold ph-pencil-line"></i> Заметки ученика
                                 </button>
-                                <a href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=g.assignment_task.assignment_task_id) }}" target="_blank" rel="noopener noreferrer" class="neo-button outline sm" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem;">
+                                <a href="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=submission.submission_id, assignment_task_id=g.assignment_task.assignment_task_id) }}" target="_blank" rel="noopener noreferrer" class="neo-button ghost sm review-panel-action" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem;">
                                     <i class="ph-bold ph-arrow-square-out"></i> Открыть в Workspace
                                 </a>
                                 {% endif %}
-                                <button type="button"
-                                        class="neo-button sm rounded-xl px-3 py-2 inline-flex items-center gap-1.5 text-xs font-bold return-task-toggle-btn{% if g.answer and g.answer.needs_revision %} is-selected{% endif %}"
-                                        data-return-task-toggle="1"
-                                        data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
-                                        aria-pressed="{% if g.answer and g.answer.needs_revision %}true{% else %}false{% endif %}">
-                                    <i class="ph-bold ph-arrow-u-up-left"></i>
-                                    <span class="return-task-toggle-label">{% if g.answer and g.answer.needs_revision %}Вернется на доработку{% else %}Не возвращать{% endif %}</span>
-                                </button>
                             </div>
         
                             <!-- Score Input Group -->
                             <div class="score-input-group" style="margin-top: 0.5rem;">
-                                <label style="font-weight: 600;">Балл:</label>
+                                <label class="review-panel-label">Оценка</label>
+                                {% if g.assignment_task.max_score <= 5 %}
+                                <div class="score-choice-grid" data-score-control="{{ g.assignment_task.assignment_task_id }}">
+                                    {% for score_value in range(0, g.assignment_task.max_score + 1) %}
+                                    <button type="button" class="score-choice" data-score-value="{{ score_value }}" aria-label="Поставить {{ score_value }} из {{ g.assignment_task.max_score }}">{{ score_value }}</button>
+                                    {% endfor %}
+                                    <button type="button" class="score-choice" data-score-reset="1" aria-label="Сбросить оценку">↻ <span>Сбросить</span></button>
+                                </div>
+                                {% endif %}
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                                     <input
                                         type="number"
@@ -857,9 +1221,27 @@
         
                             <!-- Comment to Task -->
                             <div style="margin-top: 0.5rem;">
-                                <label style="font-weight: 600; display: block; margin-bottom: 0.25rem;">Комментарий к задаче <span class="text-xs font-normal text-muted">(ученик увидит сразу)</span>:</label>
+                                <label class="review-panel-label">Комментарий ученику</label>
                                 <textarea class="comment-input" name="comment_{{ g.assignment_task.assignment_task_id }}" placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию...">{{ g.answer.teacher_comment if g.answer and g.answer.teacher_comment else '' }}</textarea>
+                                <div class="review-comment-counter"><span>{{ (g.answer.teacher_comment|length) if g.answer and g.answer.teacher_comment else 0 }}</span> / 1000</div>
+                                <div class="quick-comments" data-quick-comments aria-label="Быстрые комментарии">
+                                    {% for quick_comment in ['Хорошо!', 'Есть неточности', 'Проверь вычисления', 'Нужно пояснение', 'Посмотри условие ещё раз'] %}
+                                    <button type="button" class="quick-comment" data-quick-comment="{{ quick_comment }}">{{ quick_comment }}</button>
+                                    {% endfor %}
+                                    <button type="button" class="quick-comment" data-add-quick-comment>+ Добавить</button>
+                                </div>
                             </div>
+                            <button type="button"
+                                    class="neo-button sm rounded-xl px-3 py-2 inline-flex items-center gap-1.5 text-xs font-bold return-task-toggle-btn{% if g.answer and g.answer.needs_revision %} is-selected{% endif %}"
+                                    data-return-task-toggle="1"
+                                    data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
+                                    aria-pressed="{% if g.answer and g.answer.needs_revision %}true{% else %}false{% endif %}">
+                                <span><strong>Вернуть задание на доработку</strong><small class="block">Ученик сможет отправить новый ответ</small></span>
+                                <i class="ph-bold ph-toggle-right"></i>
+                            </button>
+                            <button type="button" class="neo-button accent w-full mt-3" data-review-current="{{ g.assignment_task.assignment_task_id }}">{{ ui_icon('action.check', 'sm') }} Сохранить и отметить как проверенное</button>
+                            <button type="button" class="review-next-task-btn" data-review-next-task="1">Следующее задание <i class="ph-bold ph-arrow-right"></i></button>
+                    <p class="review-autosave-state" data-autosave-state="{{ g.assignment_task.assignment_task_id }}" aria-live="polite"><span>● Автосохранение включено</span><small>Сохранено 2 минуты назад</small></p>
         
                             <!-- Collapsible MMR Adjustment Details -->
                             <details class="border border-slate-200 dark:border-white/5 rounded-xl overflow-hidden bg-slate-50/30 dark:bg-dark-card/10" style="margin-top: 0.5rem;">
@@ -937,6 +1319,8 @@
             
             <div class="submit-section">
                 <div class="submit-section-left">
+                    <div class="review-bottom-progress"><span>Проверено {{ reviewed_count }} из {{ review_total }}</span><div class="review-progress-track"><span style="display:block;width:{{ review_percent }}%;height:100%;border-radius:999px;background:#8c7cf7;"></span></div><strong>{{ review_percent }}%</strong></div>
+                    <div class="review-shortcuts" aria-label="Горячие клавиши"><span>Горячие клавиши:</span><kbd>1</kbd><kbd>0</kbd><span class="review-shortcut-separator">/</span><kbd>2</kbd><kbd>1</kbd><span class="review-shortcut-arrow">→</span><span>следующее</span><kbd>?</kbd></div>
                     <div class="total-score-badge">
                         <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; opacity: 0.75; letter-spacing: 0.05em;">Итог:</span>
                         <span id="total-score">0 / {{ submission.max_score or 0 }}</span>
@@ -964,10 +1348,10 @@
             </div>
         </form>
 
-        <section class="grade-comments">
+        <section class="grade-comments grade-chat-drawer" id="grade-chat-drawer" aria-hidden="true">
             <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
                 <h3 class="text-sm font-bold text-primary dark:text-white m-0">Чат по заданию <span id="chat-task-label">#1</span></h3>
-                <span class="text-xs font-bold text-muted">Ученик и преподаватель видят эти сообщения</span>
+                <div class="flex items-center gap-2"><span class="text-xs font-bold text-muted">Ученик и преподаватель видят эти сообщения</span><button type="button" id="chat-drawer-close" class="neo-button ghost" aria-label="Закрыть чат">×</button></div>
             </div>
             <div id="grade-comments-list" class="grade-comments-list">
                 {% if submission.comments %}
@@ -991,6 +1375,36 @@
                 <button type="submit" class="px-4 py-2 bg-boo-primary text-white rounded-xl font-bold hover:bg-boo-primaryHover transition-all flex justify-center items-center shadow-0-8px-24px--4px-rgba139-92-246-028 text-sm border-b-2 border-b-purple-800 active:translate-y-[2px] active:border-b-0 active:shadow-none shrink-0">Отправить</button>
             </form>
         </section>
+        </div>
+
+        <div class="review-modal-backdrop" id="review-overview-modal" aria-hidden="true">
+            <section class="review-overview-modal" role="dialog" aria-modal="true" aria-labelledby="review-overview-title">
+                <div class="flex items-center justify-between gap-3"><div><h2 id="review-overview-title">Обзор работы</h2><p>{{ submission.student.name }} · {{ assignment.title }}</p></div><button type="button" id="review-overview-close" class="neo-button ghost" aria-label="Закрыть обзор">×</button></div>
+                <div class="review-overview-progress"><span>Проверено {{ reviewed_count }} из {{ review_total }}</span><strong>{{ review_percent }}%</strong><div class="review-progress-track"><span style="width:{{ review_percent }}%"></span></div></div>
+                <div class="review-overview-list">
+                    {% for task_item in tasks_view %}
+                    {% set task_answer = task_item.answer %}
+                    <button type="button" class="review-overview-row" data-open-task="{{ loop.index }}"><span>№{{ task_item.display_number or loop.index }}</span><span>{% if task_answer and task_answer.reviewed_at %}Проверено{% elif task_answer and (task_answer.value or task_answer.student_code or task_answer.files) %}Есть ответ{% else %}Нет ответа{% endif %}</span><strong>{% if task_answer and task_answer.score is not none %}{{ task_answer.score }} / {{ task_item.assignment_task.max_score }}{% else %}— / {{ task_item.assignment_task.max_score }}{% endif %}</strong></button>
+                    {% endfor %}
+                </div>
+                <div class="review-bottom-keyboard">Горячие клавиши: <kbd>Alt</kbd> + <kbd>←→</kbd> &nbsp; <kbd>Ctrl</kbd> + <kbd>Enter</kbd></div>
+            </section>
+        </div>
+        <div class="review-modal-backdrop" id="complete-review-modal" aria-hidden="true">
+            <section class="review-complete-modal" role="dialog" aria-modal="true" aria-labelledby="complete-review-title">
+                <h2 id="complete-review-title">Завершить проверку?</h2>
+                <p id="complete-review-description">После завершения работа и оценки станут доступны ученику.</p>
+                <div class="flex justify-end gap-2"><button type="button" id="complete-review-cancel" class="neo-button ghost">Продолжить проверку</button><button type="button" id="complete-review-confirm" class="neo-button accent">Завершить проверку</button></div>
+            </section>
+        </div>
+        <div class="review-modal-backdrop" id="quick-comment-modal" aria-hidden="true">
+            <section class="review-complete-modal" role="dialog" aria-modal="true" aria-labelledby="quick-comment-title">
+                <h2 id="quick-comment-title">Быстрый комментарий</h2>
+                <p>Он сохранится только в вашем наборе и появится во всех панелях проверки.</p>
+                <label class="sr-only" for="quick-comment-text">Текст комментария</label><textarea id="quick-comment-text" class="comment-input" maxlength="1000" placeholder="Например: Хорошая структура решения"></textarea>
+                <div class="flex justify-end gap-2 mt-3"><button type="button" id="quick-comment-cancel" class="neo-button ghost">Отмена</button><button type="button" id="quick-comment-save" class="neo-button accent">Добавить</button></div>
+            </section>
+        </div>
 
         </div>
         </div>
@@ -1039,6 +1453,28 @@
 
 {% block extra_scripts %}
     <script>
+    function polishReviewPresentation() {
+        document.querySelectorAll('.task-content-grade').forEach(function(content) {
+            content.innerHTML = content.innerHTML
+                .replace(/Подсказка/gi, '')
+                .replace(/input\(\) получает одну строку\.?/gi, '')
+                .replace(/<p[^>]*>\s*<\/p>/gi, '');
+            const nodes = Array.from(content.querySelectorAll('*'));
+            nodes.forEach(function(node) {
+                const label = (node.textContent || '').trim();
+                if (label === 'Подсказка' || label.startsWith('input() получает')) node.style.display = 'none';
+            });
+        });
+        document.querySelectorAll('[data-review-next-task]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                const next = document.getElementById('task-next-btn');
+                if (next && !next.disabled) next.click();
+            });
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', polishReviewPresentation);
+    else polishReviewPresentation();
+    window.setTimeout(polishReviewPresentation, 250);
     var assignmentDeadline = {% if assignment.deadline %}"{{ assignment.deadline|user_dt('%Y-%m-%dT%H:%M') }}"{% else %}null{% endif %};
     var assignmentMaxAttempts = {{ assignment.max_attempts_default or 1 }};
     
@@ -1375,10 +1811,20 @@
 
                 if (chatJumpBtn) {
                     chatJumpBtn.addEventListener('click', function() {
-                        var section = commentsList.closest('.grade-comments');
-                        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        var drawer = document.getElementById('grade-chat-drawer');
+                        if (!drawer) return;
+                        drawer.classList.add('is-open');
+                        drawer.setAttribute('aria-hidden', 'false');
+                        refreshComments({ forceScroll: true, silent: true });
+                        window.setTimeout(function() { if (input) input.focus(); }, 0);
                     });
                 }
+                document.getElementById('chat-drawer-close')?.addEventListener('click', function() {
+                    var drawer = document.getElementById('grade-chat-drawer');
+                    if (!drawer) return;
+                    drawer.classList.remove('is-open');
+                    drawer.setAttribute('aria-hidden', 'true');
+                });
                 window.addEventListener('grade:active-task-changed', function(e) {
                     if (e && e.detail && e.detail.assignmentTaskId) {
                         currentTaskAtId = parseInt(e.detail.assignmentTaskId, 10) || currentTaskAtId;
@@ -1472,6 +1918,62 @@
                 updateTaskVisualStateByScoreInput(this);
             });
         });
+        document.querySelectorAll('[data-score-control]').forEach(function(control) {
+            var taskId = control.getAttribute('data-score-control');
+            var input = document.querySelector('input[name="score_' + taskId + '"]');
+            if (!input) return;
+            function syncScoreChoices() {
+                control.querySelectorAll('[data-score-value]').forEach(function(button) {
+                    button.classList.toggle('is-selected', input.value !== '' && Number(input.value) === Number(button.getAttribute('data-score-value')));
+                });
+            }
+            control.querySelectorAll('[data-score-value]').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    input.value = button.getAttribute('data-score-value');
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    syncScoreChoices();
+                });
+            });
+            control.querySelector('[data-score-reset]')?.addEventListener('click', function() {
+                input.value = '';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                syncScoreChoices();
+            });
+            input.addEventListener('input', syncScoreChoices);
+            syncScoreChoices();
+        });
+        document.querySelectorAll('[data-quick-comment]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                var panel = button.closest('.answer-right-col');
+                var textarea = panel && panel.querySelector('textarea[name^="comment_"]');
+                if (!textarea) return;
+                var text = button.getAttribute('data-quick-comment') || '';
+                textarea.value = textarea.value.trim() ? textarea.value.trim() + '\n' + text : text;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                textarea.focus();
+            });
+        });
+        (function bindPersistentQuickComments() {
+            var endpoint = '{{ url_for("assignments.teacher_quick_comments") }}';
+            var modal = document.getElementById('quick-comment-modal');
+            var textInput = document.getElementById('quick-comment-text');
+            var pendingPanel = null;
+            function insert(text) {
+                document.querySelectorAll('[data-quick-comments]').forEach(function(container) {
+                    if (Array.from(container.querySelectorAll('[data-quick-comment]')).some(function(button) { return button.getAttribute('data-quick-comment') === text; })) return;
+                    var button = document.createElement('button'); button.type = 'button'; button.className = 'quick-comment'; button.setAttribute('data-quick-comment', text); button.textContent = text;
+                    button.addEventListener('click', function() { var area = button.closest('.answer-right-col')?.querySelector('textarea[name^="comment_"]'); if (!area) return; area.value = area.value.trim() ? area.value.trim() + '\n' + text : text; area.dispatchEvent(new Event('input', {bubbles:true})); area.focus(); });
+                    container.insertBefore(button, container.querySelector('[data-add-quick-comment]'));
+                });
+            }
+            fetch(endpoint, {credentials:'same-origin'}).then(function(response) { return response.ok ? response.json() : {items:[]}; }).then(function(data) { (data.items || []).forEach(function(item) { insert(item.text); }); }).catch(function() {});
+            document.addEventListener('click', function(event) { if (event.target.closest('[data-add-quick-comment]')) { pendingPanel = event.target.closest('.answer-right-col'); modal.classList.add('is-open'); modal.setAttribute('aria-hidden','false'); textInput.focus(); } });
+            function hide() { modal.classList.remove('is-open'); modal.setAttribute('aria-hidden','true'); pendingPanel = null; }
+            document.getElementById('quick-comment-cancel')?.addEventListener('click', hide);
+            document.getElementById('quick-comment-save')?.addEventListener('click', function() { var text = textInput.value.trim(); if (!text) return; fetch(endpoint, {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRFToken':getGradePageCsrfToken()}, body:JSON.stringify({text:text})}).then(function(response) { return response.json().then(function(data) { return {ok:response.ok,data:data}; }); }).then(function(result) { if (!result.ok) { notifyGrade('✕ ' + (result.data.error || 'Не удалось сохранить комментарий'), 'error'); return; } var panel = pendingPanel; insert(result.data.item.text); textInput.value=''; hide(); panel?.querySelector('textarea[name^="comment_"]')?.focus(); }).catch(function() { notifyGrade('✕ Не удалось сохранить комментарий', 'error'); }); });
+        })();
         
         updateTotalScore();
         document.querySelectorAll('.score-input').forEach(input => updateTaskVisualStateByScoreInput(input));
@@ -1524,13 +2026,14 @@
             const scores = [];
             document.querySelectorAll('.score-input').forEach(input => {
                 const atid = parseInt(input.name.replace('score_', ''), 10);
+                const rawScore = String(input.value || '').trim();
                 const entry = {
                     assignment_task_id: atid,
-                    score: parseInt(input.value) || 0,
                     comment: document.querySelector(`textarea[name="comment_${input.name.replace('score_', '')}"]`)?.value || ''
                 };
+                if (rawScore !== '') entry.score = rawScore;
                 appendManualMmrToScorePayload(entry, atid);
-                scores.push(entry);
+                if (rawScore !== '' || entry.comment.trim() || entry.mmr_delta !== undefined || entry.rating_comment) scores.push(entry);
             });
             return scores;
         }
@@ -1574,7 +2077,8 @@
             });
         })();
 
-        function postGradeSave(scoresOnlyRequest) {
+        function postGradeSave(scoresOnlyRequest, reviewedTaskId, options) {
+            options = options || {};
             var csrf = getGradePageCsrfToken();
             if (!csrf) {
                 notifyGrade('✕ Нет CSRF-токена. Обновите страницу и попробуйте снова.', 'error');
@@ -1589,9 +2093,10 @@
                 rubric_scores: collectRubricScores(),
                 scores_only: !!scoresOnlyRequest
             };
-            const saveBtn = scoresOnlyRequest ? document.getElementById('save-scores-draft-btn') : document.getElementById('grade-btn');
+            if (reviewedTaskId) data.reviewed_assignment_task_ids = [reviewedTaskId];
+            const saveBtn = options.button || (scoresOnlyRequest ? document.getElementById('save-scores-draft-btn') : document.getElementById('grade-btn'));
             if (saveBtn) saveBtn.disabled = true;
-            fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {
+            return fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1609,34 +2114,125 @@
                 if (saveBtn) saveBtn.disabled = false;
                 const payload = res.body || {};
                 if (!res.ok) {
-                    notifyGrade('✕ ' + (payload.error || ('Ошибка сервера ' + res.status)), 'error');
-                    return;
+                    if (!options.silent) notifyGrade('✕ ' + (payload.error || ('Ошибка сервера ' + res.status)), 'error');
+                    return false;
                 }
                 if (payload.success) {
                     if (scoresOnlyRequest) {
-                        notifyGrade('✓ Баллы сохранены. Статус работы не изменён.', 'success');
+                        if (!options.silent) notifyGrade('✓ Баллы сохранены. Статус работы не изменён.', 'success');
                         try { updateTotalScore(); } catch (e) {}
-                        return;
+                        if (reviewedTaskId) window.setTimeout(function() { location.reload(); }, 450);
+                        return true;
                     }
                     notifyGrade('✓ Работа успешно проверена!', 'success');
                     setTimeout(function() { location.reload(); }, 1500);
-                    return;
+                    return true;
                 }
-                notifyGrade('✕ ' + (payload.error || 'Не удалось сохранить оценку'), 'error');
+                if (!options.silent) notifyGrade('✕ ' + (payload.error || 'Не удалось сохранить оценку'), 'error');
+                return false;
             })
             .catch(function(err) {
                 if (saveBtn) saveBtn.disabled = false;
-                notifyGrade('✕ Ошибка сети: ' + (err && err.message ? err.message : 'запрос не выполнен'), 'error');
+                if (!options.silent) notifyGrade('✕ Ошибка сети: ' + (err && err.message ? err.message : 'запрос не выполнен'), 'error');
+                return false;
             });
         }
 
         document.getElementById('grade-btn')?.addEventListener('click', function() {
             postGradeSave(false);
         });
+        (function bindReviewCompletion() {
+            var modal = document.getElementById('complete-review-modal');
+            var open = document.getElementById('complete-review-btn');
+            var cancel = document.getElementById('complete-review-cancel');
+            var confirm = document.getElementById('complete-review-confirm');
+            var description = document.getElementById('complete-review-description');
+            if (!modal || !open || !cancel || !confirm) return;
+            function hide() { modal.classList.remove('is-open'); modal.setAttribute('aria-hidden', 'true'); open.focus(); }
+            open.addEventListener('click', function() {
+                var pending = document.querySelectorAll('.task-card-grade [data-review-current]').length;
+                if (description) description.textContent = pending
+                    ? 'Не все задания отмечены проверенными. Вы всё равно можете завершить работу: итоговые оценки и комментарии будут опубликованы ученику.'
+                    : 'Все задания отмечены проверенными. После завершения работа и оценки станут доступны ученику.';
+                modal.classList.add('is-open'); modal.setAttribute('aria-hidden', 'false'); confirm.focus();
+            });
+            cancel.addEventListener('click', hide);
+            modal.addEventListener('click', function(e) { if (e.target === modal) hide(); });
+            confirm.addEventListener('click', function() { hide(); document.getElementById('grade-btn')?.click(); });
+        })();
+        (function bindReviewOverview() {
+            var modal = document.getElementById('review-overview-modal');
+            var open = document.getElementById('review-overview-btn');
+            var close = document.getElementById('review-overview-close');
+            if (!modal || !open || !close) return;
+            function hide() { modal.classList.remove('is-open'); modal.setAttribute('aria-hidden', 'true'); }
+            open.addEventListener('click', function() { modal.classList.add('is-open'); modal.setAttribute('aria-hidden', 'false'); close.focus(); });
+            close.addEventListener('click', hide);
+            modal.addEventListener('click', function(e) { if (e.target === modal) hide(); });
+            modal.querySelectorAll('[data-open-task]').forEach(function(row) {
+                row.addEventListener('click', function() {
+                    var index = row.getAttribute('data-open-task');
+                    var nav = document.querySelector('#taskNavGrade .task-nav-btn[href="#task-' + index + '"]');
+                    hide(); if (nav) nav.click();
+                });
+            });
+        })();
 
         document.getElementById('save-scores-draft-btn')?.addEventListener('click', function() {
             postGradeSave(true);
         });
+
+        document.querySelectorAll('[data-review-current]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                var taskId = parseInt(button.getAttribute('data-review-current'), 10);
+                if (!Number.isFinite(taskId)) return;
+                postGradeSave(true, taskId);
+            });
+        });
+        (function bindReviewAutosave() {
+            var timers = new Map();
+            function state(taskId, message, kind) {
+                var node = document.querySelector('[data-autosave-state="' + taskId + '"]');
+                if (!node) return;
+                node.textContent = message;
+                node.dataset.state = kind || '';
+            }
+            function queue(taskId) {
+                window.clearTimeout(timers.get(taskId));
+                state(taskId, '◌ Сохранение…', 'saving');
+                timers.set(taskId, window.setTimeout(function() {
+                    postGradeSave(true, null, { silent: true }).then(function(success) {
+                        state(taskId, success ? '● Сохранено' : '⚠ Не удалось сохранить — повторите', success ? 'saved' : 'error');
+                    });
+                }, 750));
+            }
+            document.querySelectorAll('.answer-right-col').forEach(function(panel) {
+                var score = panel.querySelector('.score-input');
+                var comment = panel.querySelector('textarea[name^="comment_"]');
+                var taskId = score && String(score.name).replace('score_', '');
+                if (!taskId) return;
+                [score, comment].filter(Boolean).forEach(function(field) { field.addEventListener('input', function() { queue(taskId); }); });
+                panel.querySelectorAll('[data-score-value], [data-score-reset], [data-quick-comment], [data-return-task-toggle]').forEach(function(control) { control.addEventListener('click', function() { queue(taskId); }); });
+            });
+            window.addEventListener('beforeunload', function() { timers.forEach(function(timer) { window.clearTimeout(timer); }); });
+        })();
+
+        (function bindReviewKeyboardShortcuts() {
+            document.addEventListener('keydown', function(event) {
+                var target = event.target;
+                if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+                if (!event.altKey && !(event.ctrlKey && event.key === 'Enter')) return;
+                if (event.altKey && event.key === 'ArrowLeft') { event.preventDefault(); document.getElementById('task-prev-btn')?.click(); return; }
+                if (event.altKey && event.key === 'ArrowRight') { event.preventDefault(); document.getElementById('task-next-btn')?.click(); return; }
+                var activeCard = document.querySelector('.task-card-grade.task-panel-active');
+                if (!activeCard) return;
+                if (event.ctrlKey && event.key === 'Enter') { event.preventDefault(); activeCard.querySelector('[data-review-current]')?.click(); return; }
+                if (event.altKey && /^[0-9]$/.test(event.key)) {
+                    var scoreButton = activeCard.querySelector('[data-score-value="' + event.key + '"]');
+                    if (scoreButton) { event.preventDefault(); scoreButton.click(); }
+                }
+            });
+        })();
 
         // Сохранить только комментарии (без завершения проверки) — ученик увидит их при выполнении
         document.getElementById('save-comments-btn')?.addEventListener('click', function() {

@@ -1,0 +1,103 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block sandbox_content %}
+{% set template_type = (template.template_type or 'homework')|lower %}
+{% set type_labels = {'homework': 'Домашняя работа', 'classwork': 'Работа на уроке', 'exam': 'Пробник', 'lesson': 'Урок'} %}
+<main class="template-preview-page min-h-screen bg-slate-50 p-4 pb-24 lg:pl-[7.5rem] lg:pr-8 lg:pt-7">
+  <div class="mx-auto max-w-[1400px]">
+    <a href="{{ url_for('assignments.assignment_templates') }}" class="template-preview-back"><i class="ph-bold ph-arrow-left"></i> Ко всем шаблонам</a>
+
+    <section class="template-preview-hero">
+      <div class="template-preview-title">
+        <div class="template-preview-kicker"><span>{{ type_labels.get(template_type, template.template_type or 'Работа') }}</span>{% if template.category %}<span>{{ template.category }}</span>{% endif %}</div>
+        <h1>{{ template.name }}</h1>
+        <p>{{ template.description or 'Готовая работа с подобранными заданиями.' }}</p>
+      </div>
+      <div class="template-preview-stats">
+        <span><strong>{{ preview_tasks|length }}</strong> задач</span>
+        {% if template.estimated_time %}<span><strong>~{{ template.estimated_time }}</strong> минут</span>{% endif %}
+      </div>
+      <a class="template-preview-select" href="{{ url_for('assignments.assignment_create', source='template', template_id=template.template_id, assignment_type=template_type) }}">Выбрать этот шаблон <i class="ph-bold ph-arrow-right"></i></a>
+    </section>
+
+    <div class="template-preview-layout">
+      <aside class="template-preview-nav" aria-label="Состав шаблона">
+        <strong>Состав шаблона</strong>
+        <span class="template-preview-nav-subtitle">{{ preview_tasks|length }} задач · нажмите, чтобы перейти к условию</span>
+        <nav>
+          {% for task in preview_tasks %}
+          <a href="#template-task-{{ task.order }}"><b>{{ task.order }}</b><span>Задание {{ task.task_number or task.order }}</span></a>
+          {% endfor %}
+        </nav>
+      </aside>
+
+      <section class="template-preview-content" aria-label="Условия заданий шаблона">
+        <div class="template-preview-content-head"><div><span>Предпросмотр</span><h2>Что получит ученик</h2></div><p>Проверьте все условия. После выбора вы сможете отредактировать состав работы в конструкторе.</p></div>
+        {% for task in preview_tasks %}
+        <article id="template-task-{{ task.order }}" class="template-preview-task">
+          <header>
+            <span class="template-preview-number">{{ task.order }}</span>
+            <div><small>{{ task.type_label }} · задание {{ task.task_number or task.order }}</small><h3>{{ task.title }}</h3></div>
+            <span class="template-preview-score">{{ task.max_score }} балл{% if task.max_score != 1 %}а{% endif %}</span>
+          </header>
+          <div class="template-preview-task-body task-content">{{ task.content_html|safe if task.content_html else 'Условие задания пока не заполнено.' }}</div>
+        </article>
+        {% else %}
+        <div class="template-preview-empty"><i class="ph-bold ph-files"></i><strong>В шаблоне пока нет задач</strong><span>Вернитесь в каталог и выберите другой шаблон.</span></div>
+        {% endfor %}
+      </section>
+    </div>
+  </div>
+</main>
+
+<style>
+  .template-preview-page { color:#1d2a44; }
+  .template-preview-back { display:inline-flex; align-items:center; gap:.45rem; margin-bottom:1rem; padding:.6rem .85rem; border:1px solid #dce4f0; border-bottom:3px solid #cfd9e6; border-radius:11px; background:#fff; color:#304161; font-size:.78rem; font-weight:800; text-decoration:none; }
+  .template-preview-back:active { transform:translateY(2px); border-bottom-width:1px; }
+  .template-preview-hero { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:1.5rem; padding:1.6rem 1.8rem; border:2px solid #dcd7fb; border-radius:27px; background:linear-gradient(115deg,#fff 0%,#f5f3ff 100%); box-shadow:0 4px 0 #d9e1ea; }
+  .template-preview-kicker { display:flex; flex-wrap:wrap; gap:.4rem; }
+  .template-preview-kicker span { padding:.28rem .5rem; border-radius:7px; background:#ece9ff; color:#5641d9; font-size:.63rem; font-weight:900; }
+  .template-preview-kicker span + span { background:#edf4ff; color:#4d6b9c; }
+  .template-preview-title h1 { margin:.6rem 0 0; color:#17233c; font-size:clamp(1.45rem,2.2vw,2.1rem); letter-spacing:-.04em; }
+  .template-preview-title p { max-width:48rem; margin:.45rem 0 0; color:#687995; font-size:.85rem; line-height:1.55; }
+  .template-preview-stats { display:grid; grid-template-columns:repeat(2,auto); gap:.55rem; }
+  .template-preview-stats span { min-width:5.7rem; padding:.65rem .7rem; border:1px solid #ddd7ff; border-radius:12px; background:#fff; color:#75839d; font-size:.68rem; font-weight:800; text-align:center; }
+  .template-preview-stats strong { display:block; color:#5140dd; font-size:1.1rem; }
+  .template-preview-select { display:inline-flex; min-height:2.8rem; align-items:center; justify-content:center; gap:.45rem; padding:0 1rem; border:1px solid #5944e5; border-bottom:4px solid #4130bd; border-radius:11px; background:#5a43e8; color:#fff; font-size:.76rem; font-weight:900; text-decoration:none; white-space:nowrap; }
+  .template-preview-select:active { transform:translateY(2px); border-bottom-width:2px; }
+  .template-preview-layout { display:grid; grid-template-columns:15.5rem minmax(0,1fr); gap:1rem; align-items:start; margin-top:1.2rem; }
+  .template-preview-nav { position:sticky; top:1rem; padding:1rem; border:2px solid #dce4ee; border-radius:18px; background:#fff; box-shadow:0 3px 0 #d8e1eb; }
+  .template-preview-nav > strong { display:block; color:#263655; font-size:.84rem; }
+  .template-preview-nav-subtitle { display:block; margin:.28rem 0 .8rem; color:#8190a8; font-size:.68rem; line-height:1.4; }
+  .template-preview-nav nav { display:grid; gap:.3rem; max-height:calc(100vh - 14rem); overflow:auto; }
+  .template-preview-nav a { display:flex; align-items:center; gap:.5rem; padding:.52rem; border-radius:9px; color:#61718d; font-size:.72rem; font-weight:750; text-decoration:none; }
+  .template-preview-nav a:hover { background:#f2f0ff; color:#5140d8; }
+  .template-preview-nav a b { display:grid; width:1.45rem; height:1.45rem; flex:0 0 auto; place-items:center; border-radius:6px; background:#edf1f7; color:#51617b; font-size:.65rem; }
+  .template-preview-content { min-width:0; }
+  .template-preview-content-head { display:flex; align-items:end; justify-content:space-between; gap:1rem; margin:0 .2rem .8rem; }
+  .template-preview-content-head span { color:#6954ed; font-size:.65rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+  .template-preview-content-head h2 { margin:.2rem 0 0; color:#21314d; font-size:1.05rem; }
+  .template-preview-content-head p { max-width:30rem; margin:0; color:#74839c; font-size:.72rem; line-height:1.45; text-align:right; }
+  .template-preview-task { scroll-margin-top:1rem; margin-bottom:.8rem; border:2px solid #dce4ee; border-radius:18px; background:#fff; box-shadow:0 3px 0 #d8e1eb; overflow:hidden; }
+  .template-preview-task header { display:flex; align-items:center; gap:.75rem; padding:.85rem 1rem; border-bottom:1px solid #e3e9f1; background:#fbfcfe; }
+  .template-preview-number { display:grid; width:2rem; height:2rem; flex:0 0 auto; place-items:center; border-radius:9px; background:#edeaff; color:#5842df; font-size:.78rem; font-weight:900; }
+  .template-preview-task header small { display:block; color:#8290a7; font-size:.65rem; font-weight:800; }
+  .template-preview-task h3 { margin:.08rem 0 0; color:#273754; font-size:.86rem; }
+  .template-preview-score { margin-left:auto; padding:.28rem .5rem; border:1px solid #d9d2ff; border-radius:7px; background:#f2efff; color:#5842dc; font-size:.65rem; font-weight:900; white-space:nowrap; }
+  .template-preview-task-body { padding:1rem; color:#334563; font-size:.86rem; line-height:1.6; overflow-wrap:anywhere; }
+  .template-preview-task-body :first-child { margin-top:0; }
+  .template-preview-task-body :last-child { margin-bottom:0; }
+  .template-preview-task-body img { max-width:100%; height:auto; border:1px solid #dce4ee; border-radius:10px; }
+  .template-preview-task-body table { display:block; max-width:100%; overflow:auto; border-collapse:collapse; }
+  .template-preview-task-body td,.template-preview-task-body th { padding:.35rem .5rem; border:1px solid #b9c5d6; }
+  .template-preview-task-body pre { margin:.8rem 0; padding:.9rem 1rem; overflow-x:auto; border:1px solid #d8e1ef; border-radius:11px; background:#17233c; color:#e8efff; font:.8rem/1.65 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+  .template-preview-task-body pre code { display:block; min-width:max-content; padding:0; border:0; background:transparent; color:inherit; font:inherit; white-space:pre; }
+  .template-preview-task-body :not(pre) > code { padding:.1rem .3rem; border-radius:4px; background:#eef1f8; color:#344769; font:.84em ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  .template-preview-empty { display:flex; min-height:16rem; flex-direction:column; align-items:center; justify-content:center; gap:.45rem; border:2px dashed #cdd8e6; border-radius:18px; color:#7f8da4; text-align:center; }
+  .template-preview-empty i { color:#9f91fa; font-size:2rem; }
+  .template-preview-empty strong { color:#43536f; font-size:.9rem; }
+  .template-preview-empty span { font-size:.74rem; }
+  @media (max-width:960px) { .template-preview-hero { grid-template-columns:1fr; } .template-preview-stats { justify-content:start; } .template-preview-select { justify-self:start; } .template-preview-layout { grid-template-columns:1fr; } .template-preview-nav { position:static; } .template-preview-nav nav { display:flex; max-height:none; overflow:auto; } .template-preview-nav a { flex:0 0 auto; } }
+  @media (max-width:640px) { .template-preview-page { padding:1rem 1rem 4rem; } .template-preview-hero { padding:1.2rem; } .template-preview-content-head { align-items:start; flex-direction:column; } .template-preview-content-head p { text-align:left; } }
+</style>
+{% endblock %}

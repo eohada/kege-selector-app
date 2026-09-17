@@ -14,7 +14,7 @@ from app.limiter import limiter
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
     Student, User, Tasks, Lesson, LessonTask, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
-    TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent, AnalyticsEvent, Course
+    TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent, AnalyticsEvent, Course, TeacherQuickComment
 )
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment, SubmissionCommentThreadRead, MOSCOW_TZ
@@ -46,11 +46,74 @@ import time
 import random
 from typing import Any
 from zoneinfo import ZoneInfo
+from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
+
+@lru_cache(maxsize=1)
+def _template_task_presentation() -> dict[str, dict[str, str]]:
+    """Названия учебных действий для предпросмотра банка шаблонов."""
+    try:
+        from app.utils.python_ege_templates_import import load_templates_package
+
+        return {
+            str(item.get('id')): {
+                'title': str(item.get('title') or '').strip(),
+                'type_label': str(item.get('type_label') or '').strip(),
+            }
+            for item in (load_templates_package().get('tasks') or [])
+            if item.get('id')
+        }
+    except (OSError, ValueError, json.JSONDecodeError):
+        logger.warning('Не удалось загрузить подписи заданий для предпросмотра шаблона')
+        return {}
+
 # Локальный флаг: таблица курсоров прочтения чата создана в этой БД (create checkfirst).
 _THREAD_READ_SCHEMA_ENSURED = False
+
+
+@assignments_bp.route('/teacher/quick-comments', methods=['GET', 'POST', 'DELETE'])
+@login_required
+def teacher_quick_comments():
+    """Персональные быстрые комментарии преподавателя без доступа учеников."""
+    if current_user.is_student() or current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    try:
+        TeacherQuickComment.__table__.create(db.engine, checkfirst=True)
+        if request.method == 'GET':
+            rows = TeacherQuickComment.query.filter_by(teacher_id=current_user.id).order_by(
+                TeacherQuickComment.quick_comment_id.asc()
+            ).all()
+            return jsonify({'success': True, 'items': [
+                {'id': row.quick_comment_id, 'text': row.text} for row in rows
+            ]})
+        payload = request.get_json() or {}
+        if request.method == 'DELETE':
+            try:
+                item_id = int(payload.get('id'))
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'error': 'Некорректный комментарий'}), 400
+            row = TeacherQuickComment.query.filter_by(quick_comment_id=item_id, teacher_id=current_user.id).first()
+            if not row:
+                return jsonify({'success': False, 'error': 'Комментарий не найден'}), 404
+            db.session.delete(row)
+            db.session.commit()
+            return jsonify({'success': True})
+        text = str(payload.get('text') or '').strip()
+        if not text or len(text) > 1000:
+            return jsonify({'success': False, 'error': 'Комментарий должен содержать от 1 до 1000 символов'}), 400
+        existing = TeacherQuickComment.query.filter_by(teacher_id=current_user.id, text=text).first()
+        if existing:
+            return jsonify({'success': True, 'item': {'id': existing.quick_comment_id, 'text': existing.text}})
+        row = TeacherQuickComment(teacher_id=current_user.id, text=text)
+        db.session.add(row)
+        db.session.commit()
+        return jsonify({'success': True, 'item': {'id': row.quick_comment_id, 'text': row.text}}), 201
+    except Exception as exc:
+        db.session.rollback()
+        logger.error('Could not save teacher quick comment: %s', exc, exc_info=True)
+        return jsonify({'success': False, 'error': 'Не удалось сохранить быстрый комментарий'}), 500
 
 
 def _agent_debug_log(hypothesis_id: str, message: str, data: dict | None = None, run_id: str = 'run1') -> None:
@@ -1738,7 +1801,7 @@ def distribute_assignment():
     }
     """
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         if not data:
             return jsonify({'success': False, 'error': 'Некорректный формат данных'}), 400
         
@@ -2471,6 +2534,82 @@ def assignments_generator_results():
     )
 
 
+@assignments_bp.route('/assignments/templates')
+@login_required
+@check_access('assignment.create')
+def assignment_templates():
+    """Каталог шаблонов, из которого преподаватель начинает создание работы."""
+    templates: list[TaskTemplate] = []
+    try:
+        templates = (
+            TaskTemplate.query.options(joinedload(TaskTemplate.template_tasks))
+            .filter(TaskTemplate.is_active.is_(True))
+            .order_by(
+                TaskTemplate.is_featured.desc(),
+                TaskTemplate.name.asc(),
+                TaskTemplate.template_id.asc(),
+            )
+            .limit(300)
+            .all()
+        )
+    except Exception:
+        logger.exception('Не удалось загрузить каталог шаблонов работ')
+
+    categories = sorted({
+        str(template.category).strip()
+        for template in templates
+        if getattr(template, 'category', None) and str(template.category).strip()
+    })
+    return render_template(
+        'sandbox/assignment_templates.html',
+        active_page='assignments',
+        templates=templates,
+        categories=categories,
+    )
+
+
+@assignments_bp.route('/assignments/templates/<int:template_id>')
+@login_required
+@check_access('assignment.create')
+def assignment_template_preview(template_id: int):
+    """Показывает реальный состав шаблона до его добавления в новую работу."""
+    template = TaskTemplate.query.options(
+        joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
+    ).get_or_404(template_id)
+    if not template.is_active:
+        abort(404)
+
+    presentation = _template_task_presentation()
+    rows = sorted(template.template_tasks or [], key=lambda row: (row.order or 0, row.template_task_id))
+    preview_tasks = []
+    for index, row in enumerate(rows, start=1):
+        task = getattr(row, 'task', None)
+        if task is None:
+            continue
+        source_key = str(getattr(task, 'source_prototype', '') or '').rsplit('/', 1)[-1]
+        task_presentation = presentation.get(source_key, {})
+        preview_tasks.append({
+            'order': index,
+            'task_id': task.task_id,
+            'task_number': task.task_number,
+            'title': task_presentation.get('title') or f'Задача №{task.task_number or index}',
+            'type_label': task_presentation.get('type_label') or 'Практика',
+            'content_html': normalize_task_content_assets(
+                task.content_html or '',
+                getattr(task, 'attached_files', None),
+                task.source_url,
+            ),
+            'max_score': max(1, int(getattr(task, 'max_score', 1) or 1)),
+        })
+
+    return render_template(
+        'sandbox/assignment_template_preview.html',
+        active_page='assignments',
+        template=template,
+        preview_tasks=preview_tasks,
+    )
+
+
 @assignments_bp.route('/assignments/create')
 @login_required
 @check_access('assignment.create')
@@ -2696,16 +2835,6 @@ def assignment_create():
     except Exception:
         recipient_options = []
 
-    templates: list[TaskTemplate] = []
-    try:
-        templates = (
-            TaskTemplate.query.order_by(TaskTemplate.name.asc(), TaskTemplate.template_id.asc())
-            .limit(300)
-            .all()
-        )
-    except Exception:
-        templates = []
-
     tasks = _expand_tasks_list_for_triplets(tasks or [])
 
     task_ids = []
@@ -2790,7 +2919,6 @@ def assignment_create():
         task_type=task_type,
         template_id=template_id,
         lesson_id=lesson_id,
-        templates=templates,
         tasks=tasks,
         task_ids=task_ids,
         recipient_options=recipient_options,
@@ -3459,6 +3587,11 @@ def submission_view(submission_id):
     if not assignment.is_active:
         flash('Это задание было архивировано преподавателем.', 'info')
         return redirect(url_for('assignments.submissions_list'))
+
+    # Преподаватель не должен видеть устаревший ученический экран task_detail:
+    # его каноничная точка входа — V2-проверка с ответами, файлами, кодом и оценками.
+    if not is_parent_view and has_permission(current_user, 'assignment.grade'):
+        return redirect(url_for('assignments.submission_grade_view', submission_id=submission.submission_id))
 
     # Ученик выполняет работу только в каноничном Workspace: там находятся
     # редактор, запуск, вложения, холст и единая навигация карточек.
@@ -4747,9 +4880,20 @@ def submission_grade_view(submission_id):
 
     can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW')
     legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
-    initial_task_id = (tasks_view[0]['assignment_task'].assignment_task_id if tasks_view else legacy_bucket_task_id)
+    # Start at the first task that still needs review; when all tasks are
+    # reviewed, keep the existing fallback to the first task.
+    initial_task_id = legacy_bucket_task_id
+    if tasks_view:
+        initial_item = next(
+            (item for item in tasks_view if not getattr(item.get('answer'), 'reviewed_at', None)),
+            tasks_view[0],
+        )
+        initial_task_id = initial_item['assignment_task'].assignment_task_id
     _ensure_submission_comment_thread_reads_schema()
     unread_task_ids = _compute_submission_chat_unread_task_ids(submission, viewer_user_id, legacy_bucket_task_id)
+    reviewed_count = sum(1 for item in tasks_view if getattr(item.get('answer'), 'reviewed_at', None))
+    review_total = len(tasks_view)
+    review_percent = round((reviewed_count / review_total * 100) if review_total else 0)
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
@@ -4765,7 +4909,10 @@ def submission_grade_view(submission_id):
                          attempts_per_task=attempts_per_task,
                          can_submit_grade=can_submit_grade,
                          initial_task_id=initial_task_id,
-                         unread_task_ids=sorted(unread_task_ids))
+                         unread_task_ids=sorted(unread_task_ids),
+                         reviewed_count=reviewed_count,
+                         review_total=review_total,
+                         review_percent=review_percent)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/save-comments', methods=['POST'])
@@ -4875,6 +5022,7 @@ def submission_grade_save(submission_id):
         teacher_feedback = data.get('teacher_feedback', '').strip()
         status = data.get('status', 'GRADED')  # GRADED или RETURNED
         raw_return_task_ids = data.get('return_assignment_task_ids') or []
+        raw_reviewed_task_ids = data.get('reviewed_assignment_task_ids') or []
         rubric_template_id = data.get('rubric_template_id', None)
         rubric_scores = data.get('rubric_scores', None)
         new_deadline_str = (data.get('new_deadline') or '').strip()  # при RETURNED — опционально новый дедлайн
@@ -4883,6 +5031,13 @@ def submission_grade_save(submission_id):
         if status not in ['GRADED', 'RETURNED']:
             status = 'GRADED'
         return_task_ids: set[int] = set()
+        reviewed_task_ids: set[int] = set()
+        if isinstance(raw_reviewed_task_ids, list):
+            for value in raw_reviewed_task_ids:
+                try:
+                    reviewed_task_ids.add(int(value))
+                except (TypeError, ValueError):
+                    continue
         if status == 'RETURNED' and isinstance(raw_return_task_ids, list):
             for v in raw_return_task_ids:
                 try:
@@ -4892,9 +5047,6 @@ def submission_grade_save(submission_id):
                 if iv > 0:
                     return_task_ids.add(iv)
         
-        total_score = 0
-        max_score = 0
-
         assignment_tasks_by_id = {
             int(at.assignment_task_id): at
             for at in assignment.tasks
@@ -4920,17 +5072,17 @@ def submission_grade_save(submission_id):
                 continue
             processed_task_ids.add(assignment_task_id)
 
-            score = score_data.get('score', 0)
+            raw_score = score_data.get('score')
+            has_score = raw_score is not None and str(raw_score).strip() != ''
             comment = str(score_data.get('comment', '') or '').strip()
 
             assignment_task = assignment_tasks_by_id.get(assignment_task_id)
             if not assignment_task:
                 continue
 
-            max_score += assignment_task.max_score
-
             answer = answers_by_task_id.get(assignment_task_id)
-            if not answer:
+            should_create_answer = has_score or bool(comment) or assignment_task_id in reviewed_task_ids
+            if not answer and should_create_answer:
                 answer = Answer(
                     submission_id=submission_id,
                     assignment_task_id=assignment_task_id,
@@ -4943,19 +5095,23 @@ def submission_grade_save(submission_id):
                 except Exception:
                     pass
                 answers_by_task_id[assignment_task_id] = answer
+            if not answer:
+                continue
 
-            sc_num = _coerce_int_score(score)
-            answer.score = min(max(0, sc_num), assignment_task.max_score)  # Ограничиваем максимумом
-            # Для ручной проверки считаем задание выполненным корректно, если преподаватель выставил >= 1 балла.
-            answer.is_correct = bool((answer.score or 0) >= 1)
-            answer.teacher_comment = comment
-            total_score += answer.score
+            sc_num = _coerce_int_score(raw_score) if has_score else None
+            if sc_num is not None:
+                answer.score = min(max(0, sc_num), assignment_task.max_score)  # Ограничиваем максимумом
+                # Для ручной проверки считаем задание выполненным корректно, если преподаватель выставил >= 1 балла.
+                answer.is_correct = bool((answer.score or 0) >= 1)
+            answer.teacher_comment = comment or None
+            if assignment_task_id in reviewed_task_ids:
+                answer.reviewed_at = utc_now()
 
             raw_mmr = score_data.get('mmr_delta')
             if raw_mmr is not None and str(raw_mmr).strip() != '':
                 mv = _parse_teacher_mmr_override(raw_mmr)
                 if mv is not None:
-                    score_for_mmr = min(max(0, sc_num), assignment_task.max_score)
+                    score_for_mmr = min(max(0, sc_num or 0), assignment_task.max_score)
                     if mv > 0 and score_for_mmr < 1:
                         pass  # игнор: при 0 баллов ручной «плюс» к MMR недопустим
                     else:
@@ -4963,6 +5119,36 @@ def submission_grade_save(submission_id):
             rc_an = str(score_data.get('rating_comment') or '').strip()
             if rc_an:
                 rating_comment_override_by_task_id[assignment_task_id] = rc_an[:4000]
+
+        # Нажатие «отметить проверенным» допустимо даже без выставленного балла.
+        # Создаём Answer только для выбранной карточки, а не для всех пустых заданий.
+        for assignment_task_id in reviewed_task_ids:
+            assignment_task = assignment_tasks_by_id.get(assignment_task_id)
+            if not assignment_task:
+                continue
+            answer = answers_by_task_id.get(assignment_task_id)
+            if not answer:
+                answer = Answer(
+                    submission_id=submission_id,
+                    assignment_task_id=assignment_task_id,
+                    max_score=assignment_task.max_score,
+                )
+                db.session.add(answer)
+                try:
+                    if hasattr(submission, 'answers') and answer not in (submission.answers or []):
+                        submission.answers.append(answer)
+                except Exception:
+                    pass
+                answers_by_task_id[assignment_task_id] = answer
+            answer.reviewed_at = utc_now()
+
+        # Полный максимум работы не зависит от того, какие поля формы браузер прислал.
+        # Это не позволяет автосохранению пустой карточки «съесть» баллы остальных задач.
+        max_score = sum(int(task.max_score or 0) for task in assignment.tasks)
+        total_score = sum(
+            min(max(0, int(getattr(answers_by_task_id.get(int(task.assignment_task_id)), 'score', 0) or 0)), int(task.max_score or 0))
+            for task in assignment.tasks
+        )
         
         submission.total_score = total_score
         submission.max_score = max_score

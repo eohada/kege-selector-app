@@ -2604,6 +2604,7 @@ class Answer(db.Model):
     
     teacher_comment = db.Column(db.Text, nullable=True)
     needs_revision = db.Column(db.Boolean, default=False, nullable=False)  # Вернуть это задание на доработку
+    reviewed_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Явная отметка проверки: null отличается от 0 баллов
     
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
@@ -2762,6 +2763,22 @@ class SubmissionCommentThreadRead(db.Model):
 
     def __repr__(self):
         return f'<ThreadRead sub={self.submission_id} task={self.assignment_task_id} user={self.user_id} up_to={self.last_read_comment_id}>'
+
+
+class TeacherQuickComment(db.Model):
+    """Персональные заготовки feedback преподавателя для панели проверки."""
+    __tablename__ = 'TeacherQuickComments'
+
+    quick_comment_id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    text = db.Column(db.String(1000), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    teacher = db.relationship('User')
+
+    __table_args__ = (
+        UniqueConstraint('teacher_id', 'text', name='uq_teacher_quick_comment_text'),
+    )
 
 
 class GradebookEntry(db.Model):

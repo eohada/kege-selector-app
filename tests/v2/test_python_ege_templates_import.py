@@ -2,7 +2,7 @@ from pathlib import Path
 
 from app import db
 from app.models import Course, TaskSolution, TaskTemplate, Tasks, TemplateTask
-from app.utils.python_ege_curriculum_import import COURSE_SLUG, import_curriculum_archive
+from app.utils.python_ege_curriculum_import import COURSE_SLUG, _student_content, import_curriculum_archive
 from app.utils.python_ege_templates_import import import_templates_file, load_templates_package
 
 
@@ -47,3 +47,25 @@ def test_template_package_uses_the_provided_pdf_without_modification():
     package = Path(__file__).parents[2] / 'data' / 'task_attachments' / 'Python_osnovy_domashnyaya_rabota.pdf'
     source = Path(r'E:\Downloads\Python_osnovy_domashnyaya_rabota.pdf')
     assert package.read_bytes() == source.read_bytes()
+
+
+def test_test_design_card_does_not_refer_to_a_nonexistent_task_below():
+    content = _student_content({
+        'student': {
+            'statement': 'Для задачи ниже предложи три допустимых теста. Вводятся a и b.',
+        },
+    })
+
+    assert 'Для задачи ниже' not in content
+    assert 'Подберите для этой задачи три допустимых теста' in content
+
+
+def test_three_branch_explanation_uses_a_clear_question():
+    content = _student_content({
+        'student': {
+            'statement': 'Почему else после проверок n > 0 и n < 0 означает n = 0?',
+        },
+    })
+
+    assert 'Почему else после проверок' not in content
+    assert 'Какое значение n попадёт в ветку else?' in content
