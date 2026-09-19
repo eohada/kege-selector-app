@@ -11,6 +11,7 @@
     const pairHl2 = document.getElementById('tw-pair-hl-2');
     const gutter = document.getElementById('tw-gutter');
     const answer = document.getElementById('tw-answer');
+    const codeAnswerInput = document.getElementById('tw-code-answer-input');
     const output = document.getElementById('tw-output');
     const runBtn = document.getElementById('tw-run');
     const saveBtn = document.getElementById('tw-save');
@@ -100,7 +101,7 @@
     const initialTaskCompleted = Boolean(String(ws.plain_answer || '').trim() || (String(ws.code || '').trim() && String(ws.code || '').trim() !== String(ws.starter_code || '').trim()));
 
     function isCurrentTaskCompleted() {
-        const hasAnswer = Boolean(String(answer?.value || '').trim());
+        const hasAnswer = Boolean(String(answer?.value || codeAnswerInput?.value || '').trim());
         const currentCode = String(code?.value || '').trim();
         const starterCode = String(ws.starter_code || '').trim();
         return hasAnswer || Boolean(currentCode && currentCode !== starterCode);
@@ -166,13 +167,18 @@
     }
 
     function payload() {
+        let currentAnswer = answer ? answer.value : '';
+        if (!currentAnswer && ws.answer_spec?.type === 'code' && (code?.value || '').trim()) {
+            currentAnswer = code.value;
+            if (answer) answer.value = code.value;
+        }
         return {
             context_type: ws.context_type || '',
             context_id: ws.context_id || null,
             assignment_task_id: ws.assignment_task_id || null,
             client_id: workspaceClientId,
             code: code.value,
-            answer: answer ? answer.value : '',
+            answer: currentAnswer,
             playback_frames: playback.frames,
             ui_state: localUiState(),
         };
@@ -452,6 +458,9 @@
                 answer.value = payload.answer;
                 saveLocal();
             }
+            if (codeAnswerInput && typeof payload.answer === 'string' && document.activeElement !== codeAnswerInput) {
+                codeAnswerInput.value = payload.answer;
+            }
             if (Array.isArray(payload.playback_frames)) {
                 playback.frames = payload.playback_frames.map(sanitizeFrame);
                 renderPlayback();
@@ -709,15 +718,24 @@
         const escaped = escapeHtml(source || ' ');
         const lines = escaped.split('\n');
         const currentLine = focus ? (escaped.slice(0, focus.start).match(/\n/g) || []).length : -1;
-        const tokenRe = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#.*|\b\d+(?:\.\d+)?\b|\b[A-Za-z_][A-Za-z0-9_]*\b|[()[\]{}.,:+\-*/%=<>!]+)/g;
+        const tokenRe = /("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|#.*|\b\d+(?:\.\d+)?\b|\b[A-Za-z_][A-Za-z0-9_]*\b|[()[\]{}.,:+\-*/%=<>!]+)/g;
 
         return lines.map((line, idx) => {
+            let prevKeyword = '';
             const highlighted = line.replace(tokenRe, (token) => {
                 if (token.startsWith('#')) return '<span class="tok-comment">' + token + '</span>';
                 if (token.startsWith('"') || token.startsWith("'")) return '<span class="tok-string">' + token + '</span>';
                 if (/^\d/.test(token)) return '<span class="tok-number">' + token + '</span>';
-                if (pyKeywords.has(token)) return '<span class="tok-keyword">' + token + '</span>';
+                if (pyKeywords.has(token)) {
+                    prevKeyword = token;
+                    return '<span class="tok-keyword">' + token + '</span>';
+                }
                 if (builtins.has(token)) return '<span class="tok-builtin">' + token + '</span>';
+                if ((prevKeyword === 'def' || prevKeyword === 'class') && /^[A-Za-z_][A-Za-z0-9_]*$/.test(token)) {
+                    prevKeyword = '';
+                    return '<span class="tok-func">' + token + '</span>';
+                }
+                prevKeyword = '';
                 if (/^[()[\]{}.,:+\-*/%=<>!]+$/.test(token)) return '<span class="tok-op">' + token + '</span>';
                 return token;
             });
@@ -727,6 +745,7 @@
             return highlighted;
         }).join('\n');
     }
+
 
     function updateEditorChrome() {
         const value = code.value || '';
@@ -899,35 +918,150 @@
     }
 
     function bindStandardAnswerRenderer() {
-        const renderer = document.querySelector('[data-answer-renderer]');
-        if (!renderer || !answer) return;
+        if (!answer) return;
 
-        if (renderer.dataset.answerRenderer === 'single_choice') {
-            renderer.querySelectorAll('input[type="radio"]').forEach((control) => {
+        // Check if single_choice renderers exist
+        const choiceRenderers = document.querySelectorAll('[data-answer-renderer="single_choice"]');
+        if (choiceRenderers.length) {
+            const allRadios = document.querySelectorAll('input[type="radio"][name="task-choice"]');
+            allRadios.forEach((control) => {
                 control.addEventListener('change', () => {
                     if (!control.checked) return;
-                    answer.value = control.value;
+                    const val = control.value;
+                    answer.value = val;
+                    if (codeAnswerInput) codeAnswerInput.value = val;
+                    allRadios.forEach((r) => {
+                        r.checked = (r.value === val);
+                    });
                     updateWorkspaceProgress();
                     saveLocal();
                     scheduleAutosave();
                     emitWorkspaceDraft(false);
                 });
             });
-            return;
         }
 
-        if (renderer.dataset.answerRenderer === 'matching') {
+        // Check if matching renderers exist
+        const matchingRenderers = document.querySelectorAll('[data-answer-renderer="matching"]');
+        if (matchingRenderers.length) {
             let saved = {};
             try { saved = JSON.parse(answer.value || '{}'); } catch (err) { saved = {}; }
-            renderer.querySelectorAll('[data-match-key]').forEach((control) => {
+
+            function updateAllMatchingViews(key, val) {
+                document.querySelectorAll('.tw-custom-select').forEach((customSelect) => {
+                    const k = customSelect.dataset.matchKey || customSelect.querySelector('select')?.dataset.matchKey;
+                    if (k === key) {
+                        const select = customSelect.querySelector('select.tw-select-native');
+                        if (select) select.value = val;
+                        const label = customSelect.querySelector('.tw-custom-select-label');
+                        const options = customSelect.querySelectorAll('.tw-custom-select-option');
+                        let foundLabel = 'Выберите вариант';
+                        options.forEach(opt => {
+                            const isMatch = (opt.dataset.value || '') === (val || '');
+                            opt.classList.toggle('is-selected', isMatch);
+                            if (isMatch && opt.dataset.value) {
+                                foundLabel = opt.querySelector('span')?.textContent || opt.textContent;
+                            }
+                        });
+                        if (label) label.textContent = foundLabel;
+                    }
+                });
+            }
+
+            // Global click to close custom dropdowns
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.tw-custom-select')) {
+                    document.querySelectorAll('.tw-custom-select.is-open').forEach(el => {
+                        el.classList.remove('is-open');
+                        const m = el.querySelector('.tw-custom-select-menu');
+                        if (m) m.hidden = true;
+                        const t = el.querySelector('.tw-custom-select-trigger');
+                        if (t) t.setAttribute('aria-expanded', 'false');
+                    });
+                }
+            });
+
+            document.querySelectorAll('.tw-custom-select').forEach((customSelect) => {
+                const select = customSelect.querySelector('select.tw-select-native');
+                const trigger = customSelect.querySelector('.tw-custom-select-trigger');
+                const menu = customSelect.querySelector('.tw-custom-select-menu');
+                const options = customSelect.querySelectorAll('.tw-custom-select-option');
+                const key = customSelect.dataset.matchKey || select?.dataset.matchKey;
+
+                if (key && saved[key] != null) {
+                    updateAllMatchingViews(key, String(saved[key]));
+                }
+
+                if (trigger && menu) {
+                    trigger.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isOpen = customSelect.classList.contains('is-open');
+                        document.querySelectorAll('.tw-custom-select.is-open').forEach(el => {
+                            if (el !== customSelect) {
+                                el.classList.remove('is-open');
+                                const m = el.querySelector('.tw-custom-select-menu');
+                                if (m) m.hidden = true;
+                                const t = el.querySelector('.tw-custom-select-trigger');
+                                if (t) t.setAttribute('aria-expanded', 'false');
+                            }
+                        });
+                        if (isOpen) {
+                            customSelect.classList.remove('is-open');
+                            menu.hidden = true;
+                            trigger.setAttribute('aria-expanded', 'false');
+                        } else {
+                            customSelect.classList.add('is-open');
+                            menu.hidden = false;
+                            trigger.setAttribute('aria-expanded', 'true');
+                        }
+                    });
+                }
+
+                options.forEach(opt => {
+                    opt.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const val = opt.dataset.value || '';
+                        if (menu) menu.hidden = true;
+                        customSelect.classList.remove('is-open');
+                        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+
+                        let current = {};
+                        try { current = JSON.parse(answer.value || '{}'); } catch (err) { current = {}; }
+                        if (val) {
+                            current[key] = val;
+                        } else {
+                            delete current[key];
+                        }
+                        const jsonStr = JSON.stringify(current);
+                        answer.value = jsonStr;
+                        if (codeAnswerInput) codeAnswerInput.value = jsonStr;
+
+                        updateAllMatchingViews(key, val);
+                        updateWorkspaceProgress();
+                        saveLocal();
+                        scheduleAutosave();
+                        emitWorkspaceDraft(false);
+                    });
+                });
+            });
+
+            document.querySelectorAll('select[data-match-key]').forEach((control) => {
                 const key = control.dataset.matchKey;
                 if (saved[key] != null) control.value = String(saved[key]);
                 control.addEventListener('change', () => {
-                    const values = {};
-                    renderer.querySelectorAll('[data-match-key]').forEach((item) => {
-                        if (item.value) values[item.dataset.matchKey] = item.value;
-                    });
-                    answer.value = JSON.stringify(values);
+                    const val = control.value || '';
+                    let current = {};
+                    try { current = JSON.parse(answer.value || '{}'); } catch (err) { current = {}; }
+                    if (val) {
+                        current[key] = val;
+                    } else {
+                        delete current[key];
+                    }
+                    const jsonStr = JSON.stringify(current);
+                    answer.value = jsonStr;
+                    if (codeAnswerInput) codeAnswerInput.value = jsonStr;
+
+                    updateAllMatchingViews(key, val);
                     updateWorkspaceProgress();
                     saveLocal();
                     scheduleAutosave();
@@ -1049,6 +1183,7 @@
             const data = JSON.parse(raw);
             if (data.code && !code.value) code.value = data.code;
             if (answer && data.answer && !answer.value) answer.value = data.answer;
+            if (codeAnswerInput && data.answer && !codeAnswerInput.value) codeAnswerInput.value = data.answer;
             workspaceLocalCode = code.value || '';
             if (data.notes) notes.value = data.notes;
             if (Array.isArray(data.playback_frames) && data.playback_frames.length) {
@@ -1556,6 +1691,7 @@
                     const previous = code.value;
                     code.value = restored.code || '';
                     if (answer) answer.value = restored.answer || '';
+                    if (codeAnswerInput) codeAnswerInput.value = restored.answer || '';
                     updateEditorChrome();
                     saveLocal();
                     applyLocalCodeChange(previous, code.value, 'restore-version', { version_id: id });
@@ -1760,12 +1896,133 @@
         saveLocal();
         emitWorkspaceCursor(false);
     });
-    answer.addEventListener('input', () => {
-        saveLocal();
-        scheduleAutosave();
-        emitWorkspaceDraft(false);
+    if (codeAnswerInput) {
+        codeAnswerInput.addEventListener('input', () => {
+            if (answer && answer.value !== codeAnswerInput.value) {
+                answer.value = codeAnswerInput.value;
+            }
+            saveLocal();
+            scheduleAutosave();
+            emitWorkspaceDraft(false);
+        });
+    }
+    if (answer) {
+        answer.addEventListener('input', () => {
+            if (codeAnswerInput && codeAnswerInput.value !== answer.value) {
+                codeAnswerInput.value = answer.value;
+            }
+            saveLocal();
+            scheduleAutosave();
+            emitWorkspaceDraft(false);
+        });
+    }
+
+    document.querySelectorAll('#tw-btn-submit-code, [data-action="submit-code"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const currentCode = code ? code.value : '';
+            if (answer) {
+                answer.value = currentCode || '# решение кодом';
+            }
+            if (codeAnswerInput) {
+                codeAnswerInput.value = (ws.answer_spec?.type === 'long_answer' ? currentCode : (codeAnswerInput.value || 'Код зафиксирован как ответ'));
+            }
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="ph-bold ph-check"></i> Код зафиксирован!';
+            btn.classList.add('is-success');
+            setTimeout(() => {
+                btn.innerHTML = origHtml;
+                btn.classList.remove('is-success');
+            }, 2500);
+            saveLocal();
+            scheduleAutosave();
+            emitWorkspaceDraft(false);
+            updateWorkspaceProgress();
+            window.BooNotify?.success?.('Текущий код зафиксирован как ответ к задаче');
+        });
     });
+
+    document.querySelectorAll('#tw-btn-insert-output, #tw-standard-insert-output, [data-action="insert-output"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const outElem = document.getElementById('tw-output');
+            let outText = (outElem ? outElem.textContent : '').trim();
+            if (outText.includes('Запусти код, и результат появится здесь.')) {
+                outText = '';
+            }
+            if (!outText) {
+                window.BooNotify?.info?.('Сначала запустите программу, чтобы получить результат');
+                return;
+            }
+            const cleanOut = outText.split('\n')[0].trim();
+            if (codeAnswerInput) {
+                if (codeAnswerInput.tagName === 'TEXTAREA' && codeAnswerInput.value.trim()) {
+                    codeAnswerInput.value += '\nВывод программы:\n' + outText;
+                } else {
+                    codeAnswerInput.value = cleanOut;
+                }
+            }
+            if (answer) {
+                if (answer.tagName === 'TEXTAREA' && answer.value.trim()) {
+                    answer.value += '\nВывод программы:\n' + outText;
+                } else {
+                    answer.value = cleanOut;
+                }
+            }
+            saveLocal();
+            scheduleAutosave();
+            emitWorkspaceDraft(false);
+            updateWorkspaceProgress();
+            window.BooNotify?.success?.('Вывод программы вставлен в поле ответа');
+        });
+    });
+
+    document.querySelectorAll('#tw-btn-append-code, #tw-standard-insert-code, [data-action="append-code"]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const currentCode = code ? code.value.trim() : '';
+            if (!currentCode) {
+                window.BooNotify?.error?.('Сначала напишите код программы в редакторе');
+                return;
+            }
+            const snippet = '```python\n' + currentCode + '\n```';
+            if (codeAnswerInput) {
+                codeAnswerInput.value = codeAnswerInput.value ? (codeAnswerInput.value + '\n\n' + snippet) : snippet;
+            }
+            if (answer && answer !== codeAnswerInput) {
+                answer.value = answer.value ? (answer.value + '\n\n' + snippet) : snippet;
+            }
+            saveLocal();
+            scheduleAutosave();
+            emitWorkspaceDraft(false);
+            updateWorkspaceProgress();
+            window.BooNotify?.success?.('Код программы вставлен в ответ');
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.tw-custom-select')) {
+            document.querySelectorAll('.tw-custom-select.is-open').forEach((el) => {
+                el.classList.remove('is-open');
+                const m = el.querySelector('.tw-custom-select-menu');
+                if (m) m.hidden = true;
+                const t = el.querySelector('.tw-custom-select-trigger');
+                if (t) t.setAttribute('aria-expanded', 'false');
+            });
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.tw-custom-select.is-open').forEach((el) => {
+                el.classList.remove('is-open');
+                const m = el.querySelector('.tw-custom-select-menu');
+                if (m) m.hidden = true;
+                const t = el.querySelector('.tw-custom-select-trigger');
+                if (t) t.setAttribute('aria-expanded', 'false');
+            });
+        }
+    });
+
     notes.addEventListener('input', saveLocal);
+
 
     document.querySelectorAll('.tw-tab').forEach((tab) => {
         tab.addEventListener('click', () => {
@@ -2156,7 +2413,8 @@
                 
                 // Блокируем редактор
                 code.readOnly = true;
-                answer.disabled = true;
+                if (answer) answer.disabled = true;
+                if (codeAnswerInput) codeAnswerInput.disabled = true;
                 runBtn.disabled = true;
                 saveBtn.disabled = true;
                 setStatus('Время вышло! Редактор заблокирован.', 'error');
@@ -2242,6 +2500,14 @@
     bindStandardAnswerRenderer();
     initializeWorkspaceMode();
     answer?.addEventListener('input', updateWorkspaceProgress);
+    codeAnswerInput?.addEventListener('input', updateWorkspaceProgress);
+    if (codeAnswerInput && answer) {
+        if (!codeAnswerInput.value && answer.value) {
+            codeAnswerInput.value = answer.value;
+        } else if (codeAnswerInput.value && !answer.value) {
+            answer.value = codeAnswerInput.value;
+        }
+    }
     code?.addEventListener('input', updateWorkspaceProgress);
     updateWorkspaceProgress();
     restoreLocal();

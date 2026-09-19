@@ -787,6 +787,11 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         'kege_tier_label_ru': task.kege_tier_label_ru,
         'difficulty_label_ru': _difficulty_label_ru(task),
         'student_task_mmr': _get_user_task_mmr(target_user_id, task.task_number),
+        'answer_spec': task.answer_spec,
+        'hints': task.hints,
+        'max_score': task.max_score or 1,
+        'difficulty_level': task.difficulty_level,
+        'solution': getattr(TaskSolution.query.filter_by(task_id=task.task_id).first(), 'solution_text', None),
     }
     triplet_ids = _get_triplet_task_ids(task)
     if triplet_ids:
@@ -1661,6 +1666,37 @@ def task_generator_bank_create():
     difficulty_level = _parse_difficulty_level(data.get('difficulty_level'))
     hints = _parse_hints_payload(data.get('hints'))
 
+    raw_answer_spec = data.get('answer_spec')
+    answer_spec = None
+    if raw_answer_spec:
+        if isinstance(raw_answer_spec, str):
+            try:
+                answer_spec = json.loads(raw_answer_spec)
+            except Exception:
+                answer_spec = None
+        elif isinstance(raw_answer_spec, dict):
+            answer_spec = raw_answer_spec
+
+    if answer_spec and isinstance(answer_spec, dict):
+        spec_type = answer_spec.get('type')
+        if spec_type == 'single_choice' and not answer:
+            for opt in answer_spec.get('options', []):
+                if opt.get('is_correct') or opt.get('correct'):
+                    answer = str(opt.get('value', ''))
+                    break
+        elif spec_type == 'matching' and not answer:
+            pairs_map = {}
+            for p in answer_spec.get('pairs', []):
+                if p.get('key') and (p.get('correct_value') or p.get('value')):
+                    pairs_map[str(p['key'])] = str(p.get('correct_value') or p.get('value'))
+            if pairs_map:
+                answer = json.dumps(pairs_map, ensure_ascii=False)
+        elif spec_type == 'code':
+            if not starter_code and answer_spec.get('starter_code'):
+                starter_code = answer_spec['starter_code']
+        elif spec_type == 'long_answer':
+            manual_grading = True
+
     site_task_id = f'manual:{uuid.uuid4()}'
 
     _fix_tasks_pk_sequence()
@@ -1673,6 +1709,7 @@ def task_generator_bank_create():
             source_url=None,
             content_html=content_html,
             answer=answer,
+            answer_spec=answer_spec,
             attached_files=None,
             created_by_id=current_user.id,
             bank_origin='manual',
@@ -1758,7 +1795,7 @@ def task_generator_bank_save(task_id: int):
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
 
-    editable = {'content', 'answer', 'solution', 'starter_code', 'max_score', 'difficulty_level'}
+    editable = {'content', 'answer', 'solution', 'starter_code', 'max_score', 'difficulty_level', 'hints', 'answer_spec'}
     if not editable.intersection(data):
         return jsonify({'success': False, 'error': 'Передайте хотя бы одно поле задания'}), 400
 
@@ -1778,6 +1815,19 @@ def task_generator_bank_save(task_id: int):
             task.starter_code = str(data.get('starter_code') or '').strip() or None
         if 'max_score' in data:
             task.max_score = max(1, min(100, int(data.get('max_score') or 1)))
+        if 'answer_spec' in data:
+            raw_spec = data.get('answer_spec')
+            if raw_spec is None or raw_spec == '':
+                task.answer_spec = None
+            elif isinstance(raw_spec, str):
+                try:
+                    task.answer_spec = json.loads(raw_spec)
+                except Exception:
+                    task.answer_spec = None
+            elif isinstance(raw_spec, dict):
+                task.answer_spec = raw_spec
+        if 'hints' in data:
+            task.hints = _parse_hints_payload(data.get('hints'))
         if 'solution' in data:
             solution_text = str(data.get('solution') or '').strip()
             solution = TaskSolution.query.filter_by(task_id=task.task_id).first()

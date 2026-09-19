@@ -234,14 +234,22 @@ def test_v2_assignment_builder_uses_live_contracts_and_publishes_draft(app, clie
         assert db.session.get(Assignment, published.get_json()['assignment_id']).is_active is True
 
 
-def test_assignment_templates_open_in_a_dedicated_catalog(client, role_users):
+def test_assignment_templates_open_in_a_dedicated_catalog(app, client, role_users):
     """Template selection is a separate V2 page and keeps the create flow canonical."""
+    from app import db
+    from core.db_models import TaskTemplate
+    with app.app_context():
+        if not TaskTemplate.query.filter_by(is_active=True).first():
+            db.session.add(TaskTemplate(name='Test Template', description='Desc', template_type='homework', is_active=True))
+            db.session.commit()
+
     _login_as(client, role_users['tutor_id'], 'tutor')
     catalog = client.get('/assignments/templates')
     assert catalog.status_code == 200
     assert 'Выберите готовый шаблон'.encode('utf-8') in catalog.data
     assert b'id="template-search"' in catalog.data
     assert b'/assignments/create?source=template' in catalog.data
+
 
     create_page = client.get('/assignments/create')
     assert create_page.status_code == 200
@@ -548,6 +556,64 @@ def test_author_task_is_saved_in_personal_bank_with_files_and_manual_review(app,
         assignment_task = AssignmentTask.query.filter_by(assignment_id=assignment.assignment_id).one()
         assert assignment_task.requires_manual_grading is True
         assert assignment_task.max_score == 3
+
+
+def test_author_task_with_answer_spec_is_persisted_and_editable(app, client, role_users):
+    """Конструктор заданий корректно сохраняет answer_spec, подсказки и решение, а также позволяет их обновлять."""
+    from app import db
+    from app.models import Course
+    from core.db_models import Tasks
+
+    with app.app_context():
+        course = Course(title='ЕГЭ информатика — спецификации', slug='v2-spec-course', is_active=True)
+        db.session.add(course)
+        db.session.commit()
+        course_id = course.id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    matching_spec = {
+        'type': 'matching',
+        'pairs': [{'key': 'А', 'left': 'Граф 1', 'correct_value': '3'}],
+        'options': [{'value': '3', 'label': 'Таблица В'}]
+    }
+    created = client.post('/task-generator/bank/create', data={
+        'course_id': str(course_id),
+        'task_number': '1',
+        'content': 'Установите соответствие между графом и таблицей.',
+        'max_score': '2',
+        'answer_spec': json.dumps(matching_spec, ensure_ascii=False),
+        'hints': json.dumps([{'text': 'Сравните степени вершин'}]),
+        'solution': 'Вершина А имеет степень 3, поэтому соответствует пункту 3.',
+    })
+    assert created.status_code == 201, created.get_json()
+    task_payload = created.get_json()['task']
+    task_id = task_payload['task_id']
+
+    assert task_payload['answer_spec'] == matching_spec
+    assert task_payload['answer'] == '{"А": "3"}'
+    assert task_payload['hints'] == [{'text': 'Сравните степени вершин'}]
+    assert task_payload['solution'] == 'Вершина А имеет степень 3, поэтому соответствует пункту 3.'
+
+    # Test updating task via save endpoint
+    choice_spec = {
+        'type': 'single_choice',
+        'options': [{'value': '1', 'label': 'Ответ 1'}, {'value': '2', 'label': 'Ответ 2'}],
+        'correct_value': '2'
+    }
+    updated = client.post(f'/task-generator/bank/{task_id}/save', json={
+        'content': 'Выберите один верный вариант.',
+        'answer': '2',
+        'answer_spec': choice_spec,
+        'solution': 'Правильный ответ 2.',
+        'max_score': 1,
+    })
+    assert updated.status_code == 200, updated.get_json()
+
+    with app.app_context():
+        t = db.session.get(Tasks, task_id)
+        assert t.answer == '2'
+        assert t.answer_spec == choice_spec
+        assert t.max_score == 1
 
 
 def test_teacher_can_open_student_file_and_canvas_from_assignment_review(app, client, role_users):

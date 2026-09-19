@@ -302,21 +302,230 @@
   </div>
 </div>
 
-<!-- МОДАЛЬНОЕ ОКНО АВТОРСКОГО ЗАДАНИЯ -->
-<div id="custom-task-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
-  <form id="custom-task-form" class="boostudy-scroll bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto space-y-4">
-    <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200"><div><h3 class="text-lg font-black text-slate-800 font-display flex items-center gap-2"><span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 border border-amber-200 flex items-center justify-center"><i class="ph-bold ph-pencil-simple-line text-lg"></i></span> Своё задание</h3><p class="text-xs text-slate-500 mt-1">Оно сохранится в вашем личном банке и добавится в эту работу.</p></div><button type="button" onclick="closeCustomTaskModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer">&times;</button></div>
-    <input id="custom-task-number" name="task_number" type="hidden" value="1">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <label class="text-xs font-bold text-slate-700">Баллы<input name="max_score" type="number" min="1" max="100" value="1" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none"></label>
-      <label class="flex items-center gap-2 mt-5 bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700"><input id="custom-manual-grading" name="manual_grading" type="checkbox" onchange="toggleCustomAnswer()" class="accent-indigo-600"> Проверю сам</label>
+<!-- МОДАЛЬНОЕ ОКНО АВТОРСКОГО КОНСТРУКТОРА ЗАДАНИЙ -->
+<div id="custom-task-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+  <form id="custom-task-form" class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_8px_0_#DAE1E9] rounded-[2.5rem] max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b-2 border-slate-200 bg-white/80 backdrop-blur-sm flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <span class="w-10 h-10 rounded-2xl bg-indigo-50 border-2 border-indigo-200 text-indigo-600 flex items-center justify-center shadow-[0_2px_0_#c7d2fe]">
+          <i class="ph-bold ph-cube text-xl"></i>
+        </span>
+        <div>
+          <h3 class="text-base sm:text-lg font-black text-slate-800 font-display leading-tight" id="custom-modal-title">Конструктор заданий</h3>
+          <p class="text-xs text-slate-500 font-bold">Быстрое блочное создание заданий с любыми типами ответов</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeCustomTaskModal()" class="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 border-2 border-slate-200 border-b-[3px] text-slate-400 hover:text-slate-600 flex items-center justify-center text-lg font-bold transition-all cursor-pointer">
+        &times;
+      </button>
     </div>
-    <label class="block text-xs font-bold text-slate-700">Условие<textarea name="content" required rows="6" placeholder="Напишите условие задания…" class="mt-1 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2.5 text-sm outline-none"></textarea></label>
-    <label id="custom-answer-wrap" class="block text-xs font-bold text-slate-700">Правильный ответ<input name="answer" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none" placeholder="Оставьте пустым, если нужна ручная проверка"></label>
-    <label class="block text-xs font-bold text-slate-700">Пояснение для преподавателя<textarea name="solution" rows="3" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none" placeholder="Разбор или критерии проверки (ученик их не увидит)"></textarea></label>
-    <label class="block text-xs font-bold text-slate-700">Заготовка кода<textarea name="starter_code" rows="3" class="mt-1 w-full bg-white border-2 border-slate-200 rounded-xl px-3 py-2.5 font-mono text-sm outline-none" placeholder="Например: print('Привет, BooStudy!')"></textarea></label>
-    <label class="block text-xs font-bold text-slate-700">Изображения и файлы<input name="files" type="file" multiple class="mt-1 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-3 file:py-2 file:font-bold file:text-indigo-700 hover:file:bg-indigo-200"></label>
-    <div class="flex justify-end gap-3 pt-2"><button type="button" onclick="closeCustomTaskModal()" class="bg-white text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] text-xs">Отмена</button><button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] text-xs">Сохранить и добавить</button></div>
+
+    <!-- Scrollable Body with 5 Bento Blocks -->
+    <div class="boostudy-scroll p-6 space-y-5 overflow-y-auto flex-1">
+      <input id="custom-task-number" name="task_number" type="hidden" value="1">
+      <input id="custom-answer-spec-json" name="answer_spec" type="hidden" value="">
+
+      <!-- БЛОК 1: ОСНОВНЫЕ ПАРАМЕТРЫ -->
+      <div class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">1</span>
+            <span class="text-xs font-black uppercase text-slate-700 tracking-wider">Основные параметры</span>
+          </div>
+          <span class="text-[11px] font-bold text-slate-400">Спецификация и баллы</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="text-xs font-black text-slate-700 block mb-1.5">Номер задания</label>
+            <input id="builder-task-number-input" type="number" min="1" max="99" value="1" oninput="document.getElementById('custom-task-number').value = this.value" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+          </div>
+          <div>
+            <label class="text-xs font-black text-slate-700 block mb-1.5">Сложность</label>
+            <div class="grid grid-cols-3 gap-1.5 bg-[#F4F7FA] p-1 border-2 border-slate-200 rounded-xl">
+              <button type="button" class="builder-diff-btn py-1.5 text-xs font-black rounded-lg transition-all is-active bg-white text-emerald-700 shadow-sm" data-diff="1" onclick="setBuilderDifficulty(1)">База</button>
+              <button type="button" class="builder-diff-btn py-1.5 text-xs font-black rounded-lg transition-all text-slate-600" data-diff="2" onclick="setBuilderDifficulty(2)">Норма</button>
+              <button type="button" class="builder-diff-btn py-1.5 text-xs font-black rounded-lg transition-all text-slate-600" data-diff="3" onclick="setBuilderDifficulty(3)">Хард</button>
+            </div>
+            <input type="hidden" name="difficulty_level" id="builder-difficulty-input" value="1">
+          </div>
+          <div>
+            <label class="text-xs font-black text-slate-700 block mb-1.5">Баллы за решение</label>
+            <input name="max_score" id="builder-max-score" type="number" min="1" max="100" value="1" class="w-full bg-[#F4F7FA] border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+          </div>
+        </div>
+        <div class="pt-1">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input id="custom-manual-grading" name="manual_grading" type="checkbox" onchange="toggleManualGradingMode()" class="w-4 h-4 rounded text-indigo-600 border-2 border-slate-300 focus:ring-0 accent-indigo-600">
+            <span class="text-xs font-bold text-slate-700">Ручная проверка преподавателем (развёрнутый ответ)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- БЛОК 2: УСЛОВИЕ ЗАДАНИЯ -->
+      <div class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">2</span>
+            <span class="text-xs font-black uppercase text-slate-700 tracking-wider">Условие задания</span>
+          </div>
+          <div class="flex items-center gap-1 bg-[#F4F7FA] p-1 border border-slate-200 rounded-xl">
+            <button type="button" id="builder-tab-editor-btn" onclick="switchBuilderConditionTab('editor')" class="px-3 py-1 text-xs font-black rounded-lg bg-white text-indigo-700 shadow-sm transition-all">Редактор</button>
+            <button type="button" id="builder-tab-preview-btn" onclick="switchBuilderConditionTab('preview')" class="px-3 py-1 text-xs font-black rounded-lg text-slate-600 hover:text-slate-800 transition-all">Предпросмотр</button>
+          </div>
+        </div>
+        <div id="builder-condition-toolbar" class="flex flex-wrap items-center gap-1.5 pt-1 border-b border-slate-100 pb-2.5">
+          <button type="button" onclick="insertBuilderSnippet('**', '**')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors" title="Жирный шрифт"><i class="ph-bold ph-text-b"></i></button>
+          <button type="button" onclick="insertBuilderSnippet('*', '*')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors" title="Курсив"><i class="ph-bold ph-text-italic"></i></button>
+          <button type="button" onclick="insertBuilderSnippet('`', '`')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors" title="Встроенный код">&lt;code&gt;</button>
+          <button type="button" onclick="insertBuilderSnippet('```python\n', '\n```')" class="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors" title="Блок Python-кода">python</button>
+          <button type="button" onclick="insertBuilderSnippet('$', '$')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors" title="Формула KaTeX">$x$</button>
+          <button type="button" onclick="insertBuilderSnippet('\n| Заголовок 1 | Заголовок 2 |\n|---|---|\n| Значение 1 | Значение 2 |\n', '')" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors" title="Таблица"><i class="ph-bold ph-table"></i> Таблица</button>
+        </div>
+        <div id="builder-editor-wrap">
+          <textarea id="builder-content-input" name="content" required rows="5" placeholder="Напишите текст задания. Поддерживается разметка Markdown, списки и формулы..." class="w-full bg-[#F4F7FA] border-2 border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl p-3 text-sm text-slate-800 outline-none leading-relaxed transition-all font-sans"></textarea>
+        </div>
+        <div id="builder-preview-wrap" class="hidden p-4 rounded-xl bg-slate-50 border-2 border-slate-200 min-h-[120px] text-sm text-slate-800 leading-relaxed font-sans overflow-x-auto">
+        </div>
+      </div>
+
+      <!-- БЛОК 3: ФАЙЛЫ И ВЛОЖЕНИЯ -->
+      <div class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-5 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">3</span>
+            <span class="text-xs font-black uppercase text-slate-700 tracking-wider">Файлы и материалы</span>
+          </div>
+          <span class="text-[11px] font-bold text-slate-400">Таблицы, тексты, код</span>
+        </div>
+        <div class="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-xl p-4 text-center bg-[#F4F7FA] transition-colors relative cursor-pointer group">
+          <input type="file" id="builder-files-input" name="files" multiple class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="renderBuilderFilesList()">
+          <div class="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+            <i class="ph-bold ph-cloud-arrow-up text-2xl text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+            <span class="text-xs font-black text-slate-700">Перетащите файлы сюда или нажмите для выбора</span>
+            <span class="text-[11px] font-semibold text-slate-400">Поддерживаются .txt, .xlsx, .docx, .py, .csv, изображения (до 30 МБ)</span>
+          </div>
+        </div>
+        <div id="builder-files-list" class="space-y-1.5 pt-1"></div>
+      </div>
+
+      <!-- БЛОК 4: ТИП ОТВЕТА И ПРОВЕРКА -->
+      <div class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">4</span>
+            <span class="text-xs font-black uppercase text-slate-700 tracking-wider">Тип ответа и проверка</span>
+          </div>
+          <span id="builder-answer-type-badge" class="px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase">Краткий ответ</span>
+        </div>
+
+        <!-- Segmented Pill Selector for Answer Types -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5 bg-[#F4F7FA] p-1.5 border-2 border-slate-200 rounded-2xl">
+          <button type="button" class="builder-type-tab px-3 py-2 rounded-xl text-xs font-black transition-all is-active bg-white text-indigo-600 shadow-sm flex items-center justify-center gap-1.5" data-type="short_answer" onclick="selectBuilderAnswerType('short_answer')">
+            <i class="ph-bold ph-textbox"></i> <span>Краткий</span>
+          </button>
+          <button type="button" class="builder-type-tab px-3 py-2 rounded-xl text-xs font-black transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5" data-type="single_choice" onclick="selectBuilderAnswerType('single_choice')">
+            <i class="ph-bold ph-radio-button"></i> <span>Выбор</span>
+          </button>
+          <button type="button" class="builder-type-tab px-3 py-2 rounded-xl text-xs font-black transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5" data-type="matching" onclick="selectBuilderAnswerType('matching')">
+            <i class="ph-bold ph-arrows-split"></i> <span>Связи</span>
+          </button>
+          <button type="button" class="builder-type-tab px-3 py-2 rounded-xl text-xs font-black transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5" data-type="code" onclick="selectBuilderAnswerType('code')">
+            <i class="ph-bold ph-code"></i> <span>Код</span>
+          </button>
+          <button type="button" class="builder-type-tab px-3 py-2 rounded-xl text-xs font-black transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5" data-type="long_answer" onclick="selectBuilderAnswerType('long_answer')">
+            <i class="ph-bold ph-file-text"></i> <span>Развёрнутый</span>
+          </button>
+        </div>
+
+        <!-- 1. Short answer panel -->
+        <div id="builder-panel-short_answer" class="builder-answer-panel space-y-2">
+          <label class="text-xs font-black text-slate-700 block">Правильный ответ</label>
+          <input id="builder-short-answer-input" name="answer" type="text" placeholder="Введите эталонный ответ (число или текст)..." class="w-full bg-[#F4F7FA] border-2 border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-800 outline-none transition-all">
+          <p class="text-[11px] font-semibold text-slate-400">Система автоматически сверит ответ ученика (без учета регистра и лишних пробелов).</p>
+        </div>
+
+        <!-- 2. Single choice panel -->
+        <div id="builder-panel-single_choice" class="builder-answer-panel space-y-3 hidden">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-black text-slate-700">Варианты ответа (отметьте верный радио-кнопкой):</label>
+            <button type="button" onclick="addBuilderChoiceOption()" class="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 border-b-[3px] text-xs font-black transition-all flex items-center gap-1 cursor-pointer">
+              <i class="ph-bold ph-plus"></i> Добавить вариант
+            </button>
+          </div>
+          <div id="builder-choice-options-list" class="space-y-2"></div>
+        </div>
+
+        <!-- 3. Matching panel -->
+        <div id="builder-panel-matching" class="builder-answer-panel space-y-4 hidden">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-black text-slate-700">1. Варианты для выбора (правая колонка):</label>
+              <button type="button" onclick="addBuilderMatchingOption()" class="px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 border-b-[3px] text-xs font-black transition-all flex items-center gap-1 cursor-pointer">
+                <i class="ph-bold ph-plus"></i> Вариант выбора
+              </button>
+            </div>
+            <div id="builder-matching-options-list" class="space-y-2"></div>
+          </div>
+
+          <div class="space-y-2 pt-2 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-black text-slate-700">2. Элементы слева и правильные соответствия:</label>
+              <button type="button" onclick="addBuilderMatchingPair()" class="px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 border-b-[3px] text-xs font-black transition-all flex items-center gap-1 cursor-pointer">
+                <i class="ph-bold ph-plus"></i> Добавить пару
+              </button>
+            </div>
+            <div id="builder-matching-pairs-list" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- 4. Code panel -->
+        <div id="builder-panel-code" class="builder-answer-panel space-y-2 hidden">
+          <label class="text-xs font-black text-slate-700 block">Начальная заготовка кода (starter code):</label>
+          <textarea id="builder-starter-code" name="starter_code" rows="4" placeholder="# Заготовка решения для ученика&#10;def solution():&#10;    pass" class="w-full bg-slate-900 text-slate-100 font-mono text-xs rounded-xl p-3 border-2 border-slate-700 focus:border-indigo-500 outline-none leading-relaxed"></textarea>
+          <p class="text-[11px] font-semibold text-slate-400">Ученик сразу увидит этот код в редакторе при открытии задачи.</p>
+        </div>
+
+        <!-- 5. Long answer panel -->
+        <div id="builder-panel-long_answer" class="builder-answer-panel space-y-2 hidden">
+          <div class="p-4 rounded-xl bg-amber-50 border-2 border-amber-200 text-amber-800 text-xs font-bold leading-relaxed flex items-start gap-2.5">
+            <i class="ph-bold ph-info text-lg text-amber-600 flex-shrink-0 mt-0.5"></i>
+            <div>
+              Задание с развёрнутым ответом проверяется преподавателем вручную. Ученик сдаёт текст решения или прикрепляет файлы в процессе выполнения.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- БЛОК 5: ПОДСКАЗКИ И РЕШЕНИЕ ПРЕПОДАВАТЕЛЯ -->
+      <div class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-black flex items-center justify-center">5</span>
+            <span class="text-xs font-black uppercase text-slate-700 tracking-wider">Подсказки и разбор</span>
+          </div>
+          <span class="text-[11px] font-bold text-slate-400">Опционально</span>
+        </div>
+        <div>
+          <label class="text-xs font-black text-slate-700 block mb-1.5">Подсказка для ученика</label>
+          <input id="builder-hint-input" name="hint" type="text" placeholder="Небольшая наводка, которую ученик сможет раскрыть в воркспейсе..." class="w-full bg-[#F4F7FA] border-2 border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 outline-none transition-all">
+        </div>
+        <div>
+          <label class="text-xs font-black text-slate-700 block mb-1.5">Пояснение или эталонное решение (для учителя)</label>
+          <textarea id="builder-solution-input" name="solution" rows="3" placeholder="Критерии оценивания или разбор задачи (ученик не увидит это до сдачи работы)..." class="w-full bg-[#F4F7FA] border-2 border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl p-3 text-xs font-bold text-slate-800 outline-none leading-relaxed transition-all"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-between px-6 py-4 border-t-2 border-slate-200 bg-white/80 backdrop-blur-sm flex-shrink-0">
+      <button type="button" onclick="closeCustomTaskModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs">
+        Отмена
+      </button>
+      <button type="submit" id="builder-submit-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-7 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_12px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs flex items-center gap-2">
+        <i class="ph-bold ph-check"></i> <span id="builder-submit-label">Сохранить и добавить</span>
+      </button>
+    </div>
   </form>
 </div>
 
@@ -750,23 +959,401 @@ function selectBankTask(taskId) {
   detail.innerHTML = `<div class="space-y-5"><div><span class="inline-flex px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><h3 class="mt-3 text-lg font-black text-slate-800 leading-snug">${escapeHtml(task.title || 'Задание')}</h3><p class="mt-1 text-xs text-slate-500">${escapeHtml(task.course_title || '')} · ${escapeHtml(task.difficulty_label_ru || 'Средний уровень')}</p></div><div class="border-y border-slate-200 py-4 text-sm leading-relaxed text-slate-700 task-bank-condition">${task.content_html || 'Без текста условия'}</div>${answer}${code}${solution}<div class="flex flex-wrap gap-2 pt-1"><button type="button" onclick="addBankTask(${task.task_id})" ${added ? 'disabled' : ''} class="bg-indigo-600 disabled:bg-slate-200 disabled:text-slate-500 text-white font-black px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] text-xs">${added ? 'Уже в работе' : 'Добавить в работу'}</button>${action}</div></div>`;
 }
 
+/* ==========================================================================
+   TASK BUILDER CONTROLLER (BOOSTUDY UI CANON)
+   ========================================================================== */
+
+let currentBuilderAnswerType = 'short_answer';
+let builderChoiceOptions = ['Вариант 1', 'Вариант 2', 'Вариант 3', 'Вариант 4'];
+let builderChoiceCorrect = 0;
+let builderMatchingOptions = [
+  { value: '1', label: 'Вариант 1' },
+  { value: '2', label: 'Вариант 2' },
+  { value: '3', label: 'Вариант 3' },
+  { value: '4', label: 'Вариант 4' }
+];
+let builderMatchingPairs = [
+  { key: 'А', left: 'Описание А', correct_value: '1' },
+  { key: 'Б', left: 'Описание Б', correct_value: '2' },
+  { key: 'В', left: 'Описание В', correct_value: '3' }
+];
+let existingBuilderFiles = [];
+
+function setBuilderDifficulty(level) {
+  document.getElementById('builder-difficulty-input').value = String(level);
+  document.querySelectorAll('.builder-diff-btn').forEach(btn => {
+    const isThis = btn.dataset.diff === String(level);
+    btn.classList.toggle('is-active', isThis);
+    btn.classList.toggle('bg-white', isThis);
+    btn.classList.toggle('shadow-sm', isThis);
+    if (isThis) {
+      btn.classList.remove('text-slate-600');
+      if (level === 1) btn.className = 'builder-diff-btn py-1.5 text-xs font-black rounded-lg transition-all is-active bg-white text-emerald-700 shadow-sm';
+      else if (level === 2) btn.className = 'builder-diff-btn py-1.5 text-xs font-black rounded-lg transition-all is-active bg-white text-amber-700 shadow-sm';
+      else btn.className = 'builder-diff-btn py-1.5 text-xs font-black rounded-lg transition-all is-active bg-white text-rose-700 shadow-sm';
+    } else {
+      btn.className = 'builder-diff-btn py-1.5 text-xs font-black rounded-lg transition-all text-slate-600';
+    }
+  });
+}
+
+function selectBuilderAnswerType(type) {
+  currentBuilderAnswerType = type;
+  document.querySelectorAll('.builder-type-tab').forEach(tab => {
+    const isActive = tab.dataset.type === type;
+    tab.classList.toggle('is-active', isActive);
+    tab.classList.toggle('bg-white', isActive);
+    tab.classList.toggle('text-indigo-600', isActive);
+    tab.classList.toggle('shadow-sm', isActive);
+    tab.classList.toggle('text-slate-600', !isActive);
+  });
+
+  document.querySelectorAll('.builder-answer-panel').forEach(p => p.classList.add('hidden'));
+  const activePanel = document.getElementById(`builder-panel-${type}`);
+  if (activePanel) activePanel.classList.remove('hidden');
+
+  const badge = document.getElementById('builder-answer-type-badge');
+  const typeLabels = {
+    short_answer: 'Краткий ответ',
+    single_choice: 'Одиночный выбор',
+    matching: 'Сопоставление',
+    code: 'Код Python',
+    long_answer: 'Развёрнутый ответ'
+  };
+  if (badge) badge.textContent = typeLabels[type] || 'Ответ';
+
+  const manualGradingCb = document.getElementById('custom-manual-grading');
+  if (type === 'long_answer') {
+    manualGradingCb.checked = true;
+  }
+}
+
+function toggleManualGradingMode() {
+  const isManual = document.getElementById('custom-manual-grading').checked;
+  if (isManual && currentBuilderAnswerType === 'short_answer') {
+    // manual check is toggled
+  }
+}
+
+function switchBuilderConditionTab(tab) {
+  const isPreview = tab === 'preview';
+  const editorWrap = document.getElementById('builder-editor-wrap');
+  const previewWrap = document.getElementById('builder-preview-wrap');
+  const toolbar = document.getElementById('builder-condition-toolbar');
+  const editorBtn = document.getElementById('builder-tab-editor-btn');
+  const previewBtn = document.getElementById('builder-tab-preview-btn');
+
+  if (isPreview) {
+    editorWrap.classList.add('hidden');
+    toolbar.classList.add('hidden');
+    previewWrap.classList.remove('hidden');
+    editorBtn.className = 'px-3 py-1 text-xs font-black rounded-lg text-slate-600 hover:text-slate-800 transition-all';
+    previewBtn.className = 'px-3 py-1 text-xs font-black rounded-lg bg-white text-indigo-700 shadow-sm transition-all';
+
+    const text = document.getElementById('builder-content-input').value || '';
+    if (!text.trim()) {
+      previewWrap.innerHTML = '<span class="text-slate-400 italic">Условие задания пока не заполнено...</span>';
+    } else {
+      let html = escapeHtml(text)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code class="bg-slate-200 px-1.5 py-0.5 rounded text-indigo-700 font-mono text-xs">$1</code>')
+        .replace(/```python\s*([\s\S]*?)```/g, '<pre class="bg-slate-900 text-slate-100 p-3 rounded-xl font-mono text-xs overflow-x-auto my-2"><code>$1</code></pre>')
+        .replace(/\$([^\$]+)\$/g, '<span class="font-serif italic text-indigo-900 bg-indigo-50 px-1 rounded">$1</span>')
+        .replace(/\n/g, '<br>');
+      previewWrap.innerHTML = html;
+    }
+  } else {
+    previewWrap.classList.add('hidden');
+    editorWrap.classList.remove('hidden');
+    toolbar.classList.remove('hidden');
+    previewBtn.className = 'px-3 py-1 text-xs font-black rounded-lg text-slate-600 hover:text-slate-800 transition-all';
+    editorBtn.className = 'px-3 py-1 text-xs font-black rounded-lg bg-white text-indigo-700 shadow-sm transition-all';
+  }
+}
+
+function insertBuilderSnippet(before, after) {
+  const textarea = document.getElementById('builder-content-input');
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const val = textarea.value;
+  const selected = val.substring(start, end);
+  textarea.value = val.substring(0, start) + before + selected + after + val.substring(end);
+  textarea.focus();
+  const nextPos = start + before.length + selected.length;
+  textarea.setSelectionRange(nextPos, nextPos);
+}
+
+function renderBuilderFilesList() {
+  const input = document.getElementById('builder-files-input');
+  const list = document.getElementById('builder-files-list');
+  list.innerHTML = '';
+
+  existingBuilderFiles.forEach((file, idx) => {
+    const item = document.createElement('div');
+    item.className = 'flex items-center justify-between p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-xs';
+    item.innerHTML = `
+      <div class="flex items-center gap-2 overflow-hidden">
+        <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 font-black text-[10px] flex items-center justify-center uppercase">${(file.name.split('.').pop() || 'file').slice(0, 4)}</span>
+        <span class="font-bold text-slate-700 truncate max-w-[280px]">${escapeHtml(file.name)}</span>
+      </div>
+      <button type="button" onclick="removeExistingBuilderFile(${idx})" class="text-rose-500 hover:text-rose-700 font-bold px-2 py-1 rounded-lg hover:bg-rose-50 transition-colors">
+        <i class="ph-bold ph-trash"></i>
+      </button>
+    `;
+    list.appendChild(item);
+  });
+
+  if (input && input.files) {
+    Array.from(input.files).forEach((file) => {
+      const ext = (file.name.split('.').pop() || 'file').slice(0, 4);
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      const item = document.createElement('div');
+      item.className = 'flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-xs';
+      item.innerHTML = `
+        <div class="flex items-center gap-2 overflow-hidden">
+          <span class="w-6 h-6 rounded-lg bg-indigo-200 text-indigo-800 font-black text-[10px] flex items-center justify-center uppercase">${ext}</span>
+          <span class="font-bold text-slate-800 truncate max-w-[280px]">${escapeHtml(file.name)}</span>
+          <span class="text-[10px] text-slate-400 font-semibold">(${sizeMb} МБ)</span>
+        </div>
+        <span class="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">К загрузке</span>
+      `;
+      list.appendChild(item);
+    });
+  }
+}
+
+function removeExistingBuilderFile(idx) {
+  existingBuilderFiles.splice(idx, 1);
+  renderBuilderFilesList();
+}
+
+function renderBuilderChoiceOptions() {
+  const container = document.getElementById('builder-choice-options-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  builderChoiceOptions.forEach((optText, idx) => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 p-2.5 rounded-xl bg-[#F4F7FA] border-2 border-slate-200';
+    const isChecked = builderChoiceCorrect === idx;
+    row.innerHTML = `
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="radio" name="builder_choice_correct" value="${idx}" ${isChecked ? 'checked' : ''} onchange="builderChoiceCorrect = ${idx}" class="w-4 h-4 text-indigo-600 accent-indigo-600 cursor-pointer">
+        <span class="text-xs font-black text-slate-600">${String.fromCharCode(65 + idx)}</span>
+      </label>
+      <input type="text" value="${escapeHtml(optText)}" oninput="builderChoiceOptions[${idx}] = this.value" placeholder="Текст варианта ${String.fromCharCode(65 + idx)}..." class="flex-1 bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
+      <button type="button" onclick="removeBuilderChoiceOption(${idx})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer" title="Удалить вариант">
+        <i class="ph-bold ph-trash text-sm"></i>
+      </button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function addBuilderChoiceOption(label = '', isCorrect = false) {
+  const newIdx = builderChoiceOptions.length;
+  builderChoiceOptions.push(label || `Вариант ${newIdx + 1}`);
+  if (isCorrect) builderChoiceCorrect = newIdx;
+  renderBuilderChoiceOptions();
+}
+
+function removeBuilderChoiceOption(idx) {
+  if (builderChoiceOptions.length <= 2) {
+    show3DToast('Минимум 2 варианта ответа');
+    return;
+  }
+  builderChoiceOptions.splice(idx, 1);
+  if (builderChoiceCorrect >= builderChoiceOptions.length) {
+    builderChoiceCorrect = 0;
+  }
+  renderBuilderChoiceOptions();
+}
+
+function renderBuilderMatchingOptions() {
+  const container = document.getElementById('builder-matching-options-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  builderMatchingOptions.forEach((opt, idx) => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2.5 p-2 rounded-xl bg-[#F4F7FA] border border-slate-200';
+    row.innerHTML = `
+      <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 font-black text-xs flex items-center justify-center flex-shrink-0">${opt.value || (idx + 1)}</span>
+      <input type="text" value="${escapeHtml(opt.label)}" oninput="builderMatchingOptions[${idx}].label = this.value; updateMatchingPairsDropdowns();" placeholder="Текст варианта ответа..." class="flex-1 bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-3 py-1 text-xs font-bold text-slate-800 outline-none">
+      <button type="button" onclick="removeBuilderMatchingOption(${idx})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer">
+        <i class="ph-bold ph-trash text-xs"></i>
+      </button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function addBuilderMatchingOption(label = '') {
+  const nextVal = String(builderMatchingOptions.length + 1);
+  builderMatchingOptions.push({ value: nextVal, label: label || `Вариант ${nextVal}` });
+  renderBuilderMatchingOptions();
+  renderBuilderMatchingPairs();
+}
+
+function removeBuilderMatchingOption(idx) {
+  if (builderMatchingOptions.length <= 2) {
+    show3DToast('Минимум 2 варианта для выбора');
+    return;
+  }
+  builderMatchingOptions.splice(idx, 1);
+  builderMatchingOptions.forEach((o, i) => { o.value = String(i + 1); });
+  renderBuilderMatchingOptions();
+  renderBuilderMatchingPairs();
+}
+
+function renderBuilderMatchingPairs() {
+  const container = document.getElementById('builder-matching-pairs-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  builderMatchingPairs.forEach((pair, idx) => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2.5 p-2.5 rounded-xl bg-[#F4F7FA] border-2 border-slate-200';
+    let optionsHtml = '<option value="">Выберите ответ</option>';
+    builderMatchingOptions.forEach(opt => {
+      const isSel = String(pair.correct_value) === String(opt.value);
+      optionsHtml += `<option value="${opt.value}" ${isSel ? 'selected' : ''}>${opt.value}. ${escapeHtml(opt.label)}</option>`;
+    });
+
+    row.innerHTML = `
+      <input type="text" value="${escapeHtml(pair.key)}" oninput="builderMatchingPairs[${idx}].key = this.value" class="w-10 text-center font-black text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg py-1.5 outline-none flex-shrink-0" title="Ключ">
+      <input type="text" value="${escapeHtml(pair.left)}" oninput="builderMatchingPairs[${idx}].left = this.value" placeholder="Описание элемента..." class="flex-1 bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
+      <select onchange="builderMatchingPairs[${idx}].correct_value = this.value" class="bg-white border-2 border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none w-36 cursor-pointer">
+        ${optionsHtml}
+      </select>
+      <button type="button" onclick="removeBuilderMatchingPair(${idx})" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer">
+        <i class="ph-bold ph-trash text-xs"></i>
+      </button>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function updateMatchingPairsDropdowns() {
+  renderBuilderMatchingPairs();
+}
+
+function addBuilderMatchingPair(key = '', left = '', correctVal = '') {
+  const letters = ['А', 'Б', 'В', 'Г', 'Д', 'Е'];
+  const nextKey = key || letters[builderMatchingPairs.length] || String(builderMatchingPairs.length + 1);
+  builderMatchingPairs.push({
+    key: nextKey,
+    left: left || `Элемент ${nextKey}`,
+    correct_value: correctVal || (builderMatchingOptions[0]?.value || '1')
+  });
+  renderBuilderMatchingPairs();
+}
+
+function removeBuilderMatchingPair(idx) {
+  if (builderMatchingPairs.length <= 1) {
+    show3DToast('Минимум одна строка сопоставления');
+    return;
+  }
+  builderMatchingPairs.splice(idx, 1);
+  renderBuilderMatchingPairs();
+}
+
 function openCustomTaskModal(sourceTask = null) {
   const courseSelect = document.getElementById('assignment-course');
-  if (sourceTask && sourceTask.course_id && courseSelect.querySelector(`option[value="${sourceTask.course_id}"]`)) courseSelect.value = String(sourceTask.course_id);
+  if (sourceTask && sourceTask.course_id && courseSelect.querySelector(`option[value="${sourceTask.course_id}"]`)) {
+    courseSelect.value = String(sourceTask.course_id);
+  }
   if (!courseSelect.value) {
     show3DToast('Сначала выберите курс для авторского задания');
     return;
   }
+
   const form = document.getElementById('custom-task-form');
   form.reset();
   form.dataset.editId = sourceTask && sourceTask.can_edit ? String(sourceTask.task_id) : '';
-  form.querySelector('textarea[name="content"]').value = sourceTask ? String(sourceTask.content_html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim() : '';
-  form.querySelector('input[name="answer"]').value = sourceTask?.answer || '';
-  form.querySelector('textarea[name="solution"]').value = sourceTask?.solution || '';
-  form.querySelector('textarea[name="starter_code"]').value = sourceTask?.starter_code || '';
-  form.querySelector('input[name="max_score"]').value = sourceTask?.max_score || 1;
-  document.getElementById('custom-manual-grading').checked = sourceTask ? !sourceTask.answer : false;
-  toggleCustomAnswer();
+
+  const modalTitle = document.getElementById('custom-modal-title');
+  const submitLabel = document.getElementById('builder-submit-label');
+  if (sourceTask && sourceTask.can_edit) {
+    modalTitle.textContent = `Редактировать задание #${sourceTask.task_number || 1}`;
+    submitLabel.textContent = 'Сохранить изменения';
+  } else {
+    modalTitle.textContent = 'Конструктор заданий';
+    submitLabel.textContent = 'Сохранить и добавить';
+  }
+
+  const taskNumber = sourceTask?.task_number || 1;
+  document.getElementById('custom-task-number').value = String(taskNumber);
+  document.getElementById('builder-task-number-input').value = String(taskNumber);
+  setBuilderDifficulty(sourceTask?.difficulty_level || 1);
+  document.getElementById('builder-max-score').value = String(sourceTask?.max_score || 1);
+  document.getElementById('custom-manual-grading').checked = Boolean(sourceTask?.requires_manual_grading || (sourceTask && !sourceTask.answer));
+
+  document.getElementById('builder-content-input').value = sourceTask ? String(sourceTask.content_html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim() : '';
+  switchBuilderConditionTab('editor');
+
+  existingBuilderFiles = (sourceTask?.attached_files && Array.isArray(sourceTask.attached_files)) ? [...sourceTask.attached_files] : [];
+  renderBuilderFilesList();
+
+  let detectedType = 'short_answer';
+  if (sourceTask?.answer_spec && sourceTask.answer_spec.type) {
+    detectedType = sourceTask.answer_spec.type;
+  } else if (sourceTask?.starter_code) {
+    detectedType = 'code';
+  } else if (sourceTask?.requires_manual_grading || (sourceTask && !sourceTask.answer)) {
+    detectedType = 'long_answer';
+  }
+
+  if (detectedType === 'single_choice') {
+    const spec = sourceTask.answer_spec;
+    if (spec?.options && spec.options.length) {
+      builderChoiceOptions = spec.options.map(o => o.label || o.value);
+      const corrVal = spec.correct_value || sourceTask.answer;
+      builderChoiceCorrect = Math.max(0, spec.options.findIndex(o => String(o.value) === String(corrVal)));
+    } else {
+      builderChoiceOptions = ['Вариант 1', 'Вариант 2', 'Вариант 3', 'Вариант 4'];
+      builderChoiceCorrect = 0;
+    }
+    renderBuilderChoiceOptions();
+  } else if (detectedType === 'matching') {
+    const spec = sourceTask.answer_spec;
+    if (spec?.options && spec.options.length) {
+      builderMatchingOptions = spec.options.map((o, i) => ({ value: String(o.value || (i + 1)), label: o.label || o.value }));
+    } else {
+      builderMatchingOptions = [{ value: '1', label: 'Вариант 1' }, { value: '2', label: 'Вариант 2' }, { value: '3', label: 'Вариант 3' }, { value: '4', label: 'Вариант 4' }];
+    }
+    if (spec?.pairs && spec.pairs.length) {
+      let savedAnswerMap = {};
+      try { savedAnswerMap = JSON.parse(sourceTask.answer || '{}'); } catch(e) {}
+      builderMatchingPairs = spec.pairs.map(p => ({
+        key: String(p.key),
+        left: p.left || '',
+        correct_value: String(savedAnswerMap[p.key] || p.correct_value || p.value || '1')
+      }));
+    } else {
+      builderMatchingPairs = [{ key: 'А', left: 'Описание А', correct_value: '1' }, { key: 'Б', left: 'Описание Б', correct_value: '2' }, { key: 'В', left: 'Описание В', correct_value: '3' }];
+    }
+    renderBuilderMatchingOptions();
+    renderBuilderMatchingPairs();
+  } else {
+    builderChoiceOptions = ['Вариант 1', 'Вариант 2', 'Вариант 3', 'Вариант 4'];
+    builderChoiceCorrect = 0;
+    renderBuilderChoiceOptions();
+    builderMatchingOptions = [{ value: '1', label: 'Вариант 1' }, { value: '2', label: 'Вариант 2' }, { value: '3', label: 'Вариант 3' }, { value: '4', label: 'Вариант 4' }];
+    builderMatchingPairs = [{ key: 'А', left: 'Описание А', correct_value: '1' }, { key: 'Б', left: 'Описание Б', correct_value: '2' }, { key: 'В', left: 'Описание В', correct_value: '3' }];
+    renderBuilderMatchingOptions();
+    renderBuilderMatchingPairs();
+  }
+
+  document.getElementById('builder-short-answer-input').value = (detectedType === 'short_answer' && sourceTask?.answer) ? sourceTask.answer : '';
+  document.getElementById('builder-starter-code').value = sourceTask?.starter_code || '';
+  selectBuilderAnswerType(detectedType);
+
+  const hintText = Array.isArray(sourceTask?.hints) ? (sourceTask.hints[0]?.text || sourceTask.hints[0] || '') : (sourceTask?.hints || '');
+  document.getElementById('builder-hint-input').value = hintText;
+  document.getElementById('builder-solution-input').value = sourceTask?.solution || '';
+
   document.getElementById('custom-task-modal').classList.remove('hidden');
 }
 
@@ -774,28 +1361,139 @@ function closeCustomTaskModal() {
   document.getElementById('custom-task-modal').classList.add('hidden');
 }
 
-function toggleCustomAnswer() {
-  document.getElementById('custom-answer-wrap').classList.toggle('hidden', document.getElementById('custom-manual-grading').checked);
-}
-
 async function createCustomTask(event) {
   event.preventDefault();
   const form = document.getElementById('custom-task-form');
-  const data = new FormData(form);
-  data.set('course_id', document.getElementById('assignment-course').value);
+  const courseId = document.getElementById('assignment-course').value;
+  if (!courseId) {
+    show3DToast('Сначала выберите курс');
+    return;
+  }
+
+  const editId = form.dataset.editId;
+  const content = document.getElementById('builder-content-input').value.trim();
+  if (!content) {
+    show3DToast('Заполните условие задания');
+    return;
+  }
+
+  const taskNumber = parseInt(document.getElementById('builder-task-number-input').value) || 1;
+  const maxScore = parseInt(document.getElementById('builder-max-score').value) || 1;
+  const difficultyLevel = parseInt(document.getElementById('builder-difficulty-input').value) || 1;
+  const isManualGrading = document.getElementById('custom-manual-grading').checked;
+  const hintVal = document.getElementById('builder-hint-input').value.trim();
+  const hints = hintVal ? [{ text: hintVal }] : null;
+  const solution = document.getElementById('builder-solution-input').value.trim() || null;
+
+  let answer = null;
+  let starterCode = null;
+  let answerSpec = null;
+
+  if (currentBuilderAnswerType === 'short_answer') {
+    answer = isManualGrading ? null : document.getElementById('builder-short-answer-input').value.trim();
+    answerSpec = { type: 'short_answer' };
+  } else if (currentBuilderAnswerType === 'single_choice') {
+    const options = builderChoiceOptions.map((text, i) => ({
+      value: String(i + 1),
+      label: text.trim() || `Вариант ${i + 1}`
+    }));
+    const correctVal = String(builderChoiceCorrect + 1);
+    answer = isManualGrading ? null : correctVal;
+    answerSpec = {
+      type: 'single_choice',
+      options: options,
+      correct_value: correctVal
+    };
+  } else if (currentBuilderAnswerType === 'matching') {
+    const options = builderMatchingOptions.map(o => ({
+      value: String(o.value),
+      label: o.label.trim() || `Вариант ${o.value}`
+    }));
+    const pairs = builderMatchingPairs.map(p => ({
+      key: String(p.key).trim() || 'A',
+      left: p.left.trim() || '',
+      correct_value: String(p.correct_value || '')
+    }));
+    const pairsMap = {};
+    pairs.forEach(p => {
+      if (p.key && p.correct_value) pairsMap[p.key] = p.correct_value;
+    });
+    answer = isManualGrading ? null : JSON.stringify(pairsMap);
+    answerSpec = {
+      type: 'matching',
+      pairs: pairs,
+      options: options
+    };
+  } else if (currentBuilderAnswerType === 'code') {
+    starterCode = document.getElementById('builder-starter-code').value.trim() || null;
+    answer = isManualGrading ? null : 'code';
+    answerSpec = {
+      type: 'code',
+      starter_code: starterCode
+    };
+  } else if (currentBuilderAnswerType === 'long_answer') {
+    answer = null;
+    answerSpec = { type: 'long_answer' };
+  }
+
+  const submitBtn = document.getElementById('builder-submit-btn');
+  submitBtn.disabled = true;
+
   try {
-    const editId = form.dataset.editId;
-    const answer = document.getElementById('custom-manual-grading').checked ? null : data.get('answer');
-    const response = editId ? await fetch(`/task-generator/bank/${editId}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ content: data.get('content'), answer, solution: data.get('solution'), starter_code: data.get('starter_code'), max_score: data.get('max_score') }) }) : await fetch('/task-generator/bank/create', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: data });
-    const payload = await response.json();
-    if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось сохранить задание');
-    if (!editId) addTaskToAssignment(payload.task);
+    let payload;
+    if (editId) {
+      const response = await fetch(`/task-generator/bank/${editId}/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+          content: content,
+          answer: answer,
+          answer_spec: answerSpec,
+          hints: hints,
+          solution: solution,
+          starter_code: starterCode,
+          max_score: maxScore,
+          difficulty_level: difficultyLevel
+        })
+      });
+      payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось сохранить изменения');
+    } else {
+      const formData = new FormData(form);
+      formData.set('course_id', courseId);
+      formData.set('task_number', String(taskNumber));
+      formData.set('content', content);
+      if (answer != null) formData.set('answer', answer);
+      else formData.delete('answer');
+      formData.set('answer_spec', JSON.stringify(answerSpec));
+      if (hints) formData.set('hints', JSON.stringify(hints));
+      if (solution) formData.set('solution', solution);
+      if (starterCode) formData.set('starter_code', starterCode);
+      formData.set('max_score', String(maxScore));
+      formData.set('difficulty_level', String(difficultyLevel));
+      formData.set('manual_grading', isManualGrading || currentBuilderAnswerType === 'long_answer' ? '1' : '0');
+
+      const response = await fetch('/task-generator/bank/create', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+        body: formData
+      });
+      payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось создать задание');
+      if (payload.task) addTaskToAssignment(payload.task);
+    }
+
     closeCustomTaskModal();
     form.reset();
-    show3DToast(editId ? 'Изменения сохранены' : 'Задание сохранено в вашем банке и добавлено в работу');
+    show3DToast(editId ? 'Изменения задания сохранены' : 'Задание сохранено в вашем банке и добавлено в работу');
     loadBankTasks();
   } catch (error) {
     show3DToast(error.message || 'Ошибка сохранения задания');
+  } finally {
+    submitBtn.disabled = false;
   }
 }
 

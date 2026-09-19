@@ -10,7 +10,8 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" onload="initKaTeX()"></script>
 
 <!-- Единый каноничный холст открытой работы (Master Canvas max-w-[1400px]) -->
-<main class="min-h-screen w-full relative z-10 bg-slate-50/50 p-3 sm:p-6 ml-0 lg:ml-24 pl-3 sm:pl-6 lg:pl-6 pb-20 lg:pb-28">
+{% set is_assignment_submitted = submission and submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW', 'CHECKED', 'COMPLETED'] %}
+<main class="min-h-screen w-full relative z-10 bg-slate-50/50 p-3 sm:p-6 pl-3 sm:pl-6 lg:pl-[6.5rem] pr-3 sm:pr-6 pb-24 lg:pb-28">
   <div class="max-w-[1400px] mx-auto w-full space-y-4 sm:space-y-6 pt-4 lg:pt-0">
     
     <!-- 1. ИНФО-ШАПКА РАБОТЫ (Tactile 3D Card Header Plate) -->
@@ -87,7 +88,7 @@
         </ul>
       </div>
 
-      <button onclick="startTimedAssignment()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer inline-flex items-center justify-center gap-2 text-base border-none">
+      <button onclick="startTimedAssignment()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer inline-flex items-center justify-center gap-2 text-base">
         <i class="ph-bold ph-rocket-launch text-xl"></i> 🚀 Начать выполнение работы!
       </button>
     </div>
@@ -196,7 +197,7 @@
                       data-ass-task-id="{{ t.assignment_task_id }}"
                       onclick="submitSingleTask(this)"
                       {% if t.is_locked or is_assignment_submitted %}disabled{% endif %}
-                      class="single-task-submit-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-3.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer shrink-0 disabled:bg-slate-300 disabled:cursor-not-allowed border-none text-xs">
+                      class="single-task-submit-btn bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-3.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer shrink-0 disabled:bg-slate-300 disabled:border-slate-300 disabled:shadow-none disabled:cursor-not-allowed text-xs">
                 Проверить ответ
               </button>
               {% else %}
@@ -301,7 +302,7 @@
                      id="chat-input" 
                      placeholder="Задать вопрос по задаче..." 
                      class="flex-1 bg-white border-2 border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
-              <button onclick="sendChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-sm active:translate-y-[2px] transition-all cursor-pointer border-none text-xs">
+              <button onclick="sendChatMessage()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-sm active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">
                 <i class="ph-bold ph-paper-plane-right"></i>
               </button>
             </div>
@@ -326,7 +327,7 @@
   <button id="submit-entire-assignment-btn"
           onclick="submitEntireAssignment()" 
           {% if is_assignment_submitted %}disabled{% endif %}
-          class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center gap-2 text-xs border-none disabled:bg-slate-300 disabled:cursor-not-allowed">
+          class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center gap-2 text-xs disabled:bg-slate-300 disabled:border-slate-300 disabled:shadow-none disabled:cursor-not-allowed">
     <i class="ph-fill ph-check-circle text-base"></i> Завершить и сдать работу
   </button>
 </div>
@@ -342,10 +343,10 @@
       Все введенные ответы будут зафиксированы. Вы не сможете изменить решение в этой попытке.
     </p>
     <div class="flex items-center gap-3 justify-end pt-2">
-      <button id="cancel-submit-btn" onclick="closeSubmitModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] active:translate-y-[2px] cursor-pointer text-xs">
+      <button id="cancel-submit-btn" onclick="closeSubmitModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-sm active:border-b-[1px] active:translate-y-[2px] cursor-pointer text-xs">
         Отмена
       </button>
-      <button id="confirm-submit-btn" onclick="confirmSubmitEntireAssignment()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] active:translate-y-[2px] cursor-pointer border-none text-xs">
+      <button id="confirm-submit-btn" onclick="confirmSubmitEntireAssignment()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[2px] cursor-pointer text-xs">
         Да, сдать
       </button>
     </div>
@@ -849,12 +850,6 @@ async function performSubmitEntireAssignment(forced = false) {
       ? 'Время вышло. Ответы сохранены и отправлены на проверку.'
       : `Работа сдана.${data.awarded_xp ? ` Получено ${data.awarded_xp} XP.` : ''}`;
     show3DToast(completionMessage, '/submissions');
-    return;
-    if (forced || data.is_auto_submit) {
-      show3DToast('Время вышло. Ответы сохранены и отправлены на проверку.', '/submissions');
-    } else {
-      show3DToast(`Работа сдана.${data.awarded_xp ? ` Получено ${data.awarded_xp} XP.` : ''}`, '/submissions');
-    }
   } catch (e) {
     show3DToast('Ошибка при сдаче работы');
   }

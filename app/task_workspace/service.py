@@ -45,8 +45,12 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
     raw = getattr(task, "answer_spec", None)
     spec = dict(raw) if isinstance(raw, dict) else {}
     answer_type = str(spec.get("type") or "").strip().lower()
+    has_expected_answer = bool((getattr(task, "answer", None) or "").strip())
     if answer_type not in ANSWER_TYPES:
-        answer_type = "code" if (task.starter_code or "").strip() else "short_answer"
+        if has_expected_answer:
+            answer_type = "short_answer"
+        else:
+            answer_type = "code" if (task.starter_code or "").strip() else "short_answer"
 
     options = spec.get("options") if isinstance(spec.get("options"), list) else []
     normalized_options = []
@@ -83,18 +87,32 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
             if normalized_mode in WORKSPACE_MODES and normalized_mode not in modes:
                 modes.append(normalized_mode)
     if not modes:
-        # Existing EGE cards predate the explicit workspace contract.  Python is
+        # Existing EGE cards predate the explicit workspace contract. Python is
         # a legitimate calculation tool for their standard answers, while an
         # explicit teacher configuration still remains authoritative.
-        if raw_modes is None and answer_type != "code":
+        if raw_modes is None:
+            modes = ["answer", "code"]
+        elif has_expected_answer or answer_type != "code":
             modes = ["answer", "code"]
         else:
             modes = ["code"] if answer_type == "code" else ["answer"]
 
+    # Even if raw_modes was somehow limited to code only, if task has an expected answer,
+    # student must not be deprived of entering their answer!
+    if has_expected_answer and "answer" not in modes:
+        modes.insert(0, "answer")
+
     requested_default = str(
         spec.get("default_workspace_mode", spec.get("defaultWorkspaceMode", ""))
     ).strip().lower()
-    default_workspace_mode = requested_default if requested_default in modes else modes[0]
+    if requested_default in modes:
+        default_workspace_mode = requested_default
+    elif (task.starter_code or "").strip() and "code" in modes:
+        default_workspace_mode = "code"
+    elif "answer" in modes:
+        default_workspace_mode = "answer"
+    else:
+        default_workspace_mode = modes[0]
 
     return {
         "type": answer_type,
@@ -104,6 +122,7 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
         "pairs": normalized_pairs,
         "workspace_modes": modes,
         "default_workspace_mode": default_workspace_mode,
+        "has_expected_answer": has_expected_answer,
     }
 
 

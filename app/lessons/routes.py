@@ -595,6 +595,8 @@ def _default_lesson_studio_state(lesson: Lesson) -> dict:
         'guidance': {'next_step': '', 'hints': [], 'updated_at': None},
         'board': {'strokes': [], 'revision': 0, 'updated_at': None},
         'outcome': {'completed': [], 'repeat': [], 'homework': '', 'published': False},
+        'video_provider': 'daily',
+        'backup_call_url': '',
     }
 
 
@@ -666,9 +668,15 @@ def lesson_studio_state_save(lesson_id: int):
         return jsonify({'success': False, 'error': 'Управлять сценарием урока может только преподаватель'}), 403
     payload = request.get_json(silent=True) or {}
     state = _lesson_studio_state(lesson)
-    for key in ('phase', 'active_task_id', 'active_theory_block_id', 'active_pane', 'follow_student', 'timer', 'phase_timers', 'phase_durations', 'agenda', 'teacher_private_note', 'guidance', 'outcome'):
+    for key in ('phase', 'active_task_id', 'active_theory_block_id', 'active_pane', 'follow_student', 'timer', 'phase_timers', 'phase_durations', 'agenda', 'teacher_private_note', 'guidance', 'outcome', 'video_provider', 'backup_call_url'):
         if key in payload:
             state[key] = payload[key]
+    if state.get('video_provider') not in {'daily', 'jitsi', 'external'}:
+        state['video_provider'] = 'daily'
+    if not isinstance(state.get('backup_call_url'), str):
+        state['backup_call_url'] = ''
+    else:
+        state['backup_call_url'] = state['backup_call_url'][:500].strip()
     guidance = state.get('guidance')
     phase_timers = state.get('phase_timers')
     phase_durations = state.get('phase_durations')
@@ -3834,6 +3842,20 @@ def lesson_videocall_get_room(lesson_id):
     """Legacy redirect for videocall GET to V2 Studio room."""
     return redirect(url_for('lessons.lesson_interactive_room', lesson_id=lesson_id), code=302)
 
+def _lesson_jitsi_room_name(lesson_id: int) -> str:
+    import hashlib
+    from flask import current_app
+    secret = current_app.config.get('SECRET_KEY', 'boostudy-lesson-secret')
+    h = hashlib.sha256(f"lesson-{lesson_id}-{secret}".encode('utf-8')).hexdigest()[:10]
+    return f"boostudy-lesson-{lesson_id}-{h}"
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/video/join', methods=['POST'])
+@login_required
+def lesson_studio_video_join(lesson_id: int):
+    return lesson_studio_daily_join(lesson_id)
+
+
 @lessons_bp.route('/lesson/<int:lesson_id>/studio/daily/join', methods=['POST'])
 @login_required
 def lesson_studio_daily_join(lesson_id: int):
@@ -3843,14 +3865,54 @@ def lesson_studio_daily_join(lesson_id: int):
     is_teacher = _lesson_studio_is_teacher()
     user_name = getattr(current_user, 'display_name', None) or current_user.username
     room_name = f"lesson-{lesson_id}"
+    jitsi_room = _lesson_jitsi_room_name(lesson_id)
     
+    state = _lesson_studio_state(lesson)
+    req_data = request.get_json(silent=True) or {}
+    requested_provider = req_data.get('provider') or state.get('video_provider') or 'daily'
+    backup_url = state.get('backup_call_url') or ''
+
+    if requested_provider == 'jitsi':
+        return jsonify({
+            'success': True,
+            'provider': 'jitsi',
+            'room_name': jitsi_room,
+            'jitsi_room': jitsi_room,
+            'jitsi_domain': 'meet.jit.si',
+            'user_name': user_name,
+            'backup_call_url': backup_url,
+        })
+
     try:
         room_url = DailyService.get_or_create_room(room_name)
         token = DailyService.create_meeting_token(room_name, user_name, is_teacher, str(current_user.id))
-        return jsonify({'success': True, 'room_url': room_url, 'token': token})
+        return jsonify({
+            'success': True,
+            'provider': 'daily',
+            'room_url': room_url,
+            'token': token,
+            'jitsi_room': jitsi_room,
+            'jitsi_domain': 'meet.jit.si',
+            'user_name': user_name,
+            'backup_call_url': backup_url,
+        })
     except ValueError as e:
         logger.warning(f"Daily.co configuration error for lesson {lesson_id}: {e}")
-        return jsonify({'success': False, 'error': 'Видеосервер не настроен или недоступен'}), 503
+        return jsonify({
+            'success': False,
+            'error': 'Видеосервер не настроен или недоступен',
+            'jitsi_room': jitsi_room,
+            'jitsi_domain': 'meet.jit.si',
+            'user_name': user_name,
+            'backup_call_url': backup_url,
+        }), 503
     except Exception as e:
         logger.error(f"Daily.co integration error for lesson {lesson_id}: {e}")
-        return jsonify({'success': False, 'error': 'Не удалось подключиться к видеосерверу'}), 500
+        return jsonify({
+            'success': False,
+            'error': 'Не удалось подключиться к видеосерверу',
+            'jitsi_room': jitsi_room,
+            'jitsi_domain': 'meet.jit.si',
+            'user_name': user_name,
+            'backup_call_url': backup_url,
+        }), 500

@@ -29,6 +29,7 @@ from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_uniqu
 from app.utils.course_tasks import get_task_numbers
 from app.utils.jinja_filters import normalize_task_content_assets, normalize_task_content_urls
 from app.lessons.utils import normalize_answer_value
+from app.constants import SubmissionStatus
 from app.assignments.submission_lifecycle_service import (
     normalize_legacy_status,
     transition_submission_status,
@@ -3595,17 +3596,21 @@ def submission_view(submission_id):
 
     # Ученик выполняет работу только в каноничном Workspace: там находятся
     # редактор, запуск, вложения, холст и единая навигация карточек.
+    # Если работа уже сдана (SUBMITTED, NEEDS_MANUAL_REVIEW, GRADED), ученик
+    # просматривает результаты, ответы и комментарии в task_detail.
     if getattr(current_user, 'is_student', lambda: False)() and student and current_user.id == student.user_id:
-        ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
-        if ordered_tasks:
-            requested_task_id = request.args.get('focus_at', type=int)
-            selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
-            return redirect(url_for(
-                'task_workspace.workspace_page',
-                context_type='submission_task',
-                context_id=submission.submission_id,
-                assignment_task_id=selected_task.assignment_task_id,
-            ))
+        normalized_status = normalize_legacy_status(submission.status)
+        if normalized_status not in {SubmissionStatus.SUBMITTED, SubmissionStatus.NEEDS_MANUAL_REVIEW, SubmissionStatus.GRADED}:
+            ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
+            if ordered_tasks:
+                requested_task_id = request.args.get('focus_at', type=int)
+                selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
+                return redirect(url_for(
+                    'task_workspace.workspace_page',
+                    context_type='submission_task',
+                    context_id=submission.submission_id,
+                    assignment_task_id=selected_task.assignment_task_id,
+                ))
     
     try:
         now = utc_now()

@@ -507,3 +507,61 @@ def test_lesson_material_upload_persists_in_configured_storage(app, client, role
         assert lesson.materials[0]['name'] == 'plan.txt'
         stored_name = lesson.materials[0]['url'].rsplit('/', 1)[-1]
         assert (tmp_path / 'lesson-materials' / str(lesson_id) / stored_name).is_file()
+
+
+def test_studio_resilient_video_conference_jitsi_fallback_and_backup_url(app, client, role_users, monkeypatch):
+    lesson_id, _ = _studio_fixture(app, role_users)
+
+    # 1. Check template markup: provider bar, Jitsi container, failover banner, external link
+    login_as(client, role_users['tutor_id'], 'tutor')
+    room_resp = client.get(f'/lesson/{lesson_id}/room')
+    room_html = room_resp.get_data(as_text=True)
+    assert 'os-video-provider-bar' in room_html
+    assert 'os-video-failover-banner' in room_html
+    assert 'os-jitsi-container' in room_html
+    assert 'os-placeholder-jitsi' in room_html
+    assert 'os-placeholder-external' in room_html
+    assert 'meet.jit.si/external_api.js' in room_html
+
+    # 2. Teacher sets backup call URL and changes preferred video provider
+    backup_url = 'https://telemost.yandex.ru/j/1234567890'
+    patch_resp = client.post(
+        f'/lesson/{lesson_id}/studio/state',
+        json={
+            'video_provider': 'jitsi',
+            'backup_call_url': backup_url,
+        },
+    )
+    assert patch_resp.status_code == 200
+    state = patch_resp.get_json()['state']
+    assert state['video_provider'] == 'jitsi'
+    assert state['backup_call_url'] == backup_url
+
+    # 3. Student fetches state and sees backup URL
+    login_as(client, role_users['student_user_id'], 'student')
+    student_state_resp = client.get(f'/lesson/{lesson_id}/studio/state')
+    student_state = student_state_resp.get_json()['state']
+    assert student_state['video_provider'] == 'jitsi'
+    assert student_state['backup_call_url'] == backup_url
+
+    # 4. Request Jitsi join parameters explicitly
+    jitsi_join = client.post(f'/lesson/{lesson_id}/studio/video/join', json={'provider': 'jitsi'})
+    assert jitsi_join.status_code == 200
+    j_payload = jitsi_join.get_json()
+    assert j_payload['success'] is True
+    assert j_payload['provider'] == 'jitsi'
+    assert j_payload['jitsi_domain'] == 'meet.jit.si'
+    assert j_payload['jitsi_room'].startswith(f'boostudy-lesson-{lesson_id}-')
+    assert j_payload['backup_call_url'] == backup_url
+
+    # 5. When Daily fails (e.g. ValueError or connection issue), response still provides Jitsi room as fallback
+    monkeypatch.setattr(
+        'app.lessons.routes.DailyService.get_or_create_room',
+        lambda room_name: (_ for _ in ()).throw(ValueError('Daily API key is not configured')),
+    )
+    daily_fail = client.post(f'/lesson/{lesson_id}/studio/daily/join', json={'provider': 'daily'})
+    assert daily_fail.status_code == 503
+    fail_data = daily_fail.get_json()
+    assert fail_data['success'] is False
+    assert fail_data['jitsi_room'].startswith(f'boostudy-lesson-{lesson_id}-')
+    assert fail_data['jitsi_domain'] == 'meet.jit.si'

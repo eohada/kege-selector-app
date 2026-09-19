@@ -90,6 +90,30 @@
       followButton.setAttribute('aria-pressed', String(Boolean(state.follow_student)));
     }
     renderTasks();
+    renderVideoDock();
+  }
+
+  function renderVideoDock(){
+    const backupUrl = String(state.backup_call_url || '').trim();
+    const backupBtn = $('#os-student-backup-btn'), backupNotice = $('#os-student-backup-notice');
+    if(backupBtn && backupNotice){
+      if(backupUrl){
+        backupBtn.href = backupUrl;
+        backupBtn.classList.remove('hidden');
+        backupNotice.textContent = 'Преподаватель подготовил ссылку на звонок:';
+      } else {
+        backupBtn.href = '#';
+        backupBtn.classList.add('hidden');
+        backupNotice.textContent = 'Преподаватель пока не настроил резервную ссылку.';
+      }
+    }
+    const backupInput = $('#os-backup-url-input');
+    if(backupInput && document.activeElement !== backupInput && backupUrl){
+      backupInput.value = backupUrl;
+    }
+    if(state.video_provider && !localUi.videoProviderUserChoice && typeof setProviderTab === 'function'){
+      setProviderTab(state.video_provider, false);
+    }
   }
   
   function taskStatusLabel(status){return ({pending:'Не начато',in_progress:'В работе',completed:'Готово',submitted:'На проверке'})[status]||'В очереди'}
@@ -475,82 +499,365 @@
       button.setAttribute('aria-pressed', String(enabled));
     });
     let dailyFrame = null;
-    const videoDock=$('#room-video-dock');
-    const setVideoOpen=open=>{videoDock?.classList.toggle('hidden',!open);localUi.videoOpen=open;persistUi()};
-    const setVideoLarge=large=>{videoDock?.classList.toggle('is-large',large);localUi.videoLarge=large;persistUi();$('#room-video-size')?.setAttribute('aria-label',large?'Уменьшить видеозвонок':'Развернуть видеозвонок')};
-    const setVideoFloating=(position, shouldPersist=true)=>{
-      if(!videoDock)return;
-      const valid=position&&Number.isFinite(Number(position.left))&&Number.isFinite(Number(position.top));
-      videoDock.classList.toggle('is-floating',valid);
-      videoDock.style.left=valid?`${Math.round(Number(position.left))}px`:'';
-      videoDock.style.top=valid?`${Math.round(Number(position.top))}px`:'';
-      localUi.videoPosition=valid?{left:Number(position.left),top:Number(position.top)}:null;
-      $('#room-video-dock-toggle')?.setAttribute('aria-label',valid?'Закрепить видеозвонок справа':'Окно закреплено справа');
-      if(shouldPersist)persistUi();
+    let jitsiApi = null;
+    let cachedJoinData = null;
+    let dailyTimeoutTimer = null;
+    let currentProvider = localUi.videoProvider || 'daily';
+    let isCallActive = false;
+
+    const videoDock = $('#room-video-dock');
+    const statusDot = $('#os-video-status-dot');
+    const activeWrap = $('#os-video-container');
+    const placeholder = $('#os-meeting-placeholder');
+    const failoverBanner = $('#os-video-failover-banner');
+    const dailyContainer = $('#os-daily-container');
+    const jitsiContainer = $('#os-jitsi-container');
+    const activeLabel = $('#os-video-active-label');
+
+    const setVideoOpen = open => {
+      videoDock?.classList.toggle('hidden', !open);
+      localUi.videoOpen = open;
+      persistUi();
     };
-    $('#room-video-toggle')?.addEventListener('click',()=>setVideoOpen(true));
-    $('#room-video-close')?.addEventListener('click',()=>setVideoOpen(false));
-    $('#room-video-size')?.addEventListener('click',()=>setVideoLarge(!videoDock?.classList.contains('is-large')));
-    $('#room-video-dock-toggle')?.addEventListener('click',()=>setVideoFloating(null));
-    const videoHead=$('#room-video-head');
-    videoHead?.addEventListener('pointerdown',event=>{
-      if(event.target.closest('button'))return;
-      const rect=videoDock?.getBoundingClientRect(); if(!rect||!videoDock)return;
-      const offsetX=event.clientX-rect.left,offsetY=event.clientY-rect.top;
-      videoHead.setPointerCapture?.(event.pointerId);
-      const move=moveEvent=>{
-        const width=videoDock.offsetWidth,height=videoDock.offsetHeight;
-        setVideoFloating({left:Math.max(8,Math.min(window.innerWidth-width-8,moveEvent.clientX-offsetX)),top:Math.max(8,Math.min(window.innerHeight-height-8,moveEvent.clientY-offsetY))},false);
-      };
-      const done=()=>{persistUi();window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',done)};
-      window.addEventListener('pointermove',move);window.addEventListener('pointerup',done);
+    const setVideoLarge = large => {
+      videoDock?.classList.toggle('is-large', large);
+      localUi.videoLarge = large;
+      persistUi();
+      $('#room-video-size')?.setAttribute('aria-label', large ? 'Уменьшить видеозвонок' : 'Развернуть видеозвонок');
+    };
+    const setVideoFloating = (position, shouldPersist = true) => {
+      if (!videoDock) return;
+      const valid = position && Number.isFinite(Number(position.left)) && Number.isFinite(Number(position.top));
+      videoDock.classList.toggle('is-floating', valid);
+      videoDock.style.left = valid ? `${Math.round(Number(position.left))}px` : '';
+      videoDock.style.top = valid ? `${Math.round(Number(position.top))}px` : '';
+      localUi.videoPosition = valid ? { left: Number(position.left), top: Number(position.top) } : null;
+      $('#room-video-dock-toggle')?.setAttribute('aria-label', valid ? 'Закрепить видеозвонок справа' : 'Окно закреплено справа');
+      if (shouldPersist) persistUi();
+    };
+
+    function setProviderTab(provider, userTriggered = true) {
+      currentProvider = provider;
+      if (userTriggered) {
+        localUi.videoProvider = provider;
+        localUi.videoProviderUserChoice = true;
+        persistUi();
+        if (teacher) {
+          save({ video_provider: provider });
+        }
+      }
+      document.querySelectorAll('.room-video-provider-tab').forEach(tab => {
+        const active = tab.dataset.provider === provider;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', String(active));
+      });
+      $('#os-placeholder-daily')?.classList.toggle('hidden', provider !== 'daily');
+      $('#os-placeholder-jitsi')?.classList.toggle('hidden', provider !== 'jitsi');
+      $('#os-placeholder-external')?.classList.toggle('hidden', provider !== 'external');
+    }
+
+    document.querySelectorAll('.room-video-provider-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        setProviderTab(tab.dataset.provider, true);
+      });
     });
-    if(localUi.videoOpen===true)setVideoOpen(true);if(localUi.videoLarge===true)setVideoLarge(true);if(localUi.videoPosition)setVideoFloating(localUi.videoPosition);
-    $('#os-meeting-join')?.addEventListener('click', async () => {
-        const btn = $('#os-meeting-join');
-        btn.disabled = true; btn.textContent = 'Подключение...';
-        const r = await post(`/lesson/${lessonId}/studio/daily/join`, {});
-        if (!r.success) {
-            btn.disabled = false; btn.textContent = 'Попробовать снова';
-            return toast(r.error || 'Не удалось подключиться к встрече');
+
+    async function getJoinData(requestedProvider) {
+      if (cachedJoinData && cachedJoinData[requestedProvider]) {
+        return cachedJoinData[requestedProvider];
+      }
+      const r = await post(`/lesson/${lessonId}/studio/daily/join`, { provider: requestedProvider });
+      if (r) {
+        if (!cachedJoinData) cachedJoinData = {};
+        cachedJoinData[requestedProvider] = r;
+        if (r.jitsi_room) cachedJoinData['jitsi'] = r;
+      }
+      return r;
+    }
+
+    async function resetCalls() {
+      if (dailyTimeoutTimer) {
+        clearTimeout(dailyTimeoutTimer);
+        dailyTimeoutTimer = null;
+      }
+      if (dailyFrame) {
+        try { await dailyFrame.destroy(); } catch (_) {}
+        dailyFrame = null;
+      }
+      if (jitsiApi) {
+        try { jitsiApi.dispose(); } catch (_) {}
+        jitsiApi = null;
+      }
+      if (dailyContainer) {
+        dailyContainer.style.display = 'none';
+        dailyContainer.innerHTML = '';
+      }
+      if (jitsiContainer) {
+        jitsiContainer.style.display = 'none';
+        jitsiContainer.innerHTML = '';
+      }
+      isCallActive = false;
+      statusDot?.classList.remove('is-live');
+      activeWrap?.classList.add('hidden');
+      placeholder?.classList.remove('hidden');
+      const dailyBtn = $('#os-meeting-join');
+      if (dailyBtn) { dailyBtn.disabled = false; dailyBtn.textContent = 'Подключиться к Daily'; }
+      const jitsiBtn = $('#os-meeting-join-jitsi');
+      if (jitsiBtn) { jitsiBtn.disabled = false; jitsiBtn.textContent = 'Подключиться к Jitsi'; }
+    }
+
+    function showFailoverBanner(message) {
+      if (!failoverBanner) return;
+      if (message) {
+        const textSpan = failoverBanner.querySelector('.room-video-failover-msg span');
+        if (textSpan) textSpan.textContent = message;
+      }
+      failoverBanner.classList.remove('hidden');
+    }
+
+    async function connectDaily() {
+      const btn = $('#os-meeting-join');
+      if (btn) { btn.disabled = true; btn.textContent = 'Подключение...'; }
+      await resetCalls();
+
+      const r = await getJoinData('daily');
+      if (!r || (!r.room_url && !r.success)) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Подключиться к Daily'; }
+        toast(r?.error || 'Видеосервер Daily недоступен');
+        showFailoverBanner('Daily недоступен на сервере.');
+        return;
+      }
+
+      if (!window.DailyIframe) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Подключиться к Daily'; }
+        toast('Видеомодуль Daily не загружен. Переключаем на Jitsi...');
+        showFailoverBanner('Модуль Daily не загрузился.');
+        setProviderTab('jitsi', true);
+        connectJitsi();
+        return;
+      }
+
+      placeholder?.classList.add('hidden');
+      activeWrap?.classList.remove('hidden');
+      dailyContainer.style.display = 'block';
+      jitsiContainer.style.display = 'none';
+      if (activeLabel) activeLabel.textContent = 'Подключение к Daily...';
+
+      dailyTimeoutTimer = setTimeout(() => {
+        if (!isCallActive) {
+          console.warn('Daily connection timed out - Russian ISP DPI blocking');
+          toast('Соединение с Daily сброшено провайдером (ERR_CONNECTION_RESET). Автоматически переключаем на Jitsi...');
+          showFailoverBanner('Соединение с Daily сброшено вашим провайдером.');
+          setProviderTab('jitsi', true);
+          connectJitsi();
         }
-        $('#os-meeting-placeholder').style.display = 'none';
-        const container = $('#os-daily-container');
-        container.style.display = 'block';
-        if (!window.DailyIframe) {
-            container.style.display = 'none';
-            $('#os-meeting-placeholder').style.display = 'block';
-            btn.disabled = false; btn.textContent = 'Подключиться';
-            return toast('Не удалось загрузить видеомодуль Daily. Обновите страницу или проверьте сеть.');
-        }
-        const resetDailyFrame = async () => {
-          try { await dailyFrame?.destroy(); } catch (_) {}
-          dailyFrame = null;
-          container.style.display = 'none';
-          $('#os-meeting-placeholder').style.display = 'block';
-          btn.disabled = false; btn.textContent = 'Подключиться';
-        };
-        try {
-          if (!dailyFrame) {
-            dailyFrame = DailyIframe.createFrame(container, { showLeaveButton: true, iframeStyle: { width: '100%', height: '100%', border: '0' } });
-            dailyFrame.on('left-meeting', () => {
-              $('#os-meeting-placeholder').style.display = 'block';
-              container.style.display = 'none';
-              btn.disabled = false; btn.textContent = 'Подключиться';
-            });
-            dailyFrame.on('error', async error => {
-              console.error('Daily meeting error', error);
-              await resetDailyFrame();
-              toast('Daily отклонил подключение. Проверьте разрешение на камеру и микрофон, затем повторите попытку.');
-            });
+      }, 12000);
+
+      try {
+        dailyFrame = DailyIframe.createFrame(dailyContainer, {
+          showLeaveButton: true,
+          iframeStyle: { width: '100%', height: '100%', border: '0' }
+        });
+
+        dailyFrame.on('joined-meeting', () => {
+          if (dailyTimeoutTimer) { clearTimeout(dailyTimeoutTimer); dailyTimeoutTimer = null; }
+          isCallActive = true;
+          statusDot?.classList.add('is-live');
+          if (activeLabel) activeLabel.textContent = 'В эфире (Daily)';
+          failoverBanner?.classList.add('hidden');
+        });
+
+        dailyFrame.on('left-meeting', async () => {
+          await resetCalls();
+        });
+
+        dailyFrame.on('error', async error => {
+          console.error('Daily meeting error', error);
+          if (dailyTimeoutTimer) { clearTimeout(dailyTimeoutTimer); dailyTimeoutTimer = null; }
+          const errStr = String(error?.errorMsg || error?.message || error || '');
+          await resetCalls();
+          if (errStr.includes('timed out') || errStr.includes('network') || errStr.includes('load') || !errStr) {
+            toast('Daily заблокирован провайдером. Автоматически переключаем на защищённый Jitsi...');
+            showFailoverBanner('Daily сброшен провайдером.');
+            setProviderTab('jitsi', true);
+            connectJitsi();
+          } else {
+            toast('Ошибка камеры или микрофона. Проверьте разрешения в браузере.');
           }
-          await dailyFrame.join({ url: r.room_url, token: r.token });
-        } catch (error) {
-          console.error('Daily connection failed', error);
-          await resetDailyFrame();
-          toast('Не удалось подключиться к встрече Daily. Повторите попытку.');
+        });
+
+        await dailyFrame.join({ url: r.room_url, token: r.token });
+      } catch (error) {
+        console.error('Daily join failed', error);
+        if (dailyTimeoutTimer) { clearTimeout(dailyTimeoutTimer); dailyTimeoutTimer = null; }
+        await resetCalls();
+        toast('Провайдер блокирует Daily (ERR_CONNECTION_RESET). Переключаем на Jitsi...');
+        showFailoverBanner('Daily заблокирован вашим провайдером.');
+        setProviderTab('jitsi', true);
+        connectJitsi();
+      }
+    }
+
+    async function loadJitsiScript() {
+      if (window.JitsiMeetExternalAPI) return true;
+      return new Promise(resolve => {
+        const script = document.createElement('script');
+        script.src = 'https://meet.jit.si/external_api.js';
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.head.appendChild(script);
+      });
+    }
+
+    async function connectJitsi() {
+      const btn = $('#os-meeting-join-jitsi');
+      if (btn) { btn.disabled = true; btn.textContent = 'Подключение...'; }
+      await resetCalls();
+
+      const r = await getJoinData('jitsi');
+      const roomName = r?.jitsi_room || r?.room_name || `boostudy-lesson-${lessonId}`;
+      const domain = r?.jitsi_domain || 'meet.jit.si';
+      const displayName = r?.user_name || (teacher ? 'Преподаватель' : 'Ученик');
+
+      const loaded = await loadJitsiScript();
+      if (!loaded || !window.JitsiMeetExternalAPI) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Подключиться к Jitsi'; }
+        return toast('Не удалось загрузить модуль Jitsi Meet. Проверьте сеть.');
+      }
+
+      placeholder?.classList.add('hidden');
+      activeWrap?.classList.remove('hidden');
+      dailyContainer.style.display = 'none';
+      jitsiContainer.style.display = 'block';
+      if (activeLabel) activeLabel.textContent = 'Подключение к Jitsi (РФ)...';
+
+      try {
+        jitsiContainer.innerHTML = '';
+        jitsiApi = new window.JitsiMeetExternalAPI(domain, {
+          roomName: roomName,
+          width: '100%',
+          height: '100%',
+          parentNode: jitsiContainer,
+          userInfo: { displayName: displayName },
+          configOverwrite: {
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            prejoinPageEnabled: false,
+            disableDeepLinking: true,
+            enableWelcomePage: false,
+            enableClosePage: false
+          },
+          interfaceConfigOverwrite: {
+            SHOW_JITSI_WATERMARK: false,
+            SHOW_WATERMARK_FOR_GUESTS: false,
+            SHOW_BRAND_WATERMARK: false,
+            TOOLBAR_BUTTONS: [
+              'microphone', 'camera', 'desktop', 'chat', 'raisehand',
+              'tileview', 'fullscreen', 'hangup'
+            ]
+          }
+        });
+
+        jitsiApi.addEventListener('videoConferenceJoined', () => {
+          isCallActive = true;
+          statusDot?.classList.add('is-live');
+          if (activeLabel) activeLabel.textContent = 'В эфире (Jitsi РФ)';
+          failoverBanner?.classList.add('hidden');
+        });
+
+        jitsiApi.addEventListener('videoConferenceLeft', async () => {
+          await resetCalls();
+        });
+
+        jitsiApi.addEventListener('readyToClose', async () => {
+          await resetCalls();
+        });
+      } catch (err) {
+        console.error('Jitsi launch error', err);
+        await resetCalls();
+        toast('Не удалось инициализировать Jitsi Meet.');
+      }
+    }
+
+    function openExternalTab() {
+      if (currentProvider === 'jitsi') {
+        const roomName = cachedJoinData?.jitsi?.jitsi_room || `boostudy-lesson-${lessonId}`;
+        const domain = cachedJoinData?.jitsi?.jitsi_domain || 'meet.jit.si';
+        window.open(`https://${domain}/${roomName}`, '_blank', 'noopener,noreferrer');
+      } else if (currentProvider === 'external') {
+        const url = String(state.backup_call_url || '').trim();
+        if (url) {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        } else {
+          toast('Резервная ссылка ещё не настроена преподавателем.');
         }
+      } else {
+        if (cachedJoinData?.daily?.room_url) {
+          const u = cachedJoinData.daily.room_url + (cachedJoinData.daily.token ? `?t=${cachedJoinData.daily.token}` : '');
+          window.open(u, '_blank', 'noopener,noreferrer');
+        } else {
+          getJoinData('daily').then(r => {
+            if (r?.room_url) {
+              const u = r.room_url + (r.token ? `?t=${r.token}` : '');
+              window.open(u, '_blank', 'noopener,noreferrer');
+            } else {
+              toast('Не удалось получить ссылку на звонок Daily');
+            }
+          });
+        }
+      }
+    }
+
+    $('#room-video-toggle')?.addEventListener('click', () => setVideoOpen(true));
+    $('#room-video-close')?.addEventListener('click', () => setVideoOpen(false));
+    $('#room-video-size')?.addEventListener('click', () => setVideoLarge(!videoDock?.classList.contains('is-large')));
+    $('#room-video-dock-toggle')?.addEventListener('click', () => setVideoFloating(null));
+    $('#room-video-external-win')?.addEventListener('click', openExternalTab);
+    $('#os-meeting-join')?.addEventListener('click', connectDaily);
+    $('#os-meeting-daily-tab')?.addEventListener('click', () => { currentProvider = 'daily'; openExternalTab(); });
+    $('#os-meeting-join-jitsi')?.addEventListener('click', connectJitsi);
+    $('#os-meeting-jitsi-tab')?.addEventListener('click', () => { currentProvider = 'jitsi'; openExternalTab(); });
+    $('#os-video-failover-btn')?.addEventListener('click', () => { setProviderTab('jitsi', true); connectJitsi(); });
+    $('#os-video-hangup')?.addEventListener('click', resetCalls);
+    $('#os-video-switch-active-btn')?.addEventListener('click', async () => { await resetCalls(); });
+
+    $('#os-backup-url-save')?.addEventListener('click', async () => {
+      const input = $('#os-backup-url-input');
+      const val = String(input?.value || '').trim();
+      if (!val) return toast('Введите ссылку на видеовстречу');
+      const r = await save({ backup_call_url: val });
+      if (r && r.success) {
+        toast('Резервная ссылка сохранена и отправлена ученику');
+      }
     });
+
+    const videoHead = $('#room-video-head');
+    videoHead?.addEventListener('pointerdown', event => {
+      if (event.target.closest('button')) return;
+      const rect = videoDock?.getBoundingClientRect();
+      if (!rect || !videoDock) return;
+      const offsetX = event.clientX - rect.left, offsetY = event.clientY - rect.top;
+      videoHead.setPointerCapture?.(event.pointerId);
+      const move = moveEvent => {
+        const width = videoDock.offsetWidth, height = videoDock.offsetHeight;
+        setVideoFloating({
+          left: Math.max(8, Math.min(window.innerWidth - width - 8, moveEvent.clientX - offsetX)),
+          top: Math.max(8, Math.min(window.innerHeight - height - 8, moveEvent.clientY - offsetY))
+        }, false);
+      };
+      const done = () => {
+        persistUi();
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', done);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', done);
+    });
+
+    if (localUi.videoOpen === true) setVideoOpen(true);
+    if (localUi.videoLarge === true) setVideoLarge(true);
+    if (localUi.videoPosition) setVideoFloating(localUi.videoPosition);
+    if (currentProvider) setProviderTab(currentProvider, false);
     const materialFile=$('#os-material-file'),materialUpload=$('#os-material-upload'),materialDropzone=$('#os-material-dropzone');
     const chooseMaterial=file=>{if(!file||!materialFile)return;const transfer=new DataTransfer();transfer.items.add(file);materialFile.files=transfer.files;materialUpload.disabled=false;materialDropzone?.classList.add('has-file');if(materialDropzone)materialDropzone.querySelector('span').textContent=file.name};
     $('#os-material-pick')?.addEventListener('click',()=>materialFile?.click());

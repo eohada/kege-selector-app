@@ -34,11 +34,11 @@
 
       <section class="room-workspace">
         <section id="room-view-work" class="room-view" data-view-panel="work" role="tabpanel" aria-labelledby="room-tab-work">
-          <header class="room-task-header"><div class="room-task-meta"><span id="os-task-status" class="room-meta-badge">—</span><span id="room-mission-badge" class="room-meta-badge room-meta-accent"><i class="ph-bold ph-sparkle"></i> Фокус: одна задача</span></div><div class="room-task-heading"><div><span class="room-eyebrow">ТЕКУЩАЯ ЗАДАЧА</span><h2 id="os-task-title">Выберите задание</h2></div><strong id="room-mission-progress">Шаг —</strong></div></header>
+          <header class="room-task-header"><div class="room-task-meta"><span id="os-task-status" class="room-meta-badge">—</span><span id="room-mission-badge" class="room-meta-badge room-meta-accent"><i class="ph-bold ph-sparkle"></i> Фокус: одна задача</span></div><div class="room-task-heading"><div class="room-mission-orb"><i class="ph-fill ph-rocket-launch"></i></div><div><span class="room-eyebrow">ТЕКУЩАЯ ЗАДАЧА</span><h2 id="os-task-title">Выберите задание</h2></div><strong id="room-mission-progress">Шаг —</strong></div></header>
           <div class="room-practice-grid">
             <section class="room-problem room-practice-card"><div class="room-panel-title"><span><i class="ph-bold ph-file-text"></i> Условие</span></div><div id="os-task-body" class="room-task-body">Выберите задание в навигаторе, чтобы открыть условие.</div></section>
             <section class="room-editor room-practice-card"><div class="room-panel-title"><span><i class="ph-bold ph-terminal-window"></i> Python IDE <em class="room-language-badge">Python</em></span><button id="os-versions" class="room-text-action">Версии</button></div><div class="room-code-stage"><pre id="os-code-highlight" aria-hidden="true"><code></code></pre><textarea id="os-code" spellcheck="false" aria-label="Редактор Python-кода" placeholder="# Пишите код здесь…"></textarea></div><div class="room-editor-footer"><input id="os-answer" placeholder="Финальный ответ"><button id="os-save" class="room-action">Сохранить</button></div></section>
-            <section class="room-console room-practice-card"><div class="room-panel-title"><span><i class="ph-bold ph-play-circle"></i> Запуск и результаты</span></div><button id="os-run" class="room-action room-action-primary room-run-action"><i class="ph-bold ph-play"></i> Запустить код</button><pre id="os-output">Результат выполнения появится здесь.</pre><div id="os-versions-list"></div></section>
+            <section class="room-console room-practice-card"><div class="room-panel-title"><span><i class="ph-bold ph-play-circle"></i> Запуск и результаты</span><span class="room-console-hint">Ctrl+Enter</span></div><button id="os-run" class="room-action room-action-primary room-run-action"><i class="ph-bold ph-play"></i> Запустить код</button><pre id="os-output">Результат выполнения появится здесь.</pre><div id="os-versions-list"></div></section>
           </div><div class="room-autosave-status"><i class="ph-fill ph-check-circle"></i> Автосохранение доступно во время работы</div>
         </section>
 
@@ -59,11 +59,102 @@
       </aside>
     </div>
 
-    <aside id="room-video-dock" class="room-video-dock hidden" aria-label="Видеозвонок Daily"><div id="room-video-head" class="room-video-head"><strong>Daily · {{ teacher_name if is_studio_teacher else 'Преподаватель' }}</strong><div><button id="room-video-dock-toggle" class="room-icon" aria-label="Закрепить видеозвонок справа"><i class="ph-bold ph-push-pin"></i></button><button id="room-video-size" class="room-icon" aria-label="Развернуть видеозвонок"><i class="ph-bold ph-arrows-out"></i></button><button id="room-video-close" class="room-icon" aria-label="Скрыть видеозвонок"><i class="ph-bold ph-x"></i></button></div></div><div id="os-meeting-placeholder" class="room-video-empty"><i class="ph-bold ph-video-camera"></i><p>Видеозвонок доступен поверх любого пространства.</p><button id="os-meeting-join" class="room-action room-action-primary">Подключиться</button></div><div id="os-daily-container" class="room-daily-frame"></div></aside>
+    <aside id="room-video-dock" class="room-video-dock hidden" aria-label="Видеозвонок урока">
+      <div id="room-video-head" class="room-video-head">
+        <div class="room-video-head-left">
+          <span id="os-video-status-dot" class="room-video-status-dot" title="Статус звонка"></span>
+          <strong id="os-video-title">Видеосвязь · {{ teacher_name if is_studio_teacher else 'Преподаватель' }}</strong>
+        </div>
+        <div class="room-video-head-right">
+          <button id="room-video-external-win" class="room-icon" aria-label="Открыть в отдельной вкладке" title="Открыть в отдельной вкладке"><i class="ph-bold ph-arrow-square-out"></i></button>
+          <button id="room-video-dock-toggle" class="room-icon" aria-label="Закрепить видеозвонок справа"><i class="ph-bold ph-push-pin"></i></button>
+          <button id="room-video-size" class="room-icon" aria-label="Развернуть видеозвонок"><i class="ph-bold ph-arrows-out"></i></button>
+          <button id="room-video-close" class="room-icon" aria-label="Скрыть видеозвонок"><i class="ph-bold ph-x"></i></button>
+        </div>
+      </div>
+
+      <div id="os-video-provider-bar" class="room-video-provider-bar" role="tablist" aria-label="Выбор канала видеосвязи">
+        <button type="button" class="room-video-provider-tab active" data-provider="daily" role="tab" aria-selected="true">
+          <i class="ph-bold ph-video-camera"></i> Daily
+        </button>
+        <button type="button" class="room-video-provider-tab" data-provider="jitsi" role="tab" aria-selected="false">
+          <i class="ph-bold ph-shield-check"></i> Jitsi (РФ)
+        </button>
+        <button type="button" class="room-video-provider-tab" data-provider="external" role="tab" aria-selected="false">
+          <i class="ph-bold ph-link"></i> Резерв
+        </button>
+      </div>
+
+      <div id="os-video-failover-banner" class="room-video-failover hidden" role="alert">
+        <div class="room-video-failover-msg">
+          <i class="ph-bold ph-warning-circle"></i>
+          <span>Связь Daily заблокирована провайдером (ERR_CONNECTION_RESET).</span>
+        </div>
+        <button type="button" id="os-video-failover-btn" class="room-action room-action-primary room-action-xs">Перейти на Jitsi</button>
+      </div>
+
+      <div id="os-meeting-placeholder" class="room-video-empty">
+        <div id="os-placeholder-daily" class="room-video-provider-view">
+          <div class="room-video-icon-wrap"><i class="ph-bold ph-video-camera"></i></div>
+          <h3>Встроенный Daily</h3>
+          <p>Основной видеоканал. Если у вас или ученика возникает <code>ERR_CONNECTION_RESET</code>, переключитесь на <b>Jitsi (РФ)</b>.</p>
+          <div class="room-video-btn-row">
+            <button id="os-meeting-join" class="room-action room-action-primary">Подключиться к Daily</button>
+            <button id="os-meeting-daily-tab" class="room-action" title="Открыть Daily в отдельной вкладке браузера"><i class="ph-bold ph-arrow-square-out"></i> В новой вкладке</button>
+          </div>
+        </div>
+
+        <div id="os-placeholder-jitsi" class="room-video-provider-view hidden">
+          <div class="room-video-icon-wrap is-jitsi"><i class="ph-bold ph-shield-check"></i></div>
+          <h3>Защищённый Jitsi Meet</h3>
+          <p>Не блокируется российскими провайдерами и РКН. Работает прямо внутри платформы.</p>
+          <div class="room-video-btn-row">
+            <button id="os-meeting-join-jitsi" class="room-action room-action-primary">Подключиться к Jitsi</button>
+            <button id="os-meeting-jitsi-tab" class="room-action" title="Открыть Jitsi в отдельной вкладке браузера"><i class="ph-bold ph-arrow-square-out"></i> В новой вкладке</button>
+          </div>
+        </div>
+
+        <div id="os-placeholder-external" class="room-video-provider-view hidden">
+          <div class="room-video-icon-wrap is-external"><i class="ph-bold ph-link"></i></div>
+          <h3>Резервный звонок</h3>
+          <p>Яндекс.Телемост, VK Звонки, Telegram или Zoom.</p>
+          {% if is_studio_teacher %}
+            <div class="room-video-backup-box">
+              <input id="os-backup-url-input" type="url" placeholder="Вставьте ссылку (Телемост, VK, Telegram, Zoom)..." aria-label="Ссылка на резервную видеовстречу">
+              <button id="os-backup-url-save" class="room-action room-action-primary">Сохранить ссылку</button>
+            </div>
+            <div class="room-video-backup-quick">
+              <a href="https://telemost.yandex.ru/" target="_blank" rel="noopener" class="room-text-action">
+                <i class="ph-bold ph-arrow-square-out"></i> Открыть Яндекс.Телемост для создания встречи
+              </a>
+            </div>
+          {% else %}
+            <div class="room-video-backup-student">
+              <p id="os-student-backup-notice" class="room-backup-empty-text">Преподаватель пока не настроил резервную ссылку.</p>
+              <a id="os-student-backup-btn" href="#" target="_blank" rel="noopener" class="room-action room-action-primary hidden">
+                Войти в звонок <i class="ph-bold ph-arrow-square-out"></i>
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div id="os-video-container" class="room-video-active-wrap hidden">
+        <div id="os-daily-container" class="room-daily-frame"></div>
+        <div id="os-jitsi-container" class="room-jitsi-frame"></div>
+        <div class="room-video-active-bar">
+          <span id="os-video-active-label" class="room-video-active-label">В эфире</span>
+          <div class="room-video-active-actions">
+            <button id="os-video-switch-active-btn" class="room-action room-action-xs" title="Сменить провайдера">Сменить канал</button>
+            <button id="os-video-hangup" class="room-danger room-action-xs" title="Отключиться от звонка"><i class="ph-bold ph-phone-disconnect"></i> Завершить</button>
+          </div>
+        </div>
+      </div>
+    </aside>
   </div>
 </main>
 
 <div id="os-finish-modal" class="os-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="os-finish-title" aria-hidden="true"><div class="os-modal room-completion-modal"><div><span class="room-eyebrow">ЗАВЕРШЕНИЕ УРОКА</span><h2 id="os-finish-title">Зафиксируем результат</h2><p>Ученик получит итог, домашнее задание и уведомление после сохранения.</p></div><label>Освоено<textarea id="os-outcome-completed" placeholder="По одному пункту с новой строки"></textarea></label><label>Повторить / разобрать<textarea id="os-outcome-repeat" placeholder="По одному пункту с новой строки"></textarea></label><label>Домашнее задание<textarea id="os-outcome-homework" placeholder="Что сделать до следующего занятия"></textarea></label><label>Приватная заметка преподавателя<textarea id="os-outcome-private-note" placeholder="Не попадёт ученику"></textarea></label><div class="os-modal-actions"><button id="os-finish-cancel" class="room-action">Продолжить урок</button><button id="os-finish-confirm" class="room-action room-action-primary">Завершить урок</button></div></div></div>
 <div id="room-confirm-modal" class="os-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="room-confirm-title" aria-hidden="true"><div class="os-modal"><span class="room-eyebrow">ПОДТВЕРЖДЕНИЕ</span><h2 id="room-confirm-title">Подтвердите действие</h2><p id="room-confirm-text"></p><div class="os-modal-actions"><button id="room-confirm-cancel" class="room-action">Отмена</button><button id="room-confirm-accept" class="room-danger">Удалить</button></div></div></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script><script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script><script src="{{ url_for('static', filename='lesson-studio-os.js') }}?v=20260912-lesson-room-redesign-v1"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script><script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script><script src="https://meet.jit.si/external_api.js"></script><script src="{{ url_for('static', filename='lesson-studio-os.js') }}?v=20260919-video-resilience-v1"></script>
 {% endblock %}

@@ -35,9 +35,10 @@ logger = logging.getLogger(__name__)
 app = create_app()
 
 if __name__ == '__main__':
-    logger.info('Запуск приложения')
+    port = int(os.environ.get('PORT', 5000))
+    logger.info(f'Запуск приложения на порту {port}')
     socketio = getattr(app, 'socketio', None)
     if socketio:
-        socketio.run(app, debug=True, host='127.0.0.1', port=5000, allow_unsafe_werkzeug=True)
+        socketio.run(app, debug=True, host='127.0.0.1', port=port, allow_unsafe_werkzeug=True)
     else:
-        app.run(debug=True, host='127.0.0.1', port=5000)
+        app.run(debug=True, host='127.0.0.1', port=port)
