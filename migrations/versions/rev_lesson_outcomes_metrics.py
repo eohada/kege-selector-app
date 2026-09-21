@@ -1,6 +1,6 @@
 """add lesson outcomes metrics balance deducted and student study time
 
-Revision ID: rev_lesson_outcomes_balance_study_time
+Revision ID: rev_lesson_outcomes_metrics
 Revises: rev_teacher_quick_comment_index
 Create Date: 2026-09-21 21:05:00.000000
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = 'rev_lesson_outcomes_balance_study_time'
+revision = 'rev_lesson_outcomes_metrics'
 down_revision = 'rev_teacher_quick_comment_index'
 branch_labels = None
 depends_on = None
