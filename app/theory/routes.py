@@ -320,7 +320,7 @@ def _render_theory_content_html(content_value):
 
         def _is_table_candidate_line(line):
             stripped = (line or '').strip()
-            return _is_border_line(stripped) or _is_row_line(stripped)
+            return _is_border_line(stripped) or _is_row_line(stripped) or _is_separator_only(stripped)
 
         def _split_cells(row_line):
             parts = [p.strip() for p in row_line.strip().split('|')]
@@ -349,6 +349,11 @@ def _render_theory_content_html(content_value):
                     break
                 block.append(cur)
                 j += 1
+
+            if any(re.match(r'^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$', b) for b in block):
+                out.extend(block)
+                i = j
+                continue
 
             row_lines = [b for b in block if _is_row_line(b)]
             if len(row_lines) < 2:
@@ -421,26 +426,42 @@ def _render_theory_content_html(content_value):
         lang = (match.group(1) or 'python').strip().lower()
         code_body = _normalize_code_body_for_theory(match.group(2) or '').strip()
         highlighted = _highlight_python_html(code_body) if lang == 'python' else html.escape(code_body)
+        
+        lines = code_body.split('\n')
+        line_numbers_html = ''.join(f'<div>{i+1}</div>' for i in range(len(lines)))
+        
+        is_parity = "n % 2 == 0" in code_body
+        code_title = "Пример: проверка чётности числа" if is_parity else ("Пример кода" if lang == 'python' else f"Код ({lang})")
+        
+        py_icon = '''<svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none"><path d="M11.9 1.5c-3 0-5.4.6-5.4 2.8v2.3h5.6v.8H3.8C1.6 7.4 0 9.8 0 12.8c0 3.1 1.7 5.1 4.1 5.3v-2.5c0-1.6 1.4-2.8 3-2.8h5.3c1.7 0 3-1.3 3-3V4.3c0-2.3-2.4-2.8-3.5-2.8zm-2.4 1.7c.6 0 1.1.5 1.1 1.1s-.5 1.1-1.1 1.1c-.6 0-1.1-.5-1.1-1.1s.5-1.1 1.1-1.1z" fill="#387EB8"/><path d="M12.1 22.5c3 0 5.4-.6 5.4-2.8v-2.3h-5.6v-.8h8.3c2.2 0 3.8-2.4 3.8-5.4 0-3.1-1.7-5.1-4.1-5.3v2.5c0 1.6-1.4 2.8-3 2.8h-5.3c-1.7 0-3 1.3-3 3v5.5c0 2.3 2.4 2.8 3.5 2.8zm2.4-1.7c-.6 0-1.1-.5-1.1-1.1s.5-1.1 1.1-1.1c.6 0 1.1.5 1.1 1.1s-.5 1.1-1.1 1.1z" fill="#FFE052"/></svg>'''
+        
+        result_box = ''
+        if is_parity:
+            result_box = '''
+            <div class="theory-result-box bg-[#ECFDF5] border-t border-emerald-100 p-3.5 sm:p-4 rounded-b-2xl flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 text-xs font-black text-emerald-800"><i class="ph-fill ph-play-circle text-base text-emerald-600"></i>Результат работы</span>
+                <span class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm"><span class="text-slate-400 font-medium">Ввод:</span> 4</span>
+                <span class="text-xs font-black text-slate-800"><span class="text-slate-500 font-semibold">Вывод:</span> Чётное</span>
+              </div>
+              <span class="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100/70 px-2.5 py-0.5 text-[11px] font-black text-emerald-700"><i class="ph-bold ph-check text-xs"></i>Пример выполнен</span>
+            </div>
+            '''
+        
         return (
-            '<div class="theory-smart-code theory-embed-code my-8 rounded-[24px] border border-slate-200 overflow-hidden bg-white shadow-sm" '
-            f'data-lang="{lang}">'
-            '<div class="px-4 py-2.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">'
-            '<div class="flex items-center gap-2.5">'
-            '<div class="w-2.5 h-2.5 rounded-full" style="background:#F87171;border:1px solid #EF4444;"></div>'
-            '<div class="w-2.5 h-2.5 rounded-full" style="background:#F59E0B;border:1px solid #D97706;"></div>'
-            '<div class="w-2.5 h-2.5 rounded-full" style="background:#4ADE80;border:1px solid #22C55E;"></div>'
-            f'<span class="text-[10px] font-mono font-bold text-slate-500 uppercase ml-1">{lang}</span></div>'
-            '<div class="flex items-start gap-2 flex-1 justify-end min-w-0">'
-            '<textarea class="theory-code-args bg-white border border-slate-300 rounded-md px-2 py-1 text-[11px] text-slate-700 font-mono min-w-[180px] max-w-[min(340px,48vw)] min-h-[2.75rem] max-h-28 resize-y leading-snug" rows="2" wrap="off" '
-            'title="Одна строка — один ответ для очередного input(). Пустые строки между ответами не ставьте." '
-            'placeholder="Ответ 1 для 1-го input()&#10;Ответ 2 для 2-го input()"></textarea>'
-            '<button type="button" class="theory-run-btn self-center shrink-0 px-2.5 py-1 text-xs font-bold rounded-md shadow-sm focus:outline-none" style="color:#FFFFFF;background:#15803D;border:1px solid #14532D;">Run</button>'
-            '</div>'
-            '</div>'
-            f'<textarea class="theory-code-input hidden">{html.escape(code_body)}</textarea>'
-            f'<pre class="theory-code-highlight m-0 px-5 py-4 bg-white text-slate-800 text-[14px] font-mono leading-relaxed overflow-x-auto">{highlighted}</pre>'
-            '<pre class="theory-code-output hidden m-0 p-4 bg-slate-50 text-slate-700 text-xs font-mono border-t border-slate-200"></pre>'
-            '</div>'
+            f'<div class="theory-smart-code theory-embed-code my-5 rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm" data-lang="{lang}">'
+            f'<div class="px-4 py-2.5 border-b border-slate-200 bg-[#F8FAFC] flex items-center justify-between">'
+            f'<div class="flex items-center gap-2 text-xs font-bold text-slate-700">{py_icon}<span>{code_title}</span></div>'
+            f'<button type="button" class="theory-copy-btn inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition cursor-pointer" onclick="copyCodeFromSnippet(this)">'
+            f'<i class="ph-bold ph-copy"></i><span>Скопировать</span></button>'
+            f'</div>'
+            f'<textarea class="theory-code-raw hidden">{html.escape(code_body)}</textarea>'
+            f'<div class="flex p-4 bg-white text-xs sm:text-sm font-mono leading-relaxed overflow-x-auto">'
+            f'<div class="select-none pr-3 text-right text-slate-400 border-r border-slate-200 mr-3 leading-relaxed shrink-0">{line_numbers_html}</div>'
+            f'<pre class="theory-code-highlight m-0 p-0 text-slate-800 leading-relaxed font-mono overflow-x-auto flex-1">{highlighted}</pre>'
+            f'</div>'
+            f'{result_box}'
+            f'</div>'
         )
 
     def _callout_repl(match):
@@ -448,12 +469,8 @@ def _render_theory_content_html(content_value):
         body = (match.group(2) or '').strip()
         body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
         body = _escape_numeric_multiplication_stars(body)
-        # Inline markdown parity with teacher preview (bold/italic/code),
-        # but keep it safe for direct HTML rendering.
         safe_body = html.escape(body)
 
-        # Protect inline code from bold/italic regexes so regex symbols like "*", "+", ".*"
-        # are rendered literally and are not consumed as Markdown emphasis markers.
         code_placeholders = []
 
         def _stash_code(code_match):
@@ -466,31 +483,37 @@ def _render_theory_content_html(content_value):
 
         for idx, code_text in enumerate(code_placeholders):
             code_literal = (code_text or '').replace('*', '&#42;')
-            safe_body = safe_body.replace(f'__THEORY_INLINE_CODE_{idx}__', f'<code>{code_literal}</code>')
+            safe_body = safe_body.replace(f'__THEORY_INLINE_CODE_{idx}__', f'<code class="rounded bg-indigo-100/60 px-1 py-0.5 font-mono text-xs font-bold text-indigo-800">{code_literal}</code>')
 
         safe_body = _render_math_in_html_fragment(safe_body)
-        safe_body = safe_body.replace('\n', '<br>')
+        safe_body = re.sub(r'&lt;br\s*/?&gt;', '<br>', safe_body, flags=re.IGNORECASE)
+        safe_body = safe_body.replace('\r\n', '\n').replace('\r', '\n')
+        safe_body = re.sub(r'\n+', '<br>', safe_body)
+        safe_body = re.sub(r'(<br\s*/?>)+', '<br>', safe_body)
+
         theme = {
-            'attention': {'title': 'Внимание', 'bg': '#FFF7ED', 'border': '#FED7AA', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FFFFFF', 'icon_color': '#EA580C'},
-            'tip': {'title': 'Лайфхак', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-lightbulb', 'icon_bg': '#FFFFFF', 'icon_color': '#06B6D4'},
-            'danger': {'title': 'Осторожно', 'bg': '#FEF2F2', 'border': '#FECACA', 'icon': 'ph-fill ph-shield-warning', 'icon_bg': '#FFFFFF', 'icon_color': '#DC2626'},
-        }.get(ctype, {'title': 'Заметка', 'bg': '#ECFEFF', 'border': '#A5F3FC', 'icon': 'ph-fill ph-info', 'icon_bg': '#FFFFFF', 'icon_color': '#0891B2'})
+            'attention': {'bg': '#FFFBEB', 'border': '#FDE68A', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FEF3C7', 'icon_color': '#D97706'},
+            'warning': {'bg': '#FFFBEB', 'border': '#FDE68A', 'icon': 'ph-fill ph-lightbulb', 'icon_bg': '#FEF3C7', 'icon_color': '#D97706'},
+            'tip': {'bg': '#EEF2FF', 'border': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'},
+            'info': {'bg': '#EEF2FF', 'border': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'},
+            'danger': {'bg': '#FEF2F2', 'border': '#FECACA', 'icon': 'ph-fill ph-shield-warning', 'icon_bg': '#FEE2E2', 'icon_color': '#DC2626'},
+        }.get(ctype, {'bg': '#EEF2FF', 'border': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'})
         return (
-            f'<div class="theory-callout theory-callout--{html.escape(ctype)} my-8 rounded-[24px] p-6 flex gap-4 shadow-sm" style="background:{theme["bg"]};border:1px solid {theme["border"]};">'
-            f'<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center shadow-sm" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};border:1px solid {theme["border"]};">'
-            f'<i class="{theme["icon"]} text-xl"></i></div>'
-            f'<div><h4 class="font-black text-2xl leading-snug text-slate-900 mb-1">{theme["title"]}</h4>'
-            f'<p class="text-sm leading-relaxed font-extrabold text-slate-800">{safe_body}</p></div>'
+            f'<div class="theory-callout theory-callout--{html.escape(ctype)} my-4 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-sm" style="background:{theme["bg"]};border:1.5px solid {theme["border"]};">'
+            f'<div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center mt-0.5" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};">'
+            f'<i class="{theme["icon"]} text-lg"></i></div>'
+            f'<div class="text-xs sm:text-sm leading-relaxed text-slate-800 font-medium flex-1">{safe_body}</div>'
             '</div>'
         )
 
     def _practice_repl(match):
         task_id = (match.group(1) or '').strip()
         return (
-            '<div class="theory-practice-block my-8 rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">'
-            '<div class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">Интерактивный блок</div>'
-            f'<div class="text-2xl font-black text-slate-900 mb-3">Практика · ID: {task_id}</div>'
-            '<button type="button" class="px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors">Открыть в тренажере</button>'
+            '<div class="theory-practice-block my-6 rounded-2xl border-2 border-slate-200 bg-white p-5 sm:p-6 shadow-sm">'
+            '<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black">'
+            '<i class="ph-bold ph-lightning"></i>Интерактивный блок</div>'
+            f'<div class="text-lg font-black text-slate-900 mt-2 mb-3">Практика · Задание ID: {task_id}</div>'
+            f'<a href="/trainer?task_id={task_id}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black no-underline shadow-sm transition">Открыть в тренажёре</a>'
             '</div>'
         )
 
@@ -501,64 +524,91 @@ def _render_theory_content_html(content_value):
         key = html.escape(attrs.get('key', 'interactive-1'), quote=True)
         answer = html.escape(attrs.get('answer', ''), quote=True)
         placeholder = html.escape(attrs.get('placeholder', 'Введите ответ…'), quote=True)
+
+        type_labels = {
+            'choice': ('ph-bold ph-check-square-offset', 'Практика · Выбор ответа'),
+            'boolean': ('ph-bold ph-check-square-offset', 'Практика · Верно / Неверно'),
+            'input': ('ph-bold ph-textbox', 'Практика · Краткий ответ'),
+            'match': ('ph-bold ph-arrows-left-right', 'Практика · Сопоставление'),
+            'order': ('ph-bold ph-sort-ascending', 'Практика · Упорядочивание'),
+            'sequence': ('ph-bold ph-sort-ascending', 'Практика · Упорядочивание'),
+            'code': ('ph-bold ph-code', 'Практика · Код'),
+        }
+        icon, label = type_labels.get(kind, ('ph-bold ph-lightning', 'Практическое задание'))
+
         base = (
-            f'<section class="theory-interactive theory-interactive--{kind} my-8 rounded-[24px] border-2 border-emerald-200 bg-emerald-50/70 p-5" '
+            f'<div class="theory-interactive theory-interactive-card my-6 rounded-2xl border-2 border-indigo-100 bg-white p-5 sm:p-6 shadow-sm" '
             f'data-interactive-key="{key}" data-interactive-type="{html.escape(kind, quote=True)}">'
-            '<div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-700">'
-            '<i class="ph-fill ph-hand-pointing"></i> Практика прямо в теме</div>'
-            f'<h3 class="mt-2 text-lg font-black text-slate-900">{prompt}</h3>'
+            f'<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black">'
+            f'<i class="{icon}"></i><span>{label}</span></div>'
+            f'<h3 class="mt-3 text-base sm:text-lg font-black text-slate-900 leading-snug">{prompt}</h3>'
         )
+
         if kind == 'choice':
             options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
             controls = ''.join(
-                f'<button type="button" data-interactive-option="{html.escape(option, quote=True)}" class="theory-interactive-option rounded-xl border-2 border-white bg-white px-3 py-2 text-left text-sm font-bold text-slate-700 shadow-sm hover:border-emerald-400">{html.escape(option)}</button>'
+                f'<button type="button" data-interactive-option="{html.escape(option, quote=True)}" '
+                f'class="option-btn w-full text-left p-3.5 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/40 transition font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between group">'
+                f'<span>{html.escape(option)}</span>'
+                f'<span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0"></span>'
+                f'</button>'
                 for option in options
             )
-            controls = f'<div class="mt-4 grid gap-2 sm:grid-cols-2">{controls}</div>'
+            controls = f'<div class="mt-4 space-y-2.5">{controls}</div>'
         elif kind == 'hotspot':
             controls = '<div class="mt-4 grid max-w-xs grid-cols-3 gap-2" role="group" aria-label="Карта выбора клетки">' + ''.join(
-                f'<button type="button" data-interactive-option="{i}" aria-label="Клетка {i}" class="theory-interactive-option rounded-xl border-2 border-white bg-white p-4 text-center text-sm font-black text-slate-700 shadow-sm hover:border-emerald-400">{i}</button>' for i in range(1, 10)
+                f'<button type="button" data-interactive-option="{i}" aria-label="Клетка {i}" class="option-btn rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-4 text-center text-sm font-black text-slate-700 shadow-sm hover:border-indigo-400 transition">{i}</button>' for i in range(1, 10)
             ) + '</div>'
         elif kind in {'order', 'sequence'}:
             options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
             controls = '<div class="theory-order-options mt-4 flex flex-wrap gap-2">' + ''.join(
-                f'<button type="button" data-order-value="{html.escape(option, quote=True)}" class="rounded-full border-2 border-white bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm">{html.escape(option)}</button>'
+                f'<button type="button" data-order-value="{html.escape(option, quote=True)}" class="rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-400 px-3.5 py-2 text-xs font-black text-slate-700 shadow-sm transition cursor-pointer">{html.escape(option)}</button>'
                 for option in options
-            ) + '</div><p class="mt-2 text-xs font-bold text-slate-500">Нажмите элементы в правильном порядке.</p>'
+            ) + '</div><p class="mt-2 text-xs font-bold text-slate-400">Нажимайте элементы по порядку формирования.</p>'
         elif kind in {'table', 'trace'}:
             try:
                 rows = max(1, min(8, int(attrs.get('rows', '2') or 2)))
             except ValueError:
                 rows = 2
-            controls = '<div class="mt-4 grid max-w-xl grid-cols-2 gap-2">' + ''.join(
-                f'<input data-table-cell="{i}" class="rounded-xl border-2 border-white bg-white px-3 py-2 text-sm font-bold text-slate-700" placeholder="Значение {i + 1}">' for i in range(rows)
+            controls = '<div class="mt-4 grid max-w-xl grid-cols-2 gap-2.5">' + ''.join(
+                f'<input data-table-cell="{i}" class="rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3.5 py-2 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white" placeholder="Значение {i + 1}">' for i in range(rows)
             ) + '</div>'
         elif kind == 'boolean':
             controls = (
-                '<div class="mt-4 grid max-w-xl gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Выберите ответ">'
+                '<div class="mt-4 grid max-w-xl gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Выберите ответ" data-interactive-boolean>'
                 '<button type="button" data-interactive-option="true" role="radio" aria-checked="false" '
-                'class="rounded-xl border-2 border-white bg-white px-4 py-3 text-left text-sm font-bold text-slate-700 shadow-sm transition hover:border-emerald-400">'
-                'Да, утверждение верно</button>'
+                'class="option-btn p-3.5 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/40 transition font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between group">'
+                '<span>Да, утверждение верно</span><span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0"></span></button>'
                 '<button type="button" data-interactive-option="false" role="radio" aria-checked="false" '
-                'class="rounded-xl border-2 border-white bg-white px-4 py-3 text-left text-sm font-bold text-slate-700 shadow-sm transition hover:border-emerald-400">'
-                'Нет, утверждение неверно</button>'
+                'class="option-btn p-3.5 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/40 transition font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between group">'
+                '<span>Нет, утверждение неверно</span><span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0"></span></button>'
                 '</div>'
             )
         elif kind in {'code', 'debug'}:
             code = html.escape(attrs.get('code', 'print(42)'))
-            controls = f'<textarea data-interactive-code class="mt-4 min-h-32 w-full rounded-xl border-2 border-white bg-white p-3 font-mono text-sm text-slate-800" spellcheck="false">{code}</textarea>'
+            controls = f'<textarea data-interactive-code class="mt-4 min-h-32 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 font-mono text-sm text-slate-800 outline-none focus:border-indigo-500 focus:bg-white" spellcheck="false">{code}</textarea>'
         elif kind == 'slider':
-            controls = '<input type="range" min="0" max="100" value="0" data-interactive-slider class="mt-5 w-full accent-emerald-600"><output data-slider-output class="mt-2 block text-sm font-black text-emerald-800">0</output>'
+            controls = '<div class="mt-4 max-w-md"><input type="range" min="0" max="100" value="0" data-interactive-slider class="w-full accent-indigo-600"><output data-slider-output class="mt-2 block text-sm font-black text-indigo-700">0</output></div>'
         elif kind == 'match':
-            controls = '<div class="mt-4 grid max-w-xl gap-2 sm:grid-cols-2"><input data-match-left class="rounded-xl border-2 border-white bg-white px-3 py-2 text-sm font-bold" placeholder="Термин"><input data-match-right class="rounded-xl border-2 border-white bg-white px-3 py-2 text-sm font-bold" placeholder="Соответствие"></div>'
+            controls = '<div class="mt-4 grid max-w-lg gap-2.5 sm:grid-cols-2"><input data-match-left class="rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="Термин / объект"><input data-match-right class="rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="Соответствие / значение"></div>'
         elif kind in {'multi', 'classify'}:
             options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
-            controls = '<div class="mt-4 grid gap-2 sm:grid-cols-2">' + ''.join(
-                f'<button type="button" data-interactive-option="{html.escape(option, quote=True)}" class="rounded-xl border-2 border-white bg-white px-3 py-2 text-left text-sm font-bold text-slate-700 hover:border-emerald-400">{html.escape(option)}</button>' for option in options
-            ) + '</div><p class="mt-2 text-xs font-bold text-slate-500">Можно выбрать несколько вариантов.</p>'
-        else:
-            controls = f'<input data-interactive-input class="mt-4 w-full rounded-xl border-2 border-white bg-white px-4 py-3 text-sm font-bold text-slate-700" placeholder="{placeholder}">'
-        return base + controls + '<button type="button" data-action="interactive-submit" class="mt-4 rounded-xl border-b-[3px] border-emerald-800 bg-emerald-600 px-4 py-2.5 text-xs font-black text-white">Проверить</button><p data-interactive-result class="mt-3 hidden text-sm font-bold"></p></section>'
+            controls = '<div class="mt-4 grid gap-2.5 sm:grid-cols-2">' + ''.join(
+                f'<button type="button" data-interactive-option="{html.escape(option, quote=True)}" class="option-btn rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3.5 text-left text-xs sm:text-sm font-bold text-slate-700 hover:border-indigo-300 transition">{html.escape(option)}</button>' for option in options
+            ) + '</div><p class="mt-2 text-xs font-bold text-slate-400">Можно выбрать несколько вариантов.</p>'
+        else: # input, fill, formula, predict, regex, binary, explain
+            controls = (
+                f'<div class="mt-4 flex flex-col sm:flex-row gap-2.5 max-w-md">'
+                f'<input type="text" data-interactive-input class="flex-1 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-4 py-2.5 text-xs sm:text-sm font-bold text-slate-800 placeholder-slate-400 outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="{placeholder}">'
+                f'</div>'
+            )
+
+        submit = (
+            '<div class="mt-4 flex items-center gap-3">'
+            '<button type="button" data-action="interactive-submit" class="px-5 py-2.5 rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 hover:bg-indigo-700 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 flex items-center gap-1.5"><i class="ph-bold ph-check"></i>Проверить</button>'
+            '</div>'
+        )
+        return base + controls + submit + '<div data-interactive-result class="mt-3 hidden rounded-xl p-3.5 text-xs sm:text-sm font-bold"></div></div>'
 
     checkpoint_items = _parse_theory_checkpoints(text)
     checkpoint_by_key = {item['key']: item for item in checkpoint_items}
@@ -570,19 +620,22 @@ def _render_theory_content_html(content_value):
         if not item:
             return ''
         options_html = ''.join(
-            '<button type="button" data-action="checkpoint-choice" data-checkpoint-key="{}" data-answer="{}" '
-            'class="theory-checkpoint-option w-full text-left px-4 py-3 rounded-xl border-2 border-slate-200 bg-white font-bold text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 transition-colors">{}</button>'.format(
-                html.escape(item['key'], quote=True), html.escape(option, quote=True), html.escape(option)
-            )
+            f'<button type="button" data-action="checkpoint-choice" data-checkpoint-key="{html.escape(item["key"], quote=True)}" data-answer="{html.escape(option, quote=True)}" '
+            f'class="option-btn w-full text-left p-3.5 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/40 transition font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between group">'
+            f'<span>{html.escape(option)}</span>'
+            f'<span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0"></span>'
+            f'</button>'
             for option in item['options']
         )
         return (
-            '<section class="theory-checkpoint my-8 rounded-[24px] border-2 border-indigo-100 bg-indigo-50/60 p-5" '
+            f'<div class="theory-checkpoint theory-interactive-card my-6 rounded-2xl border-2 border-indigo-100 bg-white p-5 sm:p-6 shadow-sm" '
             f'data-checkpoint-key="{html.escape(item["key"], quote=True)}">'
-            '<div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">'
-            '<i class="ph-fill ph-lightning"></i> Быстрая проверка</div>'
-            f'<h3 class="m-0 mb-4 text-lg font-black text-slate-900">{html.escape(item["question"])}</h3>'
-            f'<div class="space-y-2">{options_html}</div><p data-checkpoint-result class="hidden mt-3 mb-0 text-sm font-bold"></p></section>'
+            f'<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black">'
+            f'<i class="ph-fill ph-lightning"></i><span>Быстрая проверка</span></div>'
+            f'<h3 class="mt-3 text-base sm:text-lg font-black text-slate-900 leading-snug">{html.escape(item["question"])}</h3>'
+            f'<div class="mt-4 space-y-2.5">{options_html}</div>'
+            f'<div data-checkpoint-result class="hidden mt-3 p-3.5 rounded-xl text-xs sm:text-sm font-bold"></div>'
+            f'</div>'
         )
 
     def _preserve_blank_lines(src):
@@ -680,6 +733,13 @@ def _render_theory_content_html(content_value):
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
     text = _INTERACTIVE_RE.sub(_interactive_repl, text)
     text = _CHECKPOINT_RE.sub(_checkpoint_repl, text)
+    
+    # Ensure Markdown tables have clean blank lines before and after them, and no __THEORY_SPACER__
+    text = re.sub(r'__THEORY_SPACER__\s*(\n\s*\|)', r'\1', text)
+    text = re.sub(r'(\|\s*\n)\s*__THEORY_SPACER__', r'\1', text)
+    text = re.sub(r'([^\n])\n(\s*\|.+?\n\s*\|[-:\s|]+)', r'\1\n\n\2', text)
+    text = re.sub(r'(\|[^\n]+)\n([^\n|])', r'\1\n\n\2', text)
+    
     try:
         from markdown import markdown as _md
         text = _md(text, extensions=['extra', 'tables', 'fenced_code'])
@@ -1060,21 +1120,19 @@ def _get_course_groups_with_blocks(course_id):
 
 
 def _build_visible_with_state(course_id):
-    """Student dataset: groups + blocks + read/bookmark states."""
+    """Student dataset: groups + blocks + read/bookmark states + lock states."""
     groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
     student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_student() else None
-    allowed_numbers = None
-    if student:
-        allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id, course_id)
 
-    visible_groups = []
-    for group in groups:
-        items = []
-        for block in blocks_by_group.get(group.id, []):
-            if allowed_numbers is not None and block.task_number not in allowed_numbers:
-                continue
-            items.append(block)
-        visible_groups.append({'group': group, 'blocks': items})
+    teacher_locked_numbers = set()
+    if student:
+        access_rows = StudentTheoryAccess.query.filter_by(
+            student_id=student.student_id,
+            course_id=course_id,
+        ).all()
+        for r in access_rows:
+            if not r.can_view:
+                teacher_locked_numbers.add(r.task_number)
 
     state_by_number = {}
     if student:
@@ -1085,6 +1143,41 @@ def _build_visible_with_state(course_id):
                 'read': bool(r.is_read),
                 'reading_progress': int(r.reading_progress or 0),
             }
+
+    visible_groups = []
+    for group in groups:
+        group_items = blocks_by_group.get(group.id, [])
+        items = []
+        for idx, block in enumerate(group_items):
+            is_teacher_locked = (block.task_number in teacher_locked_numbers) if student else False
+            is_seq_locked = False
+            lock_reason = ''
+            if student and not is_teacher_locked:
+                if idx > 0:
+                    prev_b = group_items[idx - 1]
+                    prev_st = state_by_number.get(prev_b.task_number, {})
+                    prev_done = prev_st.get('read') or prev_st.get('reading_progress', 0) >= 100
+                    if not prev_done:
+                        is_seq_locked = True
+                        lock_reason = f'Откроется после темы {idx}'
+
+            if is_teacher_locked:
+                block.is_locked = True
+                block.lock_type = 'teacher'
+                block.lock_reason = 'Заблокировано преподавателем'
+            elif is_seq_locked:
+                block.is_locked = True
+                block.lock_type = 'sequence'
+                block.lock_reason = lock_reason
+            else:
+                block.is_locked = False
+                block.lock_type = None
+                block.lock_reason = ''
+
+            items.append(block)
+        if items:
+            visible_groups.append({'group': group, 'blocks': items})
+
     return visible_groups, state_by_number
 
 
@@ -1092,6 +1185,7 @@ def _build_catalog_context(course_id, selected_group_id=None):
     """Build one data-only view model for the live V2 theory catalogue."""
     visible_groups, state_by_number = _build_visible_with_state(course_id)
     course = Course.query.get(course_id)
+    available_courses = Course.query.filter_by(is_active=True).all()
     all_blocks = [block for pack in visible_groups for block in pack['blocks']]
     student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_student() else None
     completed_count = sum(
@@ -1142,11 +1236,22 @@ def _build_catalog_context(course_id, selected_group_id=None):
             TheoryStudyAssignment.created_at.desc()
         ).all()
 
+    avg_read_minutes = int(round(sum(b.read_minutes or 20 for b in all_blocks) / len(all_blocks))) if all_blocks else 25
+    total_spent_minutes = sum(
+        b.read_minutes or 20 for b in all_blocks
+        if state_by_number.get(b.task_number, {}).get('read')
+        or state_by_number.get(b.task_number, {}).get('reading_progress', 0) >= 100
+    )
+    spent_hours = total_spent_minutes // 60
+    spent_mins = total_spent_minutes % 60
+
     return {
         'course': course,
         'course_id': course_id,
+        'available_courses': available_courses,
         'visible_groups': visible_groups,
         'group_cards': group_cards,
+        'all_blocks': all_blocks,
         'state_by_number': state_by_number,
         'selected_group_id': selected_group_id,
         'total_blocks': len(all_blocks),
@@ -1154,6 +1259,9 @@ def _build_catalog_context(course_id, selected_group_id=None):
         'in_progress_count': in_progress_count,
         'saved_count': saved_count,
         'overall_progress': round(completed_count * 100 / len(all_blocks)) if all_blocks else 0,
+        'avg_read_minutes': avg_read_minutes,
+        'spent_hours': spent_hours,
+        'spent_mins': spent_mins,
         'recommendations': recommendations,
         'assigned_materials': assigned_materials,
     }
@@ -1221,6 +1329,38 @@ def theory_view(task_number):
     return redirect(url_for('theory.theory_view_block', block_id=block.id, course_id=course_id))
 
 
+def _parse_theory_sections(content):
+    text = _strip_status_marker(content or '').replace('\r\n', '\n').strip()
+    text = re.sub(r'^#\s+[^\n]+\n*', '', text).strip()
+    pattern = r'(?m)^##\s+([^\n]+)$'
+    matches = list(re.finditer(pattern, text))
+    if not matches:
+        return [{
+            'num': '01',
+            'title': 'Материал темы',
+            'html': _render_theory_content_html(text),
+        }]
+    sections = []
+    preamble = text[:matches[0].start()].strip()
+    if preamble:
+        sections.append({
+            'num': f'{len(sections)+1:02d}',
+            'title': 'Введение',
+            'html': _render_theory_content_html(preamble),
+        })
+    for i, match in enumerate(matches):
+        title = match.group(1).strip()
+        start = match.end()
+        end = matches[i+1].start() if i + 1 < len(matches) else len(text)
+        body = text[start:end].strip()
+        sections.append({
+            'num': f'{len(sections)+1:02d}',
+            'title': title,
+            'html': _render_theory_content_html(body),
+        })
+    return sections
+
+
 @theory_bp.route('/theory/topic/<int:block_id>')
 @login_required
 def theory_view_block(block_id):
@@ -1240,9 +1380,16 @@ def theory_view_block(block_id):
     student = None
     if current_user.is_student():
         student = Student.query.filter_by(user_id=current_user.id).first()
-        if student and not _student_can_view_task_number(student.student_id, task_number, course_id):
-            flash('Просмотр теории по этому разделу для вас закрыт.', 'warning')
-            return redirect(url_for('theory.theory_index', course_id=course_id))
+        if student:
+            # 1. Teacher lock check
+            access_row = StudentTheoryAccess.query.filter_by(
+                student_id=student.student_id,
+                course_id=course_id,
+                task_number=task_number,
+            ).first()
+            if access_row and not access_row.can_view:
+                flash('Эта тема заблокирована преподавателем.', 'warning')
+                return redirect(url_for('theory.theory_index', course_id=course_id))
 
     # IMPORTANT:
     # Source of truth for student theory is TheoryBlock.content
@@ -1279,14 +1426,17 @@ def theory_view_block(block_id):
             for item in TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id).all()
         }
 
+    sections = _parse_theory_sections(block.content or '')
+
     template_ctx = dict(
         block=block,
         course_id=course_id,
         visible_groups=visible_groups,
-        back_to_url=url_for('theory.theory_group_view', group_id=block.group_id, course_id=course_id) if block.group_id else url_for('theory.theory_index', course_id=course_id),
+        back_to_url=url_for('theory.theory_index', course_id=course_id),
         active_page='theory',
         custom_html=custom_html,
         rendered_content_html=_render_theory_content_html(block.content or ''),
+        sections=sections,
         note=note,
         checkpoint_attempts=checkpoint_attempts,
     )
@@ -2200,6 +2350,14 @@ def theory_api_progress():
     row.reading_progress = max(int(row.reading_progress or 0), progress)
     row.last_position = position
     row.last_opened_at = moscow_now()
+    if progress >= 95 or row.reading_progress >= 100:
+        row.is_read = True
+        row.reading_progress = 100
+        TheoryStudyAssignment.query.filter_by(
+            student_id=student.student_id,
+            block_id=block.id,
+            status='assigned',
+        ).update({'status': 'completed', 'completed_at': moscow_now()})
     db.session.commit()
 
     if row.reading_progress >= 100:
@@ -2241,11 +2399,21 @@ def theory_api_checkpoint():
         # A wrong or incomplete selection is a regular failed attempt, not a
         # missing resource. This lets the UI show feedback and allow retry.
         is_correct = bool(selected_set) and selected_set.issubset(allowed_set) and selected_set == expected_set
+    elif kind in {'match'}:
+        def _norm_m(s):
+            if '=' in s:
+                return '='.join(p.strip().lower() for p in s.split('=', 1))
+            return s.strip().lower()
+        is_correct = _norm_m(selected_answer) == _norm_m(expected_answer)
+    elif kind in {'boolean'}:
+        is_true_expected = expected_answer.strip().lower() in {'true', '1', 'да', 'yes'}
+        is_true_selected = selected_answer.strip().lower() in {'true', '1', 'да', 'yes'}
+        is_correct = (is_true_expected == is_true_selected)
     else:
         # Every known interactive format uses a canonical answer string. Keep
         # comparison server-side and return 200/false for a wrong value so the
         # student never sees a misleading 404 toast.
-        is_correct = selected_answer == expected_answer.strip()
+        is_correct = selected_answer.strip().lower() == expected_answer.strip().lower()
     attempt = TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key).first()
     if not attempt:
         attempt = TheoryCheckpointAttempt(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key, selected_answer=selected_answer, is_correct=is_correct)
@@ -2365,12 +2533,29 @@ def manage_access_index():
         flash('Нет доступных курсов.', 'warning')
         return redirect(url_for('theory.manage_list'))
 
+    course = Course.query.get(course_id) if course_id else None
     students = _get_scoped_students_for_theory_manager()
+
+    locked_counts = {}
+    if students and course_id:
+        s_ids = [s.student_id for s in students]
+        rows = StudentTheoryAccess.query.filter(
+            StudentTheoryAccess.course_id == course_id,
+            StudentTheoryAccess.student_id.in_(s_ids),
+            StudentTheoryAccess.can_view == False
+        ).all()
+        for r in rows:
+            locked_counts[r.student_id] = locked_counts.get(r.student_id, 0) + 1
+
+    total_blocks_count = TheoryBlock.query.filter_by(course_id=course_id).count()
 
     return render_template(
         'theory/theory_access_list.html',
         students=students,
+        course=course,
         course_id=course_id,
+        locked_counts=locked_counts,
+        total_blocks_count=total_blocks_count,
         active_page='theory_manage',
     )
 
@@ -2378,7 +2563,7 @@ def manage_access_index():
 @theory_bp.route('/theory/manage/access/<int:student_id>', methods=['GET', 'POST'])
 @login_required
 def manage_access_student(student_id):
-    """Включение/выключение просмотра теории по каждому номеру задания для ученика."""
+    """Включение/выключение просмотра теории по темам и номерам курса для ученика."""
     if not _can_manage_theory():
         flash('Недостаточно прав.', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -2388,13 +2573,32 @@ def manage_access_student(student_id):
         flash('Нет доступных курсов.', 'danger')
         return redirect(url_for('theory.manage_list'))
 
+    course = Course.query.get(course_id) if course_id else None
     student = Student.query.get_or_404(student_id)
     if student.student_id not in {item.student_id for item in _get_scoped_students_for_theory_manager()}:
         flash('Нет доступа к этому ученику.', 'danger')
         return redirect(url_for('theory.manage_access_index', course_id=course_id))
 
-    task_numbers = _get_course_task_numbers(course_id)
-    # Текущие правила: task_number -> can_view (для данного курса)
+    groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
+    all_blocks = TheoryBlock.query.filter_by(course_id=course_id).order_by(TheoryBlock.position, TheoryBlock.id).all()
+
+    group_packs = []
+    for g in groups:
+        items = blocks_by_group.get(g.id, [])
+        if items:
+            group_packs.append({'group': g, 'blocks': items})
+
+    ungrouped = [b for b in all_blocks if not b.group_id]
+    if ungrouped:
+        class _UngroupedHolder:
+            id = 0
+            name = 'Без модуля'
+        group_packs.append({'group': _UngroupedHolder(), 'blocks': ungrouped})
+
+    # All known task numbers (both from blocks and course templates)
+    course_templates = _get_course_task_numbers(course_id)
+    all_task_numbers = sorted({b.task_number for b in all_blocks} | set(course_templates))
+
     access_list = StudentTheoryAccess.query.filter_by(
         student_id=student_id,
         course_id=course_id,
@@ -2402,9 +2606,39 @@ def manage_access_student(student_id):
     access_by_number = {a.task_number: a.can_view for a in access_list}
 
     if request.method == 'POST':
-        # Чекбокс "разрешён" = on. Снят = запретить. Храним только запреты; при разрешении запись удаляем.
-        for num in task_numbers:
-            key = 'allow_{}'.format(num)
+        bulk_action = request.form.get('bulk_action')
+        if bulk_action == 'allow_all':
+            StudentTheoryAccess.query.filter_by(
+                student_id=student_id,
+                course_id=course_id,
+            ).delete()
+            db.session.commit()
+            flash(f'Все темы курса открыты для {student.name or "ученика"}.', 'success')
+            return redirect(url_for('theory.manage_access_student', student_id=student_id, course_id=course_id))
+        elif bulk_action == 'lock_all':
+            for num in all_task_numbers:
+                existing = StudentTheoryAccess.query.filter_by(
+                    student_id=student_id,
+                    course_id=course_id,
+                    task_number=num,
+                ).first()
+                if existing:
+                    existing.can_view = False
+                    existing.updated_at = moscow_now()
+                else:
+                    db.session.add(StudentTheoryAccess(
+                        student_id=student_id,
+                        course_id=course_id,
+                        task_number=num,
+                        can_view=False,
+                    ))
+            db.session.commit()
+            flash(f'Все темы курса заблокированы для {student.name or "ученика"}.', 'warning')
+            return redirect(url_for('theory.manage_access_student', student_id=student_id, course_id=course_id))
+
+        # Сохранение чекбоксов по номерам
+        for num in all_task_numbers:
+            key = f'allow_{num}'
             can_view = request.form.get(key) == 'on'
             existing = StudentTheoryAccess.query.filter_by(
                 student_id=student_id,
@@ -2426,15 +2660,18 @@ def manage_access_student(student_id):
                         can_view=False,
                     ))
         db.session.commit()
-        flash('Доступ к теории для {} сохранён.'.format(student.name or 'ученика'), 'success')
+        flash(f'Доступ к теории для {student.name or "ученика"} успешно обновлён.', 'success')
         return redirect(url_for('theory.manage_access_student', student_id=student_id, course_id=course_id))
 
     return render_template(
         'theory/theory_access_student.html',
         student=student,
-        task_numbers=task_numbers,
-        access_by_number=access_by_number,
+        course=course,
         course_id=course_id,
+        group_packs=group_packs,
+        all_blocks=all_blocks,
+        task_numbers=all_task_numbers,
+        access_by_number=access_by_number,
         active_page='theory_manage',
     )
 

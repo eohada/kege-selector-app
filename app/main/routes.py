@@ -1066,6 +1066,13 @@ def student_dashboard():
                     db.or_(Assignment.exam_course_id == explicit_course_id, Assignment.exam_course_id.is_(None))
                 )
             pending_submissions = sub_query.order_by(Submission.assigned_at.desc()).limit(12).all()
+            for sub in pending_submissions:
+                try:
+                    tasks_cnt = len(sub.assignment.tasks) if (sub.assignment and sub.assignment.tasks) else 1
+                    ans_cnt = len([a for a in sub.answers if a.value]) if sub.answers else 0
+                    sub.progress_pct = int(round((ans_cnt / max(tasks_cnt, 1)) * 100)) if tasks_cnt else 0
+                except Exception:
+                    sub.progress_pct = 0
         except Exception:
             pending_submissions = []
 

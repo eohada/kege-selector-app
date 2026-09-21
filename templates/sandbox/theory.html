@@ -1,60 +1,500 @@
 {% extends "sandbox/layout_teacher.html" if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() else "sandbox/layout_student.html" %}
 
 {% block sandbox_content %}
+<style>
+  .styled-scrollbar::-webkit-scrollbar {
+    height: 6px;
+  }
+  .styled-scrollbar::-webkit-scrollbar-track {
+    background: #F1F5F9;
+    border-radius: 9999px;
+  }
+  .styled-scrollbar::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 9999px;
+  }
+  .styled-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+  }
+  .styled-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #CBD5E1 #F1F5F9;
+  }
+</style>
+
 <main class="flex-1 min-h-screen bg-[#F8FAFC] px-3 sm:px-6 lg:pl-24 py-4 sm:py-6 pb-20 lg:pb-24">
-  <div class="max-w-[1400px] mx-auto w-full space-y-6" id="theory-catalogue">
-    <section class="bg-white border-2 border-slate-200 rounded-[2rem] shadow-[0_4px_0_#DAE1E9] p-6 sm:p-8">
-      <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-        <div class="min-w-0">
-          <div class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-indigo-700"><i class="ph-bold ph-book-open-text"></i> База знаний</div>
-          <h1 class="mt-3 font-display text-3xl sm:text-4xl font-black tracking-tight text-slate-900">Теория курса {{ course.title if course else '' }}</h1>
-          <p class="mt-2 max-w-2xl text-sm font-semibold text-slate-500">Материалы собраны преподавателем по темам курса. Прогресс, сохранённые темы и назначения обновляются из твоей работы.</p>
-        </div>
-        <a href="{{ url_for('theory.manage_list', course_id=course_id) if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() else url_for('main.dashboard') }}" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-3 text-xs font-black text-slate-700 shadow-[0_3px_0_#DAE1E9] no-underline hover:-translate-y-0.5"><i class="ph-bold {{ 'ph-sliders-horizontal' if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() else 'ph-arrow-left' }}"></i>{{ 'Управлять материалами' if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() else 'На главную' }}</a>
-      </div>
-      <div class="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="rounded-2xl border-2 border-slate-200 bg-[#F4F7FA] p-4 shadow-[0_3px_0_#DAE1E9]"><div class="text-[10px] font-black uppercase tracking-wider text-slate-400">Доступно тем</div><div class="mt-1 text-2xl font-black text-slate-900">{{ total_blocks }}</div></div>
-        <div class="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4 shadow-[0_3px_0_#A7F3D0]"><div class="text-[10px] font-black uppercase tracking-wider text-emerald-600">Изучено</div><div class="mt-1 text-2xl font-black text-emerald-800">{{ completed_count }}</div></div>
-        <div class="rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4 shadow-[0_3px_0_#C7D2FE]"><div class="text-[10px] font-black uppercase tracking-wider text-indigo-600">В процессе</div><div class="mt-1 text-2xl font-black text-indigo-800">{{ in_progress_count }}</div></div>
-        <div class="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 shadow-[0_3px_0_#FDE68A]"><div class="text-[10px] font-black uppercase tracking-wider text-amber-600">Сохранено</div><div class="mt-1 text-2xl font-black text-amber-800">{{ saved_count }}</div></div>
-      </div>
-    </section>
+  <div class="max-w-[1400px] mx-auto w-full space-y-5" id="theory-catalogue">
 
-    <section class="bg-white border-2 border-slate-200 rounded-[2rem] shadow-[0_4px_0_#DAE1E9] p-5 sm:p-6">
-      <div class="flex flex-col gap-4">
-        <label class="relative block"><i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i><input id="theory-search" type="search" placeholder="Найти тему или номер задания" class="w-full rounded-2xl border-2 border-slate-200 bg-[#F4F7FA] py-3 pl-11 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"></label>
-        <div class="flex gap-2 overflow-x-auto pb-1" id="theory-filters">
-          <button type="button" data-filter="all" class="theory-filter whitespace-nowrap rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 px-4 py-2.5 text-xs font-black text-white">Все темы</button>
-          {% if current_user.is_student() %}<button type="button" data-filter="continue" class="theory-filter whitespace-nowrap rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-2 text-xs font-black text-slate-600">Продолжить</button><button type="button" data-filter="saved" class="theory-filter whitespace-nowrap rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-2 text-xs font-black text-slate-600">Сохранённые</button>{% endif %}
-          {% for pack in group_cards %}<button type="button" data-filter="group-{{ pack.group.id }}" class="theory-filter whitespace-nowrap rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-2 text-xs font-black text-slate-600">{{ pack.group.name }}</button>{% endfor %}
-        </div>
-      </div>
-    </section>
-
-    {% if current_user.is_student() and recommendations %}
-    <section class="rounded-[2rem] border-2 border-indigo-800 bg-gradient-to-br from-indigo-600 to-violet-700 p-6 text-white shadow-[0_5px_0_#312E81]">
-      <div class="flex items-start justify-between gap-4"><div><div class="text-[10px] font-black uppercase tracking-[.18em] text-indigo-200">Следующий шаг</div><h2 class="mt-1 text-2xl font-black font-display">Продолжи обучение</h2><p class="mt-1 text-sm font-semibold text-indigo-100">Темы подобраны по фактическому незавершённому прогрессу.</p></div><i class="ph-fill ph-compass-tool text-4xl text-amber-300"></i></div>
-      <div class="mt-5 grid gap-3 md:grid-cols-3">{% for block in recommendations %}{% set item_state = state_by_number.get(block.task_number, {}) %}<a href="{{ url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) }}" class="rounded-2xl border border-white/20 bg-white/10 p-4 text-white no-underline hover:bg-white/15"><div class="flex justify-between text-[11px] font-black text-indigo-100"><span>№{{ block.task_number }}</span><span>{{ item_state.get('reading_progress', 0) }}%</span></div><div class="mt-2 line-clamp-2 text-sm font-black">{{ block.title or ('Тема №' ~ block.task_number) }}</div><div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/20"><div class="h-full rounded-full bg-amber-300" style="width: {{ item_state.get('reading_progress', 0) }}%"></div></div></a>{% endfor %}</div>
-    </section>
-    {% endif %}
-
-    {% if current_user.is_student() and assigned_materials %}
-    <section class="rounded-[2rem] border-2 border-amber-200 bg-white p-6 shadow-[0_4px_0_#FCD34D]"><div class="flex items-center gap-3"><span class="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-600"><i class="ph-fill ph-paper-plane-tilt text-xl"></i></span><div><div class="text-[10px] font-black uppercase tracking-widest text-amber-600">От преподавателя</div><h2 class="text-xl font-black text-slate-900">Назначенные материалы</h2></div></div><div class="mt-4 grid gap-3 md:grid-cols-2">{% for assignment in assigned_materials if assignment.block %}<a href="{{ url_for('theory.theory_view_block', block_id=assignment.block.id, course_id=course_id) }}" class="rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] p-4 no-underline hover:bg-white"><div class="text-[11px] font-black text-indigo-600">№{{ assignment.block.task_number }}</div><div class="mt-1 font-black text-slate-900">{{ assignment.block.title or ('Тема №' ~ assignment.block.task_number) }}</div>{% if assignment.message %}<p class="mt-2 text-xs font-semibold text-slate-500">{{ assignment.message }}</p>{% endif %}</a>{% endfor %}</div></section>
-    {% endif %}
-
-    {% if group_cards %}
-      {% for pack in group_cards %}
-      <section class="theory-group rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9]" data-group="group-{{ pack.group.id }}">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-widest text-indigo-600">Модуль</div><h2 class="mt-1 text-2xl font-black font-display text-slate-900">{{ pack.group.name }}</h2>{% if pack.group.description %}<p class="mt-1 text-sm font-semibold text-slate-500">{{ pack.group.description }}</p>{% endif %}</div><div class="min-w-44"><div class="flex justify-between text-xs font-black text-slate-500"><span>{{ pack.completed }} из {{ pack.blocks|length }}</span><span>{{ pack.progress }}%</span></div><div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-indigo-600" style="width:{{ pack.progress }}%"></div></div></div></div>
-        <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{% for block in pack.blocks %}{% set item_state = state_by_number.get(block.task_number, {}) %}<article class="theory-topic flex flex-col rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] p-5 shadow-[0_3px_0_#DAE1E9]" data-title="{{ (block.title or '')|lower }} {{ (block.description or '')|lower }}" data-number="{{ block.task_number }}" data-progress="{{ item_state.get('reading_progress', 0) }}" data-bookmarked="{{ '1' if item_state.get('bookmarked') else '0' }}"><div class="flex items-start justify-between gap-3"><span class="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-black text-indigo-700">№{{ block.task_number }}</span>{% if item_state.get('read') or item_state.get('reading_progress', 0) >= 100 %}<span class="text-xs font-black text-emerald-600">Изучено</span>{% elif item_state.get('reading_progress', 0) %}<span class="text-xs font-black text-indigo-600">{{ item_state.get('reading_progress') }}%</span>{% else %}<span class="text-xs font-bold text-slate-400">{{ block.read_minutes }} мин</span>{% endif %}</div><h3 class="mt-4 line-clamp-2 text-base font-black text-slate-900">{{ block.title or ('Тема №' ~ block.task_number) }}</h3>{% if block.description %}<p class="mt-2 line-clamp-2 text-xs font-semibold text-slate-500">{{ block.description }}</p>{% endif %}<a href="{{ url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) }}" class="mt-5 inline-flex items-center justify-center gap-2 rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 px-4 py-2.5 text-xs font-black text-white no-underline hover:bg-indigo-500"><i class="ph-bold ph-arrow-right"></i>{{ 'Продолжить' if item_state.get('reading_progress', 0) else 'Открыть тему' }}</a></article>{% endfor %}</div>
-      </section>
+    <!-- Курсы (если доступно несколько курсов) -->
+    {% if available_courses and available_courses|length > 1 %}
+    <div class="flex items-center gap-2 overflow-x-auto pb-2 styled-scrollbar">
+      {% for c in available_courses %}
+        <a href="{{ url_for('theory.theory_index', course_id=c.id) }}"
+           class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black transition no-underline {{ 'bg-indigo-600 text-white shadow-sm border-b-2 border-indigo-800' if c.id == course_id else 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}">
+          {{ c.title }}
+        </a>
       {% endfor %}
-    {% else %}
-    <section class="rounded-[2rem] border-2 border-dashed border-slate-300 bg-white p-12 text-center shadow-[0_4px_0_#DAE1E9]"><i class="ph-bold ph-book-open text-4xl text-slate-300"></i><h2 class="mt-3 text-xl font-black text-slate-900">В этом курсе ещё нет опубликованных материалов</h2><p class="mt-2 text-sm font-semibold text-slate-500">Как только преподаватель добавит тему, она появится здесь.</p></section>
+    </div>
     {% endif %}
+
+    <!-- 1. Верхний Hero-баннер -->
+    <section class="relative overflow-hidden rounded-[2rem] border-2 border-slate-200/80 bg-gradient-to-r from-white via-white to-[#F5F7FF] p-6 sm:p-8 shadow-[0_4px_0_#DAE1E9]">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
+        <div class="min-w-0 max-w-2xl">
+          <div class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-indigo-700">
+            <i class="ph-bold ph-book-open-text text-sm"></i> БАЗА ЗНАНИЙ
+          </div>
+          <h1 class="mt-3 text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight font-display">
+            Теория курса {{ course.title if course else 'ЕГЭ Информатика' }}
+          </h1>
+          <p class="mt-2.5 text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed">
+            Материалы собраны преподавателем по темам курса. Открывай темы по порядку, изучай теорию и решай задания — так ты постепенно подготовишься к экзамену!
+          </p>
+        </div>
+
+        <div class="flex flex-col items-start lg:items-end gap-3 shrink-0">
+          {% if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() %}
+          <div class="flex items-center gap-2 flex-wrap">
+            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) }}"
+               class="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-indigo-200 bg-indigo-50/80 px-4 py-2.5 text-xs font-black text-indigo-700 shadow-[0_3px_0_#C7D2FE] transition hover:bg-indigo-100 active:translate-y-0.5 active:shadow-none no-underline">
+              <i class="ph-bold ph-lock-key"></i>
+              <span>Права доступа</span>
+            </a>
+            <a href="{{ url_for('theory.manage_list', course_id=course_id) }}"
+               class="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-[0_3px_0_#DAE1E9] transition hover:bg-slate-50 active:translate-y-0.5 active:shadow-none no-underline">
+              <i class="ph-bold ph-sliders-horizontal"></i>
+              <span>Управлять материалами</span>
+            </a>
+          </div>
+          {% else %}
+          <a href="{{ url_for('main.dashboard') }}"
+             class="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-[0_3px_0_#DAE1E9] transition hover:bg-slate-50 active:translate-y-0.5 active:shadow-none no-underline">
+            <i class="ph-bold ph-arrow-left"></i>
+            <span>На главную</span>
+          </a>
+          {% endif %}
+
+          <!-- Оригинальная 3D-иллюстрация из макета (изображение 3) -->
+          <div class="hidden md:flex items-center justify-end mt-1 select-none pointer-events-none">
+            <img src="{{ url_for('static', filename='images/theory/hero_illustration.png') }}"
+                 alt="Знания сегодня — результаты завтра!"
+                 class="h-24 sm:h-28 lg:h-32 object-contain drop-shadow-sm max-w-sm">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Верхний ряд статистики (4 тактильные карточки) -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      <!-- Всего тем -->
+      <div class="rounded-[1.75rem] border-2 border-slate-200/80 bg-white p-5 shadow-[0_4px_0_#DAE1E9] flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 text-2xl">
+          <i class="ph-bold ph-book-open"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-xs font-bold text-slate-400">Всего тем</div>
+          <div class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ total_blocks }}</div>
+        </div>
+      </div>
+
+      <!-- Изучено -->
+      <div class="rounded-[1.75rem] border-2 border-slate-200/80 bg-white p-5 shadow-[0_4px_0_#DAE1E9] flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 text-2xl">
+          <i class="ph-fill ph-play-circle"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-xs font-bold text-slate-400">Изучено</div>
+          <div class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ completed_count }}</div>
+        </div>
+      </div>
+
+      <!-- Прогресс -->
+      <div class="rounded-[1.75rem] border-2 border-slate-200/80 bg-white p-5 shadow-[0_4px_0_#DAE1E9] flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 text-2xl">
+          <i class="ph-bold ph-chart-pie-slice"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="text-xs font-bold text-slate-400">Прогресс</div>
+          <div class="flex items-center gap-3 mt-0.5">
+            <span class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ overall_progress }}%</span>
+            <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+              <div class="h-full rounded-full bg-indigo-600 transition-all duration-500" style="width: {{ overall_progress }}%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Среднее время на тему -->
+      <div class="rounded-[1.75rem] border-2 border-slate-200/80 bg-white p-5 shadow-[0_4px_0_#DAE1E9] flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 text-2xl">
+          <i class="ph-bold ph-clock"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="text-xs font-bold text-slate-400">Среднее время на тему</div>
+          <div class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight whitespace-nowrap">~ {{ avg_read_minutes }} минут</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Переключатель модулей/разделов курса (Блок программирования, Блок ЕГЭ и т.д.) -->
+    {% if visible_groups and visible_groups|length > 1 %}
+    <div class="flex items-center gap-2 overflow-x-auto pb-2 pt-1 styled-scrollbar" id="theory-module-tabs">
+      <button type="button" onclick="filterTheoryGroup('all')" id="tab-btn-all"
+              class="module-tab-btn whitespace-nowrap rounded-xl border-b-2 border-indigo-800 bg-indigo-600 px-4 py-2 text-xs font-black text-white transition shadow-sm">
+        Все разделы ({{ total_blocks }})
+      </button>
+      {% for pack in visible_groups %}
+      <button type="button" onclick="filterTheoryGroup('group-{{ pack.group.id }}')" id="tab-btn-group-{{ pack.group.id }}"
+              class="module-tab-btn whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50">
+        {{ pack.group.name }} ({{ pack.blocks|length }})
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 3. Двухколоночный макет: Темы (слева) + Сайдбар (справа) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <!-- Левая колонка: Разделы и список тем (col-span-8) -->
+      <div class="lg:col-span-8 space-y-6" id="theory-topics-container">
+        {% if visible_groups %}
+          {% set topic_counter = namespace(count=0) %}
+          {% for pack in visible_groups %}
+            <div class="theory-group-section space-y-3" id="section-group-{{ pack.group.id }}" data-group-id="group-{{ pack.group.id }}">
+              
+              <!-- Заголовок модуля / группы -->
+              <div class="flex items-center justify-between px-1 pt-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                  <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">{{ pack.group.name }}</h2>
+                  <span class="text-xs font-bold text-slate-400">({{ pack.blocks|length }} тем)</span>
+                </div>
+              </div>
+
+              {% for block in pack.blocks %}
+                {% set topic_counter.count = topic_counter.count + 1 %}
+                {% set item_state = state_by_number.get(block.task_number, {}) %}
+                {% set is_read = item_state.get('read') or item_state.get('reading_progress', 0) >= 100 %}
+                {% set prog = item_state.get('reading_progress', 0) %}
+                {% set is_open = (topic_counter.count == 1) and (not block.is_locked) %}
+
+                <div class="theory-accordion-item rounded-[1.75rem] border-2 {{ 'border-rose-200 bg-rose-50/20' if block.lock_type == 'teacher' else ('border-slate-200/80 bg-white') }} shadow-[0_4px_0_#DAE1E9] overflow-hidden transition-all duration-200"
+                     id="topic-card-{{ block.id }}"
+                     data-open="{{ 'true' if is_open else 'false' }}">
+
+                  <!-- Заголовок темы (клик переключает аккордеон) -->
+                  <button type="button"
+                          class="theory-accordion-toggle w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-white hover:bg-slate-50/70 transition cursor-pointer select-none"
+                          onclick="toggleTheoryTopic('topic-card-{{ block.id }}')">
+                    <div class="flex items-center gap-3.5 min-w-0 flex-1">
+                      <!-- Номер темы -->
+                      <div class="theory-num-badge w-8 h-8 rounded-full flex items-center justify-center font-black text-xs shrink-0 transition-colors {{ 'bg-indigo-600 text-white shadow-xs' if is_open else 'bg-slate-100 text-slate-700' }}">
+                        {{ loop.index }}
+                      </div>
+
+                      <!-- Название темы -->
+                      <span class="text-sm sm:text-base font-black text-slate-900 tracking-tight truncate">
+                        {{ block.title or ('Тема №' ~ block.task_number) }}
+                      </span>
+
+                      <!-- Время на прочтение -->
+                      <span class="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-slate-400 shrink-0">
+                        <i class="ph-bold ph-clock text-xs"></i> ~ {{ block.read_minutes or 20 }} минут
+                      </span>
+                    </div>
+
+                    <div class="flex items-center gap-2.5 shrink-0">
+                      <!-- Бейдж статуса -->
+                      {% if block.is_locked %}
+                        {% if block.lock_type == 'teacher' %}
+                          <span class="rounded-full bg-rose-50 border border-rose-200 px-3 py-1 text-xs font-black text-rose-700 inline-flex items-center gap-1.5">
+                            <i class="ph-bold ph-lock-key text-xs"></i> Заблокировано преподавателем
+                          </span>
+                        {% else %}
+                          <span class="rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-bold text-slate-500 inline-flex items-center gap-1.5">
+                            <i class="ph-bold ph-lock-simple text-xs"></i> {{ block.lock_reason }}
+                          </span>
+                        {% endif %}
+                      {% else %}
+                        {% if is_read %}
+                          <span class="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-black text-emerald-700">Изучено</span>
+                        {% elif prog > 0 %}
+                          <span class="rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-black text-indigo-700">{{ prog }}%</span>
+                        {% else %}
+                          <span class="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-black text-emerald-700">Доступно</span>
+                        {% endif %}
+                      {% endif %}
+
+                      <!-- Шеврон -->
+                      <div class="w-7 h-7 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-center text-slate-400 group-hover:text-slate-700 transition">
+                        <i class="theory-caret ph-bold ph-caret-down text-sm transition-transform duration-200 {{ 'rotate-180 text-indigo-600' if is_open else '' }}"></i>
+                      </div>
+                    </div>
+                  </button>
+
+                  <!-- Тело раскрытой темы -->
+                  <div class="theory-accordion-body px-4 sm:px-6 pb-5 sm:pb-6 pt-1 border-t border-slate-100 {{ '' if is_open else 'hidden' }}">
+                    <!-- Описание -->
+                    <p class="text-xs sm:text-sm font-semibold text-slate-500 leading-relaxed mb-4 mt-2">
+                      {{ block.description or 'Теоретические материалы, определения, базовые алгоритмы и разборы типовых задач по теме.' }}
+                    </p>
+
+                    {% if block.is_locked %}
+                      <!-- Состояние блокировки: переход закрыт -->
+                      <div class="rounded-2xl border-2 {{ 'border-rose-200 bg-rose-50/50' if block.lock_type == 'teacher' else 'border-slate-200 bg-slate-50' }} p-4 mb-4 flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl {{ 'bg-rose-100 text-rose-600' if block.lock_type == 'teacher' else 'bg-slate-200 text-slate-600' }} flex items-center justify-center shrink-0">
+                          <i class="ph-bold {{ 'ph-lock-key' if block.lock_type == 'teacher' else 'ph-lock-simple' }} text-lg"></i>
+                        </div>
+                        <div>
+                          <div class="text-xs font-black {{ 'text-rose-900' if block.lock_type == 'teacher' else 'text-slate-800' }}">
+                            {{ 'Доступ закрыт преподавателем' if block.lock_type == 'teacher' else 'Тема пока закрыта' }}
+                          </div>
+                          <div class="text-[11px] font-semibold {{ 'text-rose-700/80' if block.lock_type == 'teacher' else 'text-slate-500' }}">
+                            {{ 'Преподаватель ограничил просмотр этой темы. Обратитесь к наставнику для разблокировки.' if block.lock_type == 'teacher' else 'Изучите предыдущую тему модуля, чтобы автоматически открыть доступ.' }}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button type="button" disabled
+                              class="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-slate-100 py-3 text-xs sm:text-sm font-black text-slate-400 cursor-not-allowed">
+                        <i class="ph-bold ph-lock text-sm"></i> {{ block.lock_reason }}
+                      </button>
+                    {% else %}
+                      <!-- Разблокированная тема: 3 подкарточки по макету -->
+                      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                        <!-- Конспект -->
+                        <a href="{{ url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) }}"
+                           class="flex items-center justify-between p-3.5 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] hover:border-indigo-200 hover:bg-indigo-50/40 transition no-underline group">
+                          <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                              <i class="ph-bold ph-file-text text-lg"></i>
+                            </div>
+                            <div class="min-w-0">
+                              <div class="text-xs font-black text-slate-900 group-hover:text-indigo-600 transition">Конспект</div>
+                              <div class="text-[11px] font-semibold text-slate-400 truncate">Теоретический материал</div>
+                            </div>
+                          </div>
+                          <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-600 transition text-sm shrink-0"></i>
+                        </a>
+
+                        <!-- Видеоурок (в разработке) -->
+                        <div class="relative flex items-center justify-between p-3.5 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] group cursor-default select-none">
+                          <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0">
+                              <i class="ph-fill ph-play text-lg"></i>
+                            </div>
+                            <div class="min-w-0">
+                              <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-xs font-black text-slate-900">Видеоурок</span>
+                                <span class="rounded-md bg-amber-50 border border-amber-200 px-1 py-0.5 text-[9px] font-black text-amber-700 tracking-wider">В разработке</span>
+                              </div>
+                              <div class="text-[11px] font-semibold text-slate-400 truncate">24 минуты</div>
+                            </div>
+                          </div>
+                          <i class="ph-bold ph-caret-right text-slate-300 text-sm shrink-0"></i>
+                        </div>
+
+                        <!-- Примеры решений (скоро) -->
+                        <div class="relative flex items-center justify-between p-3.5 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] group cursor-default select-none">
+                          <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+                              <i class="ph-bold ph-list-checks text-lg"></i>
+                            </div>
+                            <div class="min-w-0">
+                              <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-xs font-black text-slate-900">Примеры решений</span>
+                                <span class="rounded-md bg-indigo-50 border border-indigo-200 px-1 py-0.5 text-[9px] font-black text-indigo-700 tracking-wider">Скоро</span>
+                              </div>
+                              <div class="text-[11px] font-semibold text-slate-400 truncate">5 примеров</div>
+                            </div>
+                          </div>
+                          <i class="ph-bold ph-caret-right text-slate-300 text-sm shrink-0"></i>
+                        </div>
+                      </div>
+
+                      <!-- Большая кнопка продолжения изучения -->
+                      <a href="{{ url_for('theory.theory_view_block', block_id=block.id, course_id=course_id) }}"
+                         class="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-indigo-700 border-b-4 bg-indigo-600 py-3 text-xs sm:text-sm font-black text-white shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none no-underline">
+                        {{ 'Продолжить изучение' if prog > 0 else 'Начать изучение' }} <i class="ph-bold ph-arrow-right"></i>
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="rounded-[2rem] border-2 border-dashed border-slate-300 bg-white p-12 text-center shadow-[0_4px_0_#DAE1E9]">
+            <i class="ph-bold ph-book-open text-4xl text-slate-300"></i>
+            <h2 class="mt-3 text-xl font-black text-slate-900">В этом курсе ещё нет опубликованных материалов</h2>
+            <p class="mt-2 text-sm font-semibold text-slate-500">Как только преподаватель добавит тему, она появится здесь.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Правая колонка: Сайдбар (col-span-4) -->
+      <div class="lg:col-span-4 space-y-4 xl:sticky xl:top-6">
+
+        <!-- 1. Твой прогресс -->
+        <section class="rounded-[2rem] border-2 border-slate-200/80 bg-white p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9]">
+          <div class="flex items-center gap-2.5 mb-5">
+            <div class="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <i class="ph-bold ph-chart-donut text-base"></i>
+            </div>
+            <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">Твой прогресс</h2>
+          </div>
+
+          <!-- Круговой SVG-индикатор и цифры -->
+          <div class="flex items-center gap-6">
+            <div class="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0 flex items-center justify-center">
+              <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" stroke="#EEF2FF" stroke-width="12" fill="transparent" />
+                <circle cx="50" cy="50" r="40" stroke="#4F46E5" stroke-width="12" stroke-linecap="round" fill="transparent"
+                        stroke-dasharray="251.2"
+                        stroke-dashoffset="{{ 251.2 - (251.2 * overall_progress / 100) }}"
+                        class="transition-all duration-700" />
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center flex-col">
+                <span class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{{ overall_progress }}%</span>
+              </div>
+            </div>
+
+            <div class="space-y-3 min-w-0">
+              <div>
+                <div class="text-xs font-bold text-slate-400">Изучено тем</div>
+                <div class="text-sm sm:text-base font-black text-slate-900 tracking-tight">{{ completed_count }} из {{ total_blocks }}</div>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-400">Время в теории</div>
+                <div class="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                  {% if spent_hours > 0 %}{{ spent_hours }} ч {% endif %}{{ spent_mins }} мин
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Мотивационный блок -->
+          <div class="mt-5 rounded-2xl border border-indigo-100 bg-[#F5F7FF] p-3.5 sm:p-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-xs shrink-0">
+              <i class="ph-bold ph-trophy text-lg"></i>
+            </div>
+            <div>
+              <div class="text-xs font-black text-indigo-950">Отличное начало!</div>
+              <div class="text-[11px] font-semibold text-indigo-800/80 leading-snug mt-0.5">
+                Продолжай изучать темы — ты на верном пути к высоким баллам!
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Полезные действия -->
+        <section class="rounded-[2rem] border-2 border-slate-200/80 bg-white p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9]">
+          <div class="flex items-center gap-2.5 mb-3">
+            <div class="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <i class="ph-bold ph-squares-four text-base"></i>
+            </div>
+            <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">Полезные действия</h2>
+          </div>
+
+          <div class="space-y-1">
+            <!-- Сохранённые материалы -->
+            <div class="flex items-center justify-between py-2.5 border-b border-slate-100">
+              <div class="flex items-center gap-2.5">
+                <i class="ph-bold ph-bookmark-simple text-indigo-600 text-base"></i>
+                <span class="text-xs font-bold text-slate-700">Сохранённые материалы</span>
+              </div>
+              <span class="text-xs font-black text-slate-900">{{ saved_count }}</span>
+            </div>
+
+            <!-- История просмотров -->
+            <div class="flex items-center justify-between py-2.5 border-b border-slate-100">
+              <div class="flex items-center gap-2.5">
+                <i class="ph-bold ph-clock-counter-clockwise text-indigo-600 text-base"></i>
+                <span class="text-xs font-bold text-slate-700">История просмотров</span>
+              </div>
+              <span class="text-xs font-black text-slate-900">{{ in_progress_count + completed_count }}</span>
+            </div>
+
+            <!-- Есть вопрос? Напиши преподавателю -->
+            <a href="https://t.me/boostudy_support" target="_blank" rel="noopener noreferrer"
+               class="flex items-center justify-between py-2.5 text-slate-700 hover:text-indigo-600 transition no-underline group">
+              <div class="flex items-center gap-2.5">
+                <i class="ph-bold ph-question text-indigo-600 text-base"></i>
+                <div>
+                  <div class="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition">Есть вопрос?</div>
+                  <div class="text-[10px] font-semibold text-slate-400">Напиши преподавателю</div>
+                </div>
+              </div>
+              <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-600 transition text-sm"></i>
+            </a>
+          </div>
+        </section>
+
+        <!-- 3. Совет (янтарная карточка) -->
+        <section class="rounded-[2rem] border-2 border-amber-200 bg-[#FFFDF5] p-5 shadow-[0_3px_0_#FDE68A] flex items-start gap-3.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+            <i class="ph-fill ph-lightbulb text-lg"></i>
+          </div>
+          <div>
+            <div class="text-xs font-black text-amber-900 uppercase tracking-wider">Совет</div>
+            <p class="mt-1 text-xs font-bold text-amber-900/80 leading-relaxed">
+              Старайся не пропускать темы — они выстроены в логическом порядке!
+            </p>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
   </div>
 </main>
+
 <script>
-(() => { const search = document.getElementById('theory-search'), buttons = [...document.querySelectorAll('.theory-filter')], topics = [...document.querySelectorAll('.theory-topic')], groups = [...document.querySelectorAll('.theory-group')]; let filter = 'all'; const render = () => { const q = (search.value || '').toLowerCase().trim(); groups.forEach(group => { let visible = 0; group.querySelectorAll('.theory-topic').forEach(topic => { const byGroup = filter === 'all' || filter === group.dataset.group; const byState = filter !== 'continue' || (+topic.dataset.progress > 0 && +topic.dataset.progress < 100); const bySaved = filter !== 'saved' || topic.dataset.bookmarked === '1'; const bySearch = !q || topic.dataset.title.includes(q) || topic.dataset.number.includes(q); const show = byGroup && byState && bySaved && bySearch; topic.classList.toggle('hidden', !show); if(show) visible++; }); group.classList.toggle('hidden', visible === 0); }); }; search.addEventListener('input', render); buttons.forEach(button => button.addEventListener('click', () => { filter = button.dataset.filter; buttons.forEach(item => item.className = 'theory-filter whitespace-nowrap rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-2 text-xs font-black text-slate-600'); button.className = 'theory-filter whitespace-nowrap rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 px-4 py-2.5 text-xs font-black text-white'; render(); })); })();
+function toggleTheoryTopic(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  const body = card.querySelector('.theory-accordion-body');
+  const caret = card.querySelector('.theory-caret');
+  const numBadge = card.querySelector('.theory-num-badge');
+  const isOpen = card.getAttribute('data-open') === 'true';
+
+  if (isOpen) {
+    card.setAttribute('data-open', 'false');
+    if (body) body.classList.add('hidden');
+    if (caret) caret.classList.remove('rotate-180', 'text-indigo-600');
+    if (numBadge) {
+      numBadge.classList.remove('bg-indigo-600', 'text-white', 'shadow-xs');
+      numBadge.classList.add('bg-slate-100', 'text-slate-700');
+    }
+  } else {
+    card.setAttribute('data-open', 'true');
+    if (body) body.classList.remove('hidden');
+    if (caret) caret.classList.add('rotate-180', 'text-indigo-600');
+    if (numBadge) {
+      numBadge.classList.remove('bg-slate-100', 'text-slate-700');
+      numBadge.classList.add('bg-indigo-600', 'text-white', 'shadow-xs');
+    }
+  }
+}
+
+function filterTheoryGroup(groupId) {
+  const buttons = document.querySelectorAll('.module-tab-btn');
+  buttons.forEach(btn => {
+    btn.className = 'module-tab-btn whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50';
+  });
+  const activeBtn = document.getElementById('tab-btn-' + groupId);
+  if (activeBtn) {
+    activeBtn.className = 'module-tab-btn whitespace-nowrap rounded-xl border-b-2 border-indigo-800 bg-indigo-600 px-4 py-2 text-xs font-black text-white transition shadow-sm';
+  }
+
+  const sections = document.querySelectorAll('.theory-group-section');
+  sections.forEach(sec => {
+    if (groupId === 'all' || sec.id === 'section-' + groupId) {
+      sec.classList.remove('hidden');
+    } else {
+      sec.classList.add('hidden');
+    }
+  });
+}
 </script>
 {% endblock %}

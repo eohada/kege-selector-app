@@ -3,55 +3,187 @@
 
 {% block title %}Доступ к теории: {{ student.name or 'Ученик' }} · BooStudy{% endblock %}
 
-{% block body_class %}layout-teacher bg-boo-bg text-boo-textMain{% endblock %}
-
-{% block extra_head %}
-<!-- Custom Styles for JIT Class Elimination -->
-<style>
-    .shadow-0-4px-12px-rgba139-92-246-008 { box-shadow: 0 4px 12px rgba(139,92,246,0.08); }
-    .active-scale-098:active { transform: scale(0.98); }
-</style>
-
-<style>
-    .access-student-container { max-width: 1600px; margin: 0 auto; width: 100%; }
-</style>
-{% endblock %}
-
 {% block sandbox_content %}
-<div class="access-student-container pt-6 pb-8 w-full">
-    <section class="mb-3 flex flex-col gap-2">
-        <div class="back-link">
-            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="text-sm font-bold text-muted hover:text-boo-primary no-underline flex items-center gap-1.5 transition-colors">
-              <i class="ph-bold ph-arrow-left"></i> К списку учеников
-            </a>
-        </div>
-        <div class="mt-2">
-            <h1 class="text-2xl font-bold text-primary">Доступ к теории: {{ student.name or 'Ученик' }}</h1>
-            <p class="text-sm font-semibold text-muted">Включите номера заданий, по которым ученик может смотреть теорию. Снятая галочка = просмотр запрещён. По умолчанию все разрешены.</p>
-        </div>
-    </section>
+<main class="min-h-screen flex-1 bg-[#F8FAFC] px-3 py-5 sm:px-6 lg:pl-24 lg:pr-6 pb-24">
+  <div class="mx-auto max-w-[1400px] space-y-6">
 
-    <form method="post" action="{{ url_for('theory.manage_access_student', student_id=student.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=student.student_id) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        {% if course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
-        
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {% for num in task_numbers %}
-            <label for="allow_{{ num }}" class="bg-surface dark:bg-dark-card border border-slate-200 dark:border-dark-avatar hover:border-boo-primary/40 dark:hover:border-purple-500/40 rounded-2xl p-4 flex items-center gap-3.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 cursor-pointer select-none">
-                <input type="checkbox" id="allow_{{ num }}" name="allow_{{ num }}" class="w-5 h-5 rounded-lg border-slate-300 dark:border-white/[0.12] text-boo-primary bg-surface-alt dark:bg-white/[0.02] focus:ring-purple-200 cursor-pointer" {% if access_by_number.get(num, true) %}checked{% endif %}>
-                <span class="font-extrabold text-sm text-secondary dark:text-slate-200">Задание {{ num }}</span>
-            </label>
-            {% endfor %}
+    <!-- Навигация назад -->
+    <div>
+      <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}"
+         class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-[0_3px_0_#DAE1E9] hover:bg-slate-50 transition no-underline active:translate-y-0.5">
+        <i class="ph-bold ph-arrow-left"></i>
+        <span>Ко всем ученикам</span>
+      </a>
+    </div>
+
+    <!-- Заголовочный баннер -->
+    <header class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-[0_4px_0_#DAE1E9] relative overflow-hidden">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        <div>
+          <div class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-indigo-700">
+            <i class="ph-bold ph-user"></i>
+            <span>{{ student.name or ('Ученик #' ~ student.student_id) }}</span>
+          </div>
+          <h1 class="mt-2.5 text-2xl sm:text-3xl font-black font-display tracking-tight text-slate-900">
+            Настройка доступа к материалам
+          </h1>
+          <p class="mt-1 text-xs sm:text-sm font-semibold text-slate-500 max-w-2xl leading-relaxed">
+            Включите темы, которые ученик может изучать. Снятая галочка блокирует тему со стороны преподавателя.
+          </p>
         </div>
 
-        <div class="flex gap-3 items-center mt-3">
-            <button type="submit" class="px-4 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 hover:border-purple-300 dark:hover:border-purple-700/60 rounded-xl font-extrabold text-sm transition-all duration-150 active-scale-098 cursor-pointer shadow-0-4px-12px-rgba139-92-246-008">
-              Сохранить
-            </button>
-            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="px-4 py-2 bg-surface dark:bg-white/[0.02] border border-slate-200 dark:border-dark-avatar text-secondary dark:text-slate-300 font-bold rounded-xl hover:bg-surface-alt transition-all no-underline">
+        <!-- Быстрые массовые действия -->
+        <div class="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
+          <button type="button" onclick="setAllCheckboxes(true)"
+                  class="inline-flex items-center gap-1.5 rounded-xl border-2 border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-black text-emerald-800 shadow-sm hover:bg-emerald-100 transition active:translate-y-0.5">
+            <i class="ph-bold ph-check"></i>
+            <span>Разрешить все</span>
+          </button>
+          <button type="button" onclick="setAllCheckboxes(false)"
+                  class="inline-flex items-center gap-1.5 rounded-xl border-2 border-rose-200 bg-rose-50 px-3.5 py-2 text-xs font-black text-rose-800 shadow-sm hover:bg-rose-100 transition active:translate-y-0.5">
+            <i class="ph-bold ph-lock-key"></i>
+            <span>Заблокировать все</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <form method="post" id="access-form" action="{{ url_for('theory.manage_access_student', student_id=student.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=student.student_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
+
+      <div class="space-y-6">
+        {% if group_packs %}
+          {% for pack in group_packs %}
+            <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 sm:p-7 shadow-[0_4px_0_#DAE1E9] space-y-4">
+              <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-3 h-3 rounded-full bg-indigo-600"></span>
+                  <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">{{ pack.group.name }}</h2>
+                  <span class="text-xs font-bold text-slate-400">({{ pack.blocks|length }} тем)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button type="button" onclick="toggleGroupCheckboxes('group-{{ pack.group.id }}', true)"
+                          class="text-[11px] font-black text-indigo-600 hover:text-indigo-800 hover:underline">
+                    Разрешить модуль
+                  </button>
+                  <span class="text-slate-300">·</span>
+                  <button type="button" onclick="toggleGroupCheckboxes('group-{{ pack.group.id }}', false)"
+                          class="text-[11px] font-black text-rose-600 hover:text-rose-800 hover:underline">
+                    Заблокировать
+                  </button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="group-{{ pack.group.id }}">
+                {% for b in pack.blocks %}
+                  {% set is_allowed = access_by_number.get(b.task_number, true) %}
+                  <label class="topic-access-card relative flex items-start gap-3 rounded-2xl border-2 p-3.5 sm:p-4 transition cursor-pointer select-none {{ 'border-slate-200 bg-[#F8FAFC] hover:border-indigo-300' if is_allowed else 'border-rose-200 bg-rose-50/40' }}"
+                         data-task-num="{{ b.task_number }}">
+                    <input type="checkbox"
+                           id="allow_{{ b.task_number }}"
+                           name="allow_{{ b.task_number }}"
+                           class="topic-checkbox mt-1 w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                           {% if is_allowed %}checked{% endif %}
+                           onchange="updateCardState(this)">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="rounded-lg bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[11px] font-black text-indigo-700">
+                          №{{ b.task_number }}
+                        </span>
+                        <span class="status-badge text-[11px] font-black {{ 'text-emerald-700' if is_allowed else 'text-rose-700' }}">
+                          {{ 'Открыто' if is_allowed else 'Заблокировано' }}
+                        </span>
+                      </div>
+                      <div class="font-black text-xs sm:text-sm text-slate-800 mt-1 line-clamp-2">
+                        {{ b.title or ('Тема №' ~ b.task_number) }}
+                      </div>
+                    </div>
+                  </label>
+                {% endfor %}
+              </div>
+            </section>
+          {% endfor %}
+        {% else %}
+          <!-- Если блоков нет, выводим стандартные номера -->
+          <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 sm:p-7 shadow-[0_4px_0_#DAE1E9] space-y-4">
+            <h2 class="text-base sm:text-lg font-black text-slate-900">Номера заданий курса</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {% for num in task_numbers %}
+                {% set is_allowed = access_by_number.get(num, true) %}
+                <label class="topic-access-card flex items-center gap-3 rounded-2xl border-2 p-3.5 transition cursor-pointer select-none {{ 'border-slate-200 bg-[#F8FAFC] hover:border-indigo-300' if is_allowed else 'border-rose-200 bg-rose-50/40' }}"
+                       data-task-num="{{ num }}">
+                  <input type="checkbox"
+                         id="allow_{{ num }}"
+                         name="allow_{{ num }}"
+                         class="topic-checkbox w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                         {% if is_allowed %}checked{% endif %}
+                         onchange="updateCardState(this)">
+                  <span class="font-black text-xs sm:text-sm text-slate-800">Задание {{ num }}</span>
+                </label>
+              {% endfor %}
+            </div>
+          </section>
+        {% endif %}
+      </div>
+
+      <!-- Фиксированная нижняя панель сохранения -->
+      <div class="sticky bottom-4 mt-6 z-20">
+        <div class="rounded-2xl border-2 border-slate-200 bg-white/95 backdrop-blur-md p-4 shadow-[0_8px_20px_rgba(0,0,0,0.08)] flex items-center justify-between gap-4 max-w-[1400px] mx-auto">
+          <div class="text-xs font-bold text-slate-500">
+            Не забудьте сохранить изменения после настройки
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}"
+               class="px-4 py-2.5 rounded-xl border-2 border-slate-200 bg-white text-xs font-black text-slate-600 hover:bg-slate-50 transition no-underline">
               Отмена
             </a>
+            <button type="submit"
+                    class="px-6 py-2.5 rounded-xl border-b-[4px] border-indigo-800 bg-indigo-600 hover:bg-indigo-700 text-xs font-black text-white shadow-sm transition active:translate-y-0.5">
+              Сохранить доступ
+            </button>
+          </div>
         </div>
+      </div>
+
     </form>
-</div>
+  </div>
+</main>
+
+<script>
+  function updateCardState(checkbox) {
+    const card = checkbox.closest('.topic-access-card');
+    if (!card) return;
+    const badge = card.querySelector('.status-badge');
+    if (checkbox.checked) {
+      card.className = 'topic-access-card relative flex items-start gap-3 rounded-2xl border-2 p-3.5 sm:p-4 transition cursor-pointer select-none border-slate-200 bg-[#F8FAFC] hover:border-indigo-300';
+      if (badge) {
+        badge.className = 'status-badge text-[11px] font-black text-emerald-700';
+        badge.textContent = 'Открыто';
+      }
+    } else {
+      card.className = 'topic-access-card relative flex items-start gap-3 rounded-2xl border-2 p-3.5 sm:p-4 transition cursor-pointer select-none border-rose-200 bg-rose-50/40';
+      if (badge) {
+        badge.className = 'status-badge text-[11px] font-black text-rose-700';
+        badge.textContent = 'Заблокировано';
+      }
+    }
+  }
+
+  function setAllCheckboxes(state) {
+    document.querySelectorAll('.topic-checkbox').forEach(cb => {
+      cb.checked = state;
+      updateCardState(cb);
+    });
+  }
+
+  function toggleGroupCheckboxes(groupId, state) {
+    const container = document.getElementById(groupId);
+    if (!container) return;
+    container.querySelectorAll('.topic-checkbox').forEach(cb => {
+      cb.checked = state;
+      updateCardState(cb);
+    });
+  }
+</script>
 {% endblock %}

@@ -151,6 +151,14 @@ window.fetch = (input, init = {}) => {
       }
     });
     card.querySelector('[data-interactive-slider]')?.addEventListener('input', event => { const output = card.querySelector('[data-slider-output]'); if (output) output.value = event.target.value, output.textContent = event.target.value; });
+    card.querySelectorAll('input').forEach(input => {
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          card.querySelector('[data-action="interactive-submit"]')?.click();
+        }
+      });
+    });
   });
   let checkpointDone = 0;
   const checkpointButtons = [...document.querySelectorAll('[data-action="checkpoint-choice"]')];
