@@ -1060,9 +1060,10 @@ def student_dashboard():
                 Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED']),
                 Assignment.is_active == True,
             ).options(db.contains_eager(Submission.assignment))
-            if selected_course_id:
+            explicit_course_id = request.args.get('course_id', type=int)
+            if explicit_course_id:
                 sub_query = sub_query.filter(
-                    db.or_(Assignment.exam_course_id == selected_course_id, Assignment.exam_course_id.is_(None))
+                    db.or_(Assignment.exam_course_id == explicit_course_id, Assignment.exam_course_id.is_(None))
                 )
             pending_submissions = sub_query.order_by(Submission.assigned_at.desc()).limit(12).all()
         except Exception:

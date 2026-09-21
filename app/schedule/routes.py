@@ -425,6 +425,8 @@ def schedule():
 
     real_events = []
     for lesson in lessons:
+        if not lesson.lesson_date:
+            continue
         lesson_date_display = lesson_storage_to_local(lesson.lesson_date, timezone)
         lesson_date_local = lesson_date_display.date()
         day_index = (lesson_date_local - week_start).days
@@ -574,7 +576,7 @@ def schedule():
     agenda = []
     try:
         for l in lessons:
-            if not l.student:
+            if not l.student or not l.lesson_date:
                 continue
             dt_display = lesson_storage_to_local(l.lesson_date, timezone)
             agenda.append({

@@ -368,3 +368,89 @@ def test_mock_replan_returns_mastery_diff_and_global_attention(client, app, role
     view = client.get('/courses/attention?view=1')
     assert view.status_code == 200
     assert 'Центр внимания'.encode('utf-8') in view.data
+
+
+def test_course_adaptive_engine_full_loop(client, app, role_users):
+    from app import db
+    from app.models import Course, ExamSkill, LearningItem, LearningTrajectory, Lesson, LessonOutcome, StudentSkill, LearningError
+
+    with app.app_context():
+        course_id, lesson_id = _course_with_lesson(app, role_users)
+        course = db.session.get(LearningTrajectory, course_id)
+
+        exam_course = Course(title='Информатика ЕГЭ Тест', slug='ege_test_adaptive')
+        db.session.add(exam_course)
+        db.session.flush()
+        course.exam_course_id = exam_course.id
+
+        skill_1 = ExamSkill(exam_course_id=exam_course.id, task_number=1, title='Анализ графов', is_active=True, weight=1.0)
+        skill_2 = ExamSkill(exam_course_id=exam_course.id, task_number=2, title='Таблицы истинности', is_active=True, weight=1.0)
+        db.session.add_all([skill_1, skill_2])
+        db.session.flush()
+
+        db.session.add(StudentSkill(student_id=role_users['student_id'], skill_id=skill_1.skill_id, mastery_percent=30, state='learning'))
+
+        # Planned practice item that can be skipped if mastered
+        db.session.add(LearningItem(course_id=course_id, skill_id=skill_1.skill_id, item_type='practice', title='Доп. практика по графам', status='planned'))
+
+        db.session.commit()
+        s1_id = skill_1.skill_id
+        s2_id = skill_2.skill_id
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    # Send structured outcome with comprehension=4, independence=high, pacing=optimal, identified errors
+    response = client.post(
+        f'/courses/{course_id}/lessons/{lesson_id}/outcome',
+        json={
+            'covered': [str(s1_id)],
+            'mastery': 'good',
+            'next_action': 'continue',
+            'comprehension_score': 4,
+            'independence_level': 'high',
+            'pacing': 'optimal',
+            'identified_errors': [{'skill_id': s1_id, 'description': 'Ошибся в ориентированности ребер', 'type': 'conceptual'}],
+            'auto_replan_triggered': True,
+            'teacher_note': 'Тема освоена отлично, небольшая неточность в направленности.',
+        },
+        headers={'Accept': 'application/json'}
+    )
+    assert response.status_code == 200
+    res_data = response.get_json()
+    assert res_data['success'] is True
+    assert 'adaptive_diff' in res_data
+    diff = res_data['adaptive_diff']
+    assert diff['comprehension_score'] == 4
+    assert len(diff['skills_updated']) >= 1
+
+    with app.app_context():
+        # Check LessonOutcome recorded adaptive diff
+        outcome = LessonOutcome.query.filter_by(lesson_id=lesson_id).one()
+        assert outcome.comprehension_score == 4
+        assert outcome.independence_level == 'high'
+        assert outcome.pacing == 'optimal'
+        assert outcome.adaptive_diff_summary is not None
+
+        # Check StudentSkill calibrated
+        st_skill = StudentSkill.query.filter_by(student_id=role_users['student_id'], skill_id=s1_id).first()
+        assert st_skill.mastery_percent > 30
+
+        # Check LearningError recorded
+        err = LearningError.query.filter_by(student_id=role_users['student_id'], skill_id=s1_id).first()
+        assert err is not None
+        assert 'ориентированности' in err.description
+
+        # Check next lesson prepared with focused agenda
+        next_lesson = Lesson.query.filter(
+            Lesson.learning_trajectory_id == course_id,
+            Lesson.status.in_(['draft', 'planned']),
+            Lesson.lesson_id != lesson_id
+        ).first()
+        assert next_lesson is not None
+        assert 'Ошибся в ориентированности ребер' in (next_lesson.content or '')
+
+    # Check that course view renders the adaptive summary banner
+    view = client.get(f'/courses/{course_id}')
+    assert view.status_code == 200
+    assert 'Курс автоматически адаптирован'.encode('utf-8') in view.data
+    assert 'Оценка понимания'.encode('utf-8') in view.data

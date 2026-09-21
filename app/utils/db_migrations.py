@@ -2226,6 +2226,12 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         _add_col('StudentTaskStatistics', 'course_id', 'INTEGER')
         _add_col('Assignments', 'exam_course_id', 'INTEGER')
         _add_col('Lessons', 'exam_course_id', 'INTEGER')
+        _add_col('LessonOutcomes', 'comprehension_score', 'INTEGER')
+        _add_col('LessonOutcomes', 'independence_level', 'VARCHAR(30)')
+        _add_col('LessonOutcomes', 'pacing', 'VARCHAR(30)')
+        _add_col('LessonOutcomes', 'identified_errors', 'JSON' if not is_postgres else 'JSONB')
+        _add_col('LessonOutcomes', 'auto_replan_triggered', 'BOOLEAN DEFAULT FALSE' if is_postgres else 'INTEGER DEFAULT 0')
+        _add_col('LessonOutcomes', 'adaptive_diff_summary', 'JSON' if not is_postgres else 'JSONB')
         db.session.commit()
 
         # --- Seed: ExamCourse «ЕГЭ Информатика» ---

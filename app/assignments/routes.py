@@ -3594,23 +3594,19 @@ def submission_view(submission_id):
     if not is_parent_view and has_permission(current_user, 'assignment.grade'):
         return redirect(url_for('assignments.submission_grade_view', submission_id=submission.submission_id))
 
-    # Ученик выполняет работу только в каноничном Workspace: там находятся
-    # редактор, запуск, вложения, холст и единая навигация карточек.
-    # Если работа уже сдана (SUBMITTED, NEEDS_MANUAL_REVIEW, GRADED), ученик
-    # просматривает результаты, ответы и комментарии в task_detail.
+    # Ученик всегда выполняет и просматривает работу в каноничном Workspace:
+    # там находятся редактор, запуск, вложения, холст, ответы и единая навигация карточек.
     if getattr(current_user, 'is_student', lambda: False)() and student and current_user.id == student.user_id:
-        normalized_status = normalize_legacy_status(submission.status)
-        if normalized_status not in {SubmissionStatus.SUBMITTED, SubmissionStatus.NEEDS_MANUAL_REVIEW, SubmissionStatus.GRADED}:
-            ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
-            if ordered_tasks:
-                requested_task_id = request.args.get('focus_at', type=int)
-                selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
-                return redirect(url_for(
-                    'task_workspace.workspace_page',
-                    context_type='submission_task',
-                    context_id=submission.submission_id,
-                    assignment_task_id=selected_task.assignment_task_id,
-                ))
+        ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
+        if ordered_tasks:
+            requested_task_id = request.args.get('focus_at', type=int)
+            selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
+            return redirect(url_for(
+                'task_workspace.workspace_page',
+                context_type='submission_task',
+                context_id=submission.submission_id,
+                assignment_task_id=selected_task.assignment_task_id,
+            ))
     
     try:
         now = utc_now()
@@ -4850,10 +4846,27 @@ def submission_grade_view(submission_id):
         except Exception:
             playback_data = {"trace_id": None, "frames": [], "meta": {}, "frame_count": 0}
 
+        # Normalize answer spec for rich rendering of all answer types
+        from app.task_workspace.service import _normalize_answer_spec
+        normalized_spec = _normalize_answer_spec(assignment_task.task) if assignment_task.task else {"type": "short_answer"}
+        
+        # Parsed structured answer value (for matching / single_choice)
+        parsed_answer_value = None
+        if answer and answer.value:
+            if normalized_spec.get('type') == 'matching':
+                try:
+                    parsed_answer_value = json.loads(answer.value) if isinstance(answer.value, str) else answer.value
+                except Exception:
+                    parsed_answer_value = {}
+            else:
+                parsed_answer_value = answer.value
+
         tasks_data.append({
             'assignment_task': assignment_task,
             'task': assignment_task.task,
             'answer': answer,
+            'answer_spec': normalized_spec,
+            'parsed_answer_value': parsed_answer_value,
             'max_attempts_for_task': max_for_task,
             'task_attempts_used': task_attempts_used,
             'rating_meta': rating_meta,

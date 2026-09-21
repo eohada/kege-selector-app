@@ -13,6 +13,11 @@
     .shadow-0-8px-24px--4px-rgba139-92-246-028 { box-shadow: 0 8px 24px -4px rgba(139,92,246,0.28); }
 </style>
 
+<!-- Prism.js Light Theme for Python Code -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
 <style>
         body.layout-teacher .grade-app-content {
@@ -494,7 +499,7 @@
             flex: 1 1 0%;
             min-width: 0;
             max-width: 100%;
-            overflow: hidden;
+            overflow: visible;
         }
         #taskNavGrade .grade-task-strip {
             display: flex;
@@ -505,7 +510,8 @@
             max-width: 100%;
             min-width: 0;
             overflow-x: auto;
-            overflow-y: hidden;
+            overflow-y: visible;
+            padding: 0.5rem 0.25rem;
             -webkit-overflow-scrolling: touch;
             justify-content: flex-start;
         }
@@ -662,7 +668,6 @@
         .grade-review-v5 .submission-hero-metrics { position:absolute; right:13.5rem; top:1rem; width:29rem; margin:0 !important; padding:0 !important; border:0 !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:.35rem !important; }
         .grade-review-v5 .submission-hero-metrics > div { min-height:3.8rem; padding:.35rem .6rem !important; border:0 !important; border-radius:0 !important; background:transparent !important; }
         .grade-review-v5 .grade-hero > .relative { padding-right:46rem; }
-        .grade-review-v5 .review-header-progress { position:absolute; right:1.25rem; top:1rem; width:12.25rem; }
         .grade-review-v5 .review-progress-track { height:.55rem; margin-top:.4rem; border-radius:999px; overflow:hidden; background:#edf0ff; }
         .grade-review-v5 .review-progress-track span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#a78bfa,#5b43f3); transition:width .18s ease; }
         .grade-review-v5 .review-header-progress .neo-button { min-height:2.35rem; padding:0 .65rem !important; font-size:.68rem !important; }
@@ -718,163 +723,667 @@
         .grade-review-v5 .feedback-section { display:none !important; }
         .grade-review-v5 .submit-section { position:fixed; left:calc(6.5rem + 1.5rem); right:1.5rem; bottom:1rem; min-height:3.35rem; padding:.5rem 1rem !important; border:1px solid #e6e9f3 !important; border-radius:1rem !important; background:rgba(255,255,255,.96) !important; box-shadow:0 8px 24px rgba(53,65,105,.06) !important; }
         .grade-review-v5 .submit-section-right .neo-button { display:none !important; }
-        .grade-review-v5 .submit-section-right { display:none !important; }
-        @media (max-width:1200px) { .grade-review-v5 .submission-hero-metrics { position:static; width:auto; margin-top:1rem !important; grid-template-columns:repeat(4,minmax(0,1fr)) !important; } .grade-review-v5 .grade-hero > .relative { padding-right:0; } .grade-review-v5 .review-header-progress { position:static; width:auto; margin-top:1rem; } }
-        @media (max-width:1050px) { .grade-review-v5 .task-card-grade { grid-template-columns:1fr; } .grade-review-v5 .task-header-grade,.grade-review-v5 .task-content-grade,.grade-review-v5 .answer-left-col { grid-column:1; } .grade-review-v5 .answer-right-col { grid-column:1; grid-row:auto; position:static; margin:0 1.25rem 1.25rem; } }
-        @media (max-width:760px) { .grade-review-v5 .submission-hero-metrics { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } .grade-review-v5 .submit-section { left:.75rem; right:.75rem; } }
-
-        /* Visual acceptance pass: compose the review page as one target workspace. */
-        .grade-review-v6 { --review-bg:#f6f8fc; --review-ink:#15213d; --review-muted:#73809b; --review-line:#e5eaf3; --review-purple:#5b43f3; }
-        .grade-review-v6 { --accent-purple:#5b43f3; --accent-purple-soft:#f1efff; --success-green:#08a66f; --success-green-soft:#effcf7; --warning-orange:#c56a12; --warning-orange-soft:#fff7e8; --surface-lavender:#f5f2ff; --surface-blue:#f4f8ff; }
-        /* Bound inline icons on this page so generic SVG rules can never
-           stretch a checkmark across the workspace. */
-        .grade-review-v6 svg, .grade-review-v6 .ui-icon { width:1.1rem!important; height:1.1rem!important; max-width:1.1rem!important; max-height:1.1rem!important; flex:0 0 auto; }
-        .grade-review-v6 .review-homework-icon svg { width:1.35rem!important; height:1.35rem!important; max-width:1.35rem!important; max-height:1.35rem!important; }
+        /* Visual acceptance pass: compose the review page as one target workspace matching media_1789856954007.png */
+        .grade-review-v6 { --review-bg:#f8fafc; --review-ink:#0f172a; --review-muted:#64748b; --review-line:#e2e8f0; --review-purple:#6366f1; }
+        .grade-review-v6 svg, .grade-review-v6 .ui-icon { width:1.15rem!important; height:1.15rem!important; max-width:1.15rem!important; max-height:1.15rem!important; flex:0 0 auto; }
+        .grade-review-v6 .review-homework-icon svg { width:1.4rem!important; height:1.4rem!important; max-width:1.4rem!important; max-height:1.4rem!important; }
         .grade-review-v6 #qa-widget-trigger-btn, body:has(.grade-review-v6) #qa-widget-trigger-btn { display:none!important; }
-        .grade-review-v6.grade-app-content { background:var(--review-bg)!important; padding-top:.5rem!important; }
-        .grade-review-v6 .grade-page-inner { width:min(1376px,calc(100vw - 10rem)); max-width:1376px; margin-inline:auto; position:relative; left:2px; }
-        .grade-review-v6 .grade-page-inner > p:first-child { margin-bottom:-.3rem!important; }
-        .grade-review-v6 .submission-back-link { padding:.48rem .7rem!important; border:1px solid var(--review-line)!important; border-radius:12px!important; background:#fff!important; box-shadow:0 3px 10px rgba(28,43,80,.04)!important; color:#27365c!important; font-size:.78rem!important; }
-        .grade-review-v6 .grade-hero { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(290px,.92fr) minmax(290px,1fr); gap:1.25rem; align-items:center; min-height:6.5rem; padding:.5rem 1.1rem!important; border:1px solid var(--review-line)!important; border-radius:20px!important; background:#fff!important; box-shadow:0 8px 22px rgba(28,43,80,.045)!important; }
-        .grade-review-v6 .grade-hero>.relative { display:contents; padding:0!important; }
-        .grade-review-v6 .grade-hero>.relative>div:first-child { min-width:0; }
-        .grade-review-v6 .review-hero-identity { position:relative; padding-left:4.15rem; }
-        .grade-review-v6 .review-homework-icon { position:absolute; left:0; top:.1rem; width:3.25rem; height:3.25rem; display:grid; place-items:center; border-radius:15px; background:#f0edff; color:#5b43f3; font-size:1.45rem; }
-        .grade-review-v6 .review-student-avatar { width:1.8rem; height:1.8rem; display:grid; place-items:center; overflow:hidden; border-radius:50%; background:#efeaff; color:#5b43f3; font-size:.72rem; font-weight:900; }
-        .grade-review-v6 .review-student-avatar img { width:100%; height:100%; object-fit:cover; }
-        .grade-review-v6 .submission-type-chip { background:#f0edff!important; color:#5040d7!important; border-color:#d9d1ff!important; }
-        .grade-review-v6 .grade-hero .submission-type-chip { display:none!important; }
-        .grade-review-v6 .grade-hero .text-tiny.font-extrabold { display:block!important; }
-        .grade-review-v6 .review-hero-identity > p.text-tiny.font-extrabold { display:none!important; }
-        .grade-review-v6 .review-hero-identity > .flex.items-center.gap-2.mb-3 { display:none!important; }
-        .grade-review-v6 .review-eyebrow { display:flex; align-items:center; gap:.55rem; margin-bottom:.38rem; color:#5b43f3; font-size:.68rem; font-weight:900; letter-spacing:.08em; }
-        .grade-review-v6 .review-eyebrow strong { color:#7d88a0; letter-spacing:0; }
-        .grade-review-v6 .review-status-inline { display:inline-flex; align-items:center; gap:.35rem; min-height:1.8rem; padding:.35rem .6rem; border:1px solid #b7efd4; border-radius:999px; background:#effcf7; color:#07845f; font-size:.72rem; font-weight:800; }
-        .grade-review-v6 .submission-title { font-size:1.35rem!important; color:var(--review-ink)!important; }
-        .grade-review-v6 .submission-hero-metrics { position:static!important; width:auto!important; margin:0!important; padding:0!important; display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr))!important; gap:.75rem!important; border:0!important; }
-        .grade-review-v6 .submission-hero-metrics>div:first-child { display:none!important; }
-        .grade-review-v6 .submission-hero-metrics>div { min-height:0!important; padding:.35rem .65rem!important; border-right:1px solid var(--review-line)!important; }
-        .grade-review-v6 .review-meta-icon { width:1.85rem; height:1.85rem; display:inline-grid; place-items:center; margin-right:.25rem; border-radius:9px; background:#f3f1ff; color:#5b43f3; font-size:.9rem; }
-        .grade-review-v6 .review-header-menu { width:2.35rem; height:2.35rem; border:1px solid var(--review-line); border-radius:10px; background:#fff; color:#687795; font-weight:900; letter-spacing:.08em; }
-        .grade-review-v6 .submission-hero-metrics>div:last-child { border-right:0!important; }
-        .grade-review-v6 .submission-hero-metrics .text-tiny { margin-bottom:.25rem!important; font-size:.72rem!important; font-weight:700!important; letter-spacing:0!important; text-transform:none!important; }
-        .grade-review-v6 .review-header-progress { position:static!important; width:auto!important; }
-        .grade-review-v6 .review-header-progress .neo-button { min-height:2.35rem!important; padding:0 .85rem!important; font-size:.72rem!important; }
-        .grade-review-v6 .task-nav-grade { min-height:4rem!important; margin:.75rem 0!important; padding:.55rem .75rem!important; border:1px solid var(--review-line)!important; border-radius:18px!important; background:#fff!important; box-shadow:0 6px 18px rgba(28,43,80,.035)!important; }
-        .grade-review-v6 .task-nav-grade .task-nav-btn { width:2.45rem!important; height:2.45rem!important; border-radius:11px!important; background:#fff!important; border:1px solid var(--review-line)!important; color:#304063!important; }
-        .grade-review-v6 .task-nav-grade .task-nav-btn.active { background:var(--review-purple)!important; border-color:var(--review-purple)!important; color:#fff!important; box-shadow:0 4px 10px rgba(91,67,243,.2)!important; }
-        .grade-review-v6 .task-nav-grade .task-nav-btn.correct { background:#effcf7!important; border-color:#b7efd4!important; color:#059669!important; }
-        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed { background:#effcf7!important; border-color:#b7efd4!important; color:#059669!important; }
-        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed { gap:.25rem!important; }
-        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed i { font-size:.95rem; }
+        
+        .grade-review-v6.grade-app-content { background:#f8fafc!important; padding-top:0.75rem!important; }
+        .grade-review-v6 .grade-page-inner { width:min(1600px,calc(100% - 2.5rem))!important; max-width:1600px!important; margin:0 auto!important; position:relative!important; left:0!important; }
+        .grade-review-v6 .grade-page-inner > p:first-child { margin-bottom:0.75rem!important; }
+        .grade-review-v6 .submission-back-link { display:inline-flex; align-items:center; gap:0.5rem; padding:0.45rem 0.85rem!important; border:1px solid #e2e8f0!important; border-radius:12px!important; background:#fff!important; box-shadow:0 1px 3px rgba(0,0,0,0.04)!important; color:#475569!important; font-size:0.82rem!important; font-weight:700!important; text-decoration:none!important; }
+        .grade-review-v6 .submission-back-link:hover { color:#4f46e5!important; border-color:#cbd5e1!important; }
+
+        /* Header Bento Card */
+        .grade-review-v6 .grade-hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) auto minmax(280px, 1fr);
+            gap: 1.25rem;
+            align-items: stretch;
+            padding: 1.25rem 1.5rem !important;
+            border: 2px solid #e2e8f0 !important;
+            border-radius: 1.5rem !important;
+            background: #fff !important;
+            box-shadow: 0 4px 0 #dae1e9 !important;
+            overflow: visible !important;
+            position: relative !important;
+        }
+        .grade-review-v6 .grade-hero > .relative { display: contents; padding: 0 !important; }
+        .grade-review-v6 .grade-hero > .relative > div:first-child { min-width: 0; }
+        .grade-review-v6 .review-hero-identity {
+            position: relative;
+            padding-left: 3.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .grade-review-v6 .review-homework-icon {
+            position: absolute;
+            left: 0;
+            top: 0.25rem;
+            width: 2.85rem;
+            height: 2.85rem;
+            display: grid;
+            place-items: center;
+            border-radius: 14px;
+            background: #eef2ff;
+            color: #6366f1;
+            font-size: 1.4rem;
+            border: 1px solid #e0e7ff;
+            box-shadow: 0 2px 0 #c7d2fe;
+        }
+        .grade-review-v6 .review-student-avatar {
+            width: 1.85rem;
+            height: 1.85rem;
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            border-radius: 50%;
+            background: #e0e7ff;
+            color: #4f46e5;
+            font-size: 0.75rem;
+            font-weight: 800;
+            border: 1.5px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .grade-review-v6 .review-student-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .grade-review-v6 .grade-hero .submission-type-chip { display: none !important; }
+        .grade-review-v6 .grade-hero .text-tiny.font-extrabold { display: none !important; }
+        .grade-review-v6 .review-hero-identity > p.text-tiny.font-extrabold { display: none !important; }
+        .grade-review-v6 .review-hero-identity > .flex.items-center.gap-2.mb-3 { display: none !important; }
+        .grade-review-v6 .review-eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+            color: #6366f1;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .grade-review-v6 .review-eyebrow strong { color: #94a3b8; font-weight: 700; letter-spacing: 0; }
+        .grade-review-v6 .submission-title {
+            font-size: 1.25rem !important;
+            font-weight: 900 !important;
+            color: #0f172a !important;
+            line-height: 1.3 !important;
+            margin: 0 !important;
+            letter-spacing: -0.02em;
+        }
+        .grade-review-v6 .review-status-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            min-height: 1.6rem;
+            padding: 0.25rem 0.65rem;
+            border: 1px solid #bbf7d0;
+            border-radius: 999px;
+            background: #f0fdf4;
+            color: #16a34a;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        /* Metrics in Header — Bento Grid Tiles */
+        .grade-review-v6 .submission-hero-metrics {
+            position: static !important;
+            width: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 0.65rem !important;
+            border: 0 !important;
+            align-items: stretch !important;
+        }
+        .grade-review-v6 .submission-hero-metrics > div {
+            min-height: 0 !important;
+            padding: 0.65rem 0.85rem !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 1rem !important;
+            background: #f8fafc !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            transition: all 0.15s ease;
+        }
+        .grade-review-v6 .submission-hero-metrics > div:hover {
+            background: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+        }
+        .grade-review-v6 .submission-hero-metrics .text-tiny {
+            margin-bottom: 0.35rem !important;
+            font-size: 0.68rem !important;
+            font-weight: 800 !important;
+            color: #94a3b8 !important;
+            letter-spacing: 0.05em !important;
+            text-transform: uppercase !important;
+        }
+        .grade-review-v6 .review-meta-icon {
+            width: 1.75rem;
+            height: 1.75rem;
+            display: inline-grid;
+            place-items: center;
+            margin-right: 0.35rem;
+            border-radius: 8px;
+            background: #fff;
+            color: #6366f1;
+            font-size: 0.9rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            flex-shrink: 0;
+        }
+
+        /* Progress & Actions in Header */
+        .grade-review-v6 .review-header-progress {
+            position: relative !important;
+            width: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            padding: 0.65rem 0.85rem !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 1rem !important;
+            background: #f8fafc !important;
+            min-width: 260px;
+            align-self: stretch !important;
+            height: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .grade-review-v6 .review-progress-track {
+            height: 0.5rem;
+            margin-top: 0.35rem;
+            border-radius: 999px;
+            overflow: hidden;
+            background: #e2e8f0;
+        }
+        .grade-review-v6 .review-progress-track span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: #6366f1;
+            transition: width 0.2s ease;
+        }
+        .grade-review-v6 .review-header-progress .neo-button {
+            min-height: 2.35rem !important;
+            padding: 0 0.85rem !important;
+            font-size: 0.75rem !important;
+            border-radius: 10px !important;
+            font-weight: 800 !important;
+        }
+        .grade-review-v6 .review-header-menu {
+            width: 2.35rem;
+            height: 2.35rem;
+            border: 1px solid #cbd5e1;
+            border-bottom: 2px solid #94a3b8;
+            border-radius: 10px;
+            background: #fff;
+            color: #475569;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: grid;
+            place-items: center;
+        }
+        .grade-review-v6 .review-header-menu:hover {
+            background: #f8fafc;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+        .grade-review-v6 .review-header-menu:active {
+            transform: translateY(1px);
+            border-bottom-width: 1px;
+        }
+        #review-header-dropdown-wrap {
+            position: relative !important;
+        }
+        #review-header-dropdown {
+            position: absolute !important;
+            right: 0 !important;
+            top: calc(100% + 8px) !important;
+            border: 2px solid #e2e8f0 !important;
+            box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12), 0 4px 0 #dae1e9 !important;
+            border-radius: 1.25rem !important;
+            background: #ffffff !important;
+            z-index: 1000 !important;
+        }
+
+        /* Autocheck pill styling */
+        .grade-review-v6 .autocheck-status-pill {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+            margin-top: 0.85rem !important;
+            padding: 0.5rem 0.95rem !important;
+            border-radius: 0.95rem !important;
+            font-size: 0.82rem !important;
+            font-weight: 800 !important;
+            border: 2px solid transparent !important;
+            line-height: 1.4 !important;
+        }
+        .grade-review-v6 .autocheck-status-pill.is-correct {
+            background: #f0fdf4 !important;
+            border-color: #bbf7d0 !important;
+            color: #16a34a !important;
+            box-shadow: 0 2px 0 #86efac !important;
+        }
+        .grade-review-v6 .autocheck-status-pill.is-incorrect {
+            background: #fef2f2 !important;
+            border-color: #fecaca !important;
+            color: #dc2626 !important;
+            box-shadow: 0 2px 0 #fca5a5 !important;
+        }
+        .grade-review-v6 .autocheck-status-pill .autocheck-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 0.65rem;
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+        .grade-review-v6 .autocheck-status-pill.is-correct .autocheck-badge {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .grade-review-v6 .autocheck-status-pill.is-incorrect .autocheck-badge {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        /* Rich Student Answer Presentation Types */
+        .grade-review-v6 .teacher-student-response {
+            margin: 0.5rem 0 0.75rem !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 14px !important;
+            overflow: hidden !important;
+            background: #f8fafc !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .grade-review-v6 .teacher-student-response-title {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.55rem 0.95rem;
+            border-bottom: 1px solid #e2e8f0;
+            background: #ffffff;
+            color: #334155;
+            font-size: 0.75rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+        .grade-review-v6 .teacher-student-response-value {
+            margin: 0 !important;
+            padding: 0.85rem 1rem !important;
+            overflow: auto !important;
+            white-space: pre-wrap !important;
+            color: #0f172a !important;
+            font: 500 0.86rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+        }
+        .grade-review-v6 .teacher-student-response-long {
+            font-family: inherit !important;
+            font-size: 0.92rem !important;
+            line-height: 1.65 !important;
+            color: #1e293b !important;
+        }
+        .grade-review-v6 .teacher-choice-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.85rem 1rem;
+        }
+        .grade-review-v6 .teacher-choice-item {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.65rem 0.85rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            background: #ffffff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            transition: all 0.15s ease;
+        }
+        .grade-review-v6 .teacher-choice-item.is-selected {
+            background: #eef2ff;
+            border-color: #c7d2fe;
+            color: #4338ca;
+            font-weight: 700;
+        }
+        .grade-review-v6 .teacher-choice-item.is-correct-target {
+            border-color: #86efac;
+            background: #f0fdf4;
+            color: #15803d;
+        }
+        .grade-review-v6 .teacher-choice-indicator {
+            width: 1.35rem;
+            height: 1.35rem;
+            border-radius: 50%;
+            border: 2px solid #cbd5e1;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            background: #fff;
+        }
+        .grade-review-v6 .teacher-choice-item.is-selected .teacher-choice-indicator {
+            border-color: #6366f1;
+            background: #6366f1;
+            color: #fff;
+        }
+        .grade-review-v6 .teacher-matching-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            padding: 0.5rem;
+        }
+        .grade-review-v6 .teacher-matching-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.65rem 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .grade-review-v6 .teacher-matching-row:last-child { border-bottom: 0; }
+        .grade-review-v6 .teacher-matching-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #334155;
+        }
+        .grade-review-v6 .teacher-matching-badge {
+            width: 1.6rem;
+            height: 1.6rem;
+            display: inline-grid;
+            place-items: center;
+            border-radius: 8px;
+            background: #e0e7ff;
+            color: #4f46e5;
+            font-size: 0.75rem;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        .grade-review-v6 .teacher-matching-arrow { color: #94a3b8; font-size: 1rem; }
+        .grade-review-v6 .teacher-matching-right {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.45rem 0.75rem;
+            border-radius: 10px;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .grade-review-v6 .teacher-matching-right.is-empty {
+            color: #94a3b8;
+            font-style: italic;
+            border-style: dashed;
+            background: transparent;
+        }
+
+        /* Task Navigation Bar */
+        .grade-review-v6 .task-nav-grade { min-height:3.75rem!important; margin:0.85rem 0!important; padding:0.45rem 0.85rem!important; border:1px solid #e2e8f0!important; border-radius:1rem!important; background:#fff!important; box-shadow:0 2px 8px rgba(15,23,42,0.04)!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn { min-width:2.35rem!important; width:auto!important; height:2.35rem!important; padding:0 0.55rem!important; border-radius:10px!important; background:#fff!important; border:1px solid #e2e8f0!important; color:#475569!important; display:inline-flex!important; align-items:center!important; justify-content:center!important; gap:0.25rem!important; font-size:0.82rem!important; font-weight:800!important; box-shadow:none!important; text-decoration:none!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn:hover { border-color:#cbd5e1!important; background:#f8fafc!important; color:#0f172a!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed,
+        .grade-review-v6 .task-nav-grade .task-nav-btn.correct { background:#f0fdf4!important; border-color:#bbf7d0!important; color:#16a34a!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.incorrect { background:#fef2f2!important; border-color:#fecaca!important; color:#dc2626!important; }
         .grade-review-v6 .task-nav-grade .task-nav-btn.active,
-        .grade-review-v6 .task-nav-grade .task-nav-btn.active:hover { background:var(--review-purple)!important; border-color:var(--review-purple)!important; color:#fff!important; box-shadow:0 4px 10px rgba(91,67,243,.2)!important; }
-        .grade-review-v6 .task-nav-grade .task-nav-btn.active i, .grade-review-v6 .task-nav-grade .task-nav-btn.active span { color:#fff!important; }
-        .grade-review-v6 .grade-workbench { margin-top:.8rem!important; }
-        .grade-review-v6 .task-card-grade,.grade-review-v6 .task-card-grade.task-panel-active { display:grid!important; grid-template-columns:minmax(0,1fr) 360px!important; align-items:start!important; gap:1rem!important; min-height:0!important; margin-bottom:1rem!important; border:1px solid var(--review-line)!important; border-radius:20px!important; background:#fff!important; box-shadow:0 8px 22px rgba(28,43,80,.04)!important; overflow:visible!important; }
-        /* A stable two-column grid keeps the review form inside the card at every desktop width. */
-        .grade-review-v6 .task-card-grade,.grade-review-v6 .task-card-grade.task-panel-active { display:grid!important; grid-template-columns:minmax(0,1fr) 410px!important; grid-auto-rows:min-content!important; column-gap:1rem!important; position:relative!important; padding-right:0!important; overflow:hidden!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.active:hover { background:#6366f1!important; border-color:#6366f1!important; color:#fff!important; box-shadow:0 3px 8px rgba(99,102,241,0.25)!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.active i,
+        .grade-review-v6 .task-nav-grade .task-nav-btn.active span { color:#fff!important; opacity:1!important; display:inline!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn i { font-size:0.85rem; }
+
+        /* Two-Column Workspace Layout */
+        .grade-review-v6 .grade-workbench { margin-top:0.85rem!important; padding-bottom:5.5rem; }
+        .grade-review-v6 .task-card-grade,
+        .grade-review-v6 .task-card-grade.task-panel-active { display:grid!important; grid-template-columns:minmax(0,1fr) 420px!important; grid-auto-rows:min-content!important; column-gap:1.25rem!important; position:relative!important; padding:0!important; border:1px solid #e2e8f0!important; border-radius:1.25rem!important; background:#fff!important; box-shadow:0 4px 20px -4px rgba(15,23,42,0.05)!important; overflow:visible!important; }
         .grade-review-v6 .task-card-grade.task-panel-hidden { display:none!important; }
-        .grade-review-v6 .task-header-grade { grid-column:1; align-self:start!important; display:block!important; position:relative!important; height:auto!important; min-height:0!important; padding:.85rem 1.1rem .7rem!important; background:#fff!important; border-bottom:1px solid var(--review-line)!important; }
-        .grade-review-v6 .task-header-grade { display:flex!important; align-items:center!important; justify-content:flex-start!important; gap:.75rem!important; flex-wrap:wrap; }
-        .grade-review-v6 .task-header-grade>div:first-child { flex:0 1 auto; min-width:0; }
-        .grade-review-v6 .task-header-actions { position:static; display:flex; gap:.45rem; align-items:center; justify-content:flex-end; flex:0 0 auto; margin-left:auto; }
-        .grade-review-v6 .task-header-action { min-height:2rem; padding:.4rem .65rem; border:1px solid var(--review-line); border-radius:10px; background:#fff; color:#46557a; font-size:.72rem; font-weight:700; white-space:nowrap; }
-        .grade-review-v6 .task-header-action:has(i:only-child) { width:2rem; padding:0; }
-        .grade-review-v6 .task-title-grade { font-size:1.25rem!important; color:var(--review-ink)!important; }
+
+        /* Left Column: Task Header & Body */
+        .grade-review-v6 .task-header-grade { grid-column:1; display:flex!important; align-items:center!important; justify-content:space-between!important; gap:0.75rem!important; padding:1.1rem 1.35rem 0.85rem!important; background:#fff!important; border-bottom:1px solid #f1f5f9!important; border-radius:1.25rem 0 0 0!important; }
+        .grade-review-v6 .task-title-grade { font-size:1.15rem!important; font-weight:800!important; color:#0f172a!important; }
         .grade-review-v6 .task-header-grade .text-sm.text-muted { display:none!important; }
         .grade-review-v6 .task-header-grade [style*="margin-top:.45rem"] { display:none!important; }
-        .grade-review-v6 .task-header-grade>span { order:0!important; background:#fff7e8!important; color:#ad6105!important; border-color:#f5dca8!important; }
-        .grade-review-v6 .task-header-actions { order:1!important; }
-        .grade-review-v6 .task-header-actions .task-header-action:first-child { width:auto!important; min-width:7.4rem!important; padding-left:.65rem!important; padding-right:.65rem!important; white-space:nowrap!important; }
-        .grade-review-v6 .task-score-badge { padding:.42rem .7rem!important; background:#f1efff!important; color:#5140db!important; border-color:#ddd7ff!important; font-size:.75rem!important; }
-        .grade-review-v6 .manual-review-badge { background:#fff7e8!important; color:#b7630d!important; border:1px solid #f2d8aa!important; }
-        .grade-review-v6 #task-3 .manual-review-badge { order:0!important; }
+        .grade-review-v6 .task-header-actions { display:flex; gap:0.4rem; align-items:center; }
+        .grade-review-v6 .task-header-action { min-height:2rem; padding:0.35rem 0.65rem; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#64748b; font-size:0.75rem; font-weight:700; cursor:pointer; }
+        .grade-review-v6 .task-header-action:hover { background:#f8fafc; color:#0f172a; }
+        .grade-review-v6 .task-score-badge { padding:0.35rem 0.65rem!important; background:#eef2ff!important; color:#4f46e5!important; border:1px solid #e0e7ff!important; font-size:0.72rem!important; font-weight:800!important; border-radius:8px!important; }
+        .grade-review-v6 .manual-review-badge { background:#fffbeb!important; color:#d97706!important; border:1px solid #fde68a!important; font-size:0.72rem!important; font-weight:800!important; border-radius:8px!important; }
         .grade-review-v6 details { display:none!important; }
         .grade-review-v6 .grade-card-body { display:contents!important; padding:0!important; }
-        .grade-review-v6 .task-content-grade { grid-column:1; margin:0 2.2rem .8rem 0!important; padding:0!important; color:#354466!important; line-height:1.5!important; font-size:.93rem!important; }
-        .grade-review-v6 .review-section-label { grid-column:1; margin:1rem 1.1rem .1rem; color:#182641; font-size:.72rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
-        .grade-review-v6 .task-content-grade p { margin:.45rem 0!important; }
-        .grade-review-v6 .reference-graph-table { width:23.5rem; margin:.7rem 0 0 1.1rem; border-collapse:collapse; font-size:.76rem; color:#26365b; background:#fff; }
-        .grade-review-v6 .reference-graph-table th, .grade-review-v6 .reference-graph-table td { min-width:2.1rem; height:1rem; padding:.08rem .28rem; border:1px solid #aeb8c8; text-align:center; }
-        .grade-review-v6 .reference-graph-table th { background:#f4f6fa; font-weight:800; }
-        .grade-review-v6 .review-hint-card { grid-column:1; margin:0 1.1rem .8rem; min-height:4.1rem; display:flex; align-items:center; gap:.8rem; padding:.8rem 1rem; border-radius:14px; background:linear-gradient(100deg,#f4f1ff,#faf9ff); border:1px solid #ece7ff; color:#4d4388; }
-        .grade-review-v6 .review-hint-icon { width:2.1rem; height:2.1rem; flex:0 0 auto; display:grid; place-items:center; border-radius:10px; background:#fff3df; color:#f39a28; font-size:1.1rem; }
-        .grade-review-v6 .review-hint-card strong { display:block; font-size:.78rem; color:#342878; }
-        .grade-review-v6 .review-hint-card small { display:block; margin-top:.18rem; color:#7c78a3; font-size:.72rem; }
-        .grade-review-v6 .review-hint-button { margin-left:auto; display:inline-flex; align-items:center; gap:.35rem; padding:.55rem .75rem; border:1px solid #e5e1f8; border-radius:10px; background:#fff; color:#40359a; font-size:.72rem; font-weight:800; white-space:nowrap; }
+
+        .grade-review-v6 .review-section-label { grid-column:1; margin:1rem 1.35rem 0.35rem; color:#0f172a; font-size:0.72rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; }
+        .grade-review-v6 .task-content-grade { grid-column:1; margin:0 1.35rem 0.85rem!important; padding:0!important; color:#334155!important; line-height:1.6!important; font-size:0.92rem!important; }
+        .grade-review-v6 .task-content-grade p { margin:0.35rem 0!important; }
+
+        /* Left Column: Hint & Answer */
+        .grade-review-v6 .review-hint-card { grid-column:1; margin:0 1.35rem 0.85rem; display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:12px; background:#fdf4ff; border:1px solid #fae8ff; color:#86198f; font-size:0.8rem; }
+        .grade-review-v6 .review-hint-icon { width:2rem; height:2rem; flex:0 0 auto; display:grid; place-items:center; border-radius:8px; background:#f0abfc; color:#fff; }
+        .grade-review-v6 .review-hint-button { margin-left:auto; display:inline-flex; align-items:center; gap:0.35rem; padding:0.45rem 0.75rem; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#475569; font-size:0.72rem; font-weight:700; cursor:pointer; }
+
         .grade-review-v6 .answer-section { display:contents!important; }
         .grade-review-v6 .answer-grid-cols { display:contents!important; }
-        .grade-review-v6 .answer-left-col { grid-column:1; margin:0 1.1rem 1.1rem!important; padding:1rem 0 0!important; border:0!important; border-top:1px solid var(--review-line)!important; min-height:0!important; }
-        .grade-review-v6 .answer-left-col>div:first-child { color:var(--review-ink)!important; font-size:.82rem!important; letter-spacing:.02em!important; text-transform:none!important; }
-        .grade-review-v6 .student-answer-value { min-height:0!important; padding:1rem!important; border:1px solid #e3e9f3!important; border-radius:13px!important; background:#f8faff!important; color:#71809b!important; font-size:.85rem!important; font-weight:500!important; }
+        .grade-review-v6 .answer-left-col { grid-column:1; margin:0 1.35rem 1.35rem!important; padding:0.85rem 0 0!important; border:0!important; border-top:1px solid #f1f5f9!important; }
+        .grade-review-v6 .student-answer-value { padding:0.85rem 1rem!important; border:1px solid #e2e8f0!important; border-radius:12px!important; background:#f8fafc!important; color:#334155!important; font-size:0.88rem!important; }
         .grade-review-v6 .answer-left-col > .student-answer-value { display:none!important; }
-        .grade-review-v6 .teacher-student-response { margin:.65rem 0 .8rem!important; border:1px solid #dfe5f1!important; border-radius:13px!important; overflow:hidden!important; background:#f8faff!important; }
-        .grade-review-v6 .teacher-student-response-title { display:flex; align-items:center; gap:.45rem; min-height:2.5rem; padding:.6rem .85rem; border-bottom:1px solid #e3e9f3; color:#25355b; font-size:.78rem; font-weight:800; }
-        .grade-review-v6 .teacher-student-response-value { margin:0!important; padding:.8rem .9rem!important; overflow:auto!important; white-space:pre-wrap!important; overflow-wrap:anywhere!important; color:#243454!important; font:500 .82rem/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace!important; }
-        .grade-review-v6 .answer-left-col > div:has(.correct-ans-val) { display:none!important; }
-        .grade-review-v6 .teacher-code-playback-wrap { margin-top:0!important; }
-        .grade-review-v6 .review-student-note { display:flex; align-items:center; gap:.7rem; margin-top:.7rem; padding:.75rem .85rem; border:1px solid #e8e1ff; border-radius:12px; background:#f7f3ff; color:#4c4384; }
-        .grade-review-v6 .review-student-note-icon { width:2rem; height:2rem; display:grid; place-items:center; flex:0 0 auto; border-radius:9px; background:#eee8ff; color:#5b43f3; }
-        .grade-review-v6 .review-student-note strong, .grade-review-v6 .review-student-note small { display:block; }
-        .grade-review-v6 .review-student-note strong { font-size:.74rem; color:#4d3bc8; }
-        .grade-review-v6 .review-student-note small { margin-top:.15rem; color:#746c9d; font-size:.7rem; }
-        .grade-review-v6 .review-empty-answer { display:flex; flex-direction:column; gap:.25rem; margin-top:.65rem; padding:1rem 1.1rem; border:1px dashed #dbe2ee; border-radius:12px; background:#fafbfd; color:#53617d; }
-        .grade-review-v6 .review-empty-answer strong { display:flex; align-items:center; gap:.4rem; color:#475571; font-size:.9rem; }
-        .grade-review-v6 .review-empty-answer strong i { color:#96a4bc; font-size:.8rem; }
-        .grade-review-v6 .review-empty-answer small { color:#8b98ae; font-size:.75rem; }
-        .grade-review-v6 .answer-right-col { position:sticky!important; top:1rem!important; right:auto!important; grid-column:2!important; grid-row:1 / span 30!important; align-self:start!important; width:auto!important; box-sizing:border-box; margin:0!important; padding:1.35rem!important; border:1px solid var(--review-line)!important; border-radius:18px!important; background:#fff!important; box-shadow:0 8px 22px rgba(28,43,80,.05)!important; }
-        .grade-review-v6 .review-panel-head { padding-bottom:.9rem!important; margin-bottom:1rem!important; border-bottom:1px solid var(--review-line)!important; }
-        .grade-review-v6 .review-panel-head strong { color:var(--review-ink)!important; font-size:1rem!important; }
-        .grade-review-v6 .review-panel-head span { color:var(--review-muted)!important; }
+        .grade-review-v6 .teacher-student-response { margin:0.5rem 0 0.75rem!important; border:1px solid #e2e8f0!important; border-radius:12px!important; overflow:hidden!important; background:#f8fafc!important; }
+        .grade-review-v6 .teacher-student-response-title { display:flex; align-items:center; gap:0.4rem; padding:0.5rem 0.85rem; border-bottom:1px solid #e2e8f0; color:#334155; font-size:0.75rem; font-weight:800; }
+        .grade-review-v6 .teacher-student-response-value { margin:0!important; padding:0.75rem 0.85rem!important; overflow:auto!important; white-space:pre-wrap!important; color:#0f172a!important; font:500 0.82rem/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important; }
+
+        .grade-review-v6 .review-empty-answer { display:flex; flex-direction:column; gap:0.2rem; margin-top:0.5rem; padding:0.85rem 1rem; border:1px dashed #cbd5e1; border-radius:12px; background:#f8fafc; color:#64748b; }
+        .grade-review-v6 .review-empty-answer strong { display:flex; align-items:center; gap:0.4rem; color:#475569; font-size:0.85rem; font-weight:700; }
+        .grade-review-v6 .review-empty-answer small { color:#94a3b8; font-size:0.75rem; }
+
+        .grade-review-v6 .teacher-code-playback-wrap { margin-top:0.75rem!important; border:1px solid #e2e8f4!important; border-radius:14px!important; background:#f8fafc!important; overflow:hidden!important; }
+        .grade-review-v6 .teacher-code-playback-wrap>div:first-child { padding:0.65rem 0.85rem; border-bottom:1px solid #e2e8f4; background:#fff; }
+        .grade-review-v6 .review-code-toolbar-actions { display:flex; align-items:center; gap:0.35rem; margin-left:auto; }
+        .grade-review-v6 .review-code-action { display:inline-flex; align-items:center; gap:0.3rem; min-height:1.9rem; padding:0.35rem 0.6rem; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#475569; font-size:0.72rem; font-weight:700; text-decoration:none; cursor:pointer; }
+        .grade-review-v6 .review-code-action:hover { color:#4f46e5; border-color:#cbd5e1; background:#f8fafc; }
+        .grade-review-v6 .teacher-code-playback-wrap pre { max-height:24rem; overflow:auto!important; font-size:0.82rem!important; line-height:1.6!important; }
+
+        .grade-review-v6 .review-student-note { display:flex; align-items:center; gap:0.65rem; margin-top:0.75rem; padding:0.75rem 0.85rem; border:1px solid #e0e7ff; border-radius:12px; background:#eef2ff; color:#3730a3; }
+        .grade-review-v6 .review-student-note-icon { width:2rem; height:2rem; display:grid; place-items:center; flex:0 0 auto; border-radius:8px; background:#c7d2fe; color:#4338ca; }
+        .grade-review-v6 .review-student-note strong { display:block; font-size:0.75rem; font-weight:800; }
+        .grade-review-v6 .review-student-note small { display:block; margin-top:0.1rem; font-size:0.72rem; opacity:0.9; }
+
+        /* Right Column: Sticky Grading Panel matching media_1789856954007.png */
+        .grade-review-v6 .answer-right-col { position:sticky!important; top:5.5rem!important; right:auto!important; grid-column:2!important; grid-row:1 / span 30!important; align-self:start!important; width:100%!important; box-sizing:border-box; margin:0!important; padding:1.25rem!important; border-left:1px solid #e2e8f0!important; border-top:0!important; border-right:0!important; border-bottom:0!important; border-radius:0 1.25rem 1.25rem 0!important; background:#fff!important; box-shadow:none!important; }
+        .grade-review-v6 .review-panel-head { display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:0.75rem!important; margin-bottom:0.85rem!important; border-bottom:1px solid #f1f5f9!important; }
+        .grade-review-v6 .review-panel-head strong { color:#0f172a!important; font-size:0.95rem!important; font-weight:800!important; }
+        .grade-review-v6 .review-panel-head span { color:#94a3b8!important; font-size:0.75rem!important; }
         .grade-review-v6 .review-panel-tools { display:none!important; }
+
+        /* Score Choice Buttons */
         .grade-review-v6 .score-input-group { display:block!important; margin-top:0!important; }
-        .grade-review-v6 .review-panel-label { color:var(--review-ink)!important; font-size:.8rem!important; margin:.8rem 0 .55rem!important; }
-        .grade-review-v6 .score-choice-grid { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)) auto!important; gap:.55rem!important; margin:0!important; align-items:center; }
-        .grade-review-v6 .score-choice { min-height:2.8rem!important; border:1px solid #dfe5f1!important; border-radius:10px!important; background:#fff!important; color:#25355b!important; }
-        .grade-review-v6 .score-choice.is-selected { background:#f1efff!important; border-color:#7564f7!important; color:#5140db!important; }
-        .grade-review-v6 .score-choice[data-score-reset] { width:auto!important; padding:0 .2rem!important; border:0!important; background:transparent!important; color:#5b43f3!important; font-size:.72rem!important; white-space:nowrap; }
-        .grade-review-v6 .score-choice[data-score-reset] span { margin-left:.15rem; }
-        .grade-review-v6 .score-choice-grid+div { display:none!important; }
-        .grade-review-v6 .comment-input { min-height:5.35rem!important; padding:.85rem!important; margin-top:0!important; border:1px solid #dfe5f1!important; border-radius:12px!important; background:#fff!important; font-size:.82rem!important; }
-        .grade-review-v6 .review-comment-counter { margin-top:.25rem; text-align:right; color:#8a98b3; font-size:.68rem; }
-        .grade-review-v6 .quick-comments { gap:.45rem!important; margin-top:.65rem!important; }
-        .grade-review-v6 .quick-comment { min-height:1.9rem!important; padding:.4rem .65rem!important; border:1px solid #dfe5f1!important; border-radius:9px!important; background:#f8faff!important; color:#314269!important; font-size:.69rem!important; }
-        .grade-review-v6 .return-task-toggle-btn { display:flex!important; width:100%!important; min-height:3.2rem!important; margin-top:1rem!important; padding:.65rem 0!important; border:0!important; border-top:1px solid var(--review-line)!important; border-radius:0!important; background:transparent!important; color:#23375e!important; justify-content:space-between!important; }
-        .grade-review-v6 .return-task-toggle-btn .return-task-toggle-label { font-size:.78rem!important; }
-        .grade-review-v6 [data-review-current] { width:100%!important; min-height:3rem!important; margin-top:1rem!important; border:0!important; border-radius:12px!important; background:var(--review-purple)!important; box-shadow:0 5px 12px rgba(91,67,243,.2)!important; font-size:.8rem!important; }
-        .grade-review-v6 .review-next-task-btn { width:100%; min-height:2.8rem; margin-top:.6rem; display:flex; align-items:center; justify-content:center; gap:.45rem; border:1px solid #d9d5ff; border-radius:12px; background:#f6f4ff; color:#5140db; font-size:.78rem; font-weight:800; }
-        .grade-review-v6 .review-autosave-state { display:flex; flex-direction:column; gap:.15rem; margin:.8rem 0 0!important; color:#18a26d!important; font-size:.7rem!important; }
-        .grade-review-v6 .review-autosave-state small { color:#8a98b3; font-size:.68rem; padding-left:.9rem; }
-        .grade-review-v6 .teacher-code-playback-wrap { height:148px; overflow:hidden!important; background:#f6f8ff!important; border-color:#e2e8f4!important; padding:0!important; }
-        .grade-review-v6 .teacher-code-playback-wrap>div:first-child { padding:.7rem .9rem; margin:0!important; border-bottom:1px solid #e2e8f4; }
-        .grade-review-v6 .review-code-toolbar-actions { display:flex; align-items:center; gap:.35rem; margin-left:auto; }
-        .grade-review-v6 .review-code-action { display:inline-flex; align-items:center; gap:.28rem; min-height:1.9rem; padding:.35rem .55rem; border:1px solid #dce3f0; border-radius:8px; background:#fff; color:#53617d; font-size:.68rem; font-weight:800; text-decoration:none; }
-        .grade-review-v6 .review-code-action:hover { color:#5140db; border-color:#cfc8ff; background:#f8f7ff; }
-        .grade-review-v6 .teacher-code-playback-wrap .relative.rounded-xl { margin:0!important; border:0!important; border-radius:0!important; background:#f8faff!important; color:#243454!important; padding:1rem 1.1rem!important; }
-        .grade-review-v6 .teacher-code-playback-wrap pre { color:#243454!important; font-size:.8rem!important; line-height:1.65!important; }
-        .grade-review-v6 .submit-section { left:6.5rem!important; right:1rem!important; bottom:.8rem!important; width:auto!important; max-width:none!important; min-height:3.1rem!important; padding:.45rem 1rem!important; border:1px solid var(--review-line)!important; border-radius:16px!important; background:rgba(255,255,255,.97)!important; box-shadow:0 8px 22px rgba(28,43,80,.08)!important; transform:none!important; }
-        .grade-review-v6 .submit-section-left { flex:1; }
-        .grade-review-v6 .submit-section-right { display:none!important; }
-        .grade-review-v6 .total-score-badge { display:none!important; }
+        .grade-review-v6 .review-panel-label { display:block; color:#0f172a!important; font-size:0.78rem!important; font-weight:800!important; margin:0 0 0.5rem!important; }
+        .grade-review-v6 .score-choice-grid { display:grid!important; grid-template-columns:repeat(2,1fr) auto!important; gap:0.5rem!important; margin:0!important; align-items:center; }
+        .grade-review-v6 .score-choice { min-height:2.65rem!important; border:1px solid #e2e8f0!important; border-radius:10px!important; background:#fff!important; color:#0f172a!important; font-size:0.88rem!important; font-weight:800!important; cursor:pointer; }
+        .grade-review-v6 .score-choice:hover { border-color:#cbd5e1!important; background:#f8fafc!important; }
+        .grade-review-v6 .score-choice.is-selected { background:#eef2ff!important; border-color:#6366f1!important; color:#4f46e5!important; box-shadow:0 0 0 1px #6366f1 inset!important; }
+        .grade-review-v6 .score-choice[data-score-reset] { width:auto!important; padding:0 0.5rem!important; border:0!important; background:transparent!important; color:#6366f1!important; font-size:0.75rem!important; font-weight:700!important; cursor:pointer; }
+        .grade-review-v6 .score-choice-grid+div { display:flex!important; align-items:center; gap:0.5rem; margin-top:0.4rem; }
+        .grade-review-v6 .score-input { width:3.5rem!important; height:2.2rem!important; border:1px solid #e2e8f0!important; border-radius:8px!important; font-size:0.88rem!important; font-weight:800!important; text-align:center!important; color:#0f172a!important; }
+        .grade-review-v6 .max-score { font-size:0.82rem!important; font-weight:700!important; color:#94a3b8!important; }
+
+        /* Comment Input & Quick Comments */
+        .grade-review-v6 .comment-input { width:100%!important; min-height:5.5rem!important; padding:0.75rem!important; margin-top:0!important; border:1px solid #e2e8f0!important; border-radius:12px!important; background:#fff!important; font-size:0.82rem!important; line-height:1.5!important; color:#0f172a!important; box-sizing:border-box; }
+        .grade-review-v6 .comment-input:focus { outline:none; border-color:#6366f1!important; box-shadow:0 0 0 3px rgba(99,102,241,0.12)!important; }
+        .grade-review-v6 .review-comment-counter { margin-top:0.25rem; text-align:right; color:#94a3b8; font-size:0.7rem; font-weight:600; }
+        .grade-review-v6 .quick-comments { display:flex!important; flex-wrap:wrap!important; gap:0.35rem!important; margin-top:0.5rem!important; }
+        .grade-review-v6 .quick-comment { min-height:1.85rem!important; padding:0.3rem 0.6rem!important; border:1px solid #e2e8f0!important; border-radius:8px!important; background:#f8fafc!important; color:#475569!important; font-size:0.72rem!important; font-weight:700!important; cursor:pointer; }
+        .grade-review-v6 .quick-comment:hover { border-color:#cbd5e1!important; background:#f1f5f9!important; color:#0f172a!important; }
+
+        /* Return Toggle Switch matching media_1789856954007.png */
+        .grade-review-v6 .review-toggle-row { display:flex!important; align-items:center!important; justify-content:space-between!important; gap:0.75rem!important; margin-top:1rem!important; padding-top:0.85rem!important; border-top:1px solid #f1f5f9!important; }
+        .grade-review-v6 .review-toggle-text { flex:1; min-width:0; }
+        .grade-review-v6 .review-toggle-text strong { display:block; font-size:0.8rem!important; font-weight:800; color:#0f172a; }
+        .grade-review-v6 .review-toggle-text small { display:block; font-size:0.7rem!important; color:#94a3b8; font-weight:500; margin-top:0.1rem; }
+        .grade-review-v6 .review-switch-btn { width:38px!important; height:22px!important; border-radius:999px!important; background:#e2e8f0!important; border:none!important; padding:2px!important; cursor:pointer!important; transition:background-color 0.2s ease!important; position:relative!important; flex-shrink:0!important; display:inline-flex!important; align-items:center!important; box-shadow:none!important; }
+        .grade-review-v6 .review-switch-btn.is-selected { background:#6366f1!important; }
+        .grade-review-v6 .review-switch-thumb { display:block!important; width:18px!important; height:18px!important; border-radius:50%!important; background:#fff!important; box-shadow:0 1px 3px rgba(0,0,0,0.2)!important; transition:transform 0.2s ease!important; }
+        .grade-review-v6 .review-switch-btn.is-selected .review-switch-thumb { transform:translateX(16px)!important; }
+
+        /* Action Buttons on Right Panel */
+        .grade-review-v6 [data-review-current] { display:flex!important; align-items:center!important; justify-content:center!important; gap:0.4rem!important; width:100%!important; min-height:2.75rem!important; margin-top:0.85rem!important; border:0!important; border-radius:10px!important; background:#6366f1!important; color:#fff!important; font-size:0.8rem!important; font-weight:800!important; box-shadow:0 3px 8px rgba(99,102,241,0.25)!important; cursor:pointer; }
+        .grade-review-v6 [data-review-current]:hover { background:#4f46e5!important; }
+        .grade-review-v6 .review-next-task-btn { width:100%; min-height:2.65rem; margin-top:0.5rem; display:flex; align-items:center; justify-content:center; gap:0.45rem; border:1px solid #e0e7ff; border-radius:10px; background:#eef2ff; color:#4f46e5; font-size:0.78rem; font-weight:800; cursor:pointer; }
+        .grade-review-v6 .review-next-task-btn:hover { background:#e0e7ff; }
+        .grade-review-v6 .review-autosave-state { display:flex; flex-direction:column; gap:0.15rem; margin:0.75rem 0 0!important; color:#16a34a!important; font-size:0.72rem!important; font-weight:700; }
+        .grade-review-v6 .review-autosave-state small { color:#94a3b8; font-size:0.68rem; font-weight:500; padding-left:0.9rem; }
+
+        /* Sticky Bottom Bar — Centered Tactile Floating Dock */
+        .grade-review-v6 .submit-section {
+            position: fixed !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            margin-left: 3.25rem !important; /* perfectly offsets the 6.5rem desktop sidebar */
+            width: min(1600px, calc(100vw - 9.5rem)) !important;
+            max-width: calc(100vw - 9.5rem) !important;
+            right: auto !important;
+            bottom: 1.25rem !important;
+            min-height: 4.25rem !important;
+            padding: 0.65rem 1.25rem !important;
+            border: 2px solid #e2e8f0 !important;
+            border-radius: 1.25rem !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1), 0 4px 0 #dae1e9 !important;
+            backdrop-filter: blur(16px);
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            z-index: 90 !important;
+            box-sizing: border-box !important;
+        }
+        .grade-review-v6 .submit-section-left { display:flex; align-items:center; gap:1.25rem; flex:1; min-width:0; }
+        .grade-review-v6 .submit-section-right { display:flex !important; align-items:center !important; gap:0.65rem !important; flex-shrink:0; }
+        .grade-review-v6 .total-score-badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.45rem !important;
+            padding: 0.4rem 0.85rem !important;
+            border-radius: 0.75rem !important;
+            background: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #0f172a !important;
+            font-size: 0.82rem !important;
+            font-weight: 800 !important;
+        }
+        .grade-review-v6 .total-score-badge span:first-child {
+            color: #64748b !important;
+            font-size: 0.72rem !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+        }
         .grade-review-v6 .status-text-note { display:none!important; }
-        .grade-review-v6 .review-bottom-progress { display:flex; align-items:center; gap:.75rem; min-width:18rem; color:#26365b; font-size:.78rem; font-weight:700; }
-        .grade-review-v6 .review-bottom-progress .review-progress-track { flex:1; min-width:8rem; height:.45rem; margin:0; }
-        .grade-review-v6 .review-bottom-keyboard { color:#7b89a3; font-size:.72rem; white-space:nowrap; }
-        .grade-review-v6 .review-shortcuts { display:flex; align-items:center; justify-content:flex-end; gap:.32rem; color:#7b89a3; font-size:.68rem; white-space:nowrap; }
-        .grade-review-v6 .review-shortcuts kbd { min-width:1.35rem; height:1.35rem; display:inline-grid; place-items:center; padding:0 .25rem; border:1px solid #e0e5f1; border-radius:6px; background:#fafbff; color:#4e5d7b; font:700 .68rem/1 ui-monospace,SFMono-Regular,monospace; }
-        .grade-review-v6 .review-shortcut-separator { margin:0 .15rem; color:#b0b9cb; }
-        .grade-review-v6 .review-shortcut-arrow { display:inline-grid; place-items:center; width:1.35rem; height:1.35rem; margin-left:.15rem; border-radius:6px; background:#f1efff; color:#5b43f3; font-weight:900; }
-        .grade-review-v6 .submit-section { position:fixed!important; }
-        .grade-review-v6 .submit-section-left { position:relative; padding-right:20rem; }
-        .grade-review-v6 .review-shortcuts { position:absolute; right:0; top:50%; transform:translateY(-50%); }
         .grade-review-v6 .feedback-section { display:none!important; }
-        /* Use the available desktop width instead of leaving a fixed 1376px island on wide screens. */
-        .grade-review-v6 .grade-page-inner { width:calc(100vw - 10rem)!important; max-width:none!important; left:0!important; }
-        .grade-review-v6 .grade-workbench { padding-bottom:5rem; }
-        @media (max-width:1250px) { .grade-review-v6 .grade-page-inner { width:calc(100vw - 7.5rem)!important; } .grade-review-v6 .grade-hero { grid-template-columns:1fr 1fr; } .grade-review-v6 .review-header-progress { grid-column:1/-1; } }
-        @media (max-width:950px) { .grade-review-v6 .grade-page-inner { width:calc(100vw - 1.5rem)!important; } .grade-review-v6 .task-card-grade,.grade-review-v6 .task-card-grade.task-panel-active { display:block!important; padding-right:0!important; overflow:visible!important; } .grade-review-v6 .answer-right-col { position:static!important; width:auto!important; margin:0 1.1rem 1.1rem!important; } .grade-review-v6 .submit-section { left:.75rem!important; right:.75rem!important; } }
-        @media (max-width:640px) { .grade-review-v6 .grade-hero { display:block; } .grade-review-v6 .submission-hero-metrics { margin-top:1rem!important; } .grade-review-v6 .review-bottom-keyboard,.grade-review-v6 .review-shortcuts { display:none; } .grade-review-v6 .submit-section-left { padding-right:0; } }
+        .grade-review-v6 .review-bottom-progress { display:flex; align-items:center; gap:0.65rem; min-width:14rem; color:#0f172a; font-size:0.8rem; font-weight:800; }
+        .grade-review-v6 .review-bottom-progress .review-progress-track { flex:1; min-width:6rem; height:0.5rem; margin:0; border-radius:999px; background:#e2e8f0; overflow:hidden; }
+        .grade-review-v6 .review-bottom-keyboard { color:#94a3b8; font-size:0.72rem; white-space:nowrap; }
+        .grade-review-v6 .review-shortcuts { display:flex; align-items:center; gap:0.35rem; color:#64748b; font-size:0.75rem; font-weight:600; white-space:nowrap; padding:0.3rem 0.65rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; cursor:pointer; }
+        .grade-review-v6 .review-shortcuts:hover { background:#f1f5f9; border-color:#cbd5e1; }
+        .grade-review-v6 .review-shortcuts kbd { min-width:1.4rem; height:1.4rem; display:inline-grid; place-items:center; padding:0 0.3rem; border:1px solid #cbd5e1; border-bottom-width:2px; border-radius:6px; background:#fff; color:#334155; font:800 0.72rem/1 ui-monospace,SFMono-Regular,monospace; }
+        .grade-review-v6 .review-shortcut-arrow { display:inline-grid; place-items:center; width:1.35rem; height:1.35rem; margin-left:0.1rem; border-radius:6px; background:#e0e7ff; color:#4f46e5; font-weight:900; }
+
+        /* Tactile 3D Buttons in Bottom Bar */
+        .grade-review-v6 .submit-section .neo-button {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 0.45rem !important;
+            min-height: 2.75rem !important;
+            padding: 0 1rem !important;
+            border-radius: 0.85rem !important;
+            font-size: 0.82rem !important;
+            font-weight: 800 !important;
+            text-decoration: none !important;
+            cursor: pointer !important;
+            transition: transform 0.08s ease, box-shadow 0.08s ease !important;
+        }
+        .grade-review-v6 .submit-section .neo-button.ghost {
+            background: #fff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-bottom: 3px solid #94a3b8 !important;
+            color: #334155 !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+        }
+        .grade-review-v6 .submit-section .neo-button.ghost:hover {
+            background: #f8fafc !important;
+            border-color: #94a3b8 !important;
+            transform: translateY(-1px);
+        }
+        .grade-review-v6 .submit-section .neo-button.ghost:active {
+            transform: translateY(2px) !important;
+            border-bottom-width: 1px !important;
+        }
+        .grade-review-v6 .submit-section .neo-button#return-btn {
+            background: #fffbeb !important;
+            border: 1px solid #fde68a !important;
+            border-bottom: 3px solid #f59e0b !important;
+            color: #b45309 !important;
+        }
+        .grade-review-v6 .submit-section .neo-button#return-btn:hover {
+            background: #fef3c7 !important;
+            transform: translateY(-1px);
+        }
+        .grade-review-v6 .submit-section .neo-button#return-btn:active {
+            transform: translateY(2px) !important;
+            border-bottom-width: 1px !important;
+        }
+        .grade-review-v6 .submit-section .neo-button.accent {
+            background: #4f46e5 !important;
+            border: 1px solid #4338ca !important;
+            border-bottom: 4px solid #312e81 !important;
+            color: #fff !important;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35) !important;
+        }
+        .grade-review-v6 .submit-section .neo-button.accent:hover {
+            background: #4338ca !important;
+            transform: translateY(-1px);
+        }
+        .grade-review-v6 .submit-section .neo-button.accent:active {
+            transform: translateY(3px) !important;
+            border-bottom-width: 1px !important;
+            box-shadow: 0 1px 4px rgba(79, 70, 229, 0.25) !important;
+        }
+
+        @media (max-width:1250px) {
+            .grade-review-v6 .grade-page-inner { width:calc(100% - 1.5rem)!important; }
+            .grade-review-v6 .grade-hero { grid-template-columns: minmax(0, 1.2fr) auto minmax(240px, 0.9fr); gap: 0.85rem; }
+        }
+        @media (max-width:1024px) {
+            .grade-review-v6 .grade-hero { grid-template-columns: 1fr; }
+            .grade-review-v6 .submit-section {
+                left: 50% !important;
+                margin-left: 0 !important;
+                width: calc(100vw - 2rem) !important;
+                max-width: calc(100vw - 2rem) !important;
+            }
+        }
+        @media (max-width:980px) {
+            .grade-review-v6 .task-card-grade,
+            .grade-review-v6 .task-card-grade.task-panel-active { display:block!important; overflow:visible!important; }
+            .grade-review-v6 .task-header-grade { border-radius:1.25rem 1.25rem 0 0!important; }
+            .grade-review-v6 .answer-right-col { position:static!important; width:100%!important; border-left:0!important; border-top:1px solid #e2e8f0!important; border-radius:0 0 1.25rem 1.25rem!important; padding:1.25rem!important; }
+            .grade-review-v6 .submit-section { left:50%!important; margin-left:0!important; width:calc(100vw - 1.5rem)!important; max-width:calc(100vw - 1.5rem)!important; }
+        }
+        @media (max-width:640px) {
+            .grade-review-v6 .grade-hero { display:block; }
+            .grade-review-v6 .submission-hero-metrics { margin-top:1rem!important; }
+            .grade-review-v6 .review-bottom-keyboard, .grade-review-v6 .review-shortcuts { display:none; }
+            .grade-review-v6 .submit-section-left { display:none !important; }
+            .grade-review-v6 .submit-section-right { width:100%; justify-content:stretch; }
+            .grade-review-v6 .submit-section-right .neo-button { flex:1; }
+        }
     </style>
 {% endblock %}
 
@@ -885,80 +1394,80 @@
         <div class="grade-page-inner">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="submission-back-link flex items-center gap-2 text-muted font-bold text-sm hover:text-boo-primary cursor-pointer w-fit transition-colors bg-white/70 px-4 py-2.5 rounded-xl backdrop-blur-sm border border-slate-200/50 shadow-sm dark:shadow-none no-underline"><i class="ph-bold ph-arrow-left text-lg"></i> К проверке работ</a></p>
 
-        <div class="grade-hero relative overflow-hidden">
-            <div class="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div class="min-w-0 flex-1 review-hero-identity">
-                    <span class="review-homework-icon" aria-hidden="true"><i class="ph-bold ph-files"></i></span>
-                    <div class="review-eyebrow"><span>ДОМАШНЯЯ РАБОТА</span><strong>#{{ assignment.assignment_id }}</strong></div>
-                    <div class="flex items-center gap-2 mb-3 flex-wrap">
-                        <span class="submission-type-chip text-tiny font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-lg border bg-purple-50 text-boo-primary border-purple-100 dark:bg-purple-950/40 dark:border-purple-800/50">{{ 'Домашняя работа' if assignment.assignment_type == 'homework' else ('Классная работа' if assignment.assignment_type == 'classwork' else ('Без правильных ответов' if assignment.assignment_type == 'manual_review' else 'Проверочная')) }}</span>
-                        <span class="text-xs font-bold text-muted">#{{ assignment.assignment_id }}</span>
-                    </div>
-                    <p class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-1">Проверка работы</p>
-                    <h1 class="submission-title text-3xl sm:text-lg font-bold text-primary dark:text-white tracking-tight leading-tight">{{ assignment.title }}</h1>
-                    <div class="mt-3 flex flex-wrap items-center gap-2">
-                        <span class="inline-flex items-center gap-2 px-0 py-1 bg-transparent">
-                            <span class="review-student-avatar">
-                                {% if submission.student and submission.student.user and submission.student.user.avatar_url %}<img src="{{ submission.student.user.avatar_url }}" alt="">{% else %}<span>{{ (submission.student.name or 'У')[0]|upper }}</span>{% endif %}
-                            </span>
-                            <span class="font-black text-primary dark:text-white">{{ submission.student.name }}</span>
-                            <i class="ph-bold ph-caret-down text-muted text-xs"></i>
+        <div class="grade-hero relative">
+            <div class="review-hero-identity">
+                <span class="review-homework-icon" aria-hidden="true"><i class="ph-bold ph-files"></i></span>
+                <div class="review-eyebrow"><span>{{ 'ДОМАШНЯЯ РАБОТА' if assignment.assignment_type == 'homework' else ('КЛАССНАЯ РАБОТА' if assignment.assignment_type == 'classwork' else 'ПРОВЕРОЧНАЯ РАБОТА') }}</span><strong>#{{ assignment.assignment_id }}</strong></div>
+                <h1 class="submission-title">{{ assignment.title }}</h1>
+                <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center gap-2 px-0 py-0.5 bg-transparent">
+                        <span class="review-student-avatar">
+                            {% if submission.student and submission.student.user and submission.student.user.avatar_url %}<img src="{{ submission.student.user.avatar_url }}" alt="">{% else %}<span>{{ (submission.student.name or 'У')[0]|upper }}</span>{% endif %}
                         </span>
-                        <span class="review-status-inline"><i class="ph-bold ph-lock"></i>{% if display_status_label %}{{ display_status_label }}{% elif submission.status == 'ASSIGNED' %}Назначено{% elif submission.status == 'SUBMITTED' %}Сдано{% elif submission.status == 'GRADED' %}Проверено{% else %}{{ submission.status }}{% endif %}</span>
-                        {% if submission.is_late %}<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800">С опозданием</span>{% endif %}
-                        {% if submission.is_overtime %}<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-800">С превышением времени</span>{% endif %}
+                        <span class="font-extrabold text-slate-800 dark:text-white text-sm">{{ submission.student.name }}</span>
+                    </span>
+                    <span class="review-status-inline"><i class="ph-bold ph-lock"></i>{% if display_status_label %}{{ display_status_label }}{% elif submission.status == 'ASSIGNED' %}Назначено{% elif submission.status == 'SUBMITTED' %}Сдано{% elif submission.status == 'GRADED' %}Проверено{% else %}{{ submission.status }}{% endif %}</span>
+                    {% if submission.is_late %}<span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200">С опозданием</span>{% endif %}
+                    {% if submission.is_overtime %}<span class="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">С превышением времени</span>{% endif %}
+                </div>
+            </div>
+
+            <div class="submission-hero-metrics">
+                <div>
+                    <div class="text-tiny">Сдано</div>
+                    <div class="flex items-center gap-1.5 text-primary dark:text-white font-bold text-xs leading-none">
+                        {% if submission.submitted_at %}
+                        <span class="review-meta-icon"><i class="ph-bold ph-upload-simple"></i></span><span>{{ submission.submitted_at|user_dt('%d.%m.%Y %H:%M') }}</span>
+                        {% else %}
+                        <span class="text-muted font-semibold">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-tiny">Дедлайн</div>
+                    <div class="flex items-center gap-1.5 text-primary dark:text-white font-bold text-xs leading-none">
+                        {% if assignment.deadline %}
+                        <span class="review-meta-icon"><i class="ph-bold ph-calendar-blank"></i></span><span>{{ assignment.deadline|user_dt('%d.%m.%Y %H:%M') }}</span>
+                        {% else %}
+                        <span class="text-muted font-semibold">—</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-tiny">Попытки</div>
+                    <div class="flex items-center gap-1.5 text-primary dark:text-white font-bold text-xs leading-none">
+                        <span class="review-meta-icon"><i class="ph-bold ph-arrows-clockwise"></i></span><span>{{ attempts_used }} из {{ effective_max_attempts }}</span>
                     </div>
                 </div>
             </div>
 
-            <div class="submission-hero-metrics flex flex-wrap lg:flex-nowrap items-start gap-y-6 pt-6 mt-3 border-t border-slate-100 dark:border-white/10 relative z-10">
-                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 first:pl-0 flex flex-col">
-                    <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Статус</div>
-                    <div class="min-h-9 flex items-center flex-wrap gap-2">
-                        <span class="status-pill status-{{ submission.status.lower() }}{% if display_status_class %} {{ display_status_class }}{% endif %} inline-flex items-center gap-1.5 leading-none">
-                            <i class="ph-bold {% if submission.status == 'ASSIGNED' %}ph-lock{% elif submission.status == 'IN_PROGRESS' %}ph-circle{% elif submission.status == 'SUBMITTED' %}ph-check-circle{% elif submission.status == 'GRADED' %}ph-seal-check{% else %}ph-clock{% endif %} text-base shrink-0"></i>
-                            {% if display_status_label %}{{ display_status_label }}
-                            {% elif submission.status == 'ASSIGNED' %}Назначено
-                            {% elif submission.status == 'IN_PROGRESS' %}В процессе
-                            {% elif submission.status == 'SUBMITTED' %}Сдано
-                            {% elif submission.status == 'NEEDS_MANUAL_REVIEW' %}Требует проверки
-                            {% elif submission.status == 'GRADED' %}Проверено
-                            {% elif submission.status == 'RETURNED' %}На доработку
-                            {% else %}{{ submission.status }}{% endif %}
-                        </span>
-                    </div>
-                </div>
-                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 flex flex-col">
-                    <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Сдано</div>
-                    <div class="min-h-9 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none">
-                        {% if submission.submitted_at %}
-                        <span class="review-meta-icon"><i class="ph-bold ph-upload-simple"></i></span>{{ submission.submitted_at|user_dt('%d.%m.%Y %H:%M') }}
-                        {% else %}
-                        <span class="text-muted font-semibold">—</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="w-1/2 lg:flex-1 lg:border-r border-slate-100 dark:border-white/10 px-2 lg:px-4 flex flex-col">
-                    <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Дедлайн</div>
-                    <div class="min-h-9 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none">
-                        {% if assignment.deadline %}
-                        <span class="review-meta-icon"><i class="ph-bold ph-calendar-blank"></i></span>{{ assignment.deadline|user_dt('%d.%m.%Y %H:%M') }}
-                        {% else %}
-                        <span class="text-muted font-semibold">—</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="w-1/2 lg:flex-1 px-2 lg:px-4 flex flex-col">
-                    <div class="text-tiny font-extrabold text-muted uppercase tracking-widest mb-2 leading-none">Попытки</div>
-                    <div class="min-h-9 flex items-center gap-1.5 text-primary dark:text-white font-bold text-sm leading-none">
-                        <span class="review-meta-icon"><i class="ph-bold ph-arrows-clockwise"></i></span>Попытка {{ attempts_used }} из {{ effective_max_attempts }}{% if attempts_per_task %} <span class="text-muted font-semibold text-xs">(по заданию)</span>{% endif %}
-                    </div>
-                </div>
-            </div>
             <div class="review-header-progress" aria-live="polite">
-                <div class="flex justify-between text-xs font-bold text-slate-600"><span>Проверено {{ reviewed_count }} из {{ review_total }}</span><span id="review-progress-percent">{{ review_percent }}%</span></div>
+                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1"><span>Проверено {{ reviewed_count }} из {{ review_total }}</span><span id="review-progress-percent" class="text-indigo-600">{{ review_percent }}%</span></div>
                 <div class="review-progress-track"><span id="review-progress-fill" style="width: {{ review_percent }}%"></span></div>
-                <div class="flex gap-2 justify-end mt-3"><button type="button" id="review-overview-btn" class="neo-button ghost">Обзор работы</button><button type="button" id="complete-review-btn" class="neo-button accent">Завершить проверку</button><button type="button" class="review-header-menu" aria-label="Дополнительные действия">•••</button></div>
+                <div class="flex gap-2 justify-end mt-2 items-center">
+                    <button type="button" id="review-overview-btn" class="neo-button ghost" title="Сводный обзор всех заданий">Обзор</button>
+                    <button type="button" id="complete-review-btn" class="neo-button accent" title="Завершить проверку и опубликовать результат">Завершить</button>
+                    <div class="relative inline-block text-left" id="review-header-dropdown-wrap">
+                        <button type="button" class="review-header-menu" id="review-header-menu-btn" aria-label="Дополнительные действия" aria-expanded="false" title="Дополнительные действия">•••</button>
+                        <div id="review-header-dropdown" class="hidden absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-slate-200 shadow-xl py-2 z-50 transition-all text-xs font-bold text-slate-700">
+                            <button type="button" id="menu-print-work" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 transition-colors">
+                                <i class="ph-bold ph-printer text-base text-indigo-600"></i> Печать / Экспорт PDF
+                            </button>
+                            <button type="button" id="menu-open-chat" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 transition-colors">
+                                <i class="ph-bold ph-chat-circle-dots text-base text-indigo-600"></i> Чат с учеником
+                            </button>
+                            <button type="button" id="menu-show-shortcuts" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 transition-colors">
+                                <i class="ph-bold ph-keyboard text-base text-indigo-600"></i> Горячие клавиши
+                            </button>
+                            <button type="button" id="menu-toggle-fullscreen" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 transition-colors">
+                                <i class="ph-bold ph-arrows-out text-base text-indigo-600"></i> Полноэкранный режим
+                            </button>
+                            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 no-underline transition-colors">
+                                <i class="ph-bold ph-arrow-left text-base text-indigo-600"></i> К списку работ
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -969,7 +1478,7 @@
             {% for task_item in tasks_view %}
             {% set ti_answer = task_item.answer %}
             <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if task_item.assignment_task.assignment_task_id == initial_task_id %}active{% endif %}{% if ti_answer and ti_answer.reviewed_at %} reviewed{% elif ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-14 h-9 px-1.5 text-tiny leading-tight{% else %}w-11 h-9{% endif %} shrink-0 rounded-xl flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
-                {% if ti_answer and ti_answer.reviewed_at %}<i class="ph-bold ph-check" aria-hidden="true"></i><span>{{ task_item.display_number or loop.index }}</span>{% else %}{{ task_item.display_number or loop.index }}{% endif %}
+                {% if ti_answer and ti_answer.reviewed_at %}<i class="ph-bold ph-check" aria-hidden="true"></i>{% endif %}<span class="task-num">{{ task_item.display_number or loop.index }}</span>
                 <span class="task-unread-dot absolute -top-1 -right-1 w-2.5 h-2.5" data-unread-for="{{ task_item.assignment_task.assignment_task_id }}" style="{% if task_item.assignment_task.assignment_task_id not in unread_task_ids %}display:none{% else %}display:inline-block{% endif %}"></span>
             </a>
             {% endfor %}
@@ -1014,11 +1523,11 @@
                         </div>
                     </div>
                     {% if task_item.assignment_task.requires_manual_grading %}
-                    <span class="manual-review-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold shrink-0">
+                    <span class="manual-review-badge inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
                         <i class="ph-bold ph-fire"></i> Ручная проверка
                     </span>
                     {% else %}
-                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-extrabold uppercase tracking-wide bg-emerald-100 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-100 dark:border-emerald-800 shrink-0">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
                         <i class="ph-bold ph-robot"></i> Авто
                     </span>
                     {% endif %}
@@ -1027,8 +1536,10 @@
                     </span>
                     <div class="task-header-actions" aria-label="Действия с заданием">
                         {% set material_count = (task_item.task.attachments|length) if task_item.task and task_item.task.attachments else 0 %}
-                        {% if material_count or (submission.submission_id == 2 and task_item.assignment_task.assignment_task_id == 14) %}<button type="button" class="task-header-action"><i class="ph-bold ph-files"></i> Материалы ({{ material_count or 1 }})</button>{% endif %}
-                        <button type="button" class="task-header-action" aria-label="Развернуть задание"><i class="ph-bold ph-arrows-out"></i></button>
+                        {% if material_count or (submission.submission_id == 2 and task_item.assignment_task.assignment_task_id == 14) %}
+                        <button type="button" class="task-header-action" data-task-action="scroll-attachments" title="Перейти к материалам задания"><i class="ph-bold ph-files"></i> Материалы ({{ material_count or 1 }})</button>
+                        {% endif %}
+                        <button type="button" class="task-header-action" data-task-action="toggle-expand" aria-label="Развернуть условие задания" title="Развернуть условие"><i class="ph-bold ph-arrows-out"></i></button>
                     </div>
                 </div>
 
@@ -1038,10 +1549,16 @@
                     {% if task_item.task %}{{ render_task_content(task_item.task, true, 'task-content-grade', true) }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
                 </div>
                 {% if task_item.task and (task_item.task.hints or task_item.task.hint or task_item.task.hint_text) %}
-                <div class="review-hint-card">
-                    <span class="review-hint-icon"><i class="ph-bold ph-lightbulb"></i></span>
-                    <div><strong>Ученику была доступна подсказка</strong><small>Подсказка могла помочь ученику при решении задания.</small></div>
-                    <button type="button" class="review-hint-button">Показать подсказку <i class="ph-bold ph-arrow-right"></i></button>
+                {% set effective_hint = task_item.task.hint or task_item.task.hint_text or (task_item.task.hints[0] if task_item.task.hints is iterable and task_item.task.hints|length > 0 else '') %}
+                <div class="review-hint-card" style="flex-direction:column; align-items:stretch;">
+                    <div class="flex items-center gap-3 w-full">
+                        <span class="review-hint-icon"><i class="ph-bold ph-lightbulb"></i></span>
+                        <div><strong>Ученику была доступна подсказка</strong><small class="block text-slate-500">Подсказка могла помочь ученику при решении задания.</small></div>
+                        <button type="button" class="review-hint-button ml-auto" data-hint-toggle="hint-box-{{ task_item.assignment_task.assignment_task_id }}">Показать подсказку <i class="ph-bold ph-caret-down"></i></button>
+                    </div>
+                    <div id="hint-box-{{ task_item.assignment_task.assignment_task_id }}" class="review-hint-content mt-3 pt-3 border-t border-purple-200/60 text-slate-700 text-sm hidden">
+                        {{ effective_hint|safe if effective_hint else 'Текст подсказки не указан в задании.' }}
+                    </div>
                 </div>
                 {% endif %}
                 {% if task_item.is_triplet_19_21 and task_item.triplet_items %}
@@ -1062,34 +1579,107 @@
                     
                     <div class="answer-grid-cols">
                         <div class="answer-left-col">
-                            <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
+                            <div style="font-weight: 700; font-size: 0.88rem; margin-bottom: 0.35rem; color: #1e293b;">Ответ ученика:</div>
+                            {% set spec = g.answer_spec or {} %}
+                            {% set answer_type = spec.get('type') or 'short_answer' %}
+
                             {% if g.answer and g.answer.value is not none and g.answer.value != '' %}
-                            <section class="teacher-student-response" aria-label="Ответ ученика">
-                                <div class="teacher-student-response-title"><i class="ph-bold ph-chat-text"></i> Введённый ответ ученика</div>
-                                <pre class="teacher-student-response-value">{{ g.answer.value }}</pre>
-                            </section>
+                                {% if answer_type == 'single_choice' %}
+                                <!-- Single Choice Answer Display -->
+                                <section class="teacher-student-response" aria-label="Выбор варианта ответа">
+                                    <div class="teacher-student-response-title">
+                                        <i class="ph-bold ph-radio-button text-indigo-600"></i> Выбранный вариант ответа
+                                    </div>
+                                    <div class="teacher-choice-list">
+                                        {% for opt in spec.get('options', []) %}
+                                        {% set is_selected = (g.answer.value == opt.value) %}
+                                        <div class="teacher-choice-item {% if is_selected %}is-selected{% endif %}">
+                                            <span class="teacher-choice-indicator">
+                                                {% if is_selected %}<i class="ph-bold ph-check text-xs"></i>{% endif %}
+                                            </span>
+                                            <span>{{ opt.label }}</span>
+                                            {% if is_selected %}<span class="ml-auto text-xs font-bold text-indigo-600 bg-indigo-100/70 px-2 py-0.5 rounded-md">Выбор ученика</span>{% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </section>
+
+                                {% elif answer_type == 'matching' %}
+                                <!-- Matching Answer Display -->
+                                <section class="teacher-student-response" aria-label="Сопоставление вариантов">
+                                    <div class="teacher-student-response-title">
+                                        <i class="ph-bold ph-arrows-left-right text-indigo-600"></i> Сопоставление элементов
+                                    </div>
+                                    {% set student_matches = g.parsed_answer_value if g.parsed_answer_value is mapping else {} %}
+                                    {% set opt_dict = {} %}
+                                    {% for o in spec.get('options', []) %}
+                                        {% set _ = opt_dict.update({o.value: o.label}) %}
+                                    {% endfor %}
+                                    <div class="teacher-matching-table">
+                                        {% for p in spec.get('pairs', []) %}
+                                        {% set matched_val = student_matches.get(p.key) %}
+                                        {% set matched_label = opt_dict.get(matched_val) if matched_val else None %}
+                                        <div class="teacher-matching-row">
+                                            <div class="teacher-matching-left">
+                                                <span class="teacher-matching-badge">{{ p.key }}</span>
+                                                <span>{{ p.left }}</span>
+                                            </div>
+                                            <i class="ph-bold ph-arrow-right teacher-matching-arrow"></i>
+                                            <div class="teacher-matching-right {% if not matched_label %}is-empty{% endif %}">
+                                                {% if matched_label %}
+                                                <i class="ph-bold ph-check-circle text-emerald-600"></i>
+                                                <span>{{ matched_label }}</span>
+                                                {% else %}
+                                                <i class="ph-bold ph-minus-circle"></i>
+                                                <span>Не сопоставлено</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </section>
+
+                                {% elif answer_type == 'long_answer' %}
+                                <!-- Long Answer Display -->
+                                <section class="teacher-student-response" aria-label="Развернутый ответ ученика">
+                                    <div class="teacher-student-response-title">
+                                        <i class="ph-bold ph-article text-indigo-600"></i> Развёрнутый ответ ученика
+                                    </div>
+                                    <div class="teacher-student-response-value teacher-student-response-long">{{ g.answer.value }}</div>
+                                </section>
+
+                                {% else %}
+                                <!-- Short Answer / Standard Value Display -->
+                                <section class="teacher-student-response" aria-label="Ответ ученика">
+                                    <div class="teacher-student-response-title">
+                                        <i class="ph-bold ph-chat-text text-indigo-600"></i> Введённый ответ ученика
+                                    </div>
+                                    <pre class="teacher-student-response-value">{{ g.answer.value }}</pre>
+                                </section>
+                                {% endif %}
                             {% endif %}
+
                             {% if not g.answer or not (g.answer.value or g.answer.student_code or g.answer.files) %}
                             <div class="review-empty-answer"><strong><i class="ph-bold ph-circle"></i> Ответ не дан</strong><small>Ученик оставил задание без ответа.</small></div>
                             {% endif %}
                             {% set effective_answer = g.assignment_task.answer_override or (g.task.answer if g.task else '') %}
                             {% if effective_answer %}
                             <div style="margin-top: 0.75rem;">
-                                <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Правильный ответ:</div>
-                                <div class="student-answer-value correct-ans-val">{{ effective_answer }}</div>
+                                <div style="font-size: 0.85em; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">Правильный ответ:</div>
+                                <div class="student-answer-value correct-ans-val" style="display: inline-block !important; width: 100%;">{{ effective_answer }}</div>
                             </div>
                             {% endif %}
                             
                             {% if g.answer and g.answer.student_code %}
                             <div class="teacher-code-playback-wrap border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-dark-card/30 p-4 mt-3" data-playback-task-id="{{ g.assignment_task.assignment_task_id }}">
                                 <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/45 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-base">
-                                            <i class="ph-bold ph-code"></i>
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+                                            <i class="ph-bold ph-code text-xl"></i>
                                         </div>
                                         <div>
-                                            <span class="text-sm font-black text-primary dark:text-white block">Ответ ученика</span>
-                                            <small class="text-xs text-muted dark:text-dark-muted block">Python</small>
+                                            <span class="text-sm font-black text-slate-800 dark:text-white block leading-tight">Ответ ученика</span>
+                                            <small class="text-xs text-slate-500 font-bold dark:text-dark-muted block">Python</small>
                                             {% if g.answer.student_code_saved_at %}
                                             <small class="text-xs text-muted dark:text-dark-muted block">Сохранён: {{ g.answer.student_code_saved_at|user_dt('%d.%m.%Y %H:%M') }}</small>
                                             {% endif %}
@@ -1102,15 +1692,15 @@
                                         <button type="button" class="review-code-action review-code-expand" aria-label="Развернуть код"><i class="ph-bold ph-arrows-out"></i></button>
                                     </div>
                                     {% if g.playback and g.playback.get('frame_count', 0) > 0 %}
-                                    <div class="teacher-playback-status text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 border border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800">
+                                    <div class="teacher-playback-status text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200">
                                         Запись ввода ({{ g.playback.get('frame_count', 0) }} шагов)
                                     </div>
                                     {% endif %}
                                 </div>
         
                                 <!-- Code display block -->
-                                <div class="relative rounded-xl border border-slate-200 dark:border-white/5 bg-slate-900 text-slate-100 p-4 font-mono text-sm leading-relaxed overflow-hidden">
-                                    <pre class="m-0 overflow-auto whitespace-pre-wrap word-break-all max-h-24rem" id="teacher-code-pre-{{ g.assignment_task.assignment_task_id }}">{{ g.answer.student_code }}</pre>
+                                <div class="relative rounded-xl border border-slate-200 bg-[#f8fafc] text-slate-800 p-4 font-mono text-sm leading-relaxed overflow-hidden">
+                                    <pre class="m-0 overflow-auto whitespace-pre-wrap word-break-all max-h-24rem" id="teacher-code-pre-{{ g.assignment_task.assignment_task_id }}"><code class="language-python">{{ g.answer.student_code }}</code></pre>
                                 </div>
         
                                 {% if g.playback and g.playback.get('frame_count', 0) > 0 %}
@@ -1170,8 +1760,14 @@
                             
                             {% if g.answer and g.answer.is_correct is not none %}
                             <div class="autocheck-status-pill {% if g.answer.is_correct %}is-correct{% else %}is-incorrect{% endif %}">
-                                {% if g.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}
-                                (Авто-проверка: {{ g.answer.score }}/{{ g.assignment_task.max_score }})
+                                <span class="autocheck-badge">
+                                    {% if g.answer.is_correct %}
+                                    <i class="ph-bold ph-check text-base"></i> Верно
+                                    {% else %}
+                                    <i class="ph-bold ph-x text-base"></i> Неверно
+                                    {% endif %}
+                                </span>
+                                <span>Автопроверка: {{ g.answer.score }} из {{ g.assignment_task.max_score }} балл.</span>
                             </div>
                             {% endif %}
                         </div>
@@ -1231,14 +1827,19 @@
                                     <button type="button" class="quick-comment" data-add-quick-comment>+ Добавить</button>
                                 </div>
                             </div>
-                            <button type="button"
-                                    class="neo-button sm rounded-xl px-3 py-2 inline-flex items-center gap-1.5 text-xs font-bold return-task-toggle-btn{% if g.answer and g.answer.needs_revision %} is-selected{% endif %}"
-                                    data-return-task-toggle="1"
-                                    data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
-                                    aria-pressed="{% if g.answer and g.answer.needs_revision %}true{% else %}false{% endif %}">
-                                <span><strong>Вернуть задание на доработку</strong><small class="block">Ученик сможет отправить новый ответ</small></span>
-                                <i class="ph-bold ph-toggle-right"></i>
-                            </button>
+                            <div class="review-toggle-row">
+                                <div class="review-toggle-text">
+                                    <strong>Вернуть задание на доработку</strong>
+                                    <small>Ученик сможет отправить новый ответ на это задание</small>
+                                </div>
+                                <button type="button" role="switch"
+                                        class="review-switch-btn return-task-toggle-btn{% if g.answer and g.answer.needs_revision %} is-selected{% endif %}"
+                                        data-return-task-toggle="1"
+                                        data-assignment-task-id="{{ g.assignment_task.assignment_task_id }}"
+                                        aria-checked="{% if g.answer and g.answer.needs_revision %}true{% else %}false{% endif %}">
+                                    <span class="review-switch-thumb"></span>
+                                </button>
+                            </div>
                             <button type="button" class="neo-button accent w-full mt-3" data-review-current="{{ g.assignment_task.assignment_task_id }}">{{ ui_icon('action.check', 'sm') }} Сохранить и отметить как проверенное</button>
                             <button type="button" class="review-next-task-btn" data-review-next-task="1">Следующее задание <i class="ph-bold ph-arrow-right"></i></button>
                     <p class="review-autosave-state" data-autosave-state="{{ g.assignment_task.assignment_task_id }}" aria-live="polite"><span>● Автосохранение включено</span><small>Сохранено 2 минуты назад</small></p>
@@ -1406,6 +2007,63 @@
             </section>
         </div>
 
+        <!-- Модальное окно: Справка по горячим клавишам -->
+        <div class="review-modal-backdrop" id="review-shortcuts-modal" aria-hidden="true">
+            <section class="review-overview-modal" role="dialog" aria-modal="true" aria-labelledby="review-shortcuts-title" style="max-width: 32rem;">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+                            <i class="ph-bold ph-keyboard text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 id="review-shortcuts-title" class="text-base font-extrabold text-slate-800">Горячие клавиши проверки</h2>
+                            <p class="text-xs text-slate-500">Управляйте проверкой быстро без мыши</p>
+                        </div>
+                    </div>
+                    <button type="button" id="review-shortcuts-close" class="neo-button ghost" aria-label="Закрыть">×</button>
+                </div>
+                <div class="grid gap-2.5 text-sm">
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <span class="text-slate-600 font-bold">Предыдущее / следующее задание</span>
+                        <span class="flex gap-1"><kbd class="px-2 py-1 rounded-md bg-white border border-slate-300 font-mono text-xs font-black shadow-sm">Alt</kbd> + <kbd class="px-2 py-1 rounded-md bg-white border border-slate-300 font-mono text-xs font-black shadow-sm">← / →</kbd></span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <span class="text-slate-600 font-bold">Быстрая оценка (0, 1, 2...)</span>
+                        <span class="flex gap-1"><kbd class="px-2 py-1 rounded-md bg-white border border-slate-300 font-mono text-xs font-black shadow-sm">Alt</kbd> + <kbd class="px-2 py-1 rounded-md bg-white border border-slate-300 font-mono text-xs font-black shadow-sm">0-9</kbd></span>
+                    </div>
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <span class="text-slate-600 font-bold">Подтвердить и сохранить задание</span>
+                        <span class="flex gap-1"><kbd class="px-2 py-1 rounded-md bg-white border border-slate-300 font-mono text-xs font-black shadow-sm">Ctrl</kbd> + <kbd class="px-2 py-1 rounded-md bg-white border border-slate-300 font-mono text-xs font-black shadow-sm">Enter</kbd></span>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button type="button" id="review-shortcuts-ok" class="neo-button accent">Понятно</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Модальное окно: Развёрнутый код ученика -->
+        <div class="review-modal-backdrop" id="review-code-modal" aria-hidden="true">
+            <section class="review-overview-modal" role="dialog" aria-modal="true" aria-labelledby="review-code-modal-title" style="width: min(56rem, 95vw); max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-200 shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+                            <i class="ph-bold ph-code text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 id="review-code-modal-title" class="text-base font-extrabold text-slate-800">Код ученика Python</h2>
+                            <p class="text-xs text-slate-500" id="review-code-modal-task">Задание</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="review-code-modal-copy" class="neo-button ghost sm"><i class="ph-bold ph-copy"></i> Копировать</button>
+                        <button type="button" id="review-code-modal-close" class="neo-button ghost" aria-label="Закрыть">×</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-auto mt-3 rounded-xl border border-slate-200 bg-[#f8fafc] p-4 font-mono text-sm leading-relaxed">
+                    <pre class="m-0 overflow-auto whitespace-pre-wrap word-break-all"><code id="review-code-modal-content" class="language-python"></code></pre>
+                </div>
+            </section>
         </div>
         </div>
 
@@ -1506,7 +2164,11 @@
                 const frame = data.frames[index];
                 
                 // Обновляем текст кода
-                pre.textContent = frame.code || '';
+                const codeEl = pre.querySelector('code') || pre;
+                codeEl.textContent = frame.code || '';
+                if (window.Prism) {
+                    try { Prism.highlightElement(codeEl); } catch (ePrism) {}
+                }
                 
                 // Обновляем слайдер и счетчик
                 slider.value = index;
@@ -1605,10 +2267,13 @@
     </script>
     
     <script>
-        // Инициализация KaTeX
+        // Инициализация KaTeX и Prism
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof window.boostudyRenderTaskMath === 'function') {
                 window.boostudyRenderTaskMath(document.body, 35);
+            }
+            if (window.Prism && typeof window.Prism.highlightAll === 'function') {
+                try { window.Prism.highlightAll(); } catch (ePrism) {}
             }
             (function initGradeTaskSinglePageAndChat() {
                 var buttons = Array.from(document.querySelectorAll('#taskNavGrade .task-nav-btn'));
@@ -2234,6 +2899,171 @@
             });
         })();
 
+        // Меню дополнительных действий (•••) в шапке
+        (function bindReviewHeaderMenu() {
+            var btn = document.getElementById('review-header-menu-btn');
+            var dropdown = document.getElementById('review-header-dropdown');
+            if (!btn || !dropdown) return;
+
+            function toggleMenu(show) {
+                var willShow = (typeof show === 'boolean') ? show : dropdown.classList.contains('hidden');
+                dropdown.classList.toggle('hidden', !willShow);
+                btn.setAttribute('aria-expanded', willShow ? 'true' : 'false');
+            }
+
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleMenu();
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!dropdown.classList.contains('hidden') && !dropdown.contains(e.target) && e.target !== btn) {
+                    toggleMenu(false);
+                }
+            });
+
+            // Действие: Печать / Экспорт
+            document.getElementById('menu-print-work')?.addEventListener('click', function() {
+                toggleMenu(false);
+                window.print();
+            });
+
+            // Действие: Чат с учеником
+            document.getElementById('menu-open-chat')?.addEventListener('click', function() {
+                toggleMenu(false);
+                document.getElementById('chat-jump-btn')?.click();
+            });
+
+            // Действие: Полноэкранный режим
+            document.getElementById('menu-toggle-fullscreen')?.addEventListener('click', function() {
+                toggleMenu(false);
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(function() {});
+                } else {
+                    document.exitFullscreen().catch(function() {});
+                }
+            });
+
+            // Действие: Справка по горячим клавишам
+            var shortcutsModal = document.getElementById('review-shortcuts-modal');
+            function openShortcuts() {
+                toggleMenu(false);
+                if (!shortcutsModal) return;
+                shortcutsModal.classList.add('is-open');
+                shortcutsModal.setAttribute('aria-hidden', 'false');
+            }
+            function closeShortcuts() {
+                if (!shortcutsModal) return;
+                shortcutsModal.classList.remove('is-open');
+                shortcutsModal.setAttribute('aria-hidden', 'true');
+            }
+
+            document.getElementById('menu-show-shortcuts')?.addEventListener('click', openShortcuts);
+            document.getElementById('review-shortcuts-close')?.addEventListener('click', closeShortcuts);
+            document.getElementById('review-shortcuts-ok')?.addEventListener('click', closeShortcuts);
+            if (shortcutsModal) {
+                shortcutsModal.addEventListener('click', function(e) {
+                    if (e.target === shortcutsModal) closeShortcuts();
+                });
+            }
+            // Клик по бейджу горячих клавиш в нижней панели также открывает справку
+            document.querySelector('.review-shortcuts')?.addEventListener('click', openShortcuts);
+        })();
+
+        // Интерактив для подсказок ученика (Показать / скрыть подсказку)
+        document.querySelectorAll('[data-hint-toggle]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var targetId = btn.getAttribute('data-hint-toggle');
+                var box = document.getElementById(targetId);
+                if (!box) return;
+                var isHidden = box.classList.contains('hidden');
+                box.classList.toggle('hidden', !isHidden);
+                btn.innerHTML = isHidden 
+                    ? 'Скрыть подсказку <i class="ph-bold ph-caret-up"></i>'
+                    : 'Показать подсказку <i class="ph-bold ph-caret-down"></i>';
+            });
+        });
+
+        // Интерактив для действий в шапке карточки задания (Материалы и Развернуть условие)
+        document.querySelectorAll('.task-card-grade').forEach(function(card) {
+            // Кнопка перехода к материалам
+            card.querySelector('[data-task-action="scroll-attachments"]')?.addEventListener('click', function() {
+                var attach = card.querySelector('.task-attachments');
+                if (attach) {
+                    attach.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    attach.classList.remove('ring-4', 'ring-indigo-300');
+                    void attach.offsetWidth;
+                    attach.classList.add('ring-4', 'ring-indigo-300', 'transition-all');
+                    setTimeout(function() { attach.classList.remove('ring-4', 'ring-indigo-300'); }, 2000);
+                } else {
+                    notifyGrade('Материалы задания находятся во вложениях карточки', 'info');
+                }
+            });
+
+            // Кнопка развернуть / свернуть блок задания
+            card.querySelector('[data-task-action="toggle-expand"]')?.addEventListener('click', function() {
+                var content = card.querySelector('.task-content-grade');
+                if (!content) return;
+                var icon = this.querySelector('i');
+                if (content.style.maxHeight && content.style.maxHeight !== 'none') {
+                    content.style.maxHeight = 'none';
+                    if (icon) icon.className = 'ph-bold ph-arrows-in';
+                    this.setAttribute('title', 'Свернуть');
+                } else if (content.style.maxHeight === 'none') {
+                    content.style.maxHeight = '30rem';
+                    if (icon) icon.className = 'ph-bold ph-arrows-out';
+                    this.setAttribute('title', 'Развернуть');
+                } else {
+                    content.style.maxHeight = 'none';
+                    if (icon) icon.className = 'ph-bold ph-arrows-in';
+                    this.setAttribute('title', 'Свернуть');
+                }
+            });
+        });
+
+        // Модальное окно полного просмотра кода ученика
+        (function bindReviewCodeModal() {
+            var modal = document.getElementById('review-code-modal');
+            var codeEl = document.getElementById('review-code-modal-content');
+            var taskLabel = document.getElementById('review-code-modal-task');
+            var copyBtn = document.getElementById('review-code-modal-copy');
+            var closeBtn = document.getElementById('review-code-modal-close');
+            if (!modal || !codeEl) return;
+
+            function hide() {
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+
+            closeBtn?.addEventListener('click', hide);
+            modal.addEventListener('click', function(e) { if (e.target === modal) hide(); });
+
+            document.querySelectorAll('.review-code-expand').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var card = btn.closest('.task-card-grade');
+                    var pre = card && card.querySelector('.teacher-code-playback-wrap pre code');
+                    if (!pre) return;
+                    var title = card.querySelector('.task-title-grade')?.textContent || 'Задание';
+                    if (taskLabel) taskLabel.textContent = title;
+                    codeEl.textContent = pre.textContent;
+                    if (window.Prism && typeof window.Prism.highlightElement === 'function') {
+                        try { window.Prism.highlightElement(codeEl); } catch (e) {}
+                    }
+                    modal.classList.add('is-open');
+                    modal.setAttribute('aria-hidden', 'false');
+                });
+            });
+
+            copyBtn?.addEventListener('click', function() {
+                var text = codeEl.textContent || '';
+                navigator.clipboard.writeText(text).then(function() {
+                    notifyGrade('✓ Код скопирован в буфер обмена', 'success');
+                }).catch(function() {
+                    notifyGrade('✕ Не удалось скопировать', 'error');
+                });
+            });
+        })();
+
         // Сохранить только комментарии (без завершения проверки) — ученик увидит их при выполнении
         document.getElementById('save-comments-btn')?.addEventListener('click', function() {
             var csrfSc = getGradePageCsrfToken();
@@ -2287,6 +3117,7 @@
             var label = btn.querySelector('.return-task-toggle-label');
             btn.classList.toggle('is-selected', !!isSelected);
             btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+            btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
             if (label) {
                 label.textContent = isSelected ? 'Вернется на доработку' : 'Не возвращать';
             }

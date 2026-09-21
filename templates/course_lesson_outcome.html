@@ -2,29 +2,235 @@
 {% block title %}Итог занятия · {{ lesson.topic }}{% endblock %}
 {% set active_page = 'students' %}
 {% block sandbox_content %}
-<main class="mx-auto max-w-[1100px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+<main class="mx-auto max-w-[1200px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+
+  <!-- Заголовок и карточка занятия -->
   <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Результат занятия</p>
-        <h1 class="mt-2 text-3xl font-black text-slate-900">{{ lesson.topic }}</h1>
-        <p class="mt-2 text-sm font-bold text-slate-500">{{ course.title }} · ученик {{ course.student.name }}</p>
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-200/80 rounded-xl text-indigo-700 text-xs font-black uppercase tracking-wider mb-2">
+          <i class="ph-bold ph-chart-line-up"></i>
+          <span>Адаптивный результат занятия</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ lesson.topic }}</h1>
+        <p class="mt-2 text-sm font-bold text-slate-500 flex items-center gap-2">
+          <span>{{ course.title }}</span>
+          <span>•</span>
+          <span class="text-indigo-600 font-extrabold">Ученик: {{ course.student.name }}</span>
+        </p>
       </div>
-      <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id, pane='work') }}" class="rounded-xl border-2 border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-700 no-underline">Открыть Studio</a>
+      <div class="flex items-center gap-3">
+        <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id, pane='work') }}" class="btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2.5 text-xs font-black text-indigo-700 no-underline shadow-xs flex items-center gap-1.5">
+          <i class="ph-bold ph-video-camera text-base"></i>
+          <span>Открыть Studio</span>
+        </a>
+      </div>
     </div>
   </section>
 
   <form method="post" class="space-y-6">
-    <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9]">
-      <div class="flex items-center justify-between gap-3"><div><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-600">Что прошли</p><h2 class="mt-1 text-xl font-black text-slate-900">Отметьте освоенные пункты</h2></div><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">{{ skills|length }} навыков</span></div>
-      {% if skills %}<div class="mt-5 grid gap-3 sm:grid-cols-2">{% for skill in skills %}<label class="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-slate-200 bg-[#F4F7FA] p-4 hover:border-indigo-300"><input type="checkbox" name="covered" value="{{ skill.skill_id }}" class="mt-1 h-4 w-4 accent-indigo-600" {% if skill.skill_id|string in covered or skill.skill_id in covered %}checked{% endif %}><span><span class="block text-sm font-black text-slate-800">{{ skill.title }}</span><span class="mt-1 block text-xs font-bold text-slate-400">№{{ skill.task_number }}{% if skill.topic %} · {{ skill.topic }}{% endif %}</span></span></label>{% endfor %}</div>{% else %}<p class="mt-5 rounded-xl border-2 border-dashed border-slate-200 p-4 text-sm font-bold text-slate-400">Навыки занятия пока не привязаны. Итог всё равно можно сохранить.</p>{% endif %}
+
+    <!-- 1. Навыки: что прошли -->
+    <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-xs font-black uppercase tracking-[.16em] text-emerald-600 flex items-center gap-1.5">
+            <i class="ph-bold ph-check-circle"></i> Пройденные темы
+          </p>
+          <h2 class="mt-1 text-xl font-black text-slate-900">Отметьте затронутые навыки экзамена</h2>
+        </div>
+        <span class="rounded-full bg-slate-100 border border-slate-200 px-3 py-1 text-xs font-black text-slate-600">
+          {{ skills|length }} в программе
+        </span>
+      </div>
+
+      {% if skills %}
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 pt-2">
+        {% for skill in skills %}
+        <label class="flex cursor-pointer items-start gap-3 rounded-2xl border-2 border-slate-200 bg-[#F4F7FA] p-3.5 hover:border-indigo-300 transition-colors">
+          <input type="checkbox" name="covered" value="{{ skill.skill_id }}" class="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 accent-indigo-600" {% if skill.skill_id|string in covered or skill.skill_id in covered %}checked{% endif %}>
+          <div class="min-w-0">
+            <span class="block text-xs font-black text-slate-800 leading-snug truncate">{{ skill.title }}</span>
+            <span class="mt-1 block text-[10px] font-bold text-slate-400">
+              №{{ skill.task_number }}{% if skill.topic %} · {{ skill.topic }}{% endif %}
+            </span>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="rounded-xl border-2 border-dashed border-slate-200 p-4 text-xs font-bold text-slate-400">
+        Навыки экзамена пока не добавлены к программе. Алгоритм всё равно адаптирует курс по общим метрикам.
+      </p>
+      {% endif %}
     </section>
 
-    <section class="grid gap-6 lg:grid-cols-2">
-      <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9]"><label class="text-xs font-black uppercase tracking-[.16em] text-indigo-500" for="mastery">Как усвоено</label><select id="mastery" name="mastery" class="mt-3 w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-3 font-bold text-slate-800"><option value="" {% if not outcome or not outcome.mastery %}selected{% endif %}>Выберите оценку</option>{% for value, label in [('good','Хорошо'),('medium','Средне'),('poor','Нужно повторить')] %}<option value="{{ value }}" {% if outcome and outcome.mastery == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><label class="mt-5 flex items-center gap-3 text-sm font-black text-slate-700"><input type="checkbox" name="homework_assigned" value="1" class="h-4 w-4 accent-indigo-600" {% if outcome and outcome.homework_assigned %}checked{% endif %}> Домашнее задание назначено</label></article>
-      <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9]"><label class="text-xs font-black uppercase tracking-[.16em] text-amber-600" for="next_action">Что делать дальше</label><select id="next_action" name="next_action" class="mt-3 w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-3 font-bold text-slate-800"><option value="" {% if not outcome or not outcome.next_action %}selected{% endif %}>Выберите следующий шаг</option>{% for value, label in [('repeat','Повторить тему'),('continue','Продолжить маршрут'),('mastered','Тема освоена')] %}<option value="{{ value }}" {% if outcome and outcome.next_action == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><label class="mt-5 block text-xs font-black uppercase tracking-[.16em] text-slate-400" for="teacher_note">Комментарий преподавателя</label><textarea id="teacher_note" name="teacher_note" rows="4" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-3 font-medium text-slate-700" placeholder="Короткий вывод и рекомендация ученику">{{ outcome.teacher_note if outcome else '' }}</textarea></article>
+    <!-- 2. Метрики понимания и темпа (Сетка 3 колонки) -->
+    <section class="grid gap-6 md:grid-cols-3">
+
+      <!-- Оценка понимания -->
+      <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] space-y-3">
+        <label class="text-xs font-black uppercase tracking-[.16em] text-indigo-500 block">
+          Глубина понимания (1-5)
+        </label>
+        <div class="flex items-center gap-2 pt-1">
+          {% set cur_score = outcome.comprehension_score if (outcome and outcome.comprehension_score) else 4 %}
+          {% for score in [1, 2, 3, 4, 5] %}
+          <label class="flex-1 text-center cursor-pointer">
+            <input type="radio" name="comprehension_score" value="{{ score }}" class="sr-only peer" {% if cur_score == score %}checked{% endif %}>
+            <div class="py-2.5 rounded-xl border-2 border-slate-200 bg-[#F4F7FA] font-black text-sm text-slate-700 peer-checked:bg-indigo-600 peer-checked:border-indigo-700 peer-checked:text-white transition-all shadow-xs">
+              {{ score }}★
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+        <p class="text-[11px] font-medium text-slate-400">5 = полное владение, 1 = фундаментальные пробелы</p>
+      </article>
+
+      <!-- Самостоятельность -->
+      <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] space-y-3">
+        <label class="text-xs font-black uppercase tracking-[.16em] text-emerald-600 block">
+          Самостоятельность решения
+        </label>
+        {% set cur_indep = outcome.independence_level if (outcome and outcome.independence_level) else 'medium' %}
+        <div class="grid grid-cols-3 gap-1.5 pt-1">
+          <label class="cursor-pointer">
+            <input type="radio" name="independence_level" value="high" class="sr-only peer" {% if cur_indep == 'high' %}checked{% endif %}>
+            <div class="py-2.5 px-1 text-center rounded-xl border-2 border-slate-200 bg-[#F4F7FA] font-black text-[11px] text-slate-700 peer-checked:bg-emerald-600 peer-checked:border-emerald-700 peer-checked:text-white transition-all shadow-xs">
+              Сам
+            </div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="independence_level" value="medium" class="sr-only peer" {% if cur_indep == 'medium' %}checked{% endif %}>
+            <div class="py-2.5 px-1 text-center rounded-xl border-2 border-slate-200 bg-[#F4F7FA] font-black text-[11px] text-slate-700 peer-checked:bg-indigo-600 peer-checked:border-indigo-700 peer-checked:text-white transition-all shadow-xs">
+              С подсказкой
+            </div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="independence_level" value="low" class="sr-only peer" {% if cur_indep == 'low' %}checked{% endif %}>
+            <div class="py-2.5 px-1 text-center rounded-xl border-2 border-slate-200 bg-[#F4F7FA] font-black text-[11px] text-slate-700 peer-checked:bg-amber-600 peer-checked:border-amber-700 peer-checked:text-white transition-all shadow-xs">
+              Разбор
+            </div>
+          </label>
+        </div>
+        <p class="text-[11px] font-medium text-slate-400">Влияет на вес прибавки мастерства по навыку</p>
+      </article>
+
+      <!-- Темп занятия -->
+      <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] space-y-3">
+        <label class="text-xs font-black uppercase tracking-[.16em] text-amber-600 block">
+          Темп прохождения
+        </label>
+        {% set cur_pacing = outcome.pacing if (outcome and outcome.pacing) else 'optimal' %}
+        <div class="grid grid-cols-3 gap-1.5 pt-1">
+          <label class="cursor-pointer">
+            <input type="radio" name="pacing" value="too_fast" class="sr-only peer" {% if cur_pacing == 'too_fast' %}checked{% endif %}>
+            <div class="py-2.5 px-1 text-center rounded-xl border-2 border-slate-200 bg-[#F4F7FA] font-black text-[11px] text-slate-700 peer-checked:bg-amber-600 peer-checked:border-amber-700 peer-checked:text-white transition-all shadow-xs">
+              Спешили
+            </div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="pacing" value="optimal" class="sr-only peer" {% if cur_pacing == 'optimal' %}checked{% endif %}>
+            <div class="py-2.5 px-1 text-center rounded-xl border-2 border-slate-200 bg-[#F4F7FA] font-black text-[11px] text-slate-700 peer-checked:bg-emerald-600 peer-checked:border-emerald-700 peer-checked:text-white transition-all shadow-xs">
+              Комфортный
+            </div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="pacing" value="needs_slowdown" class="sr-only peer" {% if cur_pacing == 'needs_slowdown' %}checked{% endif %}>
+            <div class="py-2.5 px-1 text-center rounded-xl border-2 border-slate-200 bg-[#F4F7FA] font-black text-[11px] text-slate-700 peer-checked:bg-rose-600 peer-checked:border-rose-700 peer-checked:text-white transition-all shadow-xs">
+              Замедлить
+            </div>
+          </label>
+        </div>
+        <p class="text-[11px] font-medium text-slate-400">При «Замедлить» система добавит микро-практику</p>
+      </article>
+
     </section>
-    <div class="flex flex-wrap justify-end gap-3"><a href="{{ url_for('courses.course_view', course_id=course.course_id, _anchor='lesson-' ~ lesson.lesson_id) }}" class="rounded-xl border-2 border-slate-200 bg-white px-5 py-3 font-black text-slate-700 no-underline">Отмена</a><button type="submit" class="btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-600 px-6 py-3 font-black text-white">Сохранить итог и завершить</button></div>
+
+    <!-- 3. Ошибки и следующее действие -->
+    <section class="grid gap-6 lg:grid-cols-2">
+
+      <!-- Фиксация ошибок -->
+      <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] space-y-4">
+        <div>
+          <p class="text-xs font-black uppercase tracking-[.16em] text-rose-500">Целевая отработка</p>
+          <h3 class="mt-1 text-base font-black text-slate-900">Замеченные ошибки и затруднения</h3>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1">Тип ошибки (например: Вычисления, Индексация, Логика)</label>
+            <input type="text" name="new_error_type" placeholder="Синтаксис циклов / Ошибка знака" class="w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-2.5 font-bold text-slate-800 text-xs focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1">Описание для алгоритма</label>
+            <textarea name="new_error_description" rows="2" placeholder="Путает включение правой границы диапазона range()..." class="w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-2.5 font-medium text-slate-700 text-xs focus:outline-none focus:border-indigo-500"></textarea>
+          </div>
+        </div>
+
+        <p class="text-[11px] font-medium text-slate-400">
+          💡 Алгоритм автоматически включит разбор этой ошибки в разминку следующего урока.
+        </p>
+      </article>
+
+      <!-- Общее решение и комментарий -->
+      <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] space-y-4">
+        <div>
+          <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Стратегия траектории</p>
+          <h3 class="mt-1 text-base font-black text-slate-900">Общее решение по курсу</h3>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1" for="next_action">Что делать дальше в программе</label>
+            <select id="next_action" name="next_action" class="w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-2.5 font-bold text-slate-800 text-xs focus:outline-none focus:border-indigo-500">
+              {% for value, label in [('continue','Продолжить по плану'),('repeat','Повторить и закрепить тему'),('mastered','Тема освоена досрочно')] %}
+              <option value="{{ value }}" {% if outcome and outcome.next_action == value %}selected{% elif not outcome and value == 'continue' %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold text-slate-600 block mb-1" for="teacher_note">Заметка для ученика и родителей</label>
+            <textarea id="teacher_note" name="teacher_note" rows="2" class="w-full rounded-xl border-2 border-slate-200 bg-[#F4F7FA] px-4 py-2.5 font-medium text-slate-700 text-xs focus:outline-none focus:border-indigo-500" placeholder="Отличная динамика! Закрепите дома разобранный алгоритм.">{{ outcome.teacher_note if outcome else '' }}</textarea>
+          </div>
+
+          <label class="flex items-center gap-3 text-xs font-black text-slate-700 cursor-pointer pt-1">
+            <input type="checkbox" name="homework_assigned" value="1" class="h-4 w-4 rounded text-indigo-600 accent-indigo-600" {% if outcome and outcome.homework_assigned %}checked{% endif %}>
+            <span>Домашнее задание выдано</span>
+          </label>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- 4. Интеллектуальный триггер алгоритма и кнопки -->
+    <section class="rounded-[2rem] border-2 border-indigo-200 bg-indigo-50/60 p-6 shadow-[0_4px_0_#C7D2FE] flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+          <i class="ph-bold ph-cpu text-xl"></i>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="auto_replan" value="1" checked class="h-4 w-4 rounded text-indigo-600 accent-indigo-600">
+            <span class="text-sm font-black text-slate-900">Алгоритмически перестроить последующий курс</span>
+          </label>
+          <p class="mt-1 text-xs text-slate-600 font-medium max-w-xl">
+            Система пересчитает текущее освоение навыков, подготовит сценарий следующего занятия с работой над ошибками и обновит прогноз баллов.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <a href="{{ url_for('courses.course_view', course_id=course.course_id, _anchor='lesson-' ~ lesson.lesson_id) }}" class="rounded-xl border-2 border-slate-200 bg-white px-5 py-3 font-black text-slate-700 text-xs no-underline hover:bg-slate-50 transition-colors">
+          Отмена
+        </a>
+        <button type="submit" class="btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-600 hover:bg-indigo-700 px-6 py-3 font-black text-white text-xs cursor-pointer border-0 shadow-md">
+          Применить и адаптировать курс
+        </button>
+      </div>
+    </section>
+
   </form>
 </main>
 {% endblock %}

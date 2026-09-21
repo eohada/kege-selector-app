@@ -51,7 +51,7 @@
     const codeWorkspace = document.getElementById('tw-code-workspace-grid');
     const answerWorkspace = document.getElementById('tw-standard-workspace-grid');
     const commentsCard = document.getElementById('tw-comments-card');
-    const commentsCodeSlot = document.getElementById('tw-output-panel');
+    const commentsCodeSlot = document.getElementById('tw-code-comments-slot') || document.getElementById('tw-output-panel');
     const commentsAnswerSlot = document.getElementById('tw-standard-comments-slot');
     let selectedWorkspaceFile = null;
     const storageKey = [
@@ -124,16 +124,16 @@
     }
 
     function supportedWorkspaceModes() {
-        const modes = Array.isArray(ws.answer_spec?.workspace_modes) ? ws.answer_spec.workspace_modes : [];
-        return modes.filter((mode) => mode === 'answer' || mode === 'code');
+        const raw = Array.isArray(ws.answer_spec?.workspace_modes) ? ws.answer_spec.workspace_modes : [];
+        const modes = raw.filter((mode) => mode === 'answer' || mode === 'code');
+        return modes.length > 0 ? modes : ['answer', 'code'];
     }
 
     function applyWorkspaceMode(mode, { persist = true } = {}) {
-        const available = supportedWorkspaceModes();
-        const next = available.includes(mode) ? mode : (available[0] || 'answer');
+        const next = (mode === 'code') ? 'code' : 'answer';
         if (codeWorkspace) codeWorkspace.classList.toggle('is-workspace-hidden', next !== 'code');
         if (answerWorkspace) answerWorkspace.classList.toggle('is-workspace-hidden', next !== 'answer');
-        modeSwitch?.querySelectorAll('[data-workspace-mode]').forEach((button) => {
+        document.querySelectorAll('[data-workspace-mode-switch] [data-workspace-mode]').forEach((button) => {
             const active = button.dataset.workspaceMode === next;
             button.classList.toggle('is-active', active);
             button.setAttribute('aria-pressed', String(active));
@@ -152,13 +152,17 @@
     }
 
     function initializeWorkspaceMode() {
-        const available = supportedWorkspaceModes();
-        if (!available.length) return;
-        let selected = ws.answer_spec?.default_workspace_mode || (ws.presentation_mode === 'code' ? 'code' : 'answer');
-        try { selected = sessionStorage.getItem(modeStorageKey) || selected; } catch (err) {}
+        let selected = ws.presentation_mode === 'code' ? 'code' : (ws.answer_spec?.default_workspace_mode || 'answer');
+        try {
+            const saved = sessionStorage.getItem(modeStorageKey);
+            if (saved === 'code' || saved === 'answer') selected = saved;
+        } catch (err) {}
         applyWorkspaceMode(selected, { persist: false });
-        modeSwitch?.querySelectorAll('[data-workspace-mode]').forEach((button) => {
-            button.addEventListener('click', () => applyWorkspaceMode(button.dataset.workspaceMode));
+        document.querySelectorAll('[data-workspace-mode-switch] [data-workspace-mode]').forEach((button) => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                applyWorkspaceMode(button.dataset.workspaceMode);
+            });
         });
     }
 
@@ -1664,15 +1668,20 @@
                 const preview = item.preview || item.code || '';
                 return `<div class="tw-version-item">
                     <div class="tw-version-item-top">
-                        <span>#${item.version_id} · ${escapeHtml(item.source || 'autosave')}</span>
-                        <span>${item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : ''}</span>
+                        <div class="tw-version-meta-left">
+                            <span class="tw-version-badge"><i class="ph-bold ph-git-commit"></i> #${item.version_id}</span>
+                            <span class="tw-version-source-pill">${escapeHtml(item.source || 'autosave')}</span>
+                        </div>
+                        <span class="tw-version-date">${item.created_at ? new Date(item.created_at).toLocaleString('ru-RU') : ''}</span>
                     </div>
-                    <pre>${escapeHtml(preview.slice(0, 360) || '(пусто)')}</pre>
+                    <pre class="tw-version-preview">${escapeHtml(preview.slice(0, 360) || '(пусто)')}</pre>
                     <div class="tw-version-actions">
-                        <button type="button" class="tw-btn tw-btn-ghost" data-restore-version="${item.version_id}">${ws.can_edit ? 'Восстановить' : 'Открыть'}</button>
+                        <button type="button" class="tw-btn tw-btn-ghost tw-btn-sm" data-restore-version="${item.version_id}">
+                            <i class="ph-bold ph-arrow-counter-clockwise"></i> ${ws.can_edit ? 'Восстановить' : 'Открыть'}
+                        </button>
                     </div>
                 </div>`;
-            }).join('') : '<div class="tw-empty">Пока нет серверных версий. Нажми сохранить или подожди автосохранение.</div>';
+            }).join('') : '<div class="tw-empty"><div class="tw-empty-icon"><i class="ph-bold ph-clock-counter-clockwise"></i></div><div class="tw-empty-title">Нет сохранённых версий</div><div class="tw-empty-desc">Пока нет серверных версий. Нажмите «Сохранить» или дождитесь автосохранения.</div></div>';
             versionList.querySelectorAll('[data-restore-version]').forEach((btn) => {
                 btn.addEventListener('click', async () => {
                     const id = Number(btn.dataset.restoreVersion || 0);
@@ -1714,7 +1723,19 @@
         const resp = await fetch('/workspace/files?' + params.toString());
         const data = await resp.json().catch(() => ({}));
         const items = data.files || data.items || [];
-        fileList.innerHTML = items.length ? items.map((item) => `<div class="tw-version-item"><div class="tw-version-item-top"><span>${escapeHtml(item.filename || item.original_filename || 'Файл')}</span><span>${item.size_human || ''}</span></div><div class="tw-version-actions"><button class="tw-btn tw-btn-ghost" type="button" data-file-id="${item.file_id}">Открыть</button></div></div>`).join('') : '<div class="tw-empty">Файлов пока нет.</div>';
+        fileList.innerHTML = items.length ? items.map((item) => `<div class="tw-version-item tw-file-item">
+            <div class="tw-version-item-top">
+                <div class="tw-version-meta-left">
+                    <span class="tw-version-badge tw-file-badge"><i class="ph-bold ph-file-text"></i> ${escapeHtml(item.filename || item.original_filename || 'Файл')}</span>
+                    <span class="tw-version-source-pill">${item.size_human || ''}</span>
+                </div>
+            </div>
+            <div class="tw-version-actions">
+                <button class="tw-btn tw-btn-ghost tw-btn-sm" type="button" data-file-id="${item.file_id}">
+                    <i class="ph-bold ph-arrow-square-out"></i> Открыть
+                </button>
+            </div>
+        </div>`).join('') : '<div class="tw-empty"><div class="tw-empty-icon"><i class="ph-bold ph-folder-open"></i></div><div class="tw-empty-title">Файлов пока нет</div><div class="tw-empty-desc">Загрузите файл или создайте новый для работы с кодом.</div></div>';
         fileList.querySelectorAll('[data-file-id]').forEach((button) => button.addEventListener('click', () => openWorkspaceFile(Number(button.dataset.fileId))));
     }
 
@@ -2130,260 +2151,7 @@
         }
     });
 
-    // Свободная раскладка панелей (Floating Window Manager)
-    const gridEl = document.getElementById('tw-workspace-grid');
-    const taskPanel = document.getElementById('tw-task-panel');
-    const editorPanel = document.getElementById('tw-editor-panel');
-    const outputPanel = document.getElementById('tw-output-panel');
-
-    const toggleTaskBtn = document.getElementById('tw-toggle-panel-task');
-    const toggleOutputBtn = document.getElementById('tw-toggle-panel-output');
-    const changeLayoutBtn = document.getElementById('tw-change-layout');
-
-    let windowStates = {
-        task: { left: 16, top: 16, width: 340, height: 718, visible: true },
-        editor: { left: 372, top: 16, width: 780, height: 718, visible: true },
-        output: { left: 1168, top: 16, width: 380, height: 718, visible: true }
-    };
-
-    const WINDOWS_STORAGE_KEY = 'kege_workspace_window_positions_v2';
-
-    function resetWindowsToDefault() {
-        if (!gridEl) return;
-        const rect = gridEl.getBoundingClientRect();
-        const w = rect.width || window.innerWidth - 80;
-        const h = 750;
-        
-        const pad = 16;
-        const availW = w - pad * 4;
-        
-        const taskW = Math.max(280, Math.floor(availW * 0.25));
-        const outputW = Math.max(300, Math.floor(availW * 0.28));
-        const editorW = Math.max(450, w - taskW - outputW - pad * 4);
-        
-        windowStates.task = { left: pad, top: pad, width: taskW, height: h - pad * 2, visible: true };
-        windowStates.editor = { left: pad * 2 + taskW, top: pad, width: editorW, height: h - pad * 2, visible: true };
-        windowStates.output = { left: pad * 3 + taskW + editorW, top: pad, width: outputW, height: h - pad * 2, visible: true };
-        
-        applyWindowStates();
-        saveWindowStates();
-    }
-
-    function saveWindowStates() {
-        try {
-            localStorage.setItem(WINDOWS_STORAGE_KEY, JSON.stringify(windowStates));
-        } catch(e) {}
-    }
-
-    function loadWindowStates() {
-        try {
-            const raw = localStorage.getItem(WINDOWS_STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                if (parsed && typeof parsed === 'object' && parsed.task && parsed.editor && parsed.output) {
-                    windowStates = parsed;
-                    return true;
-                }
-            }
-        } catch(e) {}
-        return false;
-    }
-
-    function clampWindowStatesToContainer() {
-        if (!gridEl) return;
-        const rect = gridEl.getBoundingClientRect();
-        const w = rect.width || window.innerWidth - 80;
-        const h = 750;
-        
-        ['task', 'editor', 'output'].forEach(name => {
-            const state = windowStates[name];
-            if (state) {
-                const minW = name === 'editor' ? 400 : 250;
-                const minH = 200;
-                state.width = Math.max(minW, Math.min(w - 32, state.width));
-                state.height = Math.max(minH, Math.min(h - 32, state.height));
-                state.left = Math.max(0, Math.min(w - state.width, state.left));
-                state.top = Math.max(0, Math.min(h - state.height, state.top));
-            }
-        });
-    }
-
-    function applyWindowStates() {
-        clampWindowStatesToContainer();
-        ['task', 'editor', 'output'].forEach(name => {
-            const panel = document.getElementById(`tw-${name}-panel`);
-            const state = windowStates[name];
-            if (panel && state) {
-                panel.style.left = state.left + 'px';
-                panel.style.top = state.top + 'px';
-                panel.style.width = state.width + 'px';
-                panel.style.height = state.height + 'px';
-                panel.style.display = state.visible ? 'flex' : 'none';
-            }
-        });
-
-        // Обновляем визуальное состояние кнопок
-        if (toggleTaskBtn && windowStates.task) {
-            toggleTaskBtn.classList.toggle('tw-btn-primary', windowStates.task.visible);
-            toggleTaskBtn.classList.toggle('tw-btn-ghost', !windowStates.task.visible);
-        }
-        if (toggleOutputBtn && windowStates.output) {
-            toggleOutputBtn.classList.toggle('tw-btn-primary', windowStates.output.visible);
-            toggleOutputBtn.classList.toggle('tw-btn-ghost', !windowStates.output.visible);
-        }
-
-        // Оповещаем BooCanvasOverlay о ресайзе
-        setTimeout(() => {
-            window.dispatchEvent(new Event('resize'));
-        }, 50);
-    }
-
-    function makeWindowInteractive(panel, name) {
-        if (!panel) return;
-        const head = panel.querySelector('.tw-panel-head');
-        
-        // Создаем ручки изменения размеров по правому краю (r), нижнему краю (b) и углу (se)
-        const resizers = [
-            { type: 'r', class: 'tw-panel-resizer-r', title: 'Растянуть по горизонтали' },
-            { type: 'b', class: 'tw-panel-resizer-b', title: 'Растянуть по вертикали' },
-            { type: 'se', class: 'tw-panel-resizer-se', title: 'Изменить размер' }
-        ];
-
-        resizers.forEach(r => {
-            const handle = document.createElement('div');
-            handle.className = `tw-panel-resizer ${r.class}`;
-            handle.title = r.title;
-            panel.appendChild(handle);
-
-            handle.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                panel.classList.add('is-active-window');
-
-                const startX = e.clientX;
-                const startY = e.clientY;
-                const state = windowStates[name];
-                const startW = state.width;
-                const startH = state.height;
-
-                const containerRect = gridEl.getBoundingClientRect();
-
-                function onPointerMove(ev) {
-                    const dx = ev.clientX - startX;
-                    const dy = ev.clientY - startY;
-
-                    const minW = name === 'editor' ? 400 : 250;
-                    const minH = 200;
-                    
-                    const maxW = Math.max(minW, containerRect.width - state.left);
-                    const maxH = Math.max(minH, containerRect.height - state.top);
-
-                    let newW = state.width;
-                    let newH = state.height;
-
-                    if (r.type === 'r' || r.type === 'se') {
-                        newW = Math.max(minW, Math.min(maxW, startW + dx));
-                    }
-                    if (r.type === 'b' || r.type === 'se') {
-                        newH = Math.max(minH, Math.min(maxH, startH + dy));
-                    }
-
-                    state.width = newW;
-                    state.height = newH;
-
-                    panel.style.width = newW + 'px';
-                    panel.style.height = newH + 'px';
-
-                    window.dispatchEvent(new Event('resize'));
-                }
-
-                function onPointerUp() {
-                    document.removeEventListener('pointermove', onPointerMove);
-                    document.removeEventListener('pointerup', onPointerUp);
-                    saveWindowStates();
-                }
-
-                document.addEventListener('pointermove', onPointerMove);
-                document.addEventListener('pointerup', onPointerUp);
-            });
-        });
-
-        // Подъем z-index активного окна
-        panel.addEventListener('pointerdown', () => {
-            document.querySelectorAll('.tw-panel').forEach(p => p.classList.remove('is-active-window'));
-            panel.classList.add('is-active-window');
-        });
-
-        // Перетаскивание за шапку
-        if (head) {
-            head.addEventListener('pointerdown', (e) => {
-                if (e.target.closest('.tw-editor-tools, button, a, select, input, details, summary')) return;
-                e.preventDefault();
-
-                panel.classList.add('is-active-window');
-
-                const startX = e.clientX;
-                const startY = e.clientY;
-                const state = windowStates[name];
-                const startLeft = state.left;
-                const startTop = state.top;
-
-                const containerRect = gridEl.getBoundingClientRect();
-                
-                function onPointerMove(ev) {
-                    const dx = ev.clientX - startX;
-                    const dy = ev.clientY - startY;
-
-                    const maxLeft = Math.max(0, containerRect.width - state.width);
-                    const maxTop = Math.max(0, containerRect.height - state.height);
-
-                    const newLeft = Math.max(0, Math.min(maxLeft, startLeft + dx));
-                    const newTop = Math.max(0, Math.min(maxTop, startTop + dy));
-
-                    state.left = newLeft;
-                    state.top = newTop;
-
-                    panel.style.left = newLeft + 'px';
-                    panel.style.top = newTop + 'px';
-                }
-
-                function onPointerUp() {
-                    document.removeEventListener('pointermove', onPointerMove);
-                    document.removeEventListener('pointerup', onPointerUp);
-                    saveWindowStates();
-                }
-
-                document.addEventListener('pointermove', onPointerMove);
-                document.addEventListener('pointerup', onPointerUp);
-            });
-        }
-    }
-
-    // Обработчики кнопок скрытия панелей
-    if (toggleTaskBtn) {
-        toggleTaskBtn.addEventListener('click', () => {
-            if (windowStates.task) {
-                windowStates.task.visible = !windowStates.task.visible;
-                applyWindowStates();
-                saveWindowStates();
-            }
-        });
-    }
-
-    if (toggleOutputBtn) {
-        toggleOutputBtn.addEventListener('click', () => {
-            if (windowStates.output) {
-                windowStates.output.visible = !windowStates.output.visible;
-                applyWindowStates();
-                saveWindowStates();
-            }
-        });
-    }
-
-    if (changeLayoutBtn) {
-        changeLayoutBtn.addEventListener('click', resetWindowsToDefault);
-    }
+    // Таймер выполнения сдачи
 
     // Общий таймер выполнения сдачи
     const timerContainer = document.getElementById('tw-timer-container');
@@ -2535,6 +2303,102 @@
     });
     window.addEventListener('pagehide', flushWorkspaceBeforeExit);
     window.addEventListener('beforeunload', flushWorkspaceBeforeExit);
+
+    // Editor tools: Copy, Download, Fullscreen
+    const copyCodeBtn = document.getElementById('tw-btn-copy-code');
+    if (copyCodeBtn) {
+        copyCodeBtn.addEventListener('click', async () => {
+            const val = code ? code.value : '';
+            try {
+                await navigator.clipboard.writeText(val);
+                const originalHtml = copyCodeBtn.innerHTML;
+                copyCodeBtn.innerHTML = '<i class="ph-bold ph-check"></i> Скопировано';
+                setTimeout(() => { copyCodeBtn.innerHTML = originalHtml; }, 2000);
+            } catch (e) {
+                if (code) {
+                    code.select();
+                    document.execCommand('copy');
+                }
+            }
+        });
+    }
+
+    const downloadCodeBtn = document.getElementById('tw-btn-download-code');
+    if (downloadCodeBtn) {
+        downloadCodeBtn.addEventListener('click', () => {
+            const val = code ? code.value : '';
+            const blob = new Blob([val], { type: 'text/x-python;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `solution_task_${ws.task_position || 1}.py`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    const editorExpandBtn = document.getElementById('tw-btn-editor-expand');
+    const editorPanel = document.getElementById('tw-editor-panel');
+    if (editorExpandBtn && editorPanel) {
+        editorExpandBtn.addEventListener('click', () => {
+            editorPanel.classList.toggle('is-editor-fullscreen');
+            const isFull = editorPanel.classList.contains('is-editor-fullscreen');
+            editorExpandBtn.innerHTML = isFull
+                ? '<i class="ph-bold ph-corners-in"></i> Свернуть'
+                : '<i class="ph-bold ph-corners-out"></i> Во весь экран';
+            requestAnimationFrame(updateEditorChrome);
+        });
+    }
+
+    const moreToggle = document.getElementById('tw-editor-more-toggle');
+    const moreMenu = document.getElementById('tw-editor-more-menu');
+    if (moreToggle && moreMenu) {
+        moreToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            moreMenu.hidden = !moreMenu.hidden;
+        });
+        document.addEventListener('click', (e) => {
+            if (!moreMenu.contains(e.target) && !moreToggle.contains(e.target)) {
+                moreMenu.hidden = true;
+            }
+        });
+        moreMenu.querySelectorAll('[data-import-snippet]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                insertImportSnippet(btn.dataset.importSnippet || '');
+                moreMenu.hidden = true;
+            });
+        });
+    }
+
+    // Переключение вкладок вывода (Вывод, Рисунок, Версии, Файлы, Заметки)
+    document.querySelectorAll('.tw-tab').forEach((tabBtn) => {
+        tabBtn.addEventListener('click', () => {
+            const targetTab = tabBtn.dataset.tab;
+            if (!targetTab) return;
+            document.querySelectorAll('.tw-tab').forEach((t) => {
+                t.classList.toggle('is-active', t === tabBtn);
+            });
+            document.querySelectorAll('.tw-tab-pane').forEach((pane) => {
+                pane.classList.toggle('is-active', pane.dataset.pane === targetTab);
+            });
+        });
+    });
+
+    // Подсветка синтаксиса Python в условиях заданий
+    function highlightTaskConditions() {
+        document.querySelectorAll('.tw-task-content pre').forEach((pre) => {
+            if (pre.dataset.highlighted) return;
+            const codeEl = pre.querySelector('code') || pre;
+            const raw = codeEl.textContent;
+            if (raw && raw.trim()) {
+                codeEl.innerHTML = highlightPython(raw);
+                pre.dataset.highlighted = 'true';
+            }
+        });
+    }
+    highlightTaskConditions();
 
     // Инициализация холста рисования
     if (window.BooCanvasOverlay && ws.task_id) {

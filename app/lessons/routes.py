@@ -1014,6 +1014,22 @@ def lesson_studio_finish(lesson_id: int):
         mastery.state = 'mastered' if mastery.mastery_percent >= 85 else ('reinforcing' if mastery.mastery_percent >= 50 else 'learning')
         mastery.practice_done = True
         mastery.last_checked_at = moscow_now()
+
+    # Если занятие привязано к курсу ученика — запускаем адаптивный движок
+    if lesson.learning_trajectory_id:
+        try:
+            from app.courses.adaptive_engine import CourseAdaptiveEngine
+            course = LearningTrajectory.query.get(lesson.learning_trajectory_id)
+            if course:
+                CourseAdaptiveEngine.apply_lesson_adaptation(
+                    course=course,
+                    lesson=lesson,
+                    outcome=structured_outcome,
+                    trigger_replan=True,
+                )
+        except Exception as adapt_err:
+            logger.warning(f"Failed to auto-adapt course from studio finish: {adapt_err}")
+
     try:
         _save_lesson_studio_state(lesson, state)
     except Exception as exc:

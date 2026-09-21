@@ -149,6 +149,79 @@ tester_assistant_app/dist/
 tester_assistant_app/google_creds.json
 tester_assistant_app/token.json
 tester_assistant_app/client_secrets.json
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Telegram bot (separate repository)
+telegram-task-tracker-bot/
+
+# Visual audit (локальные учётные данные для скрипта)
+visual_audit_ids.json
+
+# Tailwind standalone binary (downloaded locally)
+tools/tailwindcss/tailwindcss.exe
+
+# Экспорт для fine-tuning (генерируется скриптом)
+exports/*.jsonl
+exports/*.csv
+exports/coverage_report.txt
+
+# RAG-индекс подсказок (генерируется скриптом build_hints_rag_index.py)
+data/rag_hints/
+
+# Отладка GraphExtractor/TableExtractor
+debug_out/
+
+# Tailwind CSS standalone CLI
+tailwindcss*.exe
+
+# Tailwind output — track boostudy.css, ignore source maps
+static/dist/*.map
+
+# Playwright / release audit artifacts
+playwright-report/
+test-results/
+docs/qa/release_audit_report.md
+tailwindcss
+tester_assistant_app/dist/
+tester_assistant_app/google_creds.json
+tester_assistant_app/token.json
+tester_assistant_app/client_secrets.json
 tester_assistant_app/dist/
 
 tester_assistant_app/dist/
@@ -158,3 +231,11 @@ services/tester_assistant/tester_assistant_app/dist/
 services/tester_assistant/tester_assistant_app/google_creds.json
 services/tester_assistant/tester_assistant_app/token.json
 services/tester_assistant/tester_assistant_app/client_secrets.json
+
+# Local uploads and temporary output
+uploads/
+app/uploads/
+static/uploads/
+output/
+tmp/
+data/*.sqlite

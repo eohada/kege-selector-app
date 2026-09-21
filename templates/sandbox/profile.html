@@ -166,6 +166,11 @@
                 <i class="ph-bold ph-telegram-logo text-xs sm:text-sm"></i> Telegram
               </button>
               {% endif %}
+              <span id="profile-tz-header-badge" class="inline-flex items-center gap-1 text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold" title="Ваш часовой пояс">
+                <i class="ph-bold ph-clock text-indigo-600"></i>
+                <span id="profile-tz-header-name">{{ user_timezone_effective or 'Europe/Moscow' }}</span>
+                <span id="profile-tz-header-clock" class="text-indigo-950 font-extrabold ml-0.5"></span>
+              </span>
             </div>
           </div>
         </div>
@@ -576,21 +581,35 @@
       <!-- Timezone & Password Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="space-y-1.5">
-          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Часовой пояс</label>
-          <select name="timezone_iana" id="edit-timezone" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-            <option value="Europe/Kaliningrad" {% if profile_timezone == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград (UTC+2)</option>
-            <option value="Europe/Moscow" {% if profile_timezone == 'Europe/Moscow' %}selected{% endif %}>Москва (UTC+3)</option>
-            <option value="Asia/Yekaterinburg" {% if profile_timezone == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург (UTC+5)</option>
-            <option value="Asia/Omsk" {% if profile_timezone == 'Asia/Omsk' %}selected{% endif %}>Омск (UTC+6)</option>
-            <option value="Asia/Novosibirsk" {% if profile_timezone == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск (UTC+7)</option>
-            <option value="Asia/Tomsk" {% if profile_timezone == 'Asia/Tomsk' %}selected{% endif %}>Томск (UTC+7)</option>
-            <option value="Asia/Krasnoyarsk" {% if profile_timezone == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск (UTC+7)</option>
-            <option value="Asia/Irkutsk" {% if profile_timezone == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск (UTC+8)</option>
-            <option value="Asia/Yakutsk" {% if profile_timezone == 'Asia/Yakutsk' %}selected{% endif %}>Якутск (UTC+9)</option>
-            <option value="Asia/Vladivostok" {% if profile_timezone == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток (UTC+10)</option>
-            <option value="Asia/Magadan" {% if profile_timezone == 'Asia/Magadan' %}selected{% endif %}>Магадан (UTC+11)</option>
-            <option value="Asia/Kamchatka" {% if profile_timezone == 'Asia/Kamchatka' %}selected{% endif %}>Камчатка (UTC+12)</option>
-            <option value="UTC" {% if profile_timezone == 'UTC' %}selected{% endif %}>UTC</option>
+          <div class="flex items-center justify-between mb-1">
+            <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Часовой пояс</label>
+            <span id="tz-current-time-indicator" class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100"></span>
+          </div>
+          <div class="flex items-center gap-3 mb-2">
+            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer">
+              <input type="radio" name="timezone_mode" value="auto" id="tz-mode-auto" {% if (user_timezone_mode or 'auto') == 'auto' %}checked{% endif %} onchange="toggleTimezoneSelectMode(this.value)" class="text-indigo-600 focus:ring-indigo-500">
+              <span>Авто (из браузера)</span>
+            </label>
+            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer">
+              <input type="radio" name="timezone_mode" value="manual" id="tz-mode-manual" {% if user_timezone_mode == 'manual' %}checked{% endif %} onchange="toggleTimezoneSelectMode(this.value)" class="text-indigo-600 focus:ring-indigo-500">
+              <span>Вручную</span>
+            </label>
+          </div>
+          <select name="timezone_iana" id="edit-timezone" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 transition-all {% if (user_timezone_mode or 'auto') == 'auto' %}opacity-60 cursor-not-allowed{% endif %}" {% if (user_timezone_mode or 'auto') == 'auto' %}disabled{% endif %}>
+            <option value="Europe/Kaliningrad" {% if profile_timezone == 'Europe/Kaliningrad' %}selected{% endif %}>Калининград (МСК-1 / UTC+2)</option>
+            <option value="Europe/Moscow" {% if profile_timezone == 'Europe/Moscow' %}selected{% endif %}>Москва, Санкт-Петербург (МСК / UTC+3)</option>
+            <option value="Europe/Samara" {% if profile_timezone == 'Europe/Samara' %}selected{% endif %}>Самара, Саратов, Ижевск (МСК+1 / UTC+4)</option>
+            <option value="Asia/Yekaterinburg" {% if profile_timezone == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург, Пермь, Тюмень, Уфа (МСК+2 / UTC+5)</option>
+            <option value="Asia/Omsk" {% if profile_timezone == 'Asia/Omsk' %}selected{% endif %}>Омск (МСК+3 / UTC+6)</option>
+            <option value="Asia/Novosibirsk" {% if profile_timezone == 'Asia/Novosibirsk' %}selected{% endif %}>Новосибирск (МСК+4 / UTC+7)</option>
+            <option value="Asia/Tomsk" {% if profile_timezone == 'Asia/Tomsk' %}selected{% endif %}>Томск, Барнаул (МСК+4 / UTC+7)</option>
+            <option value="Asia/Krasnoyarsk" {% if profile_timezone == 'Asia/Krasnoyarsk' %}selected{% endif %}>Красноярск (МСК+4 / UTC+7)</option>
+            <option value="Asia/Irkutsk" {% if profile_timezone == 'Asia/Irkutsk' %}selected{% endif %}>Иркутск (МСК+5 / UTC+8)</option>
+            <option value="Asia/Yakutsk" {% if profile_timezone == 'Asia/Yakutsk' %}selected{% endif %}>Якутск (МСК+6 / UTC+9)</option>
+            <option value="Asia/Vladivostok" {% if profile_timezone == 'Asia/Vladivostok' %}selected{% endif %}>Владивосток, Хабаровск (МСК+7 / UTC+10)</option>
+            <option value="Asia/Magadan" {% if profile_timezone == 'Asia/Magadan' %}selected{% endif %}>Магадан, Сахалин (МСК+8 / UTC+11)</option>
+            <option value="Asia/Kamchatka" {% if profile_timezone == 'Asia/Kamchatka' %}selected{% endif %}>Камчатка, Анадырь (МСК+9 / UTC+12)</option>
+            <option value="UTC" {% if profile_timezone == 'UTC' %}selected{% endif %}>UTC (Всемирное координированное время)</option>
           </select>
         </div>
         <div class="space-y-1.5">
@@ -614,11 +633,66 @@
 </div>
 
 <script>
+function updateProfileTimezoneClocks() {
+  const effectiveTz = document.querySelector('meta[name="user-timezone-effective"]')?.getAttribute('content') || 'Europe/Moscow';
+
+  // Update header clock
+  const headerClock = document.getElementById('profile-tz-header-clock');
+  if (headerClock) {
+    try {
+      const now = new Date();
+      headerClock.textContent = now.toLocaleTimeString('ru-RU', { timeZone: effectiveTz, hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      // fallback
+    }
+  }
+
+  // Update modal preview clock
+  const modalClock = document.getElementById('tz-current-time-indicator');
+  const sel = document.getElementById('edit-timezone');
+  const autoRadio = document.getElementById('tz-mode-auto');
+  const isAuto = autoRadio ? autoRadio.checked : true;
+  const targetTz = isAuto ? (Intl.DateTimeFormat().resolvedOptions().timeZone || effectiveTz) : (sel ? sel.value : effectiveTz);
+
+  if (modalClock) {
+    try {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('ru-RU', { timeZone: targetTz, hour: '2-digit', minute: '2-digit' });
+      modalClock.textContent = 'Время: ' + timeStr;
+    } catch (e) {
+      modalClock.textContent = '';
+    }
+  }
+}
+
+function toggleTimezoneSelectMode(mode) {
+  const sel = document.getElementById('edit-timezone');
+  if (!sel) return;
+  if (mode === 'auto') {
+    sel.disabled = true;
+    sel.classList.add('opacity-60', 'cursor-not-allowed');
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (browserTz) {
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === browserTz) {
+          sel.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  } else {
+    sel.disabled = false;
+    sel.classList.remove('opacity-60', 'cursor-not-allowed');
+  }
+  updateProfileTimezoneClocks();
+}
+
 function openProfileEditModal() {
   const modal = document.getElementById('profile-edit-modal');
   const card = document.getElementById('profile-edit-card');
   if (!modal || !card) return;
   modal.classList.remove('hidden');
+  updateProfileTimezoneClocks();
   setTimeout(() => {
     card.classList.remove('scale-95', 'opacity-0');
     card.classList.add('scale-100', 'opacity-100');
@@ -770,6 +844,14 @@ function addNewGoal() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  updateProfileTimezoneClocks();
+  setInterval(updateProfileTimezoneClocks, 30000);
+
+  const sel = document.getElementById('edit-timezone');
+  if (sel) {
+    sel.addEventListener('change', updateProfileTimezoneClocks);
+  }
+
   const form = document.getElementById('profile-edit-form');
   if (form) {
     form.addEventListener('submit', (e) => {

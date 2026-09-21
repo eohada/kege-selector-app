@@ -193,38 +193,54 @@
     </div>
     {% endif %}
   </div>
-
-</div>
+</main>
 {% endblock %}
 
-{% block scripts_extra %}
+{% block extra_scripts %}
 <script>
 (function() {
   const tabs = Array.from(document.querySelectorAll('.task-tab'));
   const cards = Array.from(document.querySelectorAll('.assignment-card'));
+  const emptyState = document.getElementById('deadlineEmptyState');
 
-  const tabActiveLight = ['bg-surface', 'text-primary', 'shadow-sm', 'border-slate-200/50'];
-  const tabActiveDark = ['dark:bg-white/10', 'dark:text-white', 'dark:border-dark-avatar', 'dark:shadow-none'];
-  const tabInactiveLight = ['text-muted', 'hover:text-primary', 'border-transparent'];
-  const tabInactiveDark = ['dark:text-dark-muted', 'dark:hover:text-white', 'dark:border-transparent'];
+  const tabActiveClasses = ['bg-white', 'text-slate-900', 'shadow-xs', 'border', 'border-slate-200/80'];
+  const tabInactiveClasses = ['text-slate-500', 'hover:text-slate-800'];
 
   function setActiveTab(filter) {
     tabs.forEach(t => {
+      const badge = t.querySelector('.tab-badge');
       if (t.dataset.filter === filter) {
-        t.classList.add(...tabActiveLight, ...tabActiveDark);
-        t.classList.remove(...tabInactiveLight, ...tabInactiveDark);
+        t.classList.add(...tabActiveClasses);
+        t.classList.remove(...tabInactiveClasses);
+        if (badge) {
+          badge.className = 'tab-badge min-w-[20px] h-5 px-1.5 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-700 flex justify-center items-center text-[10px] font-black';
+        }
       } else {
-        t.classList.remove(...tabActiveLight, ...tabActiveDark);
-        t.classList.add(...tabInactiveLight, ...tabInactiveDark);
+        t.classList.remove(...tabActiveClasses);
+        t.classList.add(...tabInactiveClasses);
+        if (badge) {
+          badge.className = 'tab-badge min-w-[20px] h-5 px-1.5 rounded-full bg-slate-200/60 border border-slate-300 text-slate-600 flex justify-center items-center text-[10px] font-black';
+        }
       }
     });
   }
 
   function applyFilter(filter) {
+    let visibleCount = 0;
     cards.forEach(c => {
       const g = c.dataset.filterGroup;
-      c.style.display = (g === filter) ? '' : 'none';
+      const match = (g === filter);
+      c.style.display = match ? '' : 'none';
+      if (match) visibleCount++;
     });
+
+    if (emptyState) {
+      if (visibleCount === 0) {
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+      }
+    }
   }
 
   tabs.forEach(t => {
@@ -243,7 +259,5 @@
   applyFilter(initial);
 })();
 </script>
-  </div>
-</main>
 {% endblock %}
 

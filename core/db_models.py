@@ -367,6 +367,12 @@ class LessonOutcome(db.Model):
     homework_assigned = db.Column(db.Boolean, nullable=False, default=False)
     teacher_note = db.Column(db.Text, nullable=True)
     content_snapshot = db.Column(db.JSON, nullable=True)
+    comprehension_score = db.Column(db.Integer, nullable=True)  # 1-5 звёзд / баллов
+    independence_level = db.Column(db.String(30), nullable=True)  # high | medium | low
+    pacing = db.Column(db.String(30), nullable=True)  # too_fast | optimal | needs_slowdown
+    identified_errors = db.Column(db.JSON, nullable=True)  # [{"error_type": "...", "description": "...", "skill_id": ...}]
+    auto_replan_triggered = db.Column(db.Boolean, default=False, nullable=False)
+    adaptive_diff_summary = db.Column(db.JSON, nullable=True)  # Сводка внесенных алгоритмом изменений
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)

@@ -251,6 +251,16 @@ def course_view(course_id: int):
         {'title': '85% mastery', 'achieved': mastery_percent >= 85},
     ]
 
+    latest_adaptive_outcome = None
+    completed_lesson_ids = [l.lesson_id for l in course_lessons if (l.status or '').lower() == 'completed']
+    if completed_lesson_ids:
+        latest_outcome = LessonOutcome.query.filter(
+            LessonOutcome.lesson_id.in_(completed_lesson_ids),
+            LessonOutcome.adaptive_diff_summary.isnot(None)
+        ).order_by(LessonOutcome.outcome_id.desc()).first()
+        if latest_outcome and latest_outcome.adaptive_diff_summary:
+            latest_adaptive_outcome = latest_outcome
+
     return render_template(
         'course_view.html',
         student=student,
@@ -272,6 +282,7 @@ def course_view(course_id: int):
         forecast_range=forecast_range,
         attention_counts=attention_counts,
         milestones=milestones,
+        latest_adaptive_outcome=latest_adaptive_outcome,
         viewer_is_student=_course_viewer_is_read_only(),
         can_manage=can_manage,
     )
@@ -1279,8 +1290,37 @@ def course_lesson_auto_tasks(course_id: int, lesson_id: int):
         abort(403)
     lesson = Lesson.query.filter_by(lesson_id=lesson_id, learning_trajectory_id=course.course_id).first_or_404()
     item = LearningItem.query.filter_by(course_id=course.course_id, lesson_id=lesson.lesson_id).first()
-    if not item or not item.skill:
-        return jsonify({'success': False, 'error': 'Для занятия не выбран навык'}), 409
+    
+    skill = item.skill if (item and item.skill) else None
+    if not skill:
+        # Попытка интеллектуально найти навык по теме урока или номеру задания
+        import re
+        topic_text = (lesson.topic or '')
+        match = re.search(r'(?:№|номер|задание|задача)\s*(\d+)', topic_text, re.IGNORECASE) or re.search(r'\b(\d+)\b', topic_text)
+        candidate_skill = None
+        if match:
+            found_num = int(match.group(1))
+            candidate_skill = ExamSkill.query.filter_by(task_number=found_num, is_active=True).first()
+        if not candidate_skill and course.exam_course_id:
+            candidate_skill = ExamSkill.query.filter_by(exam_course_id=course.exam_course_id, is_active=True).first()
+        if not candidate_skill:
+            candidate_skill = ExamSkill.query.filter_by(is_active=True).first()
+            
+        if candidate_skill:
+            if not item:
+                item = LearningItem(course_id=course.course_id, lesson_id=lesson.lesson_id, skill_id=candidate_skill.skill_id, item_type='lesson', title=lesson.topic)
+                db.session.add(item)
+            else:
+                item.skill_id = candidate_skill.skill_id
+            db.session.flush()
+            skill = candidate_skill
+
+    if not skill or not skill.task_number:
+        if not request.is_json:
+            flash('Для автоподбора задач привяжите навык или укажите номер задания в теме урока (например, «Задание № 1»).', 'warning')
+            return redirect(url_for('courses.course_view', course_id=course.course_id, _anchor=f'lesson-{lesson.lesson_id}'))
+        return jsonify({'success': False, 'error': 'Для занятия не выбран навык с номером задания'}), 409
+
     replace = bool((request.get_json(silent=True) or {}).get('replace'))
     if replace:
         for linked in list(lesson.homework_tasks):
@@ -1290,7 +1330,7 @@ def course_lesson_auto_tasks(course_id: int, lesson_id: int):
     specs = [('warmup', 2, 1), ('practice', 5, 2), ('advanced', 2, 3), ('control', 2, 2), ('homework', 6, 2)]
     created = []
     for category, count, difficulty in specs:
-        query = Tasks.query.filter_by(task_number=item.skill.task_number, is_active=True).filter(Tasks.task_id.notin_(used_ids))
+        query = Tasks.query.filter_by(task_number=skill.task_number, is_active=True).filter(Tasks.task_id.notin_(used_ids))
         exact = query.filter(Tasks.difficulty_level == difficulty).order_by(Tasks.task_id.asc()).all()
         fallback = query.order_by(Tasks.task_id.asc()).all()
         candidates = exact + [task for task in fallback if task.task_id not in {row.task_id for row in exact}]
@@ -1339,6 +1379,34 @@ def course_lesson_outcome(course_id: int, lesson_id: int):
     outcome.next_action = (data.get('next_action') or '').strip() or None
     outcome.homework_assigned = str(data.get('homework_assigned', '')).lower() in {'1', 'true', 'on', 'yes'}
     outcome.teacher_note = (data.get('teacher_note') or '').strip() or None
+
+    # Новые адаптивные метрики
+    try:
+        cs = data.get('comprehension_score')
+        outcome.comprehension_score = max(1, min(5, int(cs))) if cs is not None and str(cs).strip() else None
+    except (ValueError, TypeError):
+        outcome.comprehension_score = None
+
+    outcome.independence_level = (data.get('independence_level') or '').strip() or None
+    outcome.pacing = (data.get('pacing') or '').strip() or None
+
+    # Ошибки и затруднения
+    raw_errors = data.get('identified_errors')
+    if isinstance(raw_errors, str) and raw_errors.strip():
+        try:
+            raw_errors = json.loads(raw_errors)
+        except Exception:
+            raw_errors = [{'error_type': 'Затруднение', 'description': raw_errors.strip()}]
+    elif not isinstance(raw_errors, list):
+        # Если из формы пришли строковые поля
+        err_type = (data.get('new_error_type') or '').strip()
+        err_desc = (data.get('new_error_description') or '').strip()
+        if err_type or err_desc:
+            raw_errors = [{'error_type': err_type or 'Ошибка', 'description': err_desc}]
+        else:
+            raw_errors = []
+    outcome.identified_errors = raw_errors
+
     outcome.content_snapshot = {
         'topic': lesson.topic,
         'content': lesson.content,
@@ -1349,10 +1417,27 @@ def course_lesson_outcome(course_id: int, lesson_id: int):
     }
     lesson.status = 'completed'
     _ensure_lesson_learning_item(course, lesson)
+    db.session.flush()
+
+    # Запуск интеллектуальной адаптации курса
+    from app.courses.adaptive_engine import CourseAdaptiveEngine
+    auto_replan = str(data.get('auto_replan', '1')).lower() in {'1', 'true', 'on', 'yes'}
+    diff_summary = CourseAdaptiveEngine.apply_lesson_adaptation(
+        course=course,
+        lesson=lesson,
+        outcome=outcome,
+        trigger_replan=auto_replan,
+    )
+
     db.session.commit()
     if request.is_json:
-        return jsonify({'success': True, 'lesson_id': lesson.lesson_id, 'status': lesson.status})
-    flash('Итог занятия сохранён.', 'success')
+        return jsonify({
+            'success': True,
+            'lesson_id': lesson.lesson_id,
+            'status': lesson.status,
+            'adaptive_diff': diff_summary,
+        })
+    flash('Итог занятия сохранён. Программа курса автоматически адаптирована!', 'success')
     return redirect(url_for('courses.course_view', course_id=course.course_id, _anchor=f'lesson-{lesson.lesson_id}'))
 
 

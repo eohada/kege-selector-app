@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="user-timezone-effective" content="{{ user_timezone_effective or 'Europe/Moscow' }}">
+    <meta name="user-timezone-mode" content="{{ user_timezone_mode or 'auto' }}">
     <title>BooStudy | Ученик (Student Workspace)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -237,6 +242,7 @@
     </script>
 
     <script src="{{ url_for('static', filename='csrf-helper.js') }}?v=20260822-course-actions"></script>
+    <script src="{{ url_for('static', filename='timezone-sync.js') }}?v=20260919-tz-v1"></script>
     {% include 'sandbox/components/_feedback_system.html' %}
     {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
     {% block extra_scripts %}{% endblock %}

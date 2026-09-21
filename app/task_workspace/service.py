@@ -261,6 +261,9 @@ class WorkspaceContext:
     previous_task: dict[str, Any] | None = None
     next_task: dict[str, Any] | None = None
     assignment_title: str = ""
+    tasks_nav: list[dict[str, Any]] | None = None
+    submission_meta: dict[str, Any] | None = None
+    task_meta: dict[str, Any] | None = None
 
     def as_payload(self) -> dict[str, Any]:
         answer_spec = _normalize_answer_spec(self.task)
@@ -306,6 +309,9 @@ class WorkspaceContext:
             "completed_task_count": self.completed_task_count,
             "previous_task": self.previous_task,
             "next_task": self.next_task,
+            "tasks_nav": self.tasks_nav or [],
+            "submission_meta": self.submission_meta or {},
+            "task_meta": self.task_meta or {},
             "answer_hint": self.task.answer or "",
             "playback": load_workspace_trace_payload(self),
             "versions": load_workspace_versions_payload(self),
@@ -436,6 +442,59 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
             "title": (item.task.title if item.task and getattr(item.task, "title", None) else f"Задача {item.task_id}"),
         }
 
+    from flask import url_for
+    tasks_nav = []
+    for idx, t_item in enumerate(ordered_tasks):
+        t_ans = next((a for a in (submission.answers or []) if a.assignment_task_id == t_item.assignment_task_id), None)
+        is_completed = bool(
+            t_ans and (
+                str(getattr(t_ans, 'value', '') or '').strip()
+                or str(getattr(t_ans, 'student_code', '') or '').strip()
+            )
+        )
+        tasks_nav.append({
+            "assignment_task_id": t_item.assignment_task_id,
+            "task_id": t_item.task_id,
+            "position": idx + 1,
+            "is_current": (t_item.assignment_task_id == assignment_task.assignment_task_id),
+            "is_completed": is_completed,
+            "url": url_for(
+                'task_workspace.workspace_page',
+                context_type='submission_task',
+                context_id=submission.submission_id,
+                assignment_task_id=t_item.assignment_task_id
+            ),
+        })
+
+    submission_meta = {
+        "assignment_id": submission.assignment.assignment_id,
+        "assignment_type": submission.assignment.assignment_type or 'homework',
+        "submitted_at": submission.submitted_at,
+        "deadline": submission.assignment.deadline,
+        "attempts_used": len(submission.attempts or []),
+        "effective_max_attempts": submission.assignment.get_effective_max_attempts() if hasattr(submission.assignment, 'get_effective_max_attempts') else 1,
+        "student_name": student.name if student else (student.user.username if student and student.user else "Ученик"),
+        "student_avatar": student.user.avatar_url if student and student.user and student.user.avatar_url else None,
+        "status_label": "В процессе" if can_edit else "Сдано / Просмотр",
+        "is_late": bool(submission.is_late),
+        "is_overtime": bool(submission.is_overtime),
+    }
+
+    topics_list = []
+    if assignment_task.task:
+        try:
+            topics_list = [t.name for t in (assignment_task.task.topics or []) if getattr(t, 'name', None)]
+        except Exception:
+            topics_list = []
+
+    task_meta = {
+        "verification_type": "Ручная проверка" if getattr(assignment_task, 'requires_manual_grading', False) else "Автопроверка",
+        "max_score": assignment_task.max_score or 1,
+        "topics": topics_list,
+        "solution_language": "Python",
+        "difficulty_label": assignment_task.task.difficulty_label if assignment_task.task else "medium",
+    }
+
     return WorkspaceContext(
         context_type="submission_task",
         context_id=submission.submission_id,
@@ -462,6 +521,9 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         completed_task_count=len(completed_task_ids),
         previous_task=navigation_item(ordered_tasks[current_index - 1]) if current_index > 0 else None,
         next_task=navigation_item(ordered_tasks[current_index + 1]) if current_index + 1 < len(ordered_tasks) else None,
+        tasks_nav=tasks_nav,
+        submission_meta=submission_meta,
+        task_meta=task_meta,
     )
 
 
