@@ -3594,19 +3594,23 @@ def submission_view(submission_id):
     if not is_parent_view and has_permission(current_user, 'assignment.grade'):
         return redirect(url_for('assignments.submission_grade_view', submission_id=submission.submission_id))
 
-    # Ученик всегда выполняет и просматривает работу в каноничном Workspace:
-    # там находятся редактор, запуск, вложения, холст, ответы и единая навигация карточек.
+    # Ученик выполняет работу только в каноничном Workspace: там находятся
+    # редактор, запуск, вложения, холст и единая навигация карточек.
+    # Если работа уже сдана (SUBMITTED, NEEDS_MANUAL_REVIEW, GRADED), ученик
+    # просматривает результаты, ответы и комментарии в task_detail.
     if getattr(current_user, 'is_student', lambda: False)() and student and current_user.id == student.user_id:
-        ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
-        if ordered_tasks:
-            requested_task_id = request.args.get('focus_at', type=int)
-            selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
-            return redirect(url_for(
-                'task_workspace.workspace_page',
-                context_type='submission_task',
-                context_id=submission.submission_id,
-                assignment_task_id=selected_task.assignment_task_id,
-            ))
+        normalized_status = normalize_legacy_status(submission.status)
+        if normalized_status not in {SubmissionStatus.SUBMITTED, SubmissionStatus.NEEDS_MANUAL_REVIEW, SubmissionStatus.GRADED}:
+            ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
+            if ordered_tasks:
+                requested_task_id = request.args.get('focus_at', type=int)
+                selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
+                return redirect(url_for(
+                    'task_workspace.workspace_page',
+                    context_type='submission_task',
+                    context_id=submission.submission_id,
+                    assignment_task_id=selected_task.assignment_task_id,
+                ))
     
     try:
         now = utc_now()

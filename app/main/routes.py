@@ -3060,6 +3060,8 @@ def universal_profile_view(user_id=None):
 
     viewer_obj = ViewerWrapper(viewer, viewer_role) if viewer else None
 
+    from app.utils.xp_service import calculate_level_from_xp, get_level_info, get_all_ranks_list
+    default_lvl_info = get_level_info(1, 0)
     context = {
         'target_user': target_user,
         'teacher': target_user,
@@ -3070,7 +3072,43 @@ def universal_profile_view(user_id=None):
         'target_role': role,
         'is_student': (role == 'student'),
         'is_tutor': (role in ['tutor', 'teacher']),
-        'is_parent': (role == 'parent')
+        'is_parent': (role == 'parent'),
+        'profile_display_name': getattr(target_user, "full_name", "") or target_user.username,
+        'profile_avatar_url': getattr(target_user, 'avatar_url', None) or (getattr(target_user.profile, 'avatar_url', None) if getattr(target_user, 'profile', None) else None),
+        'profile_bio': getattr(target_user, 'about_me', None) or getattr(target_user, 'custom_status', None) or '',
+        'user_handle': target_user.username,
+        'user_avatar': getattr(target_user, 'avatar_url', None) or url_for('static', filename='images/default-avatar.svg'),
+        'user_cover': getattr(target_user, 'cover_url', None) or (getattr(target_user.profile, 'cover_url', None) if getattr(target_user, 'profile', None) else None),
+        'school_class_display': None,
+        'user_level': 1,
+        'user_xp': 0,
+        'xp_needed': default_lvl_info['xp_to_next'],
+        'xp_pct': 0,
+        'user_streak': 0,
+        'days_word': 'дней',
+        'rank_title': default_lvl_info['title'],
+        'completed_cnt': 0,
+        'total_cnt': 0,
+        'progress_pct': 0,
+        'student_stats': {},
+        'active_subjects': [],
+        'all_achievements': [],
+        'detailed_achievements': [],
+        'unlocked_ach_cnt': 0,
+        'in_progress_ach_cnt': 0,
+        'locked_ach_cnt': 0,
+        'ach_pct': 0,
+        'student_obj': None,
+        'study_time_display': '0 мин',
+        'current_level_info': default_lvl_info,
+        'all_ranks_list': get_all_ranks_list(1),
+        'recent_activities': [],
+        'all_activities': [],
+        'goals': [],
+        'formatted_goals': [],
+        'show_profile_onboarding': False,
+        'referral_code_str': None,
+        'personal_referral': None,
     }
 
     if role in ['tutor', 'teacher']:
@@ -4545,12 +4583,12 @@ def api_profile_onboarding_complete():
 # Compatibility endpoints only forward POST requests to the canonical V2 API.
 @main_bp.route('/sandbox/api/profile/edit', methods=['POST'])
 def legacy_api_profile_edit():
-    return api_profile_edit()
+    return redirect(url_for('main.api_profile_edit'), code=307)
 
 
 @main_bp.route('/sandbox/api/profile/goal/add', methods=['POST'])
 def legacy_api_profile_goal_add():
-    return api_profile_goal_add()
+    return redirect(url_for('main.api_profile_goal_add'), code=307)
 
 
 @main_bp.route('/sandbox/api/profile/goal/edit/<int:item_id>', methods=['POST'])
