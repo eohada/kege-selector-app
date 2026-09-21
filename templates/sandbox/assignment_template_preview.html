@@ -3,8 +3,8 @@
 {% block sandbox_content %}
 {% set template_type = (template.template_type or 'homework')|lower %}
 {% set type_labels = {'homework': 'Домашняя работа', 'classwork': 'Работа на уроке', 'exam': 'Пробник', 'lesson': 'Урок'} %}
-<main class="template-preview-page min-h-screen bg-slate-50 p-4 pb-24 lg:pl-[7.5rem] lg:pr-8 lg:pt-7">
-  <div class="mx-auto max-w-[1400px]">
+<main class="template-preview-page min-h-screen bg-slate-50 p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-24 pt-4 sm:pt-6 overflow-x-hidden">
+  <div class="mx-auto max-w-[1600px] w-full">
     <a href="{{ url_for('assignments.assignment_templates') }}" class="template-preview-back"><i class="ph-bold ph-arrow-left"></i> Ко всем шаблонам</a>
 
     <section class="template-preview-hero">

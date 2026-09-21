@@ -898,6 +898,28 @@
     $('#room-checkpoint-save')?.addEventListener('click',async()=>{const understanding=Number($('#room-checkpoint-understanding')?.value);if(!understanding)return toast('Оцените понимание темы');const r=await post(`/lesson/${lessonId}/studio/checkpoint`,{understanding,blocker:$('#room-checkpoint-blocker')?.value||''});if(r.success){state=r.state||state;toast('Самооценка отправлена');render()}else toast(r.error||'Не удалось отправить самооценку')});
     
     const lines=value=>Array.isArray(value)?value.join('\n'):'';
+    $('#os-start-lesson')?.addEventListener('click', async () => {
+      const btn = $('#os-start-lesson');
+      if (btn) btn.disabled = true;
+      try {
+        const r = await post(`/lesson/${lessonId}/start`, {});
+        if (r && r.success) {
+          toast('Урок начался! Ученик теперь может войти в комнату');
+          btn?.classList.add('hidden');
+          $('#os-finish')?.classList.remove('hidden');
+          const timerBtn = $('#os-timer-toggle');
+          if (timerBtn && !state?.timer?.running) {
+            timerBtn.click();
+          }
+        } else {
+          toast(r?.error || 'Не удалось начать урок');
+          if (btn) btn.disabled = false;
+        }
+      } catch (err) {
+        toast('Ошибка соединения при старте урока');
+        if (btn) btn.disabled = false;
+      }
+    });
     $('#os-finish')?.addEventListener('click', () => {const outcome=state.outcome||{};$('#os-outcome-completed').value=lines(outcome.completed);$('#os-outcome-repeat').value=lines(outcome.repeat);$('#os-outcome-homework').value=outcome.homework||$('#room-homework')?.value||'';$('#os-outcome-private-note').value=$('#room-teacher-note')?.value||state.teacher_private_note||'';setModalVisible($('#os-finish-modal'),true,$('#os-outcome-completed'))});
     $('#os-finish-cancel')?.addEventListener('click', () => setModalVisible($('#os-finish-modal'),false));
     $('#os-finish-confirm')?.addEventListener('click', async () => {

@@ -55,7 +55,7 @@ def run_student_profile_and_achievements_qa_tests():
 
         # --- TEST 1: GET /profile (Renders Universal Profile with Modals) ---
         print("--- TEST 1: GET /profile (Student Profile Page & Modals) ---")
-        res_prof = client.get('/profile')
+        res_prof = client.get('/profile', follow_redirects=True)
         assert res_prof.status_code == 200, f"Expected 200, got {res_prof.status_code}"
         html_prof = res_prof.get_data(as_text=True)
         assert 'profile-edit-modal' in html_prof, "Modal #profile-edit-modal must exist in HTML"

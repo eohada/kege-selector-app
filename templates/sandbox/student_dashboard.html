@@ -1,8 +1,8 @@
 {% extends "sandbox/layout_student.html" %}
 
 {% block sandbox_content %}
-<main class="min-h-full flex-1 overflow-x-hidden bg-[#F8FAFC] p-3 pb-20 sm:p-5 lg:pl-[5.5rem] lg:pb-6">
-  <div class="mx-auto flex flex-col max-w-[1400px] gap-4 sm:gap-5">
+<main class="min-h-screen flex-1 overflow-x-hidden bg-[#F8FAFC] p-3 pb-20 sm:p-5 lg:pl-28 lg:pr-6 lg:pb-12 pt-4 sm:pt-6">
+  <div class="mx-auto flex flex-col max-w-[1600px] w-full gap-4 sm:gap-5">
 
     <!-- 1. Верхний баннер-хедер -->
     <header class="relative overflow-hidden rounded-[2rem] border-2 border-slate-200 bg-gradient-to-r from-[#F0F3FA] via-[#F5F3FF] to-[#FAF5FF] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9]">
@@ -19,7 +19,7 @@
 
         <!-- Центральный персонаж с ноутбуком и слоганом -->
         <div class="flex items-center justify-center gap-2 self-center lg:self-auto my-1 lg:my-0">
-          <img src="{{ url_for('static', filename='images/dashboard/hero_student.png') }}" alt="Продолжай учиться!" class="h-16 sm:h-20 object-contain select-none pointer-events-none drop-shadow-xs">
+          <img src="{{ url_for('static', filename='images/dashboard/hero_student.png') }}" alt="Маленькие шаги — большие результаты!" class="h-20 sm:h-24 lg:h-28 max-w-full object-contain select-none pointer-events-none drop-shadow-sm">
         </div>
 
         <!-- Кнопки действий справа -->
@@ -115,9 +115,17 @@
                 <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{{ lesson.topic or 'Занятие без темы' }}</h2>
                 <p class="mt-1 text-xs sm:text-sm font-semibold text-slate-500">{{ lesson.lesson_date|user_dt('%d.%m в %H:%M') if lesson.lesson_date else 'Время будет уточнено преподавателем' }}</p>
                 <div class="mt-4">
-                  <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id) }}" class="inline-flex items-center gap-2 rounded-2xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-5 py-3 text-xs font-black text-white shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none no-underline">
-                    Открыть комнату <i class="ph-bold ph-arrow-right"></i>
-                  </a>
+                  {% if active_lesson %}
+                    <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id) }}" class="inline-flex items-center gap-2 rounded-2xl border-2 border-emerald-700 border-b-4 bg-emerald-600 px-5 py-3 text-xs font-black text-white shadow-[0_4px_0_#065F46] transition hover:bg-emerald-500 active:translate-y-1 active:shadow-none no-underline">
+                      <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                      Войти на урок (в эфире) <i class="ph-bold ph-arrow-right"></i>
+                    </a>
+                  {% else %}
+                    <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id) }}" class="inline-flex items-center gap-2 rounded-2xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-5 py-3 text-xs font-black text-white shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none no-underline">
+                      <i class="ph-bold ph-hourglass-medium"></i>
+                      Комната ожидания <i class="ph-bold ph-arrow-right"></i>
+                    </a>
+                  {% endif %}
                 </div>
               {% else %}
                 <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Продолжай изучение теории</h2>
@@ -391,18 +399,10 @@
           {% endif %}
         </section>
 
-        <!-- 5. Ты можешь больше! (Мотивационная карточка с кубком) -->
-        <section class="relative overflow-hidden rounded-[2rem] border-2 border-indigo-100 bg-gradient-to-br from-[#F5F3FF] via-[#EEF2FF] to-[#FAF5FF] p-5 shadow-[0_4px_0_#C7D2FE]">
-          <div class="flex items-center justify-between gap-2 relative z-10">
-            <div class="min-w-0 max-w-[170px]">
-              <h3 class="text-base font-black text-slate-900 tracking-tight">Ты можешь больше!</h3>
-              <p class="mt-1 text-xs font-bold text-slate-500 leading-relaxed">Каждое решённое задание делает тебя сильнее</p>
-            </div>
-
-            <!-- Золотой кубок -->
-            <div class="shrink-0">
-              <img src="{{ url_for('static', filename='images/dashboard/trophy_cup.png') }}" alt="" class="h-20 sm:h-22 object-contain select-none pointer-events-none drop-shadow-sm">
-            </div>
+        <!-- 5. Ты можешь больше! (Мотивационная карточка) -->
+        <section class="relative overflow-hidden rounded-[2rem] border-2 border-indigo-100 bg-gradient-to-br from-[#F5F3FF] via-[#EEF2FF] to-[#FAF5FF] p-4 sm:p-5 shadow-[0_4px_0_#C7D2FE]">
+          <div class="relative z-10 flex flex-col items-center justify-center">
+            <img src="{{ url_for('static', filename='images/dashboard/trophy_cup.png') }}" alt="Ты можешь больше!" class="w-full h-auto max-h-40 object-contain select-none pointer-events-none drop-shadow-sm">
           </div>
         </section>
 

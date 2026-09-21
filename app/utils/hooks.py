@@ -87,6 +87,16 @@ def register_hooks(app):
     """
 
     @app.before_request
+    def sync_login_user():
+        """Синхронизирует кэш current_user в g с сессией текущего запроса (критично при смене пользователей и в тестах)."""
+        from flask import session as flask_session, g as flask_g
+        sess_uid = flask_session.get('_user_id')
+        cached = getattr(flask_g, '_login_user', None)
+        if cached is not None:
+            if sess_uid is None or str(getattr(cached, 'id', None)) != str(sess_uid):
+                flask_g.pop('_login_user', None)
+
+    @app.before_request
     def block_scanner_probes():
         """Минимальный ответ 404 для типовых путей ботов (меньше нагрузки, чем полный цикл приложения)."""
         path_raw = request.path or ''
@@ -153,7 +163,7 @@ def register_hooks(app):
     
     @app.before_request
     def auto_update_lesson_status():
-        """Автоматически обновляет статус запланированных уроков на 'completed' после их окончания"""
+        """Автоматически завершает просроченные уроки со статусом in_progress со списанием баланса."""
         global _last_lesson_check
         
         if _skip_periodic_db_maintenance():
@@ -169,92 +179,8 @@ def register_hooks(app):
             
             _last_lesson_check = now_naive
             
-            try:
-                db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-                
-                
-                if 'postgresql' in db_url or 'postgres' in db_url:
-                    result = db.session.execute(text("""
-                        UPDATE "Lessons" 
-                        SET status = 'completed', updated_at = :now
-                        WHERE status = 'planned' 
-                        AND (lesson_date + (duration || ' minutes')::interval) <= :now
-                    """), {'now': now_naive})
-                    
-                    result_ip = db.session.execute(text("""
-                        UPDATE "Lessons" 
-                        SET status = 'completed', updated_at = :now
-                        WHERE status = 'in_progress' 
-                        AND started_at IS NOT NULL 
-                        AND (started_at + (COALESCE(duration, 60) || ' minutes')::interval) <= :now
-                    """), {'now': now_naive})
-                else:
-                    result = db.session.execute(text("""
-                        UPDATE Lessons 
-                        SET status = 'completed', updated_at = :now
-                        WHERE status = 'planned' 
-                        AND datetime(lesson_date, '+' || duration || ' minutes') <= :now
-                    """), {'now': now_naive})
-                    
-                    result_ip = db.session.execute(text("""
-                        UPDATE Lessons 
-                        SET status = 'completed', updated_at = :now
-                        WHERE status = 'in_progress' 
-                        AND started_at IS NOT NULL 
-                        AND datetime(started_at, '+' || COALESCE(duration, 60) || ' minutes') <= :now
-                    """), {'now': now_naive})
-                
-                updated_count = result.rowcount + result_ip.rowcount
-                
-                if updated_count > 0:
-                    db.session.commit()
-                    if updated_count > 5:  # Логируем только если обновлено много уроков
-                        logger.info(f"Автоматически обновлено статусов уроков: {updated_count}")
-            except Exception as e:
-                logger.warning(f"Ошибка при массовом обновлении статусов, используем старый метод: {e}")
-                try:
-                    two_days_ago = now_naive - timedelta(days=2)
-                    
-                    lessons_to_check = Lesson.query.filter(
-                        Lesson.status.in_(['planned', 'in_progress']),
-                        Lesson.lesson_date >= two_days_ago
-                    ).all()
-                    
-                    if not lessons_to_check:
-                        return
-                    
-                    updated_count = 0
-                    now_with_tz = now if getattr(now, 'tzinfo', None) else now.replace(tzinfo=MOSCOW_TZ)
-                    for lesson in lessons_to_check:
-                        if lesson.status == 'planned':
-                            lesson_date_with_tz = lesson.lesson_date
-                            if lesson_date_with_tz.tzinfo is None:
-                                lesson_date_with_tz = lesson_date_with_tz.replace(tzinfo=MOSCOW_TZ)
-                            
-                            lesson_end_time = lesson_date_with_tz + timedelta(minutes=lesson.duration)
-                            if now_with_tz >= lesson_end_time:
-                                lesson.status = 'completed'
-                                lesson.updated_at = now_naive
-                                updated_count += 1
-                        elif lesson.status == 'in_progress' and lesson.started_at:
-                            started_at_with_tz = lesson.started_at
-                            if started_at_with_tz.tzinfo is None:
-                                started_at_with_tz = started_at_with_tz.replace(tzinfo=MOSCOW_TZ)
-                            else:
-                                started_at_with_tz = started_at_with_tz.astimezone(MOSCOW_TZ)
-                            
-                            if now_with_tz >= started_at_with_tz + timedelta(minutes=int(lesson.duration or 60)):
-                                lesson.status = 'completed'
-                                lesson.updated_at = now_naive
-                                updated_count += 1
-                    
-                    if updated_count > 0:
-                        db.session.commit()
-                        logger.info(f"Автоматически обновлено статусов уроков: {updated_count}")
-                except Exception as e2:
-                    logger.error(f"Ошибка при обновлении статусов уроков: {e2}", exc_info=True)
-                    db.session.rollback()
-        
+            from app.lessons.routes import auto_complete_overdue_lessons
+            auto_complete_overdue_lessons()
         except Exception as e:
             logger.error(f"Ошибка при автоматическом обновлении статуса уроков: {e}", exc_info=True)
             db.session.rollback()

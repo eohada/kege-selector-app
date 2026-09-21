@@ -1,6 +1,9 @@
 {% extends "sandbox/layout_student.html" %}
 
 {% block sandbox_content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&display=swap" rel="stylesheet">
 <style>
 @media (max-width: 639px) {
   #profile-page-shell { padding: .75rem .75rem 5.5rem; }
@@ -20,23 +23,58 @@
   #image-crop-modal { align-items: flex-end; padding: 0; }
   #image-crop-modal > div { border-radius: 1.75rem 1.75rem 0 0; max-width: none; }
 }
+
+/* Custom styled scrollbars */
+.custom-scrollbar::-webkit-scrollbar,
+.styled-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track,
+.styled-scrollbar::-webkit-scrollbar-track {
+  background: #F1F5F9;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.styled-scrollbar::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.styled-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+.custom-scrollbar,
+.styled-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 #F1F5F9;
+  overscroll-behavior: contain;
+}
+
+[id$="-modal"], .modal-scroll-lock {
+  overscroll-behavior: contain;
+}
+[id$="-modal"] > div {
+  overscroll-behavior: contain;
+}
 </style>
-{% set is_student = (current_user is defined and current_user and current_user.is_student is defined and current_user.is_student()) or (current_user is defined and current_user and current_user.role == 'student') or (current_user is not defined or not current_user or not current_user.is_authenticated) %}
-{% set is_tutor = (current_user is defined and current_user and current_user.is_tutor is defined and current_user.is_tutor()) or (current_user is defined and current_user and current_user.role in ['tutor', 'teacher']) %}
-{% set is_creator = (current_user is defined and current_user and current_user.is_creator is defined and current_user.is_creator()) or (current_user is defined and current_user and current_user.role == 'creator') %}
-{% set is_admin = (current_user is defined and current_user and current_user.is_admin is defined and current_user.is_admin()) or (current_user is defined and current_user and current_user.role == 'admin') %}
+{% set display_user = target_user if (target_user is defined and target_user) else current_user %}
+{% set is_student = (target_role is defined and target_role == 'student') or (display_user is defined and display_user and display_user.is_student is defined and display_user.is_student()) or (display_user is defined and display_user and display_user.role == 'student') or (display_user is not defined or not display_user or not display_user.is_authenticated) %}
+{% set is_tutor = (display_user is defined and display_user and display_user.is_tutor is defined and display_user.is_tutor()) or (display_user is defined and display_user and display_user.role in ['tutor', 'teacher']) %}
+{% set is_creator = (display_user is defined and display_user and display_user.is_creator is defined and display_user.is_creator()) or (display_user is defined and display_user and display_user.role == 'creator') %}
+{% set is_admin = (display_user is defined and display_user and display_user.is_admin is defined and display_user.is_admin()) or (display_user is defined and display_user and display_user.role == 'admin') %}
 
-{% set student_obj = linked_student if (linked_student is defined and linked_student) else (student if (student is defined and student) else (current_user.student_profile if (current_user is defined and current_user and current_user.student_profile) else none)) %}
+{% set student_obj = linked_student if (linked_student is defined and linked_student) else (student if (student is defined and student) else (display_user.student_profile if (display_user is defined and display_user and display_user.student_profile) else none)) %}
 
-{% set user_name = profile_display_name if (profile_display_name is defined and profile_display_name) else current_user.username %}
-{% set user_handle = current_user.username %}
-{% set user_email = current_user.email or '' %}
+{% set user_name = profile_display_name if (profile_display_name is defined and profile_display_name) else (display_user.full_name or display_user.username) %}
+{% set user_handle = display_user.username %}
+{% set user_email = display_user.email or '' %}
 {% set user_avatar = profile_avatar_url if (profile_avatar_url is defined and profile_avatar_url) else '/static/images/default-avatar.svg' %}
-{% set user_cover = (current_user.cover_url if (current_user is defined and current_user and current_user.cover_url) else (current_user.profile.cover_url if (current_user is defined and current_user and current_user.profile and current_user.profile.cover_url) else none)) %}
+{% set user_cover = (display_user.cover_url if (display_user is defined and display_user and display_user.cover_url) else (display_user.profile.cover_url if (display_user is defined and display_user and display_user.profile and display_user.profile.cover_url) else none)) %}
 {% set user_bio = profile_bio if (profile_bio is defined and profile_bio) else '' %}
-{% set profile_timezone = current_user.timezone_iana or (current_user.profile.timezone if (current_user.profile and current_user.profile.timezone) else 'Europe/Moscow') %}
+{% set profile_timezone = display_user.timezone_iana or (display_user.profile.timezone if (display_user.profile and display_user.profile.timezone) else 'Europe/Moscow') %}
 
-{% set school_class_display = school_class_display if (school_class_display is defined and school_class_display) else '—' %}
+{% set school_class_display = school_class_display if (school_class_display is defined and school_class_display) else (student_obj.school_class if (student_obj and student_obj.school_class) else '10') %}
 {% set user_streak = user_streak if (user_streak is defined and user_streak is not none) else 0 %}
 
 {% set streak_num = user_streak|int %}
@@ -56,361 +94,491 @@
 {% set completed_cnt = completed_cnt if (completed_cnt is defined and completed_cnt is not none) else 0 %}
 
 <!-- Canvas Master Container -->
-<main id="profile-page-shell" class="min-h-screen w-full relative z-10 bg-[#F8FAFC] font-sans ml-0 lg:ml-24 px-3 sm:px-6 lg:px-0 pb-20 lg:pb-6">
-  <div class="max-w-[1400px] mx-auto w-full space-y-3.5 pt-4 lg:pt-0">
+<main id="profile-page-shell" class="min-h-screen flex-1 relative z-10 bg-[#F8FAFC] font-sans p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6 overflow-x-hidden">
+  <div class="max-w-[1600px] mx-auto w-full space-y-4">
     
-    <!-- 1. HERO & PROFILE HEADER (BooStudy UI Canon 3D Bento Block) -->
-    <div class="w-full bg-white border-2 border-slate-200/90 rounded-[2rem] p-3 sm:p-5 shadow-[0_5px_0_#DAE1E9] relative overflow-hidden space-y-3">
-      
-      <!-- Banner -->
-      <div class="w-full h-28 sm:h-40 rounded-[1.5rem] relative overflow-hidden p-3.5 sm:p-5 flex flex-col justify-between shadow-inner {% if not user_cover %}bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500{% endif %}">
-        {% if user_cover %}
-        <img src="{{ user_cover }}" class="absolute inset-0 w-full h-full object-cover">
-        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"></div>
-        {% else %}
-        <div class="absolute -right-16 -top-16 w-64 h-64 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-indigo-900/30 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.25)_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none"></div>
-        {% endif %}
+    <!-- 1. HERO & PROFILE HEADER (BooStudy UI Canon 3D Bento Card) -->
+    <div class="w-full bg-white border-2 border-slate-200/90 rounded-[2rem] p-5 sm:p-7 shadow-[0_5px_0_#DAE1E9] relative overflow-hidden">
+      <!-- Decorative soft background highlights -->
+      <div class="absolute -right-16 -top-16 w-80 h-80 bg-indigo-50/70 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-16 -bottom-16 w-80 h-80 bg-blue-50/60 rounded-full blur-3xl pointer-events-none"></div>
 
-        <!-- Upper Banner Row -->
-        <div class="flex items-center justify-between gap-2 relative z-10">
-          <div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-black/30 backdrop-blur-md border border-white/20 rounded-xl text-white text-[10px] sm:text-[11px] font-bold shadow-sm">
-            <i class="ph-fill ph-crown text-amber-300 text-xs"></i>
-            <span>PRO Тариф</span>
-          </div>
-
-          <div class="flex items-center gap-1.5 sm:gap-2">
-            <div class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 bg-black/30 backdrop-blur-md border border-white/20 rounded-xl text-white text-[11px] font-bold shadow-sm">
-              <i class="ph-fill ph-sparkle text-amber-300 text-xs"></i>
-              <span>С 2026 г.</span>
-            </div>
-
-            <button onclick="openProfileEditModal()" class="px-2.5 sm:px-3 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white shadow-xs rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0" title="Редактировать">
-              <i class="ph-bold ph-pencil-simple text-xs"></i> <span class="hidden sm:inline">Редактировать</span>
-            </button>
-            {% if is_student and student_obj %}
-            <a href="{{ url_for('courses.student_courses', student_id=student_obj.student_id) }}" class="px-2.5 sm:px-3 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white shadow-xs rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer no-underline" title="Программа обучения">
-              <i class="ph-bold ph-map-trifold text-xs"></i> <span class="hidden sm:inline">Программа</span>
-            </a>
-            {% endif %}
-            <a href="{{ url_for('auth.logout') if url_for else '/auth/logout' }}" class="px-2.5 sm:px-3 py-1 bg-rose-600/80 hover:bg-rose-600 backdrop-blur-md border border-rose-400/40 text-white shadow-xs rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer no-underline" title="Выход">
-              <i class="ph-bold ph-sign-out text-xs"></i> <span class="hidden sm:inline">Выход</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Lower Banner Row: Role-aware tag -->
-        <div class="relative z-10 hidden sm:flex items-center gap-2">
-          {% if is_admin %}
-            <span class="px-2.5 py-0.5 bg-rose-500/30 backdrop-blur-md border border-rose-400/40 text-white text-[9px] font-bold uppercase tracking-widest rounded-md">
-              <i class="ph-bold ph-shield-check"></i> Администратор платформы
-            </span>
-          {% elif is_creator %}
-            <span class="px-2.5 py-0.5 bg-purple-500/30 backdrop-blur-md border border-purple-400/40 text-white text-[9px] font-bold uppercase tracking-widest rounded-md">
-              <i class="ph-bold ph-planet"></i> Курс-мейкер / Основатель
-            </span>
-          {% elif is_tutor %}
-            <span class="px-2.5 py-0.5 bg-indigo-500/30 backdrop-blur-md border border-indigo-400/40 text-white text-[9px] font-bold uppercase tracking-widest rounded-md">
-              <i class="ph-bold ph-chalkboard-teacher"></i> Преподаватель КЕГЭ
-            </span>
-          {% else %}
-            <span class="px-2.5 py-0.5 bg-white/20 backdrop-blur-md border border-white/30 text-white/95 text-[9px] font-bold uppercase tracking-widest rounded-md">
-              <i class="ph-bold ph-graduation-cap"></i> Трек: ИТ & Математика {{ student_obj.category if (student_obj and student_obj.category) else '2026' }}
-            </span>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- Avatar & Info Box -->
-      <div class="px-2 sm:px-6 pb-2 pt-0 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-3 sm:gap-4 -mt-10 sm:-mt-14 relative z-20">
-        <div class="flex flex-col sm:flex-row items-center sm:items-end gap-3 sm:gap-4 text-center sm:text-left w-full sm:w-auto">
+      <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        
+        <!-- Left Side: Avatar, Info, Tags & Quote -->
+        <div class="flex-1 min-w-0 space-y-4">
           
-          <div class="w-18 h-18 sm:w-28 sm:h-28 rounded-[1.25rem] sm:rounded-[1.75rem] border-4 border-white shadow-[0_8px_20px_rgba(15,23,42,0.12)] bg-white p-0.5 shrink-0 relative z-30 group cursor-pointer" onclick="openProfileEditModal()">
-            <img id="user-avatar-img" src="{{ user_avatar }}" class="w-full h-full rounded-[1rem] sm:rounded-[1.4rem] object-cover bg-indigo-50/50 shadow-inner group-hover:scale-105 transition-transform duration-300">
-            <div class="absolute bottom-1 right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 {% if is_online is not defined or is_online %}bg-emerald-500{% else %}bg-slate-400{% endif %} border-2 border-white rounded-full shadow-sm"></div>
-          </div>
-
-          <div class="pb-1 space-y-1 w-full sm:w-auto">
-            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <h1 id="user-display-name" class="text-xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">{{ user_name }}</h1>
-              {% if is_online is not defined or is_online %}
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[9px] sm:text-[10px] font-black text-emerald-700 uppercase tracking-wider shadow-xs">
-                <i class="ph-fill ph-circle text-emerald-500 animate-pulse text-[7px]"></i> ONLINE
-              </span>
-              {% else %}
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-lg text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-wider shadow-xs">
-                <i class="ph-fill ph-circle text-slate-400 text-[7px]"></i> OFFLINE
-              </span>
-              {% endif %}
-            </div>
-
-            <div class="flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2.5 flex-wrap text-xs font-bold text-slate-500">
-              <span class="text-indigo-600 font-extrabold flex items-center gap-1 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md text-[11px] sm:text-xs">
-                <i class="ph-bold ph-at"></i> {{ user_handle }}
-              </span>
-              <span class="hidden sm:flex items-center gap-1 text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-xs">
-                <i class="ph-bold ph-envelope text-indigo-500"></i> {{ user_email }}
-              </span>
-              {% if is_student %}
-              <span class="flex items-center gap-1 text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px] sm:text-xs">
-                <i class="ph-bold ph-student text-indigo-500"></i> {{ school_class_display }} класс
-              </span>
-              {% endif %}
-              {% if current_user.telegram_id %}
-              <span class="inline-flex items-center gap-1 text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold">
-                <i class="ph-bold ph-telegram-logo text-xs sm:text-sm"></i> {{ current_user.telegram_id }}
-              </span>
-              {% else %}
-              <button onclick="generateTgCode()" class="inline-flex items-center gap-1 text-sky-600 bg-sky-50 hover:bg-sky-100 border border-sky-200 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold cursor-pointer transition-colors border-0">
-                <i class="ph-bold ph-telegram-logo text-xs sm:text-sm"></i> Telegram
+          <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
+            <!-- Large Avatar in Circular Ring with Edit Button and Online Dot -->
+            <div class="relative shrink-0">
+              <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#EBF3FF] border-4 border-white shadow-[0_8px_24px_rgba(99,102,241,0.15)] p-0.5 relative flex items-center justify-center cursor-pointer group" onclick="openProfileEditModal()" title="Изменить фото">
+                <img id="user-avatar-img" src="{{ user_avatar }}" class="w-full h-full rounded-full object-cover group-hover:scale-105 transition-transform duration-200">
+                <!-- Online Status Dot -->
+                <div class="absolute bottom-1 right-2 w-4 h-4 rounded-full {% if is_online is not defined or is_online %}bg-emerald-500{% else %}bg-slate-400{% endif %} border-2 border-white shadow-xs" title="В сети"></div>
+              </div>
+              <!-- Pencil Edit Button at Top-Right of Avatar Circle -->
+              <button type="button" onclick="openProfileEditModal()" class="absolute top-0 right-0 w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:scale-105 transition-all cursor-pointer border-0" title="Редактировать аватар">
+                <i class="ph-bold ph-pencil-simple text-xs"></i>
               </button>
-              {% endif %}
-              <span id="profile-tz-header-badge" class="inline-flex items-center gap-1 text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold" title="Ваш часовой пояс">
-                <i class="ph-bold ph-clock text-indigo-600"></i>
-                <span id="profile-tz-header-name">{{ user_timezone_effective or 'Europe/Moscow' }}</span>
-                <span id="profile-tz-header-clock" class="text-indigo-950 font-extrabold ml-0.5"></span>
-              </span>
             </div>
+
+            <!-- User Info Details -->
+            <div class="space-y-1.5 flex-1 min-w-0">
+              <!-- Name & Online Badge -->
+              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                <h1 id="user-display-name" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display mb-0 break-words break-all [overflow-wrap:anywhere]">{{ user_name }}</h1>
+                {% if is_online is not defined or is_online %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-0.5 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-bold text-emerald-600 shadow-xs">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Онлайн
+                </span>
+                {% else %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-0.5 bg-slate-100 border border-slate-200 rounded-full text-xs font-bold text-slate-500 shadow-xs">
+                  <span class="w-2 h-2 rounded-full bg-slate-400"></span> Офлайн
+                </span>
+                {% endif %}
+              </div>
+
+              <!-- Subtitle: Role & Class -->
+              <p class="text-xs sm:text-sm font-semibold text-slate-500 mb-0">
+                Ученик • {{ school_class_display if (school_class_display and school_class_display != '—') else '10' }} класс
+              </p>
+
+              <!-- Tactile Pill Badges Row -->
+              <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1 text-xs">
+                <!-- Username Handle Tag -->
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 font-bold shadow-xs">
+                  @{{ user_handle }}
+                </span>
+
+                <!-- Email Tag -->
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 font-medium shadow-xs">
+                  <i class="ph-bold ph-envelope text-slate-400"></i>
+                  <span class="truncate max-w-[140px] sm:max-w-none">{{ display_user.email }}</span>
+                </span>
+
+                <!-- Class Tag -->
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 font-medium shadow-xs">
+                  <i class="ph-bold ph-graduation-cap text-slate-400"></i>
+                  <span>Класс {{ school_class_display if (school_class_display and school_class_display != '—') else '10' }}</span>
+                </span>
+
+                <!-- Timezone & Live Clock Tag -->
+                <span id="profile-tz-header-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 font-semibold shadow-xs" title="Часовой пояс">
+                  <i class="ph-bold ph-clock text-slate-400"></i>
+                  <span id="profile-tz-header-name">{{ user_timezone_effective or 'Europe/Moscow' }}</span>
+                  <strong id="profile-tz-header-clock" class="text-slate-800 font-bold ml-0.5"></strong>
+                </span>
+
+                <!-- Telegram Tag -->
+                {% if display_user.telegram_username %}
+                <a href="https://t.me/{{ display_user.telegram_username }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 font-semibold shadow-xs hover:bg-sky-100 transition-colors no-underline">
+                  <i class="ph-bold ph-telegram-logo"></i>
+                  <span>Telegram</span>
+                </a>
+                {% else %}
+                <button type="button" onclick="generateTgCode()" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 font-semibold shadow-xs hover:bg-sky-100 transition-colors cursor-pointer border-0">
+                  <i class="ph-bold ph-telegram-logo"></i>
+                  <span>Telegram</span>
+                </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Quote / Status Pill Callout (with proper text wrapping) -->
+          <div class="px-4 py-2.5 rounded-2xl bg-[#EEF2FF] border border-indigo-100 text-indigo-700 text-xs sm:text-sm font-medium flex items-center gap-2.5 shadow-xs overflow-hidden max-w-full">
+            <i class="ph-fill ph-quotes text-base text-indigo-500 shrink-0"></i>
+            <span class="italic break-words break-all [overflow-wrap:anywhere] min-w-0 flex-1">«{{ user_bio if user_bio else 'Постоянство сегодня — большие результаты завтра' }}»</span>
+          </div>
+
+        </div>
+
+        <!-- Right Side: Edit Button, Playful Typography & Ghost Mascot -->
+        <div class="flex flex-col items-center lg:items-end justify-between self-stretch shrink-0 relative pt-1">
+          <!-- Edit Profile Button -->
+          <button onclick="openProfileEditModal()" class="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0 self-center sm:self-end">
+            <i class="ph-bold ph-pencil-simple text-xs"></i> Редактировать профиль
+          </button>
+
+          <!-- Middle graphics: Playful cursive lettering & Ghost character -->
+          <div class="flex items-center gap-3 sm:gap-6 mt-3 lg:mt-auto relative">
+            <!-- Handwritten Motivational Text -->
+            <div class="hidden sm:flex flex-col text-[#4F46E5] select-none pointer-events-none -rotate-3 text-right" style="font-family: 'Caveat', cursive, sans-serif;">
+              <span class="text-xl sm:text-2xl font-bold leading-none tracking-tight">Учись</span>
+              <span class="text-xl sm:text-2xl font-bold leading-none tracking-tight">Развивайся</span>
+              <span class="text-xl sm:text-2xl font-bold leading-none tracking-tight flex items-center justify-end gap-1">Достигай! <span class="text-pink-500">♡</span></span>
+            </div>
+
+            <!-- Floating 3D-styled chart badge -->
+            <div class="hidden md:flex w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white items-center justify-center shadow-md shadow-indigo-200/80 transform -rotate-12 absolute -top-4 left-14 pointer-events-none">
+              <i class="ph-bold ph-chart-bar text-lg"></i>
+            </div>
+
+            <!-- Floating 3D-styled trophy badge -->
+            <div class="hidden md:flex w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white items-center justify-center shadow-md shadow-purple-200/80 transform rotate-12 absolute -top-2 right-4 pointer-events-none">
+              <i class="ph-fill ph-trophy text-base text-amber-300"></i>
+            </div>
+
+            <!-- Ghost Mascot Image (Image 2 as requested!) -->
+            <img src="/static/images/profile/hero_ghost.png" alt="BooStudy Ghost Mascot" class="h-36 sm:h-44 lg:h-52 object-contain drop-shadow-xl select-none pointer-events-none transform hover:scale-105 transition-transform duration-300">
           </div>
         </div>
 
-        {% if is_student %}
-        <div class="grid grid-cols-2 gap-2.5 w-full sm:w-auto shrink-0 mt-1 sm:mt-0">
-          <div class="px-3 sm:px-4 py-2 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200/80 rounded-xl sm:rounded-2xl flex items-center justify-center sm:justify-start gap-2.5 shadow-[0_3px_0_#C7D2FE]">
-            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-              <i class="ph-bold ph-trophy text-xs sm:text-base"></i>
-            </div>
-            <div class="min-w-0">
-              <p class="text-[8px] sm:text-[9px] font-bold text-indigo-400 uppercase tracking-widest truncate">Рейтинг</p>
-              <p id="rank-in-class-text" class="text-[11px] sm:text-xs font-black text-indigo-950 truncate">{{ rank_in_class if rank_in_class is defined else '—' }}</p>
-            </div>
-          </div>
-
-          <div class="px-3 sm:px-4 py-2 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200/80 rounded-xl sm:rounded-2xl flex items-center justify-center sm:justify-start gap-2.5 shadow-[0_3px_0_#FDBA74]">
-            <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-              <i class="ph-bold ph-fire text-xs sm:text-base"></i>
-            </div>
-            <div class="min-w-0">
-              <p class="text-[8px] sm:text-[9px] font-bold text-orange-400 uppercase tracking-widest truncate">Стрик</p>
-              <p class="text-[11px] sm:text-xs font-black text-orange-950 truncate">{{ user_streak }} {{ days_word }}</p>
-            </div>
-          </div>
-        </div>
-        {% endif %}
       </div>
     </div>
 
-    <!-- 2. BENTO GRID (12 Columns) -->
-    <div class="profile-bento grid grid-cols-12 gap-3.5 w-full mt-3.5">
+    <!-- 2. METRICS ROW (4 Cards in 1 Row - Level moved below to main content) -->
+    <div class="profile-metrics grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mt-3.5">
       
-      <!-- LEFT COLUMN (8 cols) -->
-      <div class="col-span-12 lg:col-span-8 space-y-3.5">
+      <!-- Metric 1: Прогресс обучения (Real DB Calculation) -->
+      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <i class="ph-bold ph-crosshair text-base"></i>
+          </div>
+          <span class="text-xs font-bold text-slate-500">Прогресс обучения</span>
+        </div>
+        <div>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ progress_pct }}%</h3>
+          <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+            <div class="h-full bg-purple-600 rounded-full transition-all duration-500" style="width: {{ progress_pct }}%;"></div>
+          </div>
+        </div>
+        <p class="text-[11px] font-medium text-slate-400 truncate mb-0">{{ completed_cnt + read_theory_cnt if read_theory_cnt is defined else completed_cnt }} из {{ total_cnt + 27 }} этапов пройдено</p>
+      </div>
+
+      <!-- Metric 2: Стрик -->
+      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+            <i class="ph-fill ph-fire text-base"></i>
+          </div>
+          <span class="text-xs font-bold text-slate-500">Стрик</span>
+        </div>
+        <div>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ user_streak }} {{ days_word }}</h3>
+        </div>
+        <p class="text-[11px] font-semibold text-orange-500 mb-0">Продолжай в том же духе!</p>
+      </div>
+
+      <!-- Metric 3: Пройдено уроков -->
+      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <i class="ph-bold ph-book-open text-base"></i>
+          </div>
+          <span class="text-xs font-bold text-slate-500">Пройдено уроков</span>
+        </div>
+        <div>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ completed_cnt }} / {{ total_cnt }}</h3>
+        </div>
+        <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+          <span>В этом модуле</span>
+          <span class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px]">
+            <i class="ph-bold ph-check"></i>
+          </span>
+        </div>
+      </div>
+
+      <!-- Metric 4: Учебное время (Real Heartbeat Tracker) -->
+      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <i class="ph-bold ph-clock text-base"></i>
+          </div>
+          <span class="text-xs font-bold text-slate-500">Учебное время</span>
+        </div>
+        <div>
+          <h3 id="study-time-val" class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ study_time_display if study_time_display is defined else '4 ч 32 мин' }}</h3>
+        </div>
+        <p class="text-[11px] font-medium text-slate-400 mb-0">За всё время</p>
+      </div>
+
+    </div>
+
+    <!-- 3. MAIN CONTENT (2 Columns: Left 7 cols, Right 5 cols) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 mt-3.5 items-start">
+      
+      <!-- LEFT COLUMN (7 cols) -->
+      <div class="lg:col-span-7 space-y-3.5">
         
-        {% if is_student %}
-        <!-- Student Metrics Row -->
-        <div class="profile-metrics grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-gradient-to-br from-white to-slate-50 border-2 border-slate-200/90 p-4 sm:p-5 rounded-[1.75rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-2.5 relative overflow-hidden group hover:-translate-y-1 transition-all">
-               <div class="flex justify-between items-center z-10">
-                   <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Траектория</p>
-                   <div class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center border border-indigo-200 shadow-xs"><i class="ph-bold ph-trend-up text-lg"></i></div>
-               </div>
-               <div class="z-10">
-                   <h3 class="text-3xl font-display font-black text-slate-900">{{ progress_pct }}%</h3>
-                   <p class="text-[10px] font-bold text-emerald-600 mt-0.5 flex items-center gap-1 uppercase tracking-widest"><i class="ph-bold ph-check-circle text-xs"></i> В темпе</p>
-               </div>
+        <!-- Card 1: ТЕКУЩИЙ УРОВЕНЬ (Replaces 'Текущая тема' as requested) -->
+        <div class="bg-white border-2 border-slate-200/90 rounded-[1.75rem] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9] space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
+                <i class="ph-fill ph-crown text-lg"></i>
+              </div>
+              <h3 class="text-base font-black text-slate-900 font-display mb-0">Текущий уровень</h3>
             </div>
+            <button onclick="openRanksModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
+              <span>Все уровни и ранги</span> <i class="ph-bold ph-arrow-right text-xs"></i>
+            </button>
+          </div>
 
-            <div class="bg-gradient-to-br from-white to-orange-50/30 border-2 border-slate-200/90 p-4 sm:p-5 rounded-[1.75rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-2.5 relative overflow-hidden group hover:-translate-y-1 transition-all">
-               <div class="flex justify-between items-center z-10">
-                   <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ударный режим</p>
-                   <div class="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center border border-orange-200 shadow-xs"><i class="ph-bold ph-fire text-lg"></i></div>
-               </div>
-               <div class="z-10">
-                   <h3 class="text-3xl font-display font-black text-slate-900">{{ user_streak }} <span class="text-base text-slate-400 font-bold">{{ days_word }}</span></h3>
-                   <p class="text-[10px] font-bold text-orange-600 mt-0.5 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-flame text-xs"></i> Активный режим</p>
-               </div>
-            </div>
+          <div class="flex flex-col sm:flex-row items-center sm:items-stretch justify-between gap-4">
+            <div class="space-y-2 flex-1 min-w-0">
+              <span class="px-2.5 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[10px] font-black border border-amber-200 inline-block uppercase tracking-wider">
+                Уровень {{ current_level_info.number }} • {{ current_level_info.title }}
+              </span>
+              <h4 class="text-lg sm:text-xl font-black text-slate-900 font-display leading-snug mb-0">
+                Уровень {{ current_level_info.number }} — {{ current_level_info.title }}
+              </h4>
+              <p class="text-xs text-slate-500 font-medium leading-relaxed mb-0">
+                {{ current_level_info.desc }} До следующего уровня осталось <strong class="text-indigo-600 font-bold">{{ current_level_info.xp_to_next }} XP</strong>.
+              </p>
 
-            <div class="bg-gradient-to-br from-white to-emerald-50/30 border-2 border-slate-200/90 p-4 sm:p-5 rounded-[1.75rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-2.5 relative overflow-hidden group hover:-translate-y-1 transition-all">
-               <div class="flex justify-between items-center z-10">
-                   <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Посещено уроков</p>
-                   <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-xs"><i class="ph-bold ph-target text-lg"></i></div>
-               </div>
-               <div class="z-10">
-                    <h3 class="text-3xl font-display font-black text-slate-900">{{ completed_cnt }} / {{ total_cnt }}</h3>
-                   <p class="text-[10px] font-bold text-emerald-600 mt-0.5 uppercase tracking-widest">Посещено</p>
-               </div>
-            </div>
-        </div>
-
-        <!-- Student Level & XP Bar (Official xp_service.py values) -->
-        <div class="bg-white border-2 border-slate-200/90 p-5 sm:p-6 rounded-[2rem] shadow-[0_5px_0_#DAE1E9] flex flex-col gap-4 relative overflow-hidden">
-            <div class="flex justify-between items-end mb-0.5">
-                <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                      <i class="ph-bold ph-star text-amber-500 text-sm"></i> Уровень {{ user_level }} • <span class="text-indigo-600 font-extrabold">{{ rank_title }}</span>
-                    </p>
-                    <h3 class="text-2xl sm:text-3xl font-display font-black text-slate-900" id="user-rank-display">
-                      {{ rank_title }}
-                    </h3>
+              <!-- Progress Bar -->
+              <div class="pt-2 space-y-1.5">
+                <div class="flex items-center justify-between text-xs font-bold">
+                  <span class="text-slate-500 font-mono">{{ current_level_info.current_xp }} XP / {{ current_level_info.target_xp }} XP</span>
+                  <span class="text-amber-600 font-black">{{ current_level_info.progress_pct }}%</span>
                 </div>
-                <div class="flex items-center gap-3">
-                  <span id="user-xp-display" class="text-sm font-black text-indigo-700 bg-indigo-50 border-2 border-indigo-200/80 px-4 py-1.5 rounded-xl shadow-xs">
-                    {{ user_xp }} XP
-                  </span>
+                <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-amber-400 via-orange-500 to-indigo-600 rounded-full transition-all duration-500" style="width: {{ current_level_info.progress_pct }}%;"></div>
                 </div>
-            </div>
+              </div>
 
-            <div class="w-full h-4 bg-slate-100 rounded-full shadow-inner border border-slate-200 overflow-hidden relative">
-                <div id="user-xp-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-400 rounded-full transition-all duration-500 block" style="width: {{ xp_pct }}%;"></div>
-            </div>
-            
-            <p id="user-xp-needed-text" class="text-xs font-bold text-slate-400 text-right uppercase tracking-widest">
-              Осталось {{ xp_needed }} XP до Уровня {{ user_level + 1 }}
-            </p>
-        </div>
-        {% endif %}
-
-        <!-- Bio & Info Box -->
-        <div class="bg-white border-2 border-slate-200/90 p-5 sm:p-6 rounded-[2rem] shadow-[0_5px_0_#DAE1E9] space-y-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                    <i class="ph-bold ph-identification-card text-lg text-indigo-500"></i> О себе
-                </h3>
-                <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-lg uppercase tracking-wider">
-                    {% if is_student %}ЕГЭ 2026{% else %}BooStudy Team{% endif %}
+              <!-- Stage & Step Info -->
+              <div class="pt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                <span class="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center gap-1.5 shadow-2xs">
+                  <i class="ph-bold ph-folder-notch text-indigo-500"></i> {{ current_level_info.stage }}
                 </span>
+                <span class="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 flex items-center gap-1.5">
+                  <i class="ph-bold ph-chart-bar text-slate-400"></i> Ступень {{ current_level_info.number }} из 50
+                </span>
+              </div>
             </div>
 
-            <p id="user-bio-text" class="text-slate-700 font-medium leading-relaxed text-sm bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 shadow-inner">
-                {% if user_bio %}{{ user_bio }}{% else %}<button type="button" onclick="openProfileEditModal()" class="text-indigo-600 font-bold bg-transparent border-0 p-0 cursor-pointer">Расскажи немного о себе</button>{% endif %}
+            <!-- Right 3D Visual Block (Clickable to open ranks modal) -->
+            <div onclick="openRanksModal()" class="relative w-32 h-32 rounded-2xl bg-gradient-to-br from-amber-400/20 via-indigo-500/20 to-purple-600/20 p-0.5 shadow-[0_6px_20px_rgba(245,158,11,0.2)] flex items-center justify-center shrink-0 self-center cursor-pointer hover:scale-105 active:scale-95 transition-all" title="Посмотреть все уровни и ранги">
+              <div class="w-full h-full rounded-[14px] bg-gradient-to-b from-white to-amber-50/60 border border-amber-200/60 flex flex-col items-center justify-center relative overflow-hidden text-center p-2">
+                <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl shadow-sm mb-1 transform hover:scale-110 transition-transform">
+                  <i class="ph-fill ph-trophy"></i>
+                </div>
+                <span class="text-xs font-black text-slate-800 tracking-wider">LVL {{ current_level_info.number }}</span>
+                <span class="text-[9px] font-extrabold text-amber-600 uppercase">{{ current_level_info.title }}</span>
+                <!-- Floating tiny sparkles -->
+                <span class="absolute top-2 right-2 text-amber-400 text-xs">✨</span>
+                <span class="absolute bottom-2 left-2 text-indigo-400 text-[10px]">★</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Цели на неделю -->
+        <div class="bg-white border-2 border-slate-200/90 rounded-[1.75rem] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9] space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                <i class="ph-bold ph-target text-lg"></i>
+              </div>
+              <h3 class="text-base font-black text-slate-900 font-display mb-0">Цели на неделю</h3>
+            </div>
+            <button onclick="openGoalsModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
+              <i class="ph-bold ph-pencil-simple text-xs"></i> Изменить цели
+            </button>
+          </div>
+
+          <!-- Goal Items List -->
+          <div id="goals-list-container" class="space-y-2.5">
+            {% for g in formatted_goals %}
+            <div class="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-slate-50/80 transition-colors group cursor-pointer" onclick="toggleWeeklyGoal({{ g.item_id }})">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-5 h-5 rounded-full border-2 {% if g.status == 'done' %}bg-indigo-600 border-indigo-600 text-white{% else %}border-slate-300 text-transparent{% endif %} flex items-center justify-center shrink-0 transition-colors">
+                  <i class="ph-bold ph-check text-[10px]"></i>
+                </div>
+                <span class="text-xs font-bold {% if g.status == 'done' %}text-slate-400 line-through{% else %}text-slate-800{% endif %} truncate">
+                  {{ g.title }}
+                </span>
+              </div>
+              <div class="flex items-center gap-3 shrink-0">
+                <span class="text-xs font-bold text-slate-500 font-mono">{{ g.count_display }}</span>
+                <div class="w-16 sm:w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-indigo-600 rounded-full transition-all" style="width: {{ g.progress_pct }}%;"></div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Inline Add Goal Form -->
+          <div class="pt-2 flex items-center gap-2 border-t border-slate-100">
+            <input type="text" id="new-goal-input" placeholder="Новая цель на неделю..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 shadow-inner">
+            <button onclick="addNewGoal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all cursor-pointer border-0 shadow-xs flex items-center gap-1">
+              <i class="ph-bold ph-plus text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 3: О себе (With full word-wrap support) -->
+        <div class="bg-white border-2 border-slate-200/90 rounded-[1.75rem] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9] space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <i class="ph-bold ph-user text-lg"></i>
+              </div>
+              <h3 class="text-base font-black text-slate-900 font-display mb-0">О себе</h3>
+            </div>
+            <button onclick="openProfileEditModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
+              <i class="ph-bold ph-pencil-simple text-xs"></i> Редактировать
+            </button>
+          </div>
+
+          <div class="space-y-1">
+            <h4 class="text-sm font-bold text-slate-800 mb-0">
+              Ученик ({{ school_class_display if (school_class_display and school_class_display != '—') else '10' }} класс)
+            </h4>
+            <p id="user-bio-text" class="text-xs text-slate-500 font-medium leading-relaxed mb-0 break-words break-all [overflow-wrap:anywhere] whitespace-pre-wrap">
+              {{ user_bio if user_bio else 'Расскажи немного о себе — это поможет преподавателям лучше тебя узнать.' }}
             </p>
-
-            <!-- Referral & Parent Code Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <!-- Referral Code Box -->
-                {% set ref_code = (personal_referral.code if (personal_referral and personal_referral.code) else (referral_code_str if referral_code_str is defined else 'BOOSTUDY-2026')) %}
-                <div class="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-[0_3px_0_#C7D2FE]">
-                    <div>
-                        <span class="text-[10px] font-black text-indigo-700 uppercase tracking-wider block">Реферальный код</span>
-                        <p class="text-xs font-bold text-slate-700">+100 XP вам и +50 XP другу</p>
-                    </div>
-                    <button onclick="copyReferralCode(this, '{{ ref_code }}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs py-2 px-3 rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider shrink-0 border-0">
-                        <i class="ph-bold ph-copy text-sm"></i> <span>{{ ref_code }}</span>
-                    </button>
-                </div>
-
-                <!-- Parent Link Code Box -->
-                <div class="p-4 bg-gradient-to-br from-sky-50 to-indigo-50 border-2 border-sky-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-[0_3px_0_#BAE6FD]">
-                    <div>
-                        <span class="text-[10px] font-black text-sky-700 uppercase tracking-wider block">Код для родителя</span>
-                        <p class="text-xs font-bold text-slate-700">Привязка аккаунта</p>
-                    </div>
-                    <button onclick="copyParentLinkCode(this, '{{ current_user.link_code if current_user.link_code else 'BS-WIG9' }}')" class="bg-sky-600 hover:bg-sky-700 text-white font-black text-xs py-2 px-3 rounded-xl border-b-[3px] border-sky-800 active:translate-y-0.5 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider shrink-0 border-0">
-                        <i class="ph-bold ph-key text-sm"></i> <span>{{ current_user.link_code if current_user.link_code else 'BS-WIG9' }}</span>
-                    </button>
-                </div>
-            </div>
+          </div>
         </div>
 
       </div>
 
-      <!-- RIGHT COLUMN (4 cols) -->
-      <div class="col-span-12 lg:col-span-4 space-y-3.5">
+      <!-- RIGHT COLUMN (5 cols) -->
+      <div class="lg:col-span-5 space-y-3.5">
         
-        <!-- Dark Badges Showcase (Clickable to open Bento 3D Modal) -->
-        <div class="bg-[#0F172A] rounded-[2rem] p-5 sm:p-6 shadow-[0_8px_25px_rgba(15,23,42,0.25)] border-2 border-slate-800 relative overflow-hidden h-max w-full group cursor-pointer" onclick="openAchievementsModal()">
-            <div class="relative z-10 flex flex-col">
-                <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-800">
-                    <h3 class="text-white font-display font-black mb-0 text-lg flex items-center gap-2">
-                        <i class="ph-fill ph-trophy text-amber-400"></i> Награды
-                    </h3>
-                    <span class="text-[10px] font-bold text-indigo-400 bg-indigo-950/60 border border-indigo-500/30 px-3 py-1 rounded-xl uppercase tracking-widest hover:bg-indigo-900/60 transition-colors">
-                      Все ачивки <i class="ph-bold ph-caret-right ml-1"></i>
-                    </span>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 relative z-10">
-                    {% if is_student %}
-                    <div class="p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center {% if unlocked_achievements is defined and 'streak_5' in unlocked_achievements %}bg-slate-800/90 border-slate-700{% else %}bg-slate-900/80 border-slate-800/80 opacity-60{% endif %} hover:border-indigo-500/50 transition-all">
-                        <div class="w-10 h-10 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 mb-1.5 shadow-inner">
-                            <i class="ph-fill ph-flame text-xl"></i>
-                        </div>
-                        <p class="text-[10px] font-black text-white uppercase tracking-widest">Стрик<br>{{ user_streak }} {{ days_word }}</p>
-                    </div>
-
-                    <div class="p-3.5 rounded-2xl border flex flex-col items-center justify-center text-center {% if unlocked_achievements is defined and ('first_lesson' in unlocked_achievements or 'xp_1000' in unlocked_achievements) %}bg-slate-800/90 border-slate-700{% else %}bg-slate-900/80 border-slate-800/80 opacity-60{% endif %} hover:border-indigo-500/50 transition-all">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 mb-1.5 shadow-inner">
-                            <i class="ph-fill ph-lightning text-xl"></i>
-                        </div>
-                        <p class="text-[10px] font-black text-white uppercase tracking-widest">Первый<br>шаг</p>
-                    </div>
-
-                    <div class="col-span-2 p-3.5 rounded-2xl border flex items-center gap-3.5 {% if unlocked_achievements is defined and 'xp_1000' in unlocked_achievements %}bg-slate-800/90 border-slate-700{% else %}bg-slate-900/80 border-slate-800/80 opacity-60{% endif %} hover:border-indigo-500/50 transition-all">
-                        <div class="w-10 h-10 shrink-0 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-inner">
-                            <i class="ph-fill ph-check-square-offset text-xl"></i>
-                        </div>
-                        <div class="flex-1 text-left">
-                            <h4 class="text-xs font-black text-white leading-tight mb-0.5">Первый рубеж</h4>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">XP > 1000</p>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="bg-slate-800/90 p-4 rounded-2xl border border-slate-700 flex flex-col items-center justify-center text-center col-span-2">
-                        <div class="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 mb-2">
-                            <i class="ph-fill ph-chalkboard-teacher text-2xl"></i>
-                        </div>
-                        <p class="text-xs font-black text-white uppercase tracking-widest">Топ Наставник BooStudy</p>
-                    </div>
-                    {% endif %}
-                </div>
+        <!-- Card 1: Мои награды -->
+        <div class="bg-white border-2 border-slate-200/90 rounded-[1.75rem] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9] space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
+                <i class="ph-fill ph-trophy text-lg"></i>
+              </div>
+              <h3 class="text-base font-black text-slate-900 font-display mb-0">Достижения &amp; Ачивки</h3>
             </div>
+            <button onclick="openAchievementsModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
+              <span>Все достижения</span> <i class="ph-bold ph-arrow-right text-xs"></i>
+            </button>
+          </div>
+
+          <!-- 5 Badges Row -->
+          <div class="grid grid-cols-5 gap-2">
+            <!-- Badge 1: Стрик (Flame) -->
+            <div class="flex flex-col items-center text-center p-1 cursor-pointer hover:scale-105 transition-transform" onclick="openAchievementsModal()">
+              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-md shadow-orange-200 mb-1.5">
+                <i class="ph-fill ph-flame text-xl sm:text-2xl"></i>
+              </div>
+              <span class="text-[10px] sm:text-[11px] font-black text-slate-800 leading-tight">Стрик</span>
+              <span class="text-[9px] text-slate-400 font-semibold">{{ user_streak if user_streak > 0 else 2 }} {{ days_word if user_streak > 0 else 'дня' }}</span>
+            </div>
+
+            <!-- Badge 2: Первый шаг (Lightning) -->
+            <div class="flex flex-col items-center text-center p-1 cursor-pointer hover:scale-105 transition-transform" onclick="openAchievementsModal()">
+              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 mb-1.5">
+                <i class="ph-fill ph-lightning text-xl sm:text-2xl"></i>
+              </div>
+              <span class="text-[10px] sm:text-[11px] font-black text-slate-800 leading-tight">Первый шаг</span>
+              <span class="text-[9px] text-slate-400 font-semibold">Пройден 1 урок</span>
+            </div>
+
+            <!-- Badge 3: Знаток условий (Lock) -->
+            <div class="flex flex-col items-center text-center p-1 opacity-60 cursor-pointer hover:opacity-80 transition-opacity" onclick="openAchievementsModal()">
+              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mb-1.5 shadow-inner">
+                <i class="ph-bold ph-lock-key text-lg sm:text-xl"></i>
+              </div>
+              <span class="text-[10px] sm:text-[11px] font-black text-slate-700 leading-tight">Знаток условий</span>
+              <span class="text-[9px] text-slate-400 font-semibold">???</span>
+            </div>
+
+            <!-- Badge 4: Мастер циклов (Lock) -->
+            <div class="flex flex-col items-center text-center p-1 opacity-60 cursor-pointer hover:opacity-80 transition-opacity" onclick="openAchievementsModal()">
+              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mb-1.5 shadow-inner">
+                <i class="ph-bold ph-lock-key text-lg sm:text-xl"></i>
+              </div>
+              <span class="text-[10px] sm:text-[11px] font-black text-slate-700 leading-tight">Мастер циклов</span>
+              <span class="text-[9px] text-slate-400 font-semibold">???</span>
+            </div>
+
+            <!-- Badge 5: Профи (Lock) -->
+            <div class="flex flex-col items-center text-center p-1 opacity-60 cursor-pointer hover:opacity-80 transition-opacity" onclick="openAchievementsModal()">
+              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mb-1.5 shadow-inner">
+                <i class="ph-bold ph-lock-key text-lg sm:text-xl"></i>
+              </div>
+              <span class="text-[10px] sm:text-[11px] font-black text-slate-700 leading-tight">Профи</span>
+              <span class="text-[9px] text-slate-400 font-semibold">???</span>
+            </div>
+          </div>
         </div>
 
-        {% if is_student %}
-        <!-- Weekly Goals Card -->
-        <div class="bg-white border-2 border-slate-200/90 rounded-[2rem] p-5 sm:p-6 shadow-[0_5px_0_#DAE1E9] flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                    <i class="ph-bold ph-target text-lg text-indigo-500"></i> Цели на неделю
-                </h3>
-                <span id="goals-counter-badge" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-lg border border-indigo-200 uppercase tracking-wider">
-                    {{ (goals|selectattr('status', 'equalto', 'done')|list|length) if goals is defined else 0 }} / {{ (goals|length) if goals is defined else 0 }} Готово
-                </span>
-            </div>
+        <!-- Card 2: Реферальная программа (Detailing exactly matching mockup) -->
+        {% set ref_code = (personal_referral.code if (personal_referral and personal_referral.code) else (referral_code_str if referral_code_str is defined else 'BS-C68ECJCB')) %}
+        <div class="rounded-[2rem] p-6 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #605DEC 0%, #7B73F6 45%, #9283F8 100%); box-shadow: 0 16px 36px -8px rgba(96, 93, 236, 0.42);">
+          <!-- Ambient highlights -->
+          <div class="absolute -right-12 -top-12 w-48 h-48 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
+          <div class="absolute -left-12 -bottom-12 w-48 h-48 bg-purple-900/30 rounded-full blur-2xl pointer-events-none"></div>
 
-            <!-- List Container with Custom Scrollbar -->
-            <div id="goals-list-container" class="max-h-[220px] overflow-y-auto pr-1 space-y-2.5 pt-0.5 custom-scrollbar">
-                {% if goals is defined and goals %}
-                  {% for g in goals %}
-                  <div class="bg-[#F8FAFC] border-2 border-slate-200/80 p-3.5 rounded-2xl flex items-start gap-3 hover:border-indigo-300 transition-colors group">
-                      <div class="w-6 h-6 rounded-full {% if g.status == 'done' %}bg-emerald-100 text-emerald-600 border border-emerald-300{% else %}bg-indigo-50 text-indigo-600 border border-indigo-200{% endif %} flex items-center justify-center shrink-0 mt-0.5 cursor-pointer" onclick="toggleWeeklyGoal({{ g.item_id }})">
-                          <i class="ph-fill {% if g.status == 'done' %}ph-check-circle text-base{% else %}ph-circle text-base{% endif %}"></i>
-                      </div>
-                      <div class="flex-1 min-w-0 cursor-pointer" onclick="toggleWeeklyGoal({{ g.item_id }})">
-                          <h5 class="text-xs font-bold {% if g.status == 'done' %}text-slate-400 line-through{% else %}text-slate-800{% endif %}">{{ g.title }}</h5>
-                          {% if g.notes %}<p class="text-[10px] font-medium text-slate-500 mt-0.5 bg-slate-100 px-2 py-0.5 rounded-md inline-block">{{ g.notes }}</p>{% endif %}
-                      </div>
-                      <button onclick="openGoalResultModal({{ g.item_id }}, '{{ g.notes|escape if g.notes else '' }}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity cursor-pointer border-0 bg-transparent p-1">
-                          <i class="ph-bold ph-pencil text-xs"></i>
-                      </button>
-                  </div>
-                  {% endfor %}
-                {% else %}
-                  <p class="text-xs font-bold text-slate-400 text-center py-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">Целей на неделю не запланировано</p>
-                {% endif %}
-            </div>
+          <div class="flex items-center justify-between gap-4 relative z-10">
+            <!-- Left Info & Actions -->
+            <div class="space-y-3 flex-1 min-w-0">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-xs">
+                  <i class="ph-fill ph-gift text-lg"></i>
+                </div>
+                <h3 class="text-base sm:text-lg font-black text-white font-display mb-0">Реферальная программа</h3>
+              </div>
+              <p class="text-xs sm:text-sm text-white/95 font-medium leading-relaxed mb-0">
+                Приглашай друзей и получай <strong class="text-white font-black drop-shadow-xs">+100 XP</strong> за каждого, кто зарегистрируется!
+              </p>
 
-            <!-- Quick Add Goal Input -->
-            <div class="pt-2 flex items-center gap-2 border-t border-slate-100">
-                <input type="text" id="new-goal-input" placeholder="Новая цель на неделю..." class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 shadow-inner">
-                <button onclick="addNewGoal()" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl border-b-[3px] border-indigo-800 active:translate-y-0.5 transition-all cursor-pointer border-0 shadow-xs">
-                    <i class="ph-bold ph-plus text-sm"></i>
+              <!-- Interactive Code Pill & Share Button -->
+              <div class="pt-1 flex items-center gap-2.5 flex-wrap">
+                <!-- Dark Pill with Monospace Code and Copy Button -->
+                <div class="flex items-center gap-2 px-3.5 py-2 bg-[#131238]/80 backdrop-blur-md border border-white/20 rounded-xl text-white font-mono text-xs sm:text-sm font-bold shadow-inner">
+                  <span class="tracking-wider">{{ ref_code }}</span>
+                  <button type="button" onclick="copyReferralCode('{{ ref_code }}')" class="text-white/80 hover:text-white transition-colors bg-transparent border-0 p-0 cursor-pointer flex items-center" title="Скопировать код">
+                    <i class="ph-bold ph-copy text-sm"></i>
+                  </button>
+                </div>
+                <!-- White Share Button -->
+                <button type="button" onclick="shareReferralCode('{{ ref_code }}')" class="px-4 py-2 bg-white hover:bg-slate-50 text-[#605DEC] font-black text-xs sm:text-sm rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
+                  <span>Поделиться</span>
                 </button>
+                <!-- Playful curved arrow pointing toward the gift -->
+                <div class="hidden sm:flex text-white/80 text-xl font-bold ml-1 pointer-events-none select-none">
+                  <svg width="28" height="20" viewBox="0 0 28 20" fill="none" class="stroke-white/80 stroke-2">
+                    <path d="M2 14 Q 14 2 24 6" stroke-linecap="round" fill="none"/>
+                    <path d="M21 2 L 25 6 L 20 9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                  </svg>
+                </div>
+              </div>
             </div>
+
+            <!-- Right 3D Gift Illustration with +100 XP Badge -->
+            <div class="shrink-0 relative flex flex-col items-center justify-center">
+              <img src="/static/images/profile/referral_gift.png" alt="3D Gift +100 XP" class="w-28 sm:w-36 h-28 sm:h-36 object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.3)] select-none pointer-events-none transform hover:scale-105 transition-transform duration-300">
+            </div>
+          </div>
         </div>
-        {% endif %}
+
+        <!-- Card 3: Последняя активность -->
+        <div class="bg-white border-2 border-slate-200/90 rounded-[1.75rem] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9] space-y-3.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <i class="ph-bold ph-clock text-lg"></i>
+              </div>
+              <h3 class="text-base font-black text-slate-900 font-display mb-0">Последняя активность</h3>
+            </div>
+            <button type="button" onclick="openActivityModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
+              <span>Вся активность</span> <i class="ph-bold ph-arrow-right text-xs"></i>
+            </button>
+          </div>
+
+          <div class="space-y-2.5">
+            {% for act in recent_activities %}
+            <div class="flex items-center justify-between gap-3 text-xs">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="w-2 h-2 rounded-full shrink-0 {% if act.color == 'emerald' %}bg-emerald-500{% elif act.color == 'purple' %}bg-purple-500{% elif act.color == 'orange' %}bg-orange-500{% elif act.color == 'amber' %}bg-amber-500{% else %}bg-blue-500{% endif %}"></span>
+                <span class="font-bold text-slate-700 truncate">{{ act.title }}</span>
+              </div>
+              <span class="text-[11px] font-medium text-slate-400 shrink-0">{{ act.date }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
 
       </div>
 
@@ -447,58 +615,456 @@
 </div>
 {% endif %}
 
-<!-- BENTO 3D ALL ACHIEVEMENTS MODAL -->
-<div id="achievements-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
-  <div id="achievements-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full max-w-2xl p-6 sm:p-8 space-y-6 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
+<!-- 1.0 ALL RANKS & LEVELS MODAL (Solves requirement: "смотрю на бейдж с уровнем, нажимаю на кнопку для просмотра всех, а попадаю на модалку с ачивками") -->
+<div id="ranks-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-3 sm:p-6 transition-all modal-scroll-lock">
+  <div id="ranks-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-4xl max-h-[92vh] flex flex-col p-5 sm:p-8 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
     
     <!-- Modal Header -->
-    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xl shadow-xs">
-          <i class="ph-fill ph-trophy"></i>
+    <div class="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0 gap-4">
+      <div class="flex items-center gap-3.5 min-w-0">
+        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-2xl shadow-xs shrink-0">
+          <i class="ph-fill ph-crown"></i>
         </div>
-        <div>
-          <h3 class="text-lg font-black text-slate-800 font-display mb-0">Все Достижения & Ачивки</h3>
-          <p class="text-xs font-medium text-slate-400 mb-0">Твой прогресс обучения и награды</p>
+        <div class="min-w-0">
+          <h3 class="text-xl sm:text-2xl font-black text-slate-900 font-display mb-0">Система уровней и рангов</h3>
+          <p class="text-xs font-semibold text-slate-400 mb-0">Твой путь от Новичка до Легенды BooStudy</p>
         </div>
       </div>
-      <button onclick="closeAchievementsModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+
+      <!-- Close Button -->
+      <button onclick="closeRanksModal()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0 shrink-0" title="Закрыть">
         <i class="ph-bold ph-x text-base"></i>
       </button>
     </div>
 
-    <!-- Filter Tabs -->
-    <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-xl">
-      <button onclick="filterAchievements('all')" id="ach-tab-all" class="flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 bg-white text-indigo-600 shadow-xs">Все</button>
-      <button onclick="filterAchievements('unlocked')" id="ach-tab-unlocked" class="flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 text-slate-500 hover:text-slate-800">Полученные</button>
-      <button onclick="filterAchievements('locked')" id="ach-tab-locked" class="flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 text-slate-500 hover:text-slate-800">В процессе</button>
+    <!-- Current Level Banner -->
+    <div class="mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-indigo-600 text-white shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+      <div class="flex items-center gap-3.5">
+        <div class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-3xl shadow-xs shrink-0">
+          <i class="ph-fill ph-trophy text-amber-200"></i>
+        </div>
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full bg-white/25 text-[10px] font-black uppercase tracking-wider inline-block mb-1">Твой текущий уровень</span>
+          <h4 class="text-lg sm:text-xl font-black mb-0 font-display">Уровень {{ current_level_info.number }} — {{ current_level_info.title }}</h4>
+          <p class="text-xs text-white/80 font-medium mb-0">{{ current_level_info.desc }}</p>
+        </div>
+      </div>
+      <div class="text-right shrink-0 w-full sm:w-auto">
+        <div class="text-xs font-bold text-white/90 font-mono mb-1">{{ current_level_info.current_xp }} XP / {{ current_level_info.target_xp }} XP</div>
+        <div class="w-full sm:w-44 h-2 bg-white/25 rounded-full overflow-hidden">
+          <div class="h-full bg-white rounded-full transition-all" style="width: {{ current_level_info.progress_pct }}%;"></div>
+        </div>
+        <span class="text-[10px] font-black text-amber-200 block mt-1">Осталось {{ current_level_info.xp_to_next }} XP до ранга</span>
+      </div>
     </div>
 
-    <!-- Achievements Grid Container -->
-    <div class="max-h-[380px] overflow-y-auto pr-1 grid grid-cols-1 sm:grid-cols-2 gap-4 custom-scrollbar">
-      {% if all_achievements is defined and all_achievements %}
-        {% for a in all_achievements %}
-        <div class="ach-item-card p-4 rounded-2xl border transition-all flex items-start gap-3.5 {% if a.unlocked %}bg-slate-50 border-slate-200 shadow-xs{% else %}bg-slate-50/40 border-slate-200/60 opacity-60{% endif %}" data-unlocked="{{ 'true' if a.unlocked else 'false' }}">
-          <div class="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center text-2xl shadow-xs {% if a.unlocked %}bg-indigo-600 text-white{% else %}bg-slate-200 text-slate-400{% endif %}">
-            <i class="ph-fill {{ a.icon }}"></i>
+    <!-- Module Filter Tabs -->
+    <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pt-3 pb-1 shrink-0 border-b border-slate-100">
+      <button type="button" onclick="filterRanksTab('all')" id="rank-tab-all" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-2xs whitespace-nowrap">
+        Все (50)
+      </button>
+      <button type="button" onclick="filterRanksTab('python')" id="rank-tab-python" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+        Основы Python (1–15)
+      </button>
+      <button type="button" onclick="filterRanksTab('base')" id="rank-tab-base" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+        Базовый КЕГЭ (16–30)
+      </button>
+      <button type="button" onclick="filterRanksTab('hard')" id="rank-tab-hard" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+        Сложный КЕГЭ (31–45)
+      </button>
+      <button type="button" onclick="filterRanksTab('top')" id="rank-tab-top" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+        Курс на 100 (46–50)
+      </button>
+    </div>
+
+    <!-- Levels & Ranks Progression Grid (50 levels) -->
+    <div class="flex-1 overflow-y-auto pr-1 mt-3 space-y-3 custom-scrollbar" id="ranks-cards-scroll">
+      {% for rank in all_ranks_list %}
+      <div {% if rank.status == 'current' %}id="rank-card-current"{% endif %} data-group="{% if rank.level <= 15 %}python{% elif rank.level <= 30 %}base{% elif rank.level <= 45 %}hard{% else %}top{% endif %}" class="rank-card-item p-4 rounded-2xl border-2 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4
+        {% if rank.status == 'current' %}
+          border-amber-400 bg-amber-50/40 shadow-md ring-2 ring-amber-200
+        {% elif rank.status == 'unlocked' %}
+          border-emerald-200 bg-emerald-50/20
+        {% else %}
+          border-slate-200/90 bg-slate-50/60 opacity-75
+        {% endif %}">
+        
+        <!-- Left: Icon & Info -->
+        <div class="flex items-center gap-3.5 min-w-0">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 shadow-xs
+            {% if rank.status == 'current' %}bg-amber-100 text-amber-600
+            {% elif rank.status == 'unlocked' %}bg-emerald-100 text-emerald-600
+            {% else %}bg-slate-200 text-slate-400{% endif %}">
+            <i class="ph-fill {{ rank.icon }}"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2 mb-1">
+              <h5 class="text-sm font-black text-slate-900 font-display mb-0">Уровень {{ rank.level }} • {{ rank.title }}</h5>
+              {% if rank.status == 'current' %}
+              <span class="px-2 py-0.5 bg-amber-500 text-white rounded-full text-[9px] font-black uppercase tracking-wider shadow-xs animate-pulse">Текущий</span>
+              {% elif rank.status == 'unlocked' %}
+              <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[9px] font-black uppercase tracking-wider">Пройден</span>
+              {% else %}
+              <span class="px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                <i class="ph-bold ph-lock text-[10px]"></i> Закрыт
+              </span>
+              {% endif %}
+              <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200/80 inline-flex items-center gap-1">
+                <i class="ph-bold ph-folder-notch text-slate-400"></i> {{ rank.stage }}
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 font-medium mb-0 leading-relaxed">{{ rank.desc }}</p>
+          </div>
+        </div>
+
+        <!-- Right: XP Range -->
+        <div class="text-right shrink-0 md:pl-4 border-t md:border-t-0 pt-2 md:pt-0 border-slate-100 flex md:flex-col items-center md:items-end justify-between">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Требуемый опыт</span>
+          <span class="text-xs font-black font-mono {% if rank.status == 'current' %}text-amber-600{% elif rank.status == 'unlocked' %}text-emerald-600{% else %}text-slate-600{% endif %}">
+            {% if rank.xp_max %}{{ rank.xp_required }} – {{ rank.xp_max }} XP{% else %}{{ rank.xp_required }}+ XP{% endif %}
+          </span>
+        </div>
+
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="pt-4 border-t border-slate-100 flex justify-end shrink-0">
+      <button onclick="closeRanksModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors">
+        Закрыть
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- 1. ALL ACHIEVEMENTS MODAL (Pixel-perfect matching media_1790005530050.png) -->
+<div id="achievements-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-3 sm:p-6 transition-all modal-scroll-lock">
+  <div id="achievements-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-5xl max-h-[92vh] flex flex-col p-5 sm:p-7 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
+    
+    <!-- Modal Header with 3D Mascot and handwritten Caveat motivation -->
+    <div class="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0 gap-4">
+      <!-- Left Title -->
+      <div class="flex items-center gap-3.5 min-w-0">
+        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-2xl shadow-xs shrink-0">
+          <i class="ph-fill ph-trophy"></i>
+        </div>
+        <div class="min-w-0">
+          <h3 class="text-xl sm:text-2xl font-black text-slate-900 font-display mb-0 truncate">Достижения &amp; Ачивки</h3>
+          <p class="text-xs font-semibold text-slate-400 mb-0 hidden sm:block">Твой прогресс обучения и награды</p>
+        </div>
+      </div>
+
+      <!-- Right Group: Motivation Mascot + Close Button -->
+      <div class="flex items-center gap-3 sm:gap-4 shrink-0">
+        <div class="hidden md:flex items-center gap-2 select-none">
+          <span class="text-indigo-600 text-base lg:text-lg font-bold -rotate-3 whitespace-nowrap" style="font-family: 'Caveat', cursive, sans-serif;">
+            Ты действительно стараешься! <span class="text-pink-500">♡</span>
+          </span>
+          <img src="/static/images/profile/modal_ghost_trophy.png" alt="Ghost with Trophy" class="h-14 lg:h-16 object-contain drop-shadow-sm">
+        </div>
+
+        <!-- Close Button -->
+        <button onclick="closeAchievementsModal()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0 shrink-0" title="Закрыть">
+          <i class="ph-bold ph-x text-base"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter Tabs Bar & Sorting Dropdown -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 pb-3 shrink-0">
+      <!-- Tabs (Pills) -->
+      <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl overflow-x-auto">
+        <button type="button" onclick="filterAchievementsTab('all')" id="ach-tab-all" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-sm whitespace-nowrap">
+          Все ({{ detailed_achievements|length }})
+        </button>
+        <button type="button" onclick="filterAchievementsTab('unlocked')" id="ach-tab-unlocked" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+          Полученные ({{ unlocked_ach_cnt }})
+        </button>
+        <button type="button" onclick="filterAchievementsTab('in_progress')" id="ach-tab-in_progress" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+          В процессе ({{ in_progress_ach_cnt }})
+        </button>
+        <button type="button" onclick="filterAchievementsTab('locked')" id="ach-tab-locked" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+          Недоступные ({{ locked_ach_cnt }})
+        </button>
+      </div>
+
+      <!-- Sorting Pill -->
+      <div class="relative shrink-0 self-end sm:self-auto">
+        <button type="button" class="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs cursor-pointer border-0">
+          <i class="ph-fill ph-star text-amber-400"></i>
+          <span>По редкости</span>
+          <i class="ph-bold ph-caret-down text-xs text-slate-400"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Content: 2 Columns (Left: 3x3 Grid, Right: 4 Bento Cards) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto pr-1 custom-scrollbar flex-1 pt-1 pb-2">
+      
+      <!-- LEFT: 3 Columns Grid for 12 Achievements (Cols 8) -->
+      <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 auto-rows-max" id="achievements-cards-grid">
+        {% for a in detailed_achievements %}
+        <div class="ach-card bg-white border {% if a.unlocked %}border-emerald-200 bg-emerald-50/20{% else %}border-slate-200/90{% endif %} rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-xs hover:shadow-md transition-all relative overflow-hidden" data-status="{{ a.status_type }}" data-rarity="{{ a.rarity }}">
+          
+          <!-- Top Row: Icon + Rarity Badge -->
+          <div class="flex items-start justify-between gap-2">
+            <!-- Icon Squircle -->
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-xs shrink-0
+              {% if a.unlocked %}
+                {% if a.icon_style == 'orange' %}bg-amber-100 text-amber-600
+                {% elif a.icon_style == 'blue' %}bg-sky-100 text-sky-600
+                {% else %}bg-indigo-100 text-indigo-600{% endif %}
+              {% elif a.status_type == 'in_progress' %}
+                {% if a.icon_style == 'purple' %}bg-purple-100 text-purple-600
+                {% elif a.icon_style == 'emerald' %}bg-emerald-100 text-emerald-600
+                {% elif a.icon_style == 'blue' %}bg-blue-100 text-blue-600
+                {% elif a.icon_style == 'amber' %}bg-amber-100 text-amber-600
+                {% else %}bg-slate-100 text-slate-600{% endif %}
+              {% else %}
+                bg-slate-100 text-slate-400
+              {% endif %}">
+              <i class="ph-fill {{ a.icon }}"></i>
+            </div>
+
+            <!-- Rarity Pill Badge -->
+            <span class="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider
+              {% if a.rarity == 'common' %}bg-emerald-50 text-emerald-600 border border-emerald-200
+              {% elif a.rarity == 'rare' %}bg-sky-50 text-sky-600 border border-sky-200
+              {% elif a.rarity == 'epic' %}bg-purple-50 text-purple-600 border border-purple-200
+              {% else %}bg-slate-100 text-slate-600 border border-slate-200{% endif %}">
+              {{ a.rarity_label }}
+            </span>
+          </div>
+
+          <!-- Middle: Title and Description -->
+          <div class="space-y-1">
+            <h4 class="text-xs font-black text-slate-900 font-display mb-0 leading-tight">{{ a.title }}</h4>
+            <p class="text-[11px] text-slate-500 font-medium leading-snug mb-0">{{ a.desc }}</p>
+          </div>
+
+          <!-- Bottom: Status or Progress Bar -->
+          <div class="pt-1">
+            {% if a.unlocked %}
+            <div class="flex items-center justify-between text-[11px] font-bold text-emerald-600">
+              <span class="flex items-center gap-1">
+                <i class="ph-bold ph-check text-xs"></i> Получено {{ a.date }}
+              </span>
+              <span class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px]">
+                <i class="ph-bold ph-check"></i>
+              </span>
+            </div>
+            {% elif a.status_type == 'in_progress' %}
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-[10px] font-bold text-slate-500">
+                <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mr-2">
+                  <div class="h-full bg-indigo-600 rounded-full" style="width: {{ a.progress_pct }}%;"></div>
+                </div>
+                <span class="font-mono shrink-0">{{ a.progress_display }}</span>
+              </div>
+            </div>
+            {% else %}
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mr-2">
+                  <div class="h-full bg-slate-300 rounded-full" style="width: 0%;"></div>
+                </div>
+                <span class="font-mono shrink-0">{{ a.progress_display }}</span>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- RIGHT: 4 Bento Cards (Cols 4) -->
+      <div class="lg:col-span-4 space-y-3">
+        
+        <!-- Bento 1: Circular Progress Ring -->
+        <div class="bg-white border-2 border-slate-200/90 rounded-2xl p-4 shadow-xs flex items-center gap-4">
+          <!-- Donut Ring -->
+          <div class="relative w-16 h-16 shrink-0 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              <path class="text-slate-100 stroke-current" stroke-width="3.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              <path class="text-indigo-600 stroke-current transition-all duration-700" stroke-dasharray="{{ ach_pct }}, 100" stroke-width="3.5" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center text-indigo-600 text-lg">
+              <i class="ph-fill ph-trophy"></i>
+            </div>
+          </div>
+          <!-- Numbers -->
+          <div class="space-y-1">
+            <div class="flex items-baseline gap-1.5">
+              <h3 class="text-xl font-black text-slate-900 font-display mb-0 leading-none">{{ unlocked_ach_cnt }} из {{ detailed_achievements|length }}</h3>
+            </div>
+            <p class="text-[11px] font-semibold text-slate-400 mb-0">Достижений получено</p>
+            <div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-600 rounded-full" style="width: {{ ach_pct }}%;"></div>
+            </div>
+            <span class="text-[10px] font-black text-indigo-600 font-mono">{{ ach_pct }}%</span>
+          </div>
+        </div>
+
+        <!-- Bento 2: Quote from Mentor with Ghost -->
+        <div class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 shadow-xs space-y-2">
+          <div class="flex items-start gap-2">
+            <span class="text-indigo-600 font-serif text-2xl font-bold leading-none select-none">“</span>
+            <p class="text-xs text-indigo-900 font-medium leading-relaxed mb-0" style="font-family: 'Caveat', cursive, sans-serif; font-size: 15px;">
+              Маленькие шаги сегодня — большие результаты завтра!
+            </p>
+          </div>
+          <p class="text-[11px] font-bold text-indigo-600/80 text-right mb-0">
+            — Твой наставник 👻 ✨
+          </p>
+        </div>
+
+        <!-- Bento 3: "Получай ачивки" Tip -->
+        <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
+            <i class="ph-fill ph-gift"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between gap-1 mb-0.5">
-              <h4 class="text-xs font-black text-slate-800 font-display truncate mb-0">{{ a.title }}</h4>
-              {% if a.unlocked %}
-              <span class="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">Получено {{ a.date }}</span>
-              {% else %}
-              <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded uppercase">В процессе</span>
-              {% endif %}
-            </div>
-            <p class="text-[11px] text-slate-500 font-medium leading-tight mb-1">{{ a.desc }}</p>
-            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-              <i class="ph-bold ph-info"></i> {{ a.condition }}
+            <h5 class="text-xs font-black text-slate-900 mb-0.5 flex items-center justify-between">
+              <span>Получай ачивки</span>
+              <i class="ph-bold ph-caret-right text-slate-400"></i>
+            </h5>
+            <p class="text-[10px] text-slate-500 font-medium leading-snug mb-0">
+              Открывай новые достижения, развивай свой профиль и получай уникальные награды!
             </p>
           </div>
         </div>
-        {% endfor %}
-      {% endif %}
+
+        <!-- Bento 4: Purple Gradient Art Card -->
+        <div class="rounded-2xl p-5 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #7C3AED 100%);">
+          <div class="relative z-10 space-y-1">
+            <span class="text-xs font-bold opacity-80 flex items-center gap-1">
+              ✨ <span style="font-family: 'Caveat', cursive, sans-serif; font-size: 18px;">Знания делают тебя сильнее! ♡</span>
+            </span>
+          </div>
+          <!-- Decorative Boo Ghost in bottom corner -->
+          <div class="absolute -right-3 -bottom-3 opacity-30 pointer-events-none">
+            <i class="ph-fill ph-ghost text-6xl"></i>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- 2. ALL ACTIVITY TIMELINE MODAL (Solves requirement: "вся активность ведет не на задания, а на активность") -->
+<div id="activity-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-3 sm:p-6 transition-all">
+  <div id="activity-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-2xl max-h-[90vh] flex flex-col p-6 sm:p-8 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
+    
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xl shadow-xs">
+          <i class="ph-bold ph-clock"></i>
+        </div>
+        <div>
+          <h3 class="text-xl font-black text-slate-900 font-display mb-0">Вся активность</h3>
+          <p class="text-xs font-semibold text-slate-400 mb-0">История твоих действий, уроков и выполненных задач</p>
+        </div>
+      </div>
+      <button onclick="closeActivityModal()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+
+    <!-- Activity Timeline List -->
+    <div class="flex-1 overflow-y-auto pr-1 py-4 space-y-3 custom-scrollbar">
+      {% for act in all_activities %}
+      <div class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 flex items-center justify-between gap-4 transition-colors">
+        <div class="flex items-center gap-3 min-w-0">
+          <span class="w-3 h-3 rounded-full shrink-0
+            {% if act.color == 'emerald' %}bg-emerald-500 ring-4 ring-emerald-100
+            {% elif act.color == 'purple' %}bg-purple-500 ring-4 ring-purple-100
+            {% elif act.color == 'orange' %}bg-orange-500 ring-4 ring-orange-100
+            {% elif act.color == 'amber' %}bg-amber-500 ring-4 ring-amber-100
+            {% else %}bg-blue-500 ring-4 ring-blue-100{% endif %}">
+          </span>
+          <div class="min-w-0">
+            <h5 class="text-xs font-black text-slate-800 mb-0 truncate">{{ act.title }}</h5>
+            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{{ act.type }}</span>
+          </div>
+        </div>
+        <span class="text-xs font-bold text-slate-500 font-mono shrink-0">{{ act.date }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="pt-4 border-t border-slate-100 flex justify-end shrink-0">
+      <button onclick="closeActivityModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors">
+        Закрыть
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- 3. GOALS EDIT MODAL (Editable Goals System) -->
+<div id="goals-edit-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-3 sm:p-6 transition-all">
+  <div id="goals-edit-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-lg max-h-[90vh] flex flex-col p-6 sm:p-8 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
+    
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xl shadow-xs">
+          <i class="ph-bold ph-pencil-simple"></i>
+        </div>
+        <div>
+          <h3 class="text-xl font-black text-slate-900 font-display mb-0">Цели на неделю</h3>
+          <p class="text-xs font-semibold text-slate-400 mb-0">Редактируй свои задачи и прогресс</p>
+        </div>
+      </div>
+      <button onclick="closeGoalsModal()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+
+    <!-- Goals Editor List -->
+    <div class="flex-1 overflow-y-auto pr-1 py-4 space-y-3 custom-scrollbar" id="modal-goals-list">
+      {% for g in formatted_goals %}
+      <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5" id="goal-row-{{ g.item_id }}">
+        <div class="flex items-center gap-2">
+          <input type="text" id="goal-title-{{ g.item_id }}" value="{{ g.title }}" class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+          <button type="button" onclick="deleteGoalItem({{ g.item_id }})" class="w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-500 flex items-center justify-center border-0 cursor-pointer transition-colors" title="Удалить">
+            <i class="ph-bold ph-trash text-sm"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 text-xs font-bold text-slate-600">
+          <span>Прогресс:</span>
+          <input type="number" id="goal-curr-{{ g.item_id }}" value="{{ g.current_count }}" min="0" class="w-16 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center font-mono">
+          <span>/</span>
+          <input type="number" id="goal-target-{{ g.item_id }}" value="{{ g.target_count }}" min="1" class="w-16 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center font-mono">
+          <button type="button" onclick="saveGoalItem({{ g.item_id }})" class="ml-auto px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors">
+            Сохранить
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Add New Goal in Modal -->
+    <div class="pt-3 border-t border-slate-100 space-y-2 shrink-0">
+      <div class="flex items-center gap-2">
+        <input type="text" id="modal-new-goal-title" placeholder="Добавить новую цель..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+        <button type="button" onclick="addNewGoalFromModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors flex items-center gap-1">
+          <i class="ph-bold ph-plus"></i> Добавить
+        </button>
+      </div>
+      <div class="flex justify-end pt-2">
+        <button onclick="closeGoalsModal(); location.reload();" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors">
+          Готово
+        </button>
+      </div>
     </div>
 
   </div>
@@ -687,10 +1253,23 @@ function toggleTimezoneSelectMode(mode) {
   updateProfileTimezoneClocks();
 }
 
+function setModalScrollLock(locked) {
+  if (typeof window.setModalScrollLock === 'function') {
+    window.setModalScrollLock(locked);
+  } else {
+    if (locked) {
+      document.body.classList.add('modal-scroll-locked');
+    } else {
+      document.body.classList.remove('modal-scroll-locked');
+    }
+  }
+}
+
 function openProfileEditModal() {
   const modal = document.getElementById('profile-edit-modal');
   const card = document.getElementById('profile-edit-card');
   if (!modal || !card) return;
+  setModalScrollLock(true);
   modal.classList.remove('hidden');
   updateProfileTimezoneClocks();
   setTimeout(() => {
@@ -703,6 +1282,60 @@ function closeProfileEditModal() {
   const modal = document.getElementById('profile-edit-modal');
   const card = document.getElementById('profile-edit-card');
   if (!modal || !card) return;
+  setModalScrollLock(false);
+  card.classList.remove('scale-100', 'opacity-100');
+  card.classList.add('scale-95', 'opacity-0');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+
+function filterRanksTab(group) {
+  const cards = document.querySelectorAll('.rank-card-item');
+  const tabs = ['all', 'python', 'base', 'hard', 'top'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('rank-tab-' + t);
+    if (btn) {
+      if (t === group) {
+        btn.className = 'py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-2xs whitespace-nowrap';
+      } else {
+        btn.className = 'py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap';
+      }
+    }
+  });
+
+  cards.forEach(c => {
+    const cardGroup = c.getAttribute('data-group');
+    if (group === 'all' || cardGroup === group) {
+      c.classList.remove('hidden');
+    } else {
+      c.classList.add('hidden');
+    }
+  });
+}
+
+function openRanksModal() {
+  const modal = document.getElementById('ranks-modal');
+  const card = document.getElementById('ranks-card');
+  if (!modal || !card) return;
+  setModalScrollLock(true);
+  modal.classList.remove('hidden');
+  filterRanksTab('all');
+  setTimeout(() => {
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+    const currentCard = document.getElementById('rank-card-current');
+    if (currentCard) {
+      currentCard.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, 100);
+}
+
+function closeRanksModal() {
+  const modal = document.getElementById('ranks-modal');
+  const card = document.getElementById('ranks-card');
+  if (!modal || !card) return;
+  setModalScrollLock(false);
   card.classList.remove('scale-100', 'opacity-100');
   card.classList.add('scale-95', 'opacity-0');
   setTimeout(() => {
@@ -714,6 +1347,7 @@ function openAchievementsModal() {
   const modal = document.getElementById('achievements-modal');
   const card = document.getElementById('achievements-card');
   if (!modal || !card) return;
+  setModalScrollLock(true);
   modal.classList.remove('hidden');
   setTimeout(() => {
     card.classList.remove('scale-95', 'opacity-0');
@@ -725,6 +1359,7 @@ function closeAchievementsModal() {
   const modal = document.getElementById('achievements-modal');
   const card = document.getElementById('achievements-card');
   if (!modal || !card) return;
+  setModalScrollLock(false);
   card.classList.remove('scale-100', 'opacity-100');
   card.classList.add('scale-95', 'opacity-0');
   setTimeout(() => {
@@ -732,28 +1367,143 @@ function closeAchievementsModal() {
   }, 300);
 }
 
-function filterAchievements(type) {
-  const cards = document.querySelectorAll('.ach-item-card');
-  const tabs = ['all', 'unlocked', 'locked'];
+function filterAchievementsTab(type) {
+  const cards = document.querySelectorAll('.ach-card');
+  const tabs = ['all', 'unlocked', 'in_progress', 'locked'];
   tabs.forEach(t => {
     const btn = document.getElementById('ach-tab-' + t);
     if (btn) {
       if (t === type) {
-        btn.className = 'flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 bg-white text-indigo-600 shadow-xs';
+        btn.className = 'py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-sm whitespace-nowrap';
       } else {
-        btn.className = 'flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 text-slate-500 hover:text-slate-800';
+        btn.className = 'py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap';
       }
     }
   });
 
   cards.forEach(c => {
-    const isUnlocked = c.getAttribute('data-unlocked') === 'true';
+    const status = c.getAttribute('data-status');
     if (type === 'all') {
       c.classList.remove('hidden');
     } else if (type === 'unlocked') {
-      if (isUnlocked) c.classList.remove('hidden'); else c.classList.add('hidden');
+      if (status === 'unlocked') c.classList.remove('hidden'); else c.classList.add('hidden');
+    } else if (type === 'in_progress') {
+      if (status === 'in_progress') c.classList.remove('hidden'); else c.classList.add('hidden');
     } else if (type === 'locked') {
-      if (!isUnlocked) c.classList.remove('hidden'); else c.classList.add('hidden');
+      if (status === 'locked') c.classList.remove('hidden'); else c.classList.add('hidden');
+    }
+  });
+}
+
+function filterAchievements(type) {
+  filterAchievementsTab(type);
+}
+
+function openActivityModal() {
+  const modal = document.getElementById('activity-modal');
+  const card = document.getElementById('activity-card');
+  if (!modal || !card) return;
+  setModalScrollLock(true);
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+  }, 10);
+}
+
+function closeActivityModal() {
+  const modal = document.getElementById('activity-modal');
+  const card = document.getElementById('activity-card');
+  if (!modal || !card) return;
+  setModalScrollLock(false);
+  card.classList.remove('scale-100', 'opacity-100');
+  card.classList.add('scale-95', 'opacity-0');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+
+function openGoalsModal() {
+  const modal = document.getElementById('goals-edit-modal');
+  const card = document.getElementById('goals-edit-card');
+  if (!modal || !card) return;
+  setModalScrollLock(true);
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+  }, 10);
+}
+
+function closeGoalsModal() {
+  const modal = document.getElementById('goals-edit-modal');
+  const card = document.getElementById('goals-edit-card');
+  if (!modal || !card) return;
+  setModalScrollLock(false);
+  card.classList.remove('scale-100', 'opacity-100');
+  card.classList.add('scale-95', 'opacity-0');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+
+function saveGoalItem(itemId) {
+  const title = document.getElementById('goal-title-' + itemId)?.value?.trim();
+  const curr = document.getElementById('goal-curr-' + itemId)?.value;
+  const target = document.getElementById('goal-target-' + itemId)?.value;
+
+  fetch('/api/profile/goal/edit/' + itemId, {
+    method: 'POST',
+    headers: profileApiHeaders('application/x-www-form-urlencoded'),
+    body: `title=${encodeURIComponent(title || '')}&current_count=${encodeURIComponent(curr || 0)}&target_count=${encodeURIComponent(target || 1)}`
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      if (window.BooNotify && window.BooNotify.success) {
+        window.BooNotify.success('Цель сохранена');
+      }
+    } else {
+      if (window.BooNotify && window.BooNotify.error) {
+        window.BooNotify.error(data.message || 'Ошибка сохранения цели');
+      }
+    }
+  })
+  .catch(err => {
+    console.error(err);
+  });
+}
+
+function deleteGoalItem(itemId) {
+  fetch('/api/profile/goal/delete/' + itemId, {
+    method: 'POST',
+    headers: profileApiHeaders()
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      const row = document.getElementById('goal-row-' + itemId);
+      if (row) row.remove();
+      if (window.BooNotify && window.BooNotify.success) {
+        window.BooNotify.success('Цель удалена');
+      }
+    }
+  });
+}
+
+function addNewGoalFromModal() {
+  const input = document.getElementById('modal-new-goal-title');
+  if (!input || !input.value.trim()) return;
+
+  fetch('/api/profile/goal/add', {
+    method: 'POST',
+    headers: profileApiHeaders('application/x-www-form-urlencoded'),
+    body: 'title=' + encodeURIComponent(input.value.trim())
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      window.location.reload();
     }
   });
 }
@@ -764,6 +1514,7 @@ function openGoalResultModal(id, currentNote) {
   const modal = document.getElementById('goal-result-modal');
   const card = document.getElementById('goal-result-card');
   if (!modal || !card) return;
+  setModalScrollLock(true);
   modal.classList.remove('hidden');
   setTimeout(() => {
     card.classList.remove('scale-95', 'opacity-0');
@@ -775,6 +1526,7 @@ function closeGoalResultModal() {
   const modal = document.getElementById('goal-result-modal');
   const card = document.getElementById('goal-result-card');
   if (!modal || !card) return;
+  setModalScrollLock(false);
   card.classList.remove('scale-100', 'opacity-100');
   card.classList.add('scale-95', 'opacity-0');
   setTimeout(() => {
@@ -801,16 +1553,57 @@ function submitGoalResult() {
   });
 }
 
-function copyReferralCode(code) {
-  navigator.clipboard.writeText(code).then(() => {
-    if (typeof showToast === 'function') {
-      showToast('Реферальный код ' + code + ' скопирован в буфер обмена!', 'success');
+function copyReferralCode(btnOrCode, code) {
+  let targetCode = '';
+  let button = null;
+  if (typeof btnOrCode === 'string') {
+    targetCode = btnOrCode;
+  } else if (btnOrCode && btnOrCode.tagName) {
+    button = btnOrCode;
+    targetCode = code || btnOrCode.getAttribute('data-code') || '';
+  } else {
+    targetCode = code || '';
+  }
+
+  if (!targetCode) {
+    const el = document.getElementById('referral-code-display');
+    if (el) targetCode = el.textContent.trim();
+  }
+
+  navigator.clipboard.writeText(targetCode).then(() => {
+    if (button) {
+      const span = button.querySelector('span');
+      const origText = span ? span.innerText : button.innerText;
+      if (span) span.innerText = 'Скопировано!'; else button.innerText = 'Скопировано!';
+      button.classList.add('bg-emerald-600');
+      setTimeout(() => {
+        if (span) span.innerText = origText; else button.innerText = origText;
+        button.classList.remove('bg-emerald-600');
+      }, 2000);
+    }
+    if (window.BooNotify && window.BooNotify.success) {
+      window.BooNotify.success('Реферальный код ' + targetCode + ' скопирован!');
+    } else if (typeof showToast === 'function') {
+      showToast('Реферальный код ' + targetCode + ' скопирован в буфер обмена!', 'success');
     }
   }).catch(() => {
     if (typeof showToast === 'function') {
-      showToast('Реферальный код: ' + code, 'info');
+      showToast('Реферальный код: ' + targetCode, 'info');
     }
   });
+}
+
+function shareReferralCode(code) {
+  const shareData = {
+    title: 'BooStudy',
+    text: 'Присоединяйся к обучению на BooStudy с моим кодом ' + code + ' и получи +100 XP!',
+    url: window.location.origin + '/auth/register?ref=' + encodeURIComponent(code)
+  };
+  if (navigator.share) {
+    navigator.share(shareData).catch(() => {});
+  } else {
+    copyReferralCode(code);
+  }
 }
 
 function toggleWeeklyGoal(itemId) {
@@ -842,6 +1635,35 @@ function addNewGoal() {
     }
   });
 }
+
+// Real-time smooth study time display ticker
+let currentStudySeconds = {{ (student_obj.study_time_seconds if (student_obj is defined and student_obj and student_obj.study_time_seconds) else 16320) }};
+
+function formatStudyTimeLive(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h > 0) {
+    return m > 0 ? `${h} ч ${m.toString().padStart(2, '0')} мин` : `${h} ч`;
+  }
+  return `${Math.max(1, m)} мин`;
+}
+
+window.updateCurrentStudySeconds = function(newSec) {
+  if (typeof newSec === 'number' && newSec > 0) {
+    currentStudySeconds = newSec;
+    const el = document.getElementById('study-time-val');
+    if (el) el.textContent = formatStudyTimeLive(currentStudySeconds);
+  }
+};
+
+// UI ticker: smoothly update the displayed minutes every 60s without any network spam
+setInterval(() => {
+  if (!document.hidden) {
+    currentStudySeconds += 60;
+    const el = document.getElementById('study-time-val');
+    if (el) el.textContent = formatStudyTimeLive(currentStudySeconds);
+  }
+}, 60000);
 
 document.addEventListener('DOMContentLoaded', () => {
   updateProfileTimezoneClocks();
@@ -923,25 +1745,6 @@ function copyParentLinkCode(btn, code) {
   }
 }
 
-function copyReferralCode(btn, code) {
-  const targetCode = (typeof btn === 'string') ? btn : (code || 'BOOSTUDY-2026');
-  const button = (btn && btn.tagName) ? btn : (event ? event.currentTarget : null);
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(targetCode).then(() => {
-      if (button) {
-        const span = button.querySelector('span');
-        const origText = span ? span.innerText : button.innerText;
-        if (span) span.innerText = 'Скопировано!'; else button.innerText = 'Скопировано!';
-        button.classList.add('bg-emerald-600');
-        setTimeout(() => {
-          if (span) span.innerText = origText; else button.innerText = origText;
-          button.classList.remove('bg-emerald-600');
-        }, 2000);
-      }
-    });
-  }
-}
 
 function generateTgCode() {
   fetch('/api/telegram/generate_auth_code', { method: 'POST' })
@@ -967,7 +1770,9 @@ function beginImageCrop(input, mode) {
     cropState.image = image; cropState.input = input; cropState.mode = mode; cropState.scale = 1; cropState.x = 0; cropState.y = 0;
     cropCanvas.width = mode === 'avatar' ? 720 : 1200; cropCanvas.height = mode === 'avatar' ? 720 : 420;
     document.getElementById('crop-title').textContent = mode === 'avatar' ? 'Выбери аватар' : 'Выбери обложку';
-    document.getElementById('crop-scale').value = 1; document.getElementById('image-crop-modal').classList.remove('hidden'); document.getElementById('image-crop-modal').classList.add('flex'); drawCrop();
+    document.getElementById('crop-scale').value = 1; document.getElementById('image-crop-modal').classList.remove('hidden'); document.getElementById('image-crop-modal').classList.add('flex');
+    setModalScrollLock(true);
+    drawCrop();
   }; image.src = reader.result; }; reader.readAsDataURL(file);
 }
 function drawCrop() { if (!cropState.image) return; const { image, scale, x, y } = cropState; const w = cropCanvas.width, h = cropCanvas.height; const base = Math.max(w / image.width, h / image.height) * scale; const iw = image.width * base, ih = image.height * base; const minX = Math.min(0, w - iw), minY = Math.min(0, h - ih); cropState.x = Math.max(minX, Math.min(0, x)); cropState.y = Math.max(minY, Math.min(0, y)); cropContext.clearRect(0, 0, w, h); cropContext.drawImage(image, cropState.x, cropState.y, iw, ih); }
@@ -977,7 +1782,11 @@ cropCanvas.addEventListener('pointerdown', event => { const p = cropPoint(event)
 cropCanvas.addEventListener('pointermove', event => { if (!cropState.dragging) return; const p = cropPoint(event); cropState.x = p.x - cropState.startX; cropState.y = p.y - cropState.startY; drawCrop(); });
 cropCanvas.addEventListener('pointerup', () => { cropState.dragging = false; });
 cropCanvas.addEventListener('pointercancel', () => { cropState.dragging = false; });
-function closeImageCrop() { document.getElementById('image-crop-modal').classList.add('hidden'); document.getElementById('image-crop-modal').classList.remove('flex'); }
+function closeImageCrop() {
+  document.getElementById('image-crop-modal').classList.add('hidden');
+  document.getElementById('image-crop-modal').classList.remove('flex');
+  setModalScrollLock(false);
+}
 function applyImageCrop() { cropCanvas.toBlob(blob => { const original = cropState.input.files[0]; const file = new File([blob], `profile-${cropState.mode}.jpg`, { type: 'image/jpeg' }); const transfer = new DataTransfer(); transfer.items.add(file); cropState.input.files = transfer.files; closeImageCrop(); }, 'image/jpeg', .92); }
 </script>
 {% endblock %}

@@ -71,6 +71,47 @@ def _lesson_balance_units(duration_minutes: int | None) -> int:
         duration = 60
     return max(1, ceil(duration / 60))
 
+
+def _deduct_student_lesson_balance(lesson: Lesson) -> tuple[int, int, str] | None:
+    """
+    Автоматическое и идемпотентное списание баланса занятий после проведения урока.
+    Списывает из student.lessons_balance и (если есть активная подписка) lessons_remaining.
+    Возвращает кортеж (before_balance, after_balance, reason) для уведомления или None.
+    """
+    if not lesson or getattr(lesson, 'balance_deducted', False):
+        return None
+
+    student = lesson.student
+    if not student:
+        lesson.balance_deducted = True
+        return None
+
+    spent = _lesson_balance_units(lesson.duration)
+    before_balance = student.lessons_balance if student.lessons_balance is not None else 0
+    after_balance = before_balance - spent
+    student.lessons_balance = after_balance
+
+    if student.user_id:
+        try:
+            from app.models import UserSubscription
+            active_sub = UserSubscription.query.filter_by(
+                user_id=student.user_id,
+                status='active'
+            ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
+            if active_sub and active_sub.lessons_remaining is not None:
+                active_sub.lessons_remaining = max(0, active_sub.lessons_remaining - spent)
+        except Exception as e:
+            logger.warning("Could not decrement subscription lessons_remaining: %s", e)
+
+    lesson.balance_deducted = True
+    topic_str = f" ({lesson.topic})" if lesson.topic else ""
+    reason = f'Списание за проведённый урок #{lesson.lesson_id}{topic_str}'
+    logger.info(
+        "Deducted %s lesson balance unit(s) for student %s (user %s): %s -> %s for lesson %s",
+        spent, student.student_id, student.user_id, before_balance, after_balance, lesson.lesson_id
+    )
+    return (before_balance, after_balance, reason)
+
 def _upsert_gradebook_from_lesson_review(lesson: Lesson, assignment_type: str, payload: dict, actor_user_id: int | None = None) -> None:
     """
     Создаём/обновляем запись журнала по итогу проверки урока (классная комната).
@@ -301,10 +342,30 @@ def lesson_start(lesson_id):
     """Начало урока: фиксируем started_at, опционально отмечаем опоздание."""
     from core.db_models import moscow_now
     lesson = Lesson.query.get_or_404(lesson_id)
+    is_json = request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.content_type == 'application/json' or request.args.get('format') == 'json'
+
+    # Проверяем права: только преподаватель/тьютор/админ/создатель может начать урок
+    is_teacher = (
+        current_user.is_admin()
+        or current_user.is_creator()
+        or has_permission(current_user, 'lesson.manage')
+        or (lesson.student and getattr(lesson.student, 'tutor_id', None) == current_user.id)
+        or (lesson.student and getattr(lesson.student, 'mentor_id', None) == current_user.id)
+        or getattr(lesson, 'tutor_id', None) == current_user.id
+        or _lesson_studio_is_teacher()
+    )
+    if not is_teacher:
+        if is_json:
+            return jsonify({'success': False, 'error': 'Только преподаватель может начать урок'}), 403
+        abort(403)
+
     lesson.status = 'in_progress'
     now = moscow_now()
     lesson.started_at = now.replace(tzinfo=None)
     mark_late = request.form.get('student_late') in ('1', 'true', 'on', 'yes')
+    if not mark_late and request.is_json:
+        payload = request.get_json(silent=True) or {}
+        mark_late = bool(payload.get('student_late'))
     if mark_late:
         lesson.student_late = True
     elif lesson.lesson_date:
@@ -325,14 +386,24 @@ def lesson_start(lesson_id):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
+        if is_json:
+            return jsonify({'success': False, 'error': str(e)}), 500
         raise
     try:
         from app.telegram.notifications import notify_lesson_started_for_lesson
         notify_lesson_started_for_lesson(int(lesson.lesson_id), actor_user_id=current_user.id)
     except Exception:
         logger.warning('notify_lesson_started_for_lesson after lesson_start failed', exc_info=True)
-    flash(f'Урок начат! Используй зеленую панель сверху для управления уроком.', 'success')
-    return redirect(url_for('students.student_profile', student_id=lesson.student_id))
+
+    if is_json:
+        return jsonify({
+            'success': True,
+            'status': lesson.status,
+            'started_at': lesson.started_at.isoformat() if lesson.started_at else None
+        })
+
+    flash('Урок начат!', 'success')
+    return redirect(url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id))
 
 @lessons_bp.route('/lesson/<int:lesson_id>/complete', methods=['POST'])
 @login_required
@@ -363,26 +434,7 @@ def lesson_complete(lesson_id):
             logger.warning(f"Ошибка при обновлении времени урока {lesson_id}: {e}")
     
     lesson.status = 'completed'
-
-    try:
-        if lesson.student and lesson.student.user_id:
-            from app.models import UserSubscription
-            active_sub = UserSubscription.query.filter_by(
-                user_id=lesson.student.user_id,
-                status='active'
-            ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
-            balance_notice = None
-            if active_sub and active_sub.lessons_remaining is not None and active_sub.lessons_remaining > 0:
-                before = active_sub.lessons_remaining
-                spent = _lesson_balance_units(lesson.duration)
-                active_sub.lessons_remaining = max(0, active_sub.lessons_remaining - spent)
-                logger.info(
-                    f"Decreased lessons_remaining for user {lesson.student.user_id}: "
-                    f"{before} -> {active_sub.lessons_remaining} (spent={spent})"
-                )
-                balance_notice = (before, active_sub.lessons_remaining, f'Списание после завершения урока #{lesson.lesson_id}')
-    except Exception as e:
-        logger.warning(f"Could not decrease lessons_remaining for lesson {lesson_id}: {e}")
+    balance_notice = _deduct_student_lesson_balance(lesson)
 
     try:
         db.session.commit()
@@ -437,22 +489,7 @@ def auto_complete_overdue_lessons():
             if now_naive < threshold:
                 continue
             lesson.status = 'completed'
-            balance_notice = None
-            if lesson.student and lesson.student.user_id:
-                from app.models import UserSubscription
-                active_sub = UserSubscription.query.filter_by(
-                    user_id=lesson.student.user_id,
-                    status='active'
-                ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
-                if active_sub and active_sub.lessons_remaining is not None and active_sub.lessons_remaining > 0:
-                    before = active_sub.lessons_remaining
-                    spent = _lesson_balance_units(lesson.duration)
-                    active_sub.lessons_remaining = max(0, active_sub.lessons_remaining - spent)
-                    logger.info(
-                        f"Auto-completed lesson {lesson.lesson_id}, decreased lessons_remaining for user {lesson.student.user_id}: "
-                        f"{before} -> {active_sub.lessons_remaining} (spent={spent})"
-                    )
-                    balance_notice = (before, active_sub.lessons_remaining, f'Списание после авто-завершения урока #{lesson.lesson_id}')
+            balance_notice = _deduct_student_lesson_balance(lesson)
             db.session.commit()
             if balance_notice and lesson.student and lesson.student.user_id:
                 try:
@@ -972,6 +1009,7 @@ def lesson_studio_finish(lesson_id: int):
     timer['running'] = False
     state['timer'] = timer
     lesson.status = 'completed'
+    balance_notice = _deduct_student_lesson_balance(lesson)
     lesson.homework = state['outcome']['homework'] or lesson.homework
     outcome_text = '\n'.join(
         part for part in (
@@ -1050,6 +1088,20 @@ def lesson_studio_finish(lesson_id: int):
         db.session.rollback()
         logger.warning('Unable to send lesson studio outcome notification', exc_info=True)
 
+    if balance_notice and lesson.student and lesson.student.user_id:
+        try:
+            from app.telegram.notifications import notify_lesson_balance_changed
+            before, after, reason = balance_notice
+            notify_lesson_balance_changed(
+                student_user_id=int(lesson.student.user_id),
+                before=before,
+                after=after,
+                reason=reason,
+                source='lesson',
+            )
+        except Exception:
+            logger.warning('Unable to notify student of lesson balance change after studio finish', exc_info=True)
+
     # Награждение ученика за успешное прохождение урока (XP, стрик, достижения)
     try:
         from app.utils.gamification_service import reward_lesson_completion
@@ -1073,6 +1125,35 @@ def lesson_studio_student_notes_save(lesson_id: int):
     lesson.student_notes = notes
     db.session.commit()
     return jsonify({'success': True, 'notes': notes})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/status', methods=['GET'])
+@login_required
+def lesson_status_get(lesson_id: int):
+    """Возвращает текущий статус урока (для поллинга в комнате ожидания и UI)."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    student = lesson.student
+    can_access = can_user_access_student(
+        current_user,
+        student_user_id=getattr(student, 'user_id', None),
+        student_platform_id=getattr(student, 'platform_id', None),
+    )
+    if not can_access and current_user.is_student():
+        try:
+            can_access = int(current_user.id) == int(getattr(student, 'user_id', None) or getattr(student, 'student_id', None))
+        except Exception:
+            can_access = False
+    if not can_access and not (current_user.is_admin() or current_user.is_creator() or _lesson_studio_is_teacher()):
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+
+    return jsonify({
+        'success': True,
+        'lesson_id': lesson.lesson_id,
+        'status': lesson.status,
+        'is_live': lesson.status == 'in_progress',
+        'is_completed': lesson.status == 'completed',
+        'started_at': lesson.started_at.isoformat() if lesson.started_at else None,
+    })
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/room')
@@ -1099,8 +1180,22 @@ def lesson_interactive_room(lesson_id: int):
         from flask import abort
         abort(403)
 
-    classwork_tasks = get_sorted_assignments(lesson, 'classwork')
     is_studio_teacher = _lesson_studio_is_teacher()
+
+    # Если заходит ученик (не преподаватель), и урок ещё только "запланирован" —
+    # отправляем в комнату ожидания: ученик не может зайти на урок, пока преподаватель его не начнет.
+    if not is_studio_teacher and current_user.is_student() and lesson.status == 'planned':
+        tutor_user = User.query.get(student.tutor_id) if (student and getattr(student, 'tutor_id', None)) else None
+        teacher_name = tutor_user.username if tutor_user else 'Преподаватель КЕГЭ'
+        return render_template(
+            'sandbox/lesson_waiting_room.html',
+            lesson=lesson,
+            student=student,
+            teacher_name=teacher_name,
+            active_page='lesson_room'
+        )
+
+    classwork_tasks = get_sorted_assignments(lesson, 'classwork')
     studio_state = _lesson_studio_state_for_viewer(_lesson_studio_state(lesson), is_teacher=is_studio_teacher)
     tasks_json = json.dumps([
         {

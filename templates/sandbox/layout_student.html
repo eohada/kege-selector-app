@@ -66,6 +66,58 @@
             -ms-overflow-style: none;  
             scrollbar-width: none;  
         }
+
+        /* Custom styled scrollbars */
+        .custom-scrollbar::-webkit-scrollbar,
+        .styled-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track,
+        .styled-scrollbar::-webkit-scrollbar-track {
+            background: #F1F5F9;
+            border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb,
+        .styled-scrollbar::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+        .styled-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+        .custom-scrollbar,
+        .styled-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #CBD5E1 #F1F5F9;
+        }
+
+        /* Modal background lock & prevent scroll chaining */
+        html.modal-scroll-locked,
+        body.modal-scroll-locked,
+        html.overflow-hidden,
+        body.overflow-hidden {
+            overflow: hidden !important;
+            height: 100% !important;
+        }
+        body.modal-scroll-locked {
+            position: fixed !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+        }
+        [id$="-modal"], .modal-scroll-lock, .modal-backdrop-contain, [role="dialog"], .boo-confirm-overlay {
+            overscroll-behavior: contain !important;
+            -webkit-overflow-scrolling: touch;
+        }
+        [id$="-modal"] .overflow-y-auto,
+        [id$="-modal"] .overflow-auto,
+        .custom-scrollbar,
+        .styled-scrollbar {
+            overscroll-behavior: contain !important;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -245,6 +297,148 @@
     <script src="{{ url_for('static', filename='timezone-sync.js') }}?v=20260919-tz-v1"></script>
     {% include 'sandbox/components/_feedback_system.html' %}
     {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
+    <!-- Universal Modal Scroll Lock & Global Student Study Heartbeat (High-Performance, Zero Lag) -->
+    <script>
+      (function() {
+        // 1. Universal Modal Scroll Lock Manager (Zero CPU overhead, no MutationObserver, no passive:false listeners)
+        let scrollLockCount = 0;
+        let savedScrollY = 0;
+
+        function lockScroll() {
+          if (scrollLockCount === 0) {
+            savedScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+            document.body.dataset.savedScrollY = savedScrollY;
+            document.body.style.top = `-${savedScrollY}px`;
+            document.body.classList.add('modal-scroll-locked');
+            document.documentElement.classList.add('modal-scroll-locked');
+          }
+          scrollLockCount++;
+        }
+
+        function unlockScroll() {
+          scrollLockCount = Math.max(0, scrollLockCount - 1);
+          if (scrollLockCount === 0) {
+            const scrollY = parseInt(document.body.dataset.savedScrollY || '0', 10);
+            document.body.classList.remove('modal-scroll-locked');
+            document.documentElement.classList.remove('modal-scroll-locked');
+            document.body.style.top = '';
+            window.scrollTo(0, scrollY);
+          }
+        }
+
+        window.setModalScrollLock = function(locked) {
+          if (locked) {
+            lockScroll();
+          } else {
+            unlockScroll();
+          }
+        };
+        window.lockBodyScroll = lockScroll;
+        window.unlockBodyScroll = unlockScroll;
+
+        // Keyboard accessibility: ESC closes any open modal
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && scrollLockCount > 0) {
+            const openModal = document.querySelector('[id$="-modal"]:not(.hidden), [role="dialog"]:not(.hidden)');
+            if (openModal) {
+              const closeBtn = openModal.querySelector('[onclick*="close"], [data-modal-close], button[title="Закрыть"]');
+              if (closeBtn) {
+                closeBtn.click();
+              } else {
+                openModal.classList.add('hidden');
+                unlockScroll();
+              }
+            }
+          }
+        });
+
+        // Safe delegated click on modal backdrops to close & unlock
+        document.addEventListener('click', function(e) {
+          if (e.target && e.target.matches && e.target.matches('[id$="-modal"]:not(.hidden)')) {
+            const closeBtn = e.target.querySelector('[onclick*="close"], [data-modal-close], button[title="Закрыть"]');
+            if (closeBtn) closeBtn.click();
+          }
+        });
+
+        // 2. Global Student Study Heartbeat (Optimized: activity-based, only active tab, once per 60s)
+        let lastBeat = Date.now();
+        let lastUserActivity = Date.now();
+
+        // Passive listeners to detect real user interaction
+        function onUserActive() {
+          lastUserActivity = Date.now();
+        }
+        ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(function(evt) {
+          window.addEventListener(evt, onUserActive, { passive: true });
+        });
+
+        function sendStudyHeartbeatGlobal(isSyncBeforeUnload) {
+          if (document.hidden && !isSyncBeforeUnload) return;
+
+          const now = Date.now();
+          const isUserActive = (now - lastUserActivity) < 180000; // active within last 3 mins
+          if (!isUserActive && !isSyncBeforeUnload) {
+            lastBeat = now;
+            return;
+          }
+
+          const elapsed = Math.min(120, Math.max(1, Math.round((now - lastBeat) / 1000)));
+          lastBeat = now;
+          if (elapsed < 5 && !isSyncBeforeUnload) return;
+
+          const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+          const bodyData = 'duration_seconds=' + elapsed;
+
+          if (isSyncBeforeUnload && navigator.sendBeacon) {
+            try {
+              const blob = new Blob([bodyData], { type: 'application/x-www-form-urlencoded' });
+              navigator.sendBeacon('/api/study/heartbeat', blob);
+            } catch (e) {}
+            return;
+          }
+
+          fetch('/api/study/heartbeat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'X-CSRFToken': token,
+              'Accept': 'application/json'
+            },
+            body: bodyData,
+            keepalive: isSyncBeforeUnload === true
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data && data.status === 'ok' && data.study_time_display) {
+              const el = document.getElementById('study-time-val');
+              if (el) el.textContent = data.study_time_display;
+              if (window.updateCurrentStudySeconds && data.total_seconds) {
+                window.updateCurrentStudySeconds(data.total_seconds);
+              }
+            }
+          })
+          .catch(function() {});
+        }
+
+        // Send heartbeat at most once every 60 seconds (1 request per minute, 0 CPU impact)
+        setInterval(function() {
+          sendStudyHeartbeatGlobal(false);
+        }, 60000);
+
+        // Sync remaining study seconds when tab is hidden or closed
+        window.addEventListener('visibilitychange', function() {
+          if (document.hidden) {
+            sendStudyHeartbeatGlobal(true);
+          } else {
+            lastBeat = Date.now();
+            lastUserActivity = Date.now();
+          }
+        });
+        window.addEventListener('pagehide', function() {
+          sendStudyHeartbeatGlobal(true);
+        });
+      })();
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

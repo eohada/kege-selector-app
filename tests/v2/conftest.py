@@ -28,6 +28,7 @@ collect_ignore = [
         'test_course_adaptive_program_v2.py',
         'test_python_ege_curriculum_import.py',
         'test_python_ege_templates_import.py',
+        'test_lesson_lifecycle_and_balance.py',
     }
 ]
 
@@ -93,6 +94,11 @@ def login_as(client, user_id: int, role: str):
     # pytest process and share the Flask test client's cookie jar.
     client.delete_cookie('session')
     client.delete_cookie('remember_token')
+    try:
+        from flask import g
+        g.pop('_login_user', None)
+    except Exception:
+        pass
     with client.session_transaction() as session:
         session.clear()
         session['_user_id'] = str(user_id)

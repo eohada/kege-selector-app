@@ -580,6 +580,7 @@ class Student(db.Model):
     # Опыт и Уровни
     xp = db.Column(db.Integer, default=0, nullable=False)
     level = db.Column(db.Integer, default=1, nullable=False)
+    study_time_seconds = db.Column(db.Integer, default=0, nullable=False, server_default='0')
 
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
@@ -1030,6 +1031,7 @@ class Lesson(db.Model):
     student_late = db.Column(db.Boolean, default=False, nullable=False)  # Ученик опоздал на урок
     started_at = db.Column(db.DateTime(timezone=True), nullable=True)  # Фактическое время начала (для авто-завершения через 1 ч)
     tg_reminder_30min_sent = db.Column(db.Boolean, default=False, nullable=False)  # Отправлено ли напоминание за 30 мин
+    balance_deducted = db.Column(db.Boolean, default=False, nullable=False)  # Списан ли баланс занятий ученика
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now)
     updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 

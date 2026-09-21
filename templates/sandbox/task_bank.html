@@ -3,8 +3,8 @@
 {% block sandbox_content %}
 <meta name="csrf-token" content="{{ csrf_token() if csrf_token else '' }}">
 
-<main class="min-h-screen w-full bg-slate-50/50 p-6 pl-[7.5rem] pb-28">
-  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+<main class="min-h-screen flex-1 relative z-10 bg-slate-50/50 p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-28 pt-4 sm:pt-6 overflow-x-hidden">
+  <div class="max-w-[1600px] mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
     <header class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8">
       <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
         <div class="space-y-2">

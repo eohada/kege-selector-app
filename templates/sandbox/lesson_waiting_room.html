@@ -1,0 +1,166 @@
+{% extends "sandbox/layout_student.html" %}
+
+{% block title %}Ожидание урока · {{ lesson.topic or 'Занятие' }}{% endblock %}
+
+{% block sandbox_content %}
+<div class="max-w-[800px] mx-auto py-8 sm:py-12 px-4">
+  <!-- Хлебные крошки / Навигация назад -->
+  <div class="mb-6 flex items-center justify-between">
+    <a href="{{ url_for('main.student_dashboard') }}" class="inline-flex items-center gap-2 text-xs font-black text-slate-500 hover:text-indigo-600 transition no-underline group">
+      <span class="w-8 h-8 rounded-xl bg-white border-2 border-slate-200 shadow-[0_2px_0_#E2E8F0] flex items-center justify-center text-slate-600 group-hover:border-indigo-300 group-hover:text-indigo-600 transition">
+        <i class="ph-bold ph-arrow-left"></i>
+      </span>
+      <span>В дашборд</span>
+    </a>
+    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+      <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+      Запланирован
+    </span>
+  </div>
+
+  <!-- Главная карточка ожидания (Tactile 3D Bento Card) -->
+  <div class="relative overflow-hidden rounded-[2.5rem] border-2 border-slate-200 bg-white p-6 sm:p-10 shadow-[0_6px_0_#DAE1E9] text-center">
+    
+    <!-- Декоративный фоновый элемент -->
+    <div class="absolute -top-24 -right-24 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl pointer-events-none -z-0"></div>
+    <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-amber-50/50 rounded-full blur-3xl pointer-events-none -z-0"></div>
+
+    <div class="relative z-10 flex flex-col items-center">
+      
+      <!-- Пульсирующий радар-индикатор -->
+      <div class="relative my-4 flex items-center justify-center">
+        <div class="w-24 h-24 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 relative">
+          <span class="absolute inset-0 rounded-full bg-indigo-200 opacity-60 animate-ping" style="animation-duration: 2.5s;"></span>
+          <span class="absolute -inset-3 rounded-full border-2 border-dashed border-indigo-200 animate-spin" style="animation-duration: 20s;"></span>
+          <i class="ph-fill ph-chalkboard-teacher text-4xl relative z-10"></i>
+        </div>
+      </div>
+
+      <!-- Заголовок и статус -->
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold mb-3">
+        <i class="ph-bold ph-hourglass-medium text-amber-500"></i>
+        <span>Комната ожидания урока</span>
+      </div>
+
+      <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight max-w-lg mb-2">
+        {{ lesson.topic or 'Индивидуальное занятие' }}
+      </h1>
+
+      <p class="text-sm font-semibold text-slate-500 max-w-md mx-auto mb-6">
+        Урок ещё не начался. Преподаватель скоро откроет интерактивную комнату, и страница подключится автоматически.
+      </p>
+
+      <!-- Информационные плашки: Преподаватель и Время -->
+      <div class="w-full max-w-md grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8 text-left">
+        <!-- Преподаватель -->
+        <div class="rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] p-3.5 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0 font-black text-sm">
+            <i class="ph-bold ph-user"></i>
+          </div>
+          <div class="min-w-0">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Преподаватель</span>
+            <strong class="text-xs font-black text-slate-800 truncate block">{{ teacher_name }}</strong>
+          </div>
+        </div>
+
+        <!-- Запланированное время -->
+        <div class="rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] p-3.5 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0 font-black text-sm">
+            <i class="ph-bold ph-clock"></i>
+          </div>
+          <div class="min-w-0">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Начало</span>
+            <strong class="text-xs font-black text-slate-800 truncate block">
+              {{ lesson.lesson_date|user_dt('%d.%m в %H:%M') if lesson.lesson_date else 'По согласованию' }}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Статус синхронизации и кнопки -->
+      <div class="w-full max-w-md flex flex-col items-center gap-3">
+        <div id="waiting-status" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="waiting-status-text">Ожидаем сигнал преподавателя…</span>
+        </div>
+
+        <div class="flex items-center gap-3 w-full">
+          <a href="{{ url_for('main.student_dashboard') }}" class="flex-1 py-3 px-4 rounded-2xl border-2 border-slate-200 border-b-4 bg-white hover:bg-slate-50 text-slate-700 text-xs font-black shadow-[0_4px_0_#CBD5E1] active:translate-y-1 active:shadow-none transition text-center no-underline">
+            В кабинет
+          </a>
+          <button id="manual-refresh-btn" type="button" class="flex-1 py-3 px-4 rounded-2xl border-2 border-indigo-700 border-b-4 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-[0_4px_0_#3730A3] active:translate-y-1 active:shadow-none transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="ph-bold ph-arrows-clockwise text-sm"></i> Проверить
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  const lessonId = {{ lesson.lesson_id }};
+  const statusText = document.getElementById('waiting-status-text');
+  const refreshBtn = document.getElementById('manual-refresh-btn');
+  let pollInterval = null;
+  let isChecking = false;
+
+  async function checkLessonStatus() {
+    if (isChecking) return;
+    isChecking = true;
+    try {
+      const resp = await fetch(`/lesson/${lessonId}/status`, {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.success && data.status === 'in_progress') {
+          if (statusText) {
+            statusText.textContent = 'Преподаватель начал урок! Подключаем вас…';
+            statusText.parentElement.className = 'inline-flex items-center gap-2 text-xs font-black text-emerald-700 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-300';
+          }
+          if (pollInterval) clearInterval(pollInterval);
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
+          return;
+        } else if (data && data.status === 'completed') {
+          if (statusText) {
+            statusText.textContent = 'Урок завершён.';
+          }
+          if (pollInterval) clearInterval(pollInterval);
+          setTimeout(() => {
+            window.location.reload();
+          }, 1200);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Waiting room status check error:', err);
+    } finally {
+      isChecking = false;
+    }
+  }
+
+  // Запуск регулярного опроса каждые 3 секунды
+  pollInterval = setInterval(checkLessonStatus, 3000);
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      refreshBtn.disabled = true;
+      const originalText = refreshBtn.innerHTML;
+      refreshBtn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Проверяем...';
+      checkLessonStatus().finally(() => {
+        setTimeout(() => {
+          refreshBtn.disabled = false;
+          refreshBtn.innerHTML = originalText;
+        }, 500);
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

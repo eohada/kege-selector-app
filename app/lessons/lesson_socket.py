@@ -21,14 +21,24 @@ def register_lesson_socket(socketio) -> None:
     from flask_login import current_user
     from app.utils.relationship_scope import get_confirmed_student_user_ids_for_parent
 
+    def _sync_socket_user() -> None:
+        from flask import g, session
+        sess_uid = session.get('_user_id')
+        cached = getattr(g, '_login_user', None)
+        if cached is not None:
+            if sess_uid is None or str(getattr(cached, 'id', None)) != str(sess_uid):
+                g.pop('_login_user', None)
+
     @socketio.on("connect", namespace="/lesson")
     def _on_connect():
+        _sync_socket_user()
         if not current_user.is_authenticated:
             return False
         return True
 
     @socketio.on("disconnect", namespace="/lesson")
     def _on_disconnect():
+        _sync_socket_user()
         if not current_user.is_authenticated:
             return
         uid = current_user.id
@@ -46,6 +56,7 @@ def register_lesson_socket(socketio) -> None:
 
     @socketio.on("join_lesson", namespace="/lesson")
     def _on_join_lesson(data):
+        _sync_socket_user()
         if not current_user.is_authenticated:
             return
         lesson_id = data.get("lesson_id")
@@ -124,6 +135,7 @@ def register_lesson_socket(socketio) -> None:
 
     @socketio.on("tab_changed", namespace="/lesson")
     def _on_tab_changed(data):
+        _sync_socket_user()
         if not current_user.is_authenticated:
             return
         lesson_id = data.get("lesson_id")

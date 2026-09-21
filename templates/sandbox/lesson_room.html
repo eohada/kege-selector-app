@@ -15,7 +15,17 @@
       <div class="room-controls">
         <div id="os-phases" class="room-timeline" aria-label="Маршрут урока"><button class="room-phase active" data-phase="preparation"><span>1</span>Подготовка</button><i aria-hidden="true"></i><button class="room-phase" data-phase="practice"><span>2</span>Практика</button><i aria-hidden="true"></i><button class="room-phase" data-phase="reflection"><span>3</span>Итог</button></div>
         <div class="room-timer" aria-label="Таймер урока"><i class="ph-bold ph-clock"></i><strong id="os-timer">00:00</strong>{% if is_studio_teacher %}<button id="os-timer-toggle" class="room-icon" aria-label="Запустить таймер"><i class="ph-bold ph-play"></i></button>{% endif %}</div>
-        {% if is_studio_teacher %}<details class="room-teacher-tools"><summary><i class="ph-bold ph-sliders-horizontal"></i> Управление</summary><div><button id="os-laser" class="room-action">Лазер</button><button id="os-follow" class="room-action">Вести ученика</button></div></details><button id="os-finish" class="room-action room-action-primary">Завершить</button>{% endif %}
+        {% if is_studio_teacher %}
+        <details class="room-teacher-tools"><summary><i class="ph-bold ph-sliders-horizontal"></i> Управление</summary><div><button id="os-laser" class="room-action">Лазер</button><button id="os-follow" class="room-action">Вести ученика</button></div></details>
+        {% if lesson.status == 'planned' %}
+        <button id="os-start-lesson" class="room-action room-action-primary" style="background:#059669; border-color:#047857; color:#fff;" title="Начать урок (откроет доступ ученику)"><i class="ph-bold ph-play"></i> Начать урок</button>
+        <button id="os-finish" class="room-action room-action-primary hidden">Завершить</button>
+        {% elif lesson.status == 'in_progress' %}
+        <button id="os-finish" class="room-action room-action-primary">Завершить</button>
+        {% else %}
+        <span class="room-meta-badge" style="background: #e2e8f0; color: #475569;"><i class="ph-bold ph-check-circle"></i> Завершён</span>
+        {% endif %}
+        {% endif %}
         <button id="room-video-toggle" class="room-icon" aria-label="Открыть видеозвонок"><i class="ph-bold ph-video-camera"></i></button>
       </div>
     </header>

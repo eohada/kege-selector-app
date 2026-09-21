@@ -292,7 +292,6 @@ def test_lesson_studio_state_broadcasts_to_the_joined_student(app, role_users):
     student_client = app.test_client()
     login_as(teacher_client, role_users['tutor_id'], 'tutor')
     login_as(student_client, role_users['student_user_id'], 'student')
-
     teacher_socket = app.socketio.test_client(app, namespace='/lesson', flask_test_client=teacher_client)
     student_socket = app.socketio.test_client(app, namespace='/lesson', flask_test_client=student_client)
     assert teacher_socket.is_connected('/lesson')

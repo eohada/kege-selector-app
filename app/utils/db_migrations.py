@@ -897,6 +897,10 @@ def ensure_schema_columns(app):
                 'tg_reminder_30min_sent',
                 'BOOLEAN NOT NULL DEFAULT FALSE' if is_postgres else 'BOOLEAN DEFAULT 0',
             )
+            safe_add_column(
+                'balance_deducted',
+                'BOOLEAN NOT NULL DEFAULT FALSE' if is_postgres else 'BOOLEAN DEFAULT 0',
+            )
 
             _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit=2000)
 
@@ -1016,6 +1020,15 @@ def ensure_schema_columns(app):
                         logger.info(f"Added level to {students_table}")
                     except Exception as e:
                         logger.warning(f"Could not add level: {e}")
+                        db.session.rollback()
+
+                if 'study_time_seconds' not in student_columns:
+                    try:
+                        alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN study_time_seconds INTEGER DEFAULT 0 NOT NULL'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added study_time_seconds to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add study_time_seconds: {e}")
                         db.session.rollback()
 
                 indexes = {idx['name'] for idx in inspector.get_indexes(students_table)}
