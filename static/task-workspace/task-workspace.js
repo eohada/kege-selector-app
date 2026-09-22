@@ -2182,6 +2182,22 @@
                 if (t) t.setAttribute('aria-expanded', 'false');
             });
         }
+        if ((e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) ||
+            (!['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) && !document.activeElement?.isContentEditable)) {
+            if (e.key === 'ArrowLeft') {
+                const prevLink = document.querySelector('.tw-task-navigation a[title*="Предыдущая"]');
+                if (prevLink && prevLink.href) {
+                    e.preventDefault();
+                    prevLink.click();
+                }
+            } else if (e.key === 'ArrowRight') {
+                const nextLink = document.querySelector('.tw-task-navigation a[title*="Следующая"]');
+                if (nextLink && nextLink.href) {
+                    e.preventDefault();
+                    nextLink.click();
+                }
+            }
+        }
     });
 
     notes.addEventListener('input', saveLocal);

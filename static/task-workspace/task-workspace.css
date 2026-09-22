@@ -586,6 +586,12 @@
     line-height: 1 !important;
 }
 
+.tw-stepper-btn i,
+.tw-stepper-btn span,
+.tw-icon-button i {
+    pointer-events: none !important;
+}
+
 .tw-stepper-btn:active:not(:disabled) {
     border-bottom-width: 1px !important;
     transform: translateY(2px) !important;

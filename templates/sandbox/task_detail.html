@@ -120,28 +120,38 @@
                 {% else %}
                   bg-white text-slate-700 hover:bg-slate-50 border-slate-200
                 {% endif %}">
-          <span>№ {{ t.order_index }}</span>
+          <span class="pointer-events-none">№ {{ t.order_index }}</span>
           {% if t.nav_status == 'correct' %}
-            <i class="ph-bold ph-check text-white text-sm"></i>
+            <i class="ph-bold ph-check text-white text-sm pointer-events-none"></i>
           {% elif t.nav_status == 'wrong' %}
-            <i class="ph-bold ph-x text-white text-sm"></i>
+            <i class="ph-bold ph-x text-white text-sm pointer-events-none"></i>
           {% elif t.nav_status == 'partial' %}
-            <i class="ph-bold ph-circle-half text-slate-900 text-sm"></i>
+            <i class="ph-bold ph-circle-half text-slate-900 text-sm pointer-events-none"></i>
           {% elif t.nav_status == 'pending_review' %}
-            <i class="ph-bold ph-clock text-amber-700 text-sm"></i>
+            <i class="ph-bold ph-clock text-amber-700 text-sm pointer-events-none"></i>
           {% elif t.is_correct == True %}
-            <i class="ph-bold ph-check text-white text-sm"></i>
+            <i class="ph-bold ph-check text-white text-sm pointer-events-none"></i>
           {% elif t.is_correct == False %}
-            <i class="ph-bold ph-x text-white text-sm"></i>
+            <i class="ph-bold ph-x text-white text-sm pointer-events-none"></i>
           {% else %}
-            <i class="ph-bold ph-circle text-slate-300 text-sm"></i>
+            <i class="ph-bold ph-circle text-slate-300 text-sm pointer-events-none"></i>
           {% endif %}
         </button>
         {% endfor %}
       </div>
 
-      <div id="task-indicator-text" class="text-xs font-bold text-slate-500 px-2 shrink-0 hidden sm:block">
-        Задача 1 из {{ tasks_data|length }}
+      <div class="flex items-center gap-3 shrink-0">
+        <div id="task-indicator-text" class="text-xs font-bold text-slate-500 px-2 hidden sm:block">
+          Задача 1 из {{ tasks_data|length }}
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button type="button" id="task-prev-btn" onclick="switchTask(currentTaskIndex - 1)" class="w-9 h-9 rounded-xl bg-white border border-slate-200 border-b-[3px] border-b-slate-300 shadow-xs flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:border-indigo-300 active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none" title="Предыдущая задача" aria-label="Предыдущая задача">
+            <i class="ph-bold ph-caret-left text-base pointer-events-none"></i>
+          </button>
+          <button type="button" id="task-next-btn" onclick="switchTask(currentTaskIndex + 1)" class="w-9 h-9 rounded-xl bg-white border border-slate-200 border-b-[3px] border-b-slate-300 shadow-xs flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:border-indigo-300 active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none" title="Следующая задача" aria-label="Следующая задача">
+            <i class="ph-bold ph-caret-right text-base pointer-events-none"></i>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -579,9 +589,19 @@ function switchTask(targetArg) {
   let orderIndex = 1;
   if (typeof targetArg === 'number') {
     orderIndex = targetArg;
+  } else if (targetArg && targetArg.nodeType) {
+    const tabEl = targetArg.closest('[data-task-tab]');
+    if (tabEl && tabEl.dataset && tabEl.dataset.taskTab) {
+      orderIndex = Number(tabEl.dataset.taskTab);
+    }
   } else if (targetArg && targetArg.dataset && targetArg.dataset.taskTab) {
     orderIndex = Number(targetArg.dataset.taskTab);
   }
+
+  const allTabs = document.querySelectorAll('.task-tab-btn');
+  const totalTasks = TASKS_DATA.length || allTabs.length || 1;
+  if (orderIndex < 1) orderIndex = 1;
+  if (orderIndex > totalTasks) orderIndex = totalTasks;
 
   currentTaskIndex = orderIndex;
 
@@ -589,30 +609,46 @@ function switchTask(targetArg) {
   const activeCard = document.getElementById(`task-card-${orderIndex}`);
   if (activeCard) activeCard.classList.remove('hidden');
 
-  document.querySelectorAll('.task-tab-btn').forEach((btn, i) => {
-    const idx = i + 1;
+  allTabs.forEach((btn) => {
+    const idx = Number(btn.dataset.taskTab);
+    const navStatus = btn.dataset.navStatus;
+    const hasColorStatus = navStatus && ['correct', 'wrong', 'partial', 'pending_review', 'completed'].includes(navStatus);
+
     if (idx === orderIndex) {
-      btn.classList.add('active', 'bg-indigo-600', 'text-white', 'border-indigo-700', 'shadow-md', 'font-black');
-      btn.classList.remove('bg-white', 'text-slate-700', 'hover:bg-slate-50');
+      btn.classList.add('active', 'ring-2', 'ring-indigo-600', 'ring-offset-2', 'shadow-md', 'font-black');
+      if (!hasColorStatus) {
+        btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-700');
+        btn.classList.remove('bg-white', 'text-slate-700', 'hover:bg-slate-50', 'border-slate-200');
+      }
     } else {
-      if (!btn.classList.contains('bg-emerald-500') && !btn.classList.contains('bg-rose-500')) {
-        btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-700', 'shadow-md', 'font-black');
-        btn.classList.add('bg-white', 'text-slate-700', 'hover:bg-slate-50');
+      btn.classList.remove('active', 'ring-2', 'ring-indigo-600', 'ring-offset-2', 'shadow-md', 'font-black');
+      if (!hasColorStatus) {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-700');
+        btn.classList.add('bg-white', 'text-slate-700', 'hover:bg-slate-50', 'border-slate-200');
       }
     }
   });
 
-  const indicator = document.getElementById('task-indicator-text');
-  if (indicator) {
-    indicator.textContent = `Задача ${orderIndex} из ${TASKS_DATA.length}`;
+  const prevBtn = document.getElementById('task-prev-btn');
+  const nextBtn = document.getElementById('task-next-btn');
+  if (prevBtn) {
+    prevBtn.disabled = (orderIndex <= 1);
+  }
+  if (nextBtn) {
+    nextBtn.disabled = (orderIndex >= totalTasks);
   }
 
-  renderAttachments(orderIndex);
-  renderChat(orderIndex);
-  loadComments(orderIndex);
+  const indicator = document.getElementById('task-indicator-text');
+  if (indicator) {
+    indicator.textContent = `Задача ${orderIndex} из ${totalTasks}`;
+  }
+
+  try { renderAttachments(orderIndex); } catch (err) { console.error('renderAttachments error:', err); }
+  try { renderChat(orderIndex); } catch (err) { console.error('renderChat error:', err); }
+  try { loadComments(orderIndex); } catch (err) { console.error('loadComments error:', err); }
 
   setTimeout(() => {
-    renderKaTeXNow();
+    try { renderKaTeXNow(); } catch (err) {}
   }, 50);
 }
 
@@ -623,33 +659,38 @@ function renderAttachments(orderIndex) {
   const tData = TASKS_DATA[orderIndex - 1];
   const files = tData ? (tData.attached_files || []) : [];
 
-  if (files.length === 0) {
+  if (!Array.isArray(files) || files.length === 0) {
     container.innerHTML = `<p class="text-xs font-medium text-slate-400 py-2">К этой задаче нет прикрепленных файлов.</p>`;
     return;
   }
 
   let html = '';
   files.forEach(f => {
-    const isXls = f.name.endsWith('.xlsx') || f.name.endsWith('.xls');
+    if (!f) return;
+    const fName = typeof f === 'string' ? f : (f.name || f.filename || f.file_name || 'Файл');
+    const fUrl = typeof f === 'string' ? f : (f.url || f.download_url || '#');
+    const fSize = (typeof f === 'object' && f.size) ? f.size : 'Файл';
+    const lower = String(fName).toLowerCase();
+    const isXls = lower.endsWith('.xlsx') || lower.endsWith('.xls');
     const iconClass = isXls ? 'ph-file-xls text-emerald-600 bg-emerald-50 border-emerald-200' : 'ph-file-text text-indigo-600 bg-indigo-50 border-indigo-200';
-    const downloadUrl = f.url || '#';
+    const iconName = isXls ? 'ph-file-xls' : 'ph-file-text';
 
     html += `
-      <a href="${downloadUrl}" download class="p-3 bg-white border-2 border-slate-200 rounded-xl flex items-center justify-between hover:border-indigo-300 transition-all group no-underline shadow-xs">
+      <a href="${fUrl}" download class="p-3 bg-white border-2 border-slate-200 rounded-xl flex items-center justify-between hover:border-indigo-300 transition-all group no-underline shadow-xs">
         <div class="flex items-center gap-2.5 min-w-0">
           <div class="w-8 h-8 rounded-lg ${iconClass} flex items-center justify-center shrink-0 border">
-            <i class="ph-bold ${iconClass.split(' ')[0]} text-lg"></i>
+            <i class="ph-bold ${iconName} text-lg"></i>
           </div>
           <div class="min-w-0">
-            <h5 class="text-xs font-bold text-slate-800 truncate">${f.name}</h5>
-            <p class="text-[10px] font-medium text-slate-400">${f.size || 'Файл'} • Скачать</p>
+            <h5 class="text-xs font-bold text-slate-800 truncate">${fName}</h5>
+            <p class="text-[10px] font-medium text-slate-400">${fSize} • Скачать</p>
           </div>
         </div>
         <i class="ph-bold ph-download-simple text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
       </a>
     `;
   });
-  container.innerHTML = html;
+  container.innerHTML = html || `<p class="text-xs font-medium text-slate-400 py-2">К этой задаче нет прикрепленных файлов.</p>`;
 }
 
 function renderChat(orderIndex) {
@@ -758,7 +799,9 @@ async function submitSingleTask(btnArg) {
         `;
       }
       if (tabBtn) {
-        tabBtn.className = 'task-tab-btn active px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border bg-emerald-500 text-white border-emerald-600';
+        tabBtn.dataset.navStatus = 'correct';
+        tabBtn.className = 'task-tab-btn active ring-2 ring-indigo-600 ring-offset-2 shadow-md px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border bg-emerald-500 text-white border-emerald-600';
+        tabBtn.innerHTML = `<span class="pointer-events-none">№ ${orderIndex}</span><i class="ph-bold ph-check text-white text-sm pointer-events-none"></i>`;
       }
     } else {
       if (feedbackBox) {
@@ -770,7 +813,9 @@ async function submitSingleTask(btnArg) {
         `;
       }
       if (tabBtn) {
-        tabBtn.className = 'task-tab-btn active px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border bg-rose-500 text-white border-rose-600';
+        tabBtn.dataset.navStatus = 'wrong';
+        tabBtn.className = 'task-tab-btn active ring-2 ring-indigo-600 ring-offset-2 shadow-md px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border bg-rose-500 text-white border-rose-600';
+        tabBtn.innerHTML = `<span class="pointer-events-none">№ ${orderIndex}</span><i class="ph-bold ph-x text-white text-sm pointer-events-none"></i>`;
       }
     }
 
@@ -945,6 +990,20 @@ document.addEventListener('DOMContentLoaded', () => {
       inp.addEventListener('blur', () => saveDraft(true));
     });
   }
+
+  // Keyboard arrow navigation between tasks
+  document.addEventListener('keydown', (e) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable) {
+      return;
+    }
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      switchTask(currentTaskIndex - 1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      switchTask(currentTaskIndex + 1);
+    }
+  });
 
   switchTask(1);
 });

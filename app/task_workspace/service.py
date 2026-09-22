@@ -472,15 +472,22 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         and (str(getattr(item, "value", "") or "").strip() or str(getattr(item, "student_code", "") or "").strip())
     }
 
+    from flask import url_for
+
     def navigation_item(item: AssignmentTask) -> dict[str, Any]:
         return {
             "assignment_task_id": item.assignment_task_id,
             "task_id": item.task_id,
             "position": next(index + 1 for index, candidate in enumerate(ordered_tasks) if candidate.assignment_task_id == item.assignment_task_id),
             "title": (item.task.title if item.task and getattr(item.task, "title", None) else f"Задача {item.task_id}"),
+            "url": url_for(
+                'task_workspace.workspace_page',
+                context_type='submission_task',
+                context_id=submission.submission_id,
+                assignment_task_id=item.assignment_task_id,
+            ),
         }
 
-    from flask import url_for
     tasks_nav = []
     current_nav_status = "unanswered"
     current_is_reviewed = False
