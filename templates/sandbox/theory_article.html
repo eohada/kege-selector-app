@@ -142,6 +142,7 @@
 </style>
 <main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
   <div class="max-w-[1400px] mx-auto w-full space-y-6" id="theory-article" data-block-id="{{ block.id }}" data-progress="{{ state.reading_progress if state else 0 }}" data-last-position="{{ state.last_position if state else 0 }}">
+    <script id="theory-checkpoint-attempts-data" type="application/json">{{ (checkpoint_attempts_data or {}) | tojson | safe }}</script>
     
     <!-- Top Back Link -->
     <a href="{{ back_to_url }}" class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600 shadow-[0_3px_0_#DAE1E9] hover:bg-slate-50 transition no-underline">
@@ -400,9 +401,21 @@
           
           <label class="mt-5 block text-xs font-black uppercase tracking-wider text-slate-500" for="theory-rating-trigger">Оценка материала</label>
           <div class="relative mt-2" id="theory-rating-dropdown">
-            <input type="hidden" id="theory-rating" value="">
+            <input type="hidden" id="theory-rating" value="{{ feedback.rating if feedback and feedback.rating else '' }}">
             <button type="button" id="theory-rating-trigger" class="w-full flex items-center justify-between gap-2 rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] hover:bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-[0_3px_0_#DAE1E9] transition active:translate-y-0.5 cursor-pointer">
-              <span id="theory-rating-label" class="text-slate-500 font-medium">Выберите оценку</span>
+              <span id="theory-rating-label" class="{{ 'text-slate-900 font-bold' if feedback and feedback.rating else 'text-slate-500 font-medium' }}">
+                {% if feedback and feedback.rating %}
+                  {% if feedback.rating == 5 %}5 — Всё понятно
+                  {% elif feedback.rating == 4 %}4 — Почти понятно
+                  {% elif feedback.rating == 3 %}3 — Нужны примеры
+                  {% elif feedback.rating == 2 %}2 — Сложно
+                  {% elif feedback.rating == 1 %}1 — Нужна помощь
+                  {% else %}{{ feedback.rating }}
+                  {% endif %}
+                {% else %}
+                  Выберите оценку
+                {% endif %}
+              </span>
               <i class="ph-bold ph-caret-down text-sm text-slate-400 transition-transform duration-200" id="theory-rating-chevron"></i>
             </button>
             <div id="theory-rating-menu" class="hidden absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl border-2 border-slate-200 bg-white p-1.5 shadow-xl space-y-1">
@@ -445,7 +458,7 @@
           </div>
           
           <label class="mt-4 block text-xs font-black uppercase tracking-wider text-slate-500" for="theory-feedback">Вопрос или комментарий</label>
-          <textarea id="theory-feedback" class="mt-2 min-h-24 w-full rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-400 focus:bg-white transition" placeholder="Что разобрать подробнее на уроке?"></textarea>
+          <textarea id="theory-feedback" class="mt-2 min-h-24 w-full rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-400 focus:bg-white transition" placeholder="Что разобрать подробнее на уроке?">{{ feedback.comment if feedback and feedback.comment else '' }}</textarea>
           <button id="save-feedback" type="button" class="mt-5 w-full rounded-2xl border-b-[4px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 px-4 py-3 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Отправить преподавателю</button>
         </div>
       </div>
@@ -455,16 +468,8 @@
 
   </div>
 </main>
-{% if current_user.is_student() %}<script type="text/plain" data-retired-theory-handler>
-// Keep all theory API calls CSRF-safe, including progress autosave and inline labs.
-const theoryFetch = window.fetch.bind(window);
-window.fetch = (input, init = {}) => {
-  const headers = new Headers(init.headers || {});
-  headers.set('X-CSRFToken', '{{ csrf_token() }}');
-  return theoryFetch(input, {...init, headers});
-};
-(() => { const root = document.getElementById('theory-article'), blockId = +root.dataset.blockId, note = document.getElementById('theory-note'), post = async (url, body) => { const response = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({block_id:blockId,...body})}); if (!response.ok) throw new Error(); return response.json(); }; const showProgress = value => { document.getElementById('progress-label').textContent = `${value}%`; document.getElementById('progress-bar').style.width = `${value}%`; }; const resultFor = card => card.querySelector('[data-interactive-result]'); const submitInteractive = async (card, answer) => { const result=resultFor(card); result.classList.remove('hidden'); result.textContent='Проверяем…'; try { const data=await post('{{ url_for("theory.theory_api_checkpoint") }}',{checkpoint_key:card.dataset.interactiveKey,answer}); result.textContent=data.correct ? `Верно. ${data.explanation||'Результат сохранён.'}` : `Пока не совпало. ${data.explanation||'Измените ответ и попробуйте ещё раз.'}`; result.className=`mt-3 text-sm font-bold ${data.correct?'text-emerald-700':'text-rose-700'}`; } catch(_) { result.textContent='Не удалось сохранить результат. Повторите попытку.'; result.className='mt-3 text-sm font-bold text-rose-700'; } }; document.querySelectorAll('.theory-interactive').forEach(card => card.addEventListener('click', async e => { const option=e.target.closest('[data-interactive-option]'); if(option) { card.querySelectorAll('[data-interactive-option]').forEach(x=>x.classList.remove('border-emerald-500','bg-emerald-100')); option.classList.add('border-emerald-500','bg-emerald-100'); card.dataset.selected=option.dataset.interactiveOption; return; } const order=e.target.closest('[data-order-value]'); if(order) { order.classList.toggle('bg-emerald-200'); card.dataset.order=[...card.querySelectorAll('[data-order-value].bg-emerald-200')].map(x=>x.dataset.orderValue).join('>'); return; } if(!e.target.closest('[data-action="interactive-submit"]')) return; const kind=card.className.match(/theory-interactive--(\w+)/)?.[1]||'input'; let answer=''; if(kind==='choice') answer=card.dataset.selected||''; else if(kind==='order') answer=card.dataset.order||''; else if(kind==='table') answer=[...card.querySelectorAll('[data-table-cell]')].map(x=>x.value.trim()).join('|'); else if(kind==='boolean') answer=card.querySelector('[data-interactive-boolean]').checked?'true':'false'; else if(kind==='code') { const code=card.querySelector('[data-interactive-code]').value, expected=card.querySelector('[data-interactive-code]').dataset.expected; try { const run=await fetch('{{ url_for("theory.theory_api_run_code") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lang:'python',code,args:''})}); const data=await run.json(); answer=data.success && (data.output||'').trim()===expected.trim()?'pass':'fail'; } catch(_) { answer='fail'; } } else answer=card.querySelector('[data-interactive-input]').value.trim(); await submitInteractive(card,answer); })); let checkpointDone=0, checkpointTotal=document.querySelectorAll('[data-action="checkpoint-choice"]').length; document.querySelectorAll('[data-action="checkpoint-choice"]').forEach(button => button.addEventListener('click', async e => { const group=e.currentTarget.closest('.theory-checkpoint'), result=group.querySelector('[data-checkpoint-result]'); group.querySelectorAll('button').forEach(item=>item.disabled=true); try { const data=await post('{{ url_for("theory.theory_api_checkpoint") }}',{checkpoint_key:e.currentTarget.dataset.checkpointKey,answer:e.currentTarget.dataset.answer}); result.textContent=data.correct ? `Верно. ${data.explanation||''}` : `Пока нет. ${data.explanation||'Попробуйте ещё раз.'}`; result.className=`mt-3 mb-0 text-sm font-bold ${data.correct?'text-emerald-700':'text-rose-700'}`; if(data.correct) checkpointDone++; document.getElementById('checkpoint-summary').textContent=`Пройдено проверок: ${checkpointDone} из ${checkpointTotal}`; if(!data.correct) group.querySelectorAll('button').forEach(item=>item.disabled=false); } catch(_) { result.textContent='Не удалось сохранить ответ. Повторите попытку.'; result.className='mt-3 mb-0 text-sm font-bold text-rose-700'; group.querySelectorAll('button').forEach(item=>item.disabled=false); } })); document.getElementById('bookmark-button')?.addEventListener('click', async e => { const saved = !e.currentTarget.classList.contains('border-amber-300'); const data = await post('{{ url_for("theory.theory_api_bookmark") }}', {value:saved}); e.currentTarget.className = `inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border-2 ${data.bookmarked ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 bg-[#F4F7FA] text-slate-600'} px-4 py-3 text-xs font-black shadow-[0_3px_0_#DAE1E9]`; e.currentTarget.querySelector('span').textContent = data.bookmarked ? 'Сохранено' : 'Сохранить'; }); document.getElementById('save-note')?.addEventListener('click', async e => { await post('{{ url_for("theory.theory_api_note") }}', {content:note.value}); e.currentTarget.textContent='Сохранено'; setTimeout(()=>e.currentTarget.textContent='Сохранить заметку',1200); }); document.getElementById('save-feedback')?.addEventListener('click', async e => { const rating=document.getElementById('theory-rating').value; const comment=document.getElementById('theory-feedback').value; if(!rating && !comment.trim()) return; await post('{{ url_for("theory.theory_api_feedback") }}',{rating:rating||null,comment}); e.currentTarget.textContent='Отправлено'; setTimeout(()=>e.currentTarget.textContent='Отправить преподавателю',1400); }); document.getElementById('finish-topic')?.addEventListener('click', async e => { await post('{{ url_for("theory.theory_api_read") }}', {}); showProgress(100); e.currentTarget.textContent='Тема изучена'; e.currentTarget.disabled=true; }); let timer; window.addEventListener('scroll', () => { clearTimeout(timer); timer=setTimeout(() => { const max=document.documentElement.scrollHeight-innerHeight; const progress=max>0?Math.max(0,Math.min(95,Math.round(scrollY/max*100))):0; post('{{ url_for("theory.theory_api_progress") }}',{progress,position:Math.round(scrollY)}).then(data=>showProgress(data.progress)).catch(()=>{}); },600); }); })();
-</script>
+{% if current_user.is_student() %}
+<script type="text/plain" data-retired-theory-handler></script>
 <script>
 (() => {
   const root = document.getElementById('theory-article');
@@ -728,6 +733,130 @@ window.fetch = (input, init = {}) => {
       }
     }
   };
+
+  const attemptsEl = document.getElementById('theory-checkpoint-attempts-data');
+  let savedAttempts = {};
+  if (attemptsEl) {
+    try {
+      savedAttempts = JSON.parse(attemptsEl.textContent || '{}') || {};
+    } catch (_) {
+      savedAttempts = {};
+    }
+  }
+
+  const restoreSavedAttempts = () => {
+    Object.entries(savedAttempts).forEach(([key, attempt]) => {
+      if (!attempt) return;
+      const isCorrect = Boolean(attempt.correct);
+      const answerVal = String(attempt.answer || '');
+
+      // 1. Regular checkpoints: .theory-checkpoint[data-checkpoint-key="..."]
+      const checkpointCard = [...document.querySelectorAll('.theory-checkpoint')].find(c => c.dataset.checkpointKey === key);
+      if (checkpointCard) {
+        if (isCorrect) {
+          checkpointCard.dataset.passed = 'true';
+        }
+        const choiceBtns = [...checkpointCard.querySelectorAll('[data-action="checkpoint-choice"]')];
+        const matchedBtn = choiceBtns.find(b => (b.dataset.answer || '').trim() === answerVal.trim());
+        if (matchedBtn) {
+          matchedBtn.setAttribute('aria-pressed', 'true');
+          if (isCorrect) {
+            matchedBtn.classList.add('border-emerald-500', 'bg-emerald-50');
+          } else {
+            matchedBtn.classList.add('border-rose-400', 'bg-rose-50');
+          }
+        }
+        const result = checkpointCard.querySelector('[data-checkpoint-result]');
+        if (result) {
+          result.classList.remove('hidden');
+          if (isCorrect) {
+            result.className = 'mt-3 mb-0 text-sm font-bold text-emerald-700';
+            result.textContent = 'Верно. Проверка пройдена.';
+          } else {
+            result.className = 'mt-3 mb-0 text-sm font-bold text-rose-700';
+            result.textContent = 'Пока нет. Попробуйте ещё раз.';
+          }
+        }
+      }
+
+      // 2. Interactive cards: .theory-interactive[data-interactive-key="..."]
+      const interactiveCard = [...document.querySelectorAll('.theory-interactive')].find(c => c.dataset.interactiveKey === key);
+      if (interactiveCard) {
+        const kind = interactiveCard.dataset.interactiveType || interactiveCard.className.match(/theory-interactive--([\w-]+)/)?.[1] || '';
+        if (isCorrect) {
+          interactiveCard.dataset.passed = 'true';
+        }
+        const result = interactiveCard.querySelector('[data-interactive-result]');
+
+        if (kind === 'choice' || kind === 'boolean') {
+          const options = [...interactiveCard.querySelectorAll('[data-interactive-option]')];
+          const matchedOpt = options.find(o => (o.dataset.interactiveOption || '').trim() === answerVal.trim());
+          if (matchedOpt) {
+            matchedOpt.setAttribute('aria-pressed', 'true');
+            if (matchedOpt.getAttribute('role') === 'radio') matchedOpt.setAttribute('aria-checked', 'true');
+            if (isCorrect) {
+              matchedOpt.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');
+            } else {
+              matchedOpt.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-800');
+            }
+          }
+        } else if (kind === 'order' || kind === 'sequence') {
+          const parts = answerVal.split('>').map(p => p.trim()).filter(Boolean);
+          interactiveCard.dataset.order = answerVal;
+          interactiveCard.querySelectorAll('[data-order-value]').forEach(btn => {
+            if (parts.includes((btn.dataset.orderValue || '').trim())) {
+              btn.classList.add('bg-emerald-200', 'border-emerald-500');
+            }
+          });
+        } else if (kind === 'table' || kind === 'trace') {
+          const parts = answerVal.split('|');
+          interactiveCard.querySelectorAll('[data-table-cell]').forEach((cell, idx) => {
+            if (parts[idx] !== undefined) cell.value = parts[idx];
+          });
+        } else if (kind === 'match') {
+          const [left, right] = answerVal.split('=');
+          const leftInput = interactiveCard.querySelector('[data-match-left]');
+          const rightInput = interactiveCard.querySelector('[data-match-right]');
+          if (leftInput && left) leftInput.value = left;
+          if (rightInput && right) rightInput.value = right;
+        } else if (kind === 'multi' || kind === 'classify' || kind === 'hotspot') {
+          const parts = answerVal.split('|').map(p => p.trim()).filter(Boolean);
+          interactiveCard.querySelectorAll('[data-interactive-option]').forEach(opt => {
+            if (parts.includes((opt.dataset.interactiveOption || '').trim())) {
+              opt.classList.add('border-emerald-500', 'bg-emerald-100');
+              opt.setAttribute('aria-pressed', 'true');
+            }
+          });
+        } else if (kind === 'slider') {
+          const slider = interactiveCard.querySelector('[data-interactive-slider]');
+          const output = interactiveCard.querySelector('[data-slider-output]');
+          if (slider) slider.value = answerVal;
+          if (output) { output.value = answerVal; output.textContent = answerVal; }
+        } else {
+          // input, fill, formula, regex, binary, explain, etc.
+          const input = interactiveCard.querySelector('[data-interactive-input]');
+          if (input && answerVal) {
+            input.value = answerVal;
+            if (isCorrect) input.classList.add('border-emerald-500', 'bg-emerald-50');
+            else input.classList.add('border-rose-400', 'bg-rose-50');
+          }
+        }
+
+        if (result) {
+          result.classList.remove('hidden');
+          if (isCorrect) {
+            result.className = 'mt-3 text-sm font-bold text-emerald-700';
+            result.textContent = 'Верно. Проверка пройдена.';
+          } else {
+            result.className = 'mt-3 text-sm font-bold text-rose-700';
+            result.textContent = 'Пока не совпало. Попробуйте ещё раз.';
+          }
+        }
+      }
+    });
+  };
+
+  restoreSavedAttempts();
   window.updateCheckpointSummary();
 })();
 </script>
@@ -751,17 +880,24 @@ window.fetch = (input, init = {}) => {
     const button = event.currentTarget;
     try {
       const data = await request('{{ url_for("theory.theory_api_bookmark") }}', {value: !button.classList.contains('border-amber-300')});
-      button.classList.toggle('border-amber-300', data.bookmarked);
-      button.classList.toggle('bg-amber-50', data.bookmarked);
-      button.classList.toggle('text-amber-700', data.bookmarked);
-      button.querySelector('span').textContent = data.bookmarked ? 'Сохранено' : 'Сохранить';
+      if (button) {
+        button.classList.toggle('border-amber-300', data.bookmarked);
+        button.classList.toggle('bg-amber-50', data.bookmarked);
+        button.classList.toggle('text-amber-700', data.bookmarked);
+        const span = button.querySelector('span');
+        if (span) span.textContent = data.bookmarked ? 'Сохранено' : 'Сохранить';
+      }
     } catch (error) { reportError(error); }
   });
   document.getElementById('save-note')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
     try {
-      await request('{{ url_for("theory.theory_api_note") }}', {content: document.getElementById('theory-note').value});
-      event.currentTarget.textContent = 'Сохранено';
-      window.setTimeout(() => { event.currentTarget.textContent = 'Сохранить заметку'; }, 1300);
+      const noteInput = document.getElementById('theory-note');
+      await request('{{ url_for("theory.theory_api_note") }}', {content: noteInput ? noteInput.value : ''});
+      if (button) {
+        button.textContent = 'Сохранено';
+        window.setTimeout(() => { button.textContent = 'Сохранить заметку'; }, 1300);
+      }
     } catch (error) { reportError(error); }
   });
     // Rating Dropdown
@@ -803,22 +939,30 @@ window.fetch = (input, init = {}) => {
     }
 
     document.getElementById('save-feedback')?.addEventListener('click', async event => {
+      const button = event.currentTarget;
       const rating = document.getElementById('theory-rating')?.value || '';
-      const comment = document.getElementById('theory-feedback').value.trim();
+      const comment = (document.getElementById('theory-feedback')?.value || '').trim();
       if (!rating && !comment) return;
       try {
         await request('{{ url_for("theory.theory_api_feedback") }}', {rating: rating || null, comment});
-        event.currentTarget.textContent = 'Отправлено';
-        window.setTimeout(() => { event.currentTarget.textContent = 'Отправить преподавателю'; }, 1300);
+        if (button) {
+          button.textContent = 'Отправлено';
+          window.setTimeout(() => { button.textContent = 'Отправить преподавателю'; }, 1300);
+        }
       } catch (error) { reportError(error); }
     });
   document.getElementById('finish-topic')?.addEventListener('click', async event => {
+    const button = event.currentTarget;
     try {
       await request('{{ url_for("theory.theory_api_read") }}');
-      document.getElementById('progress-label').textContent = '100%';
-      document.getElementById('progress-bar').style.width = '100%';
-      event.currentTarget.textContent = 'Тема изучена';
-      event.currentTarget.disabled = true;
+      const progressLabel = document.getElementById('progress-label');
+      if (progressLabel) progressLabel.textContent = '100%';
+      const progressBar = document.getElementById('progress-bar');
+      if (progressBar) progressBar.style.width = '100%';
+      if (button) {
+        button.textContent = 'Тема изучена';
+        button.disabled = true;
+      }
     } catch (error) { reportError(error); }
   });
   let progressTimer;

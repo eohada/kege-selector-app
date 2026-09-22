@@ -1878,10 +1878,17 @@ def theory_view_block(block_id):
         ).first()
     note = StudentTheoryNote.query.filter_by(student_id=student.student_id, block_id=block.id).first() if student else None
     checkpoint_attempts = {}
+    checkpoint_attempts_data = {}
     if student:
-        checkpoint_attempts = {
-            item.checkpoint_key: item
-            for item in TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id).all()
+        attempts = TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id).all()
+        checkpoint_attempts = {item.checkpoint_key: item for item in attempts}
+        checkpoint_attempts_data = {
+            item.checkpoint_key: {
+                'answer': item.selected_answer,
+                'correct': bool(item.is_correct),
+                'attempts': item.attempts_count,
+            }
+            for item in attempts
         }
 
     sections = _parse_theory_sections(block.content or '')
@@ -1915,6 +1922,7 @@ def theory_view_block(block_id):
         sections=sections,
         note=note,
         checkpoint_attempts=checkpoint_attempts,
+        checkpoint_attempts_data=checkpoint_attempts_data,
     )
 
     response = make_response(render_template(
