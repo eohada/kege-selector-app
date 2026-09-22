@@ -1758,7 +1758,7 @@ async function createCustomTask(event) {
   let answerSpec = null;
 
   if (currentBuilderAnswerType === 'short_answer') {
-    answer = isManualGrading ? null : document.getElementById('builder-short-answer-input').value.trim();
+    answer = document.getElementById('builder-short-answer-input').value.trim() || null;
     answerSpec = { type: 'short_answer' };
   } else if (currentBuilderAnswerType === 'single_choice') {
     const options = builderChoiceOptions.map((text, i) => ({
@@ -1766,7 +1766,7 @@ async function createCustomTask(event) {
       label: text.trim() || `Вариант ${i + 1}`
     }));
     const correctVal = String(builderChoiceCorrect + 1);
-    answer = isManualGrading ? null : correctVal;
+    answer = correctVal;
     answerSpec = {
       type: 'single_choice',
       options: options,
@@ -1786,7 +1786,7 @@ async function createCustomTask(event) {
     pairs.forEach(p => {
       if (p.key && p.correct_value) pairsMap[p.key] = p.correct_value;
     });
-    answer = isManualGrading ? null : JSON.stringify(pairsMap);
+    answer = Object.keys(pairsMap).length ? JSON.stringify(pairsMap) : null;
     answerSpec = {
       type: 'matching',
       pairs: pairs,
@@ -1794,7 +1794,7 @@ async function createCustomTask(event) {
     };
   } else if (currentBuilderAnswerType === 'code') {
     starterCode = document.getElementById('builder-starter-code').value.trim() || null;
-    answer = isManualGrading ? null : 'code';
+    answer = 'code';
     answerSpec = {
       type: 'code',
       starter_code: starterCode

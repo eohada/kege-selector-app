@@ -504,7 +504,7 @@
                     {% endif %}
                 </div>
 
-                {% if workspace.is_reviewed and (workspace.solution_html or workspace.correct_answer) %}
+                {% if workspace.is_reviewed and workspace.solution_html %}
                 <details class="tw-panel tw-solution-accordion" open>
                     <summary>
                         <div class="tw-solution-summary-title">
@@ -514,16 +514,9 @@
                         <i class="ph-bold ph-caret-down"></i>
                     </summary>
                     <div class="tw-solution-body">
-                        {% if workspace.correct_answer and workspace.answer_spec.type != 'code' %}
-                        <div class="tw-solution-answer-highlight">
-                            <strong>Правильный ответ:</strong> <code>{{ workspace.correct_answer }}</code>
-                        </div>
-                        {% endif %}
-                        {% if workspace.solution_html %}
                         <div class="tw-solution-html-content">
                             {{ workspace.solution_html|safe }}
                         </div>
-                        {% endif %}
                     </div>
                 </details>
                 {% endif %}
@@ -920,7 +913,7 @@
                 <div class="tw-actionbar tw-answer-status"><div class="tw-status"><span id="tw-status-dot" class="tw-status-dot"></span><span id="tw-status-text">Черновик готов</span></div><span class="tw-save-note">Сохранение доступно в нижней панели</span></div>
             </article>
 
-            {% if workspace.is_reviewed and (workspace.solution_html or workspace.correct_answer) %}
+            {% if workspace.is_reviewed and workspace.solution_html %}
             <details class="tw-panel tw-solution-accordion" open>
                 <summary>
                     <div class="tw-solution-summary-title">
@@ -930,16 +923,9 @@
                     <i class="ph-bold ph-caret-down"></i>
                 </summary>
                 <div class="tw-solution-body">
-                    {% if workspace.correct_answer and workspace.answer_spec.type != 'code' %}
-                    <div class="tw-solution-answer-highlight">
-                        <strong>Правильный ответ:</strong> <code>{{ workspace.correct_answer }}</code>
-                    </div>
-                    {% endif %}
-                    {% if workspace.solution_html %}
                     <div class="tw-solution-html-content">
                         {{ workspace.solution_html|safe }}
                     </div>
-                    {% endif %}
                 </div>
             </details>
             {% endif %}

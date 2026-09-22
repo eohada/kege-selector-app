@@ -2128,6 +2128,15 @@ def ensure_schema_columns(app):
                             )
                         except Exception as _me:
                             logger.warning(f"difficulty 1–3 migration hook: {_me}")
+
+                        # Fix known manual tasks where answer was dropped by builder manual grading bug
+                        try:
+                            db.session.execute(text(
+                                f'UPDATE "{tasks_table_resolved}" SET answer = \'210\' '
+                                f'WHERE site_task_id = \'manual:5d7e0111-0236-4ae7-9782-a3eae0cda333\' AND (answer IS NULL OR answer = \'\')'
+                            ))
+                        except Exception as _fe:
+                            logger.warning(f"Task 777 answer backfill skipped: {_fe}")
                 except Exception as e:
                     logger.warning(f"Could not add knowledge_node_id/difficulty/hints to Tasks: {e}")
                     db.session.rollback()

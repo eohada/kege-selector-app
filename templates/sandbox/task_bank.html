@@ -272,7 +272,7 @@ async function saveTaskEditor(event, source, isEdit) {
   try {
     let response;
     if (isEdit) {
-      response = await fetch(`/task-generator/bank/${source.task_id}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ content: formData.get('content'), answer: manual ? null : formData.get('answer'), solution: formData.get('solution'), starter_code: formData.get('starter_code'), max_score: formData.get('max_score') }) });
+      response = await fetch(`/task-generator/bank/${source.task_id}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ content: formData.get('content'), answer: (formData.get('answer') || '').trim() || null, solution: formData.get('solution'), starter_code: formData.get('starter_code'), max_score: formData.get('max_score') }) });
     } else {
       formData.set('manual_grading', manual ? 'true' : 'false');
       response = await fetch('/task-generator/bank/create', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: formData });

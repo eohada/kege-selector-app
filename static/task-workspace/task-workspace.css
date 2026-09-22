@@ -2401,7 +2401,7 @@
     box-shadow: 0 1px 0 #cbd5e1 !important;
 }
 
-.tw-choice-card:has(input:checked) {
+.tw-choice-card:not(.is-correct):not(.is-wrong):not(.is-target-answer):has(input:checked) {
     border-color: #4f46e5 !important;
     background: #eef2ff !important;
     color: #312e81 !important;
@@ -2419,7 +2419,7 @@
     transition: all 0.15s ease;
 }
 
-.tw-choice-card:has(input:checked) .tw-choice-radio {
+.tw-choice-card:not(.is-correct):not(.is-wrong):not(.is-target-answer):has(input:checked) .tw-choice-radio {
     border: 5px solid #4f46e5;
 }
 
@@ -3268,38 +3268,44 @@
 }
 
 /* Choice Cards Reviewed States */
-.tw-choice-card.is-correct {
+.tw-choice-card.is-correct,
+.tw-choice-card.is-correct:has(input:checked) {
     background: #f0fdf4 !important;
     border-color: #86efac !important;
     color: #14532d !important;
     box-shadow: 0 3px 0 #bbf7d0 !important;
 }
 
-.tw-choice-card.is-correct .tw-choice-radio {
+.tw-choice-card.is-correct .tw-choice-radio,
+.tw-choice-card.is-correct:has(input:checked) .tw-choice-radio {
     border: 5px solid #16a34a !important;
     background: #ffffff !important;
 }
 
-.tw-choice-card.is-wrong {
+.tw-choice-card.is-wrong,
+.tw-choice-card.is-wrong:has(input:checked) {
     background: #fff1f2 !important;
     border-color: #fecdd3 !important;
     color: #9f1239 !important;
     box-shadow: 0 3px 0 #fda4af !important;
 }
 
-.tw-choice-card.is-wrong .tw-choice-radio {
+.tw-choice-card.is-wrong .tw-choice-radio,
+.tw-choice-card.is-wrong:has(input:checked) .tw-choice-radio {
     border: 5px solid #e11d48 !important;
     background: #ffffff !important;
 }
 
-.tw-choice-card.is-target-answer {
+.tw-choice-card.is-target-answer,
+.tw-choice-card.is-target-answer:has(input:checked) {
     border: 2px solid #86efac !important;
     background: #f0fdf4 !important;
     color: #14532d !important;
     box-shadow: 0 3px 0 #bbf7d0 !important;
 }
 
-.tw-choice-card.is-target-answer .tw-choice-radio {
+.tw-choice-card.is-target-answer .tw-choice-radio,
+.tw-choice-card.is-target-answer:has(input:checked) .tw-choice-radio {
     border: 5px solid #16a34a !important;
     background: #ffffff !important;
 }
