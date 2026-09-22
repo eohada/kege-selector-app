@@ -508,20 +508,42 @@ def _is_python_code_line(line: str) -> bool:
     s = line.strip()
     if not s:
         return False
-    if (line.startswith('  ') or line.startswith('\t') or line.startswith('&nbsp;&nbsp;')) and not re.match(r'^\s*[-*•\d+\.]\s', line):
+    clean_s = re.sub(r'^`{1,3}|`{1,3}$', '', s).strip()
+    if not clean_s:
+        return False
+    clean_line = re.sub(r'^`{1,3}|`{1,3}$', '', line)
+    if (clean_line.startswith('  ') or clean_line.startswith('\t') or clean_line.startswith('&nbsp;&nbsp;')) and not re.match(r'^\s*[-*•\d+\.]\s', clean_s):
         return True
-    if _PYTHON_KW_RE.match(s):
+    if _PYTHON_KW_RE.match(clean_s):
         return True
-    if _PYTHON_ASSIGN_RE.match(s):
+    if _PYTHON_ASSIGN_RE.match(clean_s):
         return True
-    if _PYTHON_CALL_RE.match(s):
+    if _PYTHON_CALL_RE.match(clean_s):
         return True
-    if s.startswith('#'):
+    if clean_s.startswith('#'):
         return True
     return False
 
 
 def _reformat_code_in_html_paragraphs(html_str: str) -> str:
+    # 1. Backtick blocks spanning multiple lines or paragraphs
+    pattern = re.compile(
+        r'(?<!`)`{1,3}(?:(?:python|py|pas|cpp|c|java|js)\s*(?:<br\s*/?>|\n))?([\s\S]*?)`{1,3}(?!`)'
+    )
+    def _repl(m):
+        content = m.group(1)
+        if '\n' in content or '<br' in content or '</p>' in content:
+            clean = re.sub(r'</p>\s*<p[^>]*>', '\n\n', content)
+            clean = re.sub(r'<br\s*/?>', '\n', clean)
+            clean = re.sub(r'</?(?:p|div|span)[^>]*>', '', clean)
+            clean = html_lib.unescape(clean)
+            esc = html_lib.escape(clean.strip(), quote=False)
+            return f'</p><pre><code class="language-python">{esc}</code></pre><p>'
+        return m.group(0)
+
+    s = pattern.sub(_repl, html_str)
+
+    # 2. Individual paragraphs with <br> code
     def _p_replacer(match):
         p_body = match.group(1)
         if '<pre' in p_body or '<table' in p_body or '<ul' in p_body or '<ol' in p_body:
@@ -547,6 +569,7 @@ def _reformat_code_in_html_paragraphs(html_str: str) -> str:
         def flush_code():
             if curr_code:
                 raw_code = '\n'.join([html_lib.unescape(cl).replace('&nbsp;', ' ') for cl in curr_code])
+                raw_code = re.sub(r'^`{1,3}\s*|\s*`{1,3}$', '', raw_code.strip())
                 esc_code = html_lib.escape(raw_code.rstrip(), quote=False)
                 result.append(f'<pre><code class="language-python">{esc_code}</code></pre>')
                 curr_code.clear()
@@ -563,7 +586,18 @@ def _reformat_code_in_html_paragraphs(html_str: str) -> str:
         flush_code()
         return ''.join(result)
 
-    return re.sub(r'<p>(.*?)</p>', _p_replacer, html_str, flags=re.DOTALL | re.IGNORECASE)
+    s = re.sub(r'<p>(.*?)</p>', _p_replacer, s, flags=re.DOTALL | re.IGNORECASE)
+
+    # 3. Merge consecutive <pre> tags (separated only by empty paragraphs or whitespace)
+    merge_re = re.compile(r'</code></pre>\s*(?:<p>\s*(?:&nbsp;|\s|<br\s*/?>)*\s*</p>\s*)*<pre><code[^>]*>', re.IGNORECASE)
+    s = merge_re.sub('\n\n', s)
+
+    # 4. Clean stray backticks left around code or in empty paragraphs
+    s = re.sub(r'<p>\s*`{1,3}\s*</p>', '', s)
+    s = re.sub(r'<p>\s*`{1,3}\s*<br\s*/?>', '<p>', s)
+    s = re.sub(r'<br\s*/?>\s*`{1,3}\s*</p>', '</p>', s)
+    s = re.sub(r'<p>\s*(?:&nbsp;|\s)*</p>', '', s)
+    return s
 
 
 def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
@@ -580,11 +614,13 @@ def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
     def repl_fence(match):
         code = match.group(1)
         idx = len(code_blocks)
-        code_blocks.append(code.rstrip())
+        clean = re.sub(r'^`{1,3}\s*|\s*`{1,3}$', '', code.strip())
+        code_blocks.append(clean.rstrip())
         return f"\n\n__CODE_BLOCK_{idx}__\n\n"
 
-    # 1. Triple backticks ```python ... ``` or ``` ... ```
+    # 1. Backtick blocks: ```python ... ``` or multiline `...`
     text = re.sub(r'```(?:[a-zA-Z0-9_-]+)?\n?([\s\S]*?)```', repl_fence, text)
+    text = re.sub(r'(?<!`)`\n?([\s\S]*?\n[\s\S]*?)`(?!`)', repl_fence, text)
 
     # 2. Heuristic detection of unquoted Python code blocks
     lines = text.split('\n')
@@ -617,10 +653,12 @@ def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
                 else:
                     break
 
-            significant = len(block) >= 2 or (len(block) == 1 and re.match(r'^\s*(?:def|while|for|class|if)\b', block[0]))
+            significant = len(block) >= 2 or (len(block) == 1 and re.match(r'^\s*(?:def|while|for|class|if)\b', re.sub(r'^`{1,3}', '', block[0]).strip()))
             if significant:
                 idx = len(code_blocks)
-                code_blocks.append('\n'.join(block).rstrip())
+                raw_code = '\n'.join(block)
+                clean_code = re.sub(r'^`{1,3}\s*|\s*`{1,3}$', '', raw_code.strip())
+                code_blocks.append(clean_code.rstrip())
                 new_lines.append(f'__CODE_BLOCK_{idx}__')
                 i = j - len(empty_streak)
                 continue

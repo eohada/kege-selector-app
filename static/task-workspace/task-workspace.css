@@ -1830,6 +1830,119 @@
     box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
 }
 
+.tw-locked-answer-field.is-submitted {
+    background: #f0fdf4 !important;
+    border: 2px solid #86efac !important;
+    cursor: pointer;
+}
+
+.tw-locked-answer-field.is-submitted:hover {
+    background: #dcfce7 !important;
+    border-color: #4ade80 !important;
+}
+
+.tw-locked-answer-icon.is-ready {
+    background: #dcfce7 !important;
+    color: #16a34a !important;
+}
+
+.tw-locked-answer-text.is-ready {
+    color: #15803d !important;
+    font-weight: 800 !important;
+}
+
+.tw-locked-answer-pill.is-ready {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    font-weight: 800 !important;
+}
+
+/* Блок предпросмотра сданного кода прямо в карточке ответа */
+.tw-code-submitted-box {
+    background: #0f172a;
+    border-radius: 12px;
+    border: 1.5px solid #1e293b;
+    overflow: hidden;
+    margin-top: 4px;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.15);
+}
+
+.tw-code-submitted-box.is-hidden {
+    display: none !important;
+}
+
+.tw-code-submitted-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 14px;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+}
+
+.tw-code-submitted-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #f8fafc;
+}
+
+.tw-code-submitted-pre {
+    margin: 0 !important;
+    padding: 12px 14px !important;
+    background: transparent !important;
+    border: none !important;
+    font-family: "JetBrains Mono", Consolas, monospace !important;
+    font-size: 12.5px !important;
+    line-height: 1.5 !important;
+    color: #e2e8f0 !important;
+    max-height: 240px;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+.tw-code-submitted-pre code {
+    background: transparent !important;
+    padding: 0 !important;
+    font-family: inherit !important;
+    color: inherit !important;
+}
+
+.tw-code-submitted-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #334155 !important;
+    border: 1px solid #475569 !important;
+    border-bottom: 3px solid #0f172a !important;
+    color: #f1f5f9 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    padding: 3px 10px !important;
+    border-radius: 8px !important;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tw-code-submitted-edit-btn:hover {
+    background: #475569 !important;
+    color: #ffffff !important;
+}
+
+.tw-code-submitted-edit-btn:active {
+    border-bottom-width: 1px !important;
+    transform: translateY(2px) !important;
+}
+
+.tw-btn-xs {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+}
+
 .tw-code-redirect-footer {
     display: flex;
     align-items: center;
@@ -1856,6 +1969,7 @@
     color: #64748b;
     border: 1px solid #e2e8f0;
 }
+
 
 
 .tw-choice-grid {

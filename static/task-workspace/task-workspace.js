@@ -133,10 +133,12 @@
         const next = (mode === 'code') ? 'code' : 'answer';
         if (codeWorkspace) codeWorkspace.classList.toggle('is-workspace-hidden', next !== 'code');
         if (answerWorkspace) answerWorkspace.classList.toggle('is-workspace-hidden', next !== 'answer');
-        document.querySelectorAll('[data-workspace-mode-switch] [data-workspace-mode]').forEach((button) => {
+        document.querySelectorAll('[data-workspace-mode]').forEach((button) => {
             const active = button.dataset.workspaceMode === next;
-            button.classList.toggle('is-active', active);
-            button.setAttribute('aria-pressed', String(active));
+            if (button.closest('[data-workspace-mode-switch]')) {
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-pressed', String(active));
+            }
         });
         if (commentsCard) {
             const slot = next === 'answer' ? commentsAnswerSlot : commentsCodeSlot;
@@ -148,6 +150,8 @@
         }
         if (next === 'code') {
             requestAnimationFrame(updateEditorChrome);
+        } else if (next === 'answer') {
+            syncCodeAnswerState();
         }
     }
 
@@ -158,12 +162,18 @@
             if (saved === 'code' || saved === 'answer') selected = saved;
         } catch (err) {}
         applyWorkspaceMode(selected, { persist: false });
-        document.querySelectorAll('[data-workspace-mode-switch] [data-workspace-mode]').forEach((button) => {
+        document.querySelectorAll('[data-workspace-mode]').forEach((button) => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 applyWorkspaceMode(button.dataset.workspaceMode);
             });
         });
+        const lockedField = document.getElementById('tw-locked-answer-field');
+        if (lockedField) {
+            lockedField.addEventListener('click', () => {
+                applyWorkspaceMode('code');
+            });
+        }
     }
 
     function csrf() {
@@ -662,6 +672,7 @@
         }
         updateEditorChrome();
         saveLocal();
+        syncCodeAnswerState();
     }
 
     function applyLocalCodeChange(previous, next, action, detail) {
@@ -1193,6 +1204,7 @@
             if (Array.isArray(data.playback_frames) && data.playback_frames.length) {
                 playback.frames = data.playback_frames.map(sanitizeFrame);
             }
+            syncCodeAnswerState();
             setStatus('Локальный черновик восстановлен', 'ok');
         } catch (err) {}
     }
@@ -1944,15 +1956,104 @@
         });
     }
 
+    function syncCodeAnswerState() {
+        if (ws.answer_spec?.type !== 'code') return;
+        const currentCode = (code ? code.value : '') || (answer ? answer.value : '') || '';
+        const trimmed = currentCode.trim();
+        const meaningfulLines = trimmed.split('\n').filter(l => {
+            const t = l.trim();
+            return t.length > 0 && !t.startsWith('# Решение пока не написано');
+        });
+        const hasCode = meaningfulLines.length > 0;
+        const lineCount = hasCode ? trimmed.split('\n').length : 0;
+
+        const lockedField = document.getElementById('tw-locked-answer-field');
+        const lockedIcon = document.getElementById('tw-locked-answer-icon');
+        const lockedText = document.getElementById('tw-locked-answer-text');
+        const lockedPill = document.getElementById('tw-locked-answer-pill');
+        const statusBadge = document.getElementById('tw-code-status-badge');
+        const submittedBox = document.getElementById('tw-code-submitted-box');
+        const submittedCode = document.getElementById('tw-code-submitted-code');
+        const submittedPre = document.getElementById('tw-code-submitted-pre');
+
+        if (hasCode) {
+            if (answer) answer.value = currentCode;
+            if (codeAnswerInput && !codeAnswerInput.value) codeAnswerInput.value = currentCode;
+
+            if (lockedField) {
+                lockedField.classList.add('is-submitted');
+                lockedField.setAttribute('title', 'Код решения зафиксирован: ' + lineCount + ' строк');
+            }
+            if (lockedIcon) {
+                lockedIcon.innerHTML = '<i class="ph-bold ph-check-circle"></i>';
+                lockedIcon.className = 'tw-locked-answer-icon is-ready';
+            }
+            if (lockedText) {
+                const plural = lineCount === 1 ? 'строка' : (lineCount >= 2 && lineCount <= 4) ? 'строки' : 'строк';
+                lockedText.textContent = `Код решения зафиксирован (${lineCount} ${plural})`;
+                lockedText.classList.add('is-ready');
+            }
+            if (lockedPill) {
+                lockedPill.textContent = 'Готово';
+                lockedPill.className = 'tw-locked-answer-pill is-ready';
+            }
+            if (statusBadge) {
+                const plural = lineCount === 1 ? 'строка' : (lineCount >= 2 && lineCount <= 4) ? 'строки' : 'строк';
+                statusBadge.className = 'tw-code-status-badge is-ready';
+                statusBadge.innerHTML = `<i class="ph-bold ph-check-circle"></i> <span>Программа сохранена в редакторе (${lineCount} ${plural})</span>`;
+            }
+            if (submittedBox) {
+                submittedBox.classList.remove('is-hidden');
+            }
+            if (submittedCode) {
+                if (typeof highlightPython === 'function') {
+                    submittedCode.innerHTML = highlightPython(trimmed);
+                } else {
+                    submittedCode.textContent = trimmed;
+                }
+            }
+            if (submittedPre) {
+                submittedPre.dataset.highlighted = 'true';
+            }
+        } else {
+            if (lockedField) {
+                lockedField.classList.remove('is-submitted');
+                lockedField.setAttribute('title', 'Поле ввода заблокировано: ответом к заданию является программный код');
+            }
+            if (lockedIcon) {
+                lockedIcon.innerHTML = '<i class="ph-bold ph-lock-key"></i>';
+                lockedIcon.className = 'tw-locked-answer-icon';
+            }
+            if (lockedText) {
+                lockedText.textContent = 'Поле ввода заблокировано — ответом является код на Python';
+                lockedText.classList.remove('is-ready');
+            }
+            if (lockedPill) {
+                lockedPill.textContent = 'Код';
+                lockedPill.className = 'tw-locked-answer-pill';
+            }
+            if (statusBadge) {
+                statusBadge.className = 'tw-code-status-badge is-empty';
+                statusBadge.innerHTML = '<i class="ph-bold ph-clock-counter-clockwise"></i> <span>Код решения пока не написан</span>';
+            }
+            if (submittedBox) {
+                submittedBox.classList.add('is-hidden');
+            }
+        }
+    }
+
     document.querySelectorAll('#tw-btn-submit-code, [data-action="submit-code"]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const currentCode = code ? code.value : '';
-            if (answer) {
-                answer.value = currentCode || '# решение кодом';
+            if (ws.answer_spec?.type === 'code' || ws.answer_spec?.type === 'long_answer') {
+                if (answer) {
+                    answer.value = currentCode || '# решение кодом';
+                }
             }
             if (codeAnswerInput) {
-                codeAnswerInput.value = (ws.answer_spec?.type === 'long_answer' ? currentCode : (codeAnswerInput.value || 'Код зафиксирован как ответ'));
+                codeAnswerInput.value = (ws.answer_spec?.type === 'long_answer' ? currentCode : (codeAnswerInput.value || currentCode || 'Код зафиксирован как ответ'));
             }
+            syncCodeAnswerState();
             const origHtml = btn.innerHTML;
             btn.innerHTML = '<i class="ph-bold ph-check"></i> Код зафиксирован!';
             btn.classList.add('is-success');
@@ -1965,6 +2066,9 @@
             emitWorkspaceDraft(false);
             updateWorkspaceProgress();
             window.BooNotify?.success?.('Текущий код зафиксирован как ответ к задаче');
+            if (ws.answer_spec?.type === 'code') {
+                applyWorkspaceMode('answer');
+            }
         });
     });
 
@@ -2293,9 +2397,13 @@
             answer.value = codeAnswerInput.value;
         }
     }
-    code?.addEventListener('input', updateWorkspaceProgress);
+    code?.addEventListener('input', () => {
+        updateWorkspaceProgress();
+        syncCodeAnswerState();
+    });
     updateWorkspaceProgress();
     restoreLocal();
+    syncCodeAnswerState();
     joinWorkspaceSocket();
     // The visual V2 uses a stable Bento grid instead of draggable legacy windows.
 

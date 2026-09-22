@@ -536,12 +536,22 @@
                 <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
 
                 <div class="tw-locked-answer-wrapper" title="Поле ввода заблокировано: ответом к заданию является программный код">
-                    <div class="tw-locked-answer-field">
+                    <div id="tw-locked-answer-field" class="tw-locked-answer-field{% if workspace.code and workspace.code.strip() %} is-submitted{% endif %}" onclick="document.querySelector('[data-workspace-mode=code]')?.click()">
                         <div class="tw-locked-answer-main">
-                            <span class="tw-locked-answer-icon"><i class="ph-bold ph-lock-key"></i></span>
-                            <span class="tw-locked-answer-text">Поле ввода заблокировано — ответом является код на Python</span>
+                            <span id="tw-locked-answer-icon" class="tw-locked-answer-icon{% if workspace.code and workspace.code.strip() %} is-ready{% endif %}">
+                                <i class="ph-bold {% if workspace.code and workspace.code.strip() %}ph-check-circle{% else %}ph-lock-key{% endif %}"></i>
+                            </span>
+                            <span id="tw-locked-answer-text" class="tw-locked-answer-text{% if workspace.code and workspace.code.strip() %} is-ready{% endif %}">
+                                {% if workspace.code and workspace.code.strip() %}
+                                Код решения зафиксирован ({{ workspace.code.strip().split('\n')|length }} строк)
+                                {% else %}
+                                Поле ввода заблокировано — ответом является код на Python
+                                {% endif %}
+                            </span>
                         </div>
-                        <span class="tw-locked-answer-pill">Код</span>
+                        <span id="tw-locked-answer-pill" class="tw-locked-answer-pill{% if workspace.code and workspace.code.strip() %} is-ready{% endif %}">
+                            {% if workspace.code and workspace.code.strip() %}Готово{% else %}Код{% endif %}
+                        </span>
                     </div>
                 </div>
 
@@ -568,18 +578,30 @@
                         </button>
                     </div>
 
+                    <!-- Предпросмотр сданного кода прямо в блоке ответа -->
+                    <div id="tw-code-submitted-box" class="tw-code-submitted-box{% if not (workspace.code and workspace.code.strip()) %} is-hidden{% endif %}">
+                        <div class="tw-code-submitted-head">
+                            <div class="tw-code-submitted-title">
+                                <i class="ph-bold ph-check-circle text-emerald-600"></i>
+                                <span>Зафиксированный код решения:</span>
+                            </div>
+                            <button type="button" class="tw-code-submitted-edit-btn" data-workspace-mode="code">
+                                <i class="ph-bold ph-pencil-simple"></i> Редактировать в IDE
+                            </button>
+                        </div>
+                        <pre id="tw-code-submitted-pre" class="tw-code-submitted-pre"><code id="tw-code-submitted-code" class="language-python">{{ workspace.code or '' }}</code></pre>
+                    </div>
+
                     <div class="tw-code-redirect-footer">
-                        {% if workspace.code and workspace.code.strip() %}
-                        <div class="tw-code-status-badge is-ready">
+                        <div id="tw-code-status-badge" class="tw-code-status-badge {% if workspace.code and workspace.code.strip() %}is-ready{% else %}is-empty{% endif %}">
+                            {% if workspace.code and workspace.code.strip() %}
                             <i class="ph-bold ph-check-circle"></i>
                             <span>Программа сохранена в редакторе ({{ workspace.code.strip().split('\n')|length }} строк)</span>
-                        </div>
-                        {% else %}
-                        <div class="tw-code-status-badge is-empty">
+                            {% else %}
                             <i class="ph-bold ph-clock-counter-clockwise"></i>
                             <span>Код решения пока не написан</span>
+                            {% endif %}
                         </div>
-                        {% endif %}
                     </div>
                 </div>
                 {% elif workspace.answer_spec.type == 'long_answer' %}
