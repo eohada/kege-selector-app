@@ -16,6 +16,7 @@ from app.utils.jinja_filters import (
     normalize_task_content_assets,
     normalize_task_content_urls,
     normalize_task_plain_text_to_html,
+    prepare_task_content_html,
 )
 
 from app.task_generator import task_generator_bp
@@ -1487,13 +1488,16 @@ def _normalize_manual_content_html(raw: str) -> str:
     text = (raw or '').strip()
     if not text:
         return '<div class="task-text"></div>'
-    if re.search(r'<[a-zA-Z!?][^>]*>', text):
-        return text
     # Clean any accidental trailing/stray closing tags (e.g. </p>, </div>, &lt;/p&gt;)
     text = re.sub(r'&lt;/(?:p|div)&gt;', '', text, flags=re.IGNORECASE)
     text = re.sub(r'</(?:p|div)>\s*$', '', text, flags=re.IGNORECASE).strip()
     if not text:
         return '<div class="task-text"></div>'
+
+    # Check if text contains real HTML tags (div, p, pre, code, table, etc.)
+    has_html_tags = bool(re.search(r'<(?:div|p|span|pre|code|table|tr|td|th|ul|ol|li|h[1-6]|b|strong|i|em|a|img|br|hr)\b', text, flags=re.IGNORECASE))
+    if has_html_tags:
+        return prepare_task_content_html(text)
     return normalize_task_plain_text_to_html(text)
 
 

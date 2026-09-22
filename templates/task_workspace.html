@@ -534,20 +534,53 @@
                 </div>
                 {% elif workspace.answer_spec.type == 'code' %}
                 <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
-                <div class="tw-code-standard-info">
-                    <div class="tw-code-standard-lead">
-                        <i class="ph-bold ph-terminal-window"></i>
-                        <div>
-                            <strong>Ответом является программа на Python</strong>
-                            <p>Для этой задачи необходимо написать программный код. Перейдите во вкладку «Код», чтобы написать, запустить и протестировать решение.</p>
+
+                <div class="tw-locked-answer-wrapper" title="Поле ввода заблокировано: ответом к заданию является программный код">
+                    <div class="tw-locked-answer-field">
+                        <div class="tw-locked-answer-main">
+                            <span class="tw-locked-answer-icon"><i class="ph-bold ph-lock-key"></i></span>
+                            <span class="tw-locked-answer-text">Поле ввода заблокировано — ответом является код на Python</span>
+                        </div>
+                        <span class="tw-locked-answer-pill">Код</span>
+                    </div>
+                </div>
+
+                <div class="tw-code-standard-info tw-code-redirect-card">
+                    <div class="tw-code-redirect-top">
+                        <div class="tw-code-redirect-icon-box">
+                            <i class="ph-bold ph-terminal-window"></i>
+                        </div>
+                        <div class="tw-code-redirect-body">
+                            <h4 class="tw-code-redirect-title">Напишите решение во вкладке «Код»</h4>
+                            <p class="tw-code-redirect-desc">Для этого задания требуется разработать программу. Перейдите во встроенный редактор, чтобы написать решение, запустить его и сохранить ответ.</p>
                         </div>
                     </div>
-                    <div>
-                        <button type="button" class="tw-btn tw-btn-primary" onclick="document.querySelector('[data-workspace-mode=code]')?.click()">
-                            <i class="ph-bold ph-code"></i> Открыть редактор кода
+
+                    <div class="tw-code-redirect-actions">
+                        <button type="button" class="tw-btn-goto-code" onclick="document.querySelector('[data-workspace-mode=code]')?.click()" title="Перейти к написанию кода">
+                            <span class="tw-btn-goto-lead">
+                                <i class="ph-bold ph-code"></i>
+                                <span>Открыть вкладку «Код»</span>
+                            </span>
+                            <span class="tw-btn-goto-arrow-box">
+                                <i class="ph-bold ph-arrow-right tw-btn-goto-arrow"></i>
+                            </span>
                         </button>
                     </div>
-                    <pre class="tw-code-standard-preview"><code>{{ workspace.code or workspace.starter_code or '# Решение пока не написано' }}</code></pre>
+
+                    <div class="tw-code-redirect-footer">
+                        {% if workspace.code and workspace.code.strip() %}
+                        <div class="tw-code-status-badge is-ready">
+                            <i class="ph-bold ph-check-circle"></i>
+                            <span>Программа сохранена в редакторе ({{ workspace.code.strip().split('\n')|length }} строк)</span>
+                        </div>
+                        {% else %}
+                        <div class="tw-code-status-badge is-empty">
+                            <i class="ph-bold ph-clock-counter-clockwise"></i>
+                            <span>Код решения пока не написан</span>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
                 {% elif workspace.answer_spec.type == 'long_answer' %}
                 <div class="tw-standard-actions-bar">

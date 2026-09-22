@@ -1306,14 +1306,82 @@ function switchBuilderConditionTab(tab) {
     if (!text.trim()) {
       previewWrap.innerHTML = '<span class="text-slate-400 italic">Условие задания пока не заполнено...</span>';
     } else {
-      let html = escapeHtml(text)
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code class="bg-slate-200 px-1.5 py-0.5 rounded text-indigo-700 font-mono text-xs">$1</code>')
-        .replace(/```python\s*([\s\S]*?)```/g, '<pre class="bg-slate-900 text-slate-100 p-3 rounded-xl font-mono text-xs overflow-x-auto my-2"><code>$1</code></pre>')
+      const codeBlocks = [];
+      let processed = text.replace(/```(?:[a-zA-Z0-9_-]+)?\n?([\s\S]*?)```/g, (m, c) => {
+        const idx = codeBlocks.length;
+        codeBlocks.push(c.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trimEnd());
+        return `\n\n__PREVIEW_CODE_${idx}__\n\n`;
+      });
+
+      const lines = processed.split('\n');
+      const newLines = [];
+      const isCodeLine = (l) => {
+        const s = l.trim();
+        if (!s) return false;
+        if ((l.startsWith('  ') || l.startsWith('\t')) && !/^\s*[-*•\d+\.]\s/.test(l)) return true;
+        if (/^(?:def\s|class\s|if\s|elif\s|else:|while\s|for\s|import\s|from\s|return\b|yield\b|try:|except\b|finally:|with\s|break\b|continue\b|pass\b|raise\b|assert\b)/.test(s)) return true;
+        if (/^[a-zA-Z_][a-zA-Z0-9_,\s]*\s*(?:=|\+=|-=|\*=|/=|//=|%=|\*\*=|&=|\|=|\^=|<<=|>>=)\s*[^=].*$/.test(s)) return true;
+        if (/^(?:print|input|open|len|range|int|str|float|list|set|dict|min|max|sum)\s*\(.*\)/.test(s)) return true;
+        if (s.startsWith('#')) return true;
+        return false;
+      };
+
+      let i = 0;
+      while (i < lines.length) {
+        const line = lines[i];
+        if (line.trim().startsWith('__PREVIEW_CODE_')) {
+          newLines.push(line);
+          i++;
+          continue;
+        }
+        if (isCodeLine(line)) {
+          const block = [line];
+          let j = i + 1;
+          const emptyStreak = [];
+          while (j < lines.length) {
+            const nl = lines[j];
+            if (nl.trim().startsWith('__PREVIEW_CODE_')) break;
+            if (!nl.trim()) {
+              emptyStreak.push(nl);
+              j++;
+              continue;
+            }
+            if (isCodeLine(nl)) {
+              block.push(...emptyStreak);
+              emptyStreak.length = 0;
+              block.push(nl);
+              j++;
+            } else {
+              break;
+            }
+          }
+          if (block.length >= 2 || (block.length === 1 && /^\s*(?:def|while|for|class|if)\b/.test(block[0]))) {
+            const idx = codeBlocks.length;
+            codeBlocks.push(block.join('\n').trimEnd());
+            newLines.push(`__PREVIEW_CODE_${idx}__`);
+            i = j - emptyStreak.length;
+            continue;
+          }
+        }
+        newLines.push(line);
+        i++;
+      }
+
+      processed = newLines.join('\n');
+      let html = escapeHtml(processed)
+        .replace(/(?<!\*)\*\*(?!\s)([^\*]+?)(?<!\s)\*\*(?!\*)/g, '<strong>$1</strong>')
+        .replace(/(?<![\*\w])\*(?!\s)([^\*]+?)(?<!\s)\*(?![\*\w])/g, '<em>$1</em>')
+        .replace(/`([^`\n]+)`/g, '<code class="bg-slate-200 px-1.5 py-0.5 rounded text-indigo-700 font-mono text-xs">$1</code>')
         .replace(/\$([^\$]+)\$/g, '<span class="font-serif italic text-indigo-900 bg-indigo-50 px-1 rounded">$1</span>')
         .replace(/\n/g, '<br>');
+
+      html = html.replace(/__PREVIEW_CODE_(\d+)__/g, (m, id) => {
+        const code = escapeHtml(codeBlocks[parseInt(id)] || '');
+        return `<pre class="bg-slate-900 text-slate-100 p-3 rounded-xl font-mono text-xs overflow-x-auto my-2 border border-slate-700"><code>${code}</code></pre>`;
+      });
+
       previewWrap.innerHTML = html;
+      if (window.renderKaTeXNow) renderKaTeXNow();
     }
   } else {
     previewWrap.classList.add('hidden');

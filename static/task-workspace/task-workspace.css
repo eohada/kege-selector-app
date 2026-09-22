@@ -1637,6 +1637,227 @@
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
+/* --- ЗАБЛОКИРОВАННОЕ ПОЛЕ ОТВЕТА (ДЛЯ ТИПА CODE) --- */
+.tw-locked-answer-wrapper {
+    width: 100%;
+    margin-bottom: 14px;
+}
+
+.tw-locked-answer-field {
+    width: 100%;
+    min-height: 52px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    background: #f8fafc;
+    border: 2px dashed #cbd5e1;
+    border-radius: 0.875rem;
+    cursor: not-allowed;
+    user-select: none;
+    transition: all 0.15s ease;
+}
+
+.tw-locked-answer-field:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+
+.tw-locked-answer-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.tw-locked-answer-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #e2e8f0;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.tw-locked-answer-text {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #64748b;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tw-locked-answer-pill {
+    padding: 3px 10px;
+    border-radius: 9999px;
+    background: #e0e7ff;
+    color: #4338ca;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+
+/* --- КАРТОЧКА НАПРАВЛЕНИЯ В РЕДАКТОР КОДА (TACTILE 3D CARD) --- */
+.tw-code-redirect-card {
+    background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+    border: 2px solid #e0e7ff;
+    border-bottom: 4px solid #c7d2fe;
+    border-radius: 1.25rem;
+    padding: 20px 22px;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: all 0.2s ease;
+}
+
+.tw-code-redirect-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.tw-code-redirect-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #eef2ff;
+    border: 1.5px solid #c7d2fe;
+    color: #4f46e5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 0 #c7d2fe;
+}
+
+.tw-code-redirect-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.tw-code-redirect-title {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    font-weight: 900;
+    color: #1e1b4b;
+    line-height: 1.3;
+}
+
+.tw-code-redirect-desc {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+.tw-code-redirect-actions {
+    display: flex;
+    align-items: center;
+}
+
+/* Тактильная 3D-кнопка перехода со стрелочкой */
+.tw-btn-goto-code {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 12px 20px;
+    background: #4f46e5;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 14px;
+    border-radius: 0.875rem;
+    border: 1px solid #4338ca;
+    border-bottom: 4px solid #312e81;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    text-decoration: none;
+}
+
+.tw-btn-goto-code:hover {
+    background: #4338ca;
+    box-shadow: 0 6px 14px rgba(79, 70, 229, 0.35);
+}
+
+.tw-btn-goto-lead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tw-btn-goto-lead i {
+    font-size: 18px;
+}
+
+.tw-btn-goto-arrow-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.18);
+    transition: transform 0.2s ease;
+}
+
+.tw-btn-goto-arrow {
+    font-size: 14px;
+    transition: transform 0.2s ease;
+}
+
+.tw-btn-goto-code:hover .tw-btn-goto-arrow {
+    transform: translateX(4px);
+}
+
+.tw-btn-goto-code:active {
+    transform: translateY(2px);
+    border-bottom-width: 2px;
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+}
+
+.tw-code-redirect-footer {
+    display: flex;
+    align-items: center;
+}
+
+.tw-code-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.tw-code-status-badge.is-ready {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.tw-code-status-badge.is-empty {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+
 .tw-choice-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

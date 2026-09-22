@@ -493,26 +493,186 @@ def sanitize_html(html):
             return Markup(str(html))
 
 
+_PYTHON_KW_RE = re.compile(
+    r'^(?:def\s|class\s|if\s|elif\s|else:|while\s|for\s|import\s|from\s|return\b|yield\b|try:|except\b|finally:|with\s|break\b|continue\b|pass\b|raise\b|assert\b)'
+)
+_PYTHON_ASSIGN_RE = re.compile(
+    r'^[a-zA-Z_][a-zA-Z0-9_,\s]*\s*(?:=|\+=|-=|\*=|/=|//=|%=|\*\*=|&=|\|=|\^=|<<=|>>=)\s*[^=].*$'
+)
+_PYTHON_CALL_RE = re.compile(
+    r'^(?:print|input|open|len|range|int|str|float|list|set|dict|min|max|sum)\s*\(.*\)'
+)
+
+
+def _is_python_code_line(line: str) -> bool:
+    s = line.strip()
+    if not s:
+        return False
+    if (line.startswith('  ') or line.startswith('\t') or line.startswith('&nbsp;&nbsp;')) and not re.match(r'^\s*[-*•\d+\.]\s', line):
+        return True
+    if _PYTHON_KW_RE.match(s):
+        return True
+    if _PYTHON_ASSIGN_RE.match(s):
+        return True
+    if _PYTHON_CALL_RE.match(s):
+        return True
+    if s.startswith('#'):
+        return True
+    return False
+
+
+def _reformat_code_in_html_paragraphs(html_str: str) -> str:
+    def _p_replacer(match):
+        p_body = match.group(1)
+        if '<pre' in p_body or '<table' in p_body or '<ul' in p_body or '<ol' in p_body:
+            return match.group(0)
+        lines = [l.strip('\r') for l in re.split(r'<br\s*/?>|\n', p_body, flags=re.IGNORECASE)]
+        if len(lines) < 2:
+            return match.group(0)
+        code_flags = [_is_python_code_line(html_lib.unescape(l)) for l in lines]
+        if sum(code_flags) < 2:
+            return match.group(0)
+
+        result = []
+        curr_text = []
+        curr_code = []
+
+        def flush_text():
+            if curr_text:
+                t = '<br>'.join(curr_text).strip()
+                if t:
+                    result.append(f'<p>{t}</p>')
+                curr_text.clear()
+
+        def flush_code():
+            if curr_code:
+                raw_code = '\n'.join([html_lib.unescape(cl).replace('&nbsp;', ' ') for cl in curr_code])
+                esc_code = html_lib.escape(raw_code.rstrip(), quote=False)
+                result.append(f'<pre><code class="language-python">{esc_code}</code></pre>')
+                curr_code.clear()
+
+        for line, is_code in zip(lines, code_flags):
+            if is_code:
+                flush_text()
+                curr_code.append(line)
+            else:
+                if curr_code:
+                    flush_code()
+                curr_text.append(line)
+        flush_text()
+        flush_code()
+        return ''.join(result)
+
+    return re.sub(r'<p>(.*?)</p>', _p_replacer, html_str, flags=re.DOTALL | re.IGNORECASE)
+
+
 def normalize_task_plain_text_to_html(raw_text: Optional[str]) -> str:
     """
-    Преобразует plain text условия в безопасный HTML с сохранением переносов строк.
+    Преобразует plain text / markdown условия в безопасный структурированный HTML
+    с подсветкой блоков кода Python, сохранением отступов, инлайн-форматированием и переносами.
     """
     text = (raw_text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     if not text:
         return '<div class="task-text"></div>'
-    escaped = (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
-    # Два и более перевода строки -> новый абзац. Одиночный перевод -> <br>.
-    paragraphs = [p.strip() for p in re.split(r"\n{2,}", escaped) if p.strip()]
-    if not paragraphs:
+
+    code_blocks = []
+
+    def repl_fence(match):
+        code = match.group(1)
+        idx = len(code_blocks)
+        code_blocks.append(code.rstrip())
+        return f"\n\n__CODE_BLOCK_{idx}__\n\n"
+
+    # 1. Triple backticks ```python ... ``` or ``` ... ```
+    text = re.sub(r'```(?:[a-zA-Z0-9_-]+)?\n?([\s\S]*?)```', repl_fence, text)
+
+    # 2. Heuristic detection of unquoted Python code blocks
+    lines = text.split('\n')
+    new_lines = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.strip().startswith('__CODE_BLOCK_'):
+            new_lines.append(line)
+            i += 1
+            continue
+
+        if _is_python_code_line(line):
+            block = [line]
+            j = i + 1
+            empty_streak = []
+            while j < len(lines):
+                next_line = lines[j]
+                if next_line.strip().startswith('__CODE_BLOCK_'):
+                    break
+                if not next_line.strip():
+                    empty_streak.append(next_line)
+                    j += 1
+                    continue
+                if _is_python_code_line(next_line):
+                    block.extend(empty_streak)
+                    empty_streak = []
+                    block.append(next_line)
+                    j += 1
+                else:
+                    break
+
+            significant = len(block) >= 2 or (len(block) == 1 and re.match(r'^\s*(?:def|while|for|class|if)\b', block[0]))
+            if significant:
+                idx = len(code_blocks)
+                code_blocks.append('\n'.join(block).rstrip())
+                new_lines.append(f'__CODE_BLOCK_{idx}__')
+                i = j - len(empty_streak)
+                continue
+            else:
+                new_lines.append(line)
+                i += 1
+        else:
+            new_lines.append(line)
+            i += 1
+
+    text = '\n'.join(new_lines)
+
+    # 3. Split by paragraphs and assemble safe HTML
+    raw_paragraphs = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
+    html_pieces = []
+
+    for para in raw_paragraphs:
+        m = re.match(r'^__CODE_BLOCK_(\d+)__$', para.strip())
+        if m:
+            c_idx = int(m.group(1))
+            code_str = code_blocks[c_idx]
+            escaped_code = html_lib.escape(code_str, quote=False)
+            html_pieces.append(f'<pre><code class="language-python">{escaped_code}</code></pre>')
+            continue
+
+        sub_chunks = re.split(r'(__CODE_BLOCK_\d+__)', para)
+        for chunk in sub_chunks:
+            cm = re.match(r'^__CODE_BLOCK_(\d+)__$', chunk.strip())
+            if cm:
+                c_idx = int(cm.group(1))
+                code_str = code_blocks[c_idx]
+                escaped_code = html_lib.escape(code_str, quote=False)
+                html_pieces.append(f'<pre><code class="language-python">{escaped_code}</code></pre>')
+            else:
+                s = chunk.strip()
+                if not s:
+                    continue
+                esc = html_lib.escape(s)
+                # Bold: **text** (safeguarded against degree operators like 10**9)
+                esc = re.sub(r'(?<!\*)\*\*(?!\s)([^\*]+?)(?<!\s)\*\*(?!\*)', r'<strong>\1</strong>', esc)
+                # Italic: *text*
+                esc = re.sub(r'(?<![\*\w])\*(?!\s)([^\*]+?)(?<!\s)\*(?![\*\w])', r'<em>\1</em>', esc)
+                # Inline code: `text`
+                esc = re.sub(r'`([^`\n]+)`', r'<code>\1</code>', esc)
+                # Preserve linebreaks within text paragraph
+                esc = esc.replace('\n', '<br>')
+                html_pieces.append(f'<p>{esc}</p>')
+
+    if not html_pieces:
         return '<div class="task-text"></div>'
-    html_paragraphs = []
-    for paragraph in paragraphs:
-        html_paragraphs.append(f"<p>{paragraph.replace(chr(10), '<br>')}</p>")
-    return '<div class="task-text">' + "".join(html_paragraphs) + "</div>"
+    return '<div class="task-text">' + ''.join(html_pieces) + '</div>'
+
 
 
 _HTML_TAG_PATTERN = re.compile(r"<[a-zA-Z!?][^>]*>")
@@ -902,6 +1062,8 @@ def prepare_task_content_html(raw_content: Optional[str]) -> str:
     decoded = html_lib.unescape(decoded)
     decoded = _strip_author_signatures_from_html(decoded)
     if _HTML_TAG_PATTERN.search(decoded):
+        if '<p' in decoded and ('<br' in decoded or '\n' in decoded):
+            decoded = _reformat_code_in_html_paragraphs(decoded)
         return decoded
     return normalize_task_plain_text_to_html(decoded)
 
