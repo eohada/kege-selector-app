@@ -29,7 +29,7 @@
 
   .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.4); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .modal-backdrop.hidden { display: none; }
-  .modal-box { background: white; border-radius: 2rem; width: 100%; max-width: 500px; box-shadow: 0 25px 60px rgba(0,0,0,.18); border: 2px solid #e2e8f0; animation: modalIn .2s ease; }
+  .modal-box { background: white; border-radius: 2rem; width: 100%; max-width: 660px; box-shadow: 0 25px 60px rgba(0,0,0,.18); border: 2px solid #e2e8f0; animation: modalIn .2s ease; }
   @keyframes modalIn { from { opacity:0; transform: scale(.96) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
   .modal-header { padding: 1.25rem 1.5rem; border-bottom: 2px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
   .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
@@ -221,106 +221,305 @@
 
 <!-- MODAL: СОЗДАНИЕ УРОКА -->
 <div class="modal-backdrop hidden" id="modal-new-lesson">
-  <div class="modal-box">
-    <div class="modal-header">
+  <div class="modal-box flex flex-col max-h-[92vh] overflow-hidden">
+    <div class="modal-header shrink-0">
       <div>
-        <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-0.5">СОЗДАНИЕ ЗАНЯТИЯ</span>
-        <h2 class="text-base font-black text-slate-900">Новый урок</h2>
+        <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-0.5">Кабинет преподавателя</span>
+        <h2 class="text-lg font-black text-slate-900 tracking-tight">Новое занятие</h2>
       </div>
       <button onclick="closeNewLessonModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition-colors text-lg font-bold">×</button>
     </div>
     
-    <form id="new-lesson-form" onsubmit="handleCreateLesson(event)" class="modal-body">
+    <form id="new-lesson-form" onsubmit="handleCreateLesson(event)" class="modal-body overflow-y-auto p-5 space-y-3.5">
       <input type="hidden" id="input-lesson-type" name="lesson_type" value="individual">
 
-      <!-- Student Select Dropdown (shows when individual) -->
-      <div id="student-select-block">
-        <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Выберите ученика *</label>
-        <select id="input-student-id" name="student_id" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
-          <option value="">-- Выберите ученика из списка --</option>
-          {% if students %}
-          {% for s in students %}
-          <option value="{{ s.student_id or s.id }}">{{ s.name }} ({{ s.school_class or 'Ученик' }})</option>
-          {% endfor %}
-          {% endif %}
-        </select>
-      </div>
-
-      <!-- Topic -->
-      <div>
-        <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Тема урока *</label>
-        <input type="text" id="input-topic" name="topic" required placeholder="Например: Решение КЕГЭ №24 (Строки)" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
-      </div>
-
-      <!-- Time & Duration -->
-      <div class="grid grid-cols-2 gap-3">
-        <div class="col-span-2">
-          <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Дата урока *</label>
-          <input type="date" id="input-lesson-date" name="lesson_date" required class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
+      <!-- Student & Status -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div id="student-select-block">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Ученик *</label>
+          <select id="input-student-id" name="student_id" required class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+            <option value="">-- Выберите ученика --</option>
+            {% if students %}
+            {% for s in students %}
+            <option value="{{ s.student_id or s.id }}">{{ s.name }} ({{ s.school_class or 'Ученик' }})</option>
+            {% endfor %}
+            {% endif %}
+          </select>
         </div>
+
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Время начала *</label>
-          <input type="time" id="input-start-time" name="start_time" required value="16:00" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
-        </div>
-        <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Длительность (мин)</label>
-          <select id="input-duration" name="duration" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
-            <option value="45">45 минут</option>
-            <option value="60" selected>60 минут</option>
-            <option value="90">90 минут</option>
-            <option value="120">120 минут</option>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Статус урока</label>
+          <select id="input-status" name="status" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+            <option value="planned" selected>Запланирован</option>
+            <option value="in_progress">Идёт сейчас</option>
+            <option value="completed">Проведён</option>
+            <option value="cancelled">Отменён</option>
           </select>
         </div>
       </div>
 
-      <div class="mt-3">
-        <label for="view-lesson-status" class="text-[10px] font-black text-slate-400 uppercase block mb-1">Статус урока</label>
-        <select id="view-lesson-status" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500">
-          <option value="planned">Запланирован</option>
-          <option value="in_progress">Идёт сейчас</option>
-          <option value="completed">Проведён</option>
-          <option value="cancelled">Отменён</option>
-        </select>
+      <!-- Topic -->
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Тема занятия *</label>
+        <input type="text" id="input-topic" name="topic" required placeholder="Например: Python • Условия (if/else) или КЕГЭ № 24" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
       </div>
 
-      <div class="modal-footer px-0 pb-0 border-t-0">
-        <button type="button" onclick="closeNewLessonModal()" class="px-4 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-xl transition-colors">Отмена</button>
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-6 py-2.5 rounded-xl border-b-2 border-indigo-800 shadow-xs cursor-pointer">Создать урок</button>
+      <!-- Date, Time, Duration -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Дата *</label>
+          <input type="date" id="input-lesson-date" name="lesson_date" required class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Начало *</label>
+          <input type="time" id="input-start-time" name="start_time" required value="18:00" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Длительность</label>
+          <select id="input-duration" name="duration" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+            <option value="45">45 мин</option>
+            <option value="60" selected>60 мин</option>
+            <option value="90">90 мин</option>
+            <option value="120">120 мин</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Description / notes -->
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Описание урока</label>
+        <textarea id="input-notes" name="notes" rows="2" placeholder="Краткое описание урока, план занятия..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"></textarea>
+      </div>
+
+      <!-- Homework -->
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Домашнее задание</label>
+        <textarea id="input-homework" name="homework" rows="2" placeholder="Задание ученику после урока..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"></textarea>
+      </div>
+
+      <!-- Teacher notes for student -->
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Заметки для ученика</label>
+        <textarea id="input-student-notes" name="student_notes" rows="2" placeholder="Рекомендации, на что обратить внимание..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"></textarea>
+      </div>
+
+      <!-- Useful Materials repeater -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Полезные материалы (ссылки)</label>
+          <button type="button" onclick="addMaterialRow('new-materials-list')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
+            <i class="ph-bold ph-plus-circle"></i> + Добавить ссылку
+          </button>
+        </div>
+        <div id="new-materials-list" class="space-y-2"></div>
+      </div>
+
+      <div class="modal-footer px-0 pb-0 border-t pt-3 flex justify-end gap-2 shrink-0">
+        <button type="button" onclick="closeNewLessonModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-xl transition-colors cursor-pointer">Отмена</button>
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] shadow-xs active:translate-y-[2px] transition-all cursor-pointer">Создать урок</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- MODAL: ПРОСМОТР УРОКА -->
+<!-- MODAL: ДЕТАЛЬНЫЙ ПРОСМОТР / ПУЛЬТ УПРАВЛЕНИЯ УРОКОМ -->
 <div class="modal-backdrop hidden" id="modal-lesson-view">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div>
-        <span id="view-lesson-type-badge" class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider block mb-1">Урок</span>
-        <h2 class="text-base font-black text-slate-900" id="view-lesson-topic">Урок</h2>
-      </div>
-      <button onclick="document.getElementById('modal-lesson-view').classList.add('hidden')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition-colors text-lg font-bold">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="grid grid-cols-2 gap-3">
-        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-          <span class="text-[10px] font-black text-slate-400 uppercase block mb-1">Время</span>
-          <span class="text-xs font-black text-slate-800" id="view-lesson-time">--:--</span>
+  <div class="modal-box flex flex-col max-h-[92vh] overflow-hidden">
+    <div class="modal-header bg-slate-50/80 shrink-0">
+      <div class="flex-1 pr-4 min-w-0">
+        <div class="flex items-center gap-2 mb-1">
+          <span id="view-lesson-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border">Запланирован</span>
+          <span id="view-lesson-type-badge" class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider border border-slate-200">Индивидуальный</span>
         </div>
-        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-          <span class="text-[10px] font-black text-slate-400 uppercase block mb-1">Длительность</span>
-          <span class="text-xs font-black text-slate-800" id="view-lesson-duration">60 мин</span>
+        <h2 class="text-base font-black text-slate-900 tracking-tight leading-snug truncate" id="view-lesson-topic">Урок</h2>
+      </div>
+      <button onclick="closeLessonViewModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition-colors text-lg font-bold">×</button>
+    </div>
+
+    <div class="modal-body overflow-y-auto p-5 space-y-3.5">
+      <!-- Info Cards Row -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div class="bg-slate-50 border-2 border-slate-200/80 rounded-xl p-2.5">
+          <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-0.5">Ученик</span>
+          <div class="text-xs font-black text-slate-800 truncate" id="view-lesson-student">--</div>
+        </div>
+        <div class="bg-slate-50 border-2 border-slate-200/80 rounded-xl p-2.5">
+          <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-0.5">Время</span>
+          <div class="text-xs font-black text-slate-800 truncate" id="view-lesson-time">--:--</div>
+        </div>
+        <div class="bg-slate-50 border-2 border-slate-200/80 rounded-xl p-2.5">
+          <span class="text-[9px] font-black text-slate-400 uppercase tracking-wider block mb-0.5">Длительность</span>
+          <div class="text-xs font-black text-slate-800 truncate" id="view-lesson-duration">60 мин</div>
         </div>
       </div>
 
-      <a id="join-room-link" href="#" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs py-3 px-4 rounded-xl border-b-4 border-indigo-800 shadow-md transition-all text-center no-underline flex items-center justify-center gap-2 uppercase tracking-wider">
-        <i class="ph-bold ph-video-camera text-base"></i> ВОЙТИ В КОМНАТУ УРОКА
+      <!-- Room Button -->
+      <a id="join-room-link" href="#" target="_blank" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs py-2.5 px-4 rounded-xl border border-indigo-700 border-b-[3px] shadow-xs active:translate-y-[2px] transition-all text-center no-underline flex items-center justify-center gap-2 uppercase tracking-wider">
+        <i class="ph-bold ph-video-camera text-base"></i>
+        <span>Войти в интерактивную комнату</span>
       </a>
+
+      <!-- Description Section -->
+      <div>
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+          <i class="ph-bold ph-info text-indigo-500"></i> Описание урока
+        </span>
+        <div id="view-lesson-notes-box"></div>
+      </div>
+
+      <!-- Homework Section -->
+      <div>
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+          <i class="ph-bold ph-check-square-offset text-amber-500"></i> Домашнее задание
+        </span>
+        <div id="view-lesson-hw-box"></div>
+      </div>
+
+      <!-- Teacher Notes Section -->
+      <div>
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+          <i class="ph-bold ph-chalkboard-teacher text-indigo-500"></i> Заметки для ученика
+        </span>
+        <div id="view-lesson-student-notes-box"></div>
+      </div>
+
+      <!-- Materials Section -->
+      <div>
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1 flex items-center gap-1.5">
+          <i class="ph-bold ph-folder-open text-emerald-500"></i> Полезные материалы
+        </span>
+        <div id="view-lesson-materials-box" class="space-y-1.5"></div>
+      </div>
     </div>
-    <div class="modal-footer">
-      <button type="button" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-xl" onclick="document.getElementById('modal-lesson-view').classList.add('hidden')">Закрыть</button>
-      <button type="button" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-4 py-2 rounded-xl border-b-2 border-emerald-800 shadow-xs" onclick="saveLessonStatus()">Сохранить статус</button>
+
+    <!-- Footer with status changer and actions -->
+    <div class="modal-footer bg-slate-50/80 flex items-center justify-between gap-2 p-3.5 border-t border-slate-200 shrink-0">
+      <div class="flex items-center gap-1.5">
+        <label for="view-lesson-status" class="text-[10px] font-black text-slate-400 uppercase">Статус:</label>
+        <select id="view-lesson-status" class="bg-white border-2 border-slate-200 rounded-xl px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-indigo-400">
+          <option value="planned">Запланирован</option>
+          <option value="in_progress">Идёт сейчас</option>
+          <option value="completed">Проведён</option>
+          <option value="cancelled">Отменён</option>
+        </select>
+        <button type="button" onclick="saveLessonStatus()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-2.5 py-1.5 rounded-xl border border-emerald-700 border-b-[2px] shadow-xs active:translate-y-[1px] transition-all cursor-pointer">
+          OK
+        </button>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button type="button" onclick="deleteCurrentLesson()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1">
+          <i class="ph-bold ph-trash"></i> Удалить
+        </button>
+        <button type="button" onclick="openEditLessonModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-3.5 py-1.5 rounded-xl border border-indigo-700 border-b-[2px] shadow-xs active:translate-y-[1px] transition-all cursor-pointer flex items-center gap-1.5">
+          <i class="ph-bold ph-pencil-simple"></i> Редактировать
+        </button>
+      </div>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: РЕДАКТИРОВАНИЕ УРОКА -->
+<div class="modal-backdrop hidden" id="modal-edit-lesson">
+  <div class="modal-box flex flex-col max-h-[92vh] overflow-hidden">
+    <div class="modal-header shrink-0">
+      <div>
+        <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-0.5">Управление уроком</span>
+        <h2 class="text-lg font-black text-slate-900 tracking-tight">Редактирование занятия</h2>
+      </div>
+      <button onclick="closeEditLessonModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition-colors text-lg font-bold">×</button>
+    </div>
+    
+    <form id="edit-lesson-form" onsubmit="handleUpdateLesson(event)" class="modal-body overflow-y-auto p-5 space-y-3.5">
+      <input type="hidden" id="edit-lesson-id" name="lesson_id">
+      <input type="hidden" id="edit-lesson-type" name="lesson_type" value="individual">
+
+      <!-- Student & Status -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Ученик *</label>
+          <select id="edit-student-id" name="student_id" required class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+            <option value="">-- Выберите ученика --</option>
+            {% if students %}
+            {% for s in students %}
+            <option value="{{ s.student_id or s.id }}">{{ s.name }} ({{ s.school_class or 'Ученик' }})</option>
+            {% endfor %}
+            {% endif %}
+          </select>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Статус урока</label>
+          <select id="edit-status" name="status" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+            <option value="planned">Запланирован</option>
+            <option value="in_progress">Идёт сейчас</option>
+            <option value="completed">Проведён</option>
+            <option value="cancelled">Отменён</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Topic -->
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Тема занятия *</label>
+        <input type="text" id="edit-topic" name="topic" required placeholder="Тема урока..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+      </div>
+
+      <!-- Date, Time, Duration -->
+      <div class="grid grid-cols-3 gap-2.5">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Дата *</label>
+          <input type="date" id="edit-lesson-date" name="lesson_date" required class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Начало *</label>
+          <input type="time" id="edit-start-time" name="start_time" required class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Длительность</label>
+          <select id="edit-duration" name="duration" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+            <option value="45">45 мин</option>
+            <option value="60">60 мин</option>
+            <option value="90">90 мин</option>
+            <option value="120">120 мин</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Description / notes -->
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Описание урока</label>
+        <textarea id="edit-notes" name="notes" rows="2" placeholder="Краткое описание урока..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"></textarea>
+      </div>
+
+      <!-- Homework -->
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Домашнее задание</label>
+        <textarea id="edit-homework" name="homework" rows="2" placeholder="Задание ученику после урока..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"></textarea>
+      </div>
+
+      <!-- Teacher notes for student -->
+      <div>
+        <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Заметки для ученика</label>
+        <textarea id="edit-student-notes" name="student_notes" rows="2" placeholder="Рекомендации, на что обратить внимание..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"></textarea>
+      </div>
+
+      <!-- Useful Materials repeater -->
+      <div>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Полезные материалы (ссылки)</label>
+          <button type="button" onclick="addMaterialRow('edit-materials-list')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer">
+            <i class="ph-bold ph-plus-circle"></i> + Добавить ссылку
+          </button>
+        </div>
+        <div id="edit-materials-list" class="space-y-2"></div>
+      </div>
+
+      <div class="modal-footer px-0 pb-0 border-t pt-3 flex justify-end gap-2 shrink-0">
+        <button type="button" onclick="closeEditLessonModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-xl transition-colors cursor-pointer">Отмена</button>
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] shadow-xs active:translate-y-[2px] transition-all cursor-pointer">Сохранить изменения</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -587,12 +786,62 @@
     }
   };
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  window.addMaterialRow = function(containerId, name = '', url = '') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 material-row';
+    row.innerHTML = `
+      <input type="text" placeholder="Название (напр. Конспект по строкам)" value="${escapeHtml(name)}" class="mat-name flex-1 bg-slate-50 border-2 border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+      <input type="url" placeholder="https://..." value="${escapeHtml(url)}" class="mat-url flex-1 bg-slate-50 border-2 border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+      <button type="button" onclick="this.closest('.material-row').remove()" class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 flex items-center justify-center shrink-0 transition cursor-pointer" title="Удалить ссылку">
+        <i class="ph-bold ph-trash text-xs"></i>
+      </button>
+    `;
+    container.appendChild(row);
+  };
+
+  function collectMaterials(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    const rows = container.querySelectorAll('.material-row');
+    const result = [];
+    rows.forEach(r => {
+      const name = r.querySelector('.mat-name')?.value.trim();
+      const url = r.querySelector('.mat-url')?.value.trim();
+      if (name) {
+        result.push({ name, url: url || '' });
+      }
+    });
+    return result;
+  }
+
+  function renderMaterialsInputs(containerId, materials = []) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    if (Array.isArray(materials) && materials.length > 0) {
+      materials.forEach(m => addMaterialRow(containerId, m.name || m.title || '', m.url || ''));
+    }
+  }
+
   window.openNewLessonModal = function(hour, lessonDate) {
     if (hour !== undefined) {
       document.getElementById('input-start-time').value = `${pad2(hour)}:00`;
     }
     const dateInput = document.getElementById('input-lesson-date');
     if (dateInput) dateInput.value = lessonDate || state.weekdays[0]?.iso || '';
+    renderMaterialsInputs('new-materials-list', []);
     document.getElementById('modal-new-lesson').classList.remove('hidden');
   };
 
@@ -614,11 +863,16 @@
     }
     isSubmittingLesson = true;
 
+    const studentId = document.getElementById('input-student-id').value;
     const topic = document.getElementById('input-topic').value;
+    const lessonDate = document.getElementById('input-lesson-date').value;
     const startTime = document.getElementById('input-start-time').value;
     const duration = parseInt(document.getElementById('input-duration').value || '60', 10);
-    const type = document.getElementById('input-lesson-type').value;
-    const studentId = document.getElementById('input-student-id').value;
+    const status = document.getElementById('input-status').value || 'planned';
+    const notes = document.getElementById('input-notes').value.trim();
+    const homework = document.getElementById('input-homework').value.trim();
+    const studentNotes = document.getElementById('input-student-notes').value.trim();
+    const materials = collectMaterials('new-materials-list');
 
     if (!studentId) {
       if (typeof showBentoToast === 'function') showBentoToast('Выберите ученика для урока', 'error');
@@ -631,12 +885,18 @@
     }
 
     const payload = {
-      student_id: studentId ? parseInt(studentId, 10) : null,
-      lesson_date: document.getElementById('input-lesson-date').value,
+      student_id: parseInt(studentId, 10),
+      lesson_date: lessonDate,
       time: startTime,
       topic: topic,
       duration: duration,
-      lesson_type: type,
+      status: status,
+      notes: notes,
+      description: notes,
+      homework: homework,
+      student_notes: studentNotes,
+      materials: materials,
+      lesson_type: 'individual',
       timezone: RAW.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow'
     };
 
@@ -652,7 +912,7 @@
       const data = await resp.json().catch(() => ({}));
       if (resp.ok && (data.status === 'success' || data.success)) {
         if (typeof showBentoToast === 'function') {
-          showBentoToast("Урок сохранен в БД!", "success");
+          showBentoToast("Урок успешно создан!", "success");
         }
         closeNewLessonModal();
         setTimeout(() => location.reload(), 300);
@@ -662,7 +922,7 @@
         }
       }
     } catch (err) {
-      console.error("Failed to create lesson via API:", err);
+      console.error("Failed to create lesson:", err);
       if (typeof showBentoToast === 'function') showBentoToast("Ошибка сети при сохранении урока", "error");
     } finally {
       isSubmittingLesson = false;
@@ -673,25 +933,284 @@
     }
   };
 
-  window.openLessonView = function(lessonId) {
-    const lesson = state.lessons.find(l => l.lesson_id === lessonId);
-    if (!lesson) return;
+  window.openLessonView = async function(lessonId) {
+    let lesson = state.lessons.find(l => l.lesson_id === Number(lessonId));
+    
+    // Try to fetch full details from API for completely up-to-date values
+    try {
+      const resp = await fetch(`/api/schedule/lesson/${lessonId}/details`);
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json.status === 'success' && json.lesson) {
+          lesson = { ...lesson, ...json.lesson };
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch lesson details, using cached state', e);
+    }
 
-    document.getElementById('view-lesson-topic').textContent = lesson.topic;
-    document.getElementById('view-lesson-time').textContent = `${lesson.start_time || ''} – ${lesson.end_time || ''}`;
-    document.getElementById('view-lesson-duration').textContent = `${lesson.duration_minutes || 60} мин`;
-    document.getElementById('join-room-link').href = lesson.room_url || `/lesson/${lesson.lesson_id}/room`;
+    if (!lesson) return;
+    state.viewingLesson = lesson;
+
+    // Header & Badges
+    const topicEl = document.getElementById('view-lesson-topic');
+    const statusBadge = document.getElementById('view-lesson-status-badge');
+    const typeBadge = document.getElementById('view-lesson-type-badge');
+
+    if (topicEl) topicEl.textContent = lesson.topic || 'Урок';
+
+    const statusMap = {
+      'planned': { text: 'Запланирован', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+      'in_progress': { text: 'Идёт сейчас', cls: 'bg-amber-50 text-amber-800 border-amber-200 animate-pulse' },
+      'completed': { text: 'Проведён', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+      'done': { text: 'Проведён', cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+      'cancelled': { text: 'Отменён', cls: 'bg-rose-50 text-rose-700 border-rose-200' }
+    };
+    const curStatus = statusMap[lesson.status] || statusMap['planned'];
+    if (statusBadge) {
+      statusBadge.textContent = curStatus.text;
+      statusBadge.className = `px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${curStatus.cls}`;
+    }
+    if (typeBadge) {
+      typeBadge.textContent = (lesson.lesson_type === 'group') ? 'Групповой' : 'Индивидуальный';
+    }
+
+    // Info cards
+    const studentEl = document.getElementById('view-lesson-student');
+    const timeEl = document.getElementById('view-lesson-time');
+    const durEl = document.getElementById('view-lesson-duration');
+    if (studentEl) studentEl.textContent = lesson.student_name || 'Ученик';
+    if (timeEl) timeEl.textContent = `${lesson.start_time || ''} – ${lesson.end_time || ''}`;
+    if (durEl) durEl.textContent = `${lesson.duration_minutes || lesson.duration || 60} мин`;
+
+    // Room link
+    const roomBtn = document.getElementById('join-room-link');
+    if (roomBtn) roomBtn.href = lesson.room_url || `/lesson/${lesson.lesson_id}/room`;
+
+    // 1. Description section with thoughtful empty state
+    const notesBox = document.getElementById('view-lesson-notes-box');
+    if (notesBox) {
+      const val = (lesson.notes || lesson.description || '').trim();
+      if (val) {
+        notesBox.className = 'p-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs whitespace-pre-line font-medium leading-relaxed';
+        notesBox.textContent = val;
+      } else {
+        notesBox.className = 'p-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 text-slate-400 text-xs italic flex items-center gap-2';
+        notesBox.innerHTML = '<i class="ph-bold ph-info text-slate-400 text-sm"></i><span>Описание к уроку не заполнено</span>';
+      }
+    }
+
+    // 2. Homework section with thoughtful empty state
+    const hwBox = document.getElementById('view-lesson-hw-box');
+    if (hwBox) {
+      const val = (lesson.homework || '').trim();
+      if (val) {
+        hwBox.className = 'p-3 rounded-xl border border-amber-200 bg-amber-50/40 text-slate-800 text-xs whitespace-pre-line font-semibold leading-relaxed flex items-start gap-2.5';
+        hwBox.innerHTML = `<i class="ph-bold ph-check-square-offset text-amber-500 text-base shrink-0 mt-0.5"></i><div>${escapeHtml(val)}</div>`;
+      } else {
+        hwBox.className = 'p-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 text-slate-400 text-xs italic flex items-center gap-2';
+        hwBox.innerHTML = '<i class="ph-bold ph-pencil-simple-slash text-slate-400 text-sm"></i><span>Домашнее задание к этому уроку не задано</span>';
+      }
+    }
+
+    // 3. Teacher notes for student section with thoughtful empty state
+    const snBox = document.getElementById('view-lesson-student-notes-box');
+    if (snBox) {
+      const val = (lesson.student_notes || lesson.teacher_notes || '').trim();
+      if (val) {
+        snBox.className = 'p-3 rounded-xl border border-indigo-200 bg-indigo-50/40 text-slate-800 text-xs whitespace-pre-line font-semibold leading-relaxed flex items-start gap-2.5';
+        snBox.innerHTML = `<i class="ph-bold ph-chalkboard-teacher text-indigo-500 text-base shrink-0 mt-0.5"></i><div>${escapeHtml(val)}</div>`;
+      } else {
+        snBox.className = 'p-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 text-slate-400 text-xs italic flex items-center gap-2';
+        snBox.innerHTML = '<i class="ph-bold ph-note-blank text-slate-400 text-sm"></i><span>Заметки для ученика не оставлены</span>';
+      }
+    }
+
+    // 4. Materials section with thoughtful empty state
+    const matBox = document.getElementById('view-lesson-materials-box');
+    if (matBox) {
+      const mats = lesson.materials;
+      if (Array.isArray(mats) && mats.length > 0) {
+        matBox.innerHTML = mats.map(m => `
+          <a href="${escapeHtml(m.url || '#')}" target="_blank" class="flex items-center justify-between p-2 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/30 text-xs font-bold text-slate-800 transition no-underline">
+            <span class="flex items-center gap-2 truncate">
+              <i class="ph-bold ph-link text-indigo-500 shrink-0"></i>
+              <span class="truncate">${escapeHtml(m.name || m.title || 'Материал')}</span>
+            </span>
+            <i class="ph-bold ph-arrow-square-out text-slate-400 shrink-0 text-xs"></i>
+          </a>
+        `).join('');
+      } else {
+        matBox.innerHTML = `
+          <div class="p-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 text-slate-400 text-xs italic flex items-center gap-2">
+            <i class="ph-bold ph-folder-dashed text-slate-400 text-sm"></i>
+            <span>Материалы к уроку не прикреплены</span>
+          </div>
+        `;
+      }
+    }
+
+    // Status select
+    const statusSelect = document.getElementById('view-lesson-status');
+    if (statusSelect) statusSelect.value = lesson.status || 'planned';
 
     document.getElementById('modal-lesson-view').classList.remove('hidden');
+  };
+
+  window.closeLessonViewModal = function() {
+    document.getElementById('modal-lesson-view').classList.add('hidden');
+  };
+
+  window.saveLessonStatus = async function() {
+    if (!state.viewingLesson) return;
+    const lessonId = state.viewingLesson.lesson_id;
+    const status = document.getElementById('view-lesson-status').value;
+    try {
+      const resp = await fetch(`/api/schedule/update_lesson/${lessonId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        body: JSON.stringify({ status })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && (data.status === 'success' || data.success)) {
+        if (typeof showBentoToast === 'function') showBentoToast("Статус обновлен!", "success");
+        closeLessonViewModal();
+        setTimeout(() => location.reload(), 300);
+      } else {
+        if (typeof showBentoToast === 'function') showBentoToast("Ошибка: " + (data.message || data.error || 'Ошибка сохранения'), "error");
+      }
+    } catch (e) {
+      if (typeof showBentoToast === 'function') showBentoToast("Сетевая ошибка при смене статуса", "error");
+    }
+  };
+
+  window.deleteCurrentLesson = async function() {
+    if (!state.viewingLesson) return;
+    const lessonId = state.viewingLesson.lesson_id;
+    if (!confirm('Вы действительно хотите удалить этот урок из расписания?')) return;
+
+    try {
+      const resp = await fetch(`/api/schedule/delete_lesson/${lessonId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && (data.status === 'success' || data.success)) {
+        if (typeof showBentoToast === 'function') showBentoToast("Урок удалён", "success");
+        closeLessonViewModal();
+        setTimeout(() => location.reload(), 300);
+      } else {
+        if (typeof showBentoToast === 'function') showBentoToast("Ошибка: " + (data.message || data.error || 'Не удалось удалить'), "error");
+      }
+    } catch (e) {
+      if (typeof showBentoToast === 'function') showBentoToast("Сетевая ошибка при удалении урока", "error");
+    }
+  };
+
+  window.openEditLessonModal = function() {
+    if (!state.viewingLesson) return;
+    const l = state.viewingLesson;
+
+    closeLessonViewModal();
+
+    document.getElementById('edit-lesson-id').value = l.lesson_id;
+    document.getElementById('edit-student-id').value = l.student_id || '';
+    document.getElementById('edit-status').value = l.status || 'planned';
+    document.getElementById('edit-topic').value = l.topic || '';
+    document.getElementById('edit-lesson-date').value = l.date || l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
+    document.getElementById('edit-start-time').value = l.start_time || '18:00';
+    document.getElementById('edit-duration').value = String(l.duration_minutes || l.duration || 60);
+    document.getElementById('edit-notes').value = l.notes || l.description || '';
+    document.getElementById('edit-homework').value = l.homework || '';
+    document.getElementById('edit-student-notes').value = l.student_notes || l.teacher_notes || '';
+
+    renderMaterialsInputs('edit-materials-list', l.materials || []);
+
+    document.getElementById('modal-edit-lesson').classList.remove('hidden');
+  };
+
+  window.closeEditLessonModal = function() {
+    document.getElementById('modal-edit-lesson').classList.add('hidden');
+  };
+
+  window.handleUpdateLesson = async function(e) {
+    e.preventDefault();
+    const lessonId = document.getElementById('edit-lesson-id').value;
+    if (!lessonId) return;
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    let originalText = 'Сохранить изменения';
+    if (submitBtn) {
+      originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Сохранение...';
+    }
+
+    const payload = {
+      student_id: parseInt(document.getElementById('edit-student-id').value, 10),
+      status: document.getElementById('edit-status').value,
+      topic: document.getElementById('edit-topic').value,
+      lesson_date: document.getElementById('edit-lesson-date').value,
+      time: document.getElementById('edit-start-time').value,
+      duration: parseInt(document.getElementById('edit-duration').value, 10),
+      notes: document.getElementById('edit-notes').value.trim(),
+      description: document.getElementById('edit-notes').value.trim(),
+      homework: document.getElementById('edit-homework').value.trim(),
+      student_notes: document.getElementById('edit-student-notes').value.trim(),
+      materials: collectMaterials('edit-materials-list'),
+      lesson_type: 'individual'
+    };
+
+    try {
+      const resp = await fetch(`/api/schedule/update_lesson/${lessonId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && (data.status === 'success' || data.success)) {
+        if (typeof showBentoToast === 'function') showBentoToast("Урок обновлён!", "success");
+        closeEditLessonModal();
+        setTimeout(() => location.reload(), 300);
+      } else {
+        if (typeof showBentoToast === 'function') showBentoToast("Ошибка: " + (data.message || data.error || 'Ошибка сохранения'), "error");
+      }
+    } catch (err) {
+      console.error('Update lesson error:', err);
+      if (typeof showBentoToast === 'function') showBentoToast("Сетевая ошибка при обновлении урока", "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    }
   };
 
   function init() {
     renderCurrentView();
     setInterval(positionTimeMarker, 30000);
+
+    // Close modals on outside click
+    ['modal-new-lesson', 'modal-lesson-view', 'modal-edit-lesson'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('click', function(ev) {
+          if (ev.target === this) this.classList.add('hidden');
+        });
+      }
+    });
   }
 
   document.addEventListener('DOMContentLoaded', init);
 })();
 </script>
-<script src="{{ url_for('static', filename='js/schedule-teacher-v2.js') }}"></script>
 {% endblock %}

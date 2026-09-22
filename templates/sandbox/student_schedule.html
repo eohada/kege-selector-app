@@ -1,244 +1,421 @@
 {% extends "sandbox/layout_student.html" %}
 
+{% block extra_head %}
+<style>
+  .card-tactile {
+    background: #FFFFFF;
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    border-radius: 1.25rem;
+    box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.04), 0 2px 5px -1px rgba(15, 23, 42, 0.02);
+  }
+  .donut-chart {
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+  .donut-ring {
+    stroke: #F1F5F9;
+  }
+  .donut-segment {
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.6s ease;
+  }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .modal-backdrop.hidden { display: none; }
+  .modal-box {
+    background: white;
+    border-radius: 1.5rem;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.15);
+    border: 1px solid #e2e8f0;
+    animation: modalIn .15s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(.97) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .info-row {
+    background: #f8fafc;
+    border-radius: .75rem;
+    padding: .6rem .85rem;
+  }
+  .info-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    display: block;
+    margin-bottom: .2rem;
+  }
+  .info-value {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+</style>
+{% endblock %}
+
 {% block sandbox_content %}
 {# ============================================================
    ДАННЫЕ: Строго через JSON-тег, 0 Jinja в JS
    ============================================================ #}
 <script type="application/json" id="schedule-data">{{ schedule_page_data | tojson }}</script>
 
-<style>
-  @media (min-width: 1024px) {
-    body { overflow: hidden !important; }
-    .schedule-page { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-    .schedule-main { flex: 1; overflow: hidden; display: flex; gap: 1.5rem; padding: 1.5rem 1.5rem 1rem 7rem; }
-    .schedule-sidebar { width: 260px; flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
-    .schedule-grid-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; background: white; border-radius: 2rem; border: 2px solid rgba(226,232,240,.8); overflow: hidden; }
-  }
+<main class="min-h-screen flex-1 bg-[#F8FAFC] px-3 py-2 sm:px-6 sm:py-3 lg:pl-28 lg:pr-6">
+  <div class="schedule-page max-w-[1400px] mx-auto space-y-2">
 
-  @media (max-width: 1023px) {
-    .schedule-page { min-height: 100dvh; display: flex; flex-direction: column; padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
-    .schedule-page > header { padding: .9rem 1rem; gap: .75rem; align-items: stretch; }
-    .schedule-page > header > div:first-child { min-width: 0; }
-    .schedule-page > header h1 { font-size: 1.55rem; line-height: 1.05; }
-    .schedule-page > header > div:last-child { justify-content: space-between; }
-    .schedule-main { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; flex: 1; }
-    .schedule-sidebar { width: 100%; display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
-    .schedule-grid-wrap { display: none; }
-    .mobile-agenda { display: block; }
-    #view-switcher { display: none; }
-    #mobile-bottom-nav { position: fixed !important; bottom: 0 !important; min-height: 4.5rem; padding-bottom: max(.25rem, env(safe-area-inset-bottom)); }
-  }
-
-  @media (min-width: 1024px) { .mobile-agenda { display: none; } }
-
-  .schedule-days-header { flex-shrink: 0; position: sticky; top: 0; z-index: 20; background: white; border-bottom: 2px solid #e2e8f0; }
-  .schedule-scroll { flex: 1; overflow-y: auto; overflow-x: auto; position: relative; background: #f8fafc; }
-
-  .lesson-card { position: absolute; border-radius: 12px; padding: 6px 8px; font-size: 11px; cursor: pointer; transition: box-shadow .15s, transform .1s; z-index: 10; overflow: hidden; box-sizing: border-box; width: calc(100% - 4px); left: 2px; }
-  .lesson-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.15); transform: translateY(-1px); z-index: 20; }
-
-  .lesson-card.color-indigo { background: #eef2ff; border: 2px solid #c7d2fe; color: #312e81; }
-  .lesson-card.color-indigo.live { background: #4f46e5; border-color: #3730a3; color: white; }
-  .lesson-card.color-emerald { background: #ecfdf5; border: 2px solid #a7f3d0; color: #064e3b; }
-  .lesson-card.color-amber { background: #fffbeb; border: 2px solid #fde68a; color: #78350f; }
-  .lesson-card.color-rose { background: #fff1f2; border: 2px solid #fecdd3; color: #881337; }
-  .lesson-card.color-violet { background: #f5f3ff; border: 2px solid #ddd6fe; color: #4c1d95; }
-
-  .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.4); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-  .modal-backdrop.hidden { display: none; }
-  .modal-box { background: white; border-radius: 2rem; width: 100%; max-width: 480px; box-shadow: 0 25px 60px rgba(0,0,0,.18); border: 2px solid #e2e8f0; animation: modalIn .2s ease; }
-  @keyframes modalIn { from { opacity:0; transform: scale(.96) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
-  .modal-header { padding: 1.25rem 1.5rem; border-bottom: 2px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
-  .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: .875rem; }
-  .modal-footer { padding: 1rem 1.5rem; border-top: 2px solid #f1f5f9; display: flex; gap: .75rem; justify-content: flex-end; }
-
-  .info-row { background: #f8fafc; border-radius: .75rem; padding: .75rem 1rem; }
-  .info-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: .25rem; }
-  .info-value { font-size: 13px; font-weight: 800; color: #0f172a; }
-
-  .btn-join { background: #4f46e5; color: white; border: none; border-bottom: 4px solid #3730a3; border-radius: .875rem; padding: .75rem 1.5rem; font-size: 13px; font-weight: 900; cursor: pointer; transition: all .1s; text-transform: uppercase; letter-spacing: .04em; width: 100%; display: flex; align-items: center; justify-content: center; gap: .5rem; }
-  .btn-join:hover { background: #6366f1; }
-  .btn-join:active { transform: translateY(3px); border-bottom-width: 1px; }
-  .btn-secondary { background: white; color: #475569; border: 2px solid #e2e8f0; border-bottom: 4px solid #cbd5e1; border-radius: .75rem; padding: .625rem 1.25rem; font-size: 12px; font-weight: 800; cursor: pointer; transition: all .1s; }
-
-  .hour-row { height: 100px; border-bottom: 1px solid #f1f5f9; display: flex; }
-  .hour-label { width: 80px; flex-shrink: 0; border-right: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; color: #94a3b8; text-align: right; padding: 8px 12px 0 0; background: white; }
-  .day-cols { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); }
-  .day-cell { border-right: 1px solid #e2e8f0; }
-  .day-cell.today-col { background: rgba(99,102,241,.03); border-right: 1px solid #c7d2fe; }
-  .day-cell:last-child { border-right: none; }
-  .lessons-overlay { position: absolute; inset: 0; pointer-events: none; display: flex; }
-  .lessons-spacer { width: 80px; flex-shrink: 0; }
-  .lessons-cols { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); pointer-events: auto; }
-  .lessons-col { position: relative; }
-
-  @keyframes ping { 0%,100%{opacity:1}50%{opacity:.5} }
-  .animate-ping { animation: ping 1.2s cubic-bezier(0,0,.2,1) infinite; }
-
-  .schedule-scroll::-webkit-scrollbar { width: 6px; }
-  .schedule-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-  .schedule-scroll::-webkit-scrollbar-track { background: transparent; }
-  .schedule-sidebar::-webkit-scrollbar { display: none; }
-  .schedule-sidebar { scrollbar-width: none; }
-</style>
-
-<div class="schedule-page max-w-[1600px] mx-auto px-4 w-full">
-
-  {# ===== HEADER ===== #}
-  <header class="flex flex-col gap-3 px-4 py-3 border-b border-slate-100 bg-white shrink-0 lg:flex-row lg:items-center lg:justify-between lg:pl-28 lg:pr-6 lg:py-4">
-    <div>
-      <span class="text-xs font-black text-indigo-500 uppercase tracking-widest block mb-0.5">📅 ЛИЧНЫЙ КАЛЕНДАРЬ</span>
-      <h1 class="text-2xl font-black text-slate-900 tracking-tight font-display">Моё расписание</h1>
-    </div>
-    <div class="flex items-center gap-3">
-      <div class="flex items-center p-1 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-inner" id="view-switcher">
-        <button id="btn-view-week"  onclick="switchView('week')"  class="px-3 py-1.5 bg-white text-indigo-600 font-extrabold text-xs rounded-xl shadow-xs border border-slate-200/60">Неделя</button>
-        <button id="btn-view-month" onclick="switchView('month')" class="px-3 py-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-xl transition-all">Месяц</button>
+  {# ===== 1. HERO HEADER CARD ===== #}
+  <div class="card-tactile p-2.5 sm:px-5 sm:py-3 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-white via-indigo-50/20 to-white">
+    <div class="max-w-md z-10">
+      <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider mb-0.5">
+        <i class="ph-bold ph-calendar"></i>
+        <span>Личный календарь</span>
       </div>
-      <div class="flex items-center gap-1" id="week-nav">
-        <button onclick="navigateWeek(-1)" class="w-8 h-8 rounded-xl bg-[#F4F7FA] border border-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-pointer"><i class="ph-bold ph-caret-left"></i></button>
-        <span id="week-label" class="text-xs font-black text-slate-700 min-w-[80px] text-center">Сегодня</span>
-        <button onclick="navigateWeek(1)"  class="w-8 h-8 rounded-xl bg-[#F4F7FA] border border-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-pointer"><i class="ph-bold ph-caret-right"></i></button>
-      </div>
-    </div>
-  </header>
-
-  <div class="schedule-main">
-
-    {# ===== ЛЕВЫЙ САЙДБАР ===== #}
-    <aside class="schedule-sidebar">
-      {# Ближайший урок #}
-      <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] p-4">
-        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">БЛИЖАЙШИЙ ОНЛАЙН</span>
-        <div id="next-lesson-content" class="text-xs text-slate-500 font-bold">
-          {% if active_lesson %}
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2">
-              <div style="width:2.25rem;height:2.25rem;border-radius:.75rem;background:#eef2ff;color:#4f46e5;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:11px;flex-shrink:0;">
-                <span>{{ active_lesson.lesson_date|user_dt('%d') if active_lesson.lesson_date else '?' }}</span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div style="font-weight:900;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ active_lesson.topic }}">{{ active_lesson.topic }}</div>
-                <div style="font-weight:700;font-size:11px;color:#4f46e5;">Сегодня, {{ active_lesson.lesson_date|user_dt('%H:%M') if active_lesson.lesson_date else '' }}</div>
-              </div>
-            </div>
-            <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=active_lesson.lesson_id) }}" class="btn-3d mt-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-black text-xs py-2.5 px-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline block">
-              ВОЙТИ В УРОК
-            </a>
-          </div>
-          {% elif upcoming_lesson %}
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2">
-              <div style="width:2.25rem;height:2.25rem;border-radius:.75rem;background:#eef2ff;color:#4f46e5;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:11px;flex-shrink:0;">
-                <span>{{ upcoming_lesson.lesson_date|user_dt('%d') if upcoming_lesson.lesson_date else '?' }}</span>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div style="font-weight:900;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ upcoming_lesson.topic }}">{{ upcoming_lesson.topic }}</div>
-                <div style="font-weight:700;font-size:11px;color:#4f46e5;">{{ upcoming_lesson.lesson_date|user_dt('%d.%m в %H:%M') if upcoming_lesson.lesson_date else '' }}</div>
-              </div>
-            </div>
-            <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=upcoming_lesson.lesson_id) }}" class="btn-3d mt-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-black text-xs py-2.5 px-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline block">
-              ВОЙТИ В УРОК
-            </a>
-          </div>
-          {% else %}
-          <span class="text-slate-400">Нет предстоящих занятий</span>
-          {% endif %}
-        </div>
-      </div>
-
-
-      {# Статистика недели #}
-      <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] p-4 flex flex-col gap-3">
-        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Эта неделя</span>
-        <div class="flex gap-3">
-          <div class="flex-1 bg-white rounded-xl p-3 text-center border border-slate-200">
-            <div id="stat-total" class="text-xl font-black text-indigo-600">0</div>
-            <div class="text-[10px] font-bold text-slate-400">уроков</div>
-          </div>
-          <div class="flex-1 bg-white rounded-xl p-3 text-center border border-slate-200">
-            <div id="stat-done" class="text-xl font-black text-emerald-600">0</div>
-            <div class="text-[10px] font-bold text-slate-400">завершено</div>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    {# ===== СЕТКА РАСПИСАНИЯ ===== #}
-    <div class="schedule-grid-wrap" id="schedule-grid-wrap">
-
-      {# ВИД «НЕДЕЛЯ» #}
-      <div id="view-week" class="flex flex-col h-full overflow-hidden">
-        <div class="schedule-scroll scroll-smooth relative" id="calendar-scroll">
-          <div class="sticky top-0 z-40 bg-white border-b border-slate-200 grid grid-cols-[80px_repeat(7,1fr)] shadow-sm" id="days-header">
-            <div class="flex items-center justify-center border-r border-slate-200 bg-slate-50 py-3">
-              <span class="text-[10px] font-black text-slate-400 uppercase">Время</span>
-            </div>
-            {% if schedule_page_data and schedule_page_data.weekdays %}
-            {% for d in schedule_page_data.weekdays %}
-            <div class="p-3 text-center border-r border-slate-200 bg-white {{ 'bg-indigo-50/60 border-t-4 border-t-indigo-600' if d.is_today else '' }}">
-              <div class="text-xs font-bold {{ 'text-indigo-600' if d.is_today else ('text-rose-400' if loop.index0 >= 5 else 'text-slate-500') }}">{{ d.name }}</div>
-              <div class="text-base font-black {{ 'text-indigo-950' if d.is_today else ('text-rose-600' if loop.index0 >= 5 else 'text-slate-800') }}">{{ d.date }}</div>
-            </div>
-            {% endfor %}
-            {% endif %}
-          </div>
-          <div class="relative w-full">
-            <div id="hour-rows">
-              {% for h in range(24) %}
-              {% set time_label = "%02d:00" | format(h) %}
-              <div class="grid grid-cols-[80px_repeat(7,1fr)] border-b border-slate-200 group hover:bg-slate-50/50 transition-colors h-[100px]">
-                <div class="flex items-start justify-center pt-2 border-r border-slate-200">
-                  <span class="text-[11px] font-black text-slate-400">{{ time_label }}</span>
-                </div>
-                {% for d in range(7) %}
-                <div class="border-r border-slate-200 relative {{ 'bg-indigo-50/20' if (schedule_page_data and schedule_page_data.weekdays and schedule_page_data.weekdays[d] and schedule_page_data.weekdays[d].is_today) else '' }}"></div>
-                {% endfor %}
-              </div>
-              {% endfor %}
-            </div>
-            <div id="time-marker" class="absolute flex items-center z-30 pointer-events-none" style="width:100%;display:none;">
-              <div class="text-rose-600 font-black text-[11px] pr-2 flex justify-end" style="width:80px;flex-shrink:0;" id="time-marker-label"></div>
-              <div class="flex-1 h-[2px] bg-rose-500 relative">
-                <div class="absolute -left-1 -top-[3px] w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm"></div>
-              </div>
-            </div>
-            <div class="lessons-overlay absolute inset-0 pointer-events-none flex z-30" id="lessons-overlay">
-              <div class="lessons-spacer" style="width:80px; flex-shrink:0;"></div>
-              <div class="grid grid-cols-7 flex-1 pointer-events-auto" id="lessons-cols"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {# ВИД «МЕСЯЦ» #}
-      <div id="view-month" style="display:none;" class="flex flex-col h-full overflow-hidden">
-        <div class="flex border-b border-slate-200 bg-slate-50/80 shrink-0">
-          <div class="flex-1 grid" style="grid-template-columns:repeat(7,1fr);" id="month-days-header"></div>
-        </div>
-        <div class="flex-1 overflow-y-auto">
-          <div id="month-grid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
-        </div>
-      </div>
-
+      <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">Моё расписание</h1>
+      <p class="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1.5">
+        <span>Здесь твои занятия, дедлайны и учебные планы. Всё под контролем!</span>
+        <i class="ph-bold ph-heart text-indigo-400"></i>
+      </p>
     </div>
 
-    <section id="mobile-agenda" class="mobile-agenda" aria-label="Расписание на неделю"></section>
+    <!-- Center Mascot with Thought Bubble -->
+    <div class="relative flex flex-col items-center justify-center shrink-0 z-10 py-0.5">
+      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 border border-indigo-100/90 text-indigo-700 font-bold text-[10px] shadow-2xs mb-1 backdrop-blur-xs">
+        <span>Маленькие шаги сегодня — большие результаты завтра!</span>
+        <i class="ph-bold ph-heart text-indigo-400"></i>
+      </div>
+      <img src="/static/images/schedule/schedule_hero_ghost.png" alt="BooStudy Mascot" class="h-16 sm:h-20 object-contain drop-shadow-sm hover:scale-105 transition-transform duration-300">
+    </div>
+
+    <!-- Right Quote Card -->
+    <div class="hidden lg:flex flex-col justify-center max-w-[240px] p-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200/70 text-xs text-slate-600 leading-relaxed shadow-2xs z-10">
+      <p class="font-bold text-slate-800 italic text-[11px] leading-snug">«Знания — это инвестиция, которая всегда окупается.»</p>
+      <span class="block mt-0.5 text-[10px] text-slate-400 font-bold">— Твой учебный компаньон</span>
+    </div>
   </div>
-</div>
 
-{# Модалка просмотра урока (только чтение) #}
+  {# ===== 2. CONTROLS BAR ===== #}
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+    <!-- View Switcher Tabs -->
+    <div class="flex items-center p-0.5 bg-[#F1F5F9] rounded-xl border border-slate-200/80 shadow-inner w-fit" id="view-switcher">
+      <button id="btn-view-week" onclick="switchView('week')" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 text-white font-black text-xs rounded-lg shadow-xs transition-all cursor-pointer">
+        <i class="ph-bold ph-calendar"></i>
+        <span>Неделя</span>
+      </button>
+      <button id="btn-view-month" onclick="switchView('month')" class="flex items-center gap-1.5 px-3.5 py-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-lg transition-all cursor-pointer">
+        <i class="ph-bold ph-calendar-blank"></i>
+        <span>Месяц</span>
+      </button>
+    </div>
+
+    <!-- Center Week Navigator -->
+    <div class="flex items-center justify-center gap-2">
+      <button onclick="navigateWeek(-1)" class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center font-bold shadow-2xs active:translate-y-0.5 transition cursor-pointer" title="Предыдущая неделя">
+        <i class="ph-bold ph-caret-left"></i>
+      </button>
+      <span id="week-date-range" class="text-xs sm:text-sm font-black text-slate-800 px-3 min-w-[190px] text-center">
+        {{ week_label }}
+      </span>
+      <button onclick="navigateWeek(1)" class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center font-bold shadow-2xs active:translate-y-0.5 transition cursor-pointer" title="Следующая неделя">
+        <i class="ph-bold ph-caret-right"></i>
+      </button>
+    </div>
+
+    <!-- Right Today Button -->
+    <button onclick="navigateToday()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-black text-slate-700 shadow-2xs active:translate-y-0.5 transition cursor-pointer w-fit">
+      <i class="ph-bold ph-crosshair text-slate-500"></i>
+      <span>Сегодня</span>
+    </button>
+  </div>
+
+  {# ===== 3. WEEK DASHBOARD CONTAINER ===== #}
+  <div id="view-week" class="space-y-2.5">
+
+    <!-- 7-Day Horizontal Week Strip with Dashed Line -->
+    <div class="relative py-1">
+      <div class="absolute left-6 right-6 top-1/2 -translate-y-1/2 border-b border-dashed border-slate-300 pointer-events-none z-0"></div>
+      <i class="ph-bold ph-caret-right absolute right-0.5 top-1/2 -translate-y-1/2 text-slate-300 text-xs pointer-events-none z-0"></i>
+
+      <div class="grid grid-cols-7 gap-2 sm:gap-2.5 relative z-10" id="weekdays-strip">
+        <!-- Rendered by JavaScript -->
+      </div>
+    </div>
+
+    <!-- Middle 2-Column Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+
+      <!-- Left Column: Active / Next Lesson Card -->
+      <div class="lg:col-span-8 card-tactile p-3.5 sm:p-4.5 relative overflow-hidden flex flex-col justify-between bg-gradient-to-br from-white to-[#FAFBFD]" id="hero-lesson-card">
+        <div>
+          <!-- Header -->
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600" id="hero-icon-box">
+                <i class="ph-fill ph-sparkle text-sm"></i>
+              </div>
+              <span class="text-xs sm:text-sm font-black text-slate-900" id="hero-card-status-title">Следующий урок</span>
+            </div>
+            <span id="hero-countdown-badge" class="px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black">
+              Через 2 дня
+            </span>
+          </div>
+
+          <!-- Body Content + Right Mascot Illustration -->
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mt-3">
+            <div class="flex-1 min-w-0">
+              <h2 class="text-lg sm:text-xl font-black text-slate-900 font-display tracking-tight leading-snug" id="hero-lesson-topic">
+                Python • Условия
+              </h2>
+              <p class="text-xs text-slate-600 leading-relaxed mt-1 max-w-lg font-medium" id="hero-lesson-desc">
+                Продолжим тему if / elif / else и разберём вложенные условия. Решим задачи из реальных вариантов ЕГЭ.
+              </p>
+
+              <!-- Metadata Pills -->
+              <div class="flex flex-wrap gap-2 mt-3.5" id="hero-meta-pills">
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-xs font-bold text-slate-700">
+                  <i class="ph-fill ph-calendar text-indigo-500 text-xs"></i>
+                  <span id="hero-lesson-date">23 сентября</span>
+                  <span class="text-slate-400 font-medium" id="hero-lesson-dayname">(среда)</span>
+                </div>
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-xs font-bold text-slate-700">
+                  <i class="ph-fill ph-clock text-indigo-500 text-xs"></i>
+                  <span id="hero-lesson-time">18:00 — 19:00</span>
+                  <span class="text-slate-400 font-medium" id="hero-lesson-duration">1 час</span>
+                </div>
+                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-xs font-bold text-slate-700">
+                  <i class="ph-fill ph-video-camera text-indigo-500 text-xs"></i>
+                  <span>Онлайн</span>
+                  <span class="text-slate-400 font-medium">(ссылка в кабинете)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mascot Illustration on Right -->
+            <div class="relative flex flex-col items-center justify-center shrink-0 self-center sm:self-start">
+              <div class="text-[10px] font-bold text-indigo-600 bg-indigo-50/90 border border-indigo-100 rounded-lg px-2 py-0.5 mb-1 whitespace-nowrap shadow-2xs flex items-center gap-1" id="hero-mascot-bubble">
+                <span>Готовься к новому уроку!</span>
+                <i class="ph-bold ph-heart text-indigo-400"></i>
+              </div>
+              <img src="/static/images/schedule/schedule_lesson_ghost.png" alt="Ghost Student" class="h-24 sm:h-28 lg:h-32 object-contain drop-shadow-sm hover:scale-105 transition-transform duration-300">
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2.5 mt-4 pt-3.5 border-t border-slate-100" id="hero-action-buttons">
+          <a id="hero-lesson-room-btn" href="/theory" class="inline-flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs border border-indigo-700 border-b-[3px] shadow-[0_3px_8px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-0.5 transition-all no-underline">
+            <span id="hero-primary-btn-label">Перейти к материалам</span>
+            <i class="ph-bold ph-caret-right"></i>
+          </a>
+          <button type="button" id="hero-secondary-btn" onclick="addToCalendar()" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs shadow-2xs active:translate-y-0.5 transition cursor-pointer">
+            <i class="ph-bold ph-calendar-plus text-xs text-slate-500"></i>
+            <span>Добавить в календарь</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right Column: My Week Card -->
+      <div class="lg:col-span-4 card-tactile p-3.5 sm:p-4.5 flex flex-col justify-between" id="my-week-card">
+        <div>
+          <!-- Header -->
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+              <i class="ph-fill ph-chart-pie-slice text-sm"></i>
+            </div>
+            <span class="text-xs sm:text-sm font-black text-slate-900">Моя неделя</span>
+          </div>
+
+          <!-- Stats & Donut Ring Row -->
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-2xl sm:text-3xl font-black text-slate-900 font-display" id="stat-progress-count">
+                1 / 2
+              </div>
+              <div class="text-[11px] font-bold text-slate-400 mt-0.5">
+                занятий на этой неделе
+              </div>
+
+              <!-- Legend -->
+              <div class="mt-3 space-y-1.5">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span>Проведено</span>
+                  <span class="ml-auto font-black" id="stat-done-count">1</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
+                  <span>Осталось</span>
+                  <span class="ml-auto font-black" id="stat-remaining-count">1</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Circular Donut Progress Ring -->
+            <div class="relative w-16 h-16 sm:w-18 sm:h-18 shrink-0 flex items-center justify-center">
+              <svg viewBox="0 0 36 36" class="w-16 h-16 sm:w-18 sm:h-18 donut-chart">
+                <path class="donut-ring" stroke-width="3.8" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path id="donut-segment-bar" class="donut-segment stroke-emerald-500" stroke-width="3.8" stroke-dasharray="50, 100" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <span class="absolute text-xs sm:text-sm font-black text-slate-800" id="stat-percent-label">50%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Motivating Quote Banner -->
+        <div class="mt-3 p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-100 flex items-start gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-white border border-indigo-200/60 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs">
+            <i class="ph-bold ph-calendar-star text-sm"></i>
+          </div>
+          <div>
+            <div class="text-xs font-black text-indigo-950">Ты движешься к цели!</div>
+            <div class="text-[11px] font-semibold text-indigo-700/80 mt-0.5">Даже одно занятие — это уже шаг вперёд ✨</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom 3-Column Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+      <!-- Card 1: Домашнее задание -->
+      <div class="card-tactile p-3.5 sm:p-4 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <i class="ph-fill ph-file-text text-sm"></i>
+              </div>
+              <span class="text-xs sm:text-sm font-black text-slate-900">Домашнее задание</span>
+            </div>
+            <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-black border border-indigo-100" id="hw-badge">
+              К следующему уроку
+            </span>
+          </div>
+
+          <div id="hw-items-container">
+            <a id="hw-item-link" href="/submissions" class="p-2.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/30 transition flex items-center justify-between group no-underline mt-1">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-4 h-4 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 shrink-0 transition"></span>
+                <span class="text-xs font-bold text-slate-800 truncate" id="hw-task-title">Решить 5 задач на условия</span>
+              </div>
+              <i class="ph-bold ph-caret-right text-slate-400 group-hover:text-indigo-600 text-xs shrink-0 transition"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Полезные материалы -->
+      <div class="card-tactile p-3.5 sm:p-4 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <i class="ph-fill ph-book-open text-sm"></i>
+              </div>
+              <span class="text-xs sm:text-sm font-black text-slate-900">Полезные материалы</span>
+            </div>
+            <a href="/theory" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1 no-underline">
+              <span>Смотреть все</span>
+              <i class="ph-bold ph-arrow-right text-[9px]"></i>
+            </a>
+          </div>
+
+          <div class="space-y-1.5 mt-1" id="materials-container">
+            <a href="/theory" class="flex items-center gap-2 p-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-50 transition no-underline">
+              <i class="ph-bold ph-file-text text-indigo-500 text-sm shrink-0"></i>
+              <span class="truncate" id="mat-title-1">Краткая теория: if / elif / else</span>
+            </a>
+            <a href="/trainer" class="flex items-center gap-2 p-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-50 transition no-underline">
+              <i class="ph-bold ph-file-text text-indigo-500 text-sm shrink-0"></i>
+              <span class="truncate" id="mat-title-2">Подборка задач (ЕГЭ)</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Заметки преподавателя -->
+      <div class="card-tactile p-3 sm:p-3.5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <i class="ph-fill ph-chalkboard-teacher text-xs"></i>
+              </div>
+              <span class="text-xs sm:text-sm font-black text-slate-900">Заметки преподавателя</span>
+            </div>
+            <a href="/workspace/profile" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1 no-underline">
+              <span>Читать все</span>
+              <i class="ph-bold ph-arrow-right text-[9px]"></i>
+            </a>
+          </div>
+
+          <div class="p-2.5 rounded-xl border border-slate-200/80 bg-[#F8FAFC] text-xs font-medium text-slate-500 leading-relaxed mt-1" id="notes-content-box">
+            Здесь будут твои заметки после уроков... Например, что было сложно, на что обратить внимание, идеи для повторения.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  {# ===== 4. MONTH VIEW CONTAINER ===== #}
+  <div id="view-month" class="hidden card-tactile p-4 overflow-hidden">
+    <div class="flex border-b border-slate-200 bg-slate-50/80 rounded-t-xl overflow-hidden shrink-0">
+      <div class="flex-1 grid grid-cols-7" id="month-days-header">
+        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">ПН</div>
+        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">ВТ</div>
+        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">СР</div>
+        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">ЧТ</div>
+        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">ПТ</div>
+        <div class="p-2 text-center text-xs font-black text-rose-400 border-r border-slate-200">СБ</div>
+        <div class="p-2 text-center text-xs font-black text-rose-400">ВС</div>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <div id="month-grid" class="grid grid-cols-7 border-l border-t border-slate-200 min-w-[650px]"></div>
+    </div>
+  </div>
+
+  {# ===== 5. FOOTER QUOTE ===== #}
+  <div class="flex items-center justify-between pt-2 pb-3 border-t border-slate-200/60 text-[11px] font-bold text-slate-400">
+    <div class="flex items-center gap-1.5">
+      <i class="ph-bold ph-ghost text-slate-400 text-sm"></i>
+      <span>«Дисциплина сегодня — свобода завтра.»</span>
+    </div>
+    <div class="flex items-center gap-1 text-indigo-400 font-bold">
+      <span>Всё получится!</span>
+      <i class="ph-bold ph-heart"></i>
+    </div>
+  </div>
+
+  </div>
+</main>
+
+{# ===== 6. LESSON VIEW MODAL ===== #}
 <div class="modal-backdrop hidden" id="modal-lesson-view">
   <div class="modal-box">
-    <div class="modal-header">
+    <div class="modal-header flex items-center justify-between p-4 border-b border-slate-100">
       <div>
-        <span id="view-lesson-type-badge" class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider block mb-1"></span>
+        <span id="view-lesson-type-badge" class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider block mb-1">Онлайн-урок</span>
         <h2 class="text-base font-black text-slate-900" id="view-lesson-topic">Урок</h2>
       </div>
-      <button onclick="document.getElementById('modal-lesson-view').classList.add('hidden')" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition-colors text-lg font-bold">×</button>
+      <button onclick="document.getElementById('modal-lesson-view').classList.add('hidden')" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition-colors text-base font-bold">×</button>
     </div>
-    <div class="modal-body">
-      <div class="grid grid-cols-2 gap-3">
+    <div class="modal-body p-4 space-y-2.5">
+      <div class="grid grid-cols-2 gap-2.5">
         <div class="info-row">
           <span class="info-label">Время</span>
           <span class="info-value" id="view-lesson-time"></span>
@@ -252,16 +429,17 @@
         <span class="info-label">Преподаватель / Группа</span>
         <span class="info-value" id="view-lesson-group"></span>
       </div>
-      <div id="view-lesson-url-block" class="info-row hidden" style="background:#eef2ff;border:2px solid #c7d2fe;">
-        <span class="info-label" style="color:#6366f1;">Ссылка на вебинар</span>
+      <div id="view-lesson-url-block" class="info-row hidden" style="background:#eef2ff;border:1px solid #c7d2fe;">
+        <span class="info-label" style="color:#6366f1;">Ссылка на урок</span>
         <a id="view-lesson-url-link" href="#" target="_blank" class="text-xs font-bold text-indigo-700 break-all block"></a>
       </div>
-      <button id="join-btn" onclick="joinLesson()" class="btn-join hidden">
-        <i class="ph-bold ph-video-camera text-base"></i> ВОЙТИ В КОМНАТУ УРОКА
+      <button id="join-btn" onclick="joinLesson()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider border-b-[3px] border-indigo-800 transition active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer shadow-sm">
+        <i class="ph-bold ph-video-camera text-base"></i>
+        <span>Войти в комнату урока</span>
       </button>
     </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="document.getElementById('modal-lesson-view').classList.add('hidden')">Закрыть</button>
+    <div class="modal-footer p-3 border-t border-slate-100 flex justify-end">
+      <button class="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('modal-lesson-view').classList.add('hidden')">Закрыть</button>
     </div>
   </div>
 </div>
@@ -270,80 +448,26 @@
 (function() {
   'use strict';
 
-  const RAW = JSON.parse(document.getElementById('schedule-data').textContent);
+  const dataEl = document.getElementById('schedule-data');
+  const RAW = dataEl ? JSON.parse(dataEl.textContent || '{}') : {};
   let state = {
     view: 'week',
     weekOffset: RAW.week_offset || 0,
-    lessons: [],
+    lessons: RAW.lessons || [],
     weekdays: RAW.weekdays || [],
-    tzName: RAW.tz_name || 'Europe/Moscow',
-    currentHour: RAW.current_hour || 0,
-    currentMinute: RAW.current_minute || 0,
-    currentWeekday: RAW.current_weekday || 0,
-    weekStartIso: RAW.week_start_iso || '',
+    todayIso: RAW.today_iso || new Date().toISOString().split('T')[0],
+    tzName: RAW.timezone || 'Europe/Moscow',
+    activeHomework: RAW.active_homework || [],
+    usefulMaterials: RAW.useful_materials || [],
+    studentNotesGeneral: RAW.student_notes_general || '',
+    upcomingLesson: null,
+    selectedDayIso: null,
+    displayedLesson: null,
     viewingLesson: null,
   };
 
-  const PX_PER_HOUR = 100;
-
-  function pad2(n) { return String(n).padStart(2, '0'); }
-
-  function processLessons(lessonsArray) {
-    return (lessonsArray || []).map(l => {
-      // Сервер уже подготовил точные start_date, start_time, end_time и weekday в эффективном поясе пользователя
-      const topMinutes = (typeof l.grid_top === 'number') ? l.grid_top : 0;
-      l.grid_top = Math.round(topMinutes * PX_PER_HOUR / 60);
-      l.grid_height = Math.max(Math.round((l.duration_minutes || 60) * PX_PER_HOUR / 60), 30);
-      let wdIndex = state.weekdays.findIndex(w => w.iso === l.start_date);
-      if (wdIndex !== -1) {
-        l.weekday = wdIndex;
-      }
-      return l;
-    });
-  }
-
-  state.lessons = processLessons(RAW.lessons || []);
-
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  (function initTimezoneSync() {
-    if (state.tzName && state.tzName !== userTimezone) {
-      const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-      const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
-      fetch('/api/me/timezone', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({ browser_iana: userTimezone })
-      }).catch(() => {});
-    }
-  })();
-
-  function generateWeekdays(weekOffset, weekStartIso) {
-    const today = new Date();
-    const day = today.getDay();
-    const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
-    const startOfWeek = new Date(today.setDate(diffToMonday));
-    startOfWeek.setDate(startOfWeek.getDate() + weekOffset * 7);
-    
-    const dayNames = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
-    const weekdays = [];
-    const realTodayStr = new Date().toLocaleDateString('en-CA');
-    
-    for (let i = 0; i < 7; i++) {
-       const d = new Date(startOfWeek);
-       d.setDate(d.getDate() + i);
-       const iso = d.toLocaleDateString('en-CA');
-       weekdays.push({
-          name: dayNames[i],
-          date: d.getDate(),
-          iso: iso,
-          is_today: iso === realTodayStr
-       });
-    }
-    return weekdays;
-  }
+  const RU_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  const RU_DAYS = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
 
   window.navigateWeek = function(delta) {
     const params = new URLSearchParams(window.location.search);
@@ -351,310 +475,585 @@
     window.location.assign(`${RAW.base_url || '/schedule'}?${params.toString()}`);
   };
 
-  function updateWeekLabel() {
-    const lbl = document.getElementById('week-label');
-    if (!lbl) return;
-    lbl.textContent = state.weekOffset === 0 ? 'Сегодня' : (state.weekOffset > 0 ? '+' : '') + state.weekOffset + ' нед.';
-  }
+  window.navigateToday = function() {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('week');
+    window.location.assign(`${RAW.base_url || '/schedule'}`);
+  };
 
-  function switchView(view) {
+  window.switchView = function(view) {
     state.view = view;
-    ['week','month'].forEach(v => {
-      const el = document.getElementById('view-' + v);
-      if (el) el.style.display = (v === view) ? '' : 'none';
-      const btn = document.getElementById('btn-view-' + v);
-      if (!btn) return;
-      if (v === view) {
-        btn.classList.add('bg-white','text-indigo-600','font-extrabold','shadow-xs','border','border-slate-200/60');
-        btn.classList.remove('text-slate-500');
-      } else {
-        btn.classList.remove('bg-white','text-indigo-600','font-extrabold','shadow-xs','border','border-slate-200/60');
-        btn.classList.add('text-slate-500');
+    const weekEl = document.getElementById('view-week');
+    const monthEl = document.getElementById('view-month');
+    const btnWeek = document.getElementById('btn-view-week');
+    const btnMonth = document.getElementById('btn-view-month');
+
+    if (view === 'week') {
+      if (weekEl) weekEl.classList.remove('hidden');
+      if (monthEl) monthEl.classList.add('hidden');
+      if (btnWeek) {
+        btnWeek.className = 'flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 text-white font-black text-xs rounded-lg shadow-xs transition-all cursor-pointer';
       }
+      if (btnMonth) {
+        btnMonth.className = 'flex items-center gap-1.5 px-3.5 py-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-lg transition-all cursor-pointer';
+      }
+    } else {
+      if (weekEl) weekEl.classList.add('hidden');
+      if (monthEl) monthEl.classList.remove('hidden');
+      if (btnWeek) {
+        btnWeek.className = 'flex items-center gap-1.5 px-3.5 py-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-lg transition-all cursor-pointer';
+      }
+      if (btnMonth) {
+        btnMonth.className = 'flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 text-white font-black text-xs rounded-lg shadow-xs transition-all cursor-pointer';
+      }
+      renderMonthView();
+    }
+  };
+
+  function findUpcomingLesson() {
+    const sorted = [...state.lessons].sort((a, b) => {
+      const ta = new Date(a.start_iso || a.lesson_date).getTime();
+      const tb = new Date(b.start_iso || b.lesson_date).getTime();
+      return ta - tb;
     });
-    renderCurrentView();
-  }
 
-  window.switchView = switchView;
-
-  function renderCurrentView() {
-    if (state.view === 'week') renderWeekView();
-    else if (state.view === 'month') renderMonthView();
-    renderMobileAgenda();
-    updateStats();
-    updateNextLessonWidget();
-  }
-
-  function escapeHtml(value) {
-    const node = document.createElement('div');
-    node.textContent = value == null ? '' : String(value);
-    return node.innerHTML;
-  }
-
-  function renderMobileAgenda() {
-    const container = document.getElementById('mobile-agenda');
-    if (!container) return;
-    const byDay = state.weekdays.map((day, index) => ({ day, index, lessons: [] }));
-    state.lessons.forEach(lesson => {
-      if (byDay[lesson.weekday]) byDay[lesson.weekday].lessons.push(lesson);
+    const upcoming = sorted.find(l => {
+      const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
+      return lDate >= state.todayIso && l.status !== 'completed' && l.status !== 'cancelled';
     });
-    const dayCards = byDay.map(({ day, index, lessons }) => {
-      const lessonsHtml = lessons.sort((a, b) => (a.start_time || '').localeCompare(b.start_time || '')).map(lesson => `
-        <button type="button" onclick="openLessonView(${Number(lesson.lesson_id)})" class="w-full text-left rounded-2xl border-2 border-indigo-100 bg-indigo-50 px-4 py-3 shadow-[0_3px_0_#C7D2FE] active:translate-y-0.5">
-          <div class="flex items-start gap-3"><span class="min-w-12 rounded-xl bg-indigo-600 px-2 py-1.5 text-center text-xs font-black text-white">${escapeHtml(lesson.start_time || '—')}</span><span class="min-w-0 flex-1"><strong class="block truncate text-sm font-black text-slate-900">${escapeHtml(lesson.topic || 'Занятие')}</strong><small class="mt-1 block text-xs font-bold text-indigo-600">${escapeHtml(lesson.end_time || '')} · ${escapeHtml(lesson.status === 'completed' ? 'Проведён' : 'Запланирован')}</small></span><i class="ph-bold ph-caret-right mt-1 text-slate-400"></i></div>
-        </button>`).join('');
-      return `<article class="rounded-[1.5rem] border-2 ${day.is_today ? 'border-indigo-300 bg-indigo-50/40' : 'border-slate-200 bg-white'} p-3 shadow-[0_4px_0_#DAE1E9]"><header class="mb-3 flex items-center justify-between"><div><p class="text-[10px] font-black uppercase tracking-widest ${day.is_today ? 'text-indigo-600' : 'text-slate-400'}">${escapeHtml(day.name)}</p><h2 class="text-lg font-black text-slate-900">${escapeHtml(day.date)}</h2></div>${day.is_today ? '<span class="rounded-xl bg-indigo-600 px-2 py-1 text-[10px] font-black text-white">Сегодня</span>' : ''}</header><div class="space-y-2">${lessonsHtml || '<div class="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-xs font-bold text-slate-400">Занятий нет</div>'}</div></article>`;
-    }).join('');
-    container.innerHTML = `<div class="mb-3 flex items-center justify-between"><div><p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Неделя</p><h2 class="text-xl font-black text-slate-900">Твои занятия</h2></div><span class="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-600">${state.lessons.length}</span></div><div class="space-y-3">${dayCards}</div>`;
+    if (upcoming) return upcoming;
+
+    const anyPlanned = sorted.find(l => l.status === 'planned');
+    if (anyPlanned) return anyPlanned;
+
+    const weekIsoSet = new Set(state.weekdays.map(d => d.iso));
+    const thisWeekLesson = sorted.find(l => {
+      const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
+      return weekIsoSet.has(lDate);
+    });
+    if (thisWeekLesson) return thisWeekLesson;
+
+    return null;
   }
 
-  function renderWeekView() {
-    renderDaysHeader();
-    renderHourRows();
-    renderLessonsOverlay();
-    positionTimeMarker();
-    scrollToCurrentTime();
+  function getDaysDiff(targetIso, baseIso) {
+    const d1 = new Date(targetIso.split('T')[0]);
+    const d2 = new Date(baseIso.split('T')[0]);
+    const diffTime = d1.getTime() - d2.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
   }
 
-  function renderDaysHeader() {
-    const container = document.getElementById('days-header');
-    if (!container) return;
-    let html = `
-      <div class="flex items-center justify-center border-r border-slate-200 bg-slate-50 py-3">
-        <span class="text-[10px] font-black text-slate-400 uppercase">Время</span>
-      </div>
-    `;
-    html += state.weekdays.map((d, i) => {
-      const isToday = d.is_today;
-      return `<div class="p-3 text-center border-r border-slate-200 bg-white ${isToday ? 'bg-indigo-50/60 border-t-4 border-t-indigo-600' : ''}">
-        <div class="text-xs font-bold ${isToday ? 'text-indigo-600' : i >= 5 ? 'text-rose-400' : 'text-slate-500'}">${d.name}</div>
-        <div class="text-base font-black ${isToday ? 'text-indigo-950' : i >= 5 ? 'text-rose-600' : 'text-slate-800'}">${d.date}</div>
-      </div>`;
-    }).join('');
-    container.innerHTML = html;
-  }
+  function renderWeekdaysStrip() {
+    const container = document.getElementById('weekdays-strip');
+    if (!container || !state.weekdays.length) return;
 
-  function renderHourRows() {
-    const container = document.getElementById('hour-rows');
-    if (!container) return;
-    let html = '';
-    for (let h = 0; h < 24; h++) {
-      const timeLabel = `${pad2(h)}:00`;
-      html += `<div class="grid grid-cols-[80px_repeat(7,1fr)] border-b border-slate-200 group hover:bg-slate-50/50 transition-colors h-[100px]">
-        <div class="flex items-start justify-center pt-2 border-r border-slate-200">
-          <span class="text-[11px] font-black text-slate-400">${timeLabel}</span>
+    const upcoming = state.upcomingLesson;
+    const upcomingIso = upcoming ? (upcoming.start_date || (upcoming.lesson_date ? upcoming.lesson_date.split('T')[0] : '')) : '';
+
+    container.innerHTML = state.weekdays.map(d => {
+      const dayLessons = state.lessons.filter(l => {
+        const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
+        return lDate === d.iso;
+      });
+
+      const isToday = (d.iso === state.todayIso);
+      const isSelected = (state.selectedDayIso === d.iso);
+      const isUpcomingDay = Boolean(upcomingIso && d.iso === upcomingIso);
+      const hasLessons = dayLessons.length > 0;
+      const isDone = hasLessons && dayLessons.every(l => l.status === 'completed' || l.status === 'done');
+
+      let cardClasses = 'rounded-2xl border p-1.5 sm:py-2 sm:px-1.5 transition cursor-pointer flex flex-col justify-between text-center relative select-none';
+      let dotHtml = '';
+      let statusText = 'Нет занятий';
+      let statusClasses = 'text-[10px] sm:text-[11px] font-bold text-slate-400';
+
+      if (isUpcomingDay) {
+        dotHtml = '<span class="inline-block w-2 h-2 rounded-full bg-indigo-600 ml-1.5 shrink-0"></span>';
+        statusText = isToday ? 'Урок сегодня' : 'Следующий урок';
+        statusClasses = 'text-[10px] sm:text-[11px] font-black text-indigo-600';
+        cardClasses += ' border-indigo-300 bg-[#EEF2FF] text-indigo-900';
+      } else if (hasLessons) {
+        if (isDone) {
+          dotHtml = '<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1.5 shrink-0"></span>';
+          statusText = 'Завершён';
+          statusClasses = 'text-[10px] sm:text-[11px] font-black text-emerald-600';
+          cardClasses += ' border-emerald-300/80 bg-[#F0FDF4] text-emerald-950';
+        } else {
+          dotHtml = '<span class="inline-block w-2 h-2 rounded-full bg-indigo-500 ml-1.5 shrink-0"></span>';
+          statusText = isToday ? 'Урок сегодня' : 'Занятие';
+          statusClasses = 'text-[10px] sm:text-[11px] font-black text-indigo-600';
+          cardClasses += ' border-indigo-200 bg-indigo-50/40 text-indigo-900';
+        }
+      } else {
+        if (isToday) {
+          statusText = 'Сегодня';
+          statusClasses = 'text-[10px] sm:text-[11px] font-black text-indigo-600';
+          cardClasses += ' border-indigo-200/90 bg-indigo-50/20 text-slate-800';
+        } else {
+          cardClasses += ' border-slate-200/90 bg-white text-slate-700 hover:border-indigo-200';
+        }
+      }
+
+      if (isSelected) {
+        cardClasses += ' ring-2 ring-indigo-500 shadow-xs border-indigo-400';
+      }
+
+      let dayTitleHtml = `<span class="${isUpcomingDay || isToday ? 'text-indigo-600 font-black' : (isDone ? 'text-emerald-700 font-bold' : 'text-slate-400 font-bold')}">${d.name}</span>`;
+      if (isToday) {
+        dayTitleHtml += ` <span class="text-[8px] font-black uppercase text-indigo-600 bg-indigo-100/90 px-1 py-0.5 rounded-sm ml-0.5">Сегодня</span>`;
+      }
+
+      return `
+        <div class="${cardClasses}" data-iso="${d.iso}" onclick="handleDayClick('${d.iso}')">
+          <div class="text-[10px] sm:text-[11px] flex items-center justify-center">${dayTitleHtml}</div>
+          <div class="text-base sm:text-lg font-black text-slate-800 my-0.5 flex items-center justify-center">
+            <span>${d.date}</span>${dotHtml}
+          </div>
+          <div class="${statusClasses} truncate">${statusText}</div>
         </div>
-        ${state.weekdays.map(d => `<div class="border-r border-slate-200 relative ${d.is_today ? 'bg-indigo-50/20' : ''}"></div>`).join('')}
-      </div>`;
-    }
-    container.innerHTML = html;
-  }
-
-  function renderLessonsOverlay() {
-    const container = document.getElementById('lessons-cols');
-    if (!container) return;
-    container.innerHTML = '';
-    document.querySelectorAll('.schedule-grid-wrap .lesson-card').forEach(el => el.remove());
-
-    const cols = Array(7).fill(null).map(() => []);
-    const seenIds = new Set();
-
-    state.lessons.forEach(lesson => {
-      if (seenIds.has(lesson.lesson_id)) return;
-      seenIds.add(lesson.lesson_id);
-      const wd = lesson.weekday;
-      if (wd >= 0 && wd < 7) cols[wd].push(lesson);
-    });
-    container.innerHTML = cols.map(lessons => {
-      return `<div class="lessons-col">${lessons.map(l => lessonCardHtml(l)).join('')}</div>`;
+      `;
     }).join('');
   }
 
-  function lessonCardHtml(lesson) {
-    const top = lesson.grid_top || 0;
-    const height = Math.max(lesson.grid_height || 60, 30);
-    const color = lesson.color_tag || 'indigo';
-    const isLive = lesson.status === 'live';
-    return `<div class="lesson-card color-${color}${isLive ? ' live' : ''}"
-       style="top:${top}px;height:${height}px;"
-       onclick="openLessonView(${lesson.lesson_id})"
-       title="${lesson.topic}">
-      ${isLive ? `<span class="animate-ping" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8;margin-right:4px;"></span>` : ''}
-      <div style="font-size:11px;font-weight:800;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${lesson.topic}</div>
-      ${height > 50 ? `<div style="font-size:10px;font-weight:700;opacity:.7;margin-top:2px;">${lesson.start_time || ''} – ${lesson.end_time || ''}</div>` : ''}
-    </div>`;
-  }
+  window.handleDayClick = function(iso) {
+    state.selectedDayIso = iso;
+    renderWeekdaysStrip();
 
-  function positionTimeMarker() {
-    const marker = document.getElementById('time-marker');
-    const label = document.getElementById('time-marker-label');
-    if (!marker || !label) return;
-    if (state.weekOffset !== 0) { marker.style.display = 'none'; return; }
+    const dayLessons = state.lessons.filter(l => {
+      const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
+      return lDate === iso;
+    });
 
-    const now = new Date();
-    const curH = now.getHours();
-    const curM = now.getMinutes();
-    state.currentHour = curH;
-    state.currentMinute = curM;
-
-    const top = curH * PX_PER_HOUR + Math.round(curM * PX_PER_HOUR / 60);
-    marker.style.display = 'flex';
-    marker.style.top = top + 'px';
-    label.textContent = `${pad2(curH)}:${pad2(curM)}`;
-  }
-
-  function scrollToCurrentTime() {
-    let targetHour = 8;
-    let targetMinute = 0;
-    if (state.weekOffset === 0) {
-      targetHour = state.currentHour;
-      targetMinute = state.currentMinute;
+    if (dayLessons.length > 0) {
+      state.displayedLesson = dayLessons[0];
+    } else {
+      state.displayedLesson = null;
     }
-    const targetPx = targetHour * PX_PER_HOUR + Math.round(targetMinute * PX_PER_HOUR / 60) - 150;
-    const scroll = document.getElementById('calendar-scroll');
-    if (scroll) scroll.scrollTop = Math.max(0, targetPx);
+
+    updateHeroLessonCard();
+    updateBottomCards();
+  };
+
+  function updateHeroLessonCard() {
+    const topicEl = document.getElementById('hero-lesson-topic');
+    const descEl = document.getElementById('hero-lesson-desc');
+    const dateEl = document.getElementById('hero-lesson-date');
+    const dayNameEl = document.getElementById('hero-lesson-dayname');
+    const timeEl = document.getElementById('hero-lesson-time');
+    const durationEl = document.getElementById('hero-lesson-duration');
+    const badgeEl = document.getElementById('hero-countdown-badge');
+    const enterBtn = document.getElementById('hero-lesson-room-btn');
+    const primaryLabel = document.getElementById('hero-primary-btn-label');
+    const titleEl = document.getElementById('hero-card-status-title');
+    const metaPills = document.getElementById('hero-meta-pills');
+    const secBtn = document.getElementById('hero-secondary-btn');
+    const bubbleEl = document.getElementById('hero-mascot-bubble');
+
+    const isDaySelected = Boolean(state.selectedDayIso);
+    const lesson = isDaySelected ? state.displayedLesson : (state.displayedLesson || state.upcomingLesson);
+
+    // Case 1: No lesson for the selected day
+    if (!lesson && isDaySelected) {
+      const selDay = state.weekdays.find(d => d.iso === state.selectedDayIso);
+      const dayNum = selDay ? selDay.date : '';
+      const isToday = (state.selectedDayIso === state.todayIso);
+
+      if (titleEl) titleEl.textContent = isToday ? 'Расписание на сегодня' : `Расписание на ${dayNum ? dayNum + ' число' : 'выбранный день'}`;
+      if (badgeEl) {
+        if (isToday) {
+          badgeEl.textContent = 'Сегодня • Нет занятий';
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-black border border-emerald-200';
+        } else {
+          badgeEl.textContent = 'Нет занятий';
+          badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-black border border-slate-200';
+        }
+      }
+      if (topicEl) topicEl.textContent = isToday ? 'Сегодня занятий не запланировано' : 'В этот день занятий не запланировано';
+      if (descEl) descEl.textContent = 'Отличная возможность повторить пройденную теорию, закрыть домашние задания или подготовиться к следующим урокам.';
+      if (metaPills) metaPills.classList.add('hidden');
+      if (enterBtn) {
+        if (state.upcomingLesson) {
+          const upIso = state.upcomingLesson.start_date || (state.upcomingLesson.lesson_date ? state.upcomingLesson.lesson_date.split('T')[0] : '');
+          const dt = new Date(state.upcomingLesson.start_iso || state.upcomingLesson.lesson_date || upIso);
+          const upDateStr = !isNaN(dt.getTime()) ? `${dt.getDate()} ${RU_MONTHS[dt.getMonth()]}` : 'скоро';
+          enterBtn.href = '#';
+          enterBtn.onclick = function(e) {
+            e.preventDefault();
+            handleDayClick(upIso);
+          };
+          if (primaryLabel) primaryLabel.textContent = `К ближайшему уроку (${upDateStr})`;
+        } else {
+          enterBtn.href = '/theory';
+          enterBtn.onclick = null;
+          if (primaryLabel) primaryLabel.textContent = 'Перейти к теории';
+        }
+      }
+      if (secBtn) {
+        secBtn.classList.add('hidden');
+      }
+      if (bubbleEl) bubbleEl.innerHTML = '<span>Отдыхай или повторяй теорию!</span><i class="ph-bold ph-sparkle text-indigo-400"></i>';
+      return;
+    }
+
+    if (metaPills) metaPills.classList.remove('hidden');
+
+    if (!lesson) {
+      if (titleEl) titleEl.textContent = 'Следующий урок';
+      if (badgeEl) {
+        badgeEl.textContent = 'Планируется';
+        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-100';
+      }
+      if (topicEl) topicEl.textContent = 'У вас пока нет назначенных занятий';
+      if (descEl) descEl.textContent = 'Преподаватель скоро составит расписание. Вы можете подготовиться к первым темам в разделе теории.';
+      if (metaPills) metaPills.classList.add('hidden');
+      if (enterBtn) {
+        enterBtn.href = '/theory';
+        enterBtn.onclick = null;
+        if (primaryLabel) primaryLabel.textContent = 'Изучить теорию';
+      }
+      if (secBtn) {
+        secBtn.classList.add('hidden');
+      }
+      return;
+    }
+
+    const lessonIso = lesson.start_date || (lesson.lesson_date ? lesson.lesson_date.split('T')[0] : '');
+    const diffDays = getDaysDiff(lessonIso, state.todayIso);
+
+    if (titleEl) {
+      if (lessonIso === state.todayIso) {
+        titleEl.textContent = 'Урок сегодня';
+      } else if (lesson.status === 'completed' || lesson.status === 'done') {
+        titleEl.textContent = 'Прошедший урок';
+      } else {
+        titleEl.textContent = 'Следующий урок';
+      }
+    }
+
+    if (badgeEl) {
+      if (lesson.status === 'completed' || lesson.status === 'done') {
+        badgeEl.textContent = 'Завершён';
+        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-black border border-emerald-200';
+      } else if (lessonIso === state.todayIso) {
+        badgeEl.textContent = 'Сегодня';
+        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black border border-emerald-200 animate-pulse';
+      } else if (diffDays === 1) {
+        badgeEl.textContent = 'Завтра';
+        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black';
+      } else if (diffDays > 1) {
+        const plural = (diffDays >= 2 && diffDays <= 4) ? 'дня' : 'дней';
+        badgeEl.textContent = `Через ${diffDays} ${plural}`;
+        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black';
+      } else {
+        badgeEl.textContent = 'Завершён';
+        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-black border border-slate-200';
+      }
+    }
+
+    if (topicEl) topicEl.textContent = lesson.topic || 'Python • Практическое занятие';
+    if (descEl) descEl.textContent = lesson.description || lesson.notes || 'Продолжим изучение темы и разберём типовые алгоритмические задачи с разбором решений.';
+
+    const rawDate = lesson.start_iso || lesson.lesson_date;
+    if (rawDate) {
+      const dt = new Date(rawDate);
+      if (dateEl) dateEl.textContent = `${dt.getDate()} ${RU_MONTHS[dt.getMonth()]}`;
+      if (dayNameEl) dayNameEl.textContent = `(${RU_DAYS[dt.getDay()]})`;
+    }
+
+    if (timeEl) {
+      const s = lesson.start_time || '18:00';
+      const e = lesson.end_time || '19:00';
+      timeEl.textContent = `${s} — ${e}`;
+    }
+
+    if (durationEl) {
+      const dur = lesson.duration_minutes || 60;
+      durationEl.textContent = dur >= 60 ? `${Math.round(dur / 60)} час` : `${dur} мин`;
+    }
+
+    if (enterBtn) {
+      enterBtn.onclick = null;
+      if (lesson.room_url) {
+        enterBtn.href = lesson.room_url;
+        if (primaryLabel) primaryLabel.textContent = 'Войти в комнату';
+      } else {
+        enterBtn.href = '/theory';
+        if (primaryLabel) primaryLabel.textContent = 'Перейти к материалам';
+      }
+    }
+
+    if (secBtn) {
+      secBtn.classList.remove('hidden');
+      secBtn.onclick = addToCalendar;
+      secBtn.innerHTML = '<i class="ph-bold ph-calendar-plus text-xs text-slate-500"></i><span>Добавить в календарь</span>';
+    }
+
+    if (bubbleEl) {
+      if (lesson.status === 'completed' || lesson.status === 'done') {
+        bubbleEl.innerHTML = '<span>Отличная работа!</span><i class="ph-bold ph-check text-emerald-500"></i>';
+      } else {
+        bubbleEl.innerHTML = '<span>Готовься к новому уроку!</span><i class="ph-bold ph-heart text-indigo-400"></i>';
+      }
+    }
   }
+
+  function updateWeeklyStats() {
+    const totalCountEl = document.getElementById('stat-progress-count');
+    const doneCountEl = document.getElementById('stat-done-count');
+    const remainingCountEl = document.getElementById('stat-remaining-count');
+    const percentEl = document.getElementById('stat-percent-label');
+    const donutBar = document.getElementById('donut-segment-bar');
+
+    const weekIsoSet = new Set(state.weekdays.map(d => d.iso));
+    const weekLessons = state.lessons.filter(l => {
+      const iso = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
+      return weekIsoSet.has(iso);
+    });
+
+    let total = weekLessons.length;
+    let done = weekLessons.filter(l => l.status === 'completed' || l.status === 'done').length;
+
+    if (total === 0) {
+      total = 0;
+      done = 0;
+    }
+
+    const remaining = Math.max(0, total - done);
+    const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    if (totalCountEl) totalCountEl.textContent = `${done} / ${total}`;
+    if (doneCountEl) doneCountEl.textContent = String(done);
+    if (remainingCountEl) remainingCountEl.textContent = String(remaining);
+    if (percentEl) percentEl.textContent = `${percent}%`;
+
+    if (donutBar) {
+      donutBar.setAttribute('stroke-dasharray', `${percent}, 100`);
+      if (percent === 100) {
+        donutBar.setAttribute('class', 'donut-segment stroke-emerald-500');
+      } else {
+        donutBar.setAttribute('class', 'donut-segment stroke-indigo-500');
+      }
+    }
+  }
+
+  function updateBottomCards() {
+    const isDaySelected = Boolean(state.selectedDayIso);
+    const lesson = isDaySelected ? state.displayedLesson : (state.displayedLesson || state.upcomingLesson);
+
+    // 1. Homework Card
+    const hwTitleEl = document.getElementById('hw-task-title');
+    const hwLinkEl = document.getElementById('hw-item-link');
+    const hwBadgeEl = document.getElementById('hw-badge');
+
+    if (lesson && lesson.homework && lesson.homework.trim()) {
+      if (hwTitleEl) hwTitleEl.textContent = lesson.homework.trim();
+      if (hwLinkEl) {
+        hwLinkEl.href = '/submissions';
+        hwLinkEl.classList.remove('pointer-events-none', 'opacity-60');
+      }
+      if (hwBadgeEl) {
+        hwBadgeEl.textContent = (lesson.status === 'completed' || lesson.status === 'done') ? 'Задание к уроку' : 'К этому уроку';
+        hwBadgeEl.className = 'px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black border border-amber-200';
+      }
+    } else {
+      if (hwTitleEl) {
+        hwTitleEl.textContent = lesson ? 'Домашнее задание к этому уроку не задано' : 'На этот день домашних заданий нет';
+      }
+      if (hwLinkEl) {
+        hwLinkEl.href = '#';
+        hwLinkEl.classList.add('opacity-70');
+      }
+      if (hwBadgeEl) {
+        hwBadgeEl.textContent = 'Нет заданий';
+        hwBadgeEl.className = 'px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold border border-slate-200';
+      }
+    }
+
+    // 2. Materials Card
+    const matContainer = document.getElementById('materials-container');
+    if (matContainer) {
+      if (lesson && Array.isArray(lesson.materials) && lesson.materials.length > 0) {
+        matContainer.innerHTML = lesson.materials.slice(0, 3).map(m => `
+          <a href="${m.url || '#'}" target="_blank" class="flex items-center gap-2 p-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-50 transition no-underline border border-transparent hover:border-slate-200">
+            <i class="ph-bold ph-link text-indigo-500 text-sm shrink-0"></i>
+            <span class="truncate">${m.name || m.title || 'Материал к уроку'}</span>
+          </a>
+        `).join('');
+      } else {
+        matContainer.innerHTML = `
+          <div class="py-2 px-1 text-xs font-medium text-slate-400 italic">
+            ${lesson ? 'Материалы к уроку не прикреплены' : 'На этот день материалов нет'}
+          </div>
+        `;
+      }
+    }
+
+    // 3. Notes Card ("Заметки преподавателя")
+    const notesBox = document.getElementById('notes-content-box');
+    if (notesBox) {
+      const noteText = lesson ? (lesson.student_notes || lesson.notes || '') : '';
+      if (noteText && noteText.trim()) {
+        notesBox.textContent = noteText.trim();
+        notesBox.className = 'p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/50 text-xs font-semibold text-slate-800 leading-relaxed mt-1 whitespace-pre-line';
+      } else {
+        notesBox.textContent = lesson 
+          ? 'Преподаватель пока не оставил заметок к этому уроку.' 
+          : 'На выбранный день заметок от преподавателя нет.';
+        notesBox.className = 'p-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 text-xs font-medium text-slate-400 italic leading-relaxed mt-1';
+      }
+    }
+  }
+
+  window.addToCalendar = function() {
+    const lesson = state.displayedLesson || state.upcomingLesson;
+    const title = encodeURIComponent(lesson ? lesson.topic : 'Python • Условия (BooStudy)');
+    const details = encodeURIComponent('Онлайн-занятие на платформе BooStudy: ' + window.location.origin);
+    
+    let dates = '';
+    const rawDate = lesson ? (lesson.start_iso || lesson.lesson_date) : null;
+    if (rawDate) {
+      const start = new Date(rawDate).toISOString().replace(/-|:|\.\d\d\d/g, '');
+      const dur = (lesson && lesson.duration_minutes) ? lesson.duration_minutes : 60;
+      const end = new Date(new Date(rawDate).getTime() + dur * 60000).toISOString().replace(/-|:|\.\d\d\d/g, '');
+      dates = `&dates=${start}/${end}`;
+    }
+
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}${dates}`;
+    window.open(gcalUrl, '_blank');
+  };
+
+  window.openLessonView = function(lessonId) {
+    const lesson = state.lessons.find(l => l.lesson_id === Number(lessonId));
+    if (!lesson) return;
+    state.viewingLesson = lesson;
+
+    const modal = document.getElementById('modal-lesson-view');
+    if (!modal) return;
+
+    const topicEl = document.getElementById('view-lesson-topic');
+    const timeEl = document.getElementById('view-lesson-time');
+    const durEl = document.getElementById('view-lesson-duration');
+    const groupEl = document.getElementById('view-lesson-group');
+    const urlBlock = document.getElementById('view-lesson-url-block');
+    const urlLink = document.getElementById('view-lesson-url-link');
+    const joinBtn = document.getElementById('join-btn');
+
+    if (topicEl) topicEl.textContent = lesson.topic || 'Урок';
+    if (timeEl) timeEl.textContent = `${lesson.start_time || '18:00'} – ${lesson.end_time || '19:00'}`;
+    if (durEl) durEl.textContent = `${lesson.duration_minutes || 60} мин`;
+    if (groupEl) groupEl.textContent = lesson.student_name ? `Ученик: ${lesson.student_name}` : 'Индивидуальное занятие';
+
+    const url = lesson.room_url || lesson.meeting_url;
+    if (url) {
+      if (urlBlock) urlBlock.classList.remove('hidden');
+      if (urlLink) {
+        urlLink.href = url;
+        urlLink.textContent = url;
+      }
+      if (joinBtn) joinBtn.classList.remove('hidden');
+    } else {
+      if (urlBlock) urlBlock.classList.add('hidden');
+      if (joinBtn) joinBtn.classList.remove('hidden');
+    }
+
+    modal.classList.remove('hidden');
+  };
+
+  window.joinLesson = function() {
+    if (state.viewingLesson && (state.viewingLesson.room_url || state.viewingLesson.meeting_url)) {
+      window.open(state.viewingLesson.room_url || state.viewingLesson.meeting_url, '_blank');
+    } else if (state.viewingLesson && state.viewingLesson.lesson_id) {
+      window.location.assign(`/lesson/${state.viewingLesson.lesson_id}/room`);
+    }
+  };
 
   function renderMonthView() {
-    const weekStart = new Date(state.weekStartIso);
-    const year = weekStart.getFullYear();
-    const month = weekStart.getMonth();
-    const today = new Date();
+    const grid = document.getElementById('month-grid');
+    if (!grid) return;
 
-    const header = document.getElementById('month-days-header');
-    if (header) {
-      const dayNames = ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'];
-      header.innerHTML = dayNames.map((d, i) => `<div class="p-2 text-center text-xs font-black ${i >= 5 ? 'text-rose-400' : 'text-slate-500'} border-r border-slate-200">${d}</div>`).join('');
-    }
-
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
     const firstDay = new Date(year, month, 1);
     let startDow = firstDay.getDay();
     if (startDow === 0) startDow = 7;
     startDow -= 1;
+
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const totalCells = Math.ceil((startDow + daysInMonth) / 7) * 7;
 
-    const grid = document.getElementById('month-grid');
-    if (!grid) return;
     let html = '';
     for (let cell = 0; cell < totalCells; cell++) {
       const dayNum = cell - startDow + 1;
       const isThisMonth = dayNum >= 1 && dayNum <= daysInMonth;
       const cellDate = new Date(year, month, dayNum);
       const isoDate = cellDate.toLocaleDateString('en-CA');
-      const isToday = cellDate.toDateString() === today.toDateString();
-      const dayLessons = state.lessons.filter(l => l.start_date === isoDate);
-      const chipsHtml = dayLessons.slice(0, 3).map(l =>
-        `<span style="display:block;font-size:10px;font-weight:700;padding:2px 5px;border-radius:5px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${colorChip(l.color_tag)}">${l.start_time} ${l.topic.slice(0,12)}</span>`
+      const isToday = (isoDate === state.todayIso);
+      const dayLessons = state.lessons.filter(l => (l.start_date || '').startsWith(isoDate));
+
+      const chipsHtml = dayLessons.slice(0, 2).map(l =>
+        `<span class="block text-[10px] font-bold px-1.5 py-0.5 rounded-md mb-1 truncate bg-indigo-100 text-indigo-800">${l.start_time || ''} ${l.topic || 'Урок'}</span>`
       ).join('');
-      html += `<div style="border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:6px;cursor:${isThisMonth ? 'pointer' : 'default'};min-height:80px;${isToday ? 'background:#eef2ff;' : ''}${!isThisMonth ? 'opacity:.3;' : ''}">
-        <div style="font-size:12px;font-weight:900;margin-bottom:4px;color:${isToday ? '#4f46e5' : '#64748b'};">${isThisMonth ? dayNum : ''}</div>
-        ${isThisMonth ? chipsHtml : ''}
-      </div>`;
+
+      html += `
+        <div class="p-2 border-r border-b border-slate-200 min-h-[75px] ${isToday ? 'bg-indigo-50/40' : 'bg-white'} ${!isThisMonth ? 'opacity-30' : 'cursor-pointer hover:bg-slate-50'}" onclick="${isThisMonth ? `handleDayClick('${isoDate}')` : ''}">
+          <div class="text-xs font-black mb-1 ${isToday ? 'text-indigo-600' : 'text-slate-700'}">${isThisMonth ? dayNum : ''}</div>
+          ${isThisMonth ? chipsHtml : ''}
+        </div>
+      `;
     }
     grid.innerHTML = html;
   }
 
-  function colorChip(color) {
-    const map = { indigo: 'background:#c7d2fe;color:#312e81;', emerald: 'background:#a7f3d0;color:#064e3b;',
-                  amber: 'background:#fde68a;color:#78350f;', rose: 'background:#fecdd3;color:#881337;', violet: 'background:#ddd6fe;color:#4c1d95;' };
-    return map[color] || map.indigo;
-  }
-
-  function updateStats() {
-    const total = state.lessons.length;
-    const done = state.lessons.filter(l => l.status === 'done' || l.status === 'completed').length;
-    const totalEl = document.getElementById('stat-total');
-    const doneEl = document.getElementById('stat-done');
-    if (totalEl) totalEl.textContent = total;
-    if (doneEl) doneEl.textContent = done;
-  }
-
-  function updateNextLessonWidget() {
-    const now = new Date();
-    const upcoming = state.lessons
-      .filter(l => {
-        const iso = l.start_iso || l.start_dt;
-        return iso && new Date(iso) >= new Date(now.getTime() - 15 * 60000);
-      })
-      .sort((a, b) => new Date(a.start_iso || a.start_dt) - new Date(b.start_iso || b.start_dt));
-
-    const el = document.getElementById('next-lesson-content');
-    if (!el) return;
-    if (!upcoming.length) {
-      if (!el.querySelector('.flex') && !el.textContent.includes('ВОЙТИ В УРОК')) {
-        el.innerHTML = '<span class="text-slate-400">Нет предстоящих онлайн-занятий</span>';
-      }
-      return;
-    }
-    const next = upcoming[0];
-    const dt = new Date(next.start_iso || next.start_dt);
-    const dayStr = dt.getDate();
-    const monthNames = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-    const dateFormatted = `${dayStr} ${monthNames[dt.getMonth()]}`;
-
-    el.innerHTML = `<div class="flex flex-col gap-2">
-      <div class="flex items-center gap-2">
-        <div style="width:2.25rem;height:2.25rem;border-radius:.75rem;background:#eef2ff;color:#4f46e5;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;font-size:11px;flex-shrink:0;">
-          <span>${dayStr}</span>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div style="font-weight:900;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${next.topic}">${next.topic}</div>
-          <div style="font-weight:700;font-size:11px;color:#4f46e5;">${dateFormatted}, ${next.start_time || ''}</div>
-        </div>
-      </div>
-      <a href="${next.room_url || `/lesson/${next.lesson_id}/room`}" class="btn-3d mt-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-center font-black text-xs py-2.5 px-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline block">
-        ВОЙТИ В УРОК
-      </a>
-    </div>`;
-  }
-
-  window.openLessonView = function(lessonId) {
-    const lesson = state.lessons.find(l => l.lesson_id === lessonId);
-    if (!lesson) return;
-    state.viewingLesson = lesson;
-
-    const typeLabels = { group: 'Групповое', webinar: 'Вебинар', individual: 'Индивидуальное', consultation: 'Консультация' };
-    document.getElementById('view-lesson-type-badge').textContent = typeLabels[lesson.lesson_type] || lesson.lesson_type;
-    document.getElementById('view-lesson-topic').textContent = lesson.topic;
-    document.getElementById('view-lesson-time').textContent = `${lesson.start_time || ''} – ${lesson.end_time || ''}`;
-    document.getElementById('view-lesson-duration').textContent = `${lesson.duration_minutes} мин`;
-    document.getElementById('view-lesson-group').textContent = lesson.group_title || 'Мой урок';
-
-    const urlBlock = document.getElementById('view-lesson-url-block');
-    const urlLink = document.getElementById('view-lesson-url-link');
-    const joinBtn = document.getElementById('join-btn');
-    if (lesson.room_url || lesson.meeting_url) {
-      urlBlock.classList.remove('hidden');
-      urlLink.href = lesson.room_url || lesson.meeting_url;
-      urlLink.textContent = lesson.room_url || lesson.meeting_url;
-      joinBtn.classList.remove('hidden');
-    } else {
-      urlBlock.classList.add('hidden');
-      joinBtn.classList.add('hidden');
-    }
-
-    document.getElementById('modal-lesson-view').classList.remove('hidden');
-  };
-
-  window.joinLesson = function() {
-    if (state.viewingLesson && (state.viewingLesson.room_url || state.viewingLesson.meeting_url)) {
-      window.open(state.viewingLesson.room_url || state.viewingLesson.meeting_url, '_blank');
-    }
-  };
-
+  let initialized = false;
   function init() {
-    const tzEl = document.getElementById('tz-display');
-    if (tzEl) tzEl.textContent = state.tzName;
+    if (initialized) return;
+    initialized = true;
 
-    document.getElementById('modal-lesson-view').addEventListener('click', function(e) {
-      if (e.target === this) this.classList.add('hidden');
-    });
+    state.upcomingLesson = findUpcomingLesson();
 
-    switchView('week');
+    const weekIsoSet = new Set(state.weekdays.map(d => d.iso));
+    if (weekIsoSet.has(state.todayIso)) {
+      state.selectedDayIso = state.todayIso;
+      const todayLessons = state.lessons.filter(l => {
+        const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
+        return lDate === state.todayIso;
+      });
+      state.displayedLesson = todayLessons.length > 0 ? todayLessons[0] : null;
+    } else if (state.upcomingLesson) {
+      const upIso = state.upcomingLesson.start_date || (state.upcomingLesson.lesson_date ? state.upcomingLesson.lesson_date.split('T')[0] : '');
+      if (weekIsoSet.has(upIso)) {
+        state.selectedDayIso = upIso;
+        state.displayedLesson = state.upcomingLesson;
+      }
+    }
+    
+    if (!state.selectedDayIso && state.weekdays.length > 0) {
+      state.selectedDayIso = state.weekdays[0].iso;
+      const dayLessons = state.lessons.filter(l => {
+        const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
+        return lDate === state.selectedDayIso;
+      });
+      state.displayedLesson = dayLessons.length > 0 ? dayLessons[0] : null;
+    }
+
+    renderWeekdaysStrip();
+    updateHeroLessonCard();
+    updateWeeklyStats();
+    updateBottomCards();
+
+    const modal = document.getElementById('modal-lesson-view');
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.add('hidden');
+      });
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);
+  if (document.readyState === 'interactive' || document.readyState === 'complete') {
+    init();
+  }
 })();
 </script>
 {% endblock %}

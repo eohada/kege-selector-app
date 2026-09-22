@@ -361,7 +361,12 @@ def schedule():
         week_end = week_days[-1]
         period_start = week_start
         period_end = week_end
-        week_label = f"{week_days[0].strftime('%d.%m.%Y')} — {week_days[-1].strftime('%d.%m.%Y')}"
+        if week_days[0].month == week_days[-1].month and week_days[0].year == week_days[-1].year:
+            week_label = f"{week_days[0].day} — {week_days[-1].day} {RU_MONTHS_GEN[week_days[-1].month - 1]} {week_days[-1].year}"
+        elif week_days[0].year == week_days[-1].year:
+            week_label = f"{week_days[0].day} {RU_MONTHS_GEN[week_days[0].month - 1]} — {week_days[-1].day} {RU_MONTHS_GEN[week_days[-1].month - 1]} {week_days[-1].year}"
+        else:
+            week_label = f"{week_days[0].day} {RU_MONTHS_GEN[week_days[0].month - 1]} {week_days[0].year} — {week_days[-1].day} {RU_MONTHS_GEN[week_days[-1].month - 1]} {week_days[-1].year}"
     elif view_mode == 'day':
         day_date = today + timedelta(days=week_offset)
         week_start = day_date
@@ -624,11 +629,81 @@ def schedule():
             'end_time': local_end.strftime('%H:%M'),
             'grid_top': local_start.hour * 60 + local_start.minute,
             'topic': l.topic or 'Занятие',
+            'notes': l.notes or '',
+            'student_notes': l.student_notes or '',
+            'homework': l.homework or '',
+            'materials': l.materials if l.materials else [],
+            'description': l.notes or (f'Урок по теме «{l.topic}». Разбор теории и типовых заданий ЕГЭ.' if l.topic else 'Занятие по расписанию.'),
             'duration_minutes': duration_minutes,
             'status': l.status or 'planned',
             'lesson_type': l.lesson_type or 'individual',
             'room_url': url_for('lessons.lesson_interactive_room', lesson_id=l.lesson_id),
         })
+
+    active_homework = []
+    useful_materials = [
+        {'title': 'Краткая теория: if / elif / else', 'url': url_for('theory.theory_index'), 'type': 'theory'},
+        {'title': 'Подборка задач (ЕГЭ)', 'url': '/trainer', 'type': 'tasks'},
+    ]
+    student_notes_text = ''
+
+    if current_user.is_authenticated and current_user.is_student():
+        from app.models import Submission, Assignment
+        st_obj = Student.query.filter_by(user_id=current_user.id).first()
+        if not st_obj:
+            cand = Student.query.get(current_user.id)
+            if cand and cand.user_id is None:
+                st_obj = cand
+        if st_obj:
+            try:
+                subs = (
+                    Submission.query.join(Assignment, Submission.assignment_id == Assignment.assignment_id)
+                    .filter(
+                        Submission.student_id == st_obj.student_id,
+                        Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED']),
+                        Assignment.is_active == True,
+                    )
+                    .options(db.contains_eager(Submission.assignment))
+                    .order_by(Assignment.deadline.asc().nullslast())
+                    .limit(5)
+                    .all()
+                )
+                for sub in subs:
+                    active_homework.append({
+                        'id': sub.assignment_id,
+                        'title': sub.assignment.title,
+                        'deadline': sub.assignment.deadline.isoformat() if sub.assignment.deadline else None,
+                        'url': url_for('submissions.student_submission_room', submission_id=sub.submission_id),
+                        'status': sub.status,
+                        'tasks_count': len(sub.assignment.tasks) if sub.assignment.tasks else 0,
+                    })
+            except Exception as e:
+                logger.warning(f"Error fetching active homework for schedule: {e}")
+
+            if not active_homework:
+                try:
+                    hw_list = (
+                        Assignment.query.filter_by(is_active=True, assignment_type='homework')
+                        .order_by(Assignment.created_at.desc())
+                        .limit(3)
+                        .all()
+                    )
+                    for hw in hw_list:
+                        active_homework.append({
+                            'id': hw.assignment_id,
+                            'title': hw.title,
+                            'deadline': hw.deadline.isoformat() if hw.deadline else None,
+                            'url': '/submissions',
+                            'status': 'ASSIGNED',
+                            'tasks_count': len(hw.tasks) if hw.tasks else 0,
+                        })
+                except Exception:
+                    pass
+
+            for l in lessons:
+                if l.student_notes and l.student_notes.strip():
+                    student_notes_text = l.student_notes.strip()
+                    break
 
     weekdays_payload = [
         {
@@ -647,6 +722,10 @@ def schedule():
             'is_admin': current_user.is_admin() or current_user.is_creator(),
             'lessons': raw_lessons_payload,
             'weekdays': weekdays_payload,
+            'today_iso': today_display_date.isoformat(),
+            'active_homework': active_homework,
+            'useful_materials': useful_materials,
+            'student_notes_general': student_notes_text,
             'week_offset': week_offset,
             'week_label': week_label,
             'timezone': timezone,
@@ -985,11 +1064,31 @@ def create_schedule_lesson_api():
         if not getattr(student, 'mentor_id', None) and current_user and current_user.is_authenticated:
             student.mentor_id = current_user.id
 
+        notes = data.get('notes') or data.get('description') or ''
+        homework = data.get('homework') or ''
+        student_notes = data.get('student_notes') or data.get('teacher_notes') or ''
+        materials_raw = data.get('materials')
+        materials = []
+        if isinstance(materials_raw, list):
+            materials = [m for m in materials_raw if isinstance(m, dict) and m.get('name')]
+        elif isinstance(materials_raw, str) and materials_raw.strip():
+            try:
+                import json
+                parsed = json.loads(materials_raw)
+                if isinstance(parsed, list):
+                    materials = [m for m in parsed if isinstance(m, dict) and m.get('name')]
+            except Exception:
+                materials = [{'name': materials_raw.strip(), 'url': ''}]
+
         new_lesson = Lesson(
             student_id=student.student_id,
             lesson_date=clean_date,
             topic=topic,
-            status='planned',
+            notes=str(notes).strip() if notes else None,
+            homework=str(homework).strip() if homework else None,
+            student_notes=str(student_notes).strip() if student_notes else None,
+            materials=materials if materials else None,
+            status=(data.get('status') or 'planned').strip().lower(),
             duration=duration,
             lesson_type=(data.get('lesson_type') or 'individual').strip().lower(),
         )
@@ -1025,7 +1124,7 @@ def create_schedule_lesson_api():
 @schedule_bp.route('/api/schedule/update/<int:lesson_id>', methods=['POST', 'PUT'])
 @login_required
 def update_schedule_lesson_api(lesson_id: int):
-    """API обновления урока с гарантией сохранения."""
+    """API обновления урока с поддержкой всех расширенных полей."""
     if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.edit') and not current_user.is_tutor()):
         return jsonify({'status': 'error', 'message': 'Доступ запрещен'}), 403
     try:
@@ -1064,7 +1163,7 @@ def update_schedule_lesson_api(lesson_id: int):
         try:
             new_duration = int(data.get('duration', lesson.duration or 60))
         except (TypeError, ValueError):
-            return jsonify({'status': 'error', 'message': 'Некорректная длительность'}), 400
+            new_duration = 60
         if new_duration not in (30, 45, 60, 90, 120):
             return jsonify({'status': 'error', 'message': 'Некорректная длительность'}), 400
         if _student_has_overlap(new_student_id, new_date, new_duration, exclude_lesson_id=lesson.lesson_id):
@@ -1078,13 +1177,79 @@ def update_schedule_lesson_api(lesson_id: int):
                 return jsonify({'status': 'error', 'message': 'Некорректный статус'}), 400
             lesson.status = data['status']
 
+        if 'notes' in data or 'description' in data:
+            val = data.get('notes') if 'notes' in data else data.get('description')
+            lesson.notes = str(val).strip() if val else None
+        if 'homework' in data:
+            val = data.get('homework')
+            lesson.homework = str(val).strip() if val else None
+        if 'student_notes' in data or 'teacher_notes' in data:
+            val = data.get('student_notes') if 'student_notes' in data else data.get('teacher_notes')
+            lesson.student_notes = str(val).strip() if val else None
+        if 'materials' in data:
+            materials_raw = data.get('materials')
+            if isinstance(materials_raw, list):
+                lesson.materials = [m for m in materials_raw if isinstance(m, dict) and m.get('name')]
+            elif isinstance(materials_raw, str):
+                try:
+                    import json
+                    parsed = json.loads(materials_raw)
+                    if isinstance(parsed, list):
+                        lesson.materials = [m for m in parsed if isinstance(m, dict) and m.get('name')]
+                    else:
+                        lesson.materials = None
+                except Exception:
+                    lesson.materials = [{'name': materials_raw.strip(), 'url': ''}] if materials_raw.strip() else None
+            elif materials_raw is None:
+                lesson.materials = None
+        if 'lesson_type' in data:
+            lesson.lesson_type = str(data['lesson_type']).strip().lower()
+
         db.session.commit()
-        return jsonify({'status': 'success', 'success': True}), 200
+        return jsonify({'status': 'success', 'success': True, 'message': 'Урок обновлен!'}), 200
 
     except Exception as err:
         db.session.rollback()
         logger.exception('Schedule API: failed to update lesson %s', lesson_id)
         return jsonify({'status': 'error', 'message': str(err)}), 500
+
+
+@schedule_bp.route('/api/schedule/lesson/<int:lesson_id>/details', methods=['GET'])
+@schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/details', methods=['GET'])
+@login_required
+def get_lesson_details_api(lesson_id: int):
+    """Детальная информация об уроке для модального окна просмотра/редактирования."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    if not _require_lesson_in_scope(lesson):
+        return jsonify({'status': 'error', 'message': 'Доступ запрещен'}), 403
+
+    tz = _schedule_timezone_from_user()
+    local_start = lesson_storage_to_local(lesson.lesson_date, tz) if lesson.lesson_date else None
+    duration_min = int(lesson.duration or 60)
+    local_end = (local_start + timedelta(minutes=duration_min)) if local_start else None
+
+    return jsonify({
+        'status': 'success',
+        'lesson': {
+            'lesson_id': lesson.lesson_id,
+            'student_id': lesson.student_id,
+            'student_name': lesson.student.name if lesson.student else 'Ученик',
+            'topic': lesson.topic or '',
+            'notes': lesson.notes or '',
+            'description': lesson.notes or '',
+            'homework': lesson.homework or '',
+            'student_notes': lesson.student_notes or '',
+            'teacher_notes': lesson.student_notes or '',
+            'materials': lesson.materials or [],
+            'status': lesson.status or 'planned',
+            'duration_minutes': duration_min,
+            'lesson_type': lesson.lesson_type or 'individual',
+            'date': local_start.strftime('%Y-%m-%d') if local_start else '',
+            'start_time': local_start.strftime('%H:%M') if local_start else '',
+            'end_time': local_end.strftime('%H:%M') if local_end else '',
+            'room_url': url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id),
+        }
+    })
 
 
 @schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/set-status', methods=['POST'])
@@ -1328,6 +1493,7 @@ def schedule_api_events():
 
 
 @schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/delete', methods=['POST'])
+@schedule_bp.route('/api/schedule/delete_lesson/<int:lesson_id>', methods=['POST', 'DELETE'])
 @login_required
 def schedule_delete_lesson(lesson_id: int):
     if not _can_manage_schedule():

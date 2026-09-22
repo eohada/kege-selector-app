@@ -334,11 +334,11 @@ class WorkspaceContext:
     parsed_correct_answer: Any = None
 
     def as_payload(self) -> dict[str, Any]:
-        answer_spec = _normalize_answer_spec(self.task)
-        attachments = normalize_task_attachments(self.task.attached_files)
+        answer_spec = _normalize_answer_spec(self.task) if self.task else {"default_workspace_mode": "code", "fields": []}
+        attachments = normalize_task_attachments(self.task.attached_files) if self.task else []
         # Эталонный ответ и решение доступны преподавателю ВСЕГДА, а ученику — ТОЛЬКО после проверки!
         show_review_details = bool(self.can_review or self.is_reviewed)
-        safe_correct_answer = (self.correct_answer or _extract_task_correct_answer(self.task) or "") if show_review_details else ""
+        safe_correct_answer = (self.correct_answer or _extract_task_correct_answer(self.task) or "") if (show_review_details and self.task) else ""
         safe_solution_html = (self.solution_html or "") if show_review_details else ""
         safe_solution_code = (self.solution_code or "") if show_review_details else ""
         safe_parsed_correct_answer = None
@@ -361,19 +361,19 @@ class WorkspaceContext:
             "answer_id": self.answer_id,
             "code": self.code,
             "plain_answer": self.plain_answer,
-            "starter_code": self.task.starter_code or "",
-            "presentation_mode": "code" if answer_spec["default_workspace_mode"] == "code" else "standard",
+            "starter_code": (self.task.starter_code or "") if self.task else "",
+            "presentation_mode": "code" if answer_spec.get("default_workspace_mode") == "code" else "standard",
             "answer_spec": answer_spec,
-            "hints": _visible_task_hints(self.task),
+            "hints": _visible_task_hints(self.task) if self.task else [],
             "attachments": attachments,
-            "max_score": int(self.task.max_score or 1),
-            "task_number": self.task.task_number,
-            "difficulty": self.task.difficulty_label,
+            "max_score": int(self.task.max_score or 1) if self.task else 1,
+            "task_number": self.task.task_number if self.task else None,
+            "difficulty": getattr(self.task, "difficulty_label", "") if self.task else "",
             "content_html": normalize_task_content_assets(
                 prepare_task_content_html(self.task.content_html or ""),
                 self.task.attached_files,
                 self.task.source_url,
-            ),
+            ) if self.task else "",
             "mmr_policy": self.mmr_policy,
             "mmr_policy_label": MMR_POLICY_LABELS.get(self.mmr_policy, MMR_POLICY_LABELS["manual_confirm"]),
             "can_edit": self.can_edit,
@@ -436,7 +436,8 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
     is_student_owner = getattr(user, "is_student", lambda: False)() and user.id == student.user_id
     can_review = _has_teacher_scope(user)
     is_parent = getattr(user, "is_parent", lambda: False)()
-    can_edit = is_student_owner and (lesson_task.status or "pending") in {"pending", "returned", "assigned", "in_progress"} and not is_parent
+    is_editable_status = (lesson_task.status or "pending") in {"pending", "returned", "assigned", "in_progress"}
+    can_edit = ((is_student_owner and is_editable_status) or can_review) and not is_parent
     mmr_policy = "manual_confirm"
     if (lesson_task.assignment_type or "homework") != "classwork":
         mmr_policy = "always"
@@ -444,9 +445,11 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
     lesson_sol_text = getattr(lesson_sol, "solution_text", "") or ""
     lesson_sol_html = _render_task_solution(lesson_sol_text) if lesson_sol_text else ""
     lesson_correct_ans = _extract_task_correct_answer(lesson_task.task) if lesson_task else ""
-    lesson_is_reviewed = bool(lesson_task.reviewed_at is not None or lesson_task.status in {"graded", "reviewed", "completed", "accepted"})
-    lesson_answer_score = lesson_task.score
-    lesson_max_score = int(lesson_task.max_score or (lesson_task.task.max_score if lesson_task.task else 1) or 1)
+    lesson_reviewed_at = getattr(lesson_task, "reviewed_at", None)
+    lesson_is_reviewed = bool(lesson_reviewed_at is not None or (lesson_task.status or "") in {"graded", "reviewed", "completed", "accepted"})
+    lesson_answer_score = getattr(lesson_task, "score", None)
+    task_max = lesson_task.task.max_score if lesson_task and lesson_task.task and hasattr(lesson_task.task, "max_score") else 1
+    lesson_max_score = int(getattr(lesson_task, "max_score", None) or task_max or 1)
 
     return WorkspaceContext(
         context_type="lesson_task",
@@ -749,12 +752,43 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     )
 
 
+def _resolve_lesson_context(user, lesson_id: int) -> WorkspaceContext:
+    from app.models import Lesson
+    lesson = Lesson.query.get_or_404(lesson_id)
+    student = lesson.student
+    is_student_owner = getattr(user, "is_student", lambda: False)() and student and user.id == student.user_id
+    can_review = _has_teacher_scope(user)
+    is_parent = getattr(user, "is_parent", lambda: False)()
+    can_edit = (is_student_owner or can_review) and not is_parent
+    return WorkspaceContext(
+        context_type="lesson",
+        context_id=lesson.lesson_id,
+        task_id=None,
+        task=None,
+        title=f"Свободная практика · Урок #{lesson.lesson_id}",
+        subtitle=f"Урок #{lesson.lesson_id} · {student.user.username if student and student.user else 'ученик'}",
+        source_label="Свободный редактор урока",
+        assignment_title=(lesson.topic or "Свободная практика"),
+        return_url=f"/lesson/{lesson.lesson_id}/room",
+        student_id=student.student_id if student else None,
+        student_user_id=student.user_id if student else None,
+        code="",
+        plain_answer="",
+        can_edit=can_edit,
+        can_review=can_review,
+    )
+
+
 def resolve_workspace_context(user, context_type: str, context_id: int | None = None, assignment_task_id: int | None = None) -> WorkspaceContext:
     kind = (context_type or "").strip().lower()
     if kind == "lesson_task":
         if context_id is None:
             abort(400, "Не указан lesson_task_id")
         ctx = _resolve_lesson_task_context(user, int(context_id))
+    elif kind == "lesson":
+        if context_id is None:
+            abort(400, "Не указан lesson_id")
+        ctx = _resolve_lesson_context(user, int(context_id))
     elif kind == "submission_task":
         if context_id is None or assignment_task_id is None:
             abort(400, "Не указаны submission_id / assignment_task_id")
@@ -782,6 +816,9 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
     code = (code or "")[:100_000]
     answer = (answer or "")[:20_000]
     try:
+        if ctx.context_type == "lesson" and ctx.context_id:
+            cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
+            return
         if ctx.context_type == "lesson_task" and ctx.lesson_task_id:
             lesson_task = LessonTask.query.get_or_404(ctx.lesson_task_id)
             lesson_task.student_submission = code

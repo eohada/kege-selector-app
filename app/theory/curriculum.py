@@ -153,6 +153,8 @@ def _apply_intro_programming_lessons(package: dict[str, Any]) -> None:
         if group.get("key") != "intro_programming":
             continue
         for block in group.get("blocks", []):
+            if '[LEVEL ' in (block.get("content") or ''):
+                continue
             lesson = INTRO_PROGRAMMING_LESSONS.get(block.get("task_number"))
             if lesson:
                 block.update({
@@ -207,42 +209,42 @@ INTRO_TOPIC_GUIDES: dict[int, tuple[str, str, str]] = {
 
 INTRO_INTERACTIVE_MARKERS: dict[int, tuple[str, str, str]] = {
     101: (
-        '[INTERACTIVE type="choice" key="py101-read" prompt="Что вернёт input(), если ученик ввёл 12?" options="строку из символов 1 и 2|число 12|список из двух чисел" answer="строку из символов 1 и 2"]',
+        '[INTERACTIVE type="choice" key="py101-read" prompt="Что вернёт `input()`, если ученик ввёл 12?" options="строку из символов 1 и 2|число 12|список из двух чисел" answer="строку из символов 1 и 2"]',
         '[INTERACTIVE type="code" key="py101-code" prompt="Измените одно число, чтобы программа вывела 12." code="print(7 + 4)" expected="12" answer="pass"]',
-        '[INTERACTIVE type="input" key="py101-output" prompt="Что выведет print(int(\'8\') + 2)?" answer="10" placeholder="Ответ"]',
+        '[INTERACTIVE type="input" key="py101-output" prompt="Что выведет `print(int(\'8\') + 2)`?" answer="10" placeholder="Ответ"]',
     ),
     102: (
-        '[INTERACTIVE type="choice" key="py102-read" prompt="Что делает split() с текстом \'4 9\'?" options="делит на две части|складывает числа|выводит 49" answer="делит на две части"]',
-        '[INTERACTIVE type="input" key="py102-output" prompt="Чему равно 3 * 4?" answer="12" placeholder="Ответ"]',
+        '[INTERACTIVE type="choice" key="py102-read" prompt="Что делает `split()` с текстом \'4 9\'?" options="делит на две части|складывает числа|выводит 49" answer="делит на две части"]',
+        '[INTERACTIVE type="input" key="py102-output" prompt="Что напечатает код: `a, b = 3, 4; print(a * b)`?" answer="12" placeholder="Ответ"]',
         '[INTERACTIVE type="code" key="py102-code" prompt="Исправьте один множитель, чтобы программа напечатала 24." code="print(2 * 3 * 3)" expected="24" answer="pass"]',
     ),
     103: (
         '[INTERACTIVE type="choice" key="py103-read" prompt="Какой знак проверяет равенство в Python?" options="==|=|!=" answer="=="]',
-        '[INTERACTIVE type="boolean" key="py103-boolean" prompt="Верно ли: 10 <= 10?" answer="true"]',
-        '[INTERACTIVE type="input" key="py103-output" prompt="Что выведет 7 % 2?" answer="1" placeholder="Ответ"]',
+        '[INTERACTIVE type="boolean" key="py103-boolean" prompt="Верно ли выражение: `10 <= 10`?" answer="true"]',
+        '[INTERACTIVE type="input" key="py103-output" prompt="Что выведет `7 % 2`?" answer="1" placeholder="Ответ"]',
     ),
     104: (
-        '[INTERACTIVE type="choice" key="py104-read" prompt="Какие числа перебирает range(2, 5)?" options="2, 3, 4|2, 3, 4, 5|1, 2, 3, 4" answer="2, 3, 4"]',
+        '[INTERACTIVE type="choice" key="py104-read" prompt="Какие числа перебирает `range(2, 5)`?" options="2, 3, 4|2, 3, 4, 5|1, 2, 3, 4" answer="2, 3, 4"]',
         '[INTERACTIVE type="input" key="py104-output" prompt="Чему равна сумма чисел от 1 до 4?" answer="10" placeholder="Ответ"]',
         '[INTERACTIVE type="code" key="py104-code" prompt="Добавьте недостающее слагаемое, чтобы программа вывела 10." code="print(1 + 2 + 3)" expected="10" answer="pass"]',
     ),
     105: (
-        '[INTERACTIVE type="choice" key="py105-read" prompt="Для чего нужен return?" options="вернуть результат функции|начать цикл|прочитать ввод" answer="вернуть результат функции"]',
-        '[INTERACTIVE type="input" key="py105-output" prompt="Чему равно square(3), если square(x) возвращает x * x?" answer="9" placeholder="Ответ"]',
+        '[INTERACTIVE type="choice" key="py105-read" prompt="Для чего нужен оператор `return`?" options="вернуть результат функции|начать цикл|прочитать ввод" answer="вернуть результат функции"]',
+        '[INTERACTIVE type="input" key="py105-output" prompt="Чему равно `square(3)`, если `square(x)` возвращает `x * x`?" answer="9" placeholder="Ответ"]',
         '[INTERACTIVE type="code" key="py105-code" prompt="Исправьте один множитель, чтобы код вывел 16." code="print(4 * 3)" expected="16" answer="pass"]',
     ),
     106: (
         '[INTERACTIVE type="choice" key="py106-read" prompt="Какой индекс у первого символа строки?" options="0|1|-1" answer="0"]',
-        '[INTERACTIVE type="input" key="py106-output" prompt="Чему равен len(\'code\')?" answer="4" placeholder="Ответ"]',
+        '[INTERACTIVE type="input" key="py106-output" prompt="Чему равен `len(\'code\')`?" answer="4" placeholder="Ответ"]',
         '[INTERACTIVE type="code" key="py106-code" prompt="Добавьте недостающую букву, чтобы код вывел 3." code="print(len(\'ЕГ\'))" expected="3" answer="pass"]',
     ),
     107: (
-        '[INTERACTIVE type="multi" key="py107-read" prompt="Отметьте тесты для диапазона 10..99." options="9|10|99|55" answer="9|10|99"]',
+        '[INTERACTIVE type="multi" key="py107-read" prompt="Отметьте тесты для диапазона `10..99`." options="9|10|99|55" answer="9|10|99"]',
         '[INTERACTIVE type="choice" key="py107-choice" prompt="Что полезно вывести при отладке цикла?" options="промежуточные значения|только финальный ответ|ничего" answer="промежуточные значения"]',
         '[INTERACTIVE type="input" key="py107-output" prompt="Какой максимум у чисел 2 и 9?" answer="9" placeholder="Ответ"]',
     ),
     108: (
-        '[INTERACTIVE type="choice" key="py108-read" prompt="Зачем применяют int(line) к строке из файла?" options="получить число|закрыть файл|добавить пробел" answer="получить число"]',
+        '[INTERACTIVE type="choice" key="py108-read" prompt="Зачем применяют `int(line)` к строке из файла?" options="получить число|закрыть файл|добавить пробел" answer="получить число"]',
         '[INTERACTIVE type="input" key="py108-output" prompt="Чему равна сумма чисел 2, 3 и 4?" answer="9" placeholder="Ответ"]',
         '[INTERACTIVE type="code" key="py108-code" prompt="Исправьте последнее слагаемое, чтобы код вывел 9." code="print(2 + 3 + 3)" expected="9" answer="pass"]',
     ),
@@ -503,7 +505,7 @@ print(total)[/CODE]
 
 def _compose_intro_programming_content(task_number: int | None, source: str) -> str:
     """Attach long-form, in-context labs to a beginner lesson without generic tails."""
-    if not isinstance(task_number, int):
+    if not isinstance(task_number, int) or '[LEVEL ' in (source or ''):
         return source
     appendix = INTRO_PROGRAMMING_EXPANSIONS.get(task_number)
     markers = INTRO_INTERACTIVE_MARKERS.get(task_number)

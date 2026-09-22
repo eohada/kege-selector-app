@@ -1201,10 +1201,12 @@ def lesson_interactive_room(lesson_id: int):
         {
             'lesson_task_id': t.lesson_task_id,
             'task_id': t.task_id,
-            'title': f'Задание №{t.task.task_number} (№{idx + 1})' if t.task else f'Задание #{idx + 1}',
+            'title': getattr(t.task, 'title', None) or (f'Задание №{t.task.task_number} (№{idx + 1})' if t.task and t.task.task_number else f'Задание #{idx + 1}'),
             'description': t.task.content_html if t.task else 'Условие задачи...',
             'answer': t.student_answer or (t.task.answer if t.task else ''),
             'student_submission': t.student_submission or '',
+            'starter_code': (t.task.starter_code if t.task and t.task.starter_code else '') or '',
+            'hints': (t.task.hints if t.task and t.task.hints else []) or [],
             'teacher_comment': t.teacher_comment or '',
             'submission_correct': t.submission_correct,
             'status': t.status or 'pending',

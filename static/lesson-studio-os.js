@@ -62,9 +62,21 @@
     // publishes a workspace through "Показать ученику", never by browsing.
   }
   
+  const getDisplayTimerSeconds = () => {
+    if (state.timer && state.timer.seconds != null && Number(state.timer.seconds) > 0) {
+      return Number(state.timer.seconds);
+    }
+    const phase = state.phase || 'preparation';
+    return Number(state.phase_timers?.[phase] || state.phase_durations?.[phase] || 540);
+  };
+
   function render(){
     const timer=state.timer||{}, phase=state.phase||'preparation';
-    $('#os-timer').textContent=fmt(timer.seconds);
+    const timerEl = $('#os-timer');
+    if (timerEl) {
+      const sec = timer.running ? (timer.seconds || 0) : getDisplayTimerSeconds();
+      timerEl.textContent = fmt(sec);
+    }
     const toggleBtn = $('#os-timer-toggle');
     if(toggleBtn) toggleBtn.innerHTML = timer.running ? '<i class="ph-bold ph-pause"></i>' : '<i class="ph-bold ph-play"></i>';
     document.querySelectorAll('#os-phases button').forEach(b=>b.classList.toggle('active',b.dataset.phase===phase));
@@ -77,7 +89,7 @@
     const checkpointView=$('#room-student-checkpoint');if(checkpointView)checkpointView.textContent=checkpoint.understanding?`Понимание: ${checkpoint.understanding}/5${checkpoint.blocker?` · ${checkpoint.blocker}`:''}`:'Самооценка ещё не отправлена.';
     const understanding=$('#room-checkpoint-understanding');if(understanding&&checkpoint.understanding)understanding.value=String(checkpoint.understanding);
     const blocker=$('#room-checkpoint-blocker');if(blocker&&checkpoint.blocker&&!blocker.value)blocker.value=checkpoint.blocker;
-    const agendaBox=$('#room-agenda');if(agendaBox){const agenda=Array.isArray(state.agenda)?state.agenda:[];agendaBox.innerHTML=agenda.map((item,index)=>`<label><input type="checkbox" data-agenda-index="${index}" ${item.done?'checked':''} ${teacher?'':'disabled'}><span>${String(item.title||'Шаг урока').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))}</span></label>`).join('')||'<p>План пока не задан.</p>';agendaBox.querySelectorAll('[data-agenda-index]').forEach(input=>input.addEventListener('change',()=>{if(!teacher)return;const agenda=(state.agenda||[]).map((item,index)=>({...item,done:index===Number(input.dataset.agendaIndex)?input.checked:Boolean(item.done)}));save({agenda})}))}
+    const agendaBox=$('#room-agenda');if(agendaBox){const agenda=Array.isArray(state.agenda)?state.agenda:[];const doneCount=agenda.filter(item=>item.done).length;const badge=$('#room-agenda-progress-badge');if(badge)badge.textContent=agenda.length?`${doneCount}/${agenda.length}`:'0/0';agendaBox.innerHTML=agenda.map((item,index)=>`<label class="room-agenda-item"><input type="checkbox" data-agenda-index="${index}" ${item.done?'checked':''} ${teacher?'':'disabled'}><span>${String(item.title||'Шаг урока').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]))}</span></label>`).join('')||'<p class="text-sm text-slate-500 italic p-2">План пока не задан.</p>';agendaBox.querySelectorAll('[data-agenda-index]').forEach(input=>input.addEventListener('change',()=>{if(!teacher)return;const nextAgenda=(state.agenda||[]).map((item,index)=>({...item,done:index===Number(input.dataset.agendaIndex)?input.checked:Boolean(item.done)}));save({agenda:nextAgenda})}))}
     const guidance=String(state.guidance?.next_step||'').trim(), guidanceEditor=$('#room-guidance'), guidanceView=$('#room-student-guidance');
     if(guidanceEditor&&document.activeElement!==guidanceEditor)guidanceEditor.value=guidance;
     if(guidanceView){guidanceView.classList.toggle('hidden',!guidance);guidanceView.querySelector('p').textContent=guidance}
@@ -118,48 +130,357 @@
   
   function taskStatusLabel(status){return ({pending:'Не начато',in_progress:'В работе',completed:'Готово',submitted:'На проверке'})[status]||'В очереди'}
   function renderTasks(){const box=$('#os-task-list');box.innerHTML='';$('#os-task-count').textContent=`${tasks.length} шт.`;if(!tasks.length){box.innerHTML='<div class="room-task-empty"><i class="ph-bold ph-list-checks"></i><strong>Заданий пока нет</strong><p>Преподаватель добавит их из генератора или урока.</p></div>';return}tasks.forEach((t,i)=>{const b=document.createElement('button');b.className=`room-task ${activeTask===t.lesson_task_id?'active':''}`;b.innerHTML=`<small>${i+1} · ${taskStatusLabel(t.status)}</small><b>${t.title}</b>`;b.onclick=()=>openTask(t.lesson_task_id);box.append(b)})}
-  function openTask(id){const task=tasks.find(x=>x.lesson_task_id===Number(id));if(!task)return;activeTask=task.lesson_task_id;const taskIndex=tasks.findIndex(item=>item.lesson_task_id===activeTask);$('#os-task-title').textContent=task.title;$('#os-task-body').innerHTML=safeTaskHtml(task.description)||'Условие отсутствует.';$('#os-task-status').textContent=taskStatusLabel(task.status);$('#room-mission-progress').textContent=`Шаг ${taskIndex+1} из ${tasks.length}`;$('#room-mission-badge').innerHTML=`<i class="ph-bold ph-sparkle"></i> ${task.status==='completed'?'Задача завершена':'Фокус: одна задача'}`;renderTasks();if(teacher)save({active_task_id:id});connectWorkspace(id)}
+  function setupEmptyTaskState() {
+    activeTask = null;
+    const titleEl = $('#os-task-title');
+    const bodyEl = $('#os-task-body');
+    const statusEl = $('#os-task-status');
+    const counterText = $('#room-task-counter-text');
+    const hintBody = $('#os-task-hint-body');
+
+    if (titleEl) titleEl.textContent = 'Свободная практика';
+    if (bodyEl) bodyEl.innerHTML = '<p>В этом уроке пока нет прикреплённых заданий.</p><p class="text-slate-500 mt-2">Вы можете писать, запускать и тестировать любой Python-код в редакторе прямо сейчас. Код синхронизируется в реальном времени.</p>';
+    if (statusEl) statusEl.textContent = 'Редактор активен';
+    if (counterText) counterText.textContent = 'Свободный режим';
+    if (hintBody) hintBody.innerHTML = '<p class="text-slate-500 italic">Напишите код и нажмите Ctrl+Enter или кнопку «Запустить код».</p>';
+
+    $('#room-task-prev')?.setAttribute('disabled', 'true');
+    $('#room-task-next')?.setAttribute('disabled', 'true');
+    $('#room-btn-prev-task')?.setAttribute('disabled', 'true');
+    $('#room-btn-next-task')?.setAttribute('disabled', 'true');
+    renderTasks();
+    connectWorkspace(lessonId, 'lesson');
+  }
+
+  function openTask(id){
+    const task=tasks.find(x=>String(x.lesson_task_id)===String(id));
+    if(!task)return;
+    activeTask=task.lesson_task_id;
+    const taskIndex=tasks.findIndex(item=>String(item.lesson_task_id)===String(activeTask));
+    $('#os-task-title').textContent=task.title;
+    $('#os-task-body').innerHTML=safeTaskHtml(task.description)||'Условие отсутствует.';
+    $('#os-task-status').textContent=taskStatusLabel(task.status);
+    $('#room-mission-progress').textContent=`Шаг ${taskIndex+1} из ${tasks.length}`;
+    $('#room-mission-badge').innerHTML=`<i class="ph-bold ph-sparkle"></i> ${task.status==='completed'?'Задача завершена':'Фокус: одна задача'}`;
+    const counterText=$('#room-task-counter-text');if(counterText)counterText.textContent=`Задание ${taskIndex+1} из ${Math.max(1,tasks.length)}`;
+    const hintBody=$('#os-task-hint-body');
+    if(hintBody){
+      const hints=task.hints||task.hint||(task.task&&(task.task.hints||task.task.hint));
+      if(Array.isArray(hints)&&hints.length){hintBody.innerHTML=hints.map(h=>`<p>${codeEscape(h)}</p>`).join('');}
+      else if(typeof hints==='string'&&hints.trim()){hintBody.innerHTML=`<p>${codeEscape(hints)}</p>`;}
+      else{hintBody.innerHTML='<p class="text-slate-500 italic">Подсказок для этого задания нет. Попробуйте разбить решение на шаги.</p>';}
+    }
+    const hasPrev=taskIndex>0, hasNext=taskIndex<tasks.length-1;
+    $('#room-task-prev')?.toggleAttribute('disabled',!hasPrev);
+    $('#room-task-next')?.toggleAttribute('disabled',!hasNext);
+    $('#room-btn-prev-task')?.toggleAttribute('disabled',!hasPrev);
+    $('#room-btn-next-task')?.toggleAttribute('disabled',!hasNext);
+    renderTasks();
+    if(teacher)save({active_task_id:id});
+    connectWorkspace(id, 'lesson_task');
+  }
   
-  function ctx(){return {context_type:'lesson_task',context_id:workspace.id,client_id:clientId}}
+  function ctx(){return {context_type:workspace.kind||(workspace.id===lessonId?'lesson':'lesson_task'),context_id:workspace.id||lessonId,client_id:clientId}}
   const codeEscape=value=>String(value||'').replace(/[&<>]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[char]));
   function highlightPython(value){const source=String(value||''),tokens=/(#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b(?:False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|print|range|len|str|int|float|list|dict|set)\b)/g;let result='',cursor=0,match;while((match=tokens.exec(source))){result+=codeEscape(source.slice(cursor,match.index));const token=match[0],kind=token.startsWith('#')?'comment':token.startsWith('"')||token.startsWith("'")?'string':/^\d/.test(token)?'number':/^(print|range|len|str|int|float|list|dict|set)$/.test(token)?'builtin':'keyword';result+=`<span class="os-token-${kind}">${codeEscape(token)}</span>`;cursor=match.index+token.length}return result+codeEscape(source.slice(cursor));}
   function refreshCodeHighlight(){const editor=$('#os-code'),layer=$('#os-code-highlight');if(!editor||!layer)return;layer.innerHTML=`<code>${highlightPython(editor.value)}\n</code>`;layer.scrollTop=editor.scrollTop;layer.scrollLeft=editor.scrollLeft;}
-  function connectWorkspace(id){workspace.id=id;$('#os-code').value='';$('#os-answer').value='';refreshCodeHighlight();$('#os-output').textContent='Подключаемся к совместному коду…';if(!workspace.socket){workspace.socket=io('/task-workspace');workspace.socket.on('connect',()=>workspace.socket.emit('join_workspace',ctx()));workspace.socket.on('workspace_snapshot',p=>applySnapshot(p.state));workspace.socket.on('workspace_patch',p=>{if(p.client_id===clientId||!p.code_after)return;workspace.applying=true;$('#os-code').value=p.code_after;refreshCodeHighlight();workspace.applying=false;workspace.version=p.version||workspace.version});workspace.socket.on('workspace_presence',p=>$('#os-presence').textContent=(p.participants||[]).map(x=>x.display_name||x.username).join(' · ')||'Нет участников')}else if(workspace.socket.connected)workspace.socket.emit('join_workspace',ctx());}
-  function applySnapshot(s){if(!s)return;workspace.applying=true;$('#os-code').value=s.code||'';$('#os-answer').value=s.answer||'';refreshCodeHighlight();workspace.applying=false;workspace.version=s.version||0;$('#os-presence').textContent='Совместный режим'}
+  function refreshGutter(){const gutter=$('#os-code-gutter'),editor=$('#os-code');if(!gutter||!editor)return;const lines=(editor.value||'').split('\n').length||1;let html='';for(let i=1;i<=lines;i++){html+=`<span>${i}</span>`;}gutter.innerHTML=html;gutter.scrollTop=editor.scrollTop;}
+  let typingTimer=null;
+  function showTypingBanner(text){const banner=$('#os-typing-banner'),label=$('#os-typing-user-text');if(!banner||!label)return;label.textContent=text;banner.classList.remove('hidden');clearTimeout(typingTimer);typingTimer=setTimeout(()=>banner.classList.add('hidden'),2400);}
+  function connectWorkspace(id, kind='lesson_task'){
+    workspace.id=id;
+    workspace.kind=kind;
+    $('#os-code').value='';
+    $('#os-answer').value='';
+    refreshCodeHighlight();
+    refreshGutter();
+    $('#os-output').textContent='Подключаемся к совместному коду…';
+    if(!workspace.socket){
+      workspace.socket=io('/task-workspace');
+      workspace.socket.on('connect',()=>workspace.socket.emit('join_workspace',ctx()));
+      workspace.socket.on('workspace_snapshot',p=>applySnapshot(p.state));
+      workspace.socket.on('workspace_patch',p=>{
+        if(p.client_id===clientId||!p.code_after){
+          if(p.version)workspace.version=Math.max(workspace.version,Number(p.version)||0);
+          return;
+        }
+        const editor=$('#os-code');
+        const isFocused=document.activeElement===editor;
+        const curStart=editor.selectionStart, curEnd=editor.selectionEnd;
+        const start=Number.isFinite(p.start)?p.start:0, end=Number.isFinite(p.end)?p.end:start;
+        const insertedLen=(p.inserted||'').length, delta=insertedLen-(end-start);
+        let newStart=curStart, newEnd=curEnd;
+        if(curStart>=end){newStart=curStart+delta;}else if(curStart>start){newStart=start+insertedLen;}
+        if(curEnd>=end){newEnd=curEnd+delta;}else if(curEnd>start){newEnd=start+insertedLen;}
+        workspace.applying=true;
+        editor.value=p.code_after;
+        if(isFocused){editor.setSelectionRange(Math.max(0,newStart),Math.max(0,newEnd));}
+        refreshCodeHighlight();
+        refreshGutter();
+        workspace.applying=false;
+        workspace.version=p.version||workspace.version;
+        const peerRole=p.role==='teacher'?'Преподаватель':'Ученик';
+        const peerName=p.display_name||p.username||peerRole;
+        showTypingBanner(`${peerName} печатает...`);
+      });
+      workspace.socket.on('workspace_cursor_update',p=>{
+        if(p.client_id===clientId)return;
+        const peerRole=p.role==='teacher'?'Преподаватель':'Ученик';
+        const peerName=p.display_name||p.username||peerRole;
+        showTypingBanner(`${peerName} печатает...`);
+      });
+      workspace.socket.on('workspace_presence',p=>$('#os-presence').textContent=(p.participants||[]).map(x=>x.display_name||x.username).join(' · ')||'Онлайн');
+    }else if(workspace.socket.connected){
+      workspace.socket.emit('join_workspace',ctx());
+    }
+  }
+  function applySnapshot(s){
+    if(!s)return;
+    workspace.applying=true;
+    $('#os-code').value=s.code||'';
+    $('#os-answer').value=s.answer||'';
+    refreshCodeHighlight();
+    refreshGutter();
+    workspace.applying=false;
+    workspace.version=s.version||0;
+    $('#os-presence').textContent='Совместный режим';
+  }
   async function run(){
     const output=$('#os-output'), button=$('#os-run'), code=$('#os-code')?.value||'';
+    const resultOutput=$('#os-result-output'), resultStatus=$('#os-result-status-tag');
     if(!workspace.id){
-      const selected=tasks.find(task=>task.lesson_task_id===activeTask)||tasks[0];
-      if(!selected){
-        output.textContent='Сначала преподаватель должен добавить задачу в урок.';
-        return toast('Для запуска нужен выбранный материал задачи.');
+      if(tasks&&tasks.length>0){
+        const selected=tasks.find(task=>String(task.lesson_task_id)===String(activeTask))||tasks[0];
+        if(selected){
+          openTask(selected.lesson_task_id);
+        }
+      }else{
+        connectWorkspace(lessonId, 'lesson');
       }
-      openTask(selected.lesson_task_id);
     }
     if(!workspace.id){
-      output.textContent='Не удалось подключить рабочее пространство задачи.';
-      return toast('Не удалось открыть рабочее пространство. Выберите задачу ещё раз.');
+      workspace.id=lessonId;
+      workspace.kind='lesson';
     }
     if(!code.trim()){
-      output.textContent='Напишите код перед запуском.';
+      const emptyMsg='Напишите код перед запуском.';
+      if(output)output.textContent=emptyMsg;
+      if(resultOutput)resultOutput.textContent=emptyMsg;
+      if(resultStatus)resultStatus.textContent='Код пустой';
       return toast('Код пока пустой.');
     }
-    if(button){button.disabled=true;button.textContent='Запуск…'}
-    output.textContent='Запускаем код…';
+    if(button){
+      button.disabled=true;
+      button.innerHTML='<i class="ph-bold ph-spinner animate-spin"></i><span>Запуск…</span>';
+    }
+    if(output)output.textContent='Запускаем код…';
+    if(resultOutput)resultOutput.textContent='Запускаем код…';
+    if(resultStatus)resultStatus.textContent='Выполняется…';
     try{
       const r=await post('/task-workspace/api/run',{...ctx(),code});
       if(!r.success){
-        output.textContent=`Не удалось запустить код: ${r.error||'неизвестная ошибка'}`;
+        const errMsg=`Не удалось запустить код: ${r.error||'неизвестная ошибка'}`;
+        if(output){ output.textContent=errMsg; output.classList.add('has-error'); }
+        if(resultOutput)resultOutput.textContent=errMsg;
+        if(resultStatus)resultStatus.textContent='Ошибка запуска';
         return toast(r.error||'Запуск кода не удался.');
       }
       const explanation=r.stderr_explained?.message||r.stderr_explained?.hint||'';
-      output.textContent=[r.stdout,r.stderr,explanation].filter(Boolean).join('\n')||'Выполнено без вывода';
+      const fullOut=[r.stdout,r.stderr,explanation].filter(Boolean).join('\n')||'Выполнено без вывода';
+      if(output){
+        output.textContent=fullOut;
+        if(r.stderr){ output.classList.add('has-error'); } else { output.classList.remove('has-error'); }
+      }
+      if(resultOutput)resultOutput.textContent=fullOut;
+      if(resultStatus)resultStatus.textContent=r.stderr?'Ошибка в коде':'Выполнено';
     }finally{
-      if(button){button.disabled=false;button.textContent='Запустить'}
+      if(button){
+        button.disabled=false;
+        button.innerHTML='<i class="ph-bold ph-play"></i><span>Запустить код</span>';
+      }
     }
   }
   
-  function bindWorkspace(){const codeEditor=$('#os-code');codeEditor.addEventListener('input',()=>{refreshCodeHighlight();if(workspace.applying||!workspace.socket||!workspace.id)return;workspace.socket.emit('workspace_patch',{...ctx(),base_version:workspace.version,full_code:codeEditor.value,next:codeEditor.value,op_id:crypto.randomUUID(),updated_at:Date.now()})});codeEditor.addEventListener('scroll',refreshCodeHighlight);$('#os-save').onclick=async()=>{if(!workspace.id)return;const r=await post('/task-workspace/api/save',{...ctx(),code:codeEditor.value,answer:$('#os-answer').value});toast(r.success?'Сохранено':r.error||'Ошибка')};$('#os-run').onclick=run;$('#os-versions').onclick=async()=>{if(!workspace.id)return;const r=await fetch(`/task-workspace/api/versions?context_type=lesson_task&context_id=${workspace.id}`).then(x=>x.json());const items=r.versions?.items||[];const box=$('#os-versions-list');box.innerHTML='';if(!items.length){box.textContent='Версий пока нет.';return}items.forEach((item,index)=>{const b=document.createElement('button');b.className='os-version';b.textContent=`Версия ${items.length-index} · ${item.source||'сохранение'}`;b.onclick=async()=>{const restored=await post(`/task-workspace/api/versions/${item.version_id}/restore`,ctx());if(!restored.success)return toast(restored.error||'Не удалось восстановить');workspace.applying=true;codeEditor.value=restored.code||'';$('#os-answer').value=restored.answer||'';refreshCodeHighlight();workspace.applying=false;toast('Версия восстановлена')};box.append(b)})}}
+  function bindWorkspace(){
+    const codeEditor=$('#os-code');
+
+    const emitCodeChange = () => {
+      refreshCodeHighlight();
+      refreshGutter();
+      if (!workspace.applying && workspace.socket && workspace.id) {
+        workspace.socket.emit('workspace_patch', {
+          ...ctx(),
+          base_version: workspace.version,
+          full_code: codeEditor.value,
+          next: codeEditor.value,
+          op_id: crypto.randomUUID(),
+          updated_at: Date.now()
+        });
+      }
+    };
+
+    codeEditor.addEventListener('input',()=>{
+      refreshCodeHighlight();
+      refreshGutter();
+      if(workspace.applying||!workspace.socket||!workspace.id)return;
+      workspace.socket.emit('workspace_patch',{...ctx(),base_version:workspace.version,full_code:codeEditor.value,next:codeEditor.value,op_id:crypto.randomUUID(),updated_at:Date.now()});
+    });
+    codeEditor.addEventListener('scroll',()=>{
+      refreshCodeHighlight();
+      const gutter=$('#os-code-gutter');
+      if(gutter)gutter.scrollTop=codeEditor.scrollTop;
+    });
+
+    codeEditor.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        run();
+        return;
+      }
+
+      const val = codeEditor.value;
+      const start = codeEditor.selectionStart;
+      const end = codeEditor.selectionEnd;
+      const hasSelection = start !== end;
+      const selText = hasSelection ? val.substring(start, end) : '';
+
+      // 1. Auto-closing pairs and selection wrap
+      const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" };
+      const closingChars = [')', ']', '}', '"', "'"];
+
+      if (pairs[e.key]) {
+        e.preventDefault();
+        const openChar = e.key;
+        const closeChar = pairs[openChar];
+
+        if (hasSelection) {
+          codeEditor.value = val.substring(0, start) + openChar + selText + closeChar + val.substring(end);
+          codeEditor.selectionStart = start + 1;
+          codeEditor.selectionEnd = end + 1;
+        } else {
+          if ((openChar === '"' || openChar === "'") && val[start] === openChar) {
+            codeEditor.selectionStart = codeEditor.selectionEnd = start + 1;
+            return;
+          }
+          codeEditor.value = val.substring(0, start) + openChar + closeChar + val.substring(end);
+          codeEditor.selectionStart = codeEditor.selectionEnd = start + 1;
+        }
+        emitCodeChange();
+        return;
+      }
+
+      // 2. Overtype closing character
+      if (closingChars.includes(e.key) && !hasSelection) {
+        if (val[start] === e.key) {
+          e.preventDefault();
+          codeEditor.selectionStart = codeEditor.selectionEnd = start + 1;
+          return;
+        }
+      }
+
+      // 3. Smart Backspace: delete empty pair
+      if (e.key === 'Backspace' && !hasSelection && start > 0) {
+        const prev = val[start - 1];
+        const next = val[start];
+        if (
+          (prev === '(' && next === ')') ||
+          (prev === '[' && next === ']') ||
+          (prev === '{' && next === '}') ||
+          (prev === '"' && next === '"') ||
+          (prev === "'" && next === "'")
+        ) {
+          e.preventDefault();
+          codeEditor.value = val.substring(0, start - 1) + val.substring(start + 1);
+          codeEditor.selectionStart = codeEditor.selectionEnd = start - 1;
+          emitCodeChange();
+          return;
+        }
+      }
+
+      // 4. Smart Enter / Auto-indentation
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+        const lineBeforeCursor = val.substring(lineStart, start);
+        const indentMatch = lineBeforeCursor.match(/^[ \t]*/);
+        let indent = indentMatch ? indentMatch[0] : '';
+
+        const prevChar = val[start - 1];
+        const nextChar = val[start];
+        const isBetweenBrackets =
+          (prevChar === '{' && nextChar === '}') ||
+          (prevChar === '[' && nextChar === ']') ||
+          (prevChar === '(' && nextChar === ')');
+
+        if (isBetweenBrackets) {
+          const extraIndent = indent + '    ';
+          codeEditor.value = val.substring(0, start) + '\n' + extraIndent + '\n' + indent + val.substring(end);
+          codeEditor.selectionStart = codeEditor.selectionEnd = start + 1 + extraIndent.length;
+        } else {
+          if (lineBeforeCursor.trimEnd().endsWith(':')) {
+            indent += '    ';
+          }
+          codeEditor.value = val.substring(0, start) + '\n' + indent + val.substring(end);
+          codeEditor.selectionStart = codeEditor.selectionEnd = start + 1 + indent.length;
+        }
+        emitCodeChange();
+        return;
+      }
+
+      // 5. Tab and Shift+Tab (Indent / Outdent)
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (hasSelection) {
+            const firstLineStart = val.lastIndexOf('\n', start - 1) + 1;
+            const lastLineEnd = val.indexOf('\n', end);
+            const blockEnd = lastLineEnd === -1 ? val.length : lastLineEnd;
+            const block = val.substring(firstLineStart, blockEnd);
+            const lines = block.split('\n');
+            const unindented = lines.map(line => line.replace(/^ {1,4}/, '')).join('\n');
+            codeEditor.value = val.substring(0, firstLineStart) + unindented + val.substring(blockEnd);
+            codeEditor.selectionStart = firstLineStart;
+            codeEditor.selectionEnd = firstLineStart + unindented.length;
+          } else {
+            const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+            const line = val.substring(lineStart, start);
+            const unindented = line.replace(/^ {1,4}/, '');
+            const removed = line.length - unindented.length;
+            codeEditor.value = val.substring(0, lineStart) + unindented + val.substring(start);
+            codeEditor.selectionStart = codeEditor.selectionEnd = Math.max(lineStart, start - removed);
+          }
+        } else {
+          if (hasSelection && selText.includes('\n')) {
+            const firstLineStart = val.lastIndexOf('\n', start - 1) + 1;
+            const lastLineEnd = val.indexOf('\n', end);
+            const blockEnd = lastLineEnd === -1 ? val.length : lastLineEnd;
+            const block = val.substring(firstLineStart, blockEnd);
+            const lines = block.split('\n');
+            const indented = lines.map(line => '    ' + line).join('\n');
+            codeEditor.value = val.substring(0, firstLineStart) + indented + val.substring(blockEnd);
+            codeEditor.selectionStart = firstLineStart;
+            codeEditor.selectionEnd = firstLineStart + indented.length;
+          } else {
+            codeEditor.value = val.substring(0, start) + '    ' + val.substring(end);
+            codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
+          }
+        }
+        emitCodeChange();
+        return;
+      }
+    });
+    let cursorTimer=null;
+    codeEditor.addEventListener('keyup',()=>{
+      if(!workspace.socket||!workspace.id||workspace.applying)return;
+      clearTimeout(cursorTimer);
+      cursorTimer=setTimeout(()=>{
+        workspace.socket.emit('workspace_cursor_update',{...ctx(),cursor:{selection_start:codeEditor.selectionStart,selection_end:codeEditor.selectionEnd,is_typing:true}});
+      },120);
+    });
+    $('#os-save').onclick=async()=>{if(!workspace.id)return;const r=await post('/task-workspace/api/save',{...ctx(),code:codeEditor.value,answer:$('#os-answer').value});toast(r.success?'Сохранено':r.error||'Ошибка')};
+    $('#os-run').onclick=run;
+    $('#os-versions').onclick=async()=>{if(!workspace.id)return;const r=await fetch(`/task-workspace/api/versions?context_type=lesson_task&context_id=${workspace.id}`).then(x=>x.json());const items=r.versions?.items||[];const box=$('#os-versions-list');box.innerHTML='';if(!items.length){box.textContent='Версий пока нет.';return}items.forEach((item,index)=>{const b=document.createElement('button');b.className='os-version';b.textContent=`Версия ${items.length-index} · ${item.source||'сохранение'}`;b.onclick=async()=>{const restored=await post(`/task-workspace/api/versions/${item.version_id}/restore`,ctx());if(!restored.success)return toast(restored.error||'Не удалось восстановить');workspace.applying=true;codeEditor.value=restored.code||'';$('#os-answer').value=restored.answer||'';refreshCodeHighlight();refreshGutter();workspace.applying=false;toast('Версия восстановлена')};box.append(b)})};
+  }
   
   function phaseChange(phase){if(!teacher)return;const previous=state.phase, timers={...(state.phase_timers||{}),[previous]:Math.max(0,Number(state.timer?.seconds)||0)},timer={...(state.timer||{}),seconds:timers[phase],running:false,completed_at:null};save({phase,phase_timers:timers,timer})}
   
@@ -515,8 +836,18 @@
     const activeLabel = $('#os-video-active-label');
 
     const setVideoOpen = open => {
-      videoDock?.classList.toggle('hidden', !open);
-      localUi.videoOpen = open;
+      if (!videoDock) return;
+      if (open) {
+        videoDock.classList.remove('hidden');
+        videoDock.style.display = 'flex';
+      } else {
+        videoDock.classList.add('hidden');
+        videoDock.style.display = 'none';
+      }
+      const toggleBtn = $('#room-video-toggle');
+      toggleBtn?.classList.toggle('active', Boolean(open));
+      toggleBtn?.setAttribute('aria-pressed', String(Boolean(open)));
+      localUi.videoOpen = Boolean(open);
       persistUi();
     };
     const setVideoLarge = large => {
@@ -527,8 +858,12 @@
     };
     const setVideoFloating = (position, shouldPersist = true) => {
       if (!videoDock) return;
-      const valid = position && Number.isFinite(Number(position.left)) && Number.isFinite(Number(position.top));
-      videoDock.classList.toggle('is-floating', valid);
+      const valid = position &&
+        Number.isFinite(Number(position.left)) &&
+        Number.isFinite(Number(position.top)) &&
+        position.left >= 0 && position.left < (window.innerWidth - 80) &&
+        position.top >= 0 && position.top < (window.innerHeight - 80);
+      videoDock.classList.toggle('is-floating', Boolean(valid));
       videoDock.style.left = valid ? `${Math.round(Number(position.left))}px` : '';
       videoDock.style.top = valid ? `${Math.round(Number(position.top))}px` : '';
       localUi.videoPosition = valid ? { left: Number(position.left), top: Number(position.top) } : null;
@@ -808,8 +1143,13 @@
       }
     }
 
-    $('#room-video-toggle')?.addEventListener('click', () => setVideoOpen(true));
+    $('#room-video-toggle')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isClosed = !videoDock || videoDock.classList.contains('hidden') || videoDock.style.display === 'none';
+      setVideoOpen(isClosed);
+    });
     $('#room-video-close')?.addEventListener('click', () => setVideoOpen(false));
+    $('#os-close-video')?.addEventListener('click', () => setVideoOpen(false));
     $('#room-video-size')?.addEventListener('click', () => setVideoLarge(!videoDock?.classList.contains('is-large')));
     $('#room-video-dock-toggle')?.addEventListener('click', () => setVideoFloating(null));
     $('#room-video-external-win')?.addEventListener('click', openExternalTab);
@@ -879,6 +1219,10 @@
     if(localUi.taskPanelOpen===true)setTaskPanel(true);else setTaskPanel(false);
     const setFocusMode=enabled=>{
       root.classList.toggle('room-focus-mode',enabled);
+      const icon = $('#os-focus-toggle i');
+      if (icon) {
+        icon.className = enabled ? 'ph-bold ph-corners-in text-base' : 'ph-bold ph-corners-out text-base';
+      }
       $('#os-focus-toggle')?.setAttribute('aria-pressed',String(enabled));
       $('#os-focus-toggle')?.setAttribute('title',enabled?'Выйти из фокуса':'Сфокусироваться на задаче');
       localUi.focusMode=enabled;persistUi();
@@ -890,12 +1234,127 @@
     const resizePanel=(side,event)=>{if(window.innerWidth<=1180)return;event.preventDefault();const startX=event.clientX,start=side==='left'?(Number(localUi.leftWidth)||250):(Number(localUi.rightWidth)||320);const move=e=>{const delta=e.clientX-startX;const minimum=side==='left'?190:280;const width=Math.max(minimum,Math.min(420,side==='left'?start+delta:start-delta));localUi[side==='left'?'leftWidth':'rightWidth']=width;root.style.setProperty(side==='left'?'--room-left-width':'--room-right-width',`${width}px`)};const done=()=>{persistUi();window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',done)};window.addEventListener('pointermove',move);window.addEventListener('pointerup',done)};
     taskPanel?.addEventListener('pointerdown',event=>{if(event.target.closest('button,a,input,textarea'))return;if(event.offsetX<taskPanel.clientWidth-12)return;resizePanel('left',event)});
     panel?.addEventListener('pointerdown',event=>{if(event.target.closest('button,a,input,textarea,select,summary,details,label'))return;if(event.offsetX>12)return;resizePanel('right',event)});
-    const note=$('#room-teacher-note');if(note){note.value=state.teacher_private_note||'';note.addEventListener('change',()=>save({teacher_private_note:note.value}))}
+    const saveIndicator=$('#room-notes-save-indicator');
+    const setSavingStatus=status=>{
+      if(!saveIndicator)return;
+      if(status==='saving'){
+        saveIndicator.innerHTML='<i class="ph-bold ph-spinner animate-spin text-amber-500"></i> Сохранение...';
+      }else if(status==='saved'){
+        saveIndicator.innerHTML='<i class="ph-fill ph-check-circle text-emerald-500"></i> Сохранено автоматически';
+      }else if(status==='error'){
+        saveIndicator.innerHTML='<i class="ph-fill ph-warning-circle text-rose-500"></i> Ошибка сохранения';
+      }
+    };
+    const note=$('#room-teacher-note');
+    if(note){
+      note.value=state.teacher_private_note||'';
+      let noteTimer=null;
+      note.addEventListener('input',()=>{
+        setSavingStatus('saving');
+        clearTimeout(noteTimer);
+        noteTimer=setTimeout(async()=>{
+          const r=await save({teacher_private_note:note.value});
+          setSavingStatus(r?.success?'saved':'error');
+        },800);
+      });
+      note.addEventListener('change',()=>save({teacher_private_note:note.value}));
+    }
     const guidanceEditor=$('#room-guidance');if(guidanceEditor)guidanceEditor.addEventListener('change',()=>{state.guidance={...(state.guidance||{}),next_step:guidanceEditor.value};save({guidance:state.guidance})});
     const homework=$('#room-homework');if(homework){homework.value=state.outcome?.homework||'';homework.addEventListener('change',()=>{state.outcome={...(state.outcome||{}),homework:homework.value};if(teacher)save({outcome:state.outcome})})}
-    const studentNotes=$('#room-student-notes');if(studentNotes){studentNotes.value=data.student_notes||'';$('#room-student-notes-save')?.addEventListener('click',async()=>{const r=await post(`/lesson/${lessonId}/studio/student-notes`,{notes:studentNotes.value});if(r.success){data.student_notes=r.notes||studentNotes.value;toast('Личные заметки сохранены')}else toast(r.error||'Не удалось сохранить заметки')})}
+    const studentNotes=$('#room-student-notes');
+    if(studentNotes){
+      studentNotes.value=data.student_notes||'';
+      let sNoteTimer=null;
+      studentNotes.addEventListener('input',()=>{
+        setSavingStatus('saving');
+        clearTimeout(sNoteTimer);
+        sNoteTimer=setTimeout(async()=>{
+          const r=await post(`/lesson/${lessonId}/studio/student-notes`,{notes:studentNotes.value});
+          if(r.success){
+            data.student_notes=r.notes||studentNotes.value;
+            setSavingStatus('saved');
+          }else{
+            setSavingStatus('error');
+          }
+        },800);
+      });
+      $('#room-student-notes-save')?.addEventListener('click',async()=>{
+        setSavingStatus('saving');
+        const r=await post(`/lesson/${lessonId}/studio/student-notes`,{notes:studentNotes.value});
+        if(r.success){
+          data.student_notes=r.notes||studentNotes.value;
+          setSavingStatus('saved');
+          toast('Личные заметки сохранены');
+        }else{
+          setSavingStatus('error');
+          toast(r.error||'Не удалось сохранить заметки');
+        }
+      });
+    }
     document.querySelectorAll('[data-student-signal]').forEach(button=>button.addEventListener('click',async()=>{if(button.disabled)return;const signal=button.dataset.studentSignal;button.disabled=true;const r=await post('/lesson/'+lessonId+'/studio/signal',{signal});button.disabled=false;if(r.success){state=r.state||state;render();toast(signalLabels[signal]+': преподаватель увидит это сразу')}else toast(r.error||'Не удалось отправить статус')}));
     $('#room-checkpoint-save')?.addEventListener('click',async()=>{const understanding=Number($('#room-checkpoint-understanding')?.value);if(!understanding)return toast('Оцените понимание темы');const r=await post(`/lesson/${lessonId}/studio/checkpoint`,{understanding,blocker:$('#room-checkpoint-blocker')?.value||''});if(r.success){state=r.state||state;toast('Самооценка отправлена');render()}else toast(r.error||'Не удалось отправить самооценку')});
+
+    const goPrev=()=>{const idx=tasks.findIndex(item=>item.lesson_task_id===activeTask);if(idx>0)openTask(tasks[idx-1].lesson_task_id);};
+    const goNext=()=>{const idx=tasks.findIndex(item=>item.lesson_task_id===activeTask);if(idx>=0&&idx<tasks.length-1)openTask(tasks[idx+1].lesson_task_id);};
+    $('#room-task-prev')?.addEventListener('click',goPrev);
+    $('#room-task-next')?.addEventListener('click',goNext);
+    $('#room-btn-prev-task')?.addEventListener('click',goPrev);
+    $('#room-btn-next-task')?.addEventListener('click',goNext);
+
+    $('#os-reset-code')?.addEventListener('click',async()=>{
+      const task=tasks.find(t=>t.lesson_task_id===activeTask);
+      const defaultCode=(task&&(task.starter_code||(task.task&&task.task.starter_code)))||'';
+      const ok=await confirmRoomAction('Сбросить код?','Код в редакторе будет сброшен к исходному шаблону задачи. Это действие синхронизируется у обоих участников.','Сбросить');
+      if(!ok)return;
+      const editor=$('#os-code');if(!editor)return;
+      editor.value=defaultCode;
+      refreshCodeHighlight();
+      refreshGutter();
+      if(workspace.socket&&workspace.id){
+        workspace.socket.emit('workspace_patch',{...ctx(),base_version:workspace.version,full_code:defaultCode,next:defaultCode,op_id:crypto.randomUUID(),updated_at:Date.now()});
+      }
+      toast('Код сброшен');
+    });
+
+    $('#os-copy-console')?.addEventListener('click',async()=>{
+      const out=$('#os-output')?.textContent||'';
+      if(!out.trim())return toast('Консоль пуста');
+      try{await navigator.clipboard.writeText(out);toast('Вывод скопирован в буфер обмена');}catch(_){toast('Не удалось скопировать вывод');}
+    });
+
+    document.querySelectorAll('[data-editor-tab]').forEach(tab=>{
+      tab.addEventListener('click',()=>{
+        const target=tab.dataset.editorTab;
+        document.querySelectorAll('[data-editor-tab]').forEach(t=>{
+          const isActive = t.dataset.editorTab===target;
+          t.classList.toggle('active',isActive);
+          t.setAttribute('aria-selected', String(isActive));
+        });
+        const codeWrap=$('.room-code-surface-wrap');
+        const resultPane=$('#os-result-pane');
+        if(target==='result'){
+          if(codeWrap)codeWrap.classList.add('hidden');
+          if(resultPane)resultPane.classList.remove('hidden');
+        }else{
+          if(codeWrap)codeWrap.classList.remove('hidden');
+          if(resultPane)resultPane.classList.add('hidden');
+        }
+      });
+    });
+
+    $('#os-finish-view')?.addEventListener('click',()=>{
+      const outcome=state.outcome||{};
+      const toLines=val=>Array.isArray(val)?val.join('\n'):String(val||'');
+      const comp=toLines(outcome.completed), rep=toLines(outcome.repeat), hw=String(outcome.homework||'').trim();
+      if(!comp&&!rep&&!hw)return toast('Преподаватель зафиксирует итоги в конце занятия');
+      $('#os-outcome-completed').value=comp;
+      $('#os-outcome-repeat').value=rep;
+      $('#os-outcome-homework').value=hw;
+      $('#os-outcome-private-note')?.closest('label')?.classList.add('hidden');
+      $('#os-finish-confirm')?.classList.add('hidden');
+      const finishTitle=$('#os-finish-title');if(finishTitle)finishTitle.textContent='Итоги урока';
+      setModalVisible($('#os-finish-modal'),true,$('#os-finish-cancel'));
+    });
     
     const lines=value=>Array.isArray(value)?value.join('\n'):'';
     $('#os-start-lesson')?.addEventListener('click', async () => {
@@ -940,7 +1399,16 @@
   lessonSocket.on('disconnect',()=>setConnection('disconnected'));
   lessonSocket.on('connect_error',()=>setConnection('disconnected'));
   lessonSocket.io.on('reconnect_attempt',()=>setConnection('connecting'));
-  lessonSocket.on('lesson_studio_updated',p=>{if(p.lesson_id!==lessonId)return;const previousPane=state.active_pane,previousFollow=state.follow_student;state=teacher?{...state,...p.state}:p.state;render();if(!teacher&&state.follow_student&&(!hasExplicitWorkspaceChoice||state.active_pane!==previousPane||!previousFollow))activate(state.active_pane||'work',true)});
+  lessonSocket.on('lesson_studio_updated',p=>{
+    if(p.lesson_id!==lessonId)return;
+    const previousPane=state.active_pane,previousFollow=state.follow_student;
+    state=teacher?{...state,...p.state}:p.state;
+    render();
+    if(!teacher && state.active_task_id && String(state.active_task_id) !== String(activeTask)){
+      openTask(state.active_task_id);
+    }
+    if(!teacher&&state.follow_student&&(!hasExplicitWorkspaceChoice||state.active_pane!==previousPane||!previousFollow))activate(state.active_pane||'work',true);
+  });
   lessonSocket.on('lesson_studio_pointer',p=>{
     if(p.lesson_id!==lessonId)return;
     let x=$('#os-pointer');
@@ -962,10 +1430,25 @@
             toast('Время вышло!');
         }
     } else {
-        $('#os-timer').textContent = fmt(state.timer?.seconds || 0);
+        const timerEl = $('#os-timer');
+        if (timerEl) timerEl.textContent = fmt(getDisplayTimerSeconds());
     }
     setTimeout(tick, 1000);
 }
   
-  bindWorkspace();bindBoard();bindControls();activeTask=state.active_task_id||tasks[0]?.lesson_task_id;render();if(activeTask)openTask(activeTask);const requestedPane=new URLSearchParams(window.location.search).get('pane');if(requestedPane){hasExplicitWorkspaceChoice=true;localUi.activeWorkspace=requestedPane;persistUi()}activate(requestedPane||localUi.activeWorkspace||state.active_pane||'work',true);tick();
+  bindWorkspace();
+  bindBoard();
+  bindControls();
+  if(tasks && tasks.length > 0){
+    activeTask=state.active_task_id||tasks[0]?.lesson_task_id;
+    render();
+    if(activeTask) openTask(activeTask);
+  } else {
+    render();
+    setupEmptyTaskState();
+  }
+  const requestedPane=new URLSearchParams(window.location.search).get('pane');
+  if(requestedPane){hasExplicitWorkspaceChoice=true;localUi.activeWorkspace=requestedPane;persistUi()}
+  activate(requestedPane||localUi.activeWorkspace||state.active_pane||'work',true);
+  tick();
 })();

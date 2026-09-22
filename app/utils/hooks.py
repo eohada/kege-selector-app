@@ -86,7 +86,14 @@ def register_hooks(app):
     Регистрирует все before_request хуки для приложения
     """
 
-    # sync_login_user hook removed
+    @app.before_request
+    def sync_login_user():
+        from flask import g, session
+        sess_uid = session.get('_user_id')
+        cached = getattr(g, '_login_user', None)
+        if cached is not None:
+            if sess_uid is None or str(getattr(cached, 'id', None)) != str(sess_uid):
+                g.pop('_login_user', None)
 
     @app.before_request
     def block_scanner_probes():

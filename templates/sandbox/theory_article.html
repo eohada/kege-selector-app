@@ -1,27 +1,113 @@
 {% extends "sandbox/layout_teacher.html" if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() else "sandbox/layout_student.html" %}
 
 {% block sandbox_content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
 <style>
   #article-content { color: #334155; }
   #article-content > h1:first-child { display: none; }
   #article-content h1 { font-size: 2rem !important; line-height: 1.15 !important; font-weight: 900 !important; color: #0f172a !important; margin: .5rem 0 1.25rem !important; }
   #article-content h2 { display:flex; align-items:center; gap:.7rem; font-size: 1.5rem !important; line-height: 1.25 !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 0 .85rem !important; }
   #article-content h3 { font-size: 1.2rem !important; line-height: 1.3 !important; font-weight: 900 !important; color: #0f172a !important; margin: 1.5rem 0 .6rem !important; }
-  #article-content p { max-width: 74ch; font-size: 1rem !important; line-height: 1.85 !important; color: #334155 !important; margin: .85rem 0 !important; white-space: normal; }
-  #article-content ol, #article-content ul { max-width: 74ch; margin: 1rem 0 1.35rem !important; padding-left: 1.7rem !important; color: #334155 !important; }
+  #article-content p { max-width: 100% !important; font-size: 1rem !important; line-height: 1.85 !important; color: #334155 !important; margin: 1rem 0 !important; word-break: normal; overflow-wrap: break-word; }
+  #article-content ol, #article-content ul { max-width: 100% !important; margin: 1rem 0 1.35rem !important; padding-left: 1.7rem !important; color: #334155 !important; }
   #article-content ul { list-style: disc !important; }
   #article-content ol { list-style: decimal !important; }
-  #article-content li { margin: .5rem 0 !important; line-height: 1.7 !important; }
-  #article-content pre { margin: 1.35rem 0 !important; padding: 1rem 1.2rem !important; overflow-x: auto; border: 2px solid #dbe4ef; border-radius: 1.25rem; background: #f4f7fa !important; color: #172554 !important; box-shadow: 0 3px 0 #dae1e9; }
-  #article-content code { color: #312e81 !important; font-weight: 700 !important; }
-  #article-content blockquote { max-width: 78ch; margin: 1.35rem 0 !important; padding: 1rem 1.25rem !important; border-left: 4px solid #6366f1; border-radius: 1rem; background: #eef2ff !important; color: #3730a3 !important; }
+  #article-content li { margin: .6rem 0 !important; line-height: 1.75 !important; word-break: normal; overflow-wrap: break-word; }
+  #article-content pre:not(.theory-editor-pre):not([data-code-highlight]):not(.theory-code-highlight) {
+    margin: 1.35rem 0 !important;
+    padding: 1rem 1.2rem !important;
+    overflow-x: auto;
+    border: 2px solid #dbe4ef;
+    border-radius: 1.25rem;
+    background: #f4f7fa !important;
+    color: #172554 !important;
+    box-shadow: 0 3px 0 #dae1e9;
+  }
+  #article-content pre.theory-editor-pre,
+  #article-content pre[data-code-highlight],
+  #article-content pre.theory-code-highlight {
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    line-height: 1.5rem !important;
+    font-size: 0.875rem !important;
+  }
+  #article-content pre.theory-code-highlight {
+    padding: 0 !important;
+  }
+  #article-content textarea.theory-code-input,
+  #article-content textarea[data-interactive-code] {
+    line-height: 1.5rem !important;
+    font-size: 0.875rem !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    white-space: pre !important;
+    word-wrap: normal !important;
+    tab-size: 4 !important;
+  }
+  .theory-line-numbers > div {
+    height: 1.5rem !important;
+    line-height: 1.5rem !important;
+  }
+  #article-content table.theory-table,
+  #article-content .theory-operators-wrap table {
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  /* Universal Python Syntax Highlighting Tokens */
+  [data-hl="kw"], .token.keyword, .token.boolean, .token.selector {
+    color: #7c3aed !important;
+    font-weight: 700 !important;
+  }
+  [data-hl="fn"], .token.function, .token.builtin, .token.class-name {
+    color: #2563eb !important;
+    font-weight: 700 !important;
+  }
+  [data-hl="str"], .token.string, .token.char, .token.attr-value {
+    color: #059669 !important;
+    font-weight: 600 !important;
+  }
+  [data-hl="num"], .token.number {
+    color: #d97706 !important;
+    font-weight: 700 !important;
+  }
+  [data-hl="comment"], .token.comment, .token.prolog, .token.doctype, .token.cdata {
+    color: #64748b !important;
+    font-style: italic !important;
+  }
+  [data-hl="op"], .token.operator {
+    color: #475569 !important;
+    font-weight: 700 !important;
+  }
+  [data-hl="punct"], .token.punctuation {
+    color: #64748b !important;
+  }
+  #article-content code:not(pre code) {
+    white-space: nowrap !important;
+    display: inline;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    font-size: 0.88em !important;
+    padding: 0.12rem 0.35rem !important;
+    margin: 0 !important;
+    border-radius: 0.375rem !important;
+    background-color: #EEF2F6 !important;
+    border: 1px solid #CBD5E1 !important;
+    color: #312E81 !important;
+    font-weight: 800 !important;
+  }
+  .theory-inline-math { white-space: nowrap !important; }
+  #article-content blockquote { max-width: 100% !important; margin: 1.35rem 0 !important; padding: 1rem 1.25rem !important; border-left: 4px solid #6366f1; border-radius: 1rem; background: #eef2ff !important; color: #3730a3 !important; }
   #article-content table { width: 100%; margin: 1.35rem 0 !important; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 2px solid #dbe4ef; border-radius: 1rem; }
   #article-content th, #article-content td { padding: .7rem .85rem !important; border-bottom: 1px solid #e2e8f0; text-align: left; }
   #article-content th { background: #eef2ff !important; color: #312e81 !important; font-weight: 900 !important; }
   #article-content > p:empty { display: none; }
   #article-content strong { color: #1e1b4b !important; font-weight: 900 !important; }
   #article-content hr { margin: 2rem 0 !important; border: 0; border-top: 2px solid #e2e8f0; }
-  #article-content .theory-section { position:relative; max-width: 880px; margin: 1.6rem 0; padding: 1.45rem 1.55rem 1.55rem; border: 2px solid #e2e8f0; border-radius: 1.5rem; background: #fff; box-shadow: 0 4px 0 #dae1e9; }
+  #article-content .theory-section { position:relative; width: 100%; max-width: 100% !important; margin: 1.6rem 0; padding: 1.45rem 1.55rem 1.55rem; border: 2px solid #e2e8f0; border-radius: 1.5rem; background: #fff; box-shadow: 0 4px 0 #dae1e9; }
   #article-content .theory-section--goal { background: linear-gradient(135deg, #eef2ff, #fff); border-color:#c7d2fe; }
   #article-content .theory-section--method { background: linear-gradient(135deg, #f8faff, #fff); border-color:#bfdbfe; }
   #article-content .theory-section--practice { background: linear-gradient(135deg, #ecfdf5, #fff); border-color:#a7f3d0; }
@@ -46,11 +132,16 @@
   #article-content .theory-callout-remember { box-shadow: 0 3px 0 #c7d2fe; }
   #article-content .theory-callout-info { box-shadow: 0 3px 0 #bae6fd; }
   #article-content .theory-callout-try { box-shadow: 0 3px 0 #e9d5ff; }
+  #article-content .theory-callout-important { box-shadow: 0 3px 0 #fde68a; }
+  #article-content .theory-callout-note { box-shadow: 0 3px 0 #c7d2fe; }
+  #article-content .theory-callout-warning { box-shadow: 0 3px 0 #fecaca; }
+  #article-content .theory-callout-tip { box-shadow: 0 3px 0 #a7f3d0; }
+  #article-content .theory-interactive-editor { box-shadow: 0 3px 0 #dae1e9; }
   #article-content .theory-how-it-works { box-shadow: 0 4px 0 #c7d2fe; }
   @media (max-width:640px) { #article-content .theory-section { padding:1.1rem; border-radius:1.25rem; } #article-content h2 { font-size:1.3rem !important; } }
 </style>
 <main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
-  <div class="max-w-[1600px] mx-auto w-full space-y-6" id="theory-article" data-block-id="{{ block.id }}" data-progress="{{ state.reading_progress if state else 0 }}" data-last-position="{{ state.last_position if state else 0 }}">
+  <div class="max-w-[1400px] mx-auto w-full space-y-6" id="theory-article" data-block-id="{{ block.id }}" data-progress="{{ state.reading_progress if state else 0 }}" data-last-position="{{ state.last_position if state else 0 }}">
     
     <!-- Top Back Link -->
     <a href="{{ back_to_url }}" class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600 shadow-[0_3px_0_#DAE1E9] hover:bg-slate-50 transition no-underline">
@@ -71,11 +162,11 @@
             
             <!-- Level Switcher Tabs -->
             <div id="theory-level-switcher" class="hidden sm:inline-flex items-center p-1 rounded-2xl bg-slate-100 border border-slate-200/80 shadow-inner ml-2">
-              <button type="button" data-level-tab="beginner" class="theory-level-tab px-3.5 py-1 rounded-xl text-xs font-black transition cursor-pointer bg-white text-indigo-700 shadow-sm border border-slate-200/50">
-                🐣 С нуля
+              <button type="button" data-level-tab="beginner" class="theory-level-tab inline-flex items-center gap-1.5 px-3.5 py-1 rounded-xl text-xs font-black transition cursor-pointer bg-white text-indigo-700 shadow-sm border border-slate-200/50">
+                <i class="ph-bold ph-graduation-cap"></i><span>С нуля</span>
               </button>
-              <button type="button" data-level-tab="advanced" class="theory-level-tab px-3.5 py-1 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition cursor-pointer">
-                ⚡ С опытом
+              <button type="button" data-level-tab="advanced" class="theory-level-tab inline-flex items-center gap-1.5 px-3.5 py-1 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition cursor-pointer">
+                <i class="ph-bold ph-lightning"></i><span>С опытом</span>
               </button>
             </div>
           </div>
@@ -89,6 +180,25 @@
             {{ block.description }}
           </p>
           {% endif %}
+
+          <!-- Useful Materials Strip in Header -->
+          <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+            <span class="text-[11px] font-black uppercase tracking-wider text-slate-400 mr-1">Полезные материалы:</span>
+            <a href="javascript:void(0)" onclick="if(window.BooNotify){window.BooNotify.info('Шпаргалка готовится к скачиванию');}else{alert('Шпаргалка готовится к скачиванию');}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:bg-indigo-50/70 hover:border-indigo-300 text-xs font-bold text-slate-700 shadow-xs transition no-underline group">
+              <div class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                <i class="ph-bold ph-file-pdf text-xs"></i>
+              </div>
+              <span class="font-bold text-slate-800">Шпаргалка по типам (PDF)</span>
+              <i class="ph-bold ph-download-simple text-slate-400 group-hover:text-indigo-600 text-xs"></i>
+            </a>
+            <a href="javascript:void(0)" onclick="if(window.BooNotify){window.BooNotify.info('Коды решений доступны в тренажёре');}else{alert('Коды решений доступны в тренажёре');}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:bg-emerald-50/70 hover:border-emerald-300 text-xs font-bold text-slate-700 shadow-xs transition no-underline group">
+              <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <i class="ph-bold ph-code text-xs"></i>
+              </div>
+              <span class="font-bold text-slate-800">Примеры решений ЕГЭ</span>
+              <i class="ph-bold ph-arrow-up-right text-slate-400 group-hover:text-emerald-600 text-xs"></i>
+            </a>
+          </div>
         </div>
 
         <!-- Right Side: Speech Bubble, Boo Mascot, Bookmark Button -->
@@ -114,11 +224,11 @@
       <!-- Mobile Level Switcher -->
       <div class="mt-4 sm:hidden">
         <div id="theory-level-switcher-mobile" class="inline-flex w-full items-center p-1 rounded-2xl bg-slate-100 border border-slate-200/80 shadow-inner">
-          <button type="button" data-level-tab="beginner" class="theory-level-tab flex-1 py-1.5 rounded-xl text-xs font-black text-center transition cursor-pointer bg-white text-indigo-700 shadow-sm">
-            🐣 С нуля
+          <button type="button" data-level-tab="beginner" class="theory-level-tab inline-flex items-center justify-center gap-1.5 flex-1 py-1.5 rounded-xl text-xs font-black text-center transition cursor-pointer bg-white text-indigo-700 shadow-sm">
+            <i class="ph-bold ph-graduation-cap"></i><span>С нуля</span>
           </button>
-          <button type="button" data-level-tab="advanced" class="theory-level-tab flex-1 py-1.5 rounded-xl text-xs font-bold text-center text-slate-500 hover:text-slate-800 transition cursor-pointer">
-            ⚡ С опытом
+          <button type="button" data-level-tab="advanced" class="theory-level-tab inline-flex items-center justify-center gap-1.5 flex-1 py-1.5 rounded-xl text-xs font-bold text-center text-slate-500 hover:text-slate-800 transition cursor-pointer">
+            <i class="ph-bold ph-lightning"></i><span>С опытом</span>
           </button>
         </div>
       </div>
@@ -137,9 +247,35 @@
       {% endif %}
     </section>
 
-    <!-- Main Grid: Article + Sticky Sidebar -->
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <article id="article-content" class="min-w-0 rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-9 shadow-[0_4px_0_#DAE1E9] prose prose-slate max-w-none prose-headings:font-display prose-headings:font-black prose-a:text-indigo-600 prose-pre:rounded-2xl">
+    <!-- Module Navigation Bar -->
+    <nav class="rounded-2xl border-2 border-slate-200 bg-white p-3.5 sm:p-4 shadow-[0_3px_0_#DAE1E9]">
+      <div class="flex items-center justify-between gap-2 mb-2 px-1">
+        <div class="flex items-center gap-2 text-xs font-black text-slate-700">
+          <i class="ph-bold ph-list-numbers text-indigo-600"></i>
+          <span>Навигация по модулю</span>
+          {% if block.group %}
+          <span class="text-slate-400 font-bold">({{ block.group.name }})</span>
+          {% endif %}
+        </div>
+        <span class="text-[11px] font-bold text-slate-400">Темы модуля</span>
+      </div>
+      <div class="flex items-center gap-2 overflow-x-auto pb-1">
+        {% for pack in visible_groups %}
+          {% if pack.group.id == block.group_id %}
+            {% for item in pack.blocks %}
+            <a href="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}" class="inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-black no-underline transition {{ 'border-b-2 border-indigo-800 bg-indigo-600 text-white shadow-sm' if item.id == block.id else 'border border-slate-200 bg-[#F8FAFC] text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/50' }}">
+              <span class="font-mono text-[11px] opacity-80">№{{ item.task_number }}</span>
+              <span class="truncate max-w-[220px]">{{ item.title or ('Тема №' ~ item.task_number) }}</span>
+            </a>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    </nav>
+
+    <!-- Main Article for full-width utilization -->
+    <div class="w-full">
+      <article id="article-content" class="w-full rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-9 shadow-[0_4px_0_#DAE1E9] prose prose-slate max-w-none prose-headings:font-display prose-headings:font-black prose-a:text-indigo-600 prose-pre:rounded-2xl overflow-hidden">
         {% if rendered_content_html %}
           {{ rendered_content_html|safe }}
         {% else %}
@@ -149,117 +285,171 @@
           </div>
         {% endif %}
       </article>
+    </div>
 
-      <aside class="space-y-4 xl:sticky xl:top-5 xl:h-fit">
-        <!-- Module Navigation -->
-        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
-          <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Навигация по модулю</div>
-          <div class="mt-3 space-y-1.5">
-            {% for pack in visible_groups %}
-              {% if pack.group.id == block.group_id %}
-                {% for item in pack.blocks %}
-                <a href="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}" class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black no-underline transition {{ 'bg-indigo-600 text-white shadow-sm' if item.id == block.id else 'bg-[#F4F7FA] text-slate-600 hover:bg-indigo-50 hover:text-indigo-700' }}">
-                  <span class="font-mono opacity-80">№{{ item.task_number }}</span>
-                  <span class="min-w-0 truncate">{{ item.title or ('Тема №' ~ item.task_number) }}</span>
-                </a>
-                {% endfor %}
+    <!-- Self-check, Notes and Feedback (Student Only) -->
+    {% if current_user.is_student() %}
+    <section class="grid gap-6 lg:grid-cols-12 items-start">
+      
+      <!-- Left: Mascot, Progress & Practice Hub (lg:col-span-7) -->
+      <div class="lg:col-span-7 space-y-6">
+        <!-- Creative Mascot & Progress Hub -->
+        <div class="rounded-[2rem] border-2 border-indigo-100 bg-white p-6 sm:p-8 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between relative overflow-hidden">
+          <div>
+            <!-- Header and mascot speech -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+              <div>
+                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black">
+                  <i class="ph-fill ph-trophy"></i><span>Прогресс и победы темы</span><span class="text-indigo-300">·</span><span>Автопроверка внутри темы</span>
+                </div>
+                <h2 class="mt-2 text-xl sm:text-2xl font-black text-slate-900 leading-tight">Твой результат в этой теме</h2>
+              </div>
+              <div class="flex items-center gap-3 shrink-0">
+                <div class="relative bg-indigo-50/80 border border-indigo-200/80 rounded-2xl p-3 text-xs font-bold text-indigo-900 shadow-sm max-w-xs">
+                  <span id="checkpoint-mascot-speech">Реши все проверки темы, чтобы закрепить материал на 100%!</span>
+                  <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-indigo-50/80 border-b border-r border-indigo-200/80 rotate-45"></div>
+                </div>
+                <img src="/static/images/theory/ghost_study.png" alt="Boo" class="w-14 h-14 object-contain drop-shadow-sm">
+              </div>
+            </div>
+
+            <!-- Progress Bar & Count -->
+            <div class="mt-6 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] p-4 sm:p-5">
+              <div class="flex items-center justify-between gap-2 mb-2.5">
+                <span id="checkpoint-summary" class="text-xs sm:text-sm font-black text-slate-800">Пройдено проверок: 0 из 3</span>
+                <span id="checkpoint-percent-badge" class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 font-mono text-xs font-black">0%</span>
+              </div>
+              <div class="w-full h-3 rounded-full bg-slate-200 overflow-hidden">
+                <div id="checkpoint-progress-bar" class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500" style="width: 0%;"></div>
+              </div>
+            </div>
+
+            <!-- Checklist of Checkpoints -->
+            <div class="mt-5">
+              <div class="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2.5">Контрольные точки темы</div>
+              <div id="checkpoint-checklist" class="space-y-2">
+                <!-- Dynamically populated via updateCheckpointSummary() -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div class="mt-8 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            {% if prev_block %}
+            <a href="{{ url_for('theory.theory_view_block', block_id=prev_block.id, course_id=course_id) }}" class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-[0_2px_0_#DAE1E9] transition no-underline">
+              <i class="ph-bold ph-arrow-left"></i><span>№{{ prev_block.task_number }}: {{ prev_block.title or 'Предыдущая' }}</span>
+            </a>
+            {% else %}
+            <div></div>
+            {% endif %}
+
+            <div class="flex items-center gap-2">
+              <a href="/trainer" class="inline-flex items-center gap-2 rounded-xl border-2 border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 px-4 py-2.5 text-xs font-black text-indigo-700 shadow-sm transition no-underline">
+                <i class="ph-bold ph-target"></i><span>В тренажёр ЕГЭ</span>
+              </a>
+              {% if next_block %}
+              <a href="{{ url_for('theory.theory_view_block', block_id=next_block.id, course_id=course_id) }}" class="inline-flex items-center gap-2 rounded-xl border-b-[3px] border-emerald-800 bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 no-underline">
+                <span>№{{ next_block.task_number }}: {{ next_block.title or 'Следующая' }}</span><i class="ph-bold ph-arrow-right"></i>
+              </a>
               {% endif %}
-            {% endfor %}
+            </div>
           </div>
-        </section>
-
-        <!-- Useful Materials Card -->
-        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
-          <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Полезные материалы</div>
-          <div class="mt-3 space-y-2">
-            <a href="javascript:void(0)" onclick="if(window.BooNotify){window.BooNotify.info('Шпаргалка готовится к скачиванию');}else{alert('Шпаргалка готовится к скачиванию');}" class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 text-xs font-bold text-slate-700 transition group no-underline">
-              <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-                <i class="ph-bold ph-file-pdf text-base"></i>
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="truncate font-black text-slate-800">Шпаргалка по типам</div>
-                <div class="text-[11px] text-slate-400">PDF · Памятка к ЕГЭ</div>
-              </div>
-              <i class="ph-bold ph-download-simple text-slate-400 group-hover:text-indigo-600"></i>
-            </a>
-            <a href="javascript:void(0)" onclick="if(window.BooNotify){window.BooNotify.info('Коды решений доступны в тренажёре');}else{alert('Коды решений доступны в тренажёре');}" class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 text-xs font-bold text-slate-700 transition group no-underline">
-              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-                <i class="ph-bold ph-code text-base"></i>
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="truncate font-black text-slate-800">Примеры решений ЕГЭ</div>
-                <div class="text-[11px] text-slate-400">Шаблоны алгоритмов</div>
-              </div>
-              <i class="ph-bold ph-arrow-up-right text-slate-400 group-hover:text-emerald-600"></i>
-            </a>
-          </div>
-        </section>
-
-        <!-- Personal Note Card -->
-        {% if current_user.is_student() %}
-        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
-          <label class="text-[10px] font-black uppercase tracking-widest text-slate-400" for="theory-note">Личная заметка</label>
-          <textarea id="theory-note" class="mt-3 min-h-28 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-500" placeholder="Запиши главное своими словами…">{{ note.content if note else '' }}</textarea>
-          <button id="save-note" type="button" class="mt-3 w-full rounded-xl border-b-[3px] border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2.5 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Сохранить заметку</button>
-        </section>
-        {% endif %}
+        </div>
 
         <!-- Practice Banner with ghost_rocket.png -->
-        <section class="rounded-[2rem] border-2 border-indigo-300 bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 p-5 text-white shadow-[0_4px_0_#3730A3] relative overflow-hidden">
-          <div class="relative z-10">
+        <div class="rounded-[2rem] border-2 border-indigo-300 bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 p-6 text-white shadow-[0_4px_0_#3730A3] relative overflow-hidden">
+          <div class="relative z-10 max-w-md">
             <div class="flex items-center gap-1.5 text-indigo-200 text-[11px] font-black uppercase tracking-wider">
-              <i class="ph-fill ph-rocket-launch"></i>Тренировка
+              <i class="ph-fill ph-rocket-launch"></i><span>Тренировка</span>
             </div>
-            <h3 class="mt-2 text-base font-black leading-snug">Практика делает мастера! ♡</h3>
-            <p class="mt-1 text-xs text-indigo-100 font-medium leading-relaxed">Закрепите тему на реальных задачах ЕГЭ в умном тренажёре.</p>
+            <h3 class="mt-2 text-lg sm:text-xl font-black leading-snug">Практика делает мастера!</h3>
+            <p class="mt-1 text-xs sm:text-sm text-indigo-100 font-medium leading-relaxed">Закрепите тему на реальных задачах ЕГЭ в умном тренажёре.</p>
             {% if trainer_available %}
-            <a href="{{ url_for('trainer.trainer_v2', course_id=course_id, task_type=block.task_number) }}" class="mt-4 inline-flex items-center justify-center gap-2 w-full rounded-xl bg-white hover:bg-indigo-50 text-indigo-900 px-4 py-2.5 text-xs font-black shadow-md transition no-underline">
+            <a href="{{ url_for('trainer.trainer_v2', course_id=course_id, task_type=block.task_number) }}" class="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-white hover:bg-indigo-50 text-indigo-900 px-5 py-2.5 text-xs font-black shadow-md transition no-underline">
               <span>Перейти к практике</span>
               <i class="ph-bold ph-arrow-right"></i>
             </a>
             {% endif %}
           </div>
-          <img src="/static/images/theory/ghost_rocket.png" alt="Boo on Rocket" class="absolute -bottom-2 -right-2 w-24 h-24 object-contain opacity-90 pointer-events-none drop-shadow-md">
-        </section>
-      </aside>
-    </div>
-
-    <!-- Self-check and Feedback (Student Only) -->
-    {% if current_user.is_student() %}
-    <section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <div class="rounded-[2rem] border-2 border-indigo-100 bg-indigo-50/60 p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
-        <p class="text-[10px] font-black uppercase tracking-widest text-indigo-600">Автопроверка внутри темы</p>
-        <h2 class="mt-1 text-xl font-black text-slate-900">Проверь себя по ходу чтения</h2>
-        <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">Ответы сохраняются по этой теме. Можно повторить попытку и сразу увидеть объяснение.</p>
-        <div id="checkpoint-summary" class="mt-4 rounded-xl border-2 border-indigo-100 bg-white px-4 py-3 text-xs font-black text-indigo-700">Проверки ещё не пройдены</div>
-      </div>
-      <div class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
-        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Обратная связь</p>
-        <h2 class="mt-1 text-xl font-black text-slate-900">Как прошла тема?</h2>
-        <label class="mt-4 block text-xs font-black text-slate-500" for="theory-rating">Оценка материала</label>
-        <select id="theory-rating" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3 py-2.5 text-sm font-bold text-slate-700">
-          <option value="">Выберите оценку</option>
-          <option value="5">5 — всё понятно</option>
-          <option value="4">4 — почти понятно</option>
-          <option value="3">3 — нужны примеры</option>
-          <option value="2">2 — сложно</option>
-          <option value="1">1 — нужна помощь</option>
-        </select>
-        <textarea id="theory-feedback" class="mt-3 min-h-24 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700" placeholder="Что разобрать или повторить?"></textarea>
-        <button id="save-feedback" type="button" class="mt-3 w-full rounded-xl border-b-[4px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 px-4 py-3 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Отправить преподавателю</button>
-      </div>
-    </section>
-
-    <!-- Completion Section -->
-    <section class="rounded-[2rem] border-2 border-emerald-200 bg-emerald-50 p-6 shadow-[0_4px_0_#A7F3D0]">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div class="text-[10px] font-black uppercase tracking-widest text-emerald-600">Завершение темы</div>
-          <h2 class="mt-1 text-xl font-black text-emerald-950">Материал изучен?</h2>
-          <p class="mt-1 text-sm font-semibold text-emerald-800">После отметки тема попадёт в прогресс, а назначение преподавателя закроется.</p>
+          <img src="/static/images/theory/ghost_rocket.png" alt="Boo on Rocket" class="absolute -bottom-2 right-2 w-28 h-28 sm:w-36 sm:h-36 object-contain opacity-95 pointer-events-none drop-shadow-md">
         </div>
-        <button id="finish-topic" type="button" class="rounded-2xl border-b-[4px] border-emerald-800 bg-emerald-600 hover:bg-emerald-500 px-5 py-3 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Отметить изученной</button>
       </div>
+
+      <!-- Right: Personal Note & Feedback (lg:col-span-5) -->
+      <div class="lg:col-span-5 space-y-6">
+        <!-- Personal Note Card -->
+        <div class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-7 shadow-[0_4px_0_#DAE1E9]">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-700">
+              <i class="ph-bold ph-note-pencil text-indigo-600 text-sm"></i>
+              <label for="theory-note">Личная заметка</label>
+            </div>
+            <span class="text-[11px] font-bold text-slate-400">Только для тебя</span>
+          </div>
+          <textarea id="theory-note" class="mt-2 min-h-28 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="Запиши главное своими словами…">{{ note.content if note else '' }}</textarea>
+          <button id="save-note" type="button" class="mt-3 w-full rounded-xl border-b-[3px] border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2.5 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Сохранить заметку</button>
+        </div>
+
+        <!-- Feedback Card -->
+        <div class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-7 shadow-[0_4px_0_#DAE1E9]">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-600 text-xs font-black">
+            <i class="ph-fill ph-chat-circle-dots"></i><span>Обратная связь</span>
+          </div>
+          <h2 class="mt-2 text-lg sm:text-xl font-black text-slate-900 leading-tight">Как прошла тема?</h2>
+          <p class="mt-1 text-xs sm:text-sm font-semibold text-slate-500">Поставь оценку и напиши вопрос или замечание — преподаватель сразу увидит его.</p>
+          
+          <label class="mt-5 block text-xs font-black uppercase tracking-wider text-slate-500" for="theory-rating-trigger">Оценка материала</label>
+          <div class="relative mt-2" id="theory-rating-dropdown">
+            <input type="hidden" id="theory-rating" value="">
+            <button type="button" id="theory-rating-trigger" class="w-full flex items-center justify-between gap-2 rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] hover:bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-[0_3px_0_#DAE1E9] transition active:translate-y-0.5 cursor-pointer">
+              <span id="theory-rating-label" class="text-slate-500 font-medium">Выберите оценку</span>
+              <i class="ph-bold ph-caret-down text-sm text-slate-400 transition-transform duration-200" id="theory-rating-chevron"></i>
+            </button>
+            <div id="theory-rating-menu" class="hidden absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl border-2 border-slate-200 bg-white p-1.5 shadow-xl space-y-1">
+              <button type="button" data-rating-val="5" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                <span class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs">5</span>
+                  <span class="rating-text">Всё понятно</span>
+                </span>
+                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i></span>
+              </button>
+              <button type="button" data-rating-val="4" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                <span class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">4</span>
+                  <span class="rating-text">Почти понятно</span>
+                </span>
+                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-bold ph-star text-slate-300"></i></span>
+              </button>
+              <button type="button" data-rating-val="3" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                <span class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs">3</span>
+                  <span class="rating-text">Нужны примеры</span>
+                </span>
+                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i></span>
+              </button>
+              <button type="button" data-rating-val="2" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                <span class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs">2</span>
+                  <span class="rating-text">Сложно</span>
+                </span>
+                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i></span>
+              </button>
+              <button type="button" data-rating-val="1" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                <span class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-black text-xs">1</span>
+                  <span class="rating-text">Нужна помощь</span>
+                </span>
+                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i></span>
+              </button>
+            </div>
+          </div>
+          
+          <label class="mt-4 block text-xs font-black uppercase tracking-wider text-slate-500" for="theory-feedback">Вопрос или комментарий</label>
+          <textarea id="theory-feedback" class="mt-2 min-h-24 w-full rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-400 focus:bg-white transition" placeholder="Что разобрать подробнее на уроке?"></textarea>
+          <button id="save-feedback" type="button" class="mt-5 w-full rounded-2xl border-b-[4px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 px-4 py-3 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Отправить преподавателю</button>
+        </div>
+      </div>
+
     </section>
     {% endif %}
 
@@ -292,23 +482,63 @@ window.fetch = (input, init = {}) => {
   };
   document.querySelectorAll('.theory-interactive').forEach(card => {
     const kind = card.dataset.interactiveType || card.className.match(/theory-interactive--([\w-]+)/)?.[1] || '';
+
     card.addEventListener('click', async event => {
       const option = event.target.closest('[data-interactive-option]');
       if (option) {
         if (kind === 'choice' || kind === 'boolean') {
-          card.querySelectorAll('[data-interactive-option]').forEach(item => {
-            item.classList.remove('bg-emerald-200', 'border-emerald-500');
-            item.setAttribute('aria-pressed', 'false');
-            if (item.getAttribute('role') === 'radio') item.setAttribute('aria-checked', 'false');
+          if (option.disabled) return;
+          const result = card.querySelector('[data-interactive-result]');
+          const options = [...card.querySelectorAll('[data-interactive-option]')];
+          options.forEach(item => {
+            item.disabled = true;
+            item.classList.remove('bg-emerald-50', 'border-emerald-500', 'text-emerald-800', 'bg-rose-50', 'border-rose-400', 'text-rose-800', 'border-indigo-500', 'bg-indigo-50');
+            item.setAttribute('aria-pressed', item === option ? 'true' : 'false');
+            if (item.getAttribute('role') === 'radio') item.setAttribute('aria-checked', item === option ? 'true' : 'false');
           });
-          option.classList.add('bg-emerald-200', 'border-emerald-500');
-          option.setAttribute('aria-pressed', 'true');
-          if (option.getAttribute('role') === 'radio') option.setAttribute('aria-checked', 'true');
-          card.dataset.selected = option.dataset.interactiveOption;
+          option.classList.add('border-indigo-500', 'bg-indigo-50');
+          if (result) {
+            result.classList.remove('hidden');
+            result.textContent = 'Проверяем ответ…';
+            result.className = 'mt-3 text-sm font-bold text-indigo-700';
+          }
+          try {
+            const answer = option.dataset.interactiveOption;
+            const data = await post({checkpoint_key: card.dataset.interactiveKey, answer});
+            option.classList.remove('border-indigo-500', 'bg-indigo-50');
+            if (data.correct) {
+              option.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-800');
+              if (result) {
+                result.textContent = `Верно. ${data.explanation || 'Результат сохранён.'}`;
+                result.className = 'mt-3 text-sm font-bold text-emerald-700';
+              }
+              card.dataset.passed = 'true';
+              window.updateCheckpointSummary?.();
+              if (typeof window.triggerAchievement === 'function') {
+                window.triggerAchievement('theory_quiz_pass');
+              }
+            } else {
+              option.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-800');
+              if (result) {
+                result.textContent = `Пока нет. ${data.explanation || 'Попробуйте ещё раз.'}`;
+                result.className = 'mt-3 text-sm font-bold text-rose-700';
+              }
+              options.forEach(item => { item.disabled = false; });
+            }
+          } catch (error) {
+            option.classList.remove('border-indigo-500', 'bg-indigo-50');
+            option.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-800');
+            if (result) {
+              result.textContent = error.message || 'Не удалось сохранить результат. Попробуйте ещё раз.';
+              result.className = 'mt-3 text-sm font-bold text-rose-700';
+            }
+            options.forEach(item => { item.disabled = false; });
+          }
+          return;
         } else {
-          option.classList.toggle('bg-emerald-200');
+          option.classList.toggle('bg-emerald-100');
           option.classList.toggle('border-emerald-500');
-          option.setAttribute('aria-pressed', option.classList.contains('bg-emerald-200') ? 'true' : 'false');
+          option.setAttribute('aria-pressed', option.classList.contains('border-emerald-500') ? 'true' : 'false');
         }
         return;
       }
@@ -322,7 +552,7 @@ window.fetch = (input, init = {}) => {
       if (!event.target.closest('[data-action="interactive-submit"]')) return;
       let answer = '';
       if (kind === 'choice') answer = card.dataset.selected || '';
-      else if (kind === 'multi' || kind === 'classify' || kind === 'hotspot') answer = [...card.querySelectorAll('[data-interactive-option].bg-emerald-200')].map(x => x.dataset.interactiveOption).join('|');
+      else if (kind === 'multi' || kind === 'classify' || kind === 'hotspot') answer = [...card.querySelectorAll('[data-interactive-option].border-emerald-500')].map(x => x.dataset.interactiveOption).join('|');
       else if (kind === 'order' || kind === 'sequence') answer = card.dataset.order || '';
       else if (kind === 'table' || kind === 'trace') answer = [...card.querySelectorAll('[data-table-cell]')].map(x => x.value.trim()).join('|');
       else if (kind === 'boolean') answer = card.dataset.selected || '';
@@ -342,16 +572,30 @@ window.fetch = (input, init = {}) => {
       }
       else answer = card.querySelector('[data-interactive-input]')?.value.trim() || '';
       const result = card.querySelector('[data-interactive-result]');
-      result.classList.remove('hidden'); result.textContent = 'Проверяем…';
+      if (result) {
+        result.classList.remove('hidden');
+        result.textContent = 'Проверяем…';
+      }
       try {
         const data = await post({checkpoint_key:card.dataset.interactiveKey, answer});
-        result.textContent = data.correct
-          ? `Верно. ${data.explanation || 'Результат сохранён.'}`
-          : `Пока не совпало. ${data.explanation || 'Попробуйте ещё раз.'}`;
-        result.className = `mt-3 text-sm font-bold ${data.correct ? 'text-emerald-700' : 'text-rose-700'}`;
+        if (result) {
+          result.textContent = data.correct
+            ? `Верно. ${data.explanation || 'Результат сохранён.'}`
+            : `Пока не совпало. ${data.explanation || 'Попробуйте ещё раз.'}`;
+          result.className = `mt-3 text-sm font-bold ${data.correct ? 'text-emerald-700' : 'text-rose-700'}`;
+        }
+        if (data.correct) {
+          card.dataset.passed = 'true';
+          window.updateCheckpointSummary?.();
+          if (typeof window.triggerAchievement === 'function') {
+            window.triggerAchievement('theory_quiz_pass');
+          }
+        }
       } catch (error) {
-        result.textContent = error.message || 'Не удалось сохранить результат.';
-        result.className = 'mt-3 text-sm font-bold text-rose-700';
+        if (result) {
+          result.textContent = error.message || 'Не удалось сохранить результат.';
+          result.className = 'mt-3 text-sm font-bold text-rose-700';
+        }
       }
     });
     card.querySelector('[data-interactive-slider]')?.addEventListener('input', event => { const output = card.querySelector('[data-slider-output]'); if (output) output.value = event.target.value, output.textContent = event.target.value; });
@@ -364,9 +608,7 @@ window.fetch = (input, init = {}) => {
       });
     });
   });
-  let checkpointDone = 0;
   const checkpointButtons = [...document.querySelectorAll('[data-action="checkpoint-choice"]')];
-  const checkpointSummary = document.getElementById('checkpoint-summary');
   checkpointButtons.forEach(button => {
     button.addEventListener('click', async event => {
       const selected = event.currentTarget;
@@ -390,8 +632,8 @@ window.fetch = (input, init = {}) => {
           selected.classList.add('border-emerald-500', 'bg-emerald-50');
           result.className = 'mt-3 mb-0 text-sm font-bold text-emerald-700';
           result.textContent = `Верно. ${data.explanation || 'Проверка засчитана.'}`;
-          checkpointDone += 1;
-          if (checkpointSummary) checkpointSummary.textContent = `Пройдено проверок: ${checkpointDone} из ${checkpointButtons.length}`;
+          card.dataset.passed = 'true';
+          window.updateCheckpointSummary?.();
           if (typeof window.triggerAchievement === 'function') {
             window.triggerAchievement('theory_quiz_pass');
           }
@@ -410,6 +652,83 @@ window.fetch = (input, init = {}) => {
       }
     });
   });
+
+  window.updateCheckpointSummary = () => {
+    const summary = document.getElementById('checkpoint-summary');
+    const percentBadge = document.getElementById('checkpoint-percent-badge');
+    const progressBar = document.getElementById('checkpoint-progress-bar');
+    const mascotSpeech = document.getElementById('checkpoint-mascot-speech');
+    const checklist = document.getElementById('checkpoint-checklist');
+
+    const activePane = document.querySelector('.theory-level-pane.is-active') || document.querySelector('.theory-level-pane:not(.hidden)');
+    const scope = activePane || document.getElementById('theory-article');
+    if (!scope) return;
+
+    const cards = [...scope.querySelectorAll('.theory-interactive-card')];
+    const total = cards.length;
+    const passed = cards.filter(c => c.dataset.passed === 'true').length;
+    const percent = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+    if (summary) {
+      summary.textContent = total === 0 ? 'В этом разделе нет встроенных проверок' : `Пройдено проверок: ${passed} из ${total}`;
+    }
+    if (percentBadge) {
+      percentBadge.textContent = `${percent}%`;
+    }
+    if (progressBar) {
+      progressBar.style.width = `${percent}%`;
+      if (percent === 100) {
+        progressBar.className = 'h-full rounded-full bg-emerald-500 transition-all duration-500';
+      } else {
+        progressBar.className = 'h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500';
+      }
+    }
+    if (mascotSpeech) {
+      if (total === 0) {
+        mascotSpeech.textContent = 'В этом разделе нет встроенных проверок. Читай теорию в своём темпе!';
+      } else if (passed === 0) {
+        mascotSpeech.textContent = 'Реши все проверки темы, чтобы закрепить материал на 100%!';
+      } else if (passed < total) {
+        mascotSpeech.textContent = `Отличный темп! Пройдено ${passed} из ${total}. Осталось совсем немного!`;
+      } else {
+        mascotSpeech.textContent = 'Все проверки этой темы успешно пройдены! Отличная работа!';
+      }
+    }
+    if (checklist) {
+      if (total === 0) {
+        checklist.innerHTML = '<div class="text-xs text-slate-400 font-semibold py-1">Нет активных проверок для этого уровня</div>';
+      } else {
+        checklist.innerHTML = cards.map((card, idx) => {
+          const isPassed = card.dataset.passed === 'true';
+          const heading = card.querySelector('h3, h4, p')?.textContent?.trim() || `Контрольная точка #${idx + 1}`;
+          const cleanHeading = heading.replace(/\s+/g, ' ');
+          const shortTitle = cleanHeading.length > 55 ? cleanHeading.slice(0, 52) + '…' : cleanHeading;
+          return `
+            <div class="theory-checklist-item flex items-center justify-between gap-2.5 p-2.5 rounded-xl border ${isPassed ? 'bg-emerald-50/80 border-emerald-200 text-emerald-900' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-indigo-300'} text-xs font-semibold cursor-pointer transition" data-card-idx="${idx}">
+              <div class="flex items-center gap-2 truncate">
+                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${isPassed ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}">${idx + 1}</span>
+                <span class="truncate">${shortTitle}</span>
+              </div>
+              <span class="shrink-0 text-xs">${isPassed ? '<i class="ph-bold ph-check text-emerald-600"></i>' : '<i class="ph-bold ph-circle text-slate-300"></i>'}</span>
+            </div>
+          `;
+        }).join('');
+
+        checklist.querySelectorAll('.theory-checklist-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const idx = Number(item.dataset.cardIdx);
+            const targetCard = cards[idx];
+            if (targetCard) {
+              targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              targetCard.classList.add('ring-2', 'ring-indigo-400');
+              setTimeout(() => targetCard.classList.remove('ring-2', 'ring-indigo-400'), 1500);
+            }
+          });
+        });
+      }
+    }
+  };
+  window.updateCheckpointSummary();
 })();
 </script>
 <script>
@@ -445,16 +764,54 @@ window.fetch = (input, init = {}) => {
       window.setTimeout(() => { event.currentTarget.textContent = 'Сохранить заметку'; }, 1300);
     } catch (error) { reportError(error); }
   });
-  document.getElementById('save-feedback')?.addEventListener('click', async event => {
-    const rating = document.getElementById('theory-rating').value;
-    const comment = document.getElementById('theory-feedback').value.trim();
-    if (!rating && !comment) return;
-    try {
-      await request('{{ url_for("theory.theory_api_feedback") }}', {rating: rating || null, comment});
-      event.currentTarget.textContent = 'Отправлено';
-      window.setTimeout(() => { event.currentTarget.textContent = 'Отправить преподавателю'; }, 1300);
-    } catch (error) { reportError(error); }
-  });
+    // Rating Dropdown
+    const ratingTrigger = document.getElementById('theory-rating-trigger');
+    const ratingMenu = document.getElementById('theory-rating-menu');
+    const ratingInput = document.getElementById('theory-rating');
+    const ratingLabel = document.getElementById('theory-rating-label');
+    const ratingChevron = document.getElementById('theory-rating-chevron');
+
+    if (ratingTrigger && ratingMenu) {
+      ratingTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = !ratingMenu.classList.contains('hidden');
+        ratingMenu.classList.toggle('hidden', isOpen);
+        ratingChevron?.classList.toggle('rotate-180', !isOpen);
+      });
+
+      ratingMenu.querySelectorAll('.theory-rating-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const val = item.dataset.ratingVal;
+          const text = item.querySelector('.rating-text')?.textContent || val;
+          if (ratingInput) ratingInput.value = val;
+          if (ratingLabel) {
+            ratingLabel.textContent = `${val} — ${text}`;
+            ratingLabel.className = 'text-slate-900 font-bold';
+          }
+          ratingMenu.classList.add('hidden');
+          ratingChevron?.classList.remove('rotate-180');
+        });
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!ratingMenu.contains(e.target) && !ratingTrigger.contains(e.target)) {
+          ratingMenu.classList.add('hidden');
+          ratingChevron?.classList.remove('rotate-180');
+        }
+      });
+    }
+
+    document.getElementById('save-feedback')?.addEventListener('click', async event => {
+      const rating = document.getElementById('theory-rating')?.value || '';
+      const comment = document.getElementById('theory-feedback').value.trim();
+      if (!rating && !comment) return;
+      try {
+        await request('{{ url_for("theory.theory_api_feedback") }}', {rating: rating || null, comment});
+        event.currentTarget.textContent = 'Отправлено';
+        window.setTimeout(() => { event.currentTarget.textContent = 'Отправить преподавателю'; }, 1300);
+      } catch (error) { reportError(error); }
+    });
   document.getElementById('finish-topic')?.addEventListener('click', async event => {
     try {
       await request('{{ url_for("theory.theory_api_read") }}');
@@ -522,6 +879,9 @@ window.fetch = (input, init = {}) => {
         }
       });
       localStorage.setItem('boostudy_theory_level', targetLevel);
+      if (typeof window.updateCheckpointSummary === 'function') {
+        window.updateCheckpointSummary();
+      }
     };
 
     document.querySelectorAll('.theory-level-tab').forEach(tab => {
@@ -533,10 +893,73 @@ window.fetch = (input, init = {}) => {
     activateLevel(savedLevel);
   }
 
-  // 2. Code Runner & Copy Handlers
+  // 2. Code Runner, Editors & Copy Handlers
+  const NL = String.fromCharCode(10);
+  const clientHighlightPython = (codeVal) => {
+    const esc = (codeVal || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return esc
+      .replace(/(#.*)$/gm, '<span data-hl="comment">$1</span>')
+      .replace(/("[^"]*"|'[^']*')/g, '<span data-hl="str">$1</span>')
+      .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span data-hl="num">$1</span>')
+      .replace(/\b(for|in|if|else|elif|while|def|return|import|from|as|try|except|finally|with|class|pass|break|continue|and|or|not|True|False|None|is|lambda|yield|global|nonlocal|assert)\b/g, '<span data-hl="kw">$1</span>')
+      .replace(/\b(print|range|len|int|str|float|bool|list|dict|set|tuple|min|max|sum|abs|divmod|round|sorted|map|filter|enumerate|zip|open|type|input)\b/g, '<span data-hl="fn">$1</span>');
+  };
+
+  const initTheoryCodeEditors = () => {
+    document.querySelectorAll('.theory-editor-wrap').forEach(wrap => {
+      const textarea = wrap.querySelector('textarea.theory-code-input, textarea[data-interactive-code]');
+      const pre = wrap.querySelector('pre[data-code-highlight]');
+      const code = pre?.querySelector('code');
+      const lineNumbers = wrap.querySelector('.theory-line-numbers');
+      if (!textarea || !pre || !code) return;
+
+      const updateLines = (val) => {
+        if (!lineNumbers) return;
+        const count = Math.max(1, (val.split(NL) || []).length);
+        let html = '';
+        for (let i = 1; i <= count; i++) {
+          html += `<div class="leading-6 h-6">${i}</div>`;
+        }
+        lineNumbers.innerHTML = html;
+      };
+
+      const syncHighlight = () => {
+        const val = textarea.value;
+        if (typeof Prism !== 'undefined' && Prism.languages && Prism.languages.python) {
+          code.textContent = val;
+          Prism.highlightElement(code);
+        } else {
+          code.innerHTML = clientHighlightPython(val);
+        }
+        updateLines(val);
+      };
+
+      textarea.addEventListener('input', syncHighlight);
+      textarea.addEventListener('scroll', () => {
+        pre.scrollLeft = textarea.scrollLeft;
+        pre.scrollTop = textarea.scrollTop;
+      });
+
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          textarea.value = textarea.value.substring(0, start) + '    ' + textarea.value.substring(end);
+          textarea.selectionStart = textarea.selectionEnd = start + 4;
+          syncHighlight();
+        }
+      });
+    });
+  };
+  initTheoryCodeEditors();
+
   window.theoryCopyCode = (btn) => {
-    const runner = btn.closest('.theory-code-runner') || btn.closest('.theory-smart-code');
-    const textarea = runner?.querySelector('.theory-code-input') || runner?.querySelector('.theory-code-raw');
+    const runner = btn.closest('.theory-code-runner') || btn.closest('.theory-smart-code') || btn.closest('.theory-interactive-card');
+    const textarea = runner?.querySelector('.theory-code-input') || runner?.querySelector('.theory-code-raw') || runner?.querySelector('textarea');
     if (!textarea) return;
     const textToCopy = textarea.value || textarea.textContent;
     navigator.clipboard.writeText(textToCopy).then(() => {
@@ -548,6 +971,7 @@ window.fetch = (input, init = {}) => {
       document.execCommand('copy');
     });
   };
+  window.copyCodeFromSnippet = window.theoryCopyCode;
 
   window.theoryRunCode = async (btn) => {
     const runner = btn.closest('.theory-code-runner');
@@ -581,14 +1005,14 @@ window.fetch = (input, init = {}) => {
       if (outputEl) {
         if (data.success) {
           outputEl.textContent = data.output || '[Программа завершилась без вывода]';
-          outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-slate-900 text-emerald-400 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed';
+          outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-[#F8FAFC] border-2 border-slate-200 text-slate-800 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed shadow-inner';
           if (statusBadge) {
             statusBadge.className = 'theory-status-badge inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100/70 px-2.5 py-0.5 text-[11px] font-black text-emerald-700';
             statusBadge.innerHTML = '<i class="ph-bold ph-check text-xs"></i>Выполнено';
           }
         } else {
-          outputEl.textContent = 'Ошибка выполнения:\n' + (data.error || 'Неизвестная ошибка');
-          outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-slate-900 text-rose-400 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed';
+          outputEl.textContent = ['Ошибка выполнения:', data.error || 'Неизвестная ошибка'].join(String.fromCharCode(10));
+          outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-rose-50 border-2 border-rose-200 text-rose-700 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed shadow-inner';
           if (statusBadge) {
             statusBadge.className = 'theory-status-badge inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-100/70 px-2.5 py-0.5 text-[11px] font-black text-rose-700';
             statusBadge.innerHTML = '<i class="ph-bold ph-warning text-xs"></i>Ошибка';
@@ -598,7 +1022,7 @@ window.fetch = (input, init = {}) => {
     } catch (err) {
       if (outputEl) {
         outputEl.textContent = 'Сетевая ошибка при запуске кода.';
-        outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-slate-900 text-rose-400 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed';
+        outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-rose-50 border-2 border-rose-200 text-rose-700 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed shadow-inner';
       }
     } finally {
       btn.disabled = false;
@@ -606,5 +1030,15 @@ window.fetch = (input, init = {}) => {
     }
   };
 })();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script>
+  if (typeof Prism !== 'undefined') {
+    Prism.highlightAll();
+    document.querySelectorAll('.theory-editor-wrap pre[data-code-highlight] code').forEach(code => {
+      Prism.highlightElement(code);
+    });
+  }
 </script>
 {% endblock %}
