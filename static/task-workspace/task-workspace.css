@@ -691,10 +691,12 @@
     background: #f1efff;
     border: 1px solid #e0e7ff;
     color: #4f46e5;
-    font-size: 0.76rem;
+    font-size: 0.8rem;
     font-weight: 800;
-    padding: 4px 12px;
+    padding: 5px 13px;
     white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.01em;
 }
 
 .tw-task-heading-actions {
@@ -3022,8 +3024,8 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 14px 18px;
-    border-radius: 1rem;
+    padding: 14px 20px;
+    border-radius: 1.25rem;
     margin-bottom: 18px;
     box-sizing: border-box;
     transition: all 0.2s ease;
@@ -3042,9 +3044,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 22px;
     flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 .tw-verdict-banner-text {
@@ -3062,9 +3064,9 @@
 
 .tw-verdict-banner-subtitle {
     margin: 0;
-    font-size: 12.5px;
-    font-weight: 600;
-    opacity: 0.85;
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748b;
 }
 
 .tw-verdict-banner-score {
@@ -3080,78 +3082,81 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    opacity: 0.8;
+    color: #64748b;
 }
 
 .tw-verdict-score-val {
-    font-size: 18px;
-    font-weight: 900;
+    font-size: 15px;
+    font-weight: 800;
     line-height: 1;
-    padding: 4px 10px;
+    padding: 5px 12px;
     border-radius: 9999px;
     background: #ffffff;
-    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* Verdict Colors */
 .tw-verdict-banner.is-correct {
-    background: #f0fdf4;
-    border: 2px solid #86efac;
-    box-shadow: 0 4px 0 #22c55e;
+    background: #ffffff;
+    border: 2px solid #bbf7d0;
+    box-shadow: 0 3px 0 #86efac;
 }
 .tw-verdict-banner.is-correct .tw-verdict-banner-icon {
     background: #dcfce7;
     color: #16a34a;
 }
 .tw-verdict-banner.is-correct .tw-verdict-banner-title {
-    color: #14532d;
+    color: #15803d;
 }
 .tw-verdict-banner.is-correct .tw-verdict-banner-subtitle {
-    color: #15803d;
+    color: #4b5563;
 }
 .tw-verdict-banner.is-correct .tw-verdict-score-val {
-    color: #15803d;
-    border: 1.5px solid #86efac;
+    color: #16a34a;
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
 }
 
 .tw-verdict-banner.is-partial {
-    background: #fffbeb;
-    border: 2px solid #fde68a;
-    box-shadow: 0 4px 0 #f59e0b;
+    background: #ffffff;
+    border: 2px solid #fed7aa;
+    box-shadow: 0 3px 0 #fdba74;
 }
 .tw-verdict-banner.is-partial .tw-verdict-banner-icon {
     background: #fef3c7;
     color: #d97706;
 }
 .tw-verdict-banner.is-partial .tw-verdict-banner-title {
-    color: #78350f;
+    color: #b45309;
 }
 .tw-verdict-banner.is-partial .tw-verdict-banner-subtitle {
-    color: #92400e;
+    color: #4b5563;
 }
 .tw-verdict-banner.is-partial .tw-verdict-score-val {
-    color: #b45309;
-    border: 1.5px solid #fde68a;
+    color: #d97706;
+    background: #fffbeb;
+    border: 1.5px solid #fed7aa;
 }
 
 .tw-verdict-banner.is-wrong {
-    background: #fef2f2;
-    border: 2px solid #fecaca;
-    box-shadow: 0 4px 0 #ef4444;
+    background: #ffffff;
+    border: 2px solid #fecdd3;
+    box-shadow: 0 3px 0 #fda4af;
 }
 .tw-verdict-banner.is-wrong .tw-verdict-banner-icon {
     background: #fee2e2;
-    color: #dc2626;
+    color: #e11d48;
 }
 .tw-verdict-banner.is-wrong .tw-verdict-banner-title {
-    color: #7f1d1d;
+    color: #be123c;
 }
 .tw-verdict-banner.is-wrong .tw-verdict-banner-subtitle {
-    color: #991b1b;
+    color: #4b5563;
 }
 .tw-verdict-banner.is-wrong .tw-verdict-score-val {
-    color: #b91c1c;
-    border: 1.5px solid #fecaca;
+    color: #e11d48;
+    background: #fff1f2;
+    border: 1.5px solid #fecdd3;
 }
 
 /* Teacher Comment Card */
@@ -3265,9 +3270,9 @@
 /* Choice Cards Reviewed States */
 .tw-choice-card.is-correct {
     background: #f0fdf4 !important;
-    border-color: #22c55e !important;
+    border-color: #86efac !important;
     color: #14532d !important;
-    box-shadow: 0 3px 0 #16a34a !important;
+    box-shadow: 0 3px 0 #bbf7d0 !important;
 }
 
 .tw-choice-card.is-correct .tw-choice-radio {
@@ -3276,32 +3281,34 @@
 }
 
 .tw-choice-card.is-wrong {
-    background: #fef2f2 !important;
-    border-color: #ef4444 !important;
-    color: #7f1d1d !important;
-    box-shadow: 0 3px 0 #dc2626 !important;
+    background: #fff1f2 !important;
+    border-color: #fecdd3 !important;
+    color: #9f1239 !important;
+    box-shadow: 0 3px 0 #fda4af !important;
 }
 
 .tw-choice-card.is-wrong .tw-choice-radio {
-    border: 5px solid #ef4444 !important;
+    border: 5px solid #e11d48 !important;
     background: #ffffff !important;
 }
 
 .tw-choice-card.is-target-answer {
-    border: 2px dashed #16a34a !important;
+    border: 2px solid #86efac !important;
     background: #f0fdf4 !important;
     color: #14532d !important;
-    box-shadow: 0 3px 0 #22c55e !important;
+    box-shadow: 0 3px 0 #bbf7d0 !important;
 }
 
 .tw-choice-card.is-target-answer .tw-choice-radio {
-    border: 2px dashed #16a34a !important;
+    border: 5px solid #16a34a !important;
     background: #ffffff !important;
 }
 
 .tw-choice-card.is-dimmed {
-    opacity: 0.55 !important;
-    filter: grayscale(0.25);
+    opacity: 0.6 !important;
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: none !important;
 }
 
 .tw-choice-result-badge {
@@ -3340,8 +3347,13 @@
 .tw-review-answer-box {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     margin-top: 14px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: 12px;
+    box-shadow: 0 2px 0 #cbd5e1;
 }
 
 .tw-review-answer-row {
@@ -3349,43 +3361,56 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 12px 16px;
-    border-radius: 0.85rem;
-    font-size: 14.5px;
+    padding: 10px 14px;
+    border-radius: 0.75rem;
+    font-size: 14px;
     box-sizing: border-box;
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
 }
 
 .tw-review-student-answer.is-correct {
+    border-color: #bbf7d0;
     background: #f0fdf4;
-    border: 2px solid #86efac;
-    box-shadow: 0 2px 0 #22c55e;
-    color: #14532d;
 }
 
 .tw-review-student-answer.is-wrong {
-    background: #fef2f2;
-    border: 2px solid #fecaca;
-    box-shadow: 0 2px 0 #ef4444;
-    color: #7f1d1d;
+    border-color: #fecdd3;
+    background: #fff1f2;
+}
+
+.tw-review-student-answer.is-partial {
+    border-color: #fed7aa;
+    background: #fffbeb;
 }
 
 .tw-review-correct-answer {
-    background: #ecfdf5;
-    border: 2px dashed #34d399;
-    box-shadow: 0 2px 0 #10b981;
-    color: #064e3b;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
 }
 
 .tw-review-answer-label {
     font-weight: 700;
-    font-size: 13px;
-    opacity: 0.85;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
 }
 
 .tw-review-answer-value {
-    font-weight: 800;
+    font-weight: 700;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 15px;
+    font-size: 14px;
+    color: #0f172a;
+    padding: 3px 10px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.tw-review-correct-answer .tw-review-answer-value {
+    color: #15803d;
+    border-color: #86efac;
 }
 
 /* Solution Accordion */
@@ -3495,24 +3520,24 @@
 
 /* Score Pill Variants */
 .tw-score-pill.tw-score-pill-correct {
-    background: #dcfce7 !important;
+    background: #f0fdf4 !important;
     color: #15803d !important;
     border: 1.5px solid #86efac !important;
-    box-shadow: 0 2px 0 #22c55e !important;
+    box-shadow: 0 2px 0 #bbf7d0 !important;
 }
 
 .tw-score-pill.tw-score-pill-partial {
-    background: #fef3c7 !important;
+    background: #fffbeb !important;
     color: #b45309 !important;
-    border: 1.5px solid #fde68a !important;
-    box-shadow: 0 2px 0 #f59e0b !important;
+    border: 1.5px solid #fed7aa !important;
+    box-shadow: 0 2px 0 #fde68a !important;
 }
 
 .tw-score-pill.tw-score-pill-wrong {
-    background: #fee2e2 !important;
-    color: #b91c1c !important;
-    border: 1.5px solid #fecaca !important;
-    box-shadow: 0 2px 0 #ef4444 !important;
+    background: #fff1f2 !important;
+    color: #be123c !important;
+    border: 1.5px solid #fecdd3 !important;
+    box-shadow: 0 2px 0 #fda4af !important;
 }
 
 /* Status Badges */

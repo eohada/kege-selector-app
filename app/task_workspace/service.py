@@ -260,6 +260,34 @@ def _render_task_solution(raw_text: str | None) -> str:
         return f"<pre><code>{html.escape(text)}</code></pre>"
 
 
+def _extract_task_correct_answer(task: Tasks | None, answer_override: str | None = None) -> str:
+    if answer_override and str(answer_override).strip():
+        return str(answer_override).strip()
+    if not task:
+        return ""
+    if task.answer and str(task.answer).strip():
+        return str(task.answer).strip()
+
+    spec = getattr(task, "answer_spec", None)
+    if isinstance(spec, dict):
+        if spec.get("correct_value") is not None and str(spec.get("correct_value")).strip():
+            return str(spec.get("correct_value")).strip()
+        if spec.get("correct_answer") is not None and str(spec.get("correct_answer")).strip():
+            return str(spec.get("correct_answer")).strip()
+        if spec.get("answer") is not None and str(spec.get("answer")).strip():
+            return str(spec.get("answer")).strip()
+        pairs = spec.get("pairs")
+        if isinstance(pairs, list):
+            pairs_map = {}
+            for p in pairs:
+                if isinstance(p, dict) and p.get("key") and (p.get("correct_value") or p.get("value")):
+                    pairs_map[str(p["key"])] = str(p.get("correct_value") or p.get("value"))
+            if pairs_map:
+                import json
+                return json.dumps(pairs_map, ensure_ascii=False)
+    return ""
+
+
 @dataclass
 class WorkspaceContext:
     context_type: str
@@ -310,9 +338,12 @@ class WorkspaceContext:
         attachments = normalize_task_attachments(self.task.attached_files)
         # Эталонный ответ и решение доступны преподавателю ВСЕГДА, а ученику — ТОЛЬКО после проверки!
         show_review_details = bool(self.can_review or self.is_reviewed)
-        safe_correct_answer = (self.correct_answer or self.task.answer or "") if show_review_details else ""
+        safe_correct_answer = (self.correct_answer or _extract_task_correct_answer(self.task) or "") if show_review_details else ""
         safe_solution_html = (self.solution_html or "") if show_review_details else ""
         safe_solution_code = (self.solution_code or "") if show_review_details else ""
+        safe_parsed_correct_answer = None
+        if show_review_details:
+            safe_parsed_correct_answer = self.parsed_correct_answer or _safe_parse_json(safe_correct_answer)
         return {
             "context_type": self.context_type,
             "context_id": self.context_id,
@@ -369,7 +400,10 @@ class WorkspaceContext:
             "solution_html": safe_solution_html,
             "solution_code": safe_solution_code,
             "parsed_answer": self.parsed_answer,
-            "parsed_correct_answer": (self.parsed_correct_answer if show_review_details else None),
+            "parsed_correct_answer": safe_parsed_correct_answer,
+            "task": {
+                "answer": safe_correct_answer,
+            },
             "playback": load_workspace_trace_payload(self),
             "versions": load_workspace_versions_payload(self),
         }
@@ -409,7 +443,7 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
     lesson_sol = getattr(lesson_task.task, "task_solution", None) if lesson_task and lesson_task.task else None
     lesson_sol_text = getattr(lesson_sol, "solution_text", "") or ""
     lesson_sol_html = _render_task_solution(lesson_sol_text) if lesson_sol_text else ""
-    lesson_correct_ans = (lesson_task.task.answer if lesson_task.task else "") or ""
+    lesson_correct_ans = _extract_task_correct_answer(lesson_task.task) if lesson_task else ""
     lesson_is_reviewed = bool(lesson_task.reviewed_at is not None or lesson_task.status in {"graded", "reviewed", "completed", "accepted"})
     lesson_answer_score = lesson_task.score
     lesson_max_score = int(lesson_task.max_score or (lesson_task.task.max_score if lesson_task.task else 1) or 1)
@@ -652,7 +686,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
 
     teacher_comment = (answer.teacher_comment if answer and answer.teacher_comment else "") or ""
     submission_teacher_feedback = (submission.teacher_feedback if submission and submission.teacher_feedback else "") or ""
-    correct_ans = (assignment_task.answer_override or (assignment_task.task.answer if assignment_task.task else "") or "").strip()
+    correct_ans = _extract_task_correct_answer(assignment_task.task, assignment_task.answer_override) if assignment_task else ""
     sol_obj = getattr(assignment_task.task, "task_solution", None) if assignment_task and assignment_task.task else None
     solution_text = getattr(sol_obj, "solution_text", "") or ""
     solution_html = _render_task_solution(solution_text) if solution_text else ""
