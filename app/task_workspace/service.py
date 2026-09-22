@@ -236,6 +236,30 @@ def clear_cached_workspace_snapshot(ctx: "WorkspaceContext") -> None:
         return
 
 
+def _safe_parse_json(val: Any) -> Any:
+    if not val or not isinstance(val, str):
+        return None
+    try:
+        import json
+        return json.loads(val)
+    except Exception:
+        return None
+
+
+def _render_task_solution(raw_text: str | None) -> str:
+    if not raw_text or not raw_text.strip():
+        return ""
+    text = raw_text.strip()
+    try:
+        import markdown
+        if "```" not in text and any(text.startswith(kw) for kw in ("import ", "from ", "def ", "for ", "with ", "while ", "print(")):
+            text = f"```python\n{text}\n```"
+        return markdown.markdown(text, extensions=["fenced_code", "tables"])
+    except Exception:
+        import html
+        return f"<pre><code>{html.escape(text)}</code></pre>"
+
+
 @dataclass
 class WorkspaceContext:
     context_type: str
@@ -273,12 +297,22 @@ class WorkspaceContext:
     answer_score: int | None = None
     answer_max_score: int = 1
     nav_status: str = "unanswered"
+    teacher_comment: str | None = None
+    submission_teacher_feedback: str | None = None
+    correct_answer: str | None = None
+    solution_html: str | None = None
+    solution_code: str | None = None
+    parsed_answer: Any = None
+    parsed_correct_answer: Any = None
 
     def as_payload(self) -> dict[str, Any]:
         answer_spec = _normalize_answer_spec(self.task)
         attachments = normalize_task_attachments(self.task.attached_files)
-        # Эталонный ответ доступен преподавателю ВСЕГДА, а ученику — ТОЛЬКО после проверки преподавателем!
-        safe_answer_hint = (self.task.answer or "") if (self.can_review or self.is_reviewed) else ""
+        # Эталонный ответ и решение доступны преподавателю ВСЕГДА, а ученику — ТОЛЬКО после проверки!
+        show_review_details = bool(self.can_review or self.is_reviewed)
+        safe_correct_answer = (self.correct_answer or self.task.answer or "") if show_review_details else ""
+        safe_solution_html = (self.solution_html or "") if show_review_details else ""
+        safe_solution_code = (self.solution_code or "") if show_review_details else ""
         return {
             "context_type": self.context_type,
             "context_id": self.context_id,
@@ -328,7 +362,14 @@ class WorkspaceContext:
             "tasks_nav": self.tasks_nav or [],
             "submission_meta": self.submission_meta or {},
             "task_meta": self.task_meta or {},
-            "answer_hint": safe_answer_hint,
+            "answer_hint": safe_correct_answer,
+            "correct_answer": safe_correct_answer,
+            "teacher_comment": self.teacher_comment or "",
+            "submission_teacher_feedback": self.submission_teacher_feedback or "",
+            "solution_html": safe_solution_html,
+            "solution_code": safe_solution_code,
+            "parsed_answer": self.parsed_answer,
+            "parsed_correct_answer": (self.parsed_correct_answer if show_review_details else None),
             "playback": load_workspace_trace_payload(self),
             "versions": load_workspace_versions_payload(self),
         }
@@ -365,6 +406,14 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
     mmr_policy = "manual_confirm"
     if (lesson_task.assignment_type or "homework") != "classwork":
         mmr_policy = "always"
+    lesson_sol = getattr(lesson_task.task, "task_solution", None) if lesson_task and lesson_task.task else None
+    lesson_sol_text = getattr(lesson_sol, "solution_text", "") or ""
+    lesson_sol_html = _render_task_solution(lesson_sol_text) if lesson_sol_text else ""
+    lesson_correct_ans = (lesson_task.task.answer if lesson_task.task else "") or ""
+    lesson_is_reviewed = bool(lesson_task.reviewed_at is not None or lesson_task.status in {"graded", "reviewed", "completed", "accepted"})
+    lesson_answer_score = lesson_task.score
+    lesson_max_score = int(lesson_task.max_score or (lesson_task.task.max_score if lesson_task.task else 1) or 1)
+
     return WorkspaceContext(
         context_type="lesson_task",
         context_id=lesson_task.lesson_task_id,
@@ -383,6 +432,14 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
         mmr_policy=mmr_policy,
         can_edit=can_edit,
         can_review=can_review,
+        is_reviewed=lesson_is_reviewed,
+        answer_score=lesson_answer_score,
+        answer_max_score=lesson_max_score,
+        teacher_comment=lesson_task.teacher_comment or "",
+        correct_answer=lesson_correct_ans,
+        solution_html=lesson_sol_html,
+        parsed_answer=_safe_parse_json(lesson_task.student_answer),
+        parsed_correct_answer=_safe_parse_json(lesson_correct_ans),
     )
 
 
@@ -583,6 +640,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         "is_reviewed": current_is_reviewed,
         "is_graded": (normalized_status == "GRADED"),
         "is_pending_review": (normalized_status in {"SUBMITTED", "NEEDS_MANUAL_REVIEW"} or (current_is_manual and not current_is_reviewed)),
+        "teacher_feedback": (submission.teacher_feedback if submission and submission.teacher_feedback else "") or "",
     }
 
     topics_list = []
@@ -591,6 +649,15 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
             topics_list = [t.name for t in (assignment_task.task.topics or []) if getattr(t, 'name', None)]
         except Exception:
             topics_list = []
+
+    teacher_comment = (answer.teacher_comment if answer and answer.teacher_comment else "") or ""
+    submission_teacher_feedback = (submission.teacher_feedback if submission and submission.teacher_feedback else "") or ""
+    correct_ans = (assignment_task.answer_override or (assignment_task.task.answer if assignment_task.task else "") or "").strip()
+    sol_obj = getattr(assignment_task.task, "task_solution", None) if assignment_task and assignment_task.task else None
+    solution_text = getattr(sol_obj, "solution_text", "") or ""
+    solution_html = _render_task_solution(solution_text) if solution_text else ""
+    parsed_student_ans = _safe_parse_json(answer.value) if answer and answer.value else None
+    parsed_correct_ans = _safe_parse_json(correct_ans) if correct_ans else None
 
     task_meta = {
         "verification_type": "Ручная проверка" if current_is_manual else "Автопроверка",
@@ -601,6 +668,8 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         "is_reviewed": current_is_reviewed,
         "is_manual": current_is_manual,
         "score": current_answer_score,
+        "teacher_comment": teacher_comment,
+        "correct_answer": correct_ans if current_is_reviewed else "",
     }
 
     return WorkspaceContext(
@@ -637,6 +706,12 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         tasks_nav=tasks_nav,
         submission_meta=submission_meta,
         task_meta=task_meta,
+        teacher_comment=teacher_comment,
+        submission_teacher_feedback=submission_teacher_feedback,
+        correct_answer=correct_ans,
+        solution_html=solution_html,
+        parsed_answer=parsed_student_ans,
+        parsed_correct_answer=parsed_correct_ans,
     )
 
 

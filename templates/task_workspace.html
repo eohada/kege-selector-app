@@ -37,7 +37,19 @@
                 </span>
                 {% endif %}
                 {% if not workspace.can_edit %}
-                <span class="tw-status-pill tw-status-completed"><i class="ph-bold ph-lock"></i> Сдано / Просмотр</span>
+                    {% if workspace.is_reviewed and workspace.answer_score is not none %}
+                        {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}
+                        <span class="tw-status-pill tw-status-correct"><i class="ph-bold ph-check-circle"></i> Проверено · Верно ({{ workspace.answer_score }}/{{ workspace.answer_max_score }})</span>
+                        {% elif workspace.answer_score > 0 %}
+                        <span class="tw-status-pill tw-status-partial"><i class="ph-bold ph-circle-half"></i> Проверено · Частично ({{ workspace.answer_score }}/{{ workspace.answer_max_score }})</span>
+                        {% else %}
+                        <span class="tw-status-pill tw-status-wrong"><i class="ph-bold ph-x-circle"></i> Проверено · Неверно (0/{{ workspace.answer_max_score }})</span>
+                        {% endif %}
+                    {% elif workspace.is_reviewed %}
+                        <span class="tw-status-pill tw-status-correct"><i class="ph-bold ph-check-circle"></i> Проверено</span>
+                    {% else %}
+                        <span class="tw-status-pill tw-status-pending"><i class="ph-bold ph-clock"></i> На проверке</span>
+                    {% endif %}
                 {% else %}
                 <span class="tw-status-pill tw-status-progress"><i class="ph-bold ph-pencil-simple"></i> В процессе</span>
                 {% endif %}
@@ -285,33 +297,106 @@
                 </div>
                 <!-- Ввод ответа прямо в режиме «Код» -->
                 <div class="tw-code-answer-box" id="tw-code-answer-box" aria-label="Ввод ответа к задаче">
+                    {% if workspace.is_reviewed and workspace.answer_score is not none %}
+                    <div class="tw-verdict-banner {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
+                        <div class="tw-verdict-banner-main">
+                            <div class="tw-verdict-banner-icon">
+                                <i class="ph-bold {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}ph-check-circle{% elif workspace.answer_score > 0 %}ph-circle-half{% else %}ph-x-circle{% endif %}"></i>
+                            </div>
+                            <div class="tw-verdict-banner-text">
+                                <h4 class="tw-verdict-banner-title">
+                                    {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}
+                                    Верно
+                                    {% elif workspace.answer_score > 0 %}
+                                    Частично верно
+                                    {% else %}
+                                    Неверно
+                                    {% endif %}
+                                </h4>
+                                <p class="tw-verdict-banner-subtitle">
+                                    {{ 'Проверено преподавателем' if workspace.is_manual else 'Автоматическая проверка' }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="tw-verdict-banner-score">
+                            <span class="tw-verdict-score-label">Балл</span>
+                            <span class="tw-verdict-score-val">{{ workspace.answer_score }} / {{ workspace.answer_max_score }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if workspace.teacher_comment %}
+                    <div class="tw-teacher-comment-box">
+                        <div class="tw-teacher-comment-head">
+                            <div class="tw-teacher-comment-author">
+                                <span class="tw-teacher-comment-icon"><i class="ph-bold ph-chat-circle-dots"></i></span>
+                                <span class="tw-teacher-comment-label">Комментарий преподавателя</span>
+                            </div>
+                            <span class="tw-teacher-comment-badge">Проверка</span>
+                        </div>
+                        <div class="tw-teacher-comment-body">{{ workspace.teacher_comment }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if workspace.submission_meta and workspace.submission_meta.teacher_feedback and workspace.task_position == 1 %}
+                    <div class="tw-general-feedback-box">
+                        <div class="tw-general-feedback-head">
+                            <i class="ph-bold ph-chats-circle"></i>
+                            <strong>Общий отзыв преподавателя к работе:</strong>
+                        </div>
+                        <div class="tw-general-feedback-body">{{ workspace.submission_meta.teacher_feedback }}</div>
+                    </div>
+                    {% endif %}
+
                     <div class="tw-code-answer-head">
                         <span class="tw-code-answer-title"><i class="ph-bold ph-check-circle"></i> Ваш ответ на задачу:</span>
                         {% if workspace.answer_spec.prompt %}<span class="tw-code-answer-prompt">{{ workspace.answer_spec.prompt }}</span>{% endif %}
                     </div>
                     {% if workspace.answer_spec.type == 'single_choice' %}
+                    {% if workspace.can_edit %}
                     <div class="tw-code-answer-actions">
                         <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как решение">
                             <i class="ph-bold ph-check-circle"></i> Сдать написанный код
                         </button>
                     </div>
+                    {% endif %}
                     <div class="tw-choice-grid tw-choice-grid-code" data-answer-renderer="single_choice">
                         {% for option in workspace.answer_spec.options %}
-                        <label class="tw-choice-card tw-choice-card-sm">
-                            <input type="radio" name="task-choice" value="{{ option.value }}" {% if workspace.plain_answer == option.value %}checked{% endif %} {% if not workspace.can_edit %}disabled{% endif %}>
+                        {% set opt_val = option.value|string|trim %}
+                        {% set user_val = workspace.plain_answer|string|trim %}
+                        {% set corr_val = (workspace.correct_answer or workspace.task.answer or '')|string|trim %}
+                        {% set is_selected = (user_val == opt_val) %}
+                        {% set is_correct_choice = (corr_val and (corr_val == opt_val or corr_val == option.label|string|trim)) %}
+                        <label class="tw-choice-card tw-choice-card-sm {% if workspace.is_reviewed %}{% if is_selected and is_correct_choice %}is-correct{% elif is_selected and not is_correct_choice %}is-wrong{% elif not is_selected and is_correct_choice %}is-target-answer{% else %}is-dimmed{% endif %}{% endif %}">
+                            <input type="radio" name="task-choice" value="{{ option.value }}" {% if is_selected %}checked{% endif %} {% if not workspace.can_edit %}disabled{% endif %}>
                             <span class="tw-choice-radio"></span>
                             <span>{{ option.label }}</span>
+                            {% if workspace.is_reviewed %}
+                                {% if is_selected and is_correct_choice %}
+                                <span class="tw-choice-result-badge is-correct"><i class="ph-bold ph-check"></i> Ваш выбор (верно)</span>
+                                {% elif is_selected and not is_correct_choice %}
+                                <span class="tw-choice-result-badge is-wrong"><i class="ph-bold ph-x"></i> Ваш выбор (неверно)</span>
+                                {% elif not is_selected and is_correct_choice %}
+                                <span class="tw-choice-result-badge is-target"><i class="ph-bold ph-check"></i> Правильный вариант</span>
+                                {% endif %}
+                            {% endif %}
                         </label>
                         {% endfor %}
                     </div>
                     {% elif workspace.answer_spec.type == 'matching' %}
+                    {% if workspace.can_edit %}
                     <div class="tw-code-answer-actions">
                         <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как решение">
                             <i class="ph-bold ph-check-circle"></i> Сдать написанный код
                         </button>
                     </div>
+                    {% endif %}
                     <div class="tw-matching-list tw-matching-list-code" data-answer-renderer="matching">
                         {% for pair in workspace.answer_spec.pairs %}
+                        {% set pair_key = pair.key|string %}
+                        {% set user_choice = workspace.parsed_answer[pair_key] if (workspace.parsed_answer and pair_key in workspace.parsed_answer) else None %}
+                        {% set correct_choice = workspace.parsed_correct_answer[pair_key] if (workspace.parsed_correct_answer and pair_key in workspace.parsed_correct_answer) else None %}
+                        {% set is_pair_correct = (correct_choice is not none and user_choice is not none and user_choice|string == correct_choice|string) %}
                         <div class="tw-match-row tw-match-row-sm">
                             <strong>{{ pair.key }}</strong>
                             <span class="tw-match-left">{{ pair.left }}</span>
@@ -319,31 +404,43 @@
                                 <select class="tw-select-native" data-match-key="{{ pair.key }}" {% if not workspace.can_edit %}disabled{% endif %}>
                                     <option value="">Выберите вариант</option>
                                     {% for option in workspace.answer_spec.options %}
-                                    <option value="{{ option.value }}">{{ option.label }}</option>
+                                    <option value="{{ option.value }}" {% if user_choice is not none and user_choice|string == option.value|string %}selected{% endif %}>{{ option.label }}</option>
                                     {% endfor %}
                                 </select>
                                 <button type="button" class="tw-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false" {% if not workspace.can_edit %}disabled{% endif %}>
-                                    <span class="tw-custom-select-label">Выберите вариант</span>
+                                    <span class="tw-custom-select-label">
+                                        {% set chosen_opt = (workspace.answer_spec.options|selectattr('value', 'equalto', user_choice)|first) if user_choice is not none else None %}
+                                        {{ chosen_opt.label if chosen_opt else 'Выберите вариант' }}
+                                    </span>
                                     <i class="ph-bold ph-caret-down tw-custom-select-arrow"></i>
                                 </button>
                                 <div class="tw-custom-select-menu" role="listbox" hidden>
-                                    <div class="tw-custom-select-option is-placeholder is-selected" data-value="">
+                                    <div class="tw-custom-select-option is-placeholder {% if user_choice is none %}is-selected{% endif %}" data-value="">
                                         <span>Выберите вариант</span>
                                         <i class="ph-bold ph-check tw-check-icon"></i>
                                     </div>
                                     {% for option in workspace.answer_spec.options %}
-                                    <div class="tw-custom-select-option" data-value="{{ option.value }}">
+                                    <div class="tw-custom-select-option {% if user_choice is not none and user_choice|string == option.value|string %}is-selected{% endif %}" data-value="{{ option.value }}">
                                         <span>{{ option.label }}</span>
                                         <i class="ph-bold ph-check tw-check-icon"></i>
                                     </div>
                                     {% endfor %}
                                 </div>
                             </div>
+                            {% if workspace.is_reviewed and correct_choice is not none %}
+                                {% set corr_opt = (workspace.answer_spec.options|selectattr('value', 'equalto', correct_choice)|first) %}
+                                {% if is_pair_correct %}
+                                <span class="tw-choice-result-badge is-correct"><i class="ph-bold ph-check"></i> Верно</span>
+                                {% else %}
+                                <span class="tw-choice-result-badge is-wrong"><i class="ph-bold ph-x"></i> Правильно: {{ corr_opt.label if corr_opt else correct_choice }}</span>
+                                {% endif %}
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
                     {% elif workspace.answer_spec.type == 'code' %}
                     <div class="tw-code-solution-panel">
+                        {% if workspace.can_edit %}
                         <div class="tw-code-solution-actions">
                             <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как ответ">
                                 <i class="ph-bold ph-check-circle"></i> Сдать написанный код
@@ -352,11 +449,13 @@
                                 <i class="ph-bold ph-arrow-down-left"></i> Вставить вывод
                             </button>
                         </div>
+                        {% endif %}
                         <div class="tw-code-answer-opt-wrap">
                             <input id="tw-code-answer-input" type="text" class="tw-code-answer-field tw-code-standard-input" value="{{ workspace.plain_answer }}" placeholder="Комментарий или вывод (необязательно)…" {% if not workspace.can_edit %}readonly disabled{% endif %}>
                         </div>
                     </div>
                     {% elif workspace.answer_spec.type == 'long_answer' %}
+                    {% if workspace.can_edit %}
                     <div class="tw-code-answer-actions">
                         <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как решение">
                             <i class="ph-bold ph-check-circle"></i> Сдать написанный код
@@ -368,8 +467,10 @@
                             <i class="ph-bold ph-arrow-down-left"></i> Вставить вывод
                         </button>
                     </div>
+                    {% endif %}
                     <textarea id="tw-code-answer-input" class="tw-code-answer-field tw-code-long-answer" placeholder="{{ workspace.answer_spec.placeholder or 'Напишите решение или объяснение…' }}" {% if not workspace.can_edit %}readonly disabled{% endif %}>{{ workspace.plain_answer }}</textarea>
                     {% else %}
+                    {% if workspace.can_edit %}
                     <div class="tw-code-answer-actions">
                         <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как решение">
                             <i class="ph-bold ph-check-circle"></i> Сдать написанный код
@@ -378,11 +479,55 @@
                             <i class="ph-bold ph-arrow-down-left"></i> Вставить вывод
                         </button>
                     </div>
+                    {% endif %}
                     <div class="tw-code-answer-row">
                         <input id="tw-code-answer-input" type="text" class="tw-code-answer-field tw-code-standard-input" value="{{ workspace.plain_answer }}" placeholder="{{ workspace.answer_spec.placeholder or 'Введите полученный ответ…' }}" {% if not workspace.can_edit %}readonly disabled{% endif %}>
                     </div>
+                    {% if workspace.is_reviewed %}
+                    <div class="tw-review-answer-box">
+                        <div class="tw-review-answer-row tw-review-student-answer {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
+                            <span class="tw-review-answer-label">Ваш ответ:</span>
+                            <strong class="tw-review-answer-value">{{ workspace.plain_answer if workspace.plain_answer else '— (ответ не введён)' }}</strong>
+                            <span class="tw-choice-result-badge {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
+                                <i class="ph-bold {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}ph-check{% elif workspace.answer_score > 0 %}ph-circle-half{% else %}ph-x{% endif %}"></i>
+                                {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}Верно{% elif workspace.answer_score > 0 %}Частично{% else %}Неверно{% endif %}
+                            </span>
+                        </div>
+                        {% if workspace.correct_answer and (workspace.answer_score != workspace.answer_max_score or workspace.answer_score == 0) %}
+                        <div class="tw-review-answer-row tw-review-correct-answer">
+                            <span class="tw-review-answer-label">Правильный ответ:</span>
+                            <strong class="tw-review-answer-value">{{ workspace.correct_answer }}</strong>
+                            <span class="tw-choice-result-badge is-target"><i class="ph-bold ph-check"></i> Эталон</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     {% endif %}
                 </div>
+
+                {% if workspace.is_reviewed and (workspace.solution_html or workspace.correct_answer) %}
+                <details class="tw-panel tw-solution-accordion" open>
+                    <summary>
+                        <div class="tw-solution-summary-title">
+                            <span class="tw-solution-summary-icon"><i class="ph-bold ph-lightbulb-filament"></i></span>
+                            <span>Разбор и правильное решение</span>
+                        </div>
+                        <i class="ph-bold ph-caret-down"></i>
+                    </summary>
+                    <div class="tw-solution-body">
+                        {% if workspace.correct_answer and workspace.answer_spec.type != 'code' %}
+                        <div class="tw-solution-answer-highlight">
+                            <strong>Правильный ответ:</strong> <code>{{ workspace.correct_answer }}</code>
+                        </div>
+                        {% endif %}
+                        {% if workspace.solution_html %}
+                        <div class="tw-solution-html-content">
+                            {{ workspace.solution_html|safe }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </details>
+                {% endif %}
 
                 <div class="tw-tabs" role="tablist">
                     <button class="tw-tab is-active" type="button" data-tab="output">Вывод</button>
@@ -502,16 +647,92 @@
             </article>
             <article class="tw-panel tw-answer-workspace">
                 <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-check-circle"></i></span><span>Ваш ответ</span></div></div>
+                
+                {% if workspace.is_reviewed and workspace.answer_score is not none %}
+                <div class="tw-verdict-banner {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
+                    <div class="tw-verdict-banner-main">
+                        <div class="tw-verdict-banner-icon">
+                            <i class="ph-bold {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}ph-check-circle{% elif workspace.answer_score > 0 %}ph-circle-half{% else %}ph-x-circle{% endif %}"></i>
+                        </div>
+                        <div class="tw-verdict-banner-text">
+                            <h4 class="tw-verdict-banner-title">
+                                {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}
+                                Верно
+                                {% elif workspace.answer_score > 0 %}
+                                Частично верно
+                                {% else %}
+                                Неверно
+                                {% endif %}
+                            </h4>
+                            <p class="tw-verdict-banner-subtitle">
+                                {{ 'Проверено преподавателем' if workspace.is_manual else 'Автоматическая проверка' }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="tw-verdict-banner-score">
+                        <span class="tw-verdict-score-label">Балл</span>
+                        <span class="tw-verdict-score-val">{{ workspace.answer_score }} / {{ workspace.answer_max_score }}</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if workspace.teacher_comment %}
+                <div class="tw-teacher-comment-box">
+                    <div class="tw-teacher-comment-head">
+                        <div class="tw-teacher-comment-author">
+                            <span class="tw-teacher-comment-icon"><i class="ph-bold ph-chat-circle-dots"></i></span>
+                            <span class="tw-teacher-comment-label">Комментарий преподавателя</span>
+                        </div>
+                        <span class="tw-teacher-comment-badge">Проверка</span>
+                    </div>
+                    <div class="tw-teacher-comment-body">{{ workspace.teacher_comment }}</div>
+                </div>
+                {% endif %}
+
+                {% if workspace.submission_meta and workspace.submission_meta.teacher_feedback and workspace.task_position == 1 %}
+                <div class="tw-general-feedback-box">
+                    <div class="tw-general-feedback-head">
+                        <i class="ph-bold ph-chats-circle"></i>
+                        <strong>Общий отзыв преподавателя к работе:</strong>
+                    </div>
+                    <div class="tw-general-feedback-body">{{ workspace.submission_meta.teacher_feedback }}</div>
+                </div>
+                {% endif %}
+
                 {% if workspace.answer_spec.prompt %}<p class="tw-answer-description">{{ workspace.answer_spec.prompt }}</p>{% endif %}
                 {% if workspace.answer_spec.type == 'single_choice' %}
                 <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
                 <div class="tw-choice-grid" data-answer-renderer="single_choice">
-                    {% for option in workspace.answer_spec.options %}<label class="tw-choice-card"><input type="radio" name="task-choice" value="{{ option.value }}" {% if workspace.plain_answer == option.value %}checked{% endif %} {% if not workspace.can_edit %}disabled{% endif %}><span class="tw-choice-radio"></span><span>{{ option.label }}</span></label>{% endfor %}
+                    {% for option in workspace.answer_spec.options %}
+                    {% set opt_val = option.value|string|trim %}
+                    {% set user_val = workspace.plain_answer|string|trim %}
+                    {% set corr_val = (workspace.correct_answer or workspace.task.answer or '')|string|trim %}
+                    {% set is_selected = (user_val == opt_val) %}
+                    {% set is_correct_choice = (corr_val and (corr_val == opt_val or corr_val == option.label|string|trim)) %}
+                    <label class="tw-choice-card {% if workspace.is_reviewed %}{% if is_selected and is_correct_choice %}is-correct{% elif is_selected and not is_correct_choice %}is-wrong{% elif not is_selected and is_correct_choice %}is-target-answer{% else %}is-dimmed{% endif %}{% endif %}">
+                        <input type="radio" name="task-choice" value="{{ option.value }}" {% if is_selected %}checked{% endif %} {% if not workspace.can_edit %}disabled{% endif %}>
+                        <span class="tw-choice-radio"></span>
+                        <span>{{ option.label }}</span>
+                        {% if workspace.is_reviewed %}
+                            {% if is_selected and is_correct_choice %}
+                            <span class="tw-choice-result-badge is-correct"><i class="ph-bold ph-check"></i> Ваш выбор (верно)</span>
+                            {% elif is_selected and not is_correct_choice %}
+                            <span class="tw-choice-result-badge is-wrong"><i class="ph-bold ph-x"></i> Ваш выбор (неверно)</span>
+                            {% elif not is_selected and is_correct_choice %}
+                            <span class="tw-choice-result-badge is-target"><i class="ph-bold ph-check"></i> Правильный вариант</span>
+                            {% endif %}
+                        {% endif %}
+                    </label>
+                    {% endfor %}
                 </div>
                 {% elif workspace.answer_spec.type == 'matching' %}
                 <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
                 <div class="tw-matching-list" data-answer-renderer="matching">
                     {% for pair in workspace.answer_spec.pairs %}
+                    {% set pair_key = pair.key|string %}
+                    {% set user_choice = workspace.parsed_answer[pair_key] if (workspace.parsed_answer and pair_key in workspace.parsed_answer) else None %}
+                    {% set correct_choice = workspace.parsed_correct_answer[pair_key] if (workspace.parsed_correct_answer and pair_key in workspace.parsed_correct_answer) else None %}
+                    {% set is_pair_correct = (correct_choice is not none and user_choice is not none and user_choice|string == correct_choice|string) %}
                     <div class="tw-match-row">
                         <strong>{{ pair.key }}</strong>
                         <span class="tw-match-left">{{ pair.left }}</span>
@@ -519,26 +740,37 @@
                             <select class="tw-select-native" data-match-key="{{ pair.key }}" {% if not workspace.can_edit %}disabled{% endif %}>
                                 <option value="">Выберите вариант</option>
                                 {% for option in workspace.answer_spec.options %}
-                                <option value="{{ option.value }}">{{ option.label }}</option>
+                                <option value="{{ option.value }}" {% if user_choice is not none and user_choice|string == option.value|string %}selected{% endif %}>{{ option.label }}</option>
                                 {% endfor %}
                             </select>
                             <button type="button" class="tw-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false" {% if not workspace.can_edit %}disabled{% endif %}>
-                                <span class="tw-custom-select-label">Выберите вариант</span>
+                                <span class="tw-custom-select-label">
+                                    {% set chosen_opt = (workspace.answer_spec.options|selectattr('value', 'equalto', user_choice)|first) if user_choice is not none else None %}
+                                    {{ chosen_opt.label if chosen_opt else 'Выберите вариант' }}
+                                </span>
                                 <i class="ph-bold ph-caret-down tw-custom-select-arrow"></i>
                             </button>
                             <div class="tw-custom-select-menu" role="listbox" hidden>
-                                <div class="tw-custom-select-option is-placeholder is-selected" data-value="">
+                                <div class="tw-custom-select-option is-placeholder {% if user_choice is none %}is-selected{% endif %}" data-value="">
                                     <span>Выберите вариант</span>
                                     <i class="ph-bold ph-check tw-check-icon"></i>
                                 </div>
                                 {% for option in workspace.answer_spec.options %}
-                                <div class="tw-custom-select-option" data-value="{{ option.value }}">
+                                <div class="tw-custom-select-option {% if user_choice is not none and user_choice|string == option.value|string %}is-selected{% endif %}" data-value="{{ option.value }}">
                                     <span>{{ option.label }}</span>
                                     <i class="ph-bold ph-check tw-check-icon"></i>
                                 </div>
                                 {% endfor %}
                             </div>
                         </div>
+                        {% if workspace.is_reviewed and correct_choice is not none %}
+                            {% set corr_opt = (workspace.answer_spec.options|selectattr('value', 'equalto', correct_choice)|first) %}
+                            {% if is_pair_correct %}
+                            <span class="tw-choice-result-badge is-correct"><i class="ph-bold ph-check"></i> Верно</span>
+                            {% else %}
+                            <span class="tw-choice-result-badge is-wrong"><i class="ph-bold ph-x"></i> Правильно: {{ corr_opt.label if corr_opt else correct_choice }}</span>
+                            {% endif %}
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
@@ -634,6 +866,27 @@
                     </button>
                 </div>
                 <input id="tw-answer" class="tw-answer-input tw-standard-answer-input" value="{{ workspace.plain_answer }}" placeholder="{{ workspace.answer_spec.placeholder or 'Ваш ответ…' }}" {% if not workspace.can_edit %}readonly{% endif %}>
+                
+                {% if workspace.is_reviewed %}
+                <div class="tw-review-answer-box">
+                    <div class="tw-review-answer-row tw-review-student-answer {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
+                        <span class="tw-review-answer-label">Ваш ответ:</span>
+                        <strong class="tw-review-answer-value">{{ workspace.plain_answer if workspace.plain_answer else '— (ответ не введён)' }}</strong>
+                        <span class="tw-choice-result-badge {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
+                            <i class="ph-bold {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}ph-check{% elif workspace.answer_score > 0 %}ph-circle-half{% else %}ph-x{% endif %}"></i>
+                            {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}Верно{% elif workspace.answer_score > 0 %}Частично{% else %}Неверно{% endif %}
+                        </span>
+                    </div>
+                    {% if workspace.correct_answer and (workspace.answer_score != workspace.answer_max_score or workspace.answer_score == 0) %}
+                    <div class="tw-review-answer-row tw-review-correct-answer">
+                        <span class="tw-review-answer-label">Правильный ответ:</span>
+                        <strong class="tw-review-answer-value">{{ workspace.correct_answer }}</strong>
+                        <span class="tw-choice-result-badge is-target"><i class="ph-bold ph-check"></i> Эталон</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <!-- Предпросмотр сданного кода прямо в блоке ответа -->
                 <div id="tw-code-submitted-box" class="tw-code-submitted-box mt-3{% if not (workspace.code and workspace.code.strip()) %} is-hidden{% endif %}">
                     <div class="tw-code-submitted-head">
@@ -650,6 +903,30 @@
                 {% endif %}
                 <div class="tw-actionbar tw-answer-status"><div class="tw-status"><span id="tw-status-dot" class="tw-status-dot"></span><span id="tw-status-text">Черновик готов</span></div><span class="tw-save-note">Сохранение доступно в нижней панели</span></div>
             </article>
+
+            {% if workspace.is_reviewed and (workspace.solution_html or workspace.correct_answer) %}
+            <details class="tw-panel tw-solution-accordion" open>
+                <summary>
+                    <div class="tw-solution-summary-title">
+                        <span class="tw-solution-summary-icon"><i class="ph-bold ph-lightbulb-filament"></i></span>
+                        <span>Разбор и правильное решение</span>
+                    </div>
+                    <i class="ph-bold ph-caret-down"></i>
+                </summary>
+                <div class="tw-solution-body">
+                    {% if workspace.correct_answer and workspace.answer_spec.type != 'code' %}
+                    <div class="tw-solution-answer-highlight">
+                        <strong>Правильный ответ:</strong> <code>{{ workspace.correct_answer }}</code>
+                    </div>
+                    {% endif %}
+                    {% if workspace.solution_html %}
+                    <div class="tw-solution-html-content">
+                        {{ workspace.solution_html|safe }}
+                    </div>
+                    {% endif %}
+                </div>
+            </details>
+            {% endif %}
         </div>
         <aside class="tw-standard-sidebar">
             <section class="tw-panel tw-about-card" aria-label="Информация о задании">
@@ -658,7 +935,12 @@
                         <span class="tw-panel-icon"><i class="ph-bold ph-info"></i></span>
                         <span>О задании</span>
                     </div>
-                    <span class="tw-score-pill">{{ workspace.max_score }} балл{{ 'а' if workspace.max_score in [2, 3, 4] else 'ов' if workspace.max_score != 1 else '' }}</span>
+                    {% if workspace.is_reviewed and workspace.answer_score is not none %}
+                        {% set s_color = 'tw-score-pill-correct' if (workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0) else ('tw-score-pill-partial' if workspace.answer_score > 0 else 'tw-score-pill-wrong') %}
+                        <span class="tw-score-pill {{ s_color }}">{{ workspace.answer_score }} / {{ workspace.answer_max_score }} б.</span>
+                    {% else %}
+                        <span class="tw-score-pill">{{ workspace.max_score }} балл{{ 'а' if workspace.max_score in [2, 3, 4] else 'ов' if workspace.max_score != 1 else '' }}</span>
+                    {% endif %}
                 </div>
                 <div class="tw-about-body">
                     <div class="tw-about-row">
@@ -687,8 +969,16 @@
                     {% endif %}
                     <div class="tw-about-row">
                         <span class="tw-about-label">Статус</span>
-                        {% if not workspace.can_edit %}
-                        <span class="tw-about-badge tw-about-badge-blue"><i class="ph-bold ph-check"></i> Сдано</span>
+                        {% if workspace.is_reviewed and workspace.answer_score is not none %}
+                            {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}
+                            <span class="tw-about-badge tw-about-badge-emerald"><i class="ph-bold ph-check-circle"></i> Верно (+{{ workspace.answer_score }})</span>
+                            {% elif workspace.answer_score > 0 %}
+                            <span class="tw-about-badge tw-about-badge-amber"><i class="ph-bold ph-circle-half"></i> Частично (+{{ workspace.answer_score }})</span>
+                            {% else %}
+                            <span class="tw-about-badge tw-about-badge-rose"><i class="ph-bold ph-x-circle"></i> Неверно (0)</span>
+                            {% endif %}
+                        {% elif not workspace.can_edit %}
+                        <span class="tw-about-badge tw-about-badge-blue"><i class="ph-bold ph-clock"></i> На проверке</span>
                         {% else %}
                         <span class="tw-about-badge tw-about-badge-indigo"><i class="ph-bold ph-circle-notch"></i> В процессе</span>
                         {% endif %}
