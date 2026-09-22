@@ -1024,6 +1024,8 @@
                 if (!e.target.closest('.tw-custom-select')) {
                     document.querySelectorAll('.tw-custom-select.is-open').forEach(el => {
                         el.classList.remove('is-open');
+                        el.classList.remove('is-open-up');
+                        el.closest('.tw-match-row')?.classList.remove('is-open');
                         const m = el.querySelector('.tw-custom-select-menu');
                         if (m) m.hidden = true;
                         const t = el.querySelector('.tw-custom-select-trigger');
@@ -1050,6 +1052,8 @@
                         document.querySelectorAll('.tw-custom-select.is-open').forEach(el => {
                             if (el !== customSelect) {
                                 el.classList.remove('is-open');
+                                el.classList.remove('is-open-up');
+                                el.closest('.tw-match-row')?.classList.remove('is-open');
                                 const m = el.querySelector('.tw-custom-select-menu');
                                 if (m) m.hidden = true;
                                 const t = el.querySelector('.tw-custom-select-trigger');
@@ -1058,10 +1062,22 @@
                         });
                         if (isOpen) {
                             customSelect.classList.remove('is-open');
+                            customSelect.classList.remove('is-open-up');
+                            customSelect.closest('.tw-match-row')?.classList.remove('is-open');
                             menu.hidden = true;
                             trigger.setAttribute('aria-expanded', 'false');
                         } else {
+                            const rect = trigger.getBoundingClientRect();
+                            const spaceBelow = window.innerHeight - rect.bottom;
+                            const spaceAbove = rect.top;
+                            const menuHeight = 230;
+                            if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+                                customSelect.classList.add('is-open-up');
+                            } else {
+                                customSelect.classList.remove('is-open-up');
+                            }
                             customSelect.classList.add('is-open');
+                            customSelect.closest('.tw-match-row')?.classList.add('is-open');
                             menu.hidden = false;
                             trigger.setAttribute('aria-expanded', 'true');
                         }
@@ -1074,6 +1090,8 @@
                         const val = opt.dataset.value || '';
                         if (menu) menu.hidden = true;
                         customSelect.classList.remove('is-open');
+                        customSelect.classList.remove('is-open-up');
+                        customSelect.closest('.tw-match-row')?.classList.remove('is-open');
                         if (trigger) trigger.setAttribute('aria-expanded', 'false');
 
                         let current = {};
@@ -2177,6 +2195,8 @@
         if (!e.target.closest('.tw-custom-select')) {
             document.querySelectorAll('.tw-custom-select.is-open').forEach((el) => {
                 el.classList.remove('is-open');
+                el.classList.remove('is-open-up');
+                el.closest('.tw-match-row')?.classList.remove('is-open');
                 const m = el.querySelector('.tw-custom-select-menu');
                 if (m) m.hidden = true;
                 const t = el.querySelector('.tw-custom-select-trigger');
@@ -2189,6 +2209,8 @@
         if (e.key === 'Escape') {
             document.querySelectorAll('.tw-custom-select.is-open').forEach((el) => {
                 el.classList.remove('is-open');
+                el.classList.remove('is-open-up');
+                el.closest('.tw-match-row')?.classList.remove('is-open');
                 const m = el.querySelector('.tw-custom-select-menu');
                 if (m) m.hidden = true;
                 const t = el.querySelector('.tw-custom-select-trigger');
