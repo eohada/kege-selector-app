@@ -792,6 +792,8 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         'max_score': task.max_score or 1,
         'difficulty_level': task.difficulty_level,
         'solution': getattr(TaskSolution.query.filter_by(task_id=task.task_id).first(), 'solution_text', None),
+        'course_id': task.course_id,
+        'can_edit': bool((task.bank_origin == 'manual' and task.created_by_id == getattr(current_user, 'id', None)) or getattr(current_user, 'is_admin', lambda: False)()),
     }
     triplet_ids = _get_triplet_task_ids(task)
     if triplet_ids:
@@ -1487,6 +1489,11 @@ def _normalize_manual_content_html(raw: str) -> str:
         return '<div class="task-text"></div>'
     if re.search(r'<[a-zA-Z!?][^>]*>', text):
         return text
+    # Clean any accidental trailing/stray closing tags (e.g. </p>, </div>, &lt;/p&gt;)
+    text = re.sub(r'&lt;/(?:p|div)&gt;', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'</(?:p|div)>\s*$', '', text, flags=re.IGNORECASE).strip()
+    if not text:
+        return '<div class="task-text"></div>'
     return normalize_task_plain_text_to_html(text)
 
 
@@ -1795,11 +1802,18 @@ def task_generator_bank_save(task_id: int):
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
 
-    editable = {'content', 'answer', 'solution', 'starter_code', 'max_score', 'difficulty_level', 'hints', 'answer_spec'}
+    editable = {'content', 'answer', 'solution', 'starter_code', 'max_score', 'difficulty_level', 'hints', 'answer_spec', 'task_number'}
     if not editable.intersection(data):
         return jsonify({'success': False, 'error': 'Передайте хотя бы одно поле задания'}), 400
 
     try:
+        if 'task_number' in data:
+            try:
+                tn = int(data.get('task_number'))
+                if tn > 0:
+                    task.task_number = tn
+            except (TypeError, ValueError):
+                pass
         if 'answer' in data:
             raw_ans = data.get('answer')
             if raw_ans is None:
@@ -1860,9 +1874,13 @@ def task_generator_bank_save(task_id: int):
         status='success',
         metadata={'updated': sorted(editable.intersection(data))},
     )
+    task_payload = _task_to_payload(task)
+    if task_payload:
+        task_payload['can_edit'] = True
     return jsonify({
         'success': True,
         'task_id': task.task_id,
+        'task': task_payload,
         'answer': task.answer,
         'difficulty_level': task.difficulty_level,
     })

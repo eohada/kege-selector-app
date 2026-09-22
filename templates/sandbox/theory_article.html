@@ -188,6 +188,9 @@ window.fetch = (input, init = {}) => {
           result.textContent = `Верно. ${data.explanation || 'Проверка засчитана.'}`;
           checkpointDone += 1;
           if (checkpointSummary) checkpointSummary.textContent = `Пройдено проверок: ${checkpointDone} из ${checkpointButtons.length}`;
+          if (typeof window.triggerAchievement === 'function') {
+            window.triggerAchievement('theory_quiz_pass');
+          }
         } else {
           selected.classList.add('border-rose-400', 'bg-rose-50');
           result.className = 'mt-3 mb-0 text-sm font-bold text-rose-700';
@@ -270,6 +273,12 @@ window.fetch = (input, init = {}) => {
       } catch (_) { /* progress autosave must never block reading */ }
     }, 650);
   }, {passive: true});
+
+  document.getElementById('article-content')?.addEventListener('copy', () => {
+    if (typeof window.triggerAchievement === 'function') {
+      window.triggerAchievement('theory_copy_snippet');
+    }
+  });
 })();
 </script>{% endif %}
 {% endblock %}

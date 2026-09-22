@@ -60,6 +60,47 @@ def inject_active_role():
     }
 
 
+@main_bp.before_app_request
+def track_student_section_visits():
+    try:
+        if not current_user or not getattr(current_user, 'is_authenticated', False):
+            return
+        try:
+            role = getattr(current_user, 'role', None)
+        except Exception:
+            return
+        if role != 'student':
+            return
+        path = request.path
+        sec = None
+        if path.startswith('/workspace/profile') or path.startswith('/profile'):
+            sec = 'profile'
+        elif path.startswith('/assignments') or path.startswith('/task-workspace'):
+            sec = 'tasks'
+        elif path.startswith('/theory'):
+            sec = 'theory'
+        elif path.startswith('/lessons'):
+            sec = 'lessons'
+        elif path in ['/workspace', '/', '/dashboard']:
+            sec = 'dashboard'
+
+        if sec:
+            visited = set(session.get('visited_sections', []))
+            if sec not in visited:
+                visited.add(sec)
+                session['visited_sections'] = list(visited)
+                if len(visited) >= 5:
+                    from core.db_models import Student
+                    from app.utils.achievement_service import process_achievement_event
+                    uid = getattr(current_user, 'id', None)
+                    if uid:
+                        student = Student.query.filter_by(user_id=int(uid)).first()
+                        if student:
+                            process_achievement_event(student, 'secret_all_sections', commit=True)
+    except Exception:
+        pass
+
+
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
@@ -3318,170 +3359,16 @@ def universal_profile_view(user_id=None):
 
         recent_activities = all_activities[:4]
 
-        # Detailed 12 achievements specification exactly matching mockups
-        detailed_achievements = [
-            {
-                'key': 'first_step',
-                'title': 'Первый шаг',
-                'desc': 'Открой любую тему и сделай первый шаг к знаниям!',
-                'rarity': 'common',
-                'rarity_label': 'ОБЫЧНАЯ',
-                'icon': 'ph-fire-simple',
-                'icon_style': 'orange',
-                'unlocked': True,
-                'date': '20.09.2026',
-                'current': 1, 'target': 1, 'progress_pct': 100,
-                'status_type': 'unlocked'
-            },
-            {
-                'key': 'streak_7',
-                'title': 'Неделя в огне',
-                'desc': 'Занимайся 7 дней подряд и не сбивай свой прогресс!',
-                'rarity': 'rare',
-                'rarity_label': 'РЕДКАЯ',
-                'icon': 'ph-calendar-check',
-                'icon_style': 'blue',
-                'unlocked': True,
-                'date': '20.09.2026',
-                'current': 7, 'target': 7, 'progress_pct': 100,
-                'status_type': 'unlocked'
-            },
-            {
-                'key': 'xp_1000',
-                'title': 'Ученик месяца',
-                'desc': 'Набери 1000 XP за месяц.',
-                'rarity': 'epic',
-                'rarity_label': 'ЭПИЧЕСКАЯ',
-                'icon': 'ph-star',
-                'icon_style': 'purple',
-                'unlocked': False,
-                'current': 620, 'target': 1000, 'progress_pct': 62,
-                'progress_display': '620 / 1000',
-                'status_type': 'in_progress'
-            },
-            {
-                'key': 'study_3h',
-                'title': 'Вечный двигатель',
-                'desc': 'Проведи 3 часа в обучении за один день.',
-                'rarity': 'rare',
-                'rarity_label': 'РЕДКАЯ',
-                'icon': 'ph-lightning',
-                'icon_style': 'blue',
-                'unlocked': False,
-                'current': 105, 'target': 180, 'progress_pct': 58,
-                'progress_display': '1 ч 45 мин / 3 ч',
-                'status_type': 'in_progress'
-            },
-            {
-                'key': 'theory_10',
-                'title': 'Знание — сила',
-                'desc': 'Заверши 10 тем по теории.',
-                'rarity': 'common',
-                'rarity_label': 'ОБЫЧНАЯ',
-                'icon': 'ph-book-open',
-                'icon_style': 'emerald',
-                'unlocked': False,
-                'current': max(6, read_theory_count), 'target': 10, 'progress_pct': min(100, max(60, round(read_theory_count * 10))),
-                'progress_display': f"{max(6, read_theory_count)} / 10",
-                'status_type': 'in_progress'
-            },
-            {
-                'key': 'guru_python',
-                'title': 'Гуру Python',
-                'desc': 'Пройди все темы по Python.',
-                'rarity': 'legendary',
-                'rarity_label': 'ЛЕГЕНДАРНАЯ',
-                'icon': 'ph-lock',
-                'icon_style': 'gray',
-                'unlocked': False,
-                'current': 0, 'target': 20, 'progress_pct': 0,
-                'progress_display': '0 / 20',
-                'status_type': 'locked'
-            },
-            {
-                'key': 'early_bird',
-                'title': 'Ранний пташка',
-                'desc': 'Займись обучением до 8:00 утра.',
-                'rarity': 'rare',
-                'rarity_label': 'РЕДКАЯ',
-                'icon': 'ph-lock',
-                'icon_style': 'gray',
-                'unlocked': False,
-                'current': 0, 'target': 1, 'progress_pct': 0,
-                'progress_display': '0 / 1',
-                'status_type': 'locked'
-            },
-            {
-                'key': 'social_student',
-                'title': 'Социальный ученик',
-                'desc': 'Пригласи 3 друзей по реферальной ссылке.',
-                'rarity': 'epic',
-                'rarity_label': 'ЭПИЧЕСКАЯ',
-                'icon': 'ph-lock',
-                'icon_style': 'gray',
-                'unlocked': False,
-                'current': 0, 'target': 3, 'progress_pct': 0,
-                'progress_display': '0 / 3',
-                'status_type': 'locked'
-            },
-            {
-                'key': 'tasks_100',
-                'title': 'Мастер задач',
-                'desc': 'Реши 100 задач в практике.',
-                'rarity': 'legendary',
-                'rarity_label': 'ЛЕГЕНДАРНАЯ',
-                'icon': 'ph-lock',
-                'icon_style': 'gray',
-                'unlocked': False,
-                'current': 12, 'target': 100, 'progress_pct': 12,
-                'progress_display': '12 / 100',
-                'status_type': 'in_progress'
-            },
-            {
-                'key': 'speed_runner',
-                'title': 'Спринтер',
-                'desc': 'Реши 5 задач подряд без единой ошибки.',
-                'rarity': 'rare',
-                'rarity_label': 'РЕДКАЯ',
-                'icon': 'ph-rocket-launch',
-                'icon_style': 'blue',
-                'unlocked': False,
-                'current': 3, 'target': 5, 'progress_pct': 60,
-                'progress_display': '3 / 5',
-                'status_type': 'in_progress'
-            },
-            {
-                'key': 'theory_25',
-                'title': 'Эрудит',
-                'desc': 'Изучи 25 тем теории.',
-                'rarity': 'epic',
-                'rarity_label': 'ЭПИЧЕСКАЯ',
-                'icon': 'ph-brain',
-                'icon_style': 'purple',
-                'unlocked': False,
-                'current': 8, 'target': 25, 'progress_pct': 32,
-                'progress_display': '8 / 25',
-                'status_type': 'in_progress'
-            },
-            {
-                'key': 'champion',
-                'title': 'Абсолютный чемпион',
-                'desc': 'Сдай 3 пробных варианта КЕГЭ на 80+ баллов.',
-                'rarity': 'legendary',
-                'rarity_label': 'ЛЕГЕНДАРНАЯ',
-                'icon': 'ph-trophy',
-                'icon_style': 'amber',
-                'unlocked': False,
-                'current': 1, 'target': 3, 'progress_pct': 33,
-                'progress_display': '1 / 3',
-                'status_type': 'in_progress'
-            }
-        ]
+        # Real dynamic achievements catalog calculated from database
+        from app.utils.achievement_service import build_student_achievement_catalog
+        detailed_achievements = build_student_achievement_catalog(student_obj)
 
         unlocked_ach_cnt = sum(1 for a in detailed_achievements if a['unlocked'])
-        in_progress_ach_cnt = sum(1 for a in detailed_achievements if not a['unlocked'] and a.get('current', 0) > 0)
-        locked_ach_cnt = len(detailed_achievements) - unlocked_ach_cnt - in_progress_ach_cnt
-        ach_pct = round((unlocked_ach_cnt / len(detailed_achievements)) * 100)
+        in_progress_ach_cnt = sum(1 for a in detailed_achievements if a.get('status_type') == 'in_progress')
+        locked_ach_cnt = sum(1 for a in detailed_achievements if a.get('status_type') in ['locked', 'secret_locked'])
+        secret_ach_cnt = sum(1 for a in detailed_achievements if a.get('is_secret', False))
+        secret_unlocked_cnt = sum(1 for a in detailed_achievements if a.get('is_secret', False) and a['unlocked'])
+        ach_pct = round((unlocked_ach_cnt / max(1, len(detailed_achievements))) * 100)
 
         context.update({
             'profile_display_name': getattr(student_obj, 'name', None) or getattr(target_user, "full_name", "") or target_user.username,
@@ -3508,6 +3395,8 @@ def universal_profile_view(user_id=None):
             'unlocked_ach_cnt': unlocked_ach_cnt,
             'in_progress_ach_cnt': in_progress_ach_cnt,
             'locked_ach_cnt': locked_ach_cnt,
+            'secret_ach_cnt': secret_ach_cnt,
+            'secret_unlocked_cnt': secret_unlocked_cnt,
             'ach_pct': ach_pct,
             'student_obj': student_obj,
             'study_time_display': study_time_display,
@@ -4422,6 +4311,13 @@ def api_profile_edit():
         logger.error(f"Error updating profile: {e}")
         return jsonify({'status': 'error', 'success': False, 'message': 'Ошибка сохранения профиля.'}), 500
 
+    if student_obj:
+        from app.utils.achievement_service import process_achievement_event
+        if avatar_file or (data.get('avatar_url') and data.get('avatar_url') != url_for('static', filename='images/default-avatar.svg')):
+            process_achievement_event(student_obj, 'profile_avatar_set')
+        if data.get('about_me') or data.get('custom_status'):
+            process_achievement_event(student_obj, 'profile_bio_set')
+
     return jsonify({
         'status': 'ok',
         'success': True,
@@ -4549,6 +4445,10 @@ def api_study_heartbeat():
     student.study_time_seconds = (student.study_time_seconds or 0) + sec
     db.session.commit()
 
+    if (student.study_time_seconds or 0) >= 3600:
+        from app.utils.achievement_service import process_achievement_event
+        process_achievement_event(student, 'secret_marathon_hour', commit=True)
+
     total_study_sec = (student.study_time_seconds or 0)
     hours = total_study_sec // 3600
     mins = (total_study_sec % 3600) // 60
@@ -4568,6 +4468,44 @@ def api_study_heartbeat():
     })
 
 
+@main_bp.route('/api/achievements/trigger', methods=['POST'])
+@main_bp.route('/sandbox/api/achievements/trigger', methods=['POST'])
+@csrf.exempt
+@login_required
+def api_achievements_trigger():
+    """API-триггер для интерактивных достижений от действий пользователя на платформе."""
+    from core.db_models import Student
+    from app.utils.achievement_service import process_achievement_event
+
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student and getattr(current_user, 'role', '') == 'student':
+        student = Student(user_id=current_user.id, name=current_user.full_name or current_user.username)
+        db.session.add(student)
+        db.session.commit()
+
+    if not student:
+        return jsonify({'status': 'ignored', 'message': 'Only students earn achievements'}), 200
+
+    payload = request.get_json(silent=True) or request.form.to_dict() or {}
+    event_name = payload.get('event') or payload.get('event_name') or payload.get('achievement_key')
+    event_data = payload.get('data') or {}
+    if isinstance(event_data, str):
+        try:
+            event_data = json.loads(event_data)
+        except Exception:
+            event_data = {}
+
+    if not event_name:
+        return jsonify({'status': 'error', 'message': 'Missing event parameter'}), 400
+
+    result = process_achievement_event(student, event_name, event_data=event_data, commit=True)
+    return jsonify({
+        'status': 'ok',
+        'unlocked': result.get('unlocked', False),
+        'achievement': result.get('achievement')
+    })
+
+
 @main_bp.route('/api/profile/onboarding/complete', methods=['POST'])
 @login_required
 def api_profile_onboarding_complete():
@@ -4583,7 +4521,7 @@ def api_profile_onboarding_complete():
 # Compatibility endpoints only forward POST requests to the canonical V2 API.
 @main_bp.route('/sandbox/api/profile/edit', methods=['POST'])
 def legacy_api_profile_edit():
-    return redirect(url_for('main.api_profile_edit'), code=307)
+    return api_profile_edit()
 
 
 @main_bp.route('/sandbox/api/profile/goal/add', methods=['POST'])

@@ -517,6 +517,9 @@
           body: JSON.stringify(body),
         });
         dirty = false;
+        if (strokes && strokes.length > 0 && typeof window.triggerAchievement === 'function') {
+          window.triggerAchievement('canvas_save');
+        }
         loadState.lastAt = 0;
         loadState.lastData = null;
         saveLocal();
@@ -628,6 +631,7 @@
   async function open() {
     if (isOpen || !hasValidContext()) return;
     isOpen = true;
+    if (typeof window.triggerAchievement === 'function') window.triggerAchievement('canvas_open');
     resizeCanvas();
     overlay.classList.add('active');
     toolbar.style.display = '';

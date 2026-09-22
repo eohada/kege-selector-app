@@ -19,7 +19,7 @@ SUBMISSION_BASE_XP = 15
 CORRECT_ANSWER_XP = 5
 
 
-def reward_submission(student, correct_answers: int) -> int:
+def reward_submission(student, correct_answers: int = 0, submission=None) -> int:
     """Reward a persisted learning submission exactly once per transition."""
     if not student:
         return 0
@@ -29,6 +29,23 @@ def reward_submission(student, correct_answers: int) -> int:
         add_xp_to_student(student, awarded_xp, commit=False)
         update_student_streak(student, commit=False)
         grant_achievement(student, "first_step", award_xp=False, commit=False)
+
+        if submission:
+            if getattr(submission, 'score_percent', 0) == 100:
+                grant_achievement(student, "perfect_homework", award_xp=True, commit=False)
+            if getattr(submission, 'assignment', None) and getattr(submission.assignment, 'deadline', None):
+                from datetime import datetime
+                sub_time = getattr(submission, 'submitted_at', None) or datetime.utcnow()
+                if (submission.assignment.deadline - sub_time).total_seconds() > 86400:
+                    grant_achievement(student, "early_bird_submission", award_xp=True, commit=False)
+
+        from datetime import datetime, timezone, timedelta
+        hour_msk = datetime.now(timezone(timedelta(hours=3))).hour
+        if 0 <= hour_msk < 5:
+            grant_achievement(student, "secret_night_owl", award_xp=True, commit=False)
+        elif 5 <= hour_msk < 7:
+            grant_achievement(student, "secret_early_bird", award_xp=True, commit=False)
+
         check_and_grant_dynamic_achievements(student, commit=False)
         db.session.commit()
         return awarded_xp
@@ -46,6 +63,7 @@ def reward_lesson_completion(student) -> int:
     try:
         add_xp_to_student(student, awarded_xp, commit=False)
         update_student_streak(student, commit=False)
+        grant_achievement(student, "lesson_first_done", award_xp=True, commit=False)
         check_and_grant_dynamic_achievements(student, commit=False)
         db.session.commit()
         return awarded_xp
@@ -63,6 +81,7 @@ def reward_theory_reading(student) -> int:
     try:
         add_xp_to_student(student, awarded_xp, commit=False)
         update_student_streak(student, commit=False)
+        grant_achievement(student, "theory_first", award_xp=True, commit=False)
         check_and_grant_dynamic_achievements(student, commit=False)
         db.session.commit()
         return awarded_xp

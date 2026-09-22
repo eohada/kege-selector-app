@@ -82,6 +82,31 @@ def workspace_run_api():
     task_files = _collect_sandbox_files(task_id=ctx.task_id, user_id=actor.id)
     stdout, stderr, turtle_b64 = run_python_sandbox(code, task_files=task_files)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
+
+    # Check for interactive secret achievements
+    achievement_unlocked = None
+    from core.db_models import Student
+    student = Student.query.filter_by(user_id=actor.id).first()
+    if student:
+        from app.utils.achievement_service import process_achievement_event
+        if stderr:
+            if 'RecursionError' in stderr:
+                res = process_achievement_event(student, 'python_error', event_data={'error_type': 'RecursionError'})
+                if res.get('unlocked'): achievement_unlocked = res.get('achievement')
+            elif 'ZeroDivisionError' in stderr:
+                res = process_achievement_event(student, 'python_error', event_data={'error_type': 'ZeroDivisionError'})
+                if res.get('unlocked'): achievement_unlocked = res.get('achievement')
+            
+            if 'SyntaxError' in stderr:
+                session['_had_syntax_error'] = True
+        else:
+            if session.pop('_had_syntax_error', None):
+                res = process_achievement_event(student, 'syntax_recovery')
+                if res.get('unlocked'): achievement_unlocked = res.get('achievement')
+            if 'import this' in code or (stdout and 'The Zen of Python' in stdout):
+                res = process_achievement_event(student, 'zen_python')
+                if res.get('unlocked'): achievement_unlocked = res.get('achievement')
+
     payload = {
         "success": True,
         "stdout": stdout,
@@ -89,6 +114,7 @@ def workspace_run_api():
         "stderr_explained": explain_python_error(stderr),
         "elapsed_ms": elapsed_ms,
         "status": "error" if stderr else "ok",
+        "achievement_unlocked": achievement_unlocked,
     }
     if turtle_b64:
         payload["turtle_image_b64"] = turtle_b64

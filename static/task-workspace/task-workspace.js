@@ -1225,6 +1225,9 @@
                 turtleEmpty.hidden = true;
                 document.querySelector('[data-tab="canvas"]')?.click();
             }
+            if (data.achievement_unlocked && typeof window.showAchievementToast === 'function') {
+                window.showAchievementToast(data.achievement_unlocked);
+            }
             setStatus(data.status === 'error' ? 'Выполнено с ошибкой' : 'Выполнено', data.status === 'error' ? 'error' : 'ok');
         } catch (err) {
             output.textContent = String(err.message || err);
@@ -1794,6 +1797,9 @@
     code.addEventListener('keydown', (event) => {
         if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
             event.preventDefault();
+            if (typeof window.triggerAchievement === 'function') {
+                window.triggerAchievement('ide_run_shortcut');
+            }
             runCode();
             return;
         }
@@ -2059,6 +2065,9 @@
     document.querySelectorAll('[data-action]').forEach((button) => {
         button.addEventListener('click', () => {
             if (button.dataset.action === 'format') {
+                if (typeof window.triggerAchievement === 'function') {
+                    window.triggerAchievement('ide_format_code');
+                }
                 const start = code.selectionStart;
                 const end = code.selectionEnd;
                 const previous = code.value;
@@ -2080,7 +2089,12 @@
     });
 
     if (suggestionToggle) {
-        suggestionToggle.addEventListener('click', toggleSuggestions);
+        suggestionToggle.addEventListener('click', () => {
+            if (typeof window.triggerAchievement === 'function') {
+                window.triggerAchievement('task_hints_view');
+            }
+            toggleSuggestions();
+        });
     }
     if (importsToggle) {
         importsToggle.addEventListener('click', (event) => {
@@ -2091,6 +2105,9 @@
     if (importsMenu) {
         importsMenu.querySelectorAll('[data-import-snippet]').forEach((btn) => {
             btn.addEventListener('click', () => {
+                if (typeof window.triggerAchievement === 'function') {
+                    window.triggerAchievement('ide_quick_import');
+                }
                 insertImportSnippet(btn.dataset.importSnippet || '');
                 toggleImportsMenu(false);
             });
@@ -2308,6 +2325,9 @@
     const copyCodeBtn = document.getElementById('tw-btn-copy-code');
     if (copyCodeBtn) {
         copyCodeBtn.addEventListener('click', async () => {
+            if (typeof window.triggerAchievement === 'function') {
+                window.triggerAchievement('ide_copy_code');
+            }
             const val = code ? code.value : '';
             try {
                 await navigator.clipboard.writeText(val);
@@ -2326,6 +2346,9 @@
     const downloadCodeBtn = document.getElementById('tw-btn-download-code');
     if (downloadCodeBtn) {
         downloadCodeBtn.addEventListener('click', () => {
+            if (typeof window.triggerAchievement === 'function') {
+                window.triggerAchievement('ide_download_py');
+            }
             const val = code ? code.value : '';
             const blob = new Blob([val], { type: 'text/x-python;charset=utf-8' });
             const url = URL.createObjectURL(blob);
@@ -2343,6 +2366,9 @@
     const editorPanel = document.getElementById('tw-editor-panel');
     if (editorExpandBtn && editorPanel) {
         editorExpandBtn.addEventListener('click', () => {
+            if (typeof window.triggerAchievement === 'function') {
+                window.triggerAchievement('ide_fullscreen');
+            }
             editorPanel.classList.toggle('is-editor-fullscreen');
             const isFull = editorPanel.classList.contains('is-editor-fullscreen');
             editorExpandBtn.innerHTML = isFull
@@ -2383,6 +2409,15 @@
             document.querySelectorAll('.tw-tab-pane').forEach((pane) => {
                 pane.classList.toggle('is-active', pane.dataset.pane === targetTab);
             });
+        });
+    });
+
+    // Отслеживание скачивания материалов к заданию
+    document.querySelectorAll('.tw-task-content a, .tw-task-material a, [data-download-material]').forEach((link) => {
+        link.addEventListener('click', () => {
+            if (typeof window.triggerAchievement === 'function') {
+                window.triggerAchievement('material_download');
+            }
         });
     });
 

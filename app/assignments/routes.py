@@ -216,6 +216,15 @@ def _deadline_payload_to_utc(raw_value) -> datetime:
 
 def _assignment_builder_task_payload(task: Tasks, *, max_score: int = 1, requires_manual_grading: bool = False) -> dict[str, Any]:
     """Serialize a task for the V2 assignment builder without exposing legacy HTML routes."""
+    solution_text = None
+    if hasattr(task, 'task_solution') and task.task_solution:
+        solution_text = task.task_solution.solution_text
+    elif hasattr(task, 'solution') and task.solution:
+        solution_text = getattr(task.solution, 'solution_text', str(task.solution))
+
+    is_admin = bool(getattr(current_user, 'is_admin', lambda: False)())
+    can_edit = bool((task.bank_origin == 'manual' and task.created_by_id == getattr(current_user, 'id', None)) or is_admin)
+
     return {
         'task_id': int(task.task_id),
         'task_number': int(task.task_number or 0),
@@ -228,6 +237,14 @@ def _assignment_builder_task_payload(task: Tasks, *, max_score: int = 1, require
             task.source_url,
         ),
         'requires_manual_grading': bool(requires_manual_grading),
+        'course_id': getattr(task, 'course_id', None),
+        'difficulty_level': getattr(task, 'difficulty_level', 1) or 1,
+        'starter_code': getattr(task, 'starter_code', '') or '',
+        'solution': solution_text or '',
+        'hints': getattr(task, 'hints', None) or [],
+        'answer_spec': getattr(task, 'answer_spec', None),
+        'attached_files': getattr(task, 'attached_files', []) or [],
+        'can_edit': can_edit,
     }
 
 
@@ -2910,6 +2927,8 @@ def assignment_create():
     if bank_course_id_for_links is None:
         bank_course_id_for_links = default_probnik_course_id
 
+    initial_tasks = [_assignment_builder_task_payload(t) for t in (tasks or [])]
+
     return render_template(
         'sandbox/create_assignment.html',
         active_page='assignments',
@@ -2921,6 +2940,7 @@ def assignment_create():
         template_id=template_id,
         lesson_id=lesson_id,
         tasks=tasks,
+        initial_tasks=initial_tasks,
         task_ids=task_ids,
         recipient_options=recipient_options,
         default_recipient_ids=default_recipient_ids,
@@ -4354,6 +4374,19 @@ def submission_submit_task(submission_id):
             except Exception as anal_err:
                 logger.warning("Analytics process_submission (submit_task) failed: %s", anal_err)
                 details = None
+
+            if is_correct and submission.student:
+                try:
+                    from app.utils.achievement_service import process_achievement_event
+                    t_num = getattr(assignment_task.task, 'task_number', None) or getattr(assignment_task.task, 'topic', None)
+                    process_achievement_event(submission.student, 'task_correct', event_data={
+                        'task_number': t_num,
+                        'time_spent': time_spent_sec
+                    }, commit=False)
+                    if time_spent_sec is not None and 0 < time_spent_sec < 30:
+                        process_achievement_event(submission.student, 'task_speedrun', commit=False)
+                except Exception as ach_err:
+                    logger.warning("Error processing task achievement: %s", ach_err)
         if normalize_legacy_status(submission.status) == 'ASSIGNED':
             transition_submission_status(submission, 'IN_PROGRESS')
             if not submission.started_at:
@@ -4554,7 +4587,7 @@ def submission_submit(submission_id):
         # once after the status transition has been committed; repeated POSTs
         # are rejected above and cannot duplicate XP or the streak.
         from app.utils.gamification_service import reward_submission
-        awarded_xp = reward_submission(student, correct_answers=0)
+        awarded_xp = reward_submission(student, correct_answers=0, submission=submission)
 
         try:
             from app.telegram.notifications import on_submission_status_changed

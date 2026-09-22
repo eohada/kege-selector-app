@@ -4,6 +4,11 @@ import json
 
 
 def _login_as(client, user_id: int, role: str) -> None:
+    try:
+        from flask import g
+        g.pop('_login_user', None)
+    except Exception:
+        pass
     with client.session_transaction() as session:
         session['_user_id'] = str(user_id)
         session['_fresh'] = True

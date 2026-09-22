@@ -454,52 +454,29 @@
             </button>
           </div>
 
-          <!-- 5 Badges Row -->
+          <!-- 5 Badges Showcase Row -->
+          {% set preview_keys = ['streak_3', 'first_step', 'ide_run_shortcut', 'perfect_homework', 'secret_ghost_friend'] %}
           <div class="grid grid-cols-5 gap-2">
-            <!-- Badge 1: Стрик (Flame) -->
-            <div class="flex flex-col items-center text-center p-1 cursor-pointer hover:scale-105 transition-transform" onclick="openAchievementsModal()">
-              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-md shadow-orange-200 mb-1.5">
-                <i class="ph-fill ph-flame text-xl sm:text-2xl"></i>
-              </div>
-              <span class="text-[10px] sm:text-[11px] font-black text-slate-800 leading-tight">Стрик</span>
-              <span class="text-[9px] text-slate-400 font-semibold">{{ user_streak if user_streak > 0 else 2 }} {{ days_word if user_streak > 0 else 'дня' }}</span>
-            </div>
-
-            <!-- Badge 2: Первый шаг (Lightning) -->
-            <div class="flex flex-col items-center text-center p-1 cursor-pointer hover:scale-105 transition-transform" onclick="openAchievementsModal()">
-              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 mb-1.5">
-                <i class="ph-fill ph-lightning text-xl sm:text-2xl"></i>
-              </div>
-              <span class="text-[10px] sm:text-[11px] font-black text-slate-800 leading-tight">Первый шаг</span>
-              <span class="text-[9px] text-slate-400 font-semibold">Пройден 1 урок</span>
-            </div>
-
-            <!-- Badge 3: Знаток условий (Lock) -->
-            <div class="flex flex-col items-center text-center p-1 opacity-60 cursor-pointer hover:opacity-80 transition-opacity" onclick="openAchievementsModal()">
-              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mb-1.5 shadow-inner">
-                <i class="ph-bold ph-lock-key text-lg sm:text-xl"></i>
-              </div>
-              <span class="text-[10px] sm:text-[11px] font-black text-slate-700 leading-tight">Знаток условий</span>
-              <span class="text-[9px] text-slate-400 font-semibold">???</span>
-            </div>
-
-            <!-- Badge 4: Мастер циклов (Lock) -->
-            <div class="flex flex-col items-center text-center p-1 opacity-60 cursor-pointer hover:opacity-80 transition-opacity" onclick="openAchievementsModal()">
-              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mb-1.5 shadow-inner">
-                <i class="ph-bold ph-lock-key text-lg sm:text-xl"></i>
-              </div>
-              <span class="text-[10px] sm:text-[11px] font-black text-slate-700 leading-tight">Мастер циклов</span>
-              <span class="text-[9px] text-slate-400 font-semibold">???</span>
-            </div>
-
-            <!-- Badge 5: Профи (Lock) -->
-            <div class="flex flex-col items-center text-center p-1 opacity-60 cursor-pointer hover:opacity-80 transition-opacity" onclick="openAchievementsModal()">
-              <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mb-1.5 shadow-inner">
-                <i class="ph-bold ph-lock-key text-lg sm:text-xl"></i>
-              </div>
-              <span class="text-[10px] sm:text-[11px] font-black text-slate-700 leading-tight">Профи</span>
-              <span class="text-[9px] text-slate-400 font-semibold">???</span>
-            </div>
+            {% for pkey in preview_keys %}
+              {% set item = (detailed_achievements | selectattr('key', 'equalto', pkey) | first) if detailed_achievements else None %}
+              {% if item %}
+                <div class="flex flex-col items-center text-center p-1 cursor-pointer hover:scale-105 transition-transform" onclick="openAchievementsModal()">
+                  {% if item.unlocked %}
+                    <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 mb-1.5">
+                      <i class="ph-fill {{ item.icon }} text-xl sm:text-2xl"></i>
+                    </div>
+                    <span class="text-[10px] sm:text-[11px] font-black text-slate-800 leading-tight truncate w-full">{{ item.title }}</span>
+                    <span class="text-[9px] text-emerald-600 font-bold">Открыто</span>
+                  {% else %}
+                    <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mb-1.5 shadow-inner">
+                      <i class="ph-bold {% if item.is_secret %}ph-lock-key text-purple-400{% else %}{{ item.icon }}{% endif %} text-lg sm:text-xl"></i>
+                    </div>
+                    <span class="text-[10px] sm:text-[11px] font-black text-slate-700 leading-tight truncate w-full">{% if item.is_secret %}Тайная{% else %}{{ item.title }}{% endif %}</span>
+                    <span class="text-[9px] text-slate-400 font-semibold">{{ item.progress_display }}</span>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endfor %}
           </div>
         </div>
 
@@ -762,7 +739,7 @@
           <span class="text-indigo-600 text-base lg:text-lg font-bold -rotate-3 whitespace-nowrap" style="font-family: 'Caveat', cursive, sans-serif;">
             Ты действительно стараешься! <span class="text-pink-500">♡</span>
           </span>
-          <img src="/static/images/profile/modal_ghost_trophy.png" alt="Ghost with Trophy" class="h-14 lg:h-16 object-contain drop-shadow-sm">
+          <img src="/static/images/profile/modal_ghost_trophy.png" id="profile-mascot-ghost" alt="Ghost with Trophy" class="h-14 lg:h-16 object-contain drop-shadow-sm cursor-pointer select-none hover:scale-110 active:scale-95 transition-transform" title="Бу-призрак (погладь меня!)">
         </div>
 
         <!-- Close Button -->
@@ -788,6 +765,10 @@
         <button type="button" onclick="filterAchievementsTab('locked')" id="ach-tab-locked" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
           Недоступные ({{ locked_ach_cnt }})
         </button>
+        <button type="button" onclick="filterAchievementsTab('secret')" id="ach-tab-secret" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center gap-1">
+          <i class="ph-bold ph-mask-happy text-purple-500"></i>
+          <span>Секретные ({{ secret_ach_cnt }})</span>
+        </button>
       </div>
 
       <!-- Sorting Pill -->
@@ -803,10 +784,36 @@
     <!-- Modal Content: 2 Columns (Left: 3x3 Grid, Right: 4 Bento Cards) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto pr-1 custom-scrollbar flex-1 pt-1 pb-2">
       
-      <!-- LEFT: 3 Columns Grid for 12 Achievements (Cols 8) -->
+      <!-- LEFT: 3 Columns Grid for Achievements (Cols 8) -->
       <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 auto-rows-max" id="achievements-cards-grid">
         {% for a in detailed_achievements %}
-        <div class="ach-card bg-white border {% if a.unlocked %}border-emerald-200 bg-emerald-50/20{% else %}border-slate-200/90{% endif %} rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-xs hover:shadow-md transition-all relative overflow-hidden" data-status="{{ a.status_type }}" data-rarity="{{ a.rarity }}">
+        {% if a.status_type == 'secret_locked' %}
+        <!-- Secret locked mysterious card -->
+        <div class="ach-card bg-gradient-to-br from-slate-50 via-purple-50/20 to-slate-50 border-2 border-dashed border-purple-200/90 rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-xs hover:shadow-md transition-all relative overflow-hidden" data-status="{{ a.status_type }}" data-secret="true" data-rarity="{{ a.rarity }}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center text-2xl shadow-xs shrink-0">
+              <i class="ph-bold ph-lock-key"></i>
+            </div>
+            <span class="text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+              {{ a.rarity_label }}
+            </span>
+          </div>
+          <div class="space-y-1">
+            <h4 class="text-xs font-black text-purple-950 font-display mb-0 leading-tight">{{ a.title }}</h4>
+            <p class="text-[11px] text-slate-500 font-medium leading-snug mb-0">{{ a.desc }}</p>
+          </div>
+          <div class="pt-1">
+            <div class="flex items-center justify-between text-[10px] font-bold text-purple-500">
+              <span class="flex items-center gap-1 font-mono">
+                <i class="ph-bold ph-lock text-xs"></i> ??? / 1
+              </span>
+              <span class="text-[9px] font-black uppercase tracking-wider text-purple-600/70">Под замком</span>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <!-- Regular or unlocked achievement card -->
+        <div class="ach-card bg-white border {% if a.unlocked %}border-emerald-200 bg-emerald-50/20{% else %}border-slate-200/90{% endif %} rounded-2xl p-3.5 flex flex-col justify-between gap-3 shadow-xs hover:shadow-md transition-all relative overflow-hidden" data-status="{{ a.status_type }}" data-secret="{{ 'true' if a.is_secret else 'false' }}" data-rarity="{{ a.rarity }}">
           
           <!-- Top Row: Icon + Rarity Badge -->
           <div class="flex items-start justify-between gap-2">
@@ -815,6 +822,8 @@
               {% if a.unlocked %}
                 {% if a.icon_style == 'orange' %}bg-amber-100 text-amber-600
                 {% elif a.icon_style == 'blue' %}bg-sky-100 text-sky-600
+                {% elif a.icon_style == 'purple' %}bg-purple-100 text-purple-600
+                {% elif a.icon_style == 'emerald' %}bg-emerald-100 text-emerald-600
                 {% else %}bg-indigo-100 text-indigo-600{% endif %}
               {% elif a.status_type == 'in_progress' %}
                 {% if a.icon_style == 'purple' %}bg-purple-100 text-purple-600
@@ -833,6 +842,8 @@
               {% if a.rarity == 'common' %}bg-emerald-50 text-emerald-600 border border-emerald-200
               {% elif a.rarity == 'rare' %}bg-sky-50 text-sky-600 border border-sky-200
               {% elif a.rarity == 'epic' %}bg-purple-50 text-purple-600 border border-purple-200
+              {% elif a.rarity == 'secret' %}bg-purple-100 text-purple-700 border border-purple-200
+              {% elif a.rarity == 'legendary' %}bg-amber-50 text-amber-600 border border-amber-200
               {% else %}bg-slate-100 text-slate-600 border border-slate-200{% endif %}">
               {{ a.rarity_label }}
             </span>
@@ -877,6 +888,7 @@
           </div>
 
         </div>
+        {% endif %}
         {% endfor %}
       </div>
 
@@ -1369,20 +1381,21 @@ function closeAchievementsModal() {
 
 function filterAchievementsTab(type) {
   const cards = document.querySelectorAll('.ach-card');
-  const tabs = ['all', 'unlocked', 'in_progress', 'locked'];
+  const tabs = ['all', 'unlocked', 'in_progress', 'locked', 'secret'];
   tabs.forEach(t => {
     const btn = document.getElementById('ach-tab-' + t);
     if (btn) {
       if (t === type) {
-        btn.className = 'py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-sm whitespace-nowrap';
+        btn.className = 'py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-sm whitespace-nowrap' + (t === 'secret' ? ' flex items-center gap-1' : '');
       } else {
-        btn.className = 'py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap';
+        btn.className = 'py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap' + (t === 'secret' ? ' flex items-center gap-1' : '');
       }
     }
   });
 
   cards.forEach(c => {
     const status = c.getAttribute('data-status');
+    const isSecret = c.getAttribute('data-secret');
     if (type === 'all') {
       c.classList.remove('hidden');
     } else if (type === 'unlocked') {
@@ -1390,10 +1403,34 @@ function filterAchievementsTab(type) {
     } else if (type === 'in_progress') {
       if (status === 'in_progress') c.classList.remove('hidden'); else c.classList.add('hidden');
     } else if (type === 'locked') {
-      if (status === 'locked') c.classList.remove('hidden'); else c.classList.add('hidden');
+      if (status === 'locked' || status === 'secret_locked') c.classList.remove('hidden'); else c.classList.add('hidden');
+    } else if (type === 'secret') {
+      if (isSecret === 'true') c.classList.remove('hidden'); else c.classList.add('hidden');
     }
   });
 }
+
+// Easter egg: 5 clicks on Boo mascot ghost in modal
+(function initGhostEasterEgg() {
+  let ghostClicks = 0;
+  let ghostTimer = null;
+  document.addEventListener('click', (e) => {
+    const ghost = e.target && e.target.closest ? e.target.closest('#profile-mascot-ghost') : null;
+    if (!ghost) return;
+    ghostClicks++;
+    clearTimeout(ghostTimer);
+    ghost.classList.add('scale-125', 'rotate-12');
+    setTimeout(() => ghost.classList.remove('scale-125', 'rotate-12'), 200);
+    if (ghostClicks >= 5) {
+      ghostClicks = 0;
+      if (typeof window.triggerAchievement === 'function') {
+        window.triggerAchievement('secret_ghost_friend', { clicks: 5 });
+      }
+    } else {
+      ghostTimer = setTimeout(() => { ghostClicks = 0; }, 3000);
+    }
+  });
+})();
 
 function filterAchievements(type) {
   filterAchievementsTab(type);
@@ -1580,6 +1617,9 @@ function copyReferralCode(btnOrCode, code) {
         if (span) span.innerText = origText; else button.innerText = origText;
         button.classList.remove('bg-emerald-600');
       }, 2000);
+    }
+    if (typeof window.triggerAchievement === 'function') {
+      window.triggerAchievement('referral_copied');
     }
     if (window.BooNotify && window.BooNotify.success) {
       window.BooNotify.success('Реферальный код ' + targetCode + ' скопирован!');

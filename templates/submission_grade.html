@@ -1608,7 +1608,7 @@
                                 <!-- Matching Answer Display -->
                                 <section class="teacher-student-response" aria-label="Сопоставление вариантов">
                                     <div class="teacher-student-response-title">
-                                        <i class="ph-bold ph-arrows-left-right text-indigo-600"></i> Сопоставление элементов
+                                        <i class="ph-bold ph-arrows-left-right text-indigo-600"></i> Введённый ответ ученика (сопоставление)
                                     </div>
                                     {% set student_matches = g.parsed_answer_value if g.parsed_answer_value is mapping else {} %}
                                     {% set opt_dict = {} %}
@@ -1628,7 +1628,7 @@
                                             <div class="teacher-matching-right {% if not matched_label %}is-empty{% endif %}">
                                                 {% if matched_label %}
                                                 <i class="ph-bold ph-check-circle text-emerald-600"></i>
-                                                <span>{{ matched_label }}</span>
+                                                <span>{{ matched_label }} {% if matched_val and matched_val != matched_label %}<small class="opacity-60">({{ matched_val }})</small>{% endif %}</span>
                                                 {% else %}
                                                 <i class="ph-bold ph-minus-circle"></i>
                                                 <span>Не сопоставлено</span>
@@ -1637,6 +1637,7 @@
                                         </div>
                                         {% endfor %}
                                     </div>
+                                    <div class="text-[11px] text-slate-400 font-mono mt-1.5">{{ g.answer.value }}</div>
                                 </section>
 
                                 {% elif answer_type == 'long_answer' %}

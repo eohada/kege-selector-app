@@ -587,20 +587,7 @@
     {% endif %}
   ],
   "existingAssignment": {{ (existing_assignment if existing_assignment is defined else None) | tojson | safe }},
-  "initialTasks": [
-    {% if tasks %}
-      {% for t in tasks %}
-      {
-        "task_id": {{ t.task_id | tojson | safe }},
-        "task_number": {{ (t.task_number or 1) | tojson | safe }},
-        "max_score": {{ (t.max_score or 1) | tojson | safe }},
-        "answer": {{ (t.answer or '') | tojson | safe }},
-        "source": {{ (t.source_url or t.kege_source_tag or 'Банк задач') | tojson | safe }},
-        "content_html": {{ (t.content_html or '') | tojson | safe }}
-      }{% if not loop.last %},{% endif %}
-      {% endfor %}
-    {% endif %}
-  ],
+  "initialTasks": {{ (initial_tasks if initial_tasks is defined else []) | tojson | safe }},
   "assignmentId": {{ ((source_meta.assignment_id if (source_meta is defined and source_meta and source_meta.assignment_id) else (assignment_id if assignment_id is defined else None))) | tojson | safe }}
 }
 </script>
@@ -733,7 +720,179 @@ function handleGradingModeChange() {
   scheduleDraftSave();
 }
 
-/* --- TASKS MANAGEMENT (TACTILE 3D ACCORDION) --- */
+/* --- TASKS MANAGEMENT (TACTILE 3D ACCORDION & INDIVIDUAL EDITING) --- */
+function extractEditableContent(html) {
+  if (!html) return '';
+  let raw = String(html).trim();
+  if (!raw) return '';
+
+  // If pure plain text without tags or entities, return directly
+  if (!/<[a-z/!?][\s\S]*>/i.test(raw) && !/&(?:lt|gt|amp|quot|#\d+);/i.test(raw)) {
+    return raw;
+  }
+
+  let doc;
+  try {
+    const parser = new DOMParser();
+    doc = parser.parseFromString(raw, 'text/html');
+  } catch (e) {
+    return raw.replace(/<[^>]*>/g, '').trim();
+  }
+
+  const body = doc.body;
+  if (!body) return raw;
+
+  function nodeToText(node) {
+    if (!node) return '';
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent || '';
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return '';
+    }
+
+    const tag = node.tagName.toLowerCase();
+
+    // KaTeX formula handling
+    if (node.classList && node.classList.contains('katex')) {
+      const texAnnotation = node.querySelector('annotation[encoding*="tex"]');
+      if (texAnnotation && texAnnotation.textContent) {
+        return `$${texAnnotation.textContent.trim()}$`;
+      }
+    }
+
+    // Code blocks: <pre><code>...</code></pre>
+    if (tag === 'pre') {
+      const codeEl = node.querySelector('code');
+      const text = (codeEl ? codeEl.textContent : node.textContent) || '';
+      return `\n\`\`\`python\n${text.replace(/^\n+|\n+$/g, '')}\n\`\`\`\n`;
+    }
+
+    // Inline code: <code>...</code>
+    if (tag === 'code') {
+      if (node.parentElement && node.parentElement.tagName.toLowerCase() === 'pre') {
+        return node.textContent || '';
+      }
+      return `\`${node.textContent || ''}\``;
+    }
+
+    // Bold: <strong>, <b>
+    if (tag === 'strong' || tag === 'b') {
+      const inner = Array.from(node.childNodes).map(nodeToText).join('');
+      return inner.trim() ? `**${inner.trim()}**` : '';
+    }
+
+    // Italic: <em>, <i>
+    if (tag === 'em' || tag === 'i') {
+      const inner = Array.from(node.childNodes).map(nodeToText).join('');
+      return inner.trim() ? `*${inner.trim()}*` : '';
+    }
+
+    // Links: <a>
+    if (tag === 'a') {
+      const href = node.getAttribute('href') || '';
+      const inner = Array.from(node.childNodes).map(nodeToText).join('');
+      return href ? `[${inner || href}](${href})` : inner;
+    }
+
+    // Images: <img>
+    if (tag === 'img') {
+      const src = node.getAttribute('src') || '';
+      const alt = node.getAttribute('alt') || '';
+      return src ? `![${alt}](${src})` : '';
+    }
+
+    // Line breaks: <br>
+    if (tag === 'br') {
+      return '\n';
+    }
+
+    // Paragraphs: <p>
+    if (tag === 'p') {
+      const inner = Array.from(node.childNodes).map(nodeToText).join('');
+      return `${inner}\n\n`;
+    }
+
+    // Headings: <h1> - <h6>
+    if (/^h[1-6]$/.test(tag)) {
+      const level = parseInt(tag[1], 10);
+      const hashes = '#'.repeat(level);
+      const inner = Array.from(node.childNodes).map(nodeToText).join('');
+      return `\n${hashes} ${inner.trim()}\n\n`;
+    }
+
+    // Lists: <ul>, <ol>
+    if (tag === 'ul' || tag === 'ol') {
+      const isOrdered = tag === 'ol';
+      let idx = 1;
+      let out = '\n';
+      node.childNodes.forEach(child => {
+        if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'li') {
+          const itemText = Array.from(child.childNodes).map(nodeToText).join('').trim();
+          out += `${isOrdered ? (idx++) + '.' : '-'} ${itemText}\n`;
+        }
+      });
+      return out + '\n';
+    }
+
+    // Tables: <table>
+    if (tag === 'table') {
+      try {
+        const rows = Array.from(node.querySelectorAll('tr'));
+        if (rows.length > 0) {
+          const grid = rows.map(r => Array.from(r.querySelectorAll('th, td')).map(c => (c.textContent || '').trim().replace(/\|/g, '\\|')));
+          const maxCols = Math.max(...grid.map(r => r.length));
+          if (maxCols > 0) {
+            let mdTable = '\n';
+            const headerRow = grid[0];
+            while (headerRow.length < maxCols) headerRow.push('');
+            mdTable += '| ' + headerRow.join(' | ') + ' |\n';
+            mdTable += '| ' + Array(maxCols).fill('---').join(' | ') + ' |\n';
+            for (let i = 1; i < grid.length; i++) {
+              const row = grid[i];
+              while (row.length < maxCols) row.push('');
+              mdTable += '| ' + row.join(' | ') + ' |\n';
+            }
+            return mdTable + '\n';
+          }
+        }
+      } catch (e) {}
+      return `\n${node.outerHTML}\n`;
+    }
+
+    // Containers: <div>, <section>, <article>
+    const inner = Array.from(node.childNodes).map(nodeToText).join('');
+    if (tag === 'div' || tag === 'section' || tag === 'article') {
+      return `${inner}\n`;
+    }
+
+    if (node.attributes && node.attributes.length > 0 && !['span'].includes(tag)) {
+      return node.outerHTML;
+    }
+
+    return inner;
+  }
+
+  let textResult = nodeToText(body);
+
+  // Normalize newlines: collapse 3+ newlines to 2
+  textResult = textResult
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  // Strip any accidental dangling/corrupted closing tags from previous saves
+  textResult = textResult
+    .replace(/&lt;\/(?:p|div)&gt;/gi, '')
+    .replace(/<\/(?:p|div)>/gi, '')
+    .replace(/&lt;(?:p|div)&gt;/gi, '')
+    .trim();
+
+  return textResult;
+}
+
 function renderAttachedTasks() {
   const container = document.getElementById('assignment-tasks-container');
   const badge = document.getElementById('task-count-badge');
@@ -755,30 +914,36 @@ function renderAttachedTasks() {
   let html = '';
   attachedTasks.forEach((t, idx) => {
     const snippet = (t.content_html || '').replace(/<[^>]*>?/gm, '').substring(0, 70);
+    const isManual = requiresManualGrading(t);
 
     html += `
       <div id="task-card-${idx}" class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 transition-all space-y-3">
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 overflow-hidden flex-1 cursor-pointer" onclick="toggleTaskExpand(${idx})">
-            <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-black shadow-xs">
+            <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-black shadow-xs flex-shrink-0">
               № ${t.task_number}
             </span>
-            <span class="text-xs font-bold text-slate-700 truncate">${snippet}...</span>
+            <span class="text-xs font-bold text-slate-700 truncate">${escapeHtml(snippet)}...</span>
           </div>
 
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <button type="button" onclick="editAttachedTask(${idx})" title="Редактировать задание" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 border-b-[2px] active:border-b-[1px] active:translate-y-[1px] text-xs font-bold flex items-center gap-1 cursor-pointer transition-all">
+              <i class="ph-bold ph-pencil-simple"></i>
+              <span class="hidden sm:inline">Изменить</span>
+            </button>
+
+            <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-0.5">
               <span class="text-[10px] font-black uppercase text-slate-400">Балл:</span>
-              <input type="number" min="1" max="10" value="${t.max_score || 1}" onchange="updateTaskScore(${idx}, this.value)" class="w-12 bg-slate-50 border border-slate-200 rounded-lg px-1.5 py-0.5 text-xs font-bold text-slate-800 text-center outline-none">
+              <input type="number" min="1" max="100" value="${t.max_score || 1}" onchange="updateTaskScore(${idx}, this.value)" class="w-10 bg-transparent text-xs font-black text-slate-800 text-center outline-none">
             </div>
 
-            <button onclick="moveTaskUp(${idx})" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30">
+            <button onclick="moveTaskUp(${idx})" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30" title="Переместить выше">
               ↑
             </button>
-            <button onclick="moveTaskDown(${idx})" ${idx === attachedTasks.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30">
+            <button onclick="moveTaskDown(${idx})" ${idx === attachedTasks.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30" title="Переместить ниже">
               ↓
             </button>
-            <button onclick="removeTaskFromAssignment(${idx})" class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer">
+            <button onclick="removeTaskFromAssignment(${idx})" class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer" title="Удалить из работы">
               &times;
             </button>
           </div>
@@ -788,9 +953,38 @@ function renderAttachedTasks() {
           <div class="space-y-2 text-xs text-slate-700 leading-relaxed math-content bg-slate-50 p-3 rounded-xl border border-slate-200">
             ${t.content_html}
           </div>
-          <div class="p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl text-xs font-bold text-amber-900 flex items-center justify-between">
-            <span>${requiresManualGrading(t) ? 'Проверка: <strong>преподавателем</strong>' : `Ответ: <strong class="font-mono font-black">${t.answer || '—'}</strong>`}</span>
-            <span class="text-[10px] font-bold text-slate-400">Источник: ${t.source || 'Банк задач'}</span>
+
+          <div class="p-2.5 bg-amber-50 border border-amber-200/80 rounded-xl text-xs font-bold text-amber-900 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
+              ${isManual ? `
+                <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[11px] font-black flex items-center gap-1">
+                  <i class="ph-bold ph-user-check"></i> Проверка преподавателем
+                </span>
+              ` : `
+                <span class="text-slate-600 font-bold">Ответ:</span>
+                <input type="text" value="${escapeHtml(t.answer || '')}" placeholder="Эталон ответа" onchange="updateTaskQuickAnswer(${idx}, this.value)" class="bg-white border-2 border-amber-200 focus:border-amber-400 rounded-lg px-2.5 py-1 text-xs font-mono font-black text-amber-900 outline-none w-36 shadow-xs">
+              `}
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-600 font-bold select-none">
+                <input type="checkbox" ${isManual ? 'checked' : ''} onchange="toggleTaskManualCheck(${idx}, this.checked)" class="accent-indigo-600 rounded">
+                <span>Ручная проверка</span>
+              </label>
+              <span class="text-[10px] font-bold text-slate-400">Источник: ${escapeHtml(t.source || 'Банк задач')}</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-1">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-bold ${t.can_edit ? 'text-emerald-600' : 'text-slate-400'}">
+                ${t.can_edit ? '<i class="ph-bold ph-check-circle"></i> Авторское задание' : '<i class="ph-bold ph-buildings"></i> Задание из банка'}
+              </span>
+              ${t.starter_code ? '<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-mono font-bold">Python</span>' : ''}
+            </div>
+            <button type="button" onclick="editAttachedTask(${idx})" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2 rounded-xl border border-indigo-700 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all text-xs flex items-center gap-1.5 cursor-pointer shadow-xs">
+              <i class="ph-bold ph-pencil-simple text-sm"></i>
+              <span>Редактировать в конструкторе</span>
+            </button>
           </div>
         </div>
       </div>
@@ -818,6 +1012,64 @@ function updateTaskScore(idx, newScore) {
     scheduleDraftSave();
     updateAssignmentSummary();
   }
+}
+
+function toggleTaskManualCheck(idx, isChecked) {
+  if (!attachedTasks[idx]) return;
+  attachedTasks[idx].requires_manual_grading = Boolean(isChecked);
+  attachedTasks[idx].inherent_manual_grading = Boolean(isChecked);
+  renderAttachedTasks();
+  scheduleDraftSave();
+}
+
+async function updateTaskQuickAnswer(idx, newAnswer) {
+  const t = attachedTasks[idx];
+  if (!t) return;
+  t.answer = (newAnswer || '').trim();
+  scheduleDraftSave();
+  if (t.can_edit && t.task_id) {
+    try {
+      await fetch(`/task-generator/bank/${t.task_id}/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ answer: t.answer })
+      });
+    } catch(e) {}
+  }
+}
+
+async function editAttachedTask(idx) {
+  const task = attachedTasks[idx];
+  if (!task) return;
+  if (task.task_id && (task.answer_spec === undefined || task.can_edit === undefined)) {
+    try {
+      const res = await fetch(`/task-generator/bank/picker/list?task_id=${task.task_id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          const full = data.items[0];
+          Object.assign(task, {
+            course_id: task.course_id || full.course_id,
+            difficulty_level: task.difficulty_level || full.difficulty_level,
+            starter_code: task.starter_code || full.starter_code,
+            solution: task.solution || full.solution,
+            hints: task.hints || full.hints,
+            answer_spec: task.answer_spec || full.answer_spec,
+            attached_files: task.attached_files || full.attached_files,
+            can_edit: full.can_edit !== undefined ? full.can_edit : task.can_edit,
+            content_html: full.content_html || task.content_html,
+            answer: full.answer !== undefined ? full.answer : task.answer,
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch full task details', e);
+    }
+  }
+  openCustomTaskModal(task, idx);
 }
 
 function moveTaskUp(idx) {
@@ -1259,10 +1511,21 @@ function removeBuilderMatchingPair(idx) {
   renderBuilderMatchingPairs();
 }
 
-function openCustomTaskModal(sourceTask = null) {
+function openCustomTaskModal(sourceTask = null, attachedIndex = null) {
   const courseSelect = document.getElementById('assignment-course');
   if (sourceTask && sourceTask.course_id && courseSelect.querySelector(`option[value="${sourceTask.course_id}"]`)) {
     courseSelect.value = String(sourceTask.course_id);
+  }
+  if (!courseSelect.value && courseSelect.options.length > 0) {
+    for (let i = 0; i < courseSelect.options.length; i++) {
+      if (courseSelect.options[i].value) {
+        courseSelect.value = courseSelect.options[i].value;
+        break;
+      }
+    }
+  }
+  if (!courseSelect.value && pageData.courses && pageData.courses.length > 0) {
+    courseSelect.value = String(pageData.courses[0].id);
   }
   if (!courseSelect.value) {
     show3DToast('Сначала выберите курс для авторского задания');
@@ -1272,12 +1535,16 @@ function openCustomTaskModal(sourceTask = null) {
   const form = document.getElementById('custom-task-form');
   form.reset();
   form.dataset.editId = sourceTask && sourceTask.can_edit ? String(sourceTask.task_id) : '';
+  form.dataset.attachedIndex = (attachedIndex !== null && attachedIndex !== undefined) ? String(attachedIndex) : '';
 
   const modalTitle = document.getElementById('custom-modal-title');
   const submitLabel = document.getElementById('builder-submit-label');
   if (sourceTask && sourceTask.can_edit) {
     modalTitle.textContent = `Редактировать задание #${sourceTask.task_number || 1}`;
     submitLabel.textContent = 'Сохранить изменения';
+  } else if (sourceTask) {
+    modalTitle.textContent = `Редактировать задание #${sourceTask.task_number || 1} (авторская копия)`;
+    submitLabel.textContent = (attachedIndex !== null && attachedIndex !== undefined) ? 'Сохранить и заменить в работе' : 'Сохранить в банк и добавить';
   } else {
     modalTitle.textContent = 'Конструктор заданий';
     submitLabel.textContent = 'Сохранить и добавить';
@@ -1290,15 +1557,20 @@ function openCustomTaskModal(sourceTask = null) {
   document.getElementById('builder-max-score').value = String(sourceTask?.max_score || 1);
   document.getElementById('custom-manual-grading').checked = Boolean(sourceTask?.requires_manual_grading || (sourceTask && !sourceTask.answer));
 
-  document.getElementById('builder-content-input').value = sourceTask ? String(sourceTask.content_html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, '').trim() : '';
+  document.getElementById('builder-content-input').value = sourceTask ? extractEditableContent(sourceTask.content_html) : '';
   switchBuilderConditionTab('editor');
 
   existingBuilderFiles = (sourceTask?.attached_files && Array.isArray(sourceTask.attached_files)) ? [...sourceTask.attached_files] : [];
   renderBuilderFilesList();
 
   let detectedType = 'short_answer';
-  if (sourceTask?.answer_spec && sourceTask.answer_spec.type) {
-    detectedType = sourceTask.answer_spec.type;
+  let spec = sourceTask?.answer_spec;
+  if (typeof spec === 'string') {
+    try { spec = JSON.parse(spec); } catch(e) { spec = null; }
+  }
+
+  if (spec && spec.type) {
+    detectedType = spec.type;
   } else if (sourceTask?.starter_code) {
     detectedType = 'code';
   } else if (sourceTask?.requires_manual_grading || (sourceTask && !sourceTask.answer)) {
@@ -1306,9 +1578,8 @@ function openCustomTaskModal(sourceTask = null) {
   }
 
   if (detectedType === 'single_choice') {
-    const spec = sourceTask.answer_spec;
     if (spec?.options && spec.options.length) {
-      builderChoiceOptions = spec.options.map(o => o.label || o.value);
+      builderChoiceOptions = spec.options.map(o => o.label || o.value || o);
       const corrVal = spec.correct_value || sourceTask.answer;
       builderChoiceCorrect = Math.max(0, spec.options.findIndex(o => String(o.value) === String(corrVal)));
     } else {
@@ -1317,7 +1588,6 @@ function openCustomTaskModal(sourceTask = null) {
     }
     renderBuilderChoiceOptions();
   } else if (detectedType === 'matching') {
-    const spec = sourceTask.answer_spec;
     if (spec?.options && spec.options.length) {
       builderMatchingOptions = spec.options.map((o, i) => ({ value: String(o.value || (i + 1)), label: o.label || o.value }));
     } else {
@@ -1350,7 +1620,18 @@ function openCustomTaskModal(sourceTask = null) {
   document.getElementById('builder-starter-code').value = sourceTask?.starter_code || '';
   selectBuilderAnswerType(detectedType);
 
-  const hintText = Array.isArray(sourceTask?.hints) ? (sourceTask.hints[0]?.text || sourceTask.hints[0] || '') : (sourceTask?.hints || '');
+  let hintText = '';
+  if (sourceTask?.hints) {
+    let rawHints = sourceTask.hints;
+    if (typeof rawHints === 'string') {
+      try { rawHints = JSON.parse(rawHints); } catch(e) {}
+    }
+    if (Array.isArray(rawHints) && rawHints.length) {
+      hintText = rawHints[0]?.text || rawHints[0] || '';
+    } else if (typeof rawHints === 'string') {
+      hintText = rawHints;
+    }
+  }
   document.getElementById('builder-hint-input').value = hintText;
   document.getElementById('builder-solution-input').value = sourceTask?.solution || '';
 
@@ -1371,7 +1652,14 @@ async function createCustomTask(event) {
   }
 
   const editId = form.dataset.editId;
-  const content = document.getElementById('builder-content-input').value.trim();
+  const attachedIdxStr = form.dataset.attachedIndex;
+  const attachedIdx = (attachedIdxStr !== '' && attachedIdxStr !== undefined) ? parseInt(attachedIdxStr) : null;
+
+  let content = document.getElementById('builder-content-input').value.trim();
+  content = content
+    .replace(/&lt;\/(?:p|div)&gt;/gi, '')
+    .replace(/<\/(?:p|div)>\s*$/gi, '')
+    .trim();
   if (!content) {
     show3DToast('Заполните условие задания');
     return;
@@ -1449,6 +1737,7 @@ async function createCustomTask(event) {
           'X-CSRFToken': getCsrfToken()
         },
         body: JSON.stringify({
+          task_number: taskNumber,
           content: content,
           answer: answer,
           answer_spec: answerSpec,
@@ -1461,6 +1750,23 @@ async function createCustomTask(event) {
       });
       payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось сохранить изменения');
+
+      if (attachedIdx !== null && attachedTasks[attachedIdx]) {
+        const existing = attachedTasks[attachedIdx];
+        existing.task_number = taskNumber;
+        existing.content_html = payload.task?.content_html || existing.content_html || content;
+        existing.answer = answer || '';
+        existing.max_score = maxScore;
+        existing.difficulty_level = difficultyLevel;
+        existing.requires_manual_grading = isManualGrading || currentBuilderAnswerType === 'long_answer';
+        existing.inherent_manual_grading = existing.requires_manual_grading;
+        existing.answer_spec = answerSpec;
+        existing.starter_code = starterCode;
+        existing.solution = solution;
+        existing.hints = hints;
+        renderAttachedTasks();
+        scheduleDraftSave();
+      }
     } else {
       const formData = new FormData(form);
       formData.set('course_id', courseId);
@@ -1483,13 +1789,23 @@ async function createCustomTask(event) {
       });
       payload = await response.json();
       if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось создать задание');
-      if (payload.task) addTaskToAssignment(payload.task);
+
+      if (payload.task) {
+        payload.task.can_edit = true;
+        if (attachedIdx !== null && attachedTasks[attachedIdx]) {
+          attachedTasks[attachedIdx] = payload.task;
+          renderAttachedTasks();
+          scheduleDraftSave();
+        } else {
+          addTaskToAssignment(payload.task);
+        }
+      }
     }
 
     closeCustomTaskModal();
     form.reset();
-    show3DToast(editId ? 'Изменения задания сохранены' : 'Задание сохранено в вашем банке и добавлено в работу');
-    loadBankTasks();
+    show3DToast(attachedIdx !== null ? 'Задание обновлено в работе' : (editId ? 'Изменения задания сохранены' : 'Задание сохранено в вашем банке и добавлено в работу'));
+    if (typeof loadBankTasks === 'function') loadBankTasks();
   } catch (error) {
     show3DToast(error.message || 'Ошибка сохранения задания');
   } finally {
