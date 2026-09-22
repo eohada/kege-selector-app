@@ -1336,18 +1336,34 @@ def _requires_manual_from_template(task, has_answer, explicit_override=None):
     return (template.requires_manual_review and not has_answer) or bool(explicit_override)
 
 
+def _is_assignment_task_manual_review(at):
+    if not at:
+        return False
+    if getattr(at, 'requires_manual_grading', False):
+        return True
+    task = getattr(at, 'task', None)
+    if not task:
+        return False
+    if getattr(task, 'verification_type', None) == 'manual':
+        return True
+    if getattr(task, 'task_type', None) in {'code', 'long_answer'}:
+        return True
+    raw_spec = getattr(task, 'answer_spec', None)
+    if isinstance(raw_spec, dict) and raw_spec.get('type') in {'code', 'long_answer'}:
+        return True
+    template = _get_task_template(task)
+    if template and template.requires_manual_review:
+        return True
+    return False
+
+
 def _assignment_has_manual_review_tasks(assignment):
     """
-    Проверяет, есть ли в работе хотя бы одно задание с requires_manual_review=True
-    в CourseTaskTemplate. Используется для установки статуса NEEDS_MANUAL_REVIEW
-    вместо GRADED после авто-проверки.
+    Проверяет, есть ли в работе хотя бы одно задание с ручной проверкой.
+    Используется для установки статуса NEEDS_MANUAL_REVIEW вместо GRADED после авто-проверки.
     """
     for at in (assignment.tasks or []):
-        task = getattr(at, 'task', None)
-        if not task:
-            continue
-        template = _get_task_template(task)
-        if template and template.requires_manual_review:
+        if _is_assignment_task_manual_review(at):
             return True
     return False
 
@@ -3714,6 +3730,7 @@ def submission_view(submission_id):
         tasks_view = build_submission_tasks_view(tasks_data, assignment)
 
         tasks_data_sandbox = []
+        is_teacher = not getattr(current_user, 'is_student', lambda: False)() and not getattr(current_user, 'is_parent', lambda: False)()
         for idx, assignment_task in enumerate(sorted(assignment.tasks, key=lambda t: t.order_index)):
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
             task = assignment_task.task
@@ -3726,9 +3743,48 @@ def submission_view(submission_id):
                 diff_level = getattr(task, 'difficulty_level', None)
             difficulty_str = 'База' if diff_level == 1 else ('Хард' if diff_level == 3 else 'Стандарт')
 
-            user_ans = (getattr(answer, 'student_answer', None) or getattr(answer, 'answer_text', None) or getattr(answer, 'answer_value', None) or '') if answer else ''
-            is_correct = answer.is_correct if answer else None
+            raw_val = (getattr(answer, 'value', None) or getattr(answer, 'student_code', None) or getattr(answer, 'student_answer', None) or '') if answer else ''
+            user_ans = str(raw_val or '').strip()
+            task_max_score = int(getattr(assignment_task, 'max_score', 1) or 1)
+            task_score = getattr(answer, 'score', None) if answer else None
+            is_manual = _is_assignment_task_manual_review(assignment_task)
+            
+            # Проверено ли задание преподавателем?
+            is_reviewed = bool(answer and getattr(answer, 'reviewed_at', None) is not None) or (
+                normalized_submission_status == 'GRADED' and answer is not None and task_score is not None
+            )
+
+            # Вычисление статуса для степпера (квадратиков сверху)
+            if is_reviewed:
+                if task_score is not None and task_score >= task_max_score and task_max_score > 0:
+                    nav_status = 'correct'
+                elif task_score is not None and task_score == 0:
+                    nav_status = 'wrong'
+                elif task_score is not None and task_max_score >= 2 and 0 < task_score < task_max_score:
+                    nav_status = 'partial'
+                elif task_score is not None and task_score > 0:
+                    nav_status = 'correct'
+                else:
+                    nav_status = 'wrong'
+            else:
+                if user_ans:
+                    if is_manual or normalized_submission_status in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED'}:
+                        nav_status = 'pending_review'
+                    else:
+                        nav_status = 'completed'
+                else:
+                    nav_status = 'unanswered'
+
             is_locked = bool(submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW']) or (task_attempts_used >= max_for_task)
+
+            # Ответы и решения не должны показываться ученику до тех пор, пока препод не проверит работу
+            can_see_solution = is_teacher or is_reviewed
+            correct_ans_val = (task.answer if task and can_see_solution else None)
+            sol_html_val = getattr(task, 'solution_html', None) if (task and can_see_solution) else None
+            sol_code_val = getattr(task, 'solution_code', None) if (task and can_see_solution) else None
+            
+            # Статус вердикта для карточки задачи
+            effective_is_correct = answer.is_correct if (answer and is_reviewed) else None
 
             attached_files = []
             if task and getattr(task, 'attachments', None):
@@ -3741,20 +3797,25 @@ def submission_view(submission_id):
             tasks_data_sandbox.append({
                 'order_index': idx + 1,
                 'task_number': getattr(task, 'task_number', idx + 1) if task else (idx + 1),
-                'max_score': getattr(assignment_task, 'max_score', 1) or 1,
+                'max_score': task_max_score,
+                'score': task_score,
+                'is_reviewed': is_reviewed,
+                'is_manual': is_manual,
+                'nav_status': nav_status,
                 'difficulty_str': difficulty_str,
                 'assignment_task_id': assignment_task.assignment_task_id,
                 'content_html': getattr(task, 'content_html', '') or getattr(task, 'description', '') if task else 'Условие задачи...',
                 'user_answer': user_ans,
-                'is_correct': is_correct,
+                'is_correct': effective_is_correct,
                 'attempts_used': task_attempts_used,
                 'max_attempts': max_for_task,
                 'is_locked': is_locked,
-                'correct_answer': (task.answer if task and (is_locked or is_correct == True) else None),
+                'correct_answer': correct_ans_val,
                 'starter_code': getattr(task, 'starter_code', None) if task else None,
-                'solution_html': getattr(task, 'solution_html', None) if task else None,
-                'solution_code': getattr(task, 'solution_code', None) if task else None,
-                'attached_files': attached_files
+                'solution_html': sol_html_val,
+                'solution_code': sol_code_val,
+                'attached_files': attached_files,
+                'teacher_comment': getattr(answer, 'teacher_comment', None) if answer else None,
             })
 
         legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
@@ -4355,38 +4416,45 @@ def submission_submit_task(submission_id):
                 client_time_spent_sec,
                 server_time_spent_sec,
             )
-        is_correct, score = auto_grade_answer(answer, assignment_task)
-        if is_correct is not None:
-            answer.is_correct = is_correct
-            answer.score = score if score is not None else (assignment_task.max_score if is_correct else 0)
-            try:
-                from app.analytics import AnalyticsEngine
-                details = AnalyticsEngine.process_submission_details(
-                    user_id=current_user.id,
-                    task_id=assignment_task.task.task_id,
-                    is_correct=is_correct,
-                    time_spent_sec=time_spent_sec,
-                    submission_id=submission_id,
-                    answer_id=answer.answer_id,
-                    attempt_no=max(1, int(answer.attempts_used or 1)),
-                    mode='homework_manual',
-                )
-            except Exception as anal_err:
-                logger.warning("Analytics process_submission (submit_task) failed: %s", anal_err)
-                details = None
-
-            if is_correct and submission.student:
+        is_manual = _is_assignment_task_manual_review(assignment_task)
+        details = None
+        if not is_manual:
+            is_correct, score = auto_grade_answer(answer, assignment_task)
+            if is_correct is not None:
+                answer.is_correct = is_correct
+                answer.score = score if score is not None else (assignment_task.max_score if is_correct else 0)
                 try:
-                    from app.utils.achievement_service import process_achievement_event
-                    t_num = getattr(assignment_task.task, 'task_number', None) or getattr(assignment_task.task, 'topic', None)
-                    process_achievement_event(submission.student, 'task_correct', event_data={
-                        'task_number': t_num,
-                        'time_spent': time_spent_sec
-                    }, commit=False)
-                    if time_spent_sec is not None and 0 < time_spent_sec < 30:
-                        process_achievement_event(submission.student, 'task_speedrun', commit=False)
-                except Exception as ach_err:
-                    logger.warning("Error processing task achievement: %s", ach_err)
+                    from app.analytics import AnalyticsEngine
+                    details = AnalyticsEngine.process_submission_details(
+                        user_id=current_user.id,
+                        task_id=assignment_task.task.task_id,
+                        is_correct=is_correct,
+                        time_spent_sec=time_spent_sec,
+                        submission_id=submission_id,
+                        answer_id=answer.answer_id,
+                        attempt_no=max(1, int(answer.attempts_used or 1)),
+                        mode='homework_manual',
+                    )
+                except Exception as anal_err:
+                    logger.warning("Analytics process_submission (submit_task) failed: %s", anal_err)
+                    details = None
+
+                if is_correct and submission.student:
+                    try:
+                        from app.utils.achievement_service import process_achievement_event
+                        t_num = getattr(assignment_task.task, 'task_number', None) or getattr(assignment_task.task, 'topic', None)
+                        process_achievement_event(submission.student, 'task_correct', event_data={
+                            'task_number': t_num,
+                            'time_spent': time_spent_sec
+                        }, commit=False)
+                        if time_spent_sec is not None and 0 < time_spent_sec < 30:
+                            process_achievement_event(submission.student, 'task_speedrun', commit=False)
+                    except Exception as ach_err:
+                        logger.warning("Error processing task achievement: %s", ach_err)
+        else:
+            answer.is_correct = None
+            answer.score = None
+
         if normalize_legacy_status(submission.status) == 'ASSIGNED':
             transition_submission_status(submission, 'IN_PROGRESS')
             if not submission.started_at:
@@ -4396,13 +4464,15 @@ def submission_submit_task(submission_id):
         payload = {
             'success': True,
             'submitted_separately_at': answer.submitted_separately_at.isoformat(),
-            'is_correct': answer.is_correct,
-            'score': answer.score,
+            'is_manual': is_manual,
+            'is_correct': answer.is_correct if not is_manual else None,
+            'score': answer.score if not is_manual else None,
             'max_score': assignment_task.max_score,
             'time_spent_sec_used': time_spent_sec,
             'attempts_used': answer.attempts_used,
             'max_attempts': max_for_task,
             'rating_meta': details,
+            'status': 'pending_review' if is_manual else ('correct' if answer.is_correct else 'wrong'),
         }
         if triplet_nav:
             payload['triplet_nav'] = triplet_nav

@@ -109,8 +109,9 @@
 
     function updateWorkspaceProgress() {
         const total = Math.max(1, Number(ws.task_count || 1));
+        const currentCompleted = isCurrentTaskCompleted();
         const base = Math.max(0, Number(ws.completed_task_count || 0) - (initialTaskCompleted ? 1 : 0));
-        const completed = Math.min(total, base + (isCurrentTaskCompleted() ? 1 : 0));
+        const completed = Math.min(total, base + (currentCompleted ? 1 : 0));
         const percent = Math.round((completed / total) * 100);
         const orb = document.getElementById('tw-progress-orb');
         const status = document.getElementById('tw-progress-status');
@@ -121,6 +122,37 @@
         }
         if (status) status.textContent = `Выполнено ${completed} из ${total}`;
         if (percentNode) percentNode.textContent = `${percent}%`;
+
+        // Динамическое обновление иконки и цвета в степпере для текущей задачи
+        if (!ws.is_reviewed) {
+            const currentNavBtn = (ws.assignment_task_id ? document.querySelector(`.tw-stepper-btn[data-nav-task-id="${ws.assignment_task_id}"]`) : null) || document.querySelector('.tw-stepper-btn.is-active');
+            if (currentNavBtn) {
+                const isManual = Boolean(ws.is_manual || ws.submission_meta?.is_pending_review || ws.answer_spec?.type === 'code' || ws.answer_spec?.type === 'long_answer');
+                let iconEl = currentNavBtn.querySelector('i');
+                if (currentCompleted) {
+                    if (isManual) {
+                        currentNavBtn.classList.remove('status-completed', 'status-unanswered');
+                        currentNavBtn.classList.add('status-pending_review');
+                        if (!iconEl) {
+                            currentNavBtn.insertAdjacentHTML('afterbegin', '<i class="ph-bold ph-clock"></i>');
+                        } else {
+                            iconEl.className = 'ph-bold ph-clock';
+                        }
+                    } else {
+                        currentNavBtn.classList.remove('status-pending_review', 'status-unanswered');
+                        currentNavBtn.classList.add('status-completed');
+                        if (!iconEl) {
+                            currentNavBtn.insertAdjacentHTML('afterbegin', '<i class="ph-bold ph-check"></i>');
+                        } else {
+                            iconEl.className = 'ph-bold ph-check';
+                        }
+                    }
+                } else if (!initialTaskCompleted) {
+                    currentNavBtn.classList.remove('status-pending_review', 'status-completed');
+                    if (iconEl) iconEl.remove();
+                }
+            }
+        }
     }
 
     function supportedWorkspaceModes() {

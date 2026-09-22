@@ -264,10 +264,17 @@ class WorkspaceContext:
     tasks_nav: list[dict[str, Any]] | None = None
     submission_meta: dict[str, Any] | None = None
     task_meta: dict[str, Any] | None = None
+    is_reviewed: bool = False
+    is_manual: bool = False
+    answer_score: int | None = None
+    answer_max_score: int = 1
+    nav_status: str = "unanswered"
 
     def as_payload(self) -> dict[str, Any]:
         answer_spec = _normalize_answer_spec(self.task)
         attachments = normalize_task_attachments(self.task.attached_files)
+        # Эталонный ответ доступен преподавателю ВСЕГДА, а ученику — ТОЛЬКО после проверки преподавателем!
+        safe_answer_hint = (self.task.answer or "") if (self.can_review or self.is_reviewed) else ""
         return {
             "context_type": self.context_type,
             "context_id": self.context_id,
@@ -302,6 +309,11 @@ class WorkspaceContext:
             "mmr_policy_label": MMR_POLICY_LABELS.get(self.mmr_policy, MMR_POLICY_LABELS["manual_confirm"]),
             "can_edit": self.can_edit,
             "can_review": self.can_review,
+            "is_reviewed": self.is_reviewed,
+            "is_manual": self.is_manual,
+            "answer_score": self.answer_score,
+            "answer_max_score": self.answer_max_score,
+            "nav_status": self.nav_status,
             "timer_seconds_left": self.timer_seconds_left,
             "mmr_value": self.mmr_value,
             "task_position": self.task_position,
@@ -312,7 +324,7 @@ class WorkspaceContext:
             "tasks_nav": self.tasks_nav or [],
             "submission_meta": self.submission_meta or {},
             "task_meta": self.task_meta or {},
-            "answer_hint": self.task.answer or "",
+            "answer_hint": safe_answer_hint,
             "playback": load_workspace_trace_payload(self),
             "versions": load_workspace_versions_payload(self),
         }
@@ -368,6 +380,32 @@ def _resolve_lesson_task_context(user, lesson_task_id: int) -> WorkspaceContext:
         can_edit=can_edit,
         can_review=can_review,
     )
+
+
+def _is_task_manual_review(t_at: AssignmentTask | None, t_t: Tasks | None) -> bool:
+    if t_at and getattr(t_at, "requires_manual_grading", False):
+        return True
+    if not t_t:
+        return False
+    if getattr(t_t, "verification_type", None) == "manual":
+        return True
+    if getattr(t_t, "task_type", None) in {"code", "long_answer"}:
+        return True
+    raw_spec = getattr(t_t, "answer_spec", None)
+    if isinstance(raw_spec, dict) and raw_spec.get("type") in {"code", "long_answer"}:
+        return True
+    if t_t.course_id is not None and t_t.task_number is not None:
+        try:
+            from core.db_models import CourseTaskTemplate
+            tpl = CourseTaskTemplate.query.filter_by(
+                course_id=t_t.course_id,
+                task_number=t_t.task_number,
+            ).first()
+            if tpl and getattr(tpl, "requires_manual_review", False):
+                return True
+        except Exception:
+            pass
+    return False
 
 
 def _resolve_submission_task_context(user, submission_id: int, assignment_task_id: int) -> WorkspaceContext:
@@ -444,20 +482,67 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
 
     from flask import url_for
     tasks_nav = []
+    current_nav_status = "unanswered"
+    current_is_reviewed = False
+    current_is_manual = False
+    current_answer_score = None
+    current_max_score = int(getattr(assignment_task, "max_score", 1) or 1)
+
     for idx, t_item in enumerate(ordered_tasks):
         t_ans = next((a for a in (submission.answers or []) if a.assignment_task_id == t_item.assignment_task_id), None)
-        is_completed = bool(
+        t_task = getattr(t_item, "task", None)
+        is_manual = _is_task_manual_review(t_item, t_task)
+        has_answer = bool(
             t_ans and (
                 str(getattr(t_ans, 'value', '') or '').strip()
                 or str(getattr(t_ans, 'student_code', '') or '').strip()
             )
         )
+        t_score = getattr(t_ans, "score", None) if t_ans else None
+        t_max_score = int(getattr(t_item, "max_score", 1) or 1)
+        is_reviewed = bool(t_ans and getattr(t_ans, "reviewed_at", None) is not None) or (
+            normalized_status == "GRADED" and t_ans is not None and t_score is not None
+        )
+
+        if is_reviewed:
+            if t_score is not None and t_score >= t_max_score and t_max_score > 0:
+                item_nav_status = "correct"
+            elif t_score is not None and t_score == 0:
+                item_nav_status = "wrong"
+            elif t_score is not None and t_max_score >= 2 and 0 < t_score < t_max_score:
+                item_nav_status = "partial"
+            elif t_score is not None and t_score > 0:
+                item_nav_status = "correct"
+            else:
+                item_nav_status = "wrong"
+        else:
+            if has_answer:
+                if is_manual or normalized_status in {"SUBMITTED", "NEEDS_MANUAL_REVIEW", "GRADED"}:
+                    item_nav_status = "pending_review"
+                else:
+                    item_nav_status = "completed"
+            else:
+                item_nav_status = "unanswered"
+
+        is_current = (t_item.assignment_task_id == assignment_task.assignment_task_id)
+        if is_current:
+            current_nav_status = item_nav_status
+            current_is_reviewed = is_reviewed
+            current_is_manual = is_manual
+            current_answer_score = t_score
+            current_max_score = t_max_score
+
         tasks_nav.append({
             "assignment_task_id": t_item.assignment_task_id,
             "task_id": t_item.task_id,
             "position": idx + 1,
-            "is_current": (t_item.assignment_task_id == assignment_task.assignment_task_id),
-            "is_completed": is_completed,
+            "is_current": is_current,
+            "is_completed": has_answer,
+            "is_reviewed": is_reviewed,
+            "is_manual": is_manual,
+            "score": t_score,
+            "max_score": t_max_score,
+            "nav_status": item_nav_status,
             "url": url_for(
                 'task_workspace.workspace_page',
                 context_type='submission_task',
@@ -475,9 +560,12 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         "effective_max_attempts": submission.assignment.get_effective_max_attempts() if hasattr(submission.assignment, 'get_effective_max_attempts') else 1,
         "student_name": student.name if student else (student.user.username if student and student.user else "Ученик"),
         "student_avatar": student.user.avatar_url if student and student.user and student.user.avatar_url else None,
-        "status_label": "В процессе" if can_edit else "Сдано / Просмотр",
+        "status_label": "В процессе" if can_edit else ("Проверено" if normalized_status == "GRADED" else "На проверке"),
         "is_late": bool(submission.is_late),
         "is_overtime": bool(submission.is_overtime),
+        "is_reviewed": current_is_reviewed,
+        "is_graded": (normalized_status == "GRADED"),
+        "is_pending_review": (normalized_status in {"SUBMITTED", "NEEDS_MANUAL_REVIEW"} or (current_is_manual and not current_is_reviewed)),
     }
 
     topics_list = []
@@ -488,11 +576,14 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
             topics_list = []
 
     task_meta = {
-        "verification_type": "Ручная проверка" if getattr(assignment_task, 'requires_manual_grading', False) else "Автопроверка",
-        "max_score": assignment_task.max_score or 1,
+        "verification_type": "Ручная проверка" if current_is_manual else "Автопроверка",
+        "max_score": current_max_score,
         "topics": topics_list,
         "solution_language": "Python",
         "difficulty_label": assignment_task.task.difficulty_label if assignment_task.task else "medium",
+        "is_reviewed": current_is_reviewed,
+        "is_manual": current_is_manual,
+        "score": current_answer_score,
     }
 
     return WorkspaceContext(
@@ -515,6 +606,11 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         mmr_policy="always",
         can_edit=can_edit,
         can_review=can_review,
+        is_reviewed=current_is_reviewed,
+        is_manual=current_is_manual,
+        answer_score=current_answer_score,
+        answer_max_score=current_max_score,
+        nav_status=current_nav_status,
         timer_seconds_left=timer_seconds_left,
         task_position=current_index + 1,
         task_count=len(ordered_tasks),

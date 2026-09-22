@@ -476,15 +476,89 @@
     color: #0f172a !important;
 }
 
-.tw-stepper-btn.is-completed {
+.tw-stepper-btn.is-completed,
+.tw-stepper-btn.status-completed {
     background: #f0fdf4 !important;
     border-color: #bbf7d0 !important;
     border-bottom: 3px solid #86efac !important;
     color: #16a34a !important;
 }
 
-.tw-stepper-btn.is-active,
-.tw-stepper-btn.is-active:hover {
+/* 1. На ручной проверке (желтый цвет) */
+.tw-stepper-btn.status-pending_review {
+    background: #fefce8 !important;
+    border-color: #fef08a !important;
+    border-bottom: 3px solid #facc15 !important;
+    color: #a16207 !important;
+}
+
+.tw-stepper-btn.status-pending_review:hover {
+    background: #fef9c3 !important;
+    border-color: #fde047 !important;
+    color: #854d0e !important;
+}
+
+.tw-stepper-btn.status-pending_review i {
+    color: #ca8a04 !important;
+}
+
+/* 2. Полный балл после проверки (зеленый цвет) */
+.tw-stepper-btn.status-correct {
+    background: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    border-bottom: 3px solid #86efac !important;
+    color: #16a34a !important;
+}
+
+.tw-stepper-btn.status-correct:hover {
+    background: #dcfce7 !important;
+    border-color: #4ade80 !important;
+    color: #15803d !important;
+}
+
+.tw-stepper-btn.status-correct i {
+    color: #16a34a !important;
+}
+
+/* 3. 0 баллов после проверки (красный цвет) */
+.tw-stepper-btn.status-wrong {
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+    border-bottom: 3px solid #f87171 !important;
+    color: #dc2626 !important;
+}
+
+.tw-stepper-btn.status-wrong:hover {
+    background: #fee2e2 !important;
+    border-color: #ef4444 !important;
+    color: #b91c1c !important;
+}
+
+.tw-stepper-btn.status-wrong i {
+    color: #dc2626 !important;
+}
+
+/* 4. Частичный балл при max >= 2 (желтый/янтарный цвет) */
+.tw-stepper-btn.status-partial {
+    background: #fffbeb !important;
+    border-color: #fde68a !important;
+    border-bottom: 3px solid #f59e0b !important;
+    color: #b45309 !important;
+}
+
+.tw-stepper-btn.status-partial:hover {
+    background: #fef3c7 !important;
+    border-color: #fbbf24 !important;
+    color: #92400e !important;
+}
+
+.tw-stepper-btn.status-partial i {
+    color: #d97706 !important;
+}
+
+/* Активное задание */
+.tw-stepper-btn.is-active:not(.status-correct):not(.status-wrong):not(.status-partial):not(.status-pending_review),
+.tw-stepper-btn.is-active:not(.status-correct):not(.status-wrong):not(.status-partial):not(.status-pending_review):hover {
     background: #4f46e5 !important;
     border-color: #4338ca !important;
     border-bottom: 3px solid #312e81 !important;
@@ -492,9 +566,19 @@
     box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25) !important;
 }
 
-.tw-stepper-btn.is-active i,
-.tw-stepper-btn.is-active span {
+.tw-stepper-btn.is-active:not(.status-correct):not(.status-wrong):not(.status-partial):not(.status-pending_review) i,
+.tw-stepper-btn.is-active:not(.status-correct):not(.status-wrong):not(.status-partial):not(.status-pending_review) span {
     color: #ffffff !important;
+}
+
+/* Активное задание с цветным статусом: сохраняет цвет статуса и получает четкую акцентную рамку активности */
+.tw-stepper-btn.is-active.status-correct,
+.tw-stepper-btn.is-active.status-wrong,
+.tw-stepper-btn.is-active.status-partial,
+.tw-stepper-btn.is-active.status-pending_review {
+    box-shadow: 0 0 0 2.5px #4f46e5, 0 3px 8px rgba(79, 70, 229, 0.2) !important;
+    outline: 2px solid #4f46e5 !important;
+    outline-offset: 1px !important;
 }
 
 .tw-stepper-btn i {

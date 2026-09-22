@@ -103,8 +103,21 @@
             <div class="tw-stepper-strip">
                 {% if workspace.tasks_nav %}
                     {% for nav_item in workspace.tasks_nav %}
-                    <a href="{{ nav_item.url }}" class="tw-stepper-btn{% if nav_item.is_current %} is-active{% endif %}{% if nav_item.is_completed %} is-completed{% endif %}" title="Задание {{ nav_item.position }}">
-                        {% if nav_item.is_completed %}<i class="ph-bold ph-check"></i>{% endif %}
+                    <a href="{{ nav_item.url }}" 
+                       data-nav-task-id="{{ nav_item.assignment_task_id }}"
+                       class="tw-stepper-btn{% if nav_item.is_current %} is-active{% endif %}{% if nav_item.nav_status %} status-{{ nav_item.nav_status }}{% elif nav_item.is_completed %} is-completed{% endif %}" 
+                       title="Задание {{ nav_item.position }}{% if nav_item.nav_status == 'pending_review' %} (На ручной проверке){% elif nav_item.nav_status == 'correct' %} ({{ nav_item.score }}/{{ nav_item.max_score }} б. — Полный балл){% elif nav_item.nav_status == 'wrong' %} (0/{{ nav_item.max_score }} б. — 0 баллов){% elif nav_item.nav_status == 'partial' %} ({{ nav_item.score }}/{{ nav_item.max_score }} б. — Частичный балл){% endif %}">
+                        {% if nav_item.nav_status == 'correct' %}
+                            <i class="ph-bold ph-check"></i>
+                        {% elif nav_item.nav_status == 'wrong' %}
+                            <i class="ph-bold ph-x"></i>
+                        {% elif nav_item.nav_status == 'partial' %}
+                            <i class="ph-bold ph-circle-half"></i>
+                        {% elif nav_item.nav_status == 'pending_review' %}
+                            <i class="ph-bold ph-clock"></i>
+                        {% elif nav_item.is_completed %}
+                            <i class="ph-bold ph-check"></i>
+                        {% endif %}
                         <span class="tw-stepper-num">{{ nav_item.position }}</span>
                     </a>
                     {% endfor %}
