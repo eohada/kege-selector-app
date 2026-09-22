@@ -102,6 +102,11 @@
             background: rgba(16, 185, 129, 0.1);
             color: rgb(16, 185, 129);
         }
+        .task-nav-grade .task-nav-btn.partial {
+            border-color: rgba(245, 158, 11, 0.5);
+            background: rgba(245, 158, 11, 0.1);
+            color: rgb(217, 119, 6);
+        }
         .task-nav-grade .task-nav-btn.incorrect {
             border-color: rgba(239, 68, 68, 0.5);
             background: rgba(239, 68, 68, 0.1);
@@ -137,6 +142,10 @@
         .task-card-grade.task-correct {
             border-color: rgba(16, 185, 129, 0.5);
             box-shadow: 0 0 12px rgba(16, 185, 129, 0.12), inset 0 0 0 1px rgba(16, 185, 129, 0.08);
+        }
+        .task-card-grade.task-partial {
+            border-color: rgba(245, 158, 11, 0.5);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.12), inset 0 0 0 1px rgba(245, 158, 11, 0.08);
         }
         .task-card-grade.task-incorrect {
             border-color: rgba(239, 68, 68, 0.5);
@@ -970,6 +979,12 @@
             color: #16a34a !important;
             box-shadow: 0 2px 0 #86efac !important;
         }
+        .grade-review-v6 .autocheck-status-pill.is-partial {
+            background: #fefce8 !important;
+            border-color: #fde047 !important;
+            color: #ca8a04 !important;
+            box-shadow: 0 2px 0 #facc15 !important;
+        }
         .grade-review-v6 .autocheck-status-pill.is-incorrect {
             background: #fef2f2 !important;
             border-color: #fecaca !important;
@@ -988,6 +1003,10 @@
         .grade-review-v6 .autocheck-status-pill.is-correct .autocheck-badge {
             background: #dcfce7;
             color: #15803d;
+        }
+        .grade-review-v6 .autocheck-status-pill.is-partial .autocheck-badge {
+            background: #fef08a;
+            color: #a16207;
         }
         .grade-review-v6 .autocheck-status-pill.is-incorrect .autocheck-badge {
             background: #fee2e2;
@@ -1135,7 +1154,14 @@
         .grade-review-v6 .task-nav-grade .task-nav-btn:hover { border-color:#cbd5e1!important; background:#f8fafc!important; color:#0f172a!important; }
         .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed,
         .grade-review-v6 .task-nav-grade .task-nav-btn.correct { background:#f0fdf4!important; border-color:#bbf7d0!important; color:#16a34a!important; }
-        .grade-review-v6 .task-nav-grade .task-nav-btn.incorrect { background:#fef2f2!important; border-color:#fecaca!important; color:#dc2626!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.partial,
+        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed.partial { background:#fefce8!important; border-color:#fde047!important; color:#b45309!important; }
+        .grade-review-v6 .task-nav-grade .task-nav-btn.incorrect,
+        .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed.incorrect { background:#fef2f2!important; border-color:#fecaca!important; color:#dc2626!important; }
+        .dark .grade-review-v6 .task-nav-grade .task-nav-btn.partial,
+        .dark .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed.partial { background:rgba(245, 158, 11, 0.15)!important; border-color:rgba(245, 158, 11, 0.4)!important; color:#fbbf24!important; }
+        .dark .grade-review-v6 .task-nav-grade .task-nav-btn.incorrect,
+        .dark .grade-review-v6 .task-nav-grade .task-nav-btn.reviewed.incorrect { background:rgba(239, 68, 68, 0.15)!important; border-color:rgba(239, 68, 68, 0.4)!important; color:#f87171!important; }
         .grade-review-v6 .task-nav-grade .task-nav-btn.active,
         .grade-review-v6 .task-nav-grade .task-nav-btn.active:hover { background:#6366f1!important; border-color:#6366f1!important; color:#fff!important; box-shadow:0 3px 8px rgba(99,102,241,0.25)!important; }
         .grade-review-v6 .task-nav-grade .task-nav-btn.active i,
@@ -1442,7 +1468,7 @@
             </div>
 
             <div class="review-header-progress" aria-live="polite">
-                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1"><span>Проверено {{ reviewed_count }} из {{ review_total }}</span><span id="review-progress-percent" class="text-indigo-600">{{ review_percent }}%</span></div>
+                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1"><span id="review-header-progress-text">Проверено {{ reviewed_count }} из {{ review_total }}</span><span id="review-progress-percent" class="text-indigo-600">{{ review_percent }}%</span></div>
                 <div class="review-progress-track"><span id="review-progress-fill" style="width: {{ review_percent }}%"></span></div>
                 <div class="flex gap-2 justify-end mt-2 items-center">
                     <button type="button" id="review-overview-btn" class="neo-button ghost" title="Сводный обзор всех заданий">Обзор</button>
@@ -1477,8 +1503,36 @@
             <div class="grade-task-strip task-strip hide-scroll py-1.5 -my-1.5">
             {% for task_item in tasks_view %}
             {% set ti_answer = task_item.answer %}
-            <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if task_item.assignment_task.assignment_task_id == initial_task_id %}active{% endif %}{% if ti_answer and ti_answer.reviewed_at %} reviewed{% elif ti_answer and ti_answer.is_correct == true %} correct{% elif ti_answer and ti_answer.is_correct == false %} incorrect{% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %} pending-review{% endif %} {% if task_item.is_triplet_19_21 %}min-w-14 h-9 px-1.5 text-tiny leading-tight{% else %}w-11 h-9{% endif %} shrink-0 rounded-xl flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
-                {% if ti_answer and ti_answer.reviewed_at %}<i class="ph-bold ph-check" aria-hidden="true"></i>{% endif %}<span class="task-num">{{ task_item.display_number or loop.index }}</span>
+            {% set ti_max_score = task_item.assignment_task.max_score or 1 %}
+            {% set ti_score = ti_answer.score if ti_answer and ti_answer.score is not none else none %}
+            {% set nav_status_cls = '' %}
+            {% if ti_score is not none %}
+                {% if ti_score >= ti_max_score and ti_max_score > 0 %}
+                    {% set nav_status_cls = 'correct' %}
+                {% elif ti_max_score > 1 and 0 < ti_score < ti_max_score %}
+                    {% set nav_status_cls = 'partial' %}
+                {% elif ti_score == 0 %}
+                    {% set nav_status_cls = 'incorrect' %}
+                {% else %}
+                    {% set nav_status_cls = 'correct' %}
+                {% endif %}
+            {% elif ti_answer and ti_answer.reviewed_at %}
+                {% if ti_answer.is_correct == true %}
+                    {% set nav_status_cls = 'correct' %}
+                {% elif ti_answer.is_correct == false %}
+                    {% set nav_status_cls = 'incorrect' %}
+                {% else %}
+                    {% set nav_status_cls = 'reviewed' %}
+                {% endif %}
+            {% elif ti_answer and ti_answer.is_correct == true %}
+                {% set nav_status_cls = 'correct' %}
+            {% elif ti_answer and ti_answer.is_correct == false %}
+                {% set nav_status_cls = 'incorrect' %}
+            {% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] and ti_answer %}
+                {% set nav_status_cls = 'pending-review' %}
+            {% endif %}
+            <a href="#task-{{ loop.index }}" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" class="task-nav-btn relative {% if task_item.assignment_task.assignment_task_id == initial_task_id %}active{% endif %} {{ nav_status_cls }}{% if ti_answer and ti_answer.reviewed_at and not nav_status_cls %} reviewed{% endif %} {% if task_item.is_triplet_19_21 %}min-w-14 h-9 px-1.5 text-tiny leading-tight{% else %}w-11 h-9{% endif %} shrink-0 rounded-xl flex items-center justify-center font-black no-underline border border-slate-200 bg-slate-50 text-slate-600 dark:bg-dark-inner dark:border-white/10 dark:text-dark-muted" title="{% if task_item.is_triplet_19_21 %}Задания {{ task_item.display_number }}{% else %}Задание {{ task_item.display_number or loop.index }}{% endif %}">
+                {% if ti_answer and ti_answer.reviewed_at and nav_status_cls == 'correct' %}<i class="ph-bold ph-check" aria-hidden="true"></i>{% endif %}<span class="task-num">{{ task_item.display_number or loop.index }}</span>
                 <span class="task-unread-dot absolute -top-1 -right-1 w-2.5 h-2.5" data-unread-for="{{ task_item.assignment_task.assignment_task_id }}" style="{% if task_item.assignment_task.assignment_task_id not in unread_task_ids %}display:none{% else %}display:inline-block{% endif %}"></span>
             </a>
             {% endfor %}
@@ -1502,7 +1556,23 @@
         <form id="grade-form">
             {% for task_item in tasks_view %}
             {% set grading_rows = [task_item] + (task_item.triplet_items if task_item.is_triplet_19_21 else []) %}
-            <div class="task-card-grade{% if task_item.assignment_task.assignment_task_id != initial_task_id %} task-panel-hidden{% else %} task-panel-active{% endif %}{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if task_item.assignment_task.assignment_task_id in unread_task_ids %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+            {% set ti_max_score = task_item.assignment_task.max_score or 1 %}
+            {% set ti_score = task_item.answer.score if task_item.answer and task_item.answer.score is not none else none %}
+            {% set card_verdict_cls = '' %}
+            {% if ti_score is not none %}
+                {% if ti_score >= ti_max_score and ti_max_score > 0 %}
+                    {% set card_verdict_cls = 'task-correct' %}
+                {% elif ti_max_score > 1 and 0 < ti_score < ti_max_score %}
+                    {% set card_verdict_cls = 'task-partial' %}
+                {% elif ti_score == 0 %}
+                    {% set card_verdict_cls = 'task-incorrect' %}
+                {% endif %}
+            {% elif task_item.answer and task_item.answer.is_correct == true %}
+                {% set card_verdict_cls = 'task-correct' %}
+            {% elif task_item.answer and task_item.answer.is_correct == false %}
+                {% set card_verdict_cls = 'task-incorrect' %}
+            {% endif %}
+            <div class="task-card-grade{% if task_item.assignment_task.assignment_task_id != initial_task_id %} task-panel-hidden{% else %} task-panel-active{% endif %} {{ card_verdict_cls }}{% if task_item.is_triplet_19_21 %} triplet-card{% endif %}{% if task_item.assignment_task.assignment_task_id in unread_task_ids %} has-chat-unread{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header-grade">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
@@ -1651,12 +1721,14 @@
 
                                 {% else %}
                                 <!-- Short Answer / Standard Value Display -->
+                                {% if not (g.answer and g.answer.student_code and (not g.answer.value or g.answer.value|trim == g.answer.student_code|trim or answer_type in ['code', 'python'] or (g.playback and g.playback.get('frame_count', 0) > 0))) %}
                                 <section class="teacher-student-response" aria-label="Ответ ученика">
                                     <div class="teacher-student-response-title">
                                         <i class="ph-bold ph-chat-text text-indigo-600"></i> Введённый ответ ученика
                                     </div>
                                     <pre class="teacher-student-response-value">{{ g.answer.value }}</pre>
                                 </section>
+                                {% endif %}
                                 {% endif %}
                             {% endif %}
 
@@ -1759,10 +1831,13 @@
                             </div>
                             {% endif %}
                             
-                            {% if g.answer and g.answer.is_correct is not none %}
-                            <div class="autocheck-status-pill {% if g.answer.is_correct %}is-correct{% else %}is-incorrect{% endif %}">
+                            {% if g.answer and (g.answer.is_correct is not none or g.answer.score is not none) %}
+                            {% set is_part = (g.assignment_task.max_score > 1 and g.answer.score is not none and 0 < g.answer.score < g.assignment_task.max_score) %}
+                            <div class="autocheck-status-pill {% if is_part %}is-partial{% elif g.answer.is_correct %}is-correct{% else %}is-incorrect{% endif %}">
                                 <span class="autocheck-badge">
-                                    {% if g.answer.is_correct %}
+                                    {% if is_part %}
+                                    <i class="ph-bold ph-warning-circle text-base"></i> Частично
+                                    {% elif g.answer.is_correct %}
                                     <i class="ph-bold ph-check text-base"></i> Верно
                                     {% else %}
                                     <i class="ph-bold ph-x text-base"></i> Неверно
@@ -1921,7 +1996,7 @@
             
             <div class="submit-section">
                 <div class="submit-section-left">
-                    <div class="review-bottom-progress"><span>Проверено {{ reviewed_count }} из {{ review_total }}</span><div class="review-progress-track"><span style="display:block;width:{{ review_percent }}%;height:100%;border-radius:999px;background:#8c7cf7;"></span></div><strong>{{ review_percent }}%</strong></div>
+                    <div class="review-bottom-progress"><span id="review-bottom-progress-text">Проверено {{ reviewed_count }} из {{ review_total }}</span><div class="review-progress-track"><span id="review-bottom-progress-fill" style="display:block;width:{{ review_percent }}%;height:100%;border-radius:999px;background:#8c7cf7;"></span></div><strong id="review-bottom-progress-percent">{{ review_percent }}%</strong></div>
                     <div class="review-shortcuts" aria-label="Горячие клавиши"><span>Горячие клавиши:</span><kbd>1</kbd><kbd>0</kbd><span class="review-shortcut-separator">/</span><kbd>2</kbd><kbd>1</kbd><span class="review-shortcut-arrow">→</span><span>следующее</span><kbd>?</kbd></div>
                     <div class="total-score-badge">
                         <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; opacity: 0.75; letter-spacing: 0.05em;">Итог:</span>
@@ -1982,11 +2057,11 @@
         <div class="review-modal-backdrop" id="review-overview-modal" aria-hidden="true">
             <section class="review-overview-modal" role="dialog" aria-modal="true" aria-labelledby="review-overview-title">
                 <div class="flex items-center justify-between gap-3"><div><h2 id="review-overview-title">Обзор работы</h2><p>{{ submission.student.name }} · {{ assignment.title }}</p></div><button type="button" id="review-overview-close" class="neo-button ghost" aria-label="Закрыть обзор">×</button></div>
-                <div class="review-overview-progress"><span>Проверено {{ reviewed_count }} из {{ review_total }}</span><strong>{{ review_percent }}%</strong><div class="review-progress-track"><span style="width:{{ review_percent }}%"></span></div></div>
+                <div class="review-overview-progress"><span id="review-overview-progress-text">Проверено {{ reviewed_count }} из {{ review_total }}</span><strong id="review-overview-progress-percent">{{ review_percent }}%</strong><div class="review-progress-track"><span id="review-overview-progress-fill" style="width:{{ review_percent }}%"></span></div></div>
                 <div class="review-overview-list">
                     {% for task_item in tasks_view %}
                     {% set task_answer = task_item.answer %}
-                    <button type="button" class="review-overview-row" data-open-task="{{ loop.index }}"><span>№{{ task_item.display_number or loop.index }}</span><span>{% if task_answer and task_answer.reviewed_at %}Проверено{% elif task_answer and (task_answer.value or task_answer.student_code or task_answer.files) %}Есть ответ{% else %}Нет ответа{% endif %}</span><strong>{% if task_answer and task_answer.score is not none %}{{ task_answer.score }} / {{ task_item.assignment_task.max_score }}{% else %}— / {{ task_item.assignment_task.max_score }}{% endif %}</strong></button>
+                    <button type="button" class="review-overview-row" data-open-task="{{ loop.index }}"><span>№{{ task_item.display_number or loop.index }}</span><span>{% if task_answer and (task_answer.reviewed_at or task_answer.score is not none or submission.status in ['GRADED', 'RETURNED']) %}Проверено{% elif task_answer and (task_answer.value or task_answer.student_code or task_answer.files) %}Есть ответ{% else %}Нет ответа{% endif %}</span><strong>{% if task_answer and task_answer.score is not none %}{{ task_answer.score }} / {{ task_item.assignment_task.max_score }}{% else %}— / {{ task_item.assignment_task.max_score }}{% endif %}</strong></button>
                     {% endfor %}
                 </div>
                 <div class="review-bottom-keyboard">Горячие клавиши: <kbd>Alt</kbd> + <kbd>←→</kbd> &nbsp; <kbd>Ctrl</kbd> + <kbd>Enter</kbd></div>
@@ -2534,22 +2609,69 @@
             const assignmentTaskId = parseInt(String(input.name || '').replace('score_', ''), 10);
             if (!assignmentTaskId) return;
             const raw = String(input.value ?? '').trim();
+            const max = parseInt(input.dataset.max || input.getAttribute('max') || '1', 10) || 1;
             const navBtn = document.querySelector(`#taskNavGrade .task-nav-btn[data-assignment-task-id="${assignmentTaskId}"]`);
             const taskCard = document.querySelector(`.task-card-grade[data-task-id="${assignmentTaskId}"]`);
             [navBtn, taskCard].forEach((el) => {
                 if (!el) return;
-                el.classList.remove('correct', 'incorrect', 'pending-review', 'task-correct', 'task-incorrect');
+                el.classList.remove('correct', 'incorrect', 'partial', 'pending-review', 'task-correct', 'task-incorrect', 'task-partial');
                 if (!raw) return; // nothing-state: не правильно и не неправильно
                 const score = parseInt(raw, 10);
                 if (Number.isNaN(score)) return;
-                if (score >= 1) {
+                if (score >= max && max > 0) {
                     if (el.classList.contains('task-card-grade')) el.classList.add('task-correct');
                     else el.classList.add('correct');
-                } else {
+                } else if (max > 1 && score > 0 && score < max) {
+                    if (el.classList.contains('task-card-grade')) el.classList.add('task-partial');
+                    else el.classList.add('partial');
+                } else if (score === 0) {
                     if (el.classList.contains('task-card-grade')) el.classList.add('task-incorrect');
                     else el.classList.add('incorrect');
+                } else {
+                    if (el.classList.contains('task-card-grade')) el.classList.add('task-correct');
+                    else el.classList.add('correct');
                 }
             });
+            updateReviewProgress();
+        }
+
+        function updateReviewProgress() {
+            const inputs = document.querySelectorAll('.score-input');
+            const total = inputs.length;
+            if (!total) return;
+            let reviewed = 0;
+            inputs.forEach(input => {
+                const val = String(input.value ?? '').trim();
+                if (val !== '' && !Number.isNaN(parseInt(val, 10))) {
+                    reviewed++;
+                }
+            });
+            const percent = Math.round((reviewed / total) * 100);
+            const text = `Проверено ${reviewed} из ${total}`;
+
+            // Header
+            const headerText = document.getElementById('review-header-progress-text');
+            if (headerText) headerText.textContent = text;
+            const headerPct = document.getElementById('review-progress-percent');
+            if (headerPct) headerPct.textContent = `${percent}%`;
+            const headerFill = document.getElementById('review-progress-fill');
+            if (headerFill) headerFill.style.width = `${percent}%`;
+
+            // Bottom
+            const bottomText = document.getElementById('review-bottom-progress-text');
+            if (bottomText) bottomText.textContent = text;
+            const bottomPct = document.getElementById('review-bottom-progress-percent');
+            if (bottomPct) bottomPct.textContent = `${percent}%`;
+            const bottomFill = document.getElementById('review-bottom-progress-fill');
+            if (bottomFill) bottomFill.style.width = `${percent}%`;
+
+            // Overview modal
+            const overviewText = document.getElementById('review-overview-progress-text');
+            if (overviewText) overviewText.textContent = text;
+            const overviewPct = document.getElementById('review-overview-progress-percent');
+            if (overviewPct) overviewPct.textContent = `${percent}%`;
+            const overviewFill = document.getElementById('review-overview-progress-fill');
+            if (overviewFill) overviewFill.style.width = `${percent}%`;
         }
 
         // Подсчет итогового балла
@@ -2563,6 +2685,7 @@
                 maxTotal += max;
             });
             document.getElementById('total-score').textContent = `${total} / ${maxTotal}`;
+            updateReviewProgress();
         }
         
         document.querySelectorAll('.score-input').forEach(input => {

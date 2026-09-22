@@ -89,16 +89,23 @@
           </p>
 
           {% if submission.assignment and submission.assignment.tasks %}
-          {% set total_tasks = submission.assignment.tasks|length %}
-          {% set done_tasks = (submission.answers|selectattr('is_correct')|list)|length if submission.answers else 0 %}
+          {% set prog = (submission_progress.get(submission.submission_id) if submission_progress else None) %}
+          {% set total_tasks = prog.total if prog else (submission.assignment.tasks|length) %}
+          {% if prog and prog.is_graded %}
+            {% set done_tasks = prog.correct %}
+            {% set progress_label = "Результат" %}
+          {% else %}
+            {% set done_tasks = prog.completed if prog else ((submission.answers|length) if submission.answers else 0) %}
+            {% set progress_label = "Прогресс" %}
+          {% endif %}
           <div class="mb-5">
             <div class="flex justify-between items-end mb-1.5 px-0.5">
-              <span class="text-xs font-bold text-slate-400">Прогресс</span>
+              <span class="text-xs font-bold text-slate-400">{{ progress_label }}</span>
               <span class="text-xs font-black text-slate-700">{{ done_tasks }} / {{ total_tasks }} <span class="text-[10px] font-bold text-slate-400">задач</span></span>
             </div>
             <div class="w-full bg-slate-200 rounded-full h-2.5 border border-slate-300 overflow-hidden shadow-inner">
               {% set pct = ((done_tasks * 100 / total_tasks)|round|int if total_tasks > 0 else 0) %}
-              <div class="h-full bg-indigo-500 rounded-full transition-all duration-500" style="width: {{ pct }}%"></div>
+              <div class="h-full {% if prog and prog.is_graded and pct < 50 %}bg-rose-500{% elif prog and prog.is_graded and pct < 80 %}bg-amber-500{% else %}bg-indigo-500{% endif %} rounded-full transition-all duration-500" style="width: {{ pct }}%"></div>
             </div>
           </div>
           {% endif %}

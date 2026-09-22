@@ -3572,12 +3572,48 @@ def submissions_list():
 
     now = utc_now()
     submission_display_status = {}
+    submission_progress = {}
     for sub in submissions:
         label = _submission_display_status(sub, sub.assignment, now)
         if label:
             submission_display_status[sub.submission_id] = label
 
-    return render_template('submissions_list.html', submissions=submissions, student=student, lesson_workspaces=lesson_workspaces, submission_display_status=submission_display_status)
+        tasks = (sub.assignment.tasks or []) if sub.assignment else []
+        total_count = len(tasks)
+        answers = sub.answers or []
+        completed_task_ids = {
+            int(a.assignment_task_id)
+            for a in answers
+            if getattr(a, "assignment_task_id", None) is not None
+            and (
+                str(getattr(a, "value", "") or "").strip()
+                or str(getattr(a, "student_code", "") or "").strip()
+                or (getattr(a, "files", None) and len(a.files) > 0)
+                or getattr(a, "is_correct", None) is not None
+                or getattr(a, "score", None) is not None
+            )
+        }
+        completed_count = len(completed_task_ids)
+        norm_status = normalize_legacy_status(sub.status)
+        correct_count = sum(
+            1 for a in answers
+            if getattr(a, 'is_correct', False) or (getattr(a, 'score', 0) or 0) > 0
+        )
+        submission_progress[sub.submission_id] = {
+            'total': total_count,
+            'completed': completed_count,
+            'correct': correct_count,
+            'is_graded': (norm_status == 'GRADED'),
+        }
+
+    return render_template(
+        'submissions_list.html',
+        submissions=submissions,
+        student=student,
+        lesson_workspaces=lesson_workspaces,
+        submission_display_status=submission_display_status,
+        submission_progress=submission_progress,
+    )
 
 
 @assignments_bp.route('/submissions/<int:submission_id>')
@@ -3630,23 +3666,19 @@ def submission_view(submission_id):
     if not is_parent_view and has_permission(current_user, 'assignment.grade'):
         return redirect(url_for('assignments.submission_grade_view', submission_id=submission.submission_id))
 
-    # Ученик выполняет работу только в каноничном Workspace: там находятся
-    # редактор, запуск, вложения, холст и единая навигация карточек.
-    # Если работа уже сдана (SUBMITTED, NEEDS_MANUAL_REVIEW, GRADED), ученик
-    # просматривает результаты, ответы и комментарии в task_detail.
-    if getattr(current_user, 'is_student', lambda: False)() and student and current_user.id == student.user_id:
-        normalized_status = normalize_legacy_status(submission.status)
-        if normalized_status not in {SubmissionStatus.SUBMITTED, SubmissionStatus.NEEDS_MANUAL_REVIEW, SubmissionStatus.GRADED}:
-            ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
-            if ordered_tasks:
-                requested_task_id = request.args.get('focus_at', type=int)
-                selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
-                return redirect(url_for(
-                    'task_workspace.workspace_page',
-                    context_type='submission_task',
-                    context_id=submission.submission_id,
-                    assignment_task_id=selected_task.assignment_task_id,
-                ))
+    # Ученик (и родитель) просматривает и выполняет работу только в каноничном Workspace V2:
+    # там находятся редактор, запуск, вложения, холст, статус проверки и единая навигация карточек.
+    if (getattr(current_user, 'is_student', lambda: False)() and student and current_user.id == student.user_id) or is_parent_view:
+        ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
+        if ordered_tasks:
+            requested_task_id = request.args.get('focus_at', type=int)
+            selected_task = next((item for item in ordered_tasks if item.assignment_task_id == requested_task_id), ordered_tasks[0])
+            return redirect(url_for(
+                'task_workspace.workspace_page',
+                context_type='submission_task',
+                context_id=submission.submission_id,
+                assignment_task_id=selected_task.assignment_task_id,
+            ))
     
     try:
         now = utc_now()
@@ -5005,18 +5037,30 @@ def submission_grade_view(submission_id):
 
     can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW')
     legacy_bucket_task_id = _legacy_submission_comment_bucket_task_id(assignment)
+    def _is_task_reviewed(item):
+        ans = item.get('answer')
+        if not ans:
+            return False
+        if getattr(ans, 'reviewed_at', None) is not None:
+            return True
+        if getattr(ans, 'score', None) is not None:
+            return True
+        if submission.status in ('GRADED', 'RETURNED'):
+            return True
+        return False
+
     # Start at the first task that still needs review; when all tasks are
     # reviewed, keep the existing fallback to the first task.
     initial_task_id = legacy_bucket_task_id
     if tasks_view:
         initial_item = next(
-            (item for item in tasks_view if not getattr(item.get('answer'), 'reviewed_at', None)),
+            (item for item in tasks_view if not _is_task_reviewed(item)),
             tasks_view[0],
         )
         initial_task_id = initial_item['assignment_task'].assignment_task_id
     _ensure_submission_comment_thread_reads_schema()
     unread_task_ids = _compute_submission_chat_unread_task_ids(submission, viewer_user_id, legacy_bucket_task_id)
-    reviewed_count = sum(1 for item in tasks_view if getattr(item.get('answer'), 'reviewed_at', None))
+    reviewed_count = sum(1 for item in tasks_view if _is_task_reviewed(item))
     review_total = len(tasks_view)
     review_percent = round((reviewed_count / review_total * 100) if review_total else 0)
     return render_template('submission_grade.html',
@@ -5370,6 +5414,9 @@ def submission_grade_save(submission_id):
                         pass
 
             if status == 'GRADED':
+                for ans in (submission.answers or []):
+                    if ans.reviewed_at is None:
+                        ans.reviewed_at = utc_now()
                 _upsert_gradebook_from_submission(submission, actor_user_id=cur_user_id)
             try:
                 _record_submission_attempt(submission)
