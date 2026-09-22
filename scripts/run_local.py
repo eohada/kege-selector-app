@@ -30,6 +30,8 @@ try:
 except ImportError:
     pass
 
+os.environ.setdefault('SECRET_KEY', 'dev-secret-key-123')
+
 def main():
     print('Запуск приложения на http://127.0.0.1:5000')
     print('Страница тарифов (для вёрстки): http://127.0.0.1:5000/billing/plans/public')

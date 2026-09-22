@@ -47,10 +47,14 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
     answer_type = str(spec.get("type") or "").strip().lower()
     has_expected_answer = bool((getattr(task, "answer", None) or "").strip())
     if answer_type not in ANSWER_TYPES:
-        if has_expected_answer:
-            answer_type = "short_answer"
+        if getattr(task, "task_type", None) == "code":
+            answer_type = "code"
+        elif (task.starter_code or "").strip():
+            answer_type = "code"
+        elif has_expected_answer:
+            answer_type = "long_answer" if "\n" in (getattr(task, "answer", None) or "").strip() else "short_answer"
         else:
-            answer_type = "code" if (task.starter_code or "").strip() else "short_answer"
+            answer_type = "short_answer"
 
     options = spec.get("options") if isinstance(spec.get("options"), list) else []
     normalized_options = []
@@ -391,6 +395,12 @@ def _is_task_manual_review(t_at: AssignmentTask | None, t_t: Tasks | None) -> bo
         return True
     if getattr(t_t, "task_type", None) in {"code", "long_answer"}:
         return True
+    try:
+        norm_spec = _normalize_answer_spec(t_t)
+        if norm_spec.get("type") in {"code", "long_answer"}:
+            return True
+    except Exception:
+        pass
     raw_spec = getattr(t_t, "answer_spec", None)
     if isinstance(raw_spec, dict) and raw_spec.get("type") in {"code", "long_answer"}:
         return True

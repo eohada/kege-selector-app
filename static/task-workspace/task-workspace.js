@@ -165,7 +165,7 @@
         const next = (mode === 'code') ? 'code' : 'answer';
         if (codeWorkspace) codeWorkspace.classList.toggle('is-workspace-hidden', next !== 'code');
         if (answerWorkspace) answerWorkspace.classList.toggle('is-workspace-hidden', next !== 'answer');
-        document.querySelectorAll('[data-workspace-mode]').forEach((button) => {
+        document.querySelectorAll('button[data-workspace-mode]').forEach((button) => {
             const active = button.dataset.workspaceMode === next;
             if (button.closest('[data-workspace-mode-switch]')) {
                 button.classList.toggle('is-active', active);
@@ -176,7 +176,7 @@
             const slot = next === 'answer' ? commentsAnswerSlot : commentsCodeSlot;
             if (slot && commentsCard.parentElement !== slot) slot.appendChild(commentsCard);
         }
-        root.dataset.workspaceMode = next;
+        if (root) root.dataset.workspaceMode = next;
         if (persist) {
             try { sessionStorage.setItem(modeStorageKey, next); } catch (err) {}
         }
@@ -194,7 +194,7 @@
             if (saved === 'code' || saved === 'answer') selected = saved;
         } catch (err) {}
         applyWorkspaceMode(selected, { persist: false });
-        document.querySelectorAll('[data-workspace-mode]').forEach((button) => {
+        document.querySelectorAll('button[data-workspace-mode]').forEach((button) => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 applyWorkspaceMode(button.dataset.workspaceMode);
@@ -214,6 +214,10 @@
 
     function payload() {
         let currentAnswer = answer ? answer.value : '';
+        if (!currentAnswer && codeAnswerInput?.value) {
+            currentAnswer = codeAnswerInput.value;
+            if (answer) answer.value = currentAnswer;
+        }
         if (!currentAnswer && ws.answer_spec?.type === 'code' && (code?.value || '').trim()) {
             currentAnswer = code.value;
             if (answer) answer.value = code.value;
@@ -1989,8 +1993,8 @@
     }
 
     function syncCodeAnswerState() {
-        if (ws.answer_spec?.type !== 'code') return;
-        const currentCode = (code ? code.value : '') || (answer ? answer.value : '') || '';
+        const isCodeType = ws.answer_spec?.type === 'code';
+        const currentCode = (code ? code.value : '') || (isCodeType && answer ? answer.value : '') || '';
         const trimmed = currentCode.trim();
         const meaningfulLines = trimmed.split('\n').filter(l => {
             const t = l.trim();
@@ -2009,8 +2013,8 @@
         const submittedPre = document.getElementById('tw-code-submitted-pre');
 
         if (hasCode) {
-            if (answer) answer.value = currentCode;
-            if (codeAnswerInput && !codeAnswerInput.value) codeAnswerInput.value = currentCode;
+            if (isCodeType && answer) answer.value = currentCode;
+            if (isCodeType && codeAnswerInput && !codeAnswerInput.value) codeAnswerInput.value = currentCode;
 
             if (lockedField) {
                 lockedField.classList.add('is-submitted');
@@ -2077,13 +2081,20 @@
     document.querySelectorAll('#tw-btn-submit-code, [data-action="submit-code"]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const currentCode = code ? code.value : '';
-            if (ws.answer_spec?.type === 'code' || ws.answer_spec?.type === 'long_answer') {
-                if (answer) {
-                    answer.value = currentCode || '# решение кодом';
-                }
+            if (!currentCode.trim()) {
+                window.BooNotify?.error?.('Сначала напишите код программы в редакторе');
+                return;
             }
-            if (codeAnswerInput) {
-                codeAnswerInput.value = (ws.answer_spec?.type === 'long_answer' ? currentCode : (codeAnswerInput.value || currentCode || 'Код зафиксирован как ответ'));
+            const isCodeType = ws.answer_spec?.type === 'code';
+            if (isCodeType || (answer && answer.type === 'hidden')) {
+                if (answer) {
+                    answer.value = currentCode;
+                    answer.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                if (codeAnswerInput) {
+                    codeAnswerInput.value = currentCode;
+                    codeAnswerInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
             }
             syncCodeAnswerState();
             const origHtml = btn.innerHTML;
@@ -2098,9 +2109,7 @@
             emitWorkspaceDraft(false);
             updateWorkspaceProgress();
             window.BooNotify?.success?.('Текущий код зафиксирован как ответ к задаче');
-            if (ws.answer_spec?.type === 'code') {
-                applyWorkspaceMode('answer');
-            }
+            applyWorkspaceMode('answer');
         });
     });
 
@@ -2115,13 +2124,14 @@
                 window.BooNotify?.info?.('Сначала запустите программу, чтобы получить результат');
                 return;
             }
-            const cleanOut = outText.split('\n')[0].trim();
+            const cleanOut = outText.trim();
             if (codeAnswerInput) {
                 if (codeAnswerInput.tagName === 'TEXTAREA' && codeAnswerInput.value.trim()) {
                     codeAnswerInput.value += '\nВывод программы:\n' + outText;
                 } else {
                     codeAnswerInput.value = cleanOut;
                 }
+                codeAnswerInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
             if (answer) {
                 if (answer.tagName === 'TEXTAREA' && answer.value.trim()) {
@@ -2129,6 +2139,7 @@
                 } else {
                     answer.value = cleanOut;
                 }
+                answer.dispatchEvent(new Event('input', { bubbles: true }));
             }
             saveLocal();
             scheduleAutosave();
@@ -2148,9 +2159,11 @@
             const snippet = '```python\n' + currentCode + '\n```';
             if (codeAnswerInput) {
                 codeAnswerInput.value = codeAnswerInput.value ? (codeAnswerInput.value + '\n\n' + snippet) : snippet;
+                codeAnswerInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
             if (answer && answer !== codeAnswerInput) {
                 answer.value = answer.value ? (answer.value + '\n\n' + snippet) : snippet;
+                answer.dispatchEvent(new Event('input', { bubbles: true }));
             }
             saveLocal();
             scheduleAutosave();
@@ -2185,22 +2198,38 @@
         if ((e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) ||
             (!['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) && !document.activeElement?.isContentEditable)) {
             if (e.key === 'ArrowLeft') {
-                const prevLink = document.querySelector('.tw-task-navigation a[title*="Предыдущая"]');
+                const prevLink = document.querySelector('.tw-task-navigation a[data-nav-arrow="prev"], .tw-task-navigation a[title*="Предыдущая"]');
                 if (prevLink && prevLink.href) {
                     e.preventDefault();
-                    prevLink.click();
+                    flushWorkspaceBeforeExit();
+                    window.location.href = prevLink.href;
                 }
             } else if (e.key === 'ArrowRight') {
-                const nextLink = document.querySelector('.tw-task-navigation a[title*="Следующая"]');
+                const nextLink = document.querySelector('.tw-task-navigation a[data-nav-arrow="next"], .tw-task-navigation a[title*="Следующая"]');
                 if (nextLink && nextLink.href) {
                     e.preventDefault();
-                    nextLink.click();
+                    flushWorkspaceBeforeExit();
+                    window.location.href = nextLink.href;
                 }
             }
         }
     });
 
-    notes.addEventListener('input', saveLocal);
+    if (notes) {
+        notes.addEventListener('input', saveLocal);
+    }
+
+    document.querySelectorAll('.tw-stepper-btn[href]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            flushWorkspaceBeforeExit();
+        });
+    });
+
+    document.querySelectorAll('.tw-task-navigation a[href]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            flushWorkspaceBeforeExit();
+        });
+    });
 
 
     document.querySelectorAll('.tw-tab').forEach((tab) => {

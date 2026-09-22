@@ -5,14 +5,14 @@
 {% block body_class %}tw-page-workspace{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260921-tactile-v5">
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260922-tactile-v4">
 {% endblock %}
 
 {% block sandbox_content %}
 <main class="tw-shell w-full min-h-screen max-w-[1400px] xl:max-w-[1600px] 2xl:max-w-[1720px] mx-auto px-4 py-6 lg:pl-[5.5rem] lg:pr-6" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
     <div class="tw-back-row mb-3">
         {% if workspace.return_url %}
-        <a class="tw-btn tw-btn-ghost tw-btn-sm" href="{{ workspace.return_url }}"><i class="ph-bold ph-arrow-left"></i> К списку работ</a>
+        <a class="tw-btn-tactile-back" href="{{ workspace.return_url }}"><i class="ph-bold ph-arrow-left"></i> <span>К списку работ</span></a>
         {% endif %}
     </div>
 
@@ -87,7 +87,7 @@
             </div>
             <div class="tw-hero-progress-actions">
                 {% if workspace.return_url %}
-                <a href="{{ workspace.return_url }}" class="tw-btn tw-btn-ghost tw-btn-sm"><i class="ph-bold ph-list-dashes"></i> К списку</a>
+                <a href="{{ workspace.return_url }}" class="tw-btn-tactile-back"><i class="ph-bold ph-list-dashes"></i> <span>К списку</span></a>
                 {% endif %}
                 {% if workspace.can_edit and workspace.context_type == 'submission_task' %}
                 <button type="button" class="tw-btn tw-btn-primary tw-btn-sm" onclick="document.getElementById('tw-submit-work')?.click()"><i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу</button>
@@ -107,7 +107,7 @@
                        data-nav-task-id="{{ nav_item.assignment_task_id }}"
                        class="tw-stepper-btn{% if nav_item.is_current %} is-active{% endif %}{% if nav_item.nav_status %} status-{{ nav_item.nav_status }}{% elif nav_item.is_completed %} is-completed{% endif %}" 
                        title="Задание {{ nav_item.position }}{% if nav_item.nav_status == 'pending_review' %} (На ручной проверке){% elif nav_item.nav_status == 'correct' %} ({{ nav_item.score }}/{{ nav_item.max_score }} б. — Полный балл){% elif nav_item.nav_status == 'wrong' %} (0/{{ nav_item.max_score }} б. — 0 баллов){% elif nav_item.nav_status == 'partial' %} ({{ nav_item.score }}/{{ nav_item.max_score }} б. — Частичный балл){% endif %}">
-                        {% if nav_item.nav_status == 'correct' %}
+                        {% if nav_item.nav_status == 'correct' or nav_item.nav_status == 'completed' or (not nav_item.nav_status and nav_item.is_completed) %}
                             <i class="ph-bold ph-check"></i>
                         {% elif nav_item.nav_status == 'wrong' %}
                             <i class="ph-bold ph-x"></i>
@@ -115,8 +115,6 @@
                             <i class="ph-bold ph-circle-half"></i>
                         {% elif nav_item.nav_status == 'pending_review' %}
                             <i class="ph-bold ph-clock"></i>
-                        {% elif nav_item.is_completed %}
-                            <i class="ph-bold ph-check"></i>
                         {% endif %}
                         <span class="tw-stepper-num">{{ nav_item.position }}</span>
                     </a>
@@ -128,8 +126,8 @@
         </div>
         <div class="tw-stepper-controls">
             <div class="tw-task-navigation">
-                {% if workspace.previous_task %}<a class="tw-icon-button" href="{{ workspace.previous_task.url or url_for('task_workspace.workspace_page', context_type='submission_task', context_id=workspace.context_id, assignment_task_id=workspace.previous_task.assignment_task_id) }}" title="Предыдущая задача" aria-label="Предыдущая задача"><i class="ph-bold ph-caret-left"></i></a>{% else %}<button class="tw-icon-button" type="button" disabled aria-label="Предыдущей задачи нет"><i class="ph-bold ph-caret-left"></i></button>{% endif %}
-                {% if workspace.next_task %}<a class="tw-icon-button" href="{{ workspace.next_task.url or url_for('task_workspace.workspace_page', context_type='submission_task', context_id=workspace.context_id, assignment_task_id=workspace.next_task.assignment_task_id) }}" title="Следующая задача" aria-label="Следующая задача"><i class="ph-bold ph-caret-right"></i></a>{% else %}<button class="tw-icon-button" type="button" disabled aria-label="Следующей задачи нет"><i class="ph-bold ph-caret-right"></i></button>{% endif %}
+                {% if workspace.previous_task %}<a class="tw-icon-button" data-nav-arrow="prev" href="{{ workspace.previous_task.url or url_for('task_workspace.workspace_page', context_type='submission_task', context_id=workspace.context_id, assignment_task_id=workspace.previous_task.assignment_task_id) }}" title="Предыдущая задача" aria-label="Предыдущая задача"><i class="ph-bold ph-caret-left"></i></a>{% else %}<button class="tw-icon-button" type="button" disabled aria-label="Предыдущей задачи нет"><i class="ph-bold ph-caret-left"></i></button>{% endif %}
+                {% if workspace.next_task %}<a class="tw-icon-button" data-nav-arrow="next" href="{{ workspace.next_task.url or url_for('task_workspace.workspace_page', context_type='submission_task', context_id=workspace.context_id, assignment_task_id=workspace.next_task.assignment_task_id) }}" title="Следующая задача" aria-label="Следующая задача"><i class="ph-bold ph-caret-right"></i></a>{% else %}<button class="tw-icon-button" type="button" disabled aria-label="Следующей задачи нет"><i class="ph-bold ph-caret-right"></i></button>{% endif %}
             </div>
         </div>
     </nav>
@@ -138,7 +136,6 @@
     <div class="tw-task-heading mb-4">
         <div class="tw-task-heading-left">
             <h2 class="tw-task-title">Задание {{ workspace.task_position or 1 }}</h2>
-            <span class="tw-score-pill">{{ workspace.max_score }} балл{{ 'а' if workspace.max_score in [2, 3, 4] else 'ов' if workspace.max_score != 1 else '' }}</span>
         </div>
         <div class="tw-task-heading-actions">
             <div class="tw-mode-switch" role="group" aria-label="Представление задачи" data-workspace-mode-switch>
@@ -294,8 +291,8 @@
                     </div>
                     {% if workspace.answer_spec.type == 'single_choice' %}
                     <div class="tw-code-answer-actions">
-                        <button id="tw-btn-submit-code" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Зафиксировать код как решение">
-                            <i class="ph-bold ph-code"></i> Сдать написанный код
+                        <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как решение">
+                            <i class="ph-bold ph-check-circle"></i> Сдать написанный код
                         </button>
                     </div>
                     <div class="tw-choice-grid tw-choice-grid-code" data-answer-renderer="single_choice">
@@ -309,8 +306,8 @@
                     </div>
                     {% elif workspace.answer_spec.type == 'matching' %}
                     <div class="tw-code-answer-actions">
-                        <button id="tw-btn-submit-code" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Зафиксировать код как решение">
-                            <i class="ph-bold ph-code"></i> Сдать написанный код
+                        <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как решение">
+                            <i class="ph-bold ph-check-circle"></i> Сдать написанный код
                         </button>
                     </div>
                     <div class="tw-matching-list tw-matching-list-code" data-answer-renderer="matching">
@@ -348,10 +345,10 @@
                     {% elif workspace.answer_spec.type == 'code' %}
                     <div class="tw-code-solution-panel">
                         <div class="tw-code-solution-actions">
-                            <button id="tw-btn-submit-code" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Зафиксировать код как ответ">
+                            <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как ответ">
                                 <i class="ph-bold ph-check-circle"></i> Сдать написанный код
                             </button>
-                            <button id="tw-btn-insert-output" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Вставить результат выполнения в ответ">
+                            <button id="tw-btn-insert-output" type="button" class="tw-btn-code-insert-output" title="Вставить результат выполнения в ответ">
                                 <i class="ph-bold ph-arrow-down-left"></i> Вставить вывод
                             </button>
                         </div>
@@ -361,23 +358,23 @@
                     </div>
                     {% elif workspace.answer_spec.type == 'long_answer' %}
                     <div class="tw-code-answer-actions">
-                        <button id="tw-btn-submit-code" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Зафиксировать код как решение">
-                            <i class="ph-bold ph-code"></i> Сдать написанный код
+                        <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как решение">
+                            <i class="ph-bold ph-check-circle"></i> Сдать написанный код
                         </button>
-                        <button id="tw-btn-append-code" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Вставить код в поле ответа">
+                        <button id="tw-btn-append-code" type="button" class="tw-btn-code-append" title="Вставить код в поле ответа">
                             <i class="ph-bold ph-brackets-curly"></i> Вставить код
                         </button>
-                        <button id="tw-btn-insert-output" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Вставить результат выполнения в ответ">
+                        <button id="tw-btn-insert-output" type="button" class="tw-btn-code-insert-output" title="Вставить результат выполнения в ответ">
                             <i class="ph-bold ph-arrow-down-left"></i> Вставить вывод
                         </button>
                     </div>
                     <textarea id="tw-code-answer-input" class="tw-code-answer-field tw-code-long-answer" placeholder="{{ workspace.answer_spec.placeholder or 'Напишите решение или объяснение…' }}" {% if not workspace.can_edit %}readonly disabled{% endif %}>{{ workspace.plain_answer }}</textarea>
                     {% else %}
                     <div class="tw-code-answer-actions">
-                        <button id="tw-btn-submit-code" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Зафиксировать код как решение">
-                            <i class="ph-bold ph-code"></i> Сдать код
+                        <button id="tw-btn-submit-code" type="button" class="tw-btn-code-submit" title="Зафиксировать код как решение">
+                            <i class="ph-bold ph-check-circle"></i> Сдать написанный код
                         </button>
-                        <button id="tw-btn-insert-output" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Вставить результат выполнения в ответ">
+                        <button id="tw-btn-insert-output" type="button" class="tw-btn-code-insert-output" title="Вставить результат выполнения в ответ">
                             <i class="ph-bold ph-arrow-down-left"></i> Вставить вывод
                         </button>
                     </div>
@@ -500,7 +497,7 @@
     <section class="tw-standard-grid{% if workspace.presentation_mode == 'code' %} is-workspace-hidden{% endif %}" id="tw-standard-workspace-grid" data-workspace-view="answer">
         <div class="tw-standard-main">
             <article class="tw-panel tw-standard-condition">
-                <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-file-text"></i></span><span>Условие</span></div><span class="tw-score-pill">{{ workspace.max_score }} балл{{ 'а' if workspace.max_score in [2, 3, 4] else 'ов' }}</span></div>
+                <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-file-text"></i></span><span>Условие</span></div></div>
                 <div class="tw-task-content">{{ workspace.content_html|safe }}</div>
             </article>
             <article class="tw-panel tw-answer-workspace">
@@ -619,24 +616,37 @@
                 </div>
                 {% elif workspace.answer_spec.type == 'long_answer' %}
                 <div class="tw-standard-actions-bar">
-                    <button type="button" class="tw-btn tw-btn-ghost tw-btn-sm" onclick="document.querySelector('[data-workspace-mode=code]')?.click()">
+                    <button type="button" class="tw-btn-open-ide" onclick="document.querySelector('[data-workspace-mode=code]')?.click()">
                         <i class="ph-bold ph-code"></i> Открыть IDE
                     </button>
-                    <button id="tw-standard-insert-code" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Вставить код из Python IDE">
+                    <button id="tw-standard-insert-code" type="button" class="tw-btn-insert-ide-aux" title="Вставить код из Python IDE">
                         <i class="ph-bold ph-brackets-curly"></i> Вставить код из IDE
                     </button>
                 </div>
                 <textarea id="tw-answer" class="tw-long-answer" placeholder="{{ workspace.answer_spec.placeholder or 'Напишите решение или объяснение…' }}" {% if not workspace.can_edit %}readonly{% endif %}>{{ workspace.plain_answer }}</textarea>
                 {% else %}
                 <div class="tw-standard-actions-bar">
-                    <button type="button" class="tw-btn tw-btn-ghost tw-btn-sm" onclick="document.querySelector('[data-workspace-mode=code]')?.click()">
+                    <button type="button" class="tw-btn-open-ide" onclick="document.querySelector('[data-workspace-mode=code]')?.click()">
                         <i class="ph-bold ph-code"></i> Открыть IDE
                     </button>
-                    <button id="tw-standard-insert-output" type="button" class="tw-btn tw-btn-ghost tw-btn-sm" title="Вставить вывод из Python IDE">
+                    <button id="tw-standard-insert-output" type="button" class="tw-btn-insert-ide-aux" title="Вставить вывод из Python IDE">
                         <i class="ph-bold ph-arrow-down-left"></i> Вставить вывод из IDE
                     </button>
                 </div>
                 <input id="tw-answer" class="tw-answer-input tw-standard-answer-input" value="{{ workspace.plain_answer }}" placeholder="{{ workspace.answer_spec.placeholder or 'Ваш ответ…' }}" {% if not workspace.can_edit %}readonly{% endif %}>
+                <!-- Предпросмотр сданного кода прямо в блоке ответа -->
+                <div id="tw-code-submitted-box" class="tw-code-submitted-box mt-3{% if not (workspace.code and workspace.code.strip()) %} is-hidden{% endif %}">
+                    <div class="tw-code-submitted-head">
+                        <div class="tw-code-submitted-title">
+                            <i class="ph-bold ph-check-circle text-emerald-600"></i>
+                            <span>Зафиксированный код решения:</span>
+                        </div>
+                        <button type="button" class="tw-code-submitted-edit-btn" data-workspace-mode="code">
+                            <i class="ph-bold ph-pencil-simple"></i> Редактировать в IDE
+                        </button>
+                    </div>
+                    <pre id="tw-code-submitted-pre" class="tw-code-submitted-pre"><code id="tw-code-submitted-code" class="language-python">{{ workspace.code or '' }}</code></pre>
+                </div>
                 {% endif %}
                 <div class="tw-actionbar tw-answer-status"><div class="tw-status"><span id="tw-status-dot" class="tw-status-dot"></span><span id="tw-status-text">Черновик готов</span></div><span class="tw-save-note">Сохранение доступно в нижней панели</span></div>
             </article>
@@ -722,7 +732,7 @@
             {% if not workspace.can_edit %}
             {% if workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary"><i class="ph-bold ph-arrow-left"></i> Вернуться к списку заданий</a>{% endif %}
             {% else %}
-            <button type="button" class="tw-btn tw-btn-ghost" onclick="document.getElementById('tw-save').click()"><i class="ph-bold ph-bookmark-simple"></i> Сохранить черновик</button>
+            <button type="button" class="tw-btn-tactile-save" onclick="document.getElementById('tw-save').click()"><i class="ph-bold ph-bookmark-simple"></i> <span>Сохранить черновик</span></button>
             {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Отправить ответ</button>{% elif workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
             {% endif %}
         </div>
@@ -759,5 +769,5 @@ document.addEventListener('DOMContentLoaded', () => {
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260921-tactile-v5"></script>
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260922-tactile-v4"></script>
 {% endblock %}
