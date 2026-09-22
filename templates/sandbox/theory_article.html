@@ -38,27 +38,231 @@
   #article-content .theory-checklist li::marker { color:#f97316; }
   #article-content .theory-interactive { box-shadow:0 3px 0 #a7f3d0; }
   #article-content .theory-interactive-option[aria-pressed="true"] { border-color:#059669 !important; background:#d1fae5 !important; color:#065f46 !important; }
+  .theory-level-pane.hidden { display: none !important; }
+  .theory-level-pane.is-active { display: block !important; }
+  #article-content .theory-code-runner { box-shadow: 0 4px 0 #dae1e9; }
+  #article-content .theory-code-input { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; tab-size: 4; }
+  #article-content .theory-code-input:focus { outline: none; }
+  #article-content .theory-callout-remember { box-shadow: 0 3px 0 #c7d2fe; }
+  #article-content .theory-callout-info { box-shadow: 0 3px 0 #bae6fd; }
+  #article-content .theory-callout-try { box-shadow: 0 3px 0 #e9d5ff; }
+  #article-content .theory-how-it-works { box-shadow: 0 4px 0 #c7d2fe; }
   @media (max-width:640px) { #article-content .theory-section { padding:1.1rem; border-radius:1.25rem; } #article-content h2 { font-size:1.3rem !important; } }
 </style>
 <main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
   <div class="max-w-[1600px] mx-auto w-full space-y-6" id="theory-article" data-block-id="{{ block.id }}" data-progress="{{ state.reading_progress if state else 0 }}" data-last-position="{{ state.last_position if state else 0 }}">
-    <a href="{{ back_to_url }}" class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600 shadow-[0_3px_0_#DAE1E9] no-underline"><i class="ph-bold ph-arrow-left"></i>Ко всем темам</a>
+    
+    <!-- Top Back Link -->
+    <a href="{{ back_to_url }}" class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600 shadow-[0_3px_0_#DAE1E9] hover:bg-slate-50 transition no-underline">
+      <i class="ph-bold ph-arrow-left"></i>Ко всем темам
+    </a>
+
+    <!-- Header Card -->
     <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-[0_4px_0_#DAE1E9]">
-      <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"><div><div class="flex flex-wrap gap-2"><span class="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-black text-indigo-700">№{{ block.task_number }}</span>{% if block.group %}<span class="rounded-xl border border-slate-200 bg-[#F4F7FA] px-3 py-1 text-[11px] font-black text-slate-600">{{ block.group.name }}</span>{% endif %}<span class="rounded-xl border border-slate-200 bg-[#F4F7FA] px-3 py-1 text-[11px] font-black text-slate-500">{{ block.read_minutes }} мин</span></div><h1 class="mt-4 text-3xl sm:text-4xl font-black font-display tracking-tight text-slate-900">{{ block.title or ('Тема №' ~ block.task_number) }}</h1>{% if block.description %}<p class="mt-3 max-w-3xl text-base font-semibold text-slate-500">{{ block.description }}</p>{% endif %}</div>{% if current_user.is_student() %}<button id="bookmark-button" type="button" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border-2 {{ 'border-amber-300 bg-amber-50 text-amber-700' if state and state.bookmarked else 'border-slate-200 bg-[#F4F7FA] text-slate-600' }} px-4 py-3 text-xs font-black shadow-[0_3px_0_#DAE1E9]"><i class="ph-{{ 'fill' if state and state.bookmarked else 'bold' }} ph-bookmark-simple"></i><span>{{ 'Сохранено' if state and state.bookmarked else 'Сохранить' }}</span></button>{% endif %}</div>
-      {% if current_user.is_student() %}<div class="mt-6 rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-4"><div class="flex justify-between text-xs font-black text-indigo-700"><span>Прогресс изучения</span><span id="progress-label">{{ state.reading_progress if state else 0 }}%</span></div><div class="mt-2 h-2 overflow-hidden rounded-full bg-indigo-100"><div id="progress-bar" class="h-full rounded-full bg-indigo-600" style="width:{{ state.reading_progress if state else 0 }}%"></div></div></div>{% endif %}
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+        <div class="flex-1 min-w-0">
+          <!-- Badges and Level Switcher -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <span class="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-black text-indigo-700">№{{ block.task_number }}</span>
+            {% if block.group %}
+            <span class="rounded-xl border border-slate-200 bg-[#F4F7FA] px-3 py-1 text-[11px] font-black text-slate-600">{{ block.group.name }}</span>
+            {% endif %}
+            <span class="rounded-xl border border-slate-200 bg-[#F4F7FA] px-3 py-1 text-[11px] font-black text-slate-500">{{ block.read_minutes }} мин</span>
+            
+            <!-- Level Switcher Tabs -->
+            <div id="theory-level-switcher" class="hidden sm:inline-flex items-center p-1 rounded-2xl bg-slate-100 border border-slate-200/80 shadow-inner ml-2">
+              <button type="button" data-level-tab="beginner" class="theory-level-tab px-3.5 py-1 rounded-xl text-xs font-black transition cursor-pointer bg-white text-indigo-700 shadow-sm border border-slate-200/50">
+                🐣 С нуля
+              </button>
+              <button type="button" data-level-tab="advanced" class="theory-level-tab px-3.5 py-1 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition cursor-pointer">
+                ⚡ С опытом
+              </button>
+            </div>
+          </div>
+
+          <!-- Title and Description -->
+          <h1 class="mt-4 text-3xl sm:text-4xl font-black font-display tracking-tight text-slate-900 leading-tight">
+            {{ block.title or ('Тема №' ~ block.task_number) }}
+          </h1>
+          {% if block.description %}
+          <p class="mt-2.5 max-w-2xl text-sm sm:text-base font-semibold text-slate-500 leading-relaxed">
+            {{ block.description }}
+          </p>
+          {% endif %}
+        </div>
+
+        <!-- Right Side: Speech Bubble, Boo Mascot, Bookmark Button -->
+        <div class="flex items-center gap-4 shrink-0 self-start lg:self-auto">
+          <!-- Mascot with Speech Bubble -->
+          <div class="hidden md:flex items-center gap-3">
+            <div class="relative bg-indigo-50/90 border border-indigo-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-indigo-900 shadow-sm max-w-[200px] leading-snug">
+              <span>Сегодня ты узнаешь, как хранить данные!</span>
+              <div class="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-indigo-50 border-t border-r border-indigo-200 rotate-45"></div>
+            </div>
+            <img src="/static/images/theory/ghost_laptop.png" alt="Boo Mascot" class="w-20 h-20 object-contain drop-shadow-md">
+          </div>
+
+          {% if current_user.is_student() %}
+          <button id="bookmark-button" type="button" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border-2 {{ 'border-amber-300 bg-amber-50 text-amber-700' if state and state.bookmarked else 'border-slate-200 bg-[#F4F7FA] text-slate-600' }} px-4 py-3 text-xs font-black shadow-[0_3px_0_#DAE1E9] cursor-pointer hover:bg-slate-100 transition">
+            <i class="ph-{{ 'fill' if state and state.bookmarked else 'bold' }} ph-bookmark-simple"></i>
+            <span>{{ 'Сохранено' if state and state.bookmarked else 'Сохранить' }}</span>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Mobile Level Switcher -->
+      <div class="mt-4 sm:hidden">
+        <div id="theory-level-switcher-mobile" class="inline-flex w-full items-center p-1 rounded-2xl bg-slate-100 border border-slate-200/80 shadow-inner">
+          <button type="button" data-level-tab="beginner" class="theory-level-tab flex-1 py-1.5 rounded-xl text-xs font-black text-center transition cursor-pointer bg-white text-indigo-700 shadow-sm">
+            🐣 С нуля
+          </button>
+          <button type="button" data-level-tab="advanced" class="theory-level-tab flex-1 py-1.5 rounded-xl text-xs font-bold text-center text-slate-500 hover:text-slate-800 transition cursor-pointer">
+            ⚡ С опытом
+          </button>
+        </div>
+      </div>
+
+      <!-- Reading Progress -->
+      {% if current_user.is_student() %}
+      <div class="mt-6 rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-4">
+        <div class="flex justify-between text-xs font-black text-indigo-700">
+          <span>Прогресс изучения</span>
+          <span id="progress-label">{{ state.reading_progress if state else 0 }}%</span>
+        </div>
+        <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-indigo-100">
+          <div id="progress-bar" class="h-full rounded-full bg-indigo-600 transition-all duration-300" style="width:{{ state.reading_progress if state else 0 }}%"></div>
+        </div>
+      </div>
+      {% endif %}
     </section>
+
+    <!-- Main Grid: Article + Sticky Sidebar -->
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <article id="article-content" class="min-w-0 rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-9 shadow-[0_4px_0_#DAE1E9] prose prose-slate max-w-none prose-headings:font-display prose-headings:font-black prose-a:text-indigo-600 prose-pre:rounded-2xl">
-        {% if rendered_content_html %}{{ rendered_content_html|safe }}{% else %}<div class="rounded-2xl border-2 border-dashed border-slate-300 bg-[#F8FAFC] p-8 text-center not-prose"><i class="ph-bold ph-note-blank text-3xl text-slate-300"></i><p class="mt-3 font-bold text-slate-500">Преподаватель ещё не добавил содержание этой темы.</p></div>{% endif %}
+        {% if rendered_content_html %}
+          {{ rendered_content_html|safe }}
+        {% else %}
+          <div class="rounded-2xl border-2 border-dashed border-slate-300 bg-[#F8FAFC] p-8 text-center not-prose">
+            <i class="ph-bold ph-note-blank text-3xl text-slate-300"></i>
+            <p class="mt-3 font-bold text-slate-500">Преподаватель ещё не добавил содержание этой темы.</p>
+          </div>
+        {% endif %}
       </article>
+
       <aside class="space-y-4 xl:sticky xl:top-5 xl:h-fit">
-        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]"><div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Навигация по модулю</div><div class="mt-3 space-y-2">{% for pack in visible_groups %}{% if pack.group.id == block.group_id %}{% for item in pack.blocks %}<a href="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}" class="flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black no-underline {{ 'bg-indigo-600 text-white' if item.id == block.id else 'bg-[#F4F7FA] text-slate-600 hover:bg-indigo-50' }}"><span>№{{ item.task_number }}</span><span class="min-w-0 truncate">{{ item.title or ('Тема №' ~ item.task_number) }}</span></a>{% endfor %}{% endif %}{% endfor %}</div></section>
-        {% if trainer_available %}<a href="{{ url_for('trainer.trainer_v2', course_id=course_id, task_type=block.task_number) }}" class="flex items-center justify-center gap-2 rounded-2xl border-b-[4px] border-indigo-800 bg-indigo-600 px-4 py-3 text-xs font-black text-white no-underline"><i class="ph-bold ph-lightning"></i>Закрепить в тренажёре</a>{% endif %}
-        {% if current_user.is_student() %}<section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]"><label class="text-[10px] font-black uppercase tracking-widest text-slate-400" for="theory-note">Личная заметка</label><textarea id="theory-note" class="mt-3 min-h-32 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-500" placeholder="Запиши главное своими словами…">{{ note.content if note else '' }}</textarea><button id="save-note" type="button" class="mt-3 w-full rounded-xl border-b-[3px] border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-black text-white">Сохранить заметку</button></section>{% endif %}
+        <!-- Module Navigation -->
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
+          <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Навигация по модулю</div>
+          <div class="mt-3 space-y-1.5">
+            {% for pack in visible_groups %}
+              {% if pack.group.id == block.group_id %}
+                {% for item in pack.blocks %}
+                <a href="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}" class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black no-underline transition {{ 'bg-indigo-600 text-white shadow-sm' if item.id == block.id else 'bg-[#F4F7FA] text-slate-600 hover:bg-indigo-50 hover:text-indigo-700' }}">
+                  <span class="font-mono opacity-80">№{{ item.task_number }}</span>
+                  <span class="min-w-0 truncate">{{ item.title or ('Тема №' ~ item.task_number) }}</span>
+                </a>
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+          </div>
+        </section>
+
+        <!-- Useful Materials Card -->
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
+          <div class="text-[10px] font-black uppercase tracking-widest text-slate-400">Полезные материалы</div>
+          <div class="mt-3 space-y-2">
+            <a href="javascript:void(0)" onclick="if(window.BooNotify){window.BooNotify.info('Шпаргалка готовится к скачиванию');}else{alert('Шпаргалка готовится к скачиванию');}" class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 text-xs font-bold text-slate-700 transition group no-underline">
+              <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                <i class="ph-bold ph-file-pdf text-base"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="truncate font-black text-slate-800">Шпаргалка по типам</div>
+                <div class="text-[11px] text-slate-400">PDF · Памятка к ЕГЭ</div>
+              </div>
+              <i class="ph-bold ph-download-simple text-slate-400 group-hover:text-indigo-600"></i>
+            </a>
+            <a href="javascript:void(0)" onclick="if(window.BooNotify){window.BooNotify.info('Коды решений доступны в тренажёре');}else{alert('Коды решений доступны в тренажёре');}" class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 hover:bg-indigo-50/60 border border-slate-200/80 text-xs font-bold text-slate-700 transition group no-underline">
+              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                <i class="ph-bold ph-code text-base"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="truncate font-black text-slate-800">Примеры решений ЕГЭ</div>
+                <div class="text-[11px] text-slate-400">Шаблоны алгоритмов</div>
+              </div>
+              <i class="ph-bold ph-arrow-up-right text-slate-400 group-hover:text-emerald-600"></i>
+            </a>
+          </div>
+        </section>
+
+        <!-- Personal Note Card -->
+        {% if current_user.is_student() %}
+        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
+          <label class="text-[10px] font-black uppercase tracking-widest text-slate-400" for="theory-note">Личная заметка</label>
+          <textarea id="theory-note" class="mt-3 min-h-28 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-500" placeholder="Запиши главное своими словами…">{{ note.content if note else '' }}</textarea>
+          <button id="save-note" type="button" class="mt-3 w-full rounded-xl border-b-[3px] border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2.5 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Сохранить заметку</button>
+        </section>
+        {% endif %}
+
+        <!-- Practice Banner with ghost_rocket.png -->
+        <section class="rounded-[2rem] border-2 border-indigo-300 bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 p-5 text-white shadow-[0_4px_0_#3730A3] relative overflow-hidden">
+          <div class="relative z-10">
+            <div class="flex items-center gap-1.5 text-indigo-200 text-[11px] font-black uppercase tracking-wider">
+              <i class="ph-fill ph-rocket-launch"></i>Тренировка
+            </div>
+            <h3 class="mt-2 text-base font-black leading-snug">Практика делает мастера! ♡</h3>
+            <p class="mt-1 text-xs text-indigo-100 font-medium leading-relaxed">Закрепите тему на реальных задачах ЕГЭ в умном тренажёре.</p>
+            {% if trainer_available %}
+            <a href="{{ url_for('trainer.trainer_v2', course_id=course_id, task_type=block.task_number) }}" class="mt-4 inline-flex items-center justify-center gap-2 w-full rounded-xl bg-white hover:bg-indigo-50 text-indigo-900 px-4 py-2.5 text-xs font-black shadow-md transition no-underline">
+              <span>Перейти к практике</span>
+              <i class="ph-bold ph-arrow-right"></i>
+            </a>
+            {% endif %}
+          </div>
+          <img src="/static/images/theory/ghost_rocket.png" alt="Boo on Rocket" class="absolute -bottom-2 -right-2 w-24 h-24 object-contain opacity-90 pointer-events-none drop-shadow-md">
+        </section>
       </aside>
     </div>
-    {% if current_user.is_student() %}<section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]"><div class="rounded-[2rem] border-2 border-indigo-100 bg-indigo-50/60 p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8"><p class="text-[10px] font-black uppercase tracking-widest text-indigo-600">Автопроверка внутри темы</p><h2 class="mt-1 text-xl font-black text-slate-900">Проверь себя по ходу чтения</h2><p class="mt-2 text-sm font-semibold leading-6 text-slate-600">Ответы сохраняются по этой теме. Можно повторить попытку и сразу увидеть объяснение.</p><div id="checkpoint-summary" class="mt-4 rounded-xl border-2 border-indigo-100 bg-white px-4 py-3 text-xs font-black text-indigo-700">Проверки ещё не пройдены</div></div><div class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8"><p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Обратная связь</p><h2 class="mt-1 text-xl font-black text-slate-900">Как прошла тема?</h2><label class="mt-4 block text-xs font-black text-slate-500" for="theory-rating">Оценка материала</label><select id="theory-rating" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3 py-2.5 text-sm font-bold text-slate-700"><option value="">Выберите оценку</option><option value="5">5 — всё понятно</option><option value="4">4 — почти понятно</option><option value="3">3 — нужны примеры</option><option value="2">2 — сложно</option><option value="1">1 — нужна помощь</option></select><textarea id="theory-feedback" class="mt-3 min-h-24 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700" placeholder="Что разобрать или повторить?"></textarea><button id="save-feedback" type="button" class="mt-3 w-full rounded-xl border-b-[4px] border-indigo-800 bg-indigo-600 px-4 py-3 text-xs font-black text-white">Отправить преподавателю</button></div></section>{% endif %}
-    {% if current_user.is_student() %}<section class="rounded-[2rem] border-2 border-emerald-200 bg-emerald-50 p-6 shadow-[0_4px_0_#A7F3D0]"><div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-600">Завершение темы</div><h2 class="mt-1 text-xl font-black text-emerald-950">Материал изучен?</h2><p class="mt-1 text-sm font-semibold text-emerald-800">После отметки тема попадёт в прогресс, а назначение преподавателя закроется.</p></div><button id="finish-topic" type="button" class="rounded-2xl border-b-[4px] border-emerald-800 bg-emerald-600 px-5 py-3 text-xs font-black text-white">Отметить изученной</button></div></section>{% endif %}
+
+    <!-- Self-check and Feedback (Student Only) -->
+    {% if current_user.is_student() %}
+    <section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div class="rounded-[2rem] border-2 border-indigo-100 bg-indigo-50/60 p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
+        <p class="text-[10px] font-black uppercase tracking-widest text-indigo-600">Автопроверка внутри темы</p>
+        <h2 class="mt-1 text-xl font-black text-slate-900">Проверь себя по ходу чтения</h2>
+        <p class="mt-2 text-sm font-semibold leading-6 text-slate-600">Ответы сохраняются по этой теме. Можно повторить попытку и сразу увидеть объяснение.</p>
+        <div id="checkpoint-summary" class="mt-4 rounded-xl border-2 border-indigo-100 bg-white px-4 py-3 text-xs font-black text-indigo-700">Проверки ещё не пройдены</div>
+      </div>
+      <div class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
+        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Обратная связь</p>
+        <h2 class="mt-1 text-xl font-black text-slate-900">Как прошла тема?</h2>
+        <label class="mt-4 block text-xs font-black text-slate-500" for="theory-rating">Оценка материала</label>
+        <select id="theory-rating" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3 py-2.5 text-sm font-bold text-slate-700">
+          <option value="">Выберите оценку</option>
+          <option value="5">5 — всё понятно</option>
+          <option value="4">4 — почти понятно</option>
+          <option value="3">3 — нужны примеры</option>
+          <option value="2">2 — сложно</option>
+          <option value="1">1 — нужна помощь</option>
+        </select>
+        <textarea id="theory-feedback" class="mt-3 min-h-24 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700" placeholder="Что разобрать или повторить?"></textarea>
+        <button id="save-feedback" type="button" class="mt-3 w-full rounded-xl border-b-[4px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 px-4 py-3 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Отправить преподавателю</button>
+      </div>
+    </section>
+
+    <!-- Completion Section -->
+    <section class="rounded-[2rem] border-2 border-emerald-200 bg-emerald-50 p-6 shadow-[0_4px_0_#A7F3D0]">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div class="text-[10px] font-black uppercase tracking-widest text-emerald-600">Завершение темы</div>
+          <h2 class="mt-1 text-xl font-black text-emerald-950">Материал изучен?</h2>
+          <p class="mt-1 text-sm font-semibold text-emerald-800">После отметки тема попадёт в прогресс, а назначение преподавателя закроется.</p>
+        </div>
+        <button id="finish-topic" type="button" class="rounded-2xl border-b-[4px] border-emerald-800 bg-emerald-600 hover:bg-emerald-500 px-5 py-3 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Отметить изученной</button>
+      </div>
+    </section>
+    {% endif %}
+
   </div>
 </main>
 {% if current_user.is_student() %}<script type="text/plain" data-retired-theory-handler>
@@ -281,4 +485,126 @@ window.fetch = (input, init = {}) => {
   });
 })();
 </script>{% endif %}
+
+<script>
+(() => {
+  // 1. Level Switcher
+  const panes = [...document.querySelectorAll('.theory-level-pane')];
+  const switchers = document.querySelectorAll('#theory-level-switcher, #theory-level-switcher-mobile');
+  
+  if (!panes.length) {
+    switchers.forEach(s => s.classList.add('!hidden'));
+  } else {
+    switchers.forEach(s => s.classList.remove('hidden', '!hidden'));
+    const savedLevel = localStorage.getItem('boostudy_theory_level') || 'beginner';
+
+    const activateLevel = (targetLevel) => {
+      let matched = false;
+      panes.forEach(pane => {
+        const isMatch = pane.dataset.theoryLevel === targetLevel;
+        pane.classList.toggle('hidden', !isMatch);
+        pane.classList.toggle('is-active', isMatch);
+        if (isMatch) matched = true;
+      });
+
+      if (!matched && panes.length) {
+        panes[0].classList.remove('hidden');
+        panes[0].classList.add('is-active');
+        targetLevel = panes[0].dataset.theoryLevel;
+      }
+
+      document.querySelectorAll('.theory-level-tab').forEach(tab => {
+        const isCurrent = tab.dataset.levelTab === targetLevel;
+        if (isCurrent) {
+          tab.className = 'theory-level-tab px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-black transition cursor-pointer bg-white text-indigo-700 shadow-sm border border-slate-200/50';
+        } else {
+          tab.className = 'theory-level-tab px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition cursor-pointer';
+        }
+      });
+      localStorage.setItem('boostudy_theory_level', targetLevel);
+    };
+
+    document.querySelectorAll('.theory-level-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        activateLevel(tab.dataset.levelTab);
+      });
+    });
+
+    activateLevel(savedLevel);
+  }
+
+  // 2. Code Runner & Copy Handlers
+  window.theoryCopyCode = (btn) => {
+    const runner = btn.closest('.theory-code-runner') || btn.closest('.theory-smart-code');
+    const textarea = runner?.querySelector('.theory-code-input') || runner?.querySelector('.theory-code-raw');
+    if (!textarea) return;
+    const textToCopy = textarea.value || textarea.textContent;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      const origHtml = btn.innerHTML;
+      btn.innerHTML = '<i class="ph-bold ph-check text-emerald-600"></i><span class="text-emerald-600">Скопировано!</span>';
+      setTimeout(() => { btn.innerHTML = origHtml; }, 1500);
+    }).catch(() => {
+      if (textarea.select) textarea.select();
+      document.execCommand('copy');
+    });
+  };
+
+  window.theoryRunCode = async (btn) => {
+    const runner = btn.closest('.theory-code-runner');
+    if (!runner) return;
+    const textarea = runner.querySelector('.theory-code-input');
+    const stdinInput = runner.querySelector('.theory-stdin-input');
+    const outputEl = runner.querySelector('.theory-live-output');
+    const statusBadge = runner.querySelector('.theory-status-badge');
+    const code = textarea ? textarea.value : '';
+    const stdin = stdinInput ? stdinInput.value : '';
+
+    btn.disabled = true;
+    const origBtnHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i><span>Выполняем…</span>';
+
+    if (outputEl) {
+      outputEl.classList.remove('hidden');
+      outputEl.textContent = 'Выполнение программы на Python...';
+    }
+
+    try {
+      const resp = await fetch('{{ url_for("theory.theory_api_run_code") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ lang: 'python', code, args: stdin })
+      });
+      const data = await resp.json();
+      if (outputEl) {
+        if (data.success) {
+          outputEl.textContent = data.output || '[Программа завершилась без вывода]';
+          outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-slate-900 text-emerald-400 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed';
+          if (statusBadge) {
+            statusBadge.className = 'theory-status-badge inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100/70 px-2.5 py-0.5 text-[11px] font-black text-emerald-700';
+            statusBadge.innerHTML = '<i class="ph-bold ph-check text-xs"></i>Выполнено';
+          }
+        } else {
+          outputEl.textContent = 'Ошибка выполнения:\n' + (data.error || 'Неизвестная ошибка');
+          outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-slate-900 text-rose-400 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed';
+          if (statusBadge) {
+            statusBadge.className = 'theory-status-badge inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-100/70 px-2.5 py-0.5 text-[11px] font-black text-rose-700';
+            statusBadge.innerHTML = '<i class="ph-bold ph-warning text-xs"></i>Ошибка';
+          }
+        }
+      }
+    } catch (err) {
+      if (outputEl) {
+        outputEl.textContent = 'Сетевая ошибка при запуске кода.';
+        outputEl.className = 'theory-live-output w-full mt-2 rounded-xl bg-slate-900 text-rose-400 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed';
+      }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origBtnHtml;
+    }
+  };
+})();
+</script>
 {% endblock %}

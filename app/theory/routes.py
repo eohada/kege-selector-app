@@ -201,6 +201,26 @@ def _strip_status_marker(content_value):
 def _render_theory_content_html(content_value):
     """Render block-based theory markers to safe-ish HTML fragments."""
     text = _strip_status_marker(content_value or '').replace('\r\n', '\n')
+
+    # Support multiple learning levels (e.g. beginner / advanced)
+    level_matches = list(re.finditer(r'\[LEVEL\s+name="([^"]+)"(?:\s+label="([^"]+)")?\](.*?)\[/LEVEL\]', text, flags=re.DOTALL | re.IGNORECASE))
+    if level_matches:
+        rendered_levels = []
+        for idx, lm in enumerate(level_matches):
+            lvl_name = (lm.group(1) or 'beginner').strip().lower()
+            lvl_label = (lm.group(2) or ('🐣 С нуля' if lvl_name == 'beginner' else '⚡ С опытом')).strip()
+            lvl_body = lm.group(3) or ''
+            lvl_html = _render_theory_content_html(lvl_body)
+            is_active = (idx == 0)
+            rendered_levels.append(
+                f'<div class="theory-level-pane {"is-active" if is_active else "hidden"}" '
+                f'data-theory-level="{html.escape(lvl_name, quote=True)}" '
+                f'data-level-label="{html.escape(lvl_label, quote=True)}">\n'
+                f'{lvl_html}\n'
+                f'</div>'
+            )
+        return Markup('\n'.join(rendered_levels))
+
     # Старые импортёры и JSON-пакеты иногда сохраняли перевод строки как два
     # символа ``\\n``. Нормализуем только явно сериализованный текст, чтобы не
     # повреждать настоящие escape-последовательности внутри [CODE].
@@ -464,11 +484,15 @@ def _render_theory_content_html(content_value):
             f'</div>'
         )
 
-    def _callout_repl(match):
-        ctype = (match.group(1) or 'tip').strip().lower()
-        body = (match.group(2) or '').strip()
-        body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
-        body = _escape_numeric_multiplication_stars(body)
+    custom_blocks = []
+
+    def _stash_custom_block(html_content):
+        idx = len(custom_blocks)
+        custom_blocks.append(html_content)
+        return f"\n\n<!--THEORY_CUSTOM_BLOCK_{idx}-->\n\n"
+
+    def _format_callout_body(body):
+        body = _escape_numeric_multiplication_stars(body or '')
         safe_body = html.escape(body)
 
         code_placeholders = []
@@ -483,13 +507,218 @@ def _render_theory_content_html(content_value):
 
         for idx, code_text in enumerate(code_placeholders):
             code_literal = (code_text or '').replace('*', '&#42;')
-            safe_body = safe_body.replace(f'__THEORY_INLINE_CODE_{idx}__', f'<code class="rounded bg-indigo-100/60 px-1 py-0.5 font-mono text-xs font-bold text-indigo-800">{code_literal}</code>')
+            safe_body = safe_body.replace(
+                f'__THEORY_INLINE_CODE_{idx}__',
+                f'<code class="rounded bg-indigo-100/70 px-1.5 py-0.5 font-mono text-xs font-bold text-indigo-800">{code_literal}</code>'
+            )
 
         safe_body = _render_math_in_html_fragment(safe_body)
         safe_body = re.sub(r'&lt;br\s*/?&gt;', '<br>', safe_body, flags=re.IGNORECASE)
         safe_body = safe_body.replace('\r\n', '\n').replace('\r', '\n')
         safe_body = re.sub(r'\n+', '<br>', safe_body)
         safe_body = re.sub(r'(<br\s*/?>)+', '<br>', safe_body)
+        return safe_body
+
+    def _remember_repl(match):
+        body = match.group(1).strip()
+        safe_body = _format_callout_body(body)
+        html_card = (
+            f'<div class="theory-callout-remember my-5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/70 p-4 sm:p-5 shadow-sm flex items-start gap-3.5">'
+            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm mt-0.5">'
+            f'<i class="ph-fill ph-target text-lg"></i></div>'
+            f'<div class="flex-1">'
+            f'<div class="text-xs font-black uppercase tracking-wider text-indigo-700 mb-0.5">Запомни</div>'
+            f'<div class="text-xs sm:text-sm font-bold text-slate-900 leading-snug">{safe_body}</div>'
+            f'</div>'
+            f'</div>'
+        )
+        return _stash_custom_block(html_card)
+
+    def _info_repl(match):
+        title = match.group(1) or 'Обратите внимание'
+        body = match.group(2).strip()
+        safe_body = _format_callout_body(body)
+        html_card = (
+            f'<div class="theory-callout-info my-5 rounded-2xl border-2 border-sky-200 bg-sky-50/70 p-4 sm:p-5 shadow-sm flex items-start gap-3.5">'
+            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-sky-500 text-white flex items-center justify-center shadow-sm mt-0.5">'
+            f'<i class="ph-fill ph-info text-lg"></i></div>'
+            f'<div class="flex-1">'
+            f'<div class="text-xs font-black uppercase tracking-wider text-sky-700 mb-0.5">{html.escape(title)}</div>'
+            f'<div class="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">{safe_body}</div>'
+            f'</div>'
+            f'</div>'
+        )
+        return _stash_custom_block(html_card)
+
+    def _try_repl(match):
+        title = match.group(1) or 'Попробуйте мысленно'
+        body = match.group(2).strip()
+        safe_body = _format_callout_body(body)
+        html_card = (
+            f'<div class="theory-callout-try my-5 rounded-2xl border-2 border-purple-200 bg-purple-50/70 p-4 sm:p-5 shadow-sm flex items-start gap-3.5">'
+            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-sm mt-0.5">'
+            f'<i class="ph-fill ph-brain text-lg"></i></div>'
+            f'<div class="flex-1">'
+            f'<div class="text-xs font-black uppercase tracking-wider text-purple-700 mb-0.5">{html.escape(title)}</div>'
+            f'<div class="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">{safe_body}</div>'
+            f'</div>'
+            f'</div>'
+        )
+        return _stash_custom_block(html_card)
+
+    def _how_it_works_repl(match):
+        speech = match.group(1) or 'Сначала понять — потом решать!'
+        body = match.group(2).strip()
+        safe_body = _format_callout_body(body)
+        html_card = (
+            f'<div class="theory-how-it-works my-6 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/80 via-white to-indigo-50/40 p-5 sm:p-6 shadow-sm relative overflow-hidden">'
+            f'<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-indigo-100">'
+            f'  <div class="flex items-center gap-3">'
+            f'    <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">'
+            f'      <i class="ph-fill ph-sparkle text-lg"></i>'
+            f'    </div>'
+            f'    <div>'
+            f'      <div class="text-[11px] font-black uppercase tracking-wider text-indigo-600">Разбор принципа</div>'
+            f'      <div class="text-base sm:text-lg font-black text-slate-900">Как это работает?</div>'
+            f'    </div>'
+            f'  </div>'
+            f'  <div class="flex items-center gap-3 self-end sm:self-auto">'
+            f'    <div class="relative bg-white border border-indigo-200 rounded-xl px-3 py-1.5 text-xs font-bold text-indigo-900 shadow-sm">'
+            f'      <span>{html.escape(speech)}</span>'
+            f'      <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white border-b border-r border-indigo-200 rotate-45"></div>'
+            f'    </div>'
+            f'    <img src="/static/images/theory/ghost_study.png" alt="Boo" class="w-12 h-12 object-contain drop-shadow-sm">'
+            f'  </div>'
+            f'</div>'
+            f'<div class="mt-4 text-xs sm:text-sm text-slate-700 leading-relaxed space-y-2">{safe_body}</div>'
+            f'</div>'
+        )
+        return _stash_custom_block(html_card)
+
+    def _data_types_repl(match):
+        body = match.group(1) or ''
+        type_matches = list(re.finditer(r'\[TYPE\s+([^\]]+)\]', body, flags=re.IGNORECASE))
+        cards_html = []
+        for tm in type_matches:
+            attrs = dict(re.findall(r'(\w+)="([^"]*)"', tm.group(1)))
+            name = attrs.get('name', 'type')
+            label = attrs.get('label', '')
+            desc = attrs.get('desc', '')
+            code = attrs.get('code', '').replace('\\n', '\n')
+
+            badge_classes = {
+                'int': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+                'float': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                'str': 'bg-amber-100 text-amber-800 border-amber-200',
+                'bool': 'bg-rose-100 text-rose-800 border-rose-200',
+                'list': 'bg-purple-100 text-purple-800 border-purple-200',
+                'dict': 'bg-sky-100 text-sky-800 border-sky-200',
+                'set': 'bg-teal-100 text-teal-800 border-teal-200',
+            }.get(name.lower(), 'bg-slate-100 text-slate-800 border-slate-200')
+
+            cards_html.append(
+                f'<div class="rounded-2xl border-2 border-slate-200 bg-white p-4 sm:p-5 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition">'
+                f'  <div>'
+                f'    <div class="flex items-center justify-between mb-2.5">'
+                f'      <span class="px-2.5 py-1 rounded-lg text-xs font-black font-mono border {badge_classes}">{html.escape(name)}</span>'
+                f'      <span class="text-xs font-bold text-slate-500">{html.escape(label)}</span>'
+                f'    </div>'
+                f'    <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-3">{html.escape(desc)}</p>'
+                f'  </div>'
+                f'  <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">{html.escape(code)}</div>'
+                f'</div>'
+            )
+        grid_html = (
+            f'<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-6">'
+            f'{"".join(cards_html)}'
+            f'</div>'
+        )
+        return _stash_custom_block(grid_html)
+
+    def _code_runner_repl(match):
+        raw_attrs = match.group(1) or ''
+        code_raw = _normalize_code_body_for_theory(match.group(2) or '').strip()
+        attrs = dict(re.findall(r'(\w+)="([^"]*)"', raw_attrs))
+        title = attrs.get('title', 'Пример кода')
+        input_val = attrs.get('input', '')
+        output_val = attrs.get('output', '')
+        lang = attrs.get('lang', 'python').lower()
+
+        lines = code_raw.split('\n')
+        num_lines = max(len(lines), 3)
+        line_numbers_html = ''.join(f'<div>{i+1}</div>' for i in range(len(lines)))
+
+        input_badge = ''
+        stdin_block = ''
+        if input_val:
+            input_badge = (
+                f'<span class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm">'
+                f'<span class="text-slate-400 font-medium">Ввод:</span> {html.escape(input_val)}</span>'
+            )
+            stdin_block = (
+                f'<div class="theory-stdin-wrap px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center gap-2">'
+                f'<span class="text-xs font-bold text-slate-500 shrink-0">Ввод (stdin):</span>'
+                f'<input type="text" class="theory-stdin-input w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-mono text-slate-800 outline-none focus:border-indigo-400" value="{html.escape(input_val)}">'
+                f'</div>'
+            )
+
+        output_badge = ''
+        if output_val:
+            output_badge = (
+                f'<span class="text-xs font-black text-slate-800">'
+                f'<span class="text-slate-500 font-semibold">Вывод:</span> {html.escape(output_val)}</span>'
+            )
+
+        runner_html = (
+            f'<div class="theory-code-runner my-6 rounded-2xl border-2 border-slate-200 bg-white overflow-hidden shadow-sm" data-lang="{lang}">'
+            f'<div class="px-4 py-3 border-b border-slate-200 bg-[#F8FAFC] flex flex-wrap items-center justify-between gap-3">'
+            f'  <div class="flex items-center gap-3">'
+            f'    <div class="flex items-center gap-1.5">'
+            f'      <span class="w-3 h-3 rounded-full bg-rose-400 inline-block"></span>'
+            f'      <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>'
+            f'      <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span>'
+            f'    </div>'
+            f'    <div class="flex items-center gap-2 text-xs font-bold text-slate-700">'
+            f'      <span class="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold">Python</span>'
+            f'      <span>{html.escape(title)}</span>'
+            f'    </div>'
+            f'  </div>'
+            f'  <div class="flex items-center gap-2">'
+            f'    <button type="button" class="theory-copy-btn inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition cursor-pointer" onclick="theoryCopyCode(this)">'
+            f'      <i class="ph-bold ph-copy text-sm"></i><span>Скопировать</span>'
+            f'    </button>'
+            f'    <button type="button" class="theory-run-btn inline-flex items-center gap-1.5 rounded-xl border-b-2 border-emerald-700 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-black shadow-sm transition active:translate-y-0.5 cursor-pointer" onclick="theoryRunCode(this)">'
+            f'      <i class="ph-bold ph-play text-sm"></i><span>Запустить</span>'
+            f'    </button>'
+            f'  </div>'
+            f'</div>'
+            f'<div class="theory-editor-wrap flex bg-white text-xs sm:text-sm font-mono leading-relaxed border-b border-slate-100">'
+            f'  <div class="select-none py-4 pr-3 pl-4 text-right text-slate-400 border-r border-slate-100 leading-relaxed shrink-0">{line_numbers_html}</div>'
+            f'  <textarea class="theory-code-input flex-1 p-4 bg-transparent font-mono text-xs sm:text-sm text-slate-800 leading-relaxed outline-none resize-none overflow-x-auto" rows="{num_lines}" spellcheck="false">{html.escape(code_raw)}</textarea>'
+            f'</div>'
+            f'{stdin_block}'
+            f'<div class="theory-result-box bg-[#ECFDF5] border-t border-emerald-100 p-3.5 sm:p-4 rounded-b-2xl flex flex-wrap items-center justify-between gap-3">'
+            f'  <div class="flex items-center flex-wrap gap-2.5">'
+            f'    <span class="inline-flex items-center gap-1.5 text-xs font-black text-emerald-800">'
+            f'      <i class="ph-fill ph-play-circle text-base text-emerald-600"></i>Результат работы'
+            f'    </span>'
+            f'    {input_badge}'
+            f'    {output_badge}'
+            f'  </div>'
+            f'  <span class="theory-status-badge inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100/70 px-2.5 py-0.5 text-[11px] font-black text-emerald-700">'
+            f'    <i class="ph-bold ph-check text-xs"></i>Пример готов'
+            f'  </span>'
+            f'  <div class="theory-live-output hidden w-full mt-2 rounded-xl bg-slate-900 text-emerald-400 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed"></div>'
+            f'</div>'
+            f'</div>'
+        )
+        return _stash_custom_block(runner_html)
+
+    def _callout_repl(match):
+        ctype = (match.group(1) or 'tip').strip().lower()
+        body = (match.group(2) or '').strip()
+        body = re.sub(r'^(ВНИМАНИЕ|ЛАЙФХАК|ОСТОРОЖНО)\s*:\s*', '', body, flags=re.IGNORECASE)
+        safe_body = _format_callout_body(body)
 
         theme = {
             'attention': {'bg': '#FFFBEB', 'border': '#FDE68A', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FEF3C7', 'icon_color': '#D97706'},
@@ -730,6 +959,12 @@ def _render_theory_content_html(content_value):
     text = re.sub(r'(?m)^\s*\*\s+', '- ', text)
     text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[REMEMBER\](.*?)\[/REMEMBER\]", _remember_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[INFO(?:\s+title=\"([^\"]*)\")?\](.*?)\[/INFO\]", _info_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[TRY(?:\s+title=\"([^\"]*)\")?\](.*?)\[/TRY\]", _try_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[HOW_IT_WORKS(?:\s+speech=\"([^\"]*)\")?\](.*?)\[/HOW_IT_WORKS\]", _how_it_works_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[DATA_TYPES\](.*?)\[/DATA_TYPES\]", _data_types_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[CODE_RUNNER(?:\s+([^\]]+))?\](.*?)\[/CODE_RUNNER\]", _code_runner_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
     text = _INTERACTIVE_RE.sub(_interactive_repl, text)
     text = _CHECKPOINT_RE.sub(_checkpoint_repl, text)
@@ -1020,6 +1255,10 @@ def _render_theory_content_html(content_value):
         flags=re.IGNORECASE,
     )
     text = re.sub(r'<div class="theory-spacer"></div>', '', text, flags=re.IGNORECASE)
+    for idx, block_html in enumerate(custom_blocks):
+        text = text.replace(f"<!--THEORY_CUSTOM_BLOCK_{idx}-->", block_html)
+        text = text.replace(f"<p>&lt;!--THEORY_CUSTOM_BLOCK_{idx}--&gt;</p>", block_html)
+        text = text.replace(f"<p><!--THEORY_CUSTOM_BLOCK_{idx}--></p>", block_html)
     return Markup(text)
 
 
