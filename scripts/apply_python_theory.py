@@ -149,7 +149,7 @@ def update_json_file(file_path):
 
     updated_count = 0
     for group in data.get("groups", []):
-        if group.get("key") == "intro_programming":
+        if group.get("key") in ("intro_programming", "group_2") or "Введение" in (group.get("name") or ""):
             for block in group.get("blocks", []):
                 tn = block.get("task_number")
                 if tn in ALL_THEORY:

@@ -101,6 +101,33 @@
       <span class="room-mission-orb hidden" aria-hidden="true"></span>
     </header>
 
+    <!-- Панель навигации по пространствам урока (Практика, Теория, Доска, Материалы) -->
+    <nav class="room-tabs" aria-label="Пространства урока" role="tablist">
+      <span class="room-tabs-caption">ПРОСТРАНСТВА УРОКА</span>
+      <button type="button" id="room-tab-work" class="room-tab active" data-view="work" role="tab" aria-controls="room-view-work" aria-selected="true">
+        <i class="ph-bold ph-code"></i>Практика
+      </button>
+      <button type="button" id="room-tab-theory" class="room-tab" data-view="theory" role="tab" aria-controls="room-view-theory" aria-selected="false">
+        <i class="ph-bold ph-book-open-text"></i>Теория
+      </button>
+      <button type="button" id="room-tab-board" class="room-tab" data-view="board" role="tab" aria-controls="room-view-board" aria-selected="false">
+        <i class="ph-bold ph-pencil-line"></i>Доска
+      </button>
+      <button type="button" id="room-tab-materials" class="room-tab" data-view="materials" role="tab" aria-controls="room-view-materials" aria-selected="false">
+        <i class="ph-bold ph-folder"></i>Материалы
+      </button>
+      <span class="room-tabs-spacer"></span>
+      <button type="button" id="room-task-toggle" class="room-tab room-task-toggle" aria-expanded="false" title="Переключить панель заданий">
+        <i class="ph-bold ph-list-checks"></i>Задания
+      </button>
+      <button type="button" id="os-focus-toggle" class="room-tab room-focus-toggle" aria-pressed="false" title="Режим полной фокусировки">
+        <i class="ph-bold ph-corners-out"></i>Фокус
+      </button>
+      <button type="button" id="room-panel-toggle" class="room-tab room-panel-toggle" aria-expanded="true" title="Боковая панель урока">
+        <i class="ph-bold ph-sidebar-simple"></i>Панель урока
+      </button>
+    </nav>
+
     <!-- 2. Главная 3-колоночная рабочая область -->
     <div class="room-main-grid-layout" id="room-main-layout">
 
@@ -192,98 +219,164 @@
       </aside>
 
       <!-- ================= КОЛОНКА 2: IDE РЕДАКТОР И ВЫВОД ================= -->
-      <section class="room-col-editor" aria-label="Редактор кода и консоль">
-        <div class="room-editor-outer-card">
-          <!-- Шапка IDE: табы (Код / Результат), язык и полный экран -->
-          <div class="room-editor-header-bar">
-            <div class="room-editor-tabs-group" role="tablist">
-              <button type="button" class="room-editor-tab-btn active" data-editor-tab="code">
-                <span>Код</span>
-              </button>
-              <button type="button" class="room-editor-tab-btn" data-editor-tab="result">
-                <span>Результат</span>
-              </button>
-            </div>
-
-            <div class="room-editor-tools-group">
-              <div class="room-lang-selector-pill">
-                <svg class="room-python-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
-                  <path d="M11.91 2C6.83 2 7.15 4.21 7.15 4.21L7.16 6.5H12V7.93H4.72S2 7.62 2 12.71C2 17.8 4.38 17.52 4.38 17.52L5.8 17.52V15.42S5.72 12.92 8.24 12.92H12.96S15.35 13.01 15.35 10.63V4.29S15.67 2 11.91 2ZM9.03 3.65C9.64 3.65 10.13 4.14 10.13 4.75C10.13 5.36 9.64 5.85 9.03 5.85C8.42 5.85 7.93 5.36 7.93 4.75C7.93 4.14 8.42 3.65 9.03 3.65Z" fill="#387eb8"/>
-                  <path d="M12.09 22C17.17 22 16.85 19.79 16.85 19.79L16.84 17.5H12V16.07H19.28S22 16.38 22 11.29C22 6.2 19.62 6.48 19.62 6.48L18.2 6.48V8.58S18.28 11.08 15.76 11.08H11.04S8.65 10.99 8.65 13.37V19.71S8.33 22 12.09 22ZM14.97 20.35C14.36 20.35 13.87 19.86 13.87 19.25C13.87 18.64 14.36 18.15 14.97 18.15C15.58 18.15 16.07 18.64 16.07 19.25C16.07 19.86 15.58 20.35 14.97 20.35Z" fill="#ffe052"/>
-                </svg>
-                <span class="room-lang-text">Python</span>
-                <i class="ph-bold ph-caret-down text-xs text-slate-500"></i>
+      <section class="room-col-editor" aria-label="Рабочее пространство урока">
+        <!-- 1. Вкладка: Практика (Код + Консоль) -->
+        <section id="room-view-work" class="room-view" data-view-panel="work" role="tabpanel" aria-labelledby="room-tab-work">
+          <div class="room-editor-outer-card">
+            <!-- Шапка IDE: табы (Код / Результат), язык и полный экран -->
+            <div class="room-editor-header-bar">
+              <div class="room-editor-tabs-group" role="tablist">
+                <button type="button" class="room-editor-tab-btn active" data-editor-tab="code">
+                  <span>Код</span>
+                </button>
+                <button type="button" class="room-editor-tab-btn" data-editor-tab="result">
+                  <span>Результат</span>
+                </button>
               </div>
-              <button type="button" id="os-focus-toggle" class="room-editor-fullscreen-btn" title="Развернуть редактор" aria-pressed="false">
-                <i class="ph-bold ph-corners-out text-base"></i>
-              </button>
-            </div>
-          </div>
 
-          <!-- Индикатор живой активности/печати напарника (учитель/ученик) -->
-          <div id="os-typing-banner" class="room-typing-notification-banner hidden" aria-live="polite">
-            <span class="room-typing-pulse-dot"></span>
-            <span id="os-typing-user-text">Преподаватель печатает...</span>
-          </div>
-
-          <!-- Полотно редактора с нумерацией строк и совместным вводом (Светлая тема) -->
-          <div class="room-code-surface-wrap">
-            <div id="os-code-gutter" class="room-code-line-gutter" aria-hidden="true">
-              <span>1</span>
+              <div class="room-editor-tools-group">
+                <div class="room-lang-selector-pill">
+                  <svg class="room-python-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+                    <path d="M11.91 2C6.83 2 7.15 4.21 7.15 4.21L7.16 6.5H12V7.93H4.72S2 7.62 2 12.71C2 17.8 4.38 17.52 4.38 17.52L5.8 17.52V15.42S5.72 12.92 8.24 12.92H12.96S15.35 13.01 15.35 10.63V4.29S15.67 2 11.91 2ZM9.03 3.65C9.64 3.65 10.13 4.14 10.13 4.75C10.13 5.36 9.64 5.85 9.03 5.85C8.42 5.85 7.93 5.36 7.93 4.75C7.93 4.14 8.42 3.65 9.03 3.65Z" fill="#387eb8"/>
+                    <path d="M12.09 22C17.17 22 16.85 19.79 16.85 19.79L16.84 17.5H12V16.07H19.28S22 16.38 22 11.29C22 6.2 19.62 6.48 19.62 6.48L18.2 6.48V8.58S18.28 11.08 15.76 11.08H11.04S8.65 10.99 8.65 13.37V19.71S8.33 22 12.09 22ZM14.97 20.35C14.36 20.35 13.87 19.86 13.87 19.25C13.87 18.64 14.36 18.15 14.97 18.15C15.58 18.15 16.07 18.64 16.07 19.25C16.07 19.86 15.58 20.35 14.97 20.35Z" fill="#ffe052"/>
+                  </svg>
+                  <span class="room-lang-text">Python</span>
+                  <i class="ph-bold ph-caret-down text-xs text-slate-500"></i>
+                </div>
+                <button type="button" id="os-focus-toggle-btn" class="room-editor-fullscreen-btn" title="Развернуть редактор" aria-pressed="false">
+                  <i class="ph-bold ph-corners-out text-base"></i>
+                </button>
+              </div>
             </div>
-            <pre id="os-code-highlight" aria-hidden="true"><code></code></pre>
-            <textarea id="os-code" spellcheck="false" aria-label="Редактор Python-кода" placeholder="# Пишите код здесь...
+
+            <!-- Индикатор живой активности/печати напарника (учитель/ученик) -->
+            <div id="os-typing-banner" class="room-typing-notification-banner hidden" aria-live="polite">
+              <span class="room-typing-pulse-dot"></span>
+              <span id="os-typing-user-text">Преподаватель печатает...</span>
+            </div>
+
+            <!-- Полотно редактора с нумерацией строк и совместным вводом (Светлая тема) -->
+            <div class="room-code-surface-wrap">
+              <div id="os-code-gutter" class="room-code-line-gutter" aria-hidden="true">
+                <span>1</span>
+              </div>
+              <pre id="os-code-highlight" aria-hidden="true"><code></code></pre>
+              <textarea id="os-code" spellcheck="false" aria-label="Редактор Python-кода" placeholder="# Пишите код здесь...
 # Изменения синхронизируются в реальном времени"></textarea>
-          </div>
-
-          <!-- Панель результата выполнения для вкладки Результат -->
-          <div id="os-result-pane" class="room-result-surface hidden" aria-label="Результат выполнения программы">
-            <div class="room-result-meta-bar">
-              <span class="room-result-badge"><i class="ph-bold ph-terminal-window"></i> Вывод программы</span>
-              <span id="os-result-status-tag" class="room-result-status">Готов к запуску</span>
-            </div>
-            <pre id="os-result-output" class="room-result-content">Нажмите «Запустить код», чтобы увидеть результат выполнения программы...</pre>
-          </div>
-
-          <!-- Нижняя панель действий IDE: Запуск, Сброс, Сохранение -->
-          <div class="room-editor-actions-row">
-            <div class="room-run-btn-cluster">
-              <button type="button" id="os-run" class="room-btn-3d-run">
-                <i class="ph-bold ph-play"></i>
-                <span>Запустить код</span>
-              </button>
-              <span class="room-hotkey-badge room-console-hint">Ctrl + Enter</span>
             </div>
 
-            <div class="room-editor-secondary-btns">
-              <button type="button" id="os-reset-code" class="room-btn-reset-code" title="Сбросить код к начальному состоянию">
-                <i class="ph-bold ph-arrow-counter-clockwise"></i>
-                <span>Сбросить</span>
-              </button>
-              <button type="button" id="os-save" class="room-btn-save-code hidden">
-                <i class="ph-bold ph-floppy-disk"></i> Сохранить
-              </button>
-              <input type="hidden" id="os-answer" value="">
-              <button type="button" id="os-versions" class="hidden">Версии</button>
-              <div id="os-versions-list" class="hidden"></div>
-            </div>
-          </div>
-
-          <!-- Блок консоли и вывода результатов -->
-          <div class="room-console-card">
-            <div class="room-console-top-bar">
-              <div class="room-console-title-group">
-                <span class="room-console-prompt">&gt;_</span>
-                <span class="room-console-heading">Консоль</span>
+            <!-- Панель результата выполнения для вкладки Результат -->
+            <div id="os-result-pane" class="room-result-surface hidden" aria-label="Результат выполнения программы">
+              <div class="room-result-meta-bar">
+                <span class="room-result-badge"><i class="ph-bold ph-terminal-window"></i> Вывод программы</span>
+                <span id="os-result-status-tag" class="room-result-status">Готов к запуску</span>
               </div>
-              <button type="button" id="os-copy-console" class="room-console-copy-btn" title="Скопировать вывод">
-                <i class="ph-bold ph-copy text-sm"></i>
-              </button>
+              <pre id="os-result-output" class="room-result-content">Нажмите «Запустить код», чтобы увидеть результат выполнения программы...</pre>
             </div>
-            <pre id="os-output" class="room-console-output">Здесь будет вывод программы...</pre>
-            <div id="os-turtle-view" class="room-turtle-container hidden"></div>
+
+            <!-- Нижняя панель действий IDE: Запуск, Сброс, Сохранение -->
+            <div class="room-editor-actions-row">
+              <div class="room-run-btn-cluster">
+                <button type="button" id="os-run" class="room-btn-3d-run">
+                  <i class="ph-bold ph-play"></i>
+                  <span>Запустить код</span>
+                </button>
+                <span class="room-hotkey-badge room-console-hint">Ctrl + Enter</span>
+              </div>
+
+              <div class="room-editor-secondary-btns">
+                <button type="button" id="os-reset-code" class="room-btn-reset-code" title="Сбросить код к начальному состоянию">
+                  <i class="ph-bold ph-arrow-counter-clockwise"></i>
+                  <span>Сбросить</span>
+                </button>
+                <button type="button" id="os-save" class="room-btn-save-code hidden">
+                  <i class="ph-bold ph-floppy-disk"></i> Сохранить
+                </button>
+                <input type="hidden" id="os-answer" value="">
+                <button type="button" id="os-versions" class="hidden">Версии</button>
+                <div id="os-versions-list" class="hidden"></div>
+              </div>
+            </div>
+
+            <!-- Блок консоли и вывода результатов -->
+            <div class="room-console-card">
+              <div class="room-console-top-bar">
+                <div class="room-console-title-group">
+                  <span class="room-console-prompt">&gt;_</span>
+                  <span class="room-console-heading">Консоль</span>
+                </div>
+                <button type="button" id="os-copy-console" class="room-console-copy-btn" title="Скопировать вывод">
+                  <i class="ph-bold ph-copy text-sm"></i>
+                </button>
+              </div>
+              <pre id="os-output" class="room-console-output">Здесь будет вывод программы...</pre>
+              <div id="os-turtle-view" class="room-turtle-container hidden"></div>
+            </div>
           </div>
-        </div>
+        </section>
+
+        <!-- 2. Вкладка: Теория (Конспект + Список тем) -->
+        <section id="room-view-theory" class="room-view hidden" data-view-panel="theory" role="tabpanel" aria-labelledby="room-tab-theory">
+          <div class="room-theory-layout">
+            <aside class="room-theory-nav">
+              <div class="room-panel-title"><span><i class="ph-bold ph-list"></i> Содержание</span></div>
+              <label class="room-theory-search"><i class="ph-bold ph-magnifying-glass"></i><input id="os-theory-search" type="search" placeholder="Поиск по теории"></label>
+              <div id="os-theory-list" class="room-utility-list"></div>
+            </aside>
+            <div class="room-theory-reading">
+              <div id="os-theory-empty" class="room-compact-empty"><i class="ph-bold ph-book-open"></i><div><strong>Выберите материал</strong><p>Откройте тему из содержания слева.</p></div></div>
+              <article id="os-theory-frame" class="room-theory-content hidden" aria-live="polite"></article>
+              <div class="room-theory-actions"><button type="button" id="os-theory-show-student" class="room-action room-action-primary hidden"><i class="ph-bold ph-broadcast"></i> Показать ученику</button></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Вкладка: Доска -->
+        <section id="room-view-board" class="room-view hidden" data-view-panel="board" role="tabpanel" aria-labelledby="room-tab-board">
+          <div id="os-board-viewport" class="room-board-surface">
+            <div class="room-board-toolbar" data-tool="pen" role="toolbar" aria-label="Инструменты доски">
+              <div class="room-board-tools">
+                <button type="button" data-tool="select" aria-label="Указатель" aria-pressed="false" title="Указатель"><i class="ph-bold ph-cursor"></i></button>
+                <button type="button" data-tool="pen" class="active" aria-label="Ручка" aria-pressed="true" title="Ручка"><i class="ph-bold ph-pencil-simple-line"></i></button>
+                <button type="button" data-tool="eraser" aria-label="Ластик" aria-pressed="false" title="Ластик"><i class="ph-bold ph-eraser"></i></button>
+                <span class="room-board-divider" aria-hidden="true"></span>
+                <button type="button" data-tool="line" aria-label="Линия" aria-pressed="false" title="Линия"><i class="ph-bold ph-line-segments"></i></button>
+                <button type="button" data-tool="rectangle" aria-label="Прямоугольник" aria-pressed="false" title="Прямоугольник"><i class="ph-bold ph-square"></i></button>
+                <button type="button" data-tool="ellipse" aria-label="Круг" aria-pressed="false" title="Круг"><i class="ph-bold ph-circle"></i></button>
+                <button type="button" data-tool="text" aria-label="Текст" aria-pressed="false" title="Текст"><i class="ph-bold ph-text-t"></i></button>
+                <button type="button" data-tool="hand" aria-label="Переместить полотно" aria-pressed="false" title="Переместить полотно"><i class="ph-bold ph-hand"></i></button>
+              </div>
+              <div class="room-board-actions">
+                <button type="button" id="os-board-undo" class="room-board-icon-action" aria-label="Отменить последнее действие" title="Отменить"><i class="ph-bold ph-arrow-u-up-left"></i></button>
+                <label class="room-board-icon-action" aria-label="Добавить изображение" title="Добавить изображение"><i class="ph-bold ph-image"></i><input id="os-board-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label>
+                <details class="room-board-more"><summary aria-label="Дополнительные действия" title="Дополнительные действия"><i class="ph-bold ph-dots-three"></i></summary><div>{% if is_studio_teacher %}<button type="button" id="os-board-clear" class="room-board-danger"><i class="ph-bold ph-trash"></i> Очистить доску</button>{% endif %}<span>Изображение можно вставить и из буфера обмена.</span></div></details>
+              </div>
+              <div class="room-board-context-controls">
+                <div data-board-context="pen line rectangle ellipse" class="room-board-context-group"><div class="room-board-palette" aria-label="Цвет линии">{% for c in ['#312E81','#0F172A','#DC2626','#2563EB','#059669','#EA580C'] %}<button type="button" data-color="{{ c }}" style="background:{{ c }}" aria-label="Цвет {{ loop.index }}"></button>{% endfor %}</div><label class="room-board-range"><span>Толщина</span><input id="os-board-width" type="range" min="2" max="24" value="4"><output id="os-board-width-value">4 px</output></label></div>
+                <div data-board-context="eraser" class="room-board-context-group" hidden><label class="room-board-range"><span>Ластик</span><input data-board-width-mirror type="range" min="6" max="48" value="18"><output>18 px</output></label></div>
+                <div data-board-context="text" class="room-board-context-group" hidden><input id="os-board-text" placeholder="Введите текст, затем кликните на доске" class="os-board-input"><label class="room-board-range"><span>Размер</span><input data-board-width-mirror type="range" min="12" max="48" value="18"><output>18 px</output></label></div>
+                <div data-board-context="select hand" class="room-board-context-group room-board-context-help" hidden><i class="ph-bold ph-hand-pointing"></i><span>Перетаскивайте объекты или полотно.</span></div>
+                <div class="room-board-zoom"><i class="ph-bold ph-magnifying-glass-minus"></i><input id="os-board-zoom" type="range" min="20" max="300" step="10" value="100" aria-label="Масштаб доски"><i class="ph-bold ph-magnifying-glass-plus"></i><output id="os-board-zoom-value">100%</output></div>
+              </div>
+            </div>
+            <canvas id="os-board"></canvas>
+            <div class="room-board-context"><span id="room-board-status">Ручка · 4 px</span><span>Общая доска</span></div>
+          </div>
+        </section>
+
+        <!-- 4. Вкладка: Материалы -->
+        <section id="room-view-materials" class="room-view hidden" data-view-panel="materials" role="tabpanel" aria-labelledby="room-tab-materials">
+          <header class="room-materials-head">
+            <div><span class="room-eyebrow">РЕСУРСЫ УРОКА</span><h2>Материалы урока</h2><p>Файлы урока доступны всем участникам.</p></div>
+            {% if is_studio_teacher %}
+            <div class="room-upload"><input id="os-material-file" type="file" hidden><button type="button" id="os-material-pick" class="room-action"><i class="ph-bold ph-upload-simple"></i> Загрузить файл</button><button type="button" id="os-material-upload" class="room-action room-action-primary" disabled>Прикрепить</button></div>
+            {% endif %}
+          </header>
+          {% if is_studio_teacher %}
+          <button type="button" id="os-material-dropzone" class="room-material-dropzone"><i class="ph-bold ph-upload-simple"></i><span>Перетащите файлы сюда</span><small>или выберите на компьютере · до 20 МБ</small></button>
+          {% endif %}
+          <div class="room-materials-layout"><div id="os-materials" class="room-material-grid"></div><aside id="os-material-preview" class="room-material-preview"><div><i class="ph-bold ph-file"></i><strong>Выберите материал</strong><p>Здесь откроется быстрый просмотр.</p></div></aside></div>
+        </section>
       </section>
 
       <!-- ================= КОЛОНКА 3: ЦЕЛЬ УРОКА, МАТЕРИАЛЫ И ЗАМЕТКИ ================= -->
@@ -333,7 +426,7 @@
             <i class="ph-bold ph-caret-down room-accordion-chevron"></i>
           </summary>
           <div class="room-accordion-body">
-            <div id="os-materials" class="room-materials-list-modern">
+            <div id="os-sidebar-materials" class="room-materials-list-modern">
               <!-- Ссылки на теорию и файлы урока -->
               {% if theory_items %}
                 {% for item in theory_items %}
@@ -417,29 +510,6 @@
           <button id="room-checkpoint-save"></button>
           {% endif %}
           <div id="room-student-presence"></div>
-          <span id="room-board-status"></span>
-          <canvas id="os-board" class="room-board-surface"></canvas>
-          <div role="toolbar" aria-label="Инструменты доски" class="room-board-toolbar">
-            <div data-board-context="pen line rectangle ellipse"></div>
-          </div>
-          <section id="room-view-work" data-view-panel="work"></section>
-          <section id="room-view-theory" data-view-panel="theory" class="room-theory-layout hidden">
-            <div id="os-theory-list"></div>
-            <article id="os-theory-frame"></article>
-            <div id="os-theory-empty"></div>
-            <button id="os-theory-show-student"></button>
-            <input id="os-theory-search" type="search">
-          </section>
-          <section id="room-view-board" data-view-panel="board" class="hidden"></section>
-          <section id="room-view-materials" data-view-panel="materials" class="room-materials-layout hidden">
-            {% if is_studio_teacher %}
-            <input id="os-material-file" type="file">
-            <button id="os-material-pick"></button>
-            <button id="os-material-upload"></button>
-            <div id="os-material-dropzone"></div>
-            <div id="os-material-preview"></div>
-            {% endif %}
-          </section>
           <aside id="room-task-panel" class="is-collapsed"></aside>
           <button id="room-task-close"></button>
           <button id="room-task-toggle"></button>
