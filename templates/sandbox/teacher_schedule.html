@@ -26,6 +26,48 @@
   .lesson-card.color-emerald { background: #ecfdf5; border: 2px solid #a7f3d0; color: #064e3b; }
   .lesson-card.color-amber { background: #fffbeb; border: 2px solid #fde68a; color: #78350f; }
   .lesson-card.color-rose { background: #fff1f2; border: 2px solid #fecdd3; color: #881337; }
+  .lesson-card.is-test-card {
+    background: repeating-linear-gradient(135deg, #fffbeb, #fffbeb 8px, #fef3c7 8px, #fef3c7 16px) !important;
+    border: 2px dashed #f59e0b !important;
+    color: #78350f !important;
+    box-shadow: 0 1px 3px rgba(245,158,11,0.2) !important;
+  }
+
+  .lesson-card.is-selection-mode {
+    cursor: pointer !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, outline 0.15s ease;
+  }
+  .lesson-card.is-selection-mode:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.12) !important;
+  }
+  .lesson-card.is-selected {
+    outline: 3px solid #6366f1 !important;
+    outline-offset: 1px;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.3) !important;
+  }
+  .card-select-check {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    border: 1.5px solid #94a3b8;
+    background: rgba(255,255,255,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: transparent;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  .lesson-card.is-selected .card-select-check {
+    background: #4f46e5 !important;
+    border-color: #4338ca !important;
+    color: white !important;
+  }
 
   .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.4); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
   .modal-backdrop.hidden { display: none; }
@@ -83,12 +125,14 @@
           <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
             <i class="ph-bold ph-globe-hemisphere-west"></i> Часовой пояс
           </span>
-          <span id="tz-display" class="text-xs font-black text-slate-700">MSK (+3)</span>
+          <span id="tz-display" class="text-xs font-black text-slate-700">
+            {% if timezone == 'Asia/Yekaterinburg' %}YEKT (+5){% elif timezone in ('Asia/Novosibirsk', 'Asia/Tomsk', 'Asia/Krasnoyarsk') %}NOVT (+7){% else %}MSK (+3){% endif %}
+          </span>
         </div>
         <select id="tz-select" onchange="changeTimezone(this.value)" class="w-full bg-white border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-700 px-2.5 py-1.5 outline-none focus:border-indigo-400 cursor-pointer shadow-xs">
-          <option value="Europe/Moscow">Московское время (UTC+3)</option>
-          <option value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</option>
-          <option value="Asia/Novosibirsk">Новосибирск / Томск (UTC+7)</option>
+          <option value="Europe/Moscow" {% if timezone == 'Europe/Moscow' %}selected{% endif %}>Московское время (UTC+3)</option>
+          <option value="Asia/Yekaterinburg" {% if timezone == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург (UTC+5)</option>
+          <option value="Asia/Novosibirsk" {% if timezone in ('Asia/Novosibirsk', 'Asia/Tomsk', 'Asia/Krasnoyarsk') %}selected{% endif %}>Новосибирск / Томск (UTC+7)</option>
         </select>
       </div>
 
@@ -96,7 +140,20 @@
       <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] p-4 flex flex-col gap-3">
         <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">ФИЛЬТРЫ</span>
         
-        <div class="space-y-2">
+        <div class="space-y-2.5">
+          <!-- Test layer toggle / filter -->
+          <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-2.5">
+            <label class="text-[10px] font-black text-amber-900 uppercase tracking-wider block mb-1 flex items-center justify-between">
+              <span class="flex items-center gap-1"><i class="ph-bold ph-flask text-amber-600"></i> Тестовые уроки</span>
+              <span class="text-[9px] font-bold text-amber-700 bg-amber-200/80 px-1.5 py-0.5 rounded">подслой</span>
+            </label>
+            <select id="filter-test" onchange="applyFilters()" class="w-full bg-white border border-amber-300 rounded-lg p-1.5 text-xs font-bold text-slate-700 outline-none focus:border-amber-500 cursor-pointer">
+              <option value="hide" selected>🙈 Скрыть тестовые</option>
+              <option value="show">👁️ Показать с тестовыми</option>
+              <option value="only_test">🧪 Только тестовые</option>
+            </select>
+          </div>
+
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Тип занятия</label>
             <select id="filter-type" onchange="applyFilters()" class="w-full bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700">
@@ -119,6 +176,19 @@
             </select>
           </div>
         </div>
+      </div>
+
+      <!-- Actions & Batch Control -->
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] p-4 flex flex-col gap-2.5">
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">ДЕЙСТВИЯ</span>
+        <button type="button" id="btn-toggle-select-mode" onclick="toggleSelectionMode()" class="w-full bg-white hover:bg-indigo-50 border-2 border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-600 font-bold text-xs p-2.5 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:translate-y-[1px]">
+          <i class="ph-bold ph-check-square text-indigo-500 text-sm"></i>
+          <span id="btn-select-mode-text">Выбрать несколько</span>
+        </button>
+        <button type="button" onclick="openDeleteAllTestsModal()" class="w-full bg-amber-50/70 hover:bg-amber-100/80 border border-amber-200 text-amber-900 font-bold text-xs p-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+          <i class="ph-bold ph-trash text-amber-600"></i>
+          <span>Очистить все тесты</span>
+        </button>
       </div>
 
       <!-- Week Stats -->
@@ -264,6 +334,15 @@
         <input type="text" id="input-topic" name="topic" required placeholder="Например: Python • Условия (if/else) или КЕГЭ № 24" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
       </div>
 
+      <!-- Test Lesson Checkbox -->
+      <div class="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 flex items-center justify-between">
+        <label for="input-is-test" class="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="input-is-test" name="is_test" class="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer">
+          <span class="text-xs font-bold text-amber-950">Тестовый урок (поместить в тестовый подслой)</span>
+        </label>
+        <span class="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-200/80 px-2 py-0.5 rounded-md">Тест-слой</span>
+      </div>
+
       <!-- Date, Time, Duration -->
       <div class="grid grid-cols-3 gap-2.5">
         <div>
@@ -327,9 +406,10 @@
   <div class="modal-box flex flex-col max-h-[92vh] overflow-hidden">
     <div class="modal-header bg-slate-50/80 shrink-0">
       <div class="flex-1 pr-4 min-w-0">
-        <div class="flex items-center gap-2 mb-1">
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
           <span id="view-lesson-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border">Запланирован</span>
           <span id="view-lesson-type-badge" class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider border border-slate-200">Индивидуальный</span>
+          <span id="view-lesson-test-badge" class="hidden px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider border border-amber-300">Тестовый подслой</span>
         </div>
         <h2 class="text-base font-black text-slate-900 tracking-tight leading-snug truncate" id="view-lesson-topic">Урок</h2>
       </div>
@@ -408,6 +488,9 @@
       </div>
 
       <div class="flex items-center gap-1.5">
+        <button type="button" id="btn-toggle-test" onclick="toggleTestCurrentLesson()" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1">
+          <i class="ph-bold ph-flask"></i> <span id="btn-toggle-test-label">Сделать обычным</span>
+        </button>
         <button type="button" onclick="deleteCurrentLesson()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1">
           <i class="ph-bold ph-trash"></i> Удалить
         </button>
@@ -465,6 +548,15 @@
         <input type="text" id="edit-topic" name="topic" required placeholder="Тема урока..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
       </div>
 
+      <!-- Test Lesson Checkbox -->
+      <div class="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200 flex items-center justify-between">
+        <label for="edit-is-test" class="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="edit-is-test" name="is_test" class="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer">
+          <span class="text-xs font-bold text-amber-950">Тестовый урок (поместить в тестовый подслой)</span>
+        </label>
+        <span class="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-200/80 px-2 py-0.5 rounded-md">Тест-слой</span>
+      </div>
+
       <!-- Date, Time, Duration -->
       <div class="grid grid-cols-3 gap-2.5">
         <div>
@@ -477,12 +569,21 @@
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Длительность</label>
-          <select id="edit-duration" name="duration" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+          <select id="edit-duration" name="duration" onchange="updateEditDurationPills(this.value)" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all">
+            <option value="30">30 мин</option>
             <option value="45">45 мин</option>
             <option value="60">60 мин</option>
             <option value="90">90 мин</option>
             <option value="120">120 мин</option>
+            <option value="180">180 мин</option>
           </select>
+          <div class="flex items-center gap-1 mt-1.5 flex-wrap" id="edit-duration-pills">
+            <button type="button" onclick="setEditDuration(30)" data-dur="30" class="dur-pill px-2 py-0.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-indigo-400 cursor-pointer">30м</button>
+            <button type="button" onclick="setEditDuration(45)" data-dur="45" class="dur-pill px-2 py-0.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-indigo-400 cursor-pointer">45м</button>
+            <button type="button" onclick="setEditDuration(60)" data-dur="60" class="dur-pill px-2 py-0.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-indigo-400 cursor-pointer">60м</button>
+            <button type="button" onclick="setEditDuration(90)" data-dur="90" class="dur-pill px-2 py-0.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-indigo-400 cursor-pointer">90м</button>
+            <button type="button" onclick="setEditDuration(120)" data-dur="120" class="dur-pill px-2 py-0.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-indigo-400 cursor-pointer">120м</button>
+          </div>
         </div>
       </div>
 
@@ -515,11 +616,64 @@
         <div id="edit-materials-list" class="space-y-2"></div>
       </div>
 
-      <div class="modal-footer px-0 pb-0 border-t pt-3 flex justify-end gap-2 shrink-0">
-        <button type="button" onclick="closeEditLessonModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-xl transition-colors cursor-pointer">Отмена</button>
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] shadow-xs active:translate-y-[2px] transition-all cursor-pointer">Сохранить изменения</button>
+      <div class="modal-footer px-0 pb-0 border-t pt-3 flex items-center justify-between shrink-0">
+        <button type="button" onclick="deleteFromEditModal()" class="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5">
+          <i class="ph-bold ph-trash"></i> Удалить урок
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeEditLessonModal()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-xl transition-colors cursor-pointer">Отмена</button>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] shadow-xs active:translate-y-[2px] transition-all cursor-pointer">Сохранить изменения</button>
+        </div>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- FLOATING ACTION BAR FOR BULK ACTIONS -->
+<div id="bulk-actions-bar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-3 transition-all">
+  <div class="flex items-center gap-2 pr-3 border-r border-slate-700">
+    <span class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
+    <span class="text-xs font-black uppercase tracking-wider text-slate-300">Выбрано:</span>
+    <span id="bulk-selected-count" class="bg-indigo-600 text-white text-xs font-black px-2 py-0.5 rounded-lg">0</span>
+  </div>
+  <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+    <button type="button" onclick="bulkSelectAllVisible()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold transition cursor-pointer">
+      Выбрать все
+    </button>
+    <button type="button" onclick="bulkSelectAllTest()" class="px-2.5 py-1.5 rounded-xl bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-500/40 text-xs font-bold transition cursor-pointer flex items-center gap-1">
+      <i class="ph-bold ph-flask"></i> Только тесты
+    </button>
+    <button type="button" onclick="bulkDeselectAll()" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-400 hover:text-slate-200 transition cursor-pointer">
+      Снять выбор
+    </button>
+    <button type="button" onclick="openBulkDeleteModal()" id="btn-bulk-delete" disabled class="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-black border border-rose-700 border-b-[2px] shadow-xs transition cursor-pointer flex items-center gap-1.5">
+      <i class="ph-bold ph-trash"></i> Удалить выбранные
+    </button>
+    <button type="button" onclick="toggleSelectionMode(false)" class="w-7 h-7 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer ml-1" title="Завершить выбор">
+      ✕
+    </button>
+  </div>
+</div>
+
+<!-- MODAL: ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ -->
+<div class="modal-backdrop hidden" id="modal-delete-confirm">
+  <div class="modal-box max-w-md p-6">
+    <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mx-auto mb-3 border border-rose-200 shadow-xs">
+      <i class="ph-bold ph-warning-circle"></i>
+    </div>
+    <h3 id="delete-confirm-title" class="text-base font-black text-slate-900 text-center mb-1">Удаление урока</h3>
+    <p id="delete-confirm-desc" class="text-xs text-slate-500 text-center mb-4 font-medium leading-relaxed">
+      Вы уверены, что хотите удалить урок? Действие необратимо.
+    </p>
+    <div id="delete-confirm-details" class="hidden mb-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1"></div>
+    <div class="flex items-center gap-2">
+      <button type="button" onclick="closeDeleteConfirmModal()" class="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer">
+        Отмена
+      </button>
+      <button type="button" id="btn-do-delete-confirm" onclick="executeDeleteConfirm()" class="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs border border-rose-700 border-b-[3px] shadow-xs active:translate-y-[1px] transition-all cursor-pointer flex items-center justify-center gap-1.5">
+        <i class="ph-bold ph-trash"></i> <span>Удалить</span>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -533,10 +687,13 @@
     weekOffset: 0,
     lessons: [],
     weekdays: RAW.weekdays || [],
-    tzName: RAW.tz_name || 'Europe/Moscow',
+    tzName: RAW.timezone || RAW.tz_name || 'Europe/Moscow',
     currentHour: RAW.current_hour || new Date().getHours(),
     currentMinute: RAW.current_minute || new Date().getMinutes(),
-    viewingLesson: null
+    viewingLesson: null,
+    selectionMode: false,
+    selectedLessonIds: new Set(),
+    pendingDeleteAction: null
   };
 
   const PX_PER_HOUR = 60; // Fixed 60px slot height per hour
@@ -545,20 +702,74 @@
 
   function processLessons(lessonsArray) {
     return (lessonsArray || []).map(l => {
-      const iso = l.start_iso || l.start_dt || l.lesson_date;
-      if (!iso) return l;
-      const dt = new Date(iso);
-      l.start_date = dt.toLocaleDateString('en-CA');
-      l.start_time = dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-      const endDt = new Date(dt.getTime() + (l.duration_minutes || l.duration || 60) * 60000);
-      l.end_time = endDt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-      l.grid_top = dt.getHours() * PX_PER_HOUR + Math.round(dt.getMinutes() * PX_PER_HOUR / 60);
-      l.grid_height = Math.max(Math.round((l.duration_minutes || l.duration || 60) * PX_PER_HOUR / 60), 28);
+      // Извлекаем точные дату и время, вычисленные бэкендом в часовом поясе расписания,
+      // без смещения локальным часовым поясом операционной системы/браузера
+      let startDateStr = l.start_date;
+      let startTimeStr = l.start_time;
+      let endTimeStr = l.end_time;
+
+      if (!startDateStr || !startTimeStr) {
+        const rawIso = l.start_iso || l.start_dt || l.lesson_date || '';
+        if (rawIso.includes('T')) {
+          const parts = rawIso.split('T');
+          startDateStr = startDateStr || parts[0];
+          startTimeStr = startTimeStr || parts[1].substring(0, 5);
+        } else if (rawIso.includes(' ')) {
+          const parts = rawIso.split(' ');
+          startDateStr = startDateStr || parts[0];
+          startTimeStr = startTimeStr || parts[1].substring(0, 5);
+        }
+      }
+
+      l.start_date = startDateStr || '';
+      l.start_time = startTimeStr || '12:00';
+
+      const dur = Number(l.duration_minutes || l.duration || 60);
+      l.duration_minutes = dur;
+
+      if (!endTimeStr && l.start_time) {
+        const [sh, sm] = l.start_time.split(':').map(Number);
+        const endTotal = ((sh || 0) * 60 + (sm || 0) + dur) % (24 * 60);
+        endTimeStr = `${pad2(Math.floor(endTotal / 60))}:${pad2(endTotal % 60)}`;
+      }
+      l.end_time = endTimeStr || '';
+
+      const [h, m] = (l.start_time || '00:00').split(':').map(Number);
+      l.grid_top = (h || 0) * PX_PER_HOUR + Math.round(((m || 0) * PX_PER_HOUR) / 60);
+      l.grid_height = Math.max(Math.round((dur * PX_PER_HOUR) / 60), 28);
+
       let wdIndex = state.weekdays.findIndex(w => w.iso === l.start_date);
-      if (wdIndex === -1) wdIndex = (dt.getDay() === 0 ? 6 : dt.getDay() - 1);
+      if (wdIndex === -1 && l.start_date) {
+        const [y, mon, d] = l.start_date.split('-').map(Number);
+        const dayOfWeek = new Date(y, mon - 1, d).getDay();
+        wdIndex = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+      }
       l.weekday = wdIndex;
+      l.is_test = Boolean(l.is_test);
       return l;
     });
+  }
+
+  function updateLessonInState(updatedLesson) {
+    if (!updatedLesson || !updatedLesson.lesson_id) return;
+    const targetId = Number(updatedLesson.lesson_id);
+    const existingIdx = state.lessons.findIndex(l => Number(l.lesson_id) === targetId);
+    const processed = processLessons([updatedLesson])[0];
+    if (existingIdx !== -1) {
+      state.lessons[existingIdx] = { ...state.lessons[existingIdx], ...processed };
+    } else {
+      state.lessons.push(processed);
+    }
+    applyFilters();
+  }
+
+  function removeLessonsFromState(lessonIds) {
+    if (!Array.isArray(lessonIds) || lessonIds.length === 0) return;
+    const idSet = new Set(lessonIds.map(Number));
+    state.lessons = state.lessons.filter(l => !idSet.has(Number(l.lesson_id)));
+    lessonIds.forEach(id => state.selectedLessonIds.delete(Number(id)));
+    updateBulkBar();
+    applyFilters();
   }
 
   function generateWeekdays(weekOffset) {
@@ -624,10 +835,18 @@
   window.applyFilters = function() {
     const type = document.getElementById('filter-type')?.value || 'all';
     const studentId = document.getElementById('filter-student')?.value || 'all';
-    state.filteredLessons = state.lessons.filter((lesson) =>
-      (type === 'all' || lesson.lesson_type === type) &&
-      (studentId === 'all' || String(lesson.student_id) === studentId)
-    );
+    const testFilter = document.getElementById('filter-test')?.value || 'hide';
+    try {
+      localStorage.setItem('schedule_filter_test', testFilter);
+    } catch (e) {}
+
+    state.filteredLessons = state.lessons.filter((lesson) => {
+      if (testFilter === 'hide' && lesson.is_test) return false;
+      if (testFilter === 'only_test' && !lesson.is_test) return false;
+      if (type !== 'all' && lesson.lesson_type !== type) return false;
+      if (studentId !== 'all' && String(lesson.student_id) !== studentId) return false;
+      return true;
+    });
     renderCurrentView();
   };
 
@@ -706,14 +925,39 @@
     const top = lesson.grid_top || 0;
     const height = Math.max(lesson.grid_height || 60, 28);
     const color = lesson.color_tag || 'indigo';
-    return `<div class="lesson-card color-${color}"
+    const isTest = Boolean(lesson.is_test);
+    const lid = Number(lesson.lesson_id);
+    const isSelected = state.selectedLessonIds.has(lid);
+    const testBadge = isTest ? `<span class="inline-block px-1 py-0.5 text-[9px] font-black rounded bg-amber-200/90 text-amber-950 border border-amber-400 mr-1 align-middle leading-none">ТЕСТ</span>` : '';
+    const selectCheck = state.selectionMode ? `<div class="card-select-check"><i class="ph-bold ph-check"></i></div>` : '';
+
+    const selClasses = [
+      state.selectionMode ? 'is-selection-mode' : '',
+      isSelected ? 'is-selected' : '',
+      isTest ? 'is-test-card' : ''
+    ].filter(Boolean).join(' ');
+
+    return `<div class="lesson-card color-${color} ${selClasses}"
        style="top:${top}px;height:${height}px;"
-       onclick="openLessonView(${lesson.lesson_id || 1})"
-       title="${lesson.topic}">
-      <div style="font-size:11px;font-weight:800;line-height:1.2;overflow:hidden;">${lesson.topic}</div>
+       onclick="onCardClick(event, ${lid})"
+       title="${escapeHtml(lesson.topic)}">
+      ${selectCheck}
+      <div style="font-size:11px;font-weight:800;line-height:1.2;overflow:hidden;${state.selectionMode ? 'padding-right:18px;' : ''}">${testBadge}${escapeHtml(lesson.topic)}</div>
       ${height > 40 ? `<div style="font-size:10px;font-weight:700;opacity:.7;margin-top:2px;">${lesson.start_time || ''} – ${lesson.end_time || ''}</div>` : ''}
     </div>`;
   }
+
+  window.onCardClick = function(e, lessonId) {
+    if (state.selectionMode) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      toggleLessonSelection(lessonId);
+    } else {
+      openLessonView(lessonId);
+    }
+  };
 
   function renderMonthView() {
     const grid = document.getElementById('month-grid');
@@ -731,7 +975,11 @@
       if (!day) return '<div class="min-h-[100px] bg-slate-50/60 border-r border-b border-slate-200"></div>';
       const iso = day.toLocaleDateString('en-CA');
       const items = lessons.filter((lesson) => lesson.start_date === iso);
-      return `<div class="min-h-[100px] p-2 border-r border-b border-slate-200 ${day.getDay() === 0 || day.getDay() === 6 ? 'bg-slate-50/60' : 'bg-white'}"><div class="text-xs font-black text-slate-700 mb-1">${day.getDate()}</div>${items.map((lesson) => `<button type="button" class="block w-full text-left truncate mb-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[10px] font-bold" onclick="openLessonView(${lesson.lesson_id})">${lesson.start_time} ${lesson.topic}</button>`).join('')}</div>`;
+      return `<div class="min-h-[100px] p-2 border-r border-b border-slate-200 ${day.getDay() === 0 || day.getDay() === 6 ? 'bg-slate-50/60' : 'bg-white'}"><div class="text-xs font-black text-slate-700 mb-1">${day.getDate()}</div>${items.map((lesson) => {
+        const lid = Number(lesson.lesson_id);
+        const isSel = state.selectedLessonIds.has(lid);
+        return `<button type="button" class="block w-full text-left truncate mb-1 px-2 py-1 rounded-lg ${isSel ? 'ring-2 ring-indigo-500 bg-indigo-100 font-black text-indigo-950' : lesson.is_test ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-indigo-50 text-indigo-700'} text-[10px] font-bold cursor-pointer transition-all" onclick="onCardClick(event, ${lid})">${state.selectionMode ? (isSel ? '☑ ' : '☐ ') : ''}${lesson.is_test ? '[ТЕСТ] ' : ''}${lesson.start_time} ${escapeHtml(lesson.topic)}</button>`;
+      }).join('')}</div>`;
     }).join('');
   }
 
@@ -741,9 +989,22 @@
     if (!marker || !label) return;
     if (state.weekOffset !== 0) { marker.style.display = 'none'; return; }
 
-    const now = new Date();
-    const curH = now.getHours();
-    const curM = now.getMinutes();
+    const tz = RAW.timezone || 'Europe/Moscow';
+    let curH = 0, curM = 0;
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false
+      }).formatToParts(new Date());
+      curH = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+      curM = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+    } catch (e) {
+      const now = new Date();
+      curH = now.getHours();
+      curM = now.getMinutes();
+    }
     state.currentHour = curH;
     state.currentMinute = curM;
 
@@ -761,8 +1022,9 @@
   }
 
   function updateStats() {
-    const total = state.lessons.length;
-    const done = state.lessons.filter(l => l.status === 'done' || l.status === 'completed').length;
+    const list = state.filteredLessons || state.lessons;
+    const total = list.length;
+    const done = list.filter(l => l.status === 'done' || l.status === 'completed').length;
     const totalEl = document.getElementById('stat-total');
     const doneEl = document.getElementById('stat-done');
     if (totalEl) totalEl.textContent = total;
@@ -841,6 +1103,8 @@
     }
     const dateInput = document.getElementById('input-lesson-date');
     if (dateInput) dateInput.value = lessonDate || state.weekdays[0]?.iso || '';
+    const testCheck = document.getElementById('input-is-test');
+    if (testCheck) testCheck.checked = false;
     renderMaterialsInputs('new-materials-list', []);
     document.getElementById('modal-new-lesson').classList.remove('hidden');
   };
@@ -873,6 +1137,7 @@
     const homework = document.getElementById('input-homework').value.trim();
     const studentNotes = document.getElementById('input-student-notes').value.trim();
     const materials = collectMaterials('new-materials-list');
+    const isTest = Boolean(document.getElementById('input-is-test')?.checked);
 
     if (!studentId) {
       if (typeof showBentoToast === 'function') showBentoToast('Выберите ученика для урока', 'error');
@@ -896,8 +1161,9 @@
       homework: homework,
       student_notes: studentNotes,
       materials: materials,
-      lesson_type: 'individual',
-      timezone: RAW.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow'
+      is_test: isTest,
+      lesson_type: isTest ? 'test' : 'individual',
+      timezone: RAW.timezone || 'Europe/Moscow'
     };
 
     try {
@@ -973,6 +1239,16 @@
     }
     if (typeBadge) {
       typeBadge.textContent = (lesson.lesson_type === 'group') ? 'Групповой' : 'Индивидуальный';
+    }
+
+    const testBadge = document.getElementById('view-lesson-test-badge');
+    const toggleBtnLabel = document.getElementById('btn-toggle-test-label');
+    const isTest = Boolean(lesson.is_test || lesson.lesson_type === 'test');
+    if (testBadge) {
+      testBadge.classList.toggle('hidden', !isTest);
+    }
+    if (toggleBtnLabel) {
+      toggleBtnLabel.textContent = isTest ? 'Сделать обычным уроком' : 'Пометить как тестовый';
     }
 
     // Info cards
@@ -1061,6 +1337,42 @@
     document.getElementById('modal-lesson-view').classList.add('hidden');
   };
 
+  window.toggleTestCurrentLesson = async function() {
+    if (!state.viewingLesson) return;
+    const lessonId = state.viewingLesson.lesson_id;
+    const btn = document.getElementById('btn-toggle-test');
+    if (btn) btn.disabled = true;
+    try {
+      const resp = await fetch(`/api/schedule/lesson/${lessonId}/toggle_test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && (data.status === 'success' || data.success)) {
+        if (typeof showBentoToast === 'function') {
+          showBentoToast(data.message || 'Статус тестового подслоя изменён', 'success');
+        }
+        if (state.viewingLesson) {
+          state.viewingLesson.is_test = Boolean(data.is_test);
+          if (data.lesson_type) state.viewingLesson.lesson_type = data.lesson_type;
+          updateLessonInState(state.viewingLesson);
+        }
+        closeLessonViewModal();
+      } else {
+        if (typeof showBentoToast === 'function') {
+          showBentoToast('Ошибка: ' + (data.message || data.error || 'Не удалось переключить'), 'error');
+        }
+      }
+    } catch (e) {
+      if (typeof showBentoToast === 'function') showBentoToast('Ошибка сети', 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
   window.saveLessonStatus = async function() {
     if (!state.viewingLesson) return;
     const lessonId = state.viewingLesson.lesson_id;
@@ -1077,8 +1389,11 @@
       const data = await resp.json().catch(() => ({}));
       if (resp.ok && (data.status === 'success' || data.success)) {
         if (typeof showBentoToast === 'function') showBentoToast("Статус обновлен!", "success");
+        if (state.viewingLesson) {
+          state.viewingLesson.status = status;
+          updateLessonInState(state.viewingLesson);
+        }
         closeLessonViewModal();
-        setTimeout(() => location.reload(), 300);
       } else {
         if (typeof showBentoToast === 'function') showBentoToast("Ошибка: " + (data.message || data.error || 'Ошибка сохранения'), "error");
       }
@@ -1087,30 +1402,249 @@
     }
   };
 
-  window.deleteCurrentLesson = async function() {
-    if (!state.viewingLesson) return;
-    const lessonId = state.viewingLesson.lesson_id;
-    if (!confirm('Вы действительно хотите удалить этот урок из расписания?')) return;
+  window.openDeleteConfirmModal = function({ title, description, detailsHtml, onConfirm }) {
+    const modal = document.getElementById('modal-delete-confirm');
+    const titleEl = document.getElementById('delete-confirm-title');
+    const descEl = document.getElementById('delete-confirm-desc');
+    const detailsEl = document.getElementById('delete-confirm-details');
+    const btnConfirm = document.getElementById('btn-do-delete-confirm');
 
-    try {
-      const resp = await fetch(`/api/schedule/delete_lesson/${lessonId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        }
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (resp.ok && (data.status === 'success' || data.success)) {
-        if (typeof showBentoToast === 'function') showBentoToast("Урок удалён", "success");
-        closeLessonViewModal();
-        setTimeout(() => location.reload(), 300);
+    if (titleEl) titleEl.textContent = title || 'Удаление урока';
+    if (descEl) descEl.textContent = description || 'Вы уверены? Действие необратимо.';
+    if (detailsEl) {
+      if (detailsHtml) {
+        detailsEl.innerHTML = detailsHtml;
+        detailsEl.classList.remove('hidden');
       } else {
-        if (typeof showBentoToast === 'function') showBentoToast("Ошибка: " + (data.message || data.error || 'Не удалось удалить'), "error");
+        detailsEl.innerHTML = '';
+        detailsEl.classList.add('hidden');
       }
-    } catch (e) {
-      if (typeof showBentoToast === 'function') showBentoToast("Сетевая ошибка при удалении урока", "error");
     }
+    state.pendingDeleteAction = onConfirm;
+    if (btnConfirm) {
+      btnConfirm.disabled = false;
+      btnConfirm.innerHTML = '<i class="ph-bold ph-trash"></i> <span>Удалить</span>';
+    }
+    if (modal) modal.classList.remove('hidden');
+  };
+
+  window.closeDeleteConfirmModal = function() {
+    const modal = document.getElementById('modal-delete-confirm');
+    if (modal) modal.classList.add('hidden');
+    state.pendingDeleteAction = null;
+  };
+
+  window.executeDeleteConfirm = async function() {
+    if (typeof state.pendingDeleteAction === 'function') {
+      const btn = document.getElementById('btn-do-delete-confirm');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> <span>Удаление...</span>';
+      }
+      try {
+        await state.pendingDeleteAction();
+      } finally {
+        if (btn) btn.disabled = false;
+        closeDeleteConfirmModal();
+      }
+    }
+  };
+
+  window.deleteCurrentLesson = function() {
+    if (!state.viewingLesson) return;
+    const l = state.viewingLesson;
+    const lessonId = l.lesson_id;
+
+    openDeleteConfirmModal({
+      title: 'Удаление урока',
+      description: 'Вы действительно хотите удалить этот урок из расписания?',
+      detailsHtml: `
+        <div class="font-bold text-slate-800 text-xs">${escapeHtml(l.topic || 'Урок')}</div>
+        <div class="text-slate-500 text-[11px]">${escapeHtml(l.student_name || 'Ученик')} • ${l.start_date || ''} (${l.start_time || ''} – ${l.end_time || ''})</div>
+      `,
+      onConfirm: async () => {
+        try {
+          const resp = await fetch(`/api/schedule/delete_lesson/${lessonId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            }
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (resp.ok && (data.status === 'success' || data.success)) {
+            removeLessonsFromState([lessonId]);
+            closeLessonViewModal();
+            closeEditLessonModal();
+            if (typeof showBentoToast === 'function') showBentoToast("Урок успешно удалён", "success");
+          } else {
+            if (typeof showBentoToast === 'function') showBentoToast("Ошибка: " + (data.message || data.error || 'Не удалось удалить'), "error");
+          }
+        } catch (e) {
+          if (typeof showBentoToast === 'function') showBentoToast("Сетевая ошибка при удалении урока", "error");
+        }
+      }
+    });
+  };
+
+  window.deleteFromEditModal = function() {
+    const lessonId = document.getElementById('edit-lesson-id')?.value;
+    if (!lessonId) return;
+    const cached = state.lessons.find(l => Number(l.lesson_id) === Number(lessonId));
+    state.viewingLesson = cached || {
+      lesson_id: lessonId,
+      topic: document.getElementById('edit-topic')?.value || 'Урок',
+      student_name: document.getElementById('edit-student-id')?.selectedOptions[0]?.text || '',
+      start_date: document.getElementById('edit-lesson-date')?.value || '',
+      start_time: document.getElementById('edit-start-time')?.value || ''
+    };
+    deleteCurrentLesson();
+  };
+
+  window.toggleSelectionMode = function(force) {
+    state.selectionMode = (force !== undefined) ? Boolean(force) : !state.selectionMode;
+    if (!state.selectionMode) {
+      state.selectedLessonIds.clear();
+    }
+    const bar = document.getElementById('bulk-actions-bar');
+    if (bar) bar.classList.toggle('hidden', !state.selectionMode);
+
+    const btn = document.getElementById('btn-toggle-select-mode');
+    const btnText = document.getElementById('btn-select-mode-text');
+    if (btn) {
+      if (state.selectionMode) {
+        btn.className = 'w-full bg-indigo-600 hover:bg-indigo-500 border-2 border-indigo-700 text-white font-bold text-xs p-2.5 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs';
+        if (btnText) btnText.textContent = '✕ Завершить выбор';
+      } else {
+        btn.className = 'w-full bg-white hover:bg-indigo-50 border-2 border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-600 font-bold text-xs p-2.5 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:translate-y-[1px]';
+        if (btnText) btnText.textContent = 'Выбрать несколько';
+      }
+    }
+
+    updateBulkBar();
+    renderCurrentView();
+  };
+
+  window.toggleLessonSelection = function(lessonId) {
+    const id = Number(lessonId);
+    if (state.selectedLessonIds.has(id)) {
+      state.selectedLessonIds.delete(id);
+    } else {
+      state.selectedLessonIds.add(id);
+    }
+    updateBulkBar();
+    renderCurrentView();
+  };
+
+  window.bulkSelectAllVisible = function() {
+    const list = state.filteredLessons || state.lessons;
+    list.forEach(l => state.selectedLessonIds.add(Number(l.lesson_id)));
+    updateBulkBar();
+    renderCurrentView();
+  };
+
+  window.bulkSelectAllTest = function() {
+    state.lessons.filter(l => l.is_test).forEach(l => state.selectedLessonIds.add(Number(l.lesson_id)));
+    updateBulkBar();
+    renderCurrentView();
+  };
+
+  window.bulkDeselectAll = function() {
+    state.selectedLessonIds.clear();
+    updateBulkBar();
+    renderCurrentView();
+  };
+
+  window.updateBulkBar = function() {
+    const count = state.selectedLessonIds.size;
+    const countEl = document.getElementById('bulk-selected-count');
+    const deleteBtn = document.getElementById('btn-bulk-delete');
+    if (countEl) countEl.textContent = count;
+    if (deleteBtn) deleteBtn.disabled = count === 0;
+  };
+
+  window.openBulkDeleteModal = function() {
+    const ids = Array.from(state.selectedLessonIds);
+    if (ids.length === 0) return;
+
+    openDeleteConfirmModal({
+      title: 'Массовое удаление уроков',
+      description: `Вы уверены, что хотите удалить выбранные занятия (${ids.length} шт.)? Действие необратимо.`,
+      detailsHtml: `<div class="text-slate-700 font-bold text-xs">Будет безвозвратно удалено уроков: <span class="text-rose-600 text-sm font-black">${ids.length}</span></div>`,
+      onConfirm: async () => {
+        try {
+          const resp = await fetch('/api/schedule/bulk_delete_lessons', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: JSON.stringify({ lesson_ids: ids })
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (resp.ok && (data.status === 'success' || data.success)) {
+            removeLessonsFromState(data.deleted_ids || ids);
+            toggleSelectionMode(false);
+            if (typeof showBentoToast === 'function') showBentoToast(data.message || `Удалено ${ids.length} уроков`, "success");
+          } else {
+            if (typeof showBentoToast === 'function') showBentoToast("Ошибка: " + (data.error || 'Не удалось удалить'), "error");
+          }
+        } catch (e) {
+          if (typeof showBentoToast === 'function') showBentoToast("Сетевая ошибка при массовом удалении", "error");
+        }
+      }
+    });
+  };
+
+  window.openDeleteAllTestsModal = function() {
+    const testLessons = state.lessons.filter(l => l.is_test);
+    const count = testLessons.length;
+    openDeleteConfirmModal({
+      title: 'Очистка тестовых уроков',
+      description: 'Удалить все тестовые уроки из расписания? Это полностью очистит сетку от накопившихся тестовых данных.',
+      detailsHtml: `<div class="text-amber-900 font-bold text-xs">Найдено тестовых уроков: <span class="text-rose-600 text-sm font-black">${count > 0 ? count : 'все в вашей базе'}</span></div>`,
+      onConfirm: async () => {
+        try {
+          const resp = await fetch('/api/schedule/bulk_delete_lessons', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            },
+            body: JSON.stringify({ delete_all_test: true })
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (resp.ok && (data.status === 'success' || data.success)) {
+            const delIds = data.deleted_ids || testLessons.map(l => l.lesson_id);
+            removeLessonsFromState(delIds);
+            if (typeof showBentoToast === 'function') showBentoToast(data.message || 'Все тестовые уроки успешно удалены!', 'success');
+          } else {
+            if (typeof showBentoToast === 'function') showBentoToast('Ошибка: ' + (data.error || 'Не удалось удалить тесты'), 'error');
+          }
+        } catch (e) {
+          if (typeof showBentoToast === 'function') showBentoToast('Сетевая ошибка при удалении тестов', 'error');
+        }
+      }
+    });
+  };
+
+  window.setEditDuration = function(minutes) {
+    const sel = document.getElementById('edit-duration');
+    if (sel) {
+      sel.value = String(minutes);
+      updateEditDurationPills(minutes);
+    }
+  };
+
+  window.updateEditDurationPills = function(val) {
+    const pills = document.querySelectorAll('#edit-duration-pills .dur-pill');
+    pills.forEach(p => {
+      if (p.getAttribute('data-dur') === String(val)) {
+        p.className = 'dur-pill px-2 py-0.5 text-[10px] font-black rounded-lg bg-indigo-600 text-white border border-indigo-700 shadow-xs cursor-pointer';
+      } else {
+        p.className = 'dur-pill px-2 py-0.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-indigo-400 cursor-pointer';
+      }
+    });
   };
 
   window.openEditLessonModal = function() {
@@ -1125,10 +1659,18 @@
     document.getElementById('edit-topic').value = l.topic || '';
     document.getElementById('edit-lesson-date').value = l.date || l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
     document.getElementById('edit-start-time').value = l.start_time || '18:00';
-    document.getElementById('edit-duration').value = String(l.duration_minutes || l.duration || 60);
+    const durVal = l.duration_minutes || l.duration || 60;
+    document.getElementById('edit-duration').value = String(durVal);
+    updateEditDurationPills(durVal);
+
     document.getElementById('edit-notes').value = l.notes || l.description || '';
     document.getElementById('edit-homework').value = l.homework || '';
     document.getElementById('edit-student-notes').value = l.student_notes || l.teacher_notes || '';
+
+    const editTestInput = document.getElementById('edit-is-test');
+    if (editTestInput) {
+      editTestInput.checked = Boolean(l.is_test || l.lesson_type === 'test');
+    }
 
     renderMaterialsInputs('edit-materials-list', l.materials || []);
 
@@ -1152,6 +1694,7 @@
       submitBtn.textContent = 'Сохранение...';
     }
 
+    const isTest = Boolean(document.getElementById('edit-is-test')?.checked);
     const payload = {
       student_id: parseInt(document.getElementById('edit-student-id').value, 10),
       status: document.getElementById('edit-status').value,
@@ -1164,7 +1707,9 @@
       homework: document.getElementById('edit-homework').value.trim(),
       student_notes: document.getElementById('edit-student-notes').value.trim(),
       materials: collectMaterials('edit-materials-list'),
-      lesson_type: 'individual'
+      is_test: isTest,
+      lesson_type: isTest ? 'test' : 'individual',
+      timezone: RAW.timezone || 'Europe/Moscow'
     };
 
     try {
@@ -1178,9 +1723,14 @@
       });
       const data = await resp.json().catch(() => ({}));
       if (resp.ok && (data.status === 'success' || data.success)) {
-        if (typeof showBentoToast === 'function') showBentoToast("Урок обновлён!", "success");
+        if (data.lesson) {
+          updateLessonInState(data.lesson);
+        } else {
+          // fallback
+          setTimeout(() => location.reload(), 300);
+        }
         closeEditLessonModal();
-        setTimeout(() => location.reload(), 300);
+        if (typeof showBentoToast === 'function') showBentoToast("Урок успешно сохранён!", "success");
       } else {
         if (typeof showBentoToast === 'function') showBentoToast("Ошибка: " + (data.message || data.error || 'Ошибка сохранения'), "error");
       }
@@ -1196,11 +1746,18 @@
   };
 
   function init() {
-    renderCurrentView();
+    const testFilterEl = document.getElementById('filter-test');
+    if (testFilterEl) {
+      try {
+        const savedTestPref = localStorage.getItem('schedule_filter_test') || 'hide';
+        testFilterEl.value = savedTestPref;
+      } catch (e) {}
+    }
+    applyFilters();
     setInterval(positionTimeMarker, 30000);
 
     // Close modals on outside click
-    ['modal-new-lesson', 'modal-lesson-view', 'modal-edit-lesson'].forEach(id => {
+    ['modal-new-lesson', 'modal-lesson-view', 'modal-edit-lesson', 'modal-delete-confirm'].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
         el.addEventListener('click', function(ev) {

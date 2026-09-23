@@ -95,3 +95,174 @@ def test_course_entrypoints_are_visible_to_student_and_tutor(client, role_users)
     assert teacher_dashboard.status_code == 200
     assert 'Программа обучения'.encode() in teacher_dashboard.data
     assert f'/student/{role_users["student_id"]}/courses'.encode() in teacher_dashboard.data
+
+
+def test_schedule_timezone_clean_extraction_and_test_layer(app, client, role_users):
+    from app import db
+    from app.models import Lesson, Student
+    from app.schedule.routes import _extract_clean_lesson_datetime, _is_lesson_test
+
+    # 1. Clean datetime extraction across timezones
+    # 2026-09-25 15:30 in Europe/Moscow (UTC+3) -> 12:30 UTC
+    clean_msk = _extract_clean_lesson_datetime('2026-09-25', '15:30', 'Europe/Moscow')
+    assert clean_msk.tzinfo is not None
+    assert clean_msk.astimezone(timezone.utc).hour == 12
+    assert clean_msk.astimezone(timezone.utc).minute == 30
+
+    # 2026-09-25 15:30 in Asia/Tomsk (UTC+7) -> 08:30 UTC
+    clean_tomsk = _extract_clean_lesson_datetime('2026-09-25', '15:30', 'Asia/Tomsk')
+    assert clean_tomsk.astimezone(timezone.utc).hour == 8
+    assert clean_tomsk.astimezone(timezone.utc).minute == 30
+
+    # 2. Heuristic detection of test lessons
+    l_test_topic = Lesson(topic='тест времени', lesson_type='individual')
+    assert _is_lesson_test(l_test_topic) is True
+
+    l_test_type = Lesson(topic='Информатика №24', lesson_type='test')
+    assert _is_lesson_test(l_test_type) is True
+
+    l_test_note = Lesson(topic='Обычный урок', notes='__TEST__ debug info', lesson_type='individual')
+    assert _is_lesson_test(l_test_note) is True
+
+    l_regular = Lesson(topic='Разбор задания 27', lesson_type='individual', notes='Домашнее задание')
+    assert _is_lesson_test(l_regular) is False
+
+    # 3. Create lesson API with timezone & is_test flag
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    res_create = client.post('/api/schedule/create_lesson', json={
+        'student_id': role_users['student_id'],
+        'lesson_date': '2026-09-25',
+        'time': '16:00',
+        'duration': 60,
+        'topic': 'Тестовый урок 1',
+        'is_test': True,
+        'timezone': 'Europe/Moscow'
+    })
+    assert res_create.status_code == 200
+    res_data = res_create.get_json()
+    assert res_data['status'] == 'success'
+    lesson_id = res_data['lesson_id']
+
+    with app.app_context():
+        created_lesson = db.session.get(Lesson, lesson_id)
+        assert created_lesson is not None
+        assert _is_lesson_test(created_lesson) is True
+        assert created_lesson.lesson_type == 'test'
+        # In UTC: 16:00 MSK (UTC+3) -> 13:00 UTC
+        utc_dt = created_lesson.lesson_date.astimezone(timezone.utc) if created_lesson.lesson_date.tzinfo else created_lesson.lesson_date.replace(tzinfo=timezone.utc)
+        assert utc_dt.hour == 13
+
+    # 4. Toggle test lesson API
+    res_toggle = client.post(f'/api/schedule/lesson/{lesson_id}/toggle_test')
+    assert res_toggle.status_code == 200
+    data = res_toggle.get_json()
+    assert data['is_test'] is False
+    assert data['lesson_type'] == 'individual'
+
+    with app.app_context():
+        updated_lesson = db.session.get(Lesson, lesson_id)
+        assert _is_lesson_test(updated_lesson) is False
+
+
+def test_schedule_update_and_bulk_delete(app, client, role_users):
+    from app import db
+    from app.models import Lesson
+    from app.schedule.routes import _is_lesson_test
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    # 1. Create two test lessons and one regular lesson
+    res1 = client.post('/api/schedule/create_lesson', json={
+        'student_id': role_users['student_id'],
+        'lesson_date': '2026-09-26',
+        'time': '10:00',
+        'duration': 60,
+        'topic': 'Тест для удаления 1',
+        'is_test': True,
+        'timezone': 'Europe/Moscow'
+    })
+    assert res1.status_code == 200
+    id1 = res1.get_json()['lesson_id']
+
+    res2 = client.post('/api/schedule/create_lesson', json={
+        'student_id': role_users['student_id'],
+        'lesson_date': '2026-09-26',
+        'time': '11:00',
+        'duration': 60,
+        'topic': 'Тест для удаления 2',
+        'is_test': True,
+        'timezone': 'Europe/Moscow'
+    })
+    assert res2.status_code == 200
+    id2 = res2.get_json()['lesson_id']
+
+    res3 = client.post('/api/schedule/create_lesson', json={
+        'student_id': role_users['student_id'],
+        'lesson_date': '2026-09-26',
+        'time': '12:00',
+        'duration': 60,
+        'topic': 'Обычный урок математики',
+        'is_test': False,
+        'timezone': 'Europe/Moscow'
+    })
+    assert res3.status_code == 200
+    id3 = res3.get_json()['lesson_id']
+
+    # 2. Smooth update test: update topic and duration on id3
+    res_update = client.post(f'/api/schedule/update_lesson/{id3}', json={
+        'student_id': role_users['student_id'],
+        'topic': 'Обновлённый урок математики',
+        'duration': 90,
+        'status': 'completed',
+        'notes': 'Разобрали стереометрию'
+    })
+    assert res_update.status_code == 200
+    upd_data = res_update.get_json()
+    assert upd_data['status'] == 'success'
+    assert 'lesson' in upd_data
+    assert upd_data['lesson']['topic'] == 'Обновлённый урок математики'
+    assert upd_data['lesson']['duration_minutes'] == 90
+    assert upd_data['lesson']['status'] == 'completed'
+
+    with app.app_context():
+        l3 = db.session.get(Lesson, id3)
+        assert l3.topic == 'Обновлённый урок математики'
+        assert l3.duration == 90
+        assert l3.status == 'completed'
+
+    # 3. Bulk delete by IDs: delete id1
+    res_bulk_ids = client.post('/api/schedule/bulk_delete_lessons', json={
+        'lesson_ids': [id1]
+    })
+    assert res_bulk_ids.status_code == 200
+    b_data = res_bulk_ids.get_json()
+    assert b_data['status'] == 'success'
+    assert b_data['deleted_count'] == 1
+    assert id1 in b_data['deleted_ids']
+
+    with app.app_context():
+        assert db.session.get(Lesson, id1) is None
+        assert db.session.get(Lesson, id2) is not None
+
+    # 4. Bulk delete all tests: delete_all_test=True should delete id2
+    res_bulk_test = client.post('/api/schedule/bulk_delete_lessons', json={
+        'delete_all_test': True
+    })
+    assert res_bulk_test.status_code == 200
+    bt_data = res_bulk_test.get_json()
+    assert bt_data['status'] == 'success'
+    assert id2 in bt_data['deleted_ids']
+
+    with app.app_context():
+        assert db.session.get(Lesson, id2) is None
+        # regular lesson id3 remains untouched
+        assert db.session.get(Lesson, id3) is not None
+
+    # 5. Single delete test: delete id3
+    res_single_del = client.post(f'/api/schedule/delete_lesson/{id3}')
+    assert res_single_del.status_code == 200
+    with app.app_context():
+        assert db.session.get(Lesson, id3) is None
+
+

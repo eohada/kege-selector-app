@@ -3,6 +3,7 @@
 """
 import logging
 import os
+import re
 from datetime import datetime, timedelta, time, date, timezone as dt_timezone
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
@@ -14,7 +15,7 @@ from app.notifications.service import notify_student_and_parents
 from app.telegram.user_notify import notify_user_by_id
 from app.utils.relationship_scope import get_parent_user_ids_for_student
 from app.utils.datetime_utc import effective_timezone_name
-from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local, lesson_storage_to_utc, timezone_from_name, timezone_name
+from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local, lesson_storage_to_utc, timezone_from_name, timezone_name, lesson_display_time
 from core.audit_logger import audit_logger
 import secrets
 
@@ -192,8 +193,51 @@ def _lessons_in_local_window(query, timezone: str, start_day: date, end_day: dat
     return result
 
 
+def _is_lesson_test(lesson) -> bool:
+    """Определить, относится ли урок к тестовому слою."""
+    if not lesson:
+        return False
+    notes = str(getattr(lesson, 'notes', '') or '')
+    if '__NOT_TEST__' in notes:
+        return False
+    if getattr(lesson, 'lesson_type', None) and str(lesson.lesson_type).strip().lower() == 'test':
+        return True
+    if '__TEST__' in notes:
+        return True
+    topic = str(getattr(lesson, 'topic', '') or '')
+    if re.search(r'(?i)(тест|test|проверк|poyasa)', topic):
+        return True
+    return False
+
+
+def _extract_clean_lesson_datetime(raw_date: str, raw_time: str, tz_name: str | None) -> datetime:
+    """Извлечь дату и время без поломки часовых поясов и вернуть UTC aware datetime."""
+    tz_canonical = timezone_name(tz_name or 'Europe/Moscow')
+    raw_date_str = str(raw_date or '').strip()
+    raw_time_str = str(raw_time or '').strip()
+
+    if 'T' in raw_date_str:
+        parts = raw_date_str.split('T')
+        date_part = parts[0].strip()
+        time_part = raw_time_str or parts[1][:5].strip()
+    elif ' ' in raw_date_str:
+        parts = raw_date_str.split(' ', 1)
+        date_part = parts[0].strip()
+        time_part = raw_time_str or parts[1][:5].strip()
+    else:
+        date_part = raw_date_str
+        time_part = raw_time_str or '12:00'
+
+    if not time_part:
+        time_part = '12:00'
+    elif len(time_part) > 5:
+        time_part = time_part[:5]
+
+    return parse_local_lesson_datetime(date_part, time_part, tz_canonical)
+
+
 def _parse_local_datetime(date_str: str, time_str: str, timezone: str):
-    return parse_local_lesson_datetime(date_str, time_str, timezone)
+    return _extract_clean_lesson_datetime(date_str, time_str, timezone)
 
 
 def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:
@@ -207,12 +251,14 @@ def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int,
     # Lesson.lesson_date is stored as naive Moscow wall time, while the
     # comparison below is UTC-aware. Filtering by UTC values in SQL would
     # silently miss the same lesson in Tomsk and other user time zones.
-    q = Lesson.query.filter(Lesson.student_id == student_id)
+    q = Lesson.query.filter(Lesson.student_id == student_id, Lesson.status != 'cancelled')
     if exclude_lesson_id:
         q = q.filter(Lesson.lesson_id != exclude_lesson_id)
 
     candidates = q.all()
     for l in candidates:
+        if _is_lesson_test(l):
+            continue
         l_start = lesson_storage_to_utc(l.lesson_date)
         l_end = lesson_storage_to_utc(l.lesson_date + timedelta(minutes=int(l.duration or 60)))
         if not l_start or not l_end:
@@ -342,8 +388,8 @@ def schedule():
         view_mode = 'week'
     status_filter = request.args.get('status', '')
     category_filter = request.args.get('category', '')
-    # Время — свойство зрителя, а не query-параметра: вручную оно меняется в профиле.
-    timezone = _schedule_timezone_from_user()
+    # Время зрителя: query-параметр имеет приоритет (для быстрого переключения в шапке), иначе профиль
+    timezone = (request.args.get('timezone') or _schedule_timezone_from_user()).strip()
     student_filter = request.args.get('student_id', type=int)
 
     timezone = timezone_name(timezone)
@@ -637,6 +683,7 @@ def schedule():
             'duration_minutes': duration_minutes,
             'status': l.status or 'planned',
             'lesson_type': l.lesson_type or 'individual',
+            'is_test': _is_lesson_test(l),
             'room_url': url_for('lessons.lesson_interactive_room', lesson_id=l.lesson_id),
         })
 
@@ -729,6 +776,7 @@ def schedule():
             'week_offset': week_offset,
             'week_label': week_label,
             'timezone': timezone,
+            'tz_name': timezone,
             'base_url': url_for('schedule.schedule'),
             'can_manage': _can_manage_schedule(),
         },
@@ -771,14 +819,15 @@ def schedule_create_lesson():
     try:
         student_id = request.form.get('student_id', type=int)
         lesson_date_str = request.form.get('lesson_date')
-        lesson_time_str = request.form.get('lesson_time')
+        lesson_time_str = request.form.get('lesson_time') or request.form.get('start_time')
         duration = request.form.get('duration', 60, type=int)
-        lesson_type = request.form.get('lesson_type', 'regular')
-        timezone = request.form.get('timezone') or _schedule_timezone_from_user()
+        is_test_form = request.form.get('is_test') in ('true', '1', 'on', True)
+        lesson_type = 'test' if is_test_form else (request.form.get('lesson_type') or 'regular').strip().lower()
+        timezone = (request.form.get('timezone') or _schedule_timezone_from_user()).strip()
         lesson_mode = request.form.get('lesson_mode', 'single')
         repeat_count = request.form.get('repeat_count', type=int)
 
-        if not student_id or not lesson_date_str or not lesson_time_str:
+        if not student_id or not lesson_date_str:
             error_message = 'Заполните все обязательные поля'
             is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
             if is_ajax:
@@ -789,7 +838,7 @@ def schedule_create_lesson():
             flash(error_message, 'error')
             return redirect(url_for('schedule.schedule'))
 
-        base_lesson_datetime = _parse_local_datetime(lesson_date_str, lesson_time_str, timezone)
+        base_lesson_datetime = _extract_clean_lesson_datetime(lesson_date_str, lesson_time_str, timezone)
 
         student = Student.query.get_or_404(student_id)
         allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
@@ -1026,22 +1075,12 @@ def create_schedule_lesson_api():
         raw_date = data.get('lesson_date') or data.get('start_time') or data.get('date')
         raw_time = data.get('time') or data.get('lesson_time') or ''
         topic = data.get('topic') or data.get('notes') or 'Занятие по расписанию'
+        req_tz = (data.get('timezone') or _schedule_timezone_from_user()).strip()
 
         if not raw_student_id or not raw_date:
             return jsonify({'status': 'error', 'message': 'Укажите ученика и дату урока'}), 400
 
-        if 'T' not in str(raw_date) and raw_time:
-            full_date_str = f"{raw_date} {raw_time}"
-        else:
-            full_date_str = str(raw_date)
-
-        if 'T' not in str(raw_date) and raw_time:
-            clean_date = parse_local_lesson_datetime(
-                str(raw_date), str(raw_time), (data.get('timezone') or 'moscow'),
-            )
-        else:
-            from dateutil.parser import parse
-            clean_date = parse(full_date_str).replace(tzinfo=None)
+        clean_date = _extract_clean_lesson_datetime(str(raw_date), str(raw_time), req_tz)
 
         student = Student.query.filter(
             (Student.student_id == raw_student_id) | (Student.user_id == raw_student_id)
@@ -1056,15 +1095,23 @@ def create_schedule_lesson_api():
             duration = int(data.get('duration') or 60)
         except (TypeError, ValueError):
             duration = 60
-        if duration not in (30, 45, 60, 90, 120):
+        if duration < 15 or duration > 360:
             return jsonify({'status': 'error', 'message': 'Некорректная длительность урока'}), 400
-        if _student_has_overlap(student.student_id, clean_date, duration):
+
+        is_test_req = data.get('is_test') in (True, 'true', '1', 1) or str(data.get('lesson_type', '')).strip().lower() == 'test'
+        lesson_type_val = 'test' if is_test_req else (data.get('lesson_type') or 'individual').strip().lower()
+
+        if not is_test_req and _student_has_overlap(student.student_id, clean_date, duration):
             return jsonify({'status': 'error', 'message': 'У ученика уже есть пересекающийся урок'}), 409
 
         if not getattr(student, 'mentor_id', None) and current_user and current_user.is_authenticated:
             student.mentor_id = current_user.id
 
         notes = data.get('notes') or data.get('description') or ''
+        notes_val = str(notes).strip() if notes else None
+        if is_test_req and (not notes_val or '__TEST__' not in notes_val):
+            notes_val = ((notes_val or '') + ' __TEST__').strip()
+
         homework = data.get('homework') or ''
         student_notes = data.get('student_notes') or data.get('teacher_notes') or ''
         materials_raw = data.get('materials')
@@ -1084,13 +1131,13 @@ def create_schedule_lesson_api():
             student_id=student.student_id,
             lesson_date=clean_date,
             topic=topic,
-            notes=str(notes).strip() if notes else None,
+            notes=notes_val,
             homework=str(homework).strip() if homework else None,
             student_notes=str(student_notes).strip() if student_notes else None,
             materials=materials if materials else None,
             status=(data.get('status') or 'planned').strip().lower(),
             duration=duration,
-            lesson_type=(data.get('lesson_type') or 'individual').strip().lower(),
+            lesson_type=lesson_type_val,
         )
 
         db.session.add(new_lesson)
@@ -1100,7 +1147,8 @@ def create_schedule_lesson_api():
         try:
             if student.user and getattr(student.user, 'telegram_id', None):
                 from app.telegram.user_notify import notify_user_by_id
-                msg = f"📅 <b>НОВЫЙ УРОК В РАСПИСАНИИ!</b>\n\n📌 <b>Тема:</b> {topic}\n⏰ <b>Время:</b> {clean_date.strftime('%d.%m.%Y %H:%M')}"
+                local_time_display = lesson_display_time(clean_date, req_tz)
+                msg = f"📅 <b>НОВЫЙ УРОК В РАСПИСАНИИ!</b>\n\n📌 <b>Тема:</b> {topic}\n⏰ <b>Время:</b> {local_time_display}"
                 notify_user_by_id(student.user.id, msg, kind='lesson_scheduled')
         except Exception:
             logger.exception('Schedule API: lesson %s was created, but notification failed', new_lesson.lesson_id)
@@ -1138,13 +1186,8 @@ def update_schedule_lesson_api(lesson_id: int):
         if 'lesson_date' in data or 'start_time' in data or 'time' in data:
             raw_date = data.get('lesson_date') or data.get('start_time')
             raw_time = data.get('time') or data.get('lesson_time') or ''
-            if raw_date and 'T' not in str(raw_date) and raw_time:
-                new_date = parse_local_lesson_datetime(
-                    str(raw_date), str(raw_time), (data.get('timezone') or 'moscow'),
-                )
-            else:
-                from dateutil.parser import parse
-                new_date = parse(str(raw_date)).replace(tzinfo=None)
+            req_tz = (data.get('timezone') or _schedule_timezone_from_user()).strip()
+            new_date = _extract_clean_lesson_datetime(str(raw_date), str(raw_time), req_tz)
         else:
             new_date = lesson.lesson_date
 
@@ -1164,9 +1207,18 @@ def update_schedule_lesson_api(lesson_id: int):
             new_duration = int(data.get('duration', lesson.duration or 60))
         except (TypeError, ValueError):
             new_duration = 60
-        if new_duration not in (30, 45, 60, 90, 120):
+        if new_duration < 15 or new_duration > 360:
             return jsonify({'status': 'error', 'message': 'Некорректная длительность'}), 400
-        if _student_has_overlap(new_student_id, new_date, new_duration, exclude_lesson_id=lesson.lesson_id):
+
+        is_test_val = None
+        if 'is_test' in data:
+            is_test_val = data.get('is_test') in (True, 'true', '1', 1)
+        elif str(data.get('lesson_type', '')).strip().lower() == 'test':
+            is_test_val = True
+        else:
+            is_test_val = _is_lesson_test(lesson)
+
+        if not is_test_val and _student_has_overlap(new_student_id, new_date, new_duration, exclude_lesson_id=lesson.lesson_id):
             return jsonify({'status': 'error', 'message': 'У ученика уже есть пересекающийся урок'}), 409
 
         lesson.lesson_date = new_date
@@ -1202,11 +1254,62 @@ def update_schedule_lesson_api(lesson_id: int):
                     lesson.materials = [{'name': materials_raw.strip(), 'url': ''}] if materials_raw.strip() else None
             elif materials_raw is None:
                 lesson.materials = None
-        if 'lesson_type' in data:
-            lesson.lesson_type = str(data['lesson_type']).strip().lower()
+
+        if 'is_test' in data:
+            if is_test_val:
+                lesson.lesson_type = 'test'
+                if lesson.notes and '__NOT_TEST__' in lesson.notes:
+                    lesson.notes = lesson.notes.replace('__NOT_TEST__', '').strip() or None
+                if not lesson.notes or '__TEST__' not in lesson.notes:
+                    lesson.notes = ((lesson.notes or '') + ' __TEST__').strip()
+            else:
+                if lesson.lesson_type == 'test':
+                    lesson.lesson_type = 'individual'
+                if lesson.notes and '__TEST__' in lesson.notes:
+                    lesson.notes = lesson.notes.replace('__TEST__', '').strip() or None
+                topic = str(getattr(lesson, 'topic', '') or '')
+                if re.search(r'(?i)(тест|test|проверк|poyasa)', topic):
+                    lesson.notes = ((lesson.notes or '') + ' __NOT_TEST__').strip()
+        elif 'lesson_type' in data:
+            lt = str(data['lesson_type']).strip().lower()
+            if lt in ('regular', 'individual', 'test', 'exam', 'introductory', 'group', 'webinar'):
+                lesson.lesson_type = lt
 
         db.session.commit()
-        return jsonify({'status': 'success', 'success': True, 'message': 'Урок обновлен!'}), 200
+
+        # Формируем полные данные обновлённого урока для мгновенной отрисовки без перезагрузки страницы
+        req_tz = (data.get('timezone') or _schedule_timezone_from_user()).strip()
+        local_start = lesson_storage_to_local(lesson.lesson_date, req_tz) if lesson.lesson_date else None
+        duration_min = int(lesson.duration or 60)
+        local_end = (local_start + timedelta(minutes=duration_min)) if local_start else None
+
+        updated_payload = {
+            'lesson_id': lesson.lesson_id,
+            'id': lesson.lesson_id,
+            'student_id': lesson.student_id,
+            'student_name': lesson.student.name if lesson.student else 'Ученик',
+            'topic': lesson.topic,
+            'status': lesson.status,
+            'start_date': local_start.strftime('%Y-%m-%d') if local_start else '',
+            'start_time': local_start.strftime('%H:%M') if local_start else '',
+            'end_time': local_end.strftime('%H:%M') if local_end else '',
+            'duration_minutes': duration_min,
+            'duration': duration_min,
+            'lesson_type': lesson.lesson_type,
+            'is_test': _is_lesson_test(lesson),
+            'notes': lesson.notes,
+            'description': lesson.notes,
+            'homework': lesson.homework,
+            'student_notes': lesson.student_notes,
+            'materials': lesson.materials or [],
+        }
+
+        return jsonify({
+            'status': 'success',
+            'success': True,
+            'message': 'Урок обновлен!',
+            'lesson': updated_payload
+        }), 200
 
     except Exception as err:
         db.session.rollback()
@@ -1350,8 +1453,8 @@ def schedule_update_lesson(lesson_id: int):
             return jsonify({'success': False, 'error': 'duration: 30..240 с шагом 30'}), 400
 
     if lesson_type is not None:
-        lesson_type = str(lesson_type).strip()
-        if lesson_type not in ('regular', 'exam', 'introductory'):
+        lesson_type = str(lesson_type).strip().lower()
+        if lesson_type not in ('regular', 'individual', 'test', 'exam', 'introductory', 'group', 'webinar'):
             return jsonify({'success': False, 'error': 'Некорректный lesson_type'}), 400
 
     if topic is not None:
@@ -1497,11 +1600,11 @@ def schedule_api_events():
 @login_required
 def schedule_delete_lesson(lesson_id: int):
     if not _can_manage_schedule():
-        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+        return jsonify({'status': 'error', 'success': False, 'error': 'Доступ запрещен'}), 403
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
     if not _require_lesson_in_scope(lesson):
-        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+        return jsonify({'status': 'error', 'success': False, 'error': 'Доступ запрещен'}), 403
 
     try:
         meta = {
@@ -1518,10 +1621,109 @@ def schedule_delete_lesson(lesson_id: int):
             audit_logger.log(action='delete_lesson_from_schedule', entity='Lesson', entity_id=lesson_id, status='success', metadata=meta)
         except Exception:
             pass
-        return jsonify({'success': True}), 200
+        return jsonify({'status': 'success', 'success': True, 'lesson_id': lesson_id, 'message': 'Урок успешно удалён'}), 200
     except Exception as e:
         db.session.rollback()
         audit_logger.log_error(action='delete_lesson_from_schedule', entity='Lesson', entity_id=lesson_id, error=str(e))
+        return jsonify({'status': 'error', 'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/bulk_delete_lessons', methods=['POST'])
+@login_required
+def schedule_bulk_delete_lessons():
+    """Массовое удаление уроков: по списку ID или полная очистка тестовых занятий."""
+    if not _can_manage_schedule():
+        return jsonify({'status': 'error', 'success': False, 'error': 'Доступ запрещен'}), 403
+
+    data = request.get_json(silent=True) or {}
+    lesson_ids = data.get('lesson_ids') or []
+    delete_all_test = data.get('delete_all_test') in (True, 'true', '1', 1)
+
+    try:
+        deleted_ids = []
+        if delete_all_test:
+            q = Lesson.query.options(db.joinedload(Lesson.student))
+            allowed = _resolve_accessible_student_ids_for_current_user()
+            if allowed is not None:
+                q = q.filter(Lesson.student_id.in_(allowed))
+            candidates = q.all()
+            for l in candidates:
+                if _is_lesson_test(l):
+                    deleted_ids.append(l.lesson_id)
+                    db.session.delete(l)
+        elif lesson_ids and isinstance(lesson_ids, list):
+            clean_ids = [int(x) for x in lesson_ids if str(x).isdigit()]
+            if clean_ids:
+                q = Lesson.query.options(db.joinedload(Lesson.student)).filter(Lesson.lesson_id.in_(clean_ids))
+                lessons_to_del = q.all()
+                for l in lessons_to_del:
+                    if _require_lesson_in_scope(l):
+                        deleted_ids.append(l.lesson_id)
+                        db.session.delete(l)
+
+        db.session.commit()
+        try:
+            audit_logger.log(
+                action='bulk_delete_lessons',
+                entity='Lesson',
+                status='success',
+                metadata={'deleted_count': len(deleted_ids), 'deleted_ids': deleted_ids, 'delete_all_test': delete_all_test}
+            )
+        except Exception:
+            pass
+
+        return jsonify({
+            'status': 'success',
+            'success': True,
+            'deleted_count': len(deleted_ids),
+            'deleted_ids': deleted_ids,
+            'message': f'Успешно удалено {len(deleted_ids)} уроков'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("Failed bulk delete lessons: %s", e)
+        return jsonify({'status': 'error', 'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/api/schedule/lesson/<int:lesson_id>/toggle_test', methods=['POST'])
+@login_required
+def schedule_toggle_test_lesson(lesson_id: int):
+    """Быстрое переключение тестового статуса урока."""
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.edit') and not current_user.is_tutor()):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    try:
+        lesson = Lesson.query.get_or_404(lesson_id)
+        if not _require_lesson_in_scope(lesson):
+            return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+        currently_test = _is_lesson_test(lesson)
+        if currently_test:
+            lesson.lesson_type = 'individual'
+            if lesson.notes and '__TEST__' in lesson.notes:
+                lesson.notes = lesson.notes.replace('__TEST__', '').strip() or None
+            topic = str(getattr(lesson, 'topic', '') or '')
+            if re.search(r'(?i)(тест|test|проверк|poyasa)', topic):
+                lesson.notes = ((lesson.notes or '') + ' __NOT_TEST__').strip()
+            new_is_test = False
+        else:
+            lesson.lesson_type = 'test'
+            if lesson.notes and '__NOT_TEST__' in lesson.notes:
+                lesson.notes = lesson.notes.replace('__NOT_TEST__', '').strip() or None
+            lesson.notes = ((lesson.notes or '') + ' __TEST__').strip()
+            new_is_test = True
+
+        db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'success': True,
+            'is_test': new_is_test,
+            'lesson_id': lesson_id,
+            'lesson_type': lesson.lesson_type,
+            'message': 'Урок перемещён в тестовый подслой' if new_is_test else 'Урок сделан обычным'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("Failed to toggle test lesson %s: %s", lesson_id, e)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
