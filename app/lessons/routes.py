@@ -313,6 +313,8 @@ def lesson_delete(lesson_id):
     student_id = lesson.student_id
     student_name = lesson.student.name if lesson.student else None
     
+    from app.schedule.routes import _purge_lessons_dependencies
+    _purge_lessons_dependencies([lesson_id])
     db.session.delete(lesson)
     try:
         db.session.commit()

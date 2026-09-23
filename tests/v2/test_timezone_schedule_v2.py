@@ -266,3 +266,81 @@ def test_schedule_update_and_bulk_delete(app, client, role_users):
         assert db.session.get(Lesson, id3) is None
 
 
+def test_schedule_delete_with_complex_dependencies(app, client, role_users):
+    """Проверка чистого каскадного удаления уроков с зависимостями (LessonTask, Whiteboard, Outcome, etc.)."""
+    from app import db
+    from app.models import (
+        Lesson, Tasks, LessonTask, LessonTaskTeacherComment, LessonTaskAttempt,
+        LessonWhiteboard, LessonOutcome, PendingAssignmentNotification,
+        LessonMessage, LessonTeacherHomeworkNote, LearningError, moscow_now
+    )
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    # Создаем урок
+    res = client.post('/api/schedule/create_lesson', json={
+        'student_id': role_users['student_id'],
+        'lesson_date': '2026-09-28',
+        'time': '15:00',
+        'duration': 60,
+        'topic': 'Урок со сложными зависимостями',
+        'is_test': False,
+        'timezone': 'Europe/Moscow'
+    })
+    assert res.status_code == 200
+    lid = res.get_json()['lesson_id']
+
+    # Навешиваем все типы зависимостей
+    with app.app_context():
+        task = Tasks(task_number=1, content_html='<p>Задание 1</p>')
+        db.session.add(task)
+        db.session.commit()
+
+        lt = LessonTask(lesson_id=lid, task_id=task.task_id)
+        db.session.add(lt)
+        db.session.commit()
+
+        comm = LessonTaskTeacherComment(lesson_task_id=lt.lesson_task_id, body='Отличная попытка')
+        att = LessonTaskAttempt(lesson_task_id=lt.lesson_task_id, student_submission='42')
+        wb = LessonWhiteboard(lesson_id=lid, miro_board_id='miro-board-test-123')
+        outc = LessonOutcome(lesson_id=lid, mastery='high')
+        pan = PendingAssignmentNotification(lesson_id=lid, student_id=role_users['student_id'], assignment_type='homework')
+        msg = LessonMessage(lesson_id=lid, author_user_id=role_users['tutor_id'], body='Урок начнётся вовремя')
+        note = LessonTeacherHomeworkNote(lesson_id=lid, teacher_user_id=role_users['tutor_id'], homework_text='Задать ДЗ', remind_at=moscow_now())
+        err = LearningError(student_id=role_users['student_id'], lesson_id=lid, error_type='арифметика')
+
+        db.session.add_all([comm, att, wb, outc, pan, msg, note, err])
+        db.session.commit()
+        err_id = err.error_id
+
+        # Проверяем, что зависимости созданы
+        assert db.session.get(LessonWhiteboard, wb.id) is not None
+        assert db.session.get(LessonOutcome, outc.outcome_id) is not None
+
+    # Массовое удаление через bulk_delete_lessons
+    res_del = client.post('/api/schedule/bulk_delete_lessons', json={
+        'lesson_ids': [lid]
+    })
+    assert res_del.status_code == 200
+    del_data = res_del.get_json()
+    assert del_data['status'] == 'success'
+    assert lid in del_data['deleted_ids']
+
+    # Проверяем полное очищение в базе данных
+    with app.app_context():
+        assert db.session.get(Lesson, lid) is None
+        assert LessonWhiteboard.query.filter_by(lesson_id=lid).first() is None
+        assert LessonOutcome.query.filter_by(lesson_id=lid).first() is None
+        assert LessonTask.query.filter_by(lesson_id=lid).first() is None
+        assert LessonTaskTeacherComment.query.filter_by(body='Отличная попытка').first() is None
+        assert LessonTaskAttempt.query.filter_by(student_submission='42').first() is None
+        assert PendingAssignmentNotification.query.filter_by(lesson_id=lid).first() is None
+        assert LessonMessage.query.filter_by(lesson_id=lid).first() is None
+        assert LessonTeacherHomeworkNote.query.filter_by(lesson_id=lid).first() is None
+        # LearningError не удаляется, но его lesson_id сбрасывается в None
+        remaining_err = db.session.get(LearningError, err_id)
+        assert remaining_err is not None
+        assert remaining_err.lesson_id is None
+
+
+

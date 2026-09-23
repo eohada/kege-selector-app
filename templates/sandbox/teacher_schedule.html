@@ -681,6 +681,25 @@
 (function() {
   'use strict';
 
+  if (typeof window.showBentoToast !== 'function') {
+    window.showBentoToast = function(message, type = 'info') {
+      let toast = document.getElementById('bento-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'bento-toast';
+        document.body.appendChild(toast);
+      }
+      const isErr = type === 'error';
+      const bgClass = isErr 
+        ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-[0_6px_0_#FDA4AF]' 
+        : 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-[0_6px_0_#86EFAC]';
+      toast.className = `fixed bottom-6 right-6 z-[99999] px-6 py-4 rounded-2xl border-2 font-black text-xs uppercase shadow-[0_8px_25px_rgba(0,0,0,0.15)] transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-none ${bgClass}`;
+      toast.textContent = message;
+      setTimeout(() => { toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none'); toast.classList.add('opacity-100', 'translate-y-0'); }, 10);
+      setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none'); toast.classList.remove('opacity-100', 'translate-y-0'); }, 3500);
+    };
+  }
+
   const RAW = JSON.parse(document.getElementById('schedule-data').textContent || '{}');
   let state = {
     view: 'week',

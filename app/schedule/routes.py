@@ -9,7 +9,13 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, s
 from flask_login import login_required, current_user
 
 from app.schedule import schedule_bp
-from app.models import Lesson, Student, User, RecurringLessonSlot, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import (
+    Lesson, Student, User, RecurringLessonSlot, db, moscow_now, MOSCOW_TZ, TOMSK_TZ,
+    LessonTask, LessonTaskTeacherComment, LessonTaskAttempt,
+    LessonWhiteboard, LessonOutcome, LessonMaterialLink,
+    PendingAssignmentNotification, LessonMessage, LessonTeacherHomeworkNote,
+    LearningError, LearningItem, Assignment, GradebookEntry
+)
 from app.auth.rbac_utils import get_user_scope, has_permission
 from app.notifications.service import notify_student_and_parents
 from app.telegram.user_notify import notify_user_by_id
@@ -152,10 +158,47 @@ def _can_manage_schedule() -> bool:
 
 def _require_lesson_in_scope(lesson: Lesson) -> bool:
     """Проверка, что урок в области видимости пользователя."""
+    if not current_user.is_authenticated:
+        return False
+    user_role = getattr(current_user, 'role', '')
+    sb_role = session.get('sandbox_role', '')
+    if user_role in ['creator', 'admin', 'chief_admin'] or sb_role in ['creator', 'admin'] or current_user.is_creator() or current_user.is_admin():
+        return True
     allowed = _resolve_accessible_student_ids_for_current_user()
     if allowed is None:
         return True
     return bool(allowed and lesson.student_id in allowed)
+
+
+def _purge_lessons_dependencies(lesson_ids: list[int]) -> None:
+    """
+    Очищает и отвязывает все зависимые сущности перед удалением записей уроков.
+    Предотвращает ошибки нарушения внешних ключей (ForeignKeyViolation) в PostgreSQL.
+    """
+    if not lesson_ids:
+        return
+
+    # 1. Задания к уроку и их вложенные сущности (комментарии, попытки)
+    lt_rows = db.session.query(LessonTask.lesson_task_id).filter(LessonTask.lesson_id.in_(lesson_ids)).all()
+    lt_ids = [r[0] for r in lt_rows if r and r[0]]
+    if lt_ids:
+        LessonTaskTeacherComment.query.filter(LessonTaskTeacherComment.lesson_task_id.in_(lt_ids)).delete(synchronize_session=False)
+        LessonTaskAttempt.query.filter(LessonTaskAttempt.lesson_task_id.in_(lt_ids)).delete(synchronize_session=False)
+        LessonTask.query.filter(LessonTask.lesson_task_id.in_(lt_ids)).delete(synchronize_session=False)
+
+    # 2. Доски Miro, итоги занятий, материалы, уведомления, сообщения и заметки
+    LessonWhiteboard.query.filter(LessonWhiteboard.lesson_id.in_(lesson_ids)).delete(synchronize_session=False)
+    LessonOutcome.query.filter(LessonOutcome.lesson_id.in_(lesson_ids)).delete(synchronize_session=False)
+    LessonMaterialLink.query.filter(LessonMaterialLink.lesson_id.in_(lesson_ids)).delete(synchronize_session=False)
+    PendingAssignmentNotification.query.filter(PendingAssignmentNotification.lesson_id.in_(lesson_ids)).delete(synchronize_session=False)
+    LessonMessage.query.filter(LessonMessage.lesson_id.in_(lesson_ids)).delete(synchronize_session=False)
+    LessonTeacherHomeworkNote.query.filter(LessonTeacherHomeworkNote.lesson_id.in_(lesson_ids)).delete(synchronize_session=False)
+
+    # 3. Обнуление nullable-ссылок на уроки
+    LearningError.query.filter(LearningError.lesson_id.in_(lesson_ids)).update({'lesson_id': None}, synchronize_session=False)
+    LearningItem.query.filter(LearningItem.lesson_id.in_(lesson_ids)).update({'lesson_id': None}, synchronize_session=False)
+    Assignment.query.filter(Assignment.lesson_id.in_(lesson_ids)).update({'lesson_id': None}, synchronize_session=False)
+    GradebookEntry.query.filter(GradebookEntry.lesson_id.in_(lesson_ids)).update({'lesson_id': None}, synchronize_session=False)
 
 def _parse_date(value: str | None):
     if not value:
@@ -1615,8 +1658,10 @@ def schedule_delete_lesson(lesson_id: int):
             'lesson_type': lesson.lesson_type,
             'status': lesson.status,
         }
+        _purge_lessons_dependencies([lesson_id])
         db.session.delete(lesson)
         db.session.commit()
+        db.session.expire_all()
         try:
             audit_logger.log(action='delete_lesson_from_schedule', entity='Lesson', entity_id=lesson_id, status='success', metadata=meta)
         except Exception:
@@ -1650,18 +1695,23 @@ def schedule_bulk_delete_lessons():
             for l in candidates:
                 if _is_lesson_test(l):
                     deleted_ids.append(l.lesson_id)
-                    db.session.delete(l)
         elif lesson_ids and isinstance(lesson_ids, list):
-            clean_ids = [int(x) for x in lesson_ids if str(x).isdigit()]
+            clean_ids = list(dict.fromkeys([int(x) for x in lesson_ids if str(x).strip().isdigit()]))
             if clean_ids:
                 q = Lesson.query.options(db.joinedload(Lesson.student)).filter(Lesson.lesson_id.in_(clean_ids))
                 lessons_to_del = q.all()
                 for l in lessons_to_del:
                     if _require_lesson_in_scope(l):
                         deleted_ids.append(l.lesson_id)
-                        db.session.delete(l)
 
-        db.session.commit()
+        if deleted_ids:
+            _purge_lessons_dependencies(deleted_ids)
+            Lesson.query.filter(Lesson.lesson_id.in_(deleted_ids)).delete(synchronize_session=False)
+            db.session.commit()
+            db.session.expire_all()
+        else:
+            db.session.commit()
+
         try:
             audit_logger.log(
                 action='bulk_delete_lessons',

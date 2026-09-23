@@ -377,7 +377,7 @@ class LessonOutcome(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
 
-    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('outcome', uselist=False, lazy=True, cascade='all, delete-orphan'))
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
 
 
@@ -868,7 +868,7 @@ class LessonMaterialLink(db.Model):
     order_index = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=moscow_now)
 
-    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('material_links', lazy=True, cascade='all, delete-orphan'))
     asset = db.relationship('MaterialAsset', back_populates='lesson_links')
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
 
@@ -1662,7 +1662,7 @@ class LessonWhiteboard(db.Model):
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
-    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('whiteboard', uselist=False, lazy=True))
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('whiteboard', uselist=False, lazy=True, cascade='all, delete-orphan'))
 
 
 class MiroUserToken(db.Model):
