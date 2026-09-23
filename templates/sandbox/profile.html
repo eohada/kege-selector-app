@@ -92,6 +92,8 @@
 
 {% set total_cnt = total_cnt if (total_cnt is defined and total_cnt is not none) else 0 %}
 {% set completed_cnt = completed_cnt if (completed_cnt is defined and completed_cnt is not none) else 0 %}
+{% set total_steps = total_steps if (total_steps is defined and total_steps is not none) else (total_cnt + (total_theory_cnt if total_theory_cnt is defined else 27)) %}
+{% set completed_steps = completed_steps if (completed_steps is defined and completed_steps is not none) else (completed_cnt + (read_theory_cnt if read_theory_cnt is defined else 0)) %}
 
 <!-- Canvas Master Container -->
 <main id="profile-page-shell" class="min-h-screen flex-1 relative z-10 bg-[#F8FAFC] font-sans p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6 overflow-x-hidden">
@@ -262,7 +264,7 @@
             <div class="h-full bg-purple-600 rounded-full transition-all duration-500" style="width: {{ progress_pct }}%;"></div>
           </div>
         </div>
-        <p class="text-[11px] font-medium text-slate-400 truncate mb-0">{{ completed_cnt + read_theory_cnt if read_theory_cnt is defined else completed_cnt }} из {{ total_cnt + 27 }} этапов пройдено</p>
+        <p class="text-[11px] font-medium text-slate-400 truncate mb-0">{{ completed_steps }} из {{ total_steps }} этапов пройдено</p>
       </div>
 
       <!-- Metric 2: Стрик -->
@@ -288,11 +290,11 @@
           <span class="text-xs font-bold text-slate-500">Пройдено уроков</span>
         </div>
         <div>
-          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ completed_cnt }} / {{ total_cnt }}</h3>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ module_completed_cnt if module_completed_cnt is defined else completed_cnt }} / {{ module_total_cnt if module_total_cnt is defined else total_cnt }}</h3>
         </div>
         <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-          <span>В этом модуле</span>
-          <span class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px]">
+          <span class="truncate max-w-[80%]" title="{{ module_label if module_label is defined else 'Всего уроков' }}">{{ module_label if module_label is defined else 'Всего уроков' }}</span>
+          <span class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] shrink-0">
             <i class="ph-bold ph-check"></i>
           </span>
         </div>
@@ -307,7 +309,7 @@
           <span class="text-xs font-bold text-slate-500">Учебное время</span>
         </div>
         <div>
-          <h3 id="study-time-val" class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ study_time_display if study_time_display is defined else '4 ч 32 мин' }}</h3>
+          <h3 id="study-time-val" class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ study_time_display if study_time_display is defined else '0 мин' }}</h3>
         </div>
         <p class="text-[11px] font-medium text-slate-400 mb-0">За всё время</p>
       </div>
@@ -484,11 +486,9 @@
             </button>
           </div>
 
-          <!-- 5 Badges Showcase Row -->
-          {% set preview_keys = ['streak_3', 'first_step', 'ide_run_shortcut', 'perfect_homework', 'secret_ghost_friend'] %}
+          <!-- 5 Badges Showcase Row (Dynamic rarest achievements) -->
           <div class="grid grid-cols-5 gap-2">
-            {% for pkey in preview_keys %}
-              {% set item = (detailed_achievements | selectattr('key', 'equalto', pkey) | first) if detailed_achievements else None %}
+            {% for item in (showcase_achievements if showcase_achievements is defined and showcase_achievements else (detailed_achievements[:5] if detailed_achievements else [])) %}
               {% if item %}
                 <div class="flex flex-col items-center text-center p-1 cursor-pointer hover:scale-105 transition-transform" onclick="openAchievementsModal()">
                   {% if item.unlocked %}
@@ -511,7 +511,7 @@
         </div>
 
         <!-- Card 2: Реферальная программа (Detailing exactly matching mockup) -->
-        {% set ref_code = (personal_referral.code if (personal_referral and personal_referral.code) else (referral_code_str if referral_code_str is defined else 'BS-C68ECJCB')) %}
+        {% set ref_code = (personal_referral.code if (personal_referral and personal_referral.code) else (referral_code_str if referral_code_str is defined and referral_code_str else '')) %}
         <div class="rounded-[2rem] p-6 text-white relative overflow-hidden" style="background: linear-gradient(135deg, #605DEC 0%, #7B73F6 45%, #9283F8 100%); box-shadow: 0 16px 36px -8px rgba(96, 93, 236, 0.42);">
           <!-- Ambient highlights -->
           <div class="absolute -right-12 -top-12 w-48 h-48 bg-white/20 rounded-full blur-2xl pointer-events-none"></div>
@@ -575,15 +575,23 @@
           </div>
 
           <div class="space-y-2.5">
-            {% for act in recent_activities %}
-            <div class="flex items-center justify-between gap-3 text-xs">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <span class="w-2 h-2 rounded-full shrink-0 {% if act.color == 'emerald' %}bg-emerald-500{% elif act.color == 'purple' %}bg-purple-500{% elif act.color == 'orange' %}bg-orange-500{% elif act.color == 'amber' %}bg-amber-500{% else %}bg-blue-500{% endif %}"></span>
-                <span class="font-bold text-slate-700 truncate">{{ act.title }}</span>
+            {% if recent_activities %}
+              {% for act in recent_activities %}
+              <div class="flex items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <span class="w-2 h-2 rounded-full shrink-0 {% if act.color == 'emerald' %}bg-emerald-500{% elif act.color == 'purple' %}bg-purple-500{% elif act.color == 'orange' %}bg-orange-500{% elif act.color == 'amber' %}bg-amber-500{% else %}bg-blue-500{% endif %}"></span>
+                  <span class="font-bold text-slate-700 truncate">{{ act.title }}</span>
+                </div>
+                <span class="text-[11px] font-medium text-slate-400 shrink-0">{{ act.date }}</span>
               </div>
-              <span class="text-[11px] font-medium text-slate-400 shrink-0">{{ act.date }}</span>
-            </div>
-            {% endfor %}
+              {% endfor %}
+            {% else %}
+              <div class="py-5 text-center text-slate-400">
+                <i class="ph-bold ph-sparkle text-2xl text-slate-300 mb-1 inline-block"></i>
+                <p class="text-xs font-semibold mb-0 text-slate-500">Пока нет недавней активности</p>
+                <p class="text-[11px] font-medium text-slate-400 mb-0 mt-0.5">Здесь появятся пройденные уроки, задачи и теория</p>
+              </div>
+            {% endif %}
           </div>
         </div>
 
@@ -1021,24 +1029,32 @@
 
     <!-- Activity Timeline List -->
     <div class="flex-1 overflow-y-auto pr-1 py-4 space-y-3 custom-scrollbar">
-      {% for act in all_activities %}
-      <div class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 flex items-center justify-between gap-4 transition-colors">
-        <div class="flex items-center gap-3 min-w-0">
-          <span class="w-3 h-3 rounded-full shrink-0
-            {% if act.color == 'emerald' %}bg-emerald-500 ring-4 ring-emerald-100
-            {% elif act.color == 'purple' %}bg-purple-500 ring-4 ring-purple-100
-            {% elif act.color == 'orange' %}bg-orange-500 ring-4 ring-orange-100
-            {% elif act.color == 'amber' %}bg-amber-500 ring-4 ring-amber-100
-            {% else %}bg-blue-500 ring-4 ring-blue-100{% endif %}">
-          </span>
-          <div class="min-w-0">
-            <h5 class="text-xs font-black text-slate-800 mb-0 truncate">{{ act.title }}</h5>
-            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{{ act.type }}</span>
+      {% if all_activities %}
+        {% for act in all_activities %}
+        <div class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 flex items-center justify-between gap-4 transition-colors">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-3 h-3 rounded-full shrink-0
+              {% if act.color == 'emerald' %}bg-emerald-500 ring-4 ring-emerald-100
+              {% elif act.color == 'purple' %}bg-purple-500 ring-4 ring-purple-100
+              {% elif act.color == 'orange' %}bg-orange-500 ring-4 ring-orange-100
+              {% elif act.color == 'amber' %}bg-amber-500 ring-4 ring-amber-100
+              {% else %}bg-blue-500 ring-4 ring-blue-100{% endif %}">
+            </span>
+            <div class="min-w-0">
+              <h5 class="text-xs font-black text-slate-800 mb-0 truncate">{{ act.title }}</h5>
+              <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{{ act.type }}</span>
+            </div>
           </div>
+          <span class="text-xs font-bold text-slate-500 font-mono shrink-0">{{ act.date }}</span>
         </div>
-        <span class="text-xs font-bold text-slate-500 font-mono shrink-0">{{ act.date }}</span>
-      </div>
-      {% endfor %}
+        {% endfor %}
+      {% else %}
+        <div class="py-12 text-center text-slate-400">
+          <i class="ph-bold ph-clock-counter-clockwise text-4xl text-slate-300 mb-2 inline-block"></i>
+          <h4 class="text-sm font-black text-slate-700 mb-1">История активности пуста</h4>
+          <p class="text-xs font-medium text-slate-400 max-w-sm mx-auto mb-0">Твои посещённые уроки, отправленные на проверку решения и изученные материалы будут автоматически сохраняться здесь.</p>
+        </div>
+      {% endif %}
     </div>
 
     <!-- Modal Footer -->
@@ -1749,9 +1765,10 @@ function addNewGoal() {
 }
 
 // Real-time smooth study time display ticker
-let currentStudySeconds = {{ (student_obj.study_time_seconds if (student_obj is defined and student_obj and student_obj.study_time_seconds) else 16320) }};
+let currentStudySeconds = {{ total_study_sec if total_study_sec is defined else (student_obj.study_time_seconds if (student_obj is defined and student_obj and student_obj.study_time_seconds) else 0) }};
 
 function formatStudyTimeLive(sec) {
+  if (!sec || sec <= 0) return '0 мин';
   const h = Math.floor(sec / 3600);
   const m = Math.floor((sec % 3600) / 60);
   if (h > 0) {
@@ -1761,7 +1778,7 @@ function formatStudyTimeLive(sec) {
 }
 
 window.updateCurrentStudySeconds = function(newSec) {
-  if (typeof newSec === 'number' && newSec > 0) {
+  if (typeof newSec === 'number' && newSec >= 0) {
     currentStudySeconds = newSec;
     const el = document.getElementById('study-time-val');
     if (el) el.textContent = formatStudyTimeLive(currentStudySeconds);
@@ -1791,6 +1808,19 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const formData = new FormData(form);
+
+      const isAuto = document.getElementById('tz-mode-auto')?.checked;
+      const isManual = document.getElementById('tz-mode-manual')?.checked;
+      if (isAuto) {
+        formData.set('timezone_mode', 'auto');
+      } else if (isManual) {
+        formData.set('timezone_mode', 'manual');
+        const selTz = document.getElementById('edit-timezone');
+        if (selTz && selTz.value) {
+          formData.set('timezone_iana', selTz.value);
+        }
+      }
+
       const avatar = document.getElementById('edit-avatar-file');
       if (false) {
         window.BooNotify.error('Не удалось обработать аватар. Выберите другое изображение.');

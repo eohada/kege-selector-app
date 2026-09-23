@@ -3195,7 +3195,7 @@ def universal_profile_view(user_id=None):
             except Exception:
                 db.session.rollback()
         xp_next_level = get_xp_for_level(level + 1)
-        personal_referral = get_or_create_personal_referral_code(target_user) if is_owner else None
+        personal_referral = get_or_create_personal_referral_code(target_user) if (target_user and target_user.is_authenticated) else None
         student_stats = {
             'level': level,
             'rank_title': get_rank_title(level),
@@ -3212,32 +3212,54 @@ def universal_profile_view(user_id=None):
         }
         
         # Real DB-driven learning progress and metrics
+        raw_lesson_total = Lesson.query.filter_by(student_id=student_obj.student_id).count() if student_obj else 0
         lesson_completed = Lesson.query.filter_by(student_id=student_obj.student_id, status='completed').count() if student_obj else 0
-        lesson_total = max(Lesson.query.filter_by(student_id=student_obj.student_id).count() if student_obj else 0, lesson_completed, 1)
+        lesson_total = max(raw_lesson_total, lesson_completed)
 
         from core.db_models import StudentTheoryState, TheoryBlock, UserAchievement
         read_theory_count = StudentTheoryState.query.filter(
             StudentTheoryState.student_id == student_obj.student_id,
             (StudentTheoryState.is_read == True) | (StudentTheoryState.reading_progress >= 80)
         ).count() if student_obj else 0
-        total_theory_count = max(TheoryBlock.query.count(), 27)
+        
+        # Count distinct theory topics available (tasks 1-27 for KEGE, etc.)
+        distinct_theory_topics = db.session.query(TheoryBlock.task_number).filter(TheoryBlock.task_number.isnot(None)).distinct().count()
+        total_theory_count = distinct_theory_topics if distinct_theory_topics > 0 else 27
 
-        earned_achievements_count = UserAchievement.query.filter_by(student_id=student_obj.student_id).count() if student_obj else 0
-        total_achievements_count = 12
+        # Learning progress: actual curriculum stages (completed lessons + read theory topics)
+        completed_steps = lesson_completed + read_theory_count
+        total_steps = max(lesson_total + total_theory_count, completed_steps, 1)
+        overall_progress_pct = min(100, max(0, round((completed_steps / total_steps) * 100)))
 
-        # Learning progress: overall % of completed lessons, read theory blocks and earned achievements
-        completed_progress_points = lesson_completed + read_theory_count + earned_achievements_count
-        total_progress_points = lesson_total + total_theory_count + total_achievements_count
-        overall_progress_pct = min(100, max(0, round((completed_progress_points / total_progress_points) * 100))) if total_progress_points > 0 else 0
-        if overall_progress_pct == 0 and is_owner:
-            overall_progress_pct = 53  # Canonical starting demonstration progress
+        # Real study time: lessons duration + heartbeat platform time
+        tracked_study_sec = getattr(student_obj, 'study_time_seconds', 0) or 0
+        completed_lessons = Lesson.query.filter_by(student_id=student_obj.student_id, status='completed').all() if student_obj else []
+        lessons_study_sec = sum((l.duration or 60) * 60 for l in completed_lessons)
+        total_study_sec = max(tracked_study_sec, lessons_study_sec)
 
-        # Real study time: lessons duration + task solving time + heartbeat platform time
-        total_study_sec = getattr(student_obj, 'study_time_seconds', 0) or 0
-        if total_study_sec == 0 and student_obj:
-            total_study_sec = max(lesson_completed * 3600, 16320 if is_owner else 3600)
-            student_obj.study_time_seconds = total_study_sec
-            db.session.commit()
+        # Module-specific lesson count
+        from core.db_models import TrajectoryModule
+        active_module = None
+        if student_obj:
+            latest_module_lesson = Lesson.query.filter(
+                Lesson.student_id == student_obj.student_id,
+                Lesson.course_module_id.isnot(None)
+            ).order_by(Lesson.lesson_date.desc(), Lesson.lesson_id.desc()).first()
+            if latest_module_lesson and latest_module_lesson.course_module:
+                active_module = latest_module_lesson.course_module
+            elif getattr(student_obj, 'course_id', None):
+                active_module = TrajectoryModule.query.filter_by(course_id=student_obj.course_id).order_by(TrajectoryModule.order_index.asc()).first()
+
+        if active_module:
+            module_lessons = Lesson.query.filter_by(student_id=student_obj.student_id, course_module_id=active_module.module_id).all() if student_obj else []
+            module_completed_cnt = sum(1 for l in module_lessons if l.status == 'completed')
+            module_total_cnt = len(module_lessons)
+            module_label = f"В модуле «{active_module.title}»"
+        else:
+            module_completed_cnt = lesson_completed
+            module_total_cnt = lesson_total
+            module_label = "Всего уроков"
+
         study_hours = total_study_sec // 3600
         study_mins = (total_study_sec % 3600) // 60
         if study_hours > 0:
@@ -3245,7 +3267,7 @@ def universal_profile_view(user_id=None):
         elif study_mins > 0:
             study_time_display = f"{study_mins} мин"
         else:
-            study_time_display = "1 мин"
+            study_time_display = "0 мин"
 
         # Level data for "Текущий уровень" (50 levels progression from Python basics to 100 on KEGE)
         from app.utils.xp_service import calculate_level_from_xp, get_level_info, get_all_ranks_list
@@ -3267,10 +3289,9 @@ def universal_profile_view(user_id=None):
 
         if student_obj and not weekly_goals:
             default_goals_seed = [
-                ('Пройти 3 темы по Python', {'current': min(read_theory_count, 3), 'target': 3}),
-                ('Решить 20 задач', {'current': min(len(completed_submissions), 20), 'target': 20}),
-                ('Посмотреть дополнительные материалы', {'current': 0, 'target': 5}),
-                ('Поддерживать стрик 7 дней', {'current': min(real_streak, 7), 'target': 7}),
+                ('Сформулировать личную цель на неделю', {'current': 0, 'target': 1}),
+                ('Добавить свою первую цель через кнопку «+»', {'current': 0, 'target': 1}),
+                ('Изучить первую тему теории или сдать работу', {'current': 0, 'target': 1}),
             ]
             for title, counts in default_goals_seed:
                 db.session.add(StudentLearningPlanItem(
@@ -3321,10 +3342,10 @@ def universal_profile_view(user_id=None):
                 'progress_pct': pct
             })
 
-        # Real activities & timeline
+        # Real activities & timeline (strictly real events, no fake 2024 dates)
         all_activities = []
         if student_obj:
-            for l in Lesson.query.filter_by(student_id=student_obj.student_id).order_by(Lesson.lesson_id.desc()).limit(8).all():
+            for l in Lesson.query.filter_by(student_id=student_obj.student_id).order_by(Lesson.lesson_date.desc(), Lesson.lesson_id.desc()).limit(10).all():
                 lesson_title = getattr(l, 'topic', None) or getattr(l, 'title', None) or 'Урок'
                 lesson_dt = getattr(l, 'lesson_date', None) or getattr(l, 'updated_at', None) or moscow_now()
                 is_done = l.status == 'completed'
@@ -3335,16 +3356,17 @@ def universal_profile_view(user_id=None):
                     'color': 'emerald' if is_done else 'blue',
                     'type': 'lesson'
                 })
-            for s in completed_submissions[:8]:
+            for s in completed_submissions[:10]:
                 sub_dt = s.submitted_at or s.created_at or moscow_now()
+                task_ref = getattr(s, 'assignment_id', None) or getattr(s, 'submission_id', '')
                 all_activities.append({
-                    'title': f"Решил задачу #{s.assignment_id or s.submission_id}",
+                    'title': f"Сдал работу #{task_ref}",
                     'date': sub_dt.strftime('%d.%m.%Y %H:%M') if hasattr(sub_dt, 'strftime') else str(sub_dt),
                     'date_sort': sub_dt,
                     'color': 'emerald',
                     'type': 'submission'
                 })
-            for t in StudentTheoryState.query.filter_by(student_id=student_obj.student_id).order_by(StudentTheoryState.updated_at.desc()).limit(6).all():
+            for t in StudentTheoryState.query.filter_by(student_id=student_obj.student_id).order_by(StudentTheoryState.updated_at.desc()).limit(8).all():
                 t_dt = t.updated_at or t.last_opened_at or moscow_now()
                 all_activities.append({
                     'title': f"Изучил тему теории #{t.task_number}",
@@ -3355,23 +3377,30 @@ def universal_profile_view(user_id=None):
                 })
             for a in UserAchievement.query.filter_by(
                 student_id=student_obj.student_id
-            ).order_by(UserAchievement.unlocked_at.desc()).limit(6).all():
+            ).order_by(UserAchievement.unlocked_at.desc()).limit(8).all():
                 a_dt = a.unlocked_at or moscow_now()
+                ach_title = getattr(a, 'achievement_title', None) or getattr(a, 'achievement_key', None) or 'Награда'
                 all_activities.append({
-                    'title': f"Получил награду «{a.achievement_key}»",
+                    'title': f"Получил награду «{ach_title}»",
                     'date': a_dt.strftime('%d.%m.%Y %H:%M') if hasattr(a_dt, 'strftime') else str(a_dt),
                     'date_sort': a_dt,
                     'color': 'amber',
                     'type': 'achievement'
                 })
+            for g in StudentLearningPlanItem.query.filter_by(student_id=student_obj.student_id, status='done').order_by(StudentLearningPlanItem.updated_at.desc()).limit(5).all():
+                g_dt = g.updated_at or g.created_at or moscow_now()
+                all_activities.append({
+                    'title': f"Выполнил цель «{g.title}»",
+                    'date': g_dt.strftime('%d.%m.%Y %H:%M') if hasattr(g_dt, 'strftime') else str(g_dt),
+                    'date_sort': g_dt,
+                    'color': 'emerald',
+                    'type': 'goal'
+                })
 
-        if not all_activities:
-            all_activities = [
-                {'title': 'Завершил урок «Условия»', 'date': '14.09.2024 18:09', 'color': 'emerald', 'type': 'lesson'},
-                {'title': 'Решил задачу #12', 'date': '14.09.2024 17:32', 'color': 'emerald', 'type': 'submission'},
-                {'title': 'Начал изучение темы «Условия»', 'date': '14.09.2024 16:21', 'color': 'purple', 'type': 'theory'},
-                {'title': 'Зашёл на платформу', 'date': '14.09.2024 15:05', 'color': 'orange', 'type': 'login'},
-            ]
+        try:
+            all_activities.sort(key=lambda x: x.get('date_sort') or datetime.min, reverse=True)
+        except Exception:
+            pass
 
         recent_activities = all_activities[:4]
 
@@ -3385,6 +3414,25 @@ def universal_profile_view(user_id=None):
         secret_ach_cnt = sum(1 for a in detailed_achievements if a.get('is_secret', False))
         secret_unlocked_cnt = sum(1 for a in detailed_achievements if a.get('is_secret', False) and a['unlocked'])
         ach_pct = round((unlocked_ach_cnt / max(1, len(detailed_achievements))) * 100)
+
+        # Select 5 achievements for the showcase stand (rarest unlocked first, then in-progress, then rarest locked)
+        rarity_rank = {'legendary': 5, 'secret': 4, 'epic': 3, 'rare': 2, 'common': 1}
+        unlocked_achievements = [a for a in detailed_achievements if a.get('unlocked')]
+        unlocked_achievements.sort(key=lambda a: rarity_rank.get(a.get('rarity', 'common'), 1), reverse=True)
+
+        showcase_achievements = list(unlocked_achievements[:5])
+        if len(showcase_achievements) < 5:
+            in_prog = [a for a in detailed_achievements if a.get('status_type') == 'in_progress' and a not in showcase_achievements]
+            in_prog.sort(key=lambda a: (a.get('progress_pct', 0), rarity_rank.get(a.get('rarity', 'common'), 1)), reverse=True)
+            for a in in_prog:
+                if len(showcase_achievements) < 5:
+                    showcase_achievements.append(a)
+        if len(showcase_achievements) < 5:
+            locked = [a for a in detailed_achievements if a not in showcase_achievements]
+            locked.sort(key=lambda a: rarity_rank.get(a.get('rarity', 'common'), 1), reverse=True)
+            for a in locked:
+                if len(showcase_achievements) < 5:
+                    showcase_achievements.append(a)
 
         school_class_val = getattr(student_obj, 'school_class', None)
         category_val = getattr(student_obj, 'category', '') or ''
@@ -3415,11 +3463,19 @@ def universal_profile_view(user_id=None):
             'rank_title': current_level_info['title'],
             'completed_cnt': lesson_completed,
             'total_cnt': lesson_total,
+            'module_completed_cnt': module_completed_cnt,
+            'module_total_cnt': module_total_cnt,
+            'module_label': module_label,
+            'read_theory_cnt': read_theory_count,
+            'total_theory_cnt': total_theory_count,
+            'completed_steps': completed_steps,
+            'total_steps': total_steps,
             'progress_pct': overall_progress_pct,
             'student_stats': student_stats,
             'active_subjects': [],
             'all_achievements': detailed_achievements,
             'detailed_achievements': detailed_achievements,
+            'showcase_achievements': showcase_achievements,
             'unlocked_ach_cnt': unlocked_ach_cnt,
             'in_progress_ach_cnt': in_progress_ach_cnt,
             'locked_ach_cnt': locked_ach_cnt,
@@ -3427,6 +3483,7 @@ def universal_profile_view(user_id=None):
             'secret_unlocked_cnt': secret_unlocked_cnt,
             'ach_pct': ach_pct,
             'student_obj': student_obj,
+            'total_study_sec': total_study_sec,
             'study_time_display': study_time_display,
             'current_level_info': current_level_info,
             'all_ranks_list': all_ranks_list,
@@ -4301,17 +4358,24 @@ def api_profile_edit():
     if about_me is not None:
         current_user.about_me = about_me.strip()
 
+    timezone_mode = (data.get('timezone_mode') or '').strip().lower()
     timezone_iana = (data.get('timezone_iana') or '').strip()
-    if timezone_iana:
-        from zoneinfo import ZoneInfo
-        try:
-            ZoneInfo(timezone_iana)
-        except Exception:
-            return jsonify({'status': 'error', 'success': False, 'message': 'Укажите корректный часовой пояс.'}), 400
-        current_user.timezone_mode = 'manual'
-        current_user.timezone_iana = timezone_iana[:64]
+    if timezone_mode == 'auto':
+        current_user.timezone_mode = 'auto'
+        current_user.timezone_iana = None
         if current_user.profile:
-            current_user.profile.timezone = timezone_iana[:50]
+            current_user.profile.timezone = None
+    elif timezone_iana or timezone_mode == 'manual':
+        if timezone_iana:
+            from zoneinfo import ZoneInfo
+            try:
+                ZoneInfo(timezone_iana)
+            except Exception:
+                return jsonify({'status': 'error', 'success': False, 'message': 'Укажите корректный часовой пояс.'}), 400
+            current_user.timezone_mode = 'manual'
+            current_user.timezone_iana = timezone_iana[:64]
+            if current_user.profile:
+                current_user.profile.timezone = timezone_iana[:50]
 
     telegram_link = data.get('telegram_link') or data.get('telegram_username')
     if telegram_link is not None:

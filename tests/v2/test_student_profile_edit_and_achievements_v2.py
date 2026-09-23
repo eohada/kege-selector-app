@@ -98,6 +98,60 @@ def run_student_profile_and_achievements_qa_tests():
                 assert 'alert(' not in content, f"Native alert() found in {fname}!"
         print("SUCCESS: 0 native alert() and 0 native confirm() in student profile templates!")
 
+        # --- TEST 4: Profile Accuracy (Zero Hardcode, Honest Time, Real Progress & Referral) ---
+        print("\n--- TEST 4: Profile Accuracy (Zero Hardcode, Honest Time, Real Progress & Referral) ---")
+        fresh_user = User.query.filter_by(username='qa_fresh_student_empty').first()
+        if not fresh_user:
+            from werkzeug.security import generate_password_hash
+            fresh_user = User(
+                username='qa_fresh_student_empty',
+                email='qa_fresh_empty@boostudy.ru',
+                role='student',
+                full_name='Свежий Ученик',
+                password_hash=generate_password_hash('Password123!')
+            )
+            db.session.add(fresh_user)
+            db.session.commit()
+            fresh_student = Student(
+                user_id=fresh_user.id,
+                name=fresh_user.full_name,
+                category='10 Класс',
+                study_time_seconds=0
+            )
+            db.session.add(fresh_student)
+            db.session.commit()
+        else:
+            fresh_student = Student.query.filter_by(user_id=fresh_user.id).first()
+            if fresh_student:
+                fresh_student.study_time_seconds = 0
+                db.session.commit()
+
+        with client.session_transaction() as sess:
+            sess['_user_id'] = str(fresh_user.id)
+            sess['_fresh'] = True
+
+        res_zero = client.get('/workspace/profile')
+        assert res_zero.status_code == 200
+        html_zero = res_zero.get_data(as_text=True)
+
+        assert '14.09.2024' not in html_zero, "Hardcoded 2024 activity date must not be present in student profile HTML"
+        assert 'BS-C68ECJCB' not in html_zero, "Hardcoded referral code BS-C68ECJCB must not be present"
+        assert '0 мин' in html_zero, "Student with 0 study seconds should show '0 мин'"
+        assert 'let currentStudySeconds = 0;' in html_zero, "JS ticker must initialize with 0 for zero study time"
+        assert 'Пока нет недавней активности' in html_zero, "Empty activity state should be shown when student has no events"
+        # Verify stages don't include fake +27
+        assert '28 этапов' not in html_zero, "Fake '28 этапов' (+27) must not be rendered"
+
+        # Verify dynamic calculation when study time is updated
+        fresh_student.study_time_seconds = 3660
+        db.session.commit()
+        res_time = client.get('/workspace/profile')
+        html_time = res_time.get_data(as_text=True)
+        assert '1 ч 01 мин' in html_time, "3660 seconds must format to '1 ч 01 мин'"
+        assert 'let currentStudySeconds = 3660;' in html_time, "JS ticker must initialize with 3660"
+
+        print("SUCCESS: Zero hardcode audit, honest study time, empty activity state and unique referral verified!")
+
         print("\n============================================================")
         print("ALL QA TESTS FOR STUDENT PROFILE EDIT & ACHIEVEMENTS PASSED!")
         print("============================================================\n")
