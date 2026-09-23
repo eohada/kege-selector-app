@@ -2,7 +2,7 @@
   const root = document.querySelector('#lesson-studio-os'); if (!root || !window.io) return;
   const raw = document.querySelector('#studio-os-data'); const data = raw ? JSON.parse(raw.textContent) : {};
   const lessonId = Number(root.dataset.lessonId), teacher = root.dataset.teacher === 'true', csrf = document.querySelector('meta[name="csrf-token"]')?.content || '', clientId = crypto.randomUUID();
-  let state = data.state || {}, tasks = typeof data.tasks === 'string' ? JSON.parse(data.tasks) : (data.tasks || []), activeTask = null, workspace = {id:null, version:0, socket:null, applying:false}, board = {tool:'pen',color:'#312e81',width:4,drawing:null,drag:null,camera:{x:0,y:0,z:1}}, lastLaserAt = 0;
+  let state = data.state || {}, tasks = typeof data.tasks === 'string' ? JSON.parse(data.tasks) : (data.tasks || []), activeTask = null, workspace = {id:null, version:0, socket:null, applying:false, pendingOps:[], lastLocalEditAt:0, seenOpIds:new Set()}, board = {tool:'pen',color:'#312e81',width:4,drawing:null,drag:null,camera:{x:0,y:0,z:1}}, lastLaserAt = 0;
   const $ = s => document.querySelector(s), fmt=s=>`${String(Math.floor(Math.max(0,s||0)/60)).padStart(2,'0')}:${String(Math.max(0,s||0)%60).padStart(2,'0')}`;
   const localKey=`boostudy:room:${lessonId}:learning-flow-ui`, phaseLabels={preparation:'Подготовка',practice:'Практика',reflection:'Итог'};
   let localUi={},hasExplicitWorkspaceChoice=false; try{localUi=JSON.parse(localStorage.getItem(localKey)||'{}')}catch(_){localUi={}}
@@ -187,11 +187,123 @@
   function refreshGutter(){const gutter=$('#os-code-gutter'),editor=$('#os-code');if(!gutter||!editor)return;const lines=(editor.value||'').split('\n').length||1;let html='';for(let i=1;i<=lines;i++){html+=`<span>${i}</span>`;}gutter.innerHTML=html;gutter.scrollTop=editor.scrollTop;}
   let typingTimer=null;
   function showTypingBanner(text){const banner=$('#os-typing-banner'),label=$('#os-typing-user-text');if(!banner||!label)return;label.textContent=text;banner.classList.remove('hidden');clearTimeout(typingTimer);typingTimer=setTimeout(()=>banner.classList.add('hidden'),2400);}
+  function transformPositionThroughOp(pos, op) {
+    const start = Math.max(0, Number(op?.start || 0));
+    const end = Math.max(start, Number(op?.end || start));
+    const inserted = String(op?.inserted || '');
+    const delta = inserted.length - (end - start);
+    if (pos <= start) return pos;
+    if (pos >= end) return Math.max(0, pos + delta);
+    return start + inserted.length;
+  }
+
+  function transformPatchThroughOps(patch, ops) {
+    const next = {
+      ...patch,
+      start: Math.max(0, Number(patch.start || 0)),
+      end: Math.max(0, Number(patch.end || patch.start || 0)),
+    };
+    (ops || []).forEach(op => {
+      next.start = transformPositionThroughOp(next.start, op);
+      next.end = transformPositionThroughOp(next.end, op);
+      if (next.end < next.start) next.end = next.start;
+    });
+    return next;
+  }
+
+  function hasActiveLocalEdits() {
+    if (workspace.pendingOps && workspace.pendingOps.length > 0) return true;
+    const editor = $('#os-code');
+    if (document.activeElement === editor && (Date.now() - (workspace.lastLocalEditAt || 0)) < 600) {
+      return true;
+    }
+    return false;
+  }
+
+  function applyCodePatchToEditor(patch, options = {}) {
+    const editor = $('#os-code');
+    if (!editor) return;
+    const start = Math.max(0, Number(patch.start || 0));
+    const end = Math.max(start, Number(patch.end || start));
+    const inserted = String(patch.inserted || '');
+    const before = String(editor.value || '');
+    const boundedStart = Math.min(start, before.length);
+    const boundedEnd = Math.min(Math.max(boundedStart, end), before.length);
+    const caretStart = editor.selectionStart || 0;
+    const caretEnd = editor.selectionEnd || caretStart;
+    const scrollT = editor.scrollTop, scrollL = editor.scrollLeft;
+
+    const next = before.slice(0, boundedStart) + inserted + before.slice(boundedEnd);
+    const delta = inserted.length - (boundedEnd - boundedStart);
+
+    workspace.applying = true;
+    editor.value = next;
+    workspace.lastSentCode = next;
+
+    const isFocused = document.activeElement === editor;
+    if (isFocused || options.preserveSelection) {
+      const mapCaret = (pos) => {
+        if (pos > boundedEnd) return Math.max(0, pos + delta);
+        if (pos >= boundedStart) return boundedStart + inserted.length;
+        return pos;
+      };
+      editor.setSelectionRange(mapCaret(caretStart), mapCaret(caretEnd));
+    }
+    editor.scrollTop = scrollT;
+    editor.scrollLeft = scrollL;
+    refreshCodeHighlight();
+    refreshGutter();
+    workspace.applying = false;
+  }
+
+  function applyCanonicalCodeToEditor(nextCode, patch) {
+    const editor = $('#os-code');
+    if (!editor) return;
+    if (editor.value === nextCode) {
+      workspace.lastSentCode = nextCode;
+      return;
+    }
+    const isFocused = document.activeElement === editor;
+    const curStart = editor.selectionStart || 0, curEnd = editor.selectionEnd || curStart;
+    const curScrollTop = editor.scrollTop, curScrollLeft = editor.scrollLeft;
+
+    const start = Number.isFinite(patch?.start) ? patch.start : 0;
+    const end = Number.isFinite(patch?.end) ? patch.end : start;
+    const insertedLen = (patch?.inserted || '').length;
+    const delta = insertedLen - (end - start);
+
+    let newStart = curStart, newEnd = curEnd;
+    if (curStart >= end) {
+      newStart = curStart + delta;
+    } else if (curStart > start) {
+      newStart = start + insertedLen;
+    }
+    if (curEnd >= end) {
+      newEnd = curEnd + delta;
+    } else if (curEnd > start) {
+      newEnd = start + insertedLen;
+    }
+
+    workspace.applying = true;
+    editor.value = nextCode;
+    workspace.lastSentCode = nextCode;
+    if (isFocused) {
+      editor.setSelectionRange(Math.max(0, newStart), Math.max(0, newEnd));
+    }
+    editor.scrollTop = curScrollTop;
+    editor.scrollLeft = curScrollLeft;
+    refreshCodeHighlight();
+    refreshGutter();
+    workspace.applying = false;
+  }
+
   function connectWorkspace(id, kind='lesson_task'){
     workspace.id=id;
     workspace.kind=kind;
     $('#os-code').value='';
     $('#os-answer').value='';
+    workspace.lastSentCode = '';
+    workspace.pendingOps = [];
     refreshCodeHighlight();
     refreshGutter();
     $('#os-output').textContent='Подключаемся к совместному коду…';
@@ -201,61 +313,51 @@
       workspace.socket.on('workspace_snapshot',p=>applySnapshot(p.state));
       workspace.socket.on('workspace_patch',p=>{
         if (!p) return;
+        const opId = String(p.op_id || '');
         if (p.client_id === clientId) {
+          if (workspace.pendingOps && opId) {
+            const idx = workspace.pendingOps.findIndex(op => op.op_id === opId);
+            if (idx !== -1) workspace.pendingOps.splice(idx, 1);
+          }
+          if (opId) workspace.seenOpIds?.add(opId);
           if (p.version) workspace.version = Math.max(workspace.version, Number(p.version) || 0);
           return;
         }
-        const editor = $('#os-code');
-        if (!editor || typeof p.code_after !== 'string') return;
+        if (opId && workspace.seenOpIds?.has(opId)) return;
+        if (opId) workspace.seenOpIds?.add(opId);
         if (p.version) workspace.version = Math.max(workspace.version, Number(p.version) || 0);
 
-        if (editor.value === p.code_after) {
-          workspace.lastSentCode = p.code_after;
-          return;
-        }
+        const editor = $('#os-code');
+        if (!editor) return;
 
-        const isFocused = document.activeElement === editor;
-        const curStart = editor.selectionStart, curEnd = editor.selectionEnd;
-        const curScrollTop = editor.scrollTop, curScrollLeft = editor.scrollLeft;
+        const hasCanonical = typeof p.code_after === 'string';
+        const hasDeltas = Number.isFinite(p.start) && Number.isFinite(p.end) && typeof p.inserted === 'string';
 
-        const start = Number.isFinite(p.start) ? p.start : 0;
-        const end = Number.isFinite(p.end) ? p.end : start;
-        const insertedLen = (p.inserted || '').length;
-        const delta = insertedLen - (end - start);
-
-        let newStart = curStart, newEnd = curEnd;
-        if (curStart >= end) {
-          newStart = curStart + delta;
-        } else if (curStart > start) {
-          newStart = start + insertedLen;
+        if (hasActiveLocalEdits() && hasDeltas) {
+          const transformed = transformPatchThroughOps(p, workspace.pendingOps);
+          applyCodePatchToEditor(transformed, { preserveSelection: true });
+          (workspace.pendingOps || []).forEach(op => {
+            op.start = transformPositionThroughOp(op.start, p);
+            op.end = transformPositionThroughOp(op.end, p);
+            if (op.end < op.start) op.end = op.start;
+          });
+        } else if (hasCanonical) {
+          applyCanonicalCodeToEditor(p.code_after, p);
+        } else if (hasDeltas) {
+          applyCodePatchToEditor(p, { preserveSelection: true });
         }
-        if (curEnd >= end) {
-          newEnd = curEnd + delta;
-        } else if (curEnd > start) {
-          newEnd = start + insertedLen;
-        }
-
-        workspace.applying = true;
-        editor.value = p.code_after;
-        workspace.lastSentCode = p.code_after;
-        if (isFocused) {
-          editor.setSelectionRange(Math.max(0, newStart), Math.max(0, newEnd));
-        }
-        editor.scrollTop = curScrollTop;
-        editor.scrollLeft = curScrollLeft;
-        refreshCodeHighlight();
-        refreshGutter();
-        workspace.applying = false;
 
         const peerRole = p.role === 'teacher' ? 'Преподаватель' : 'Ученик';
         const peerName = p.display_name || p.username || peerRole;
         showTypingBanner(`${peerName} печатает...`);
       });
       workspace.socket.on('workspace_cursor_update',p=>{
-        if(p.client_id===clientId)return;
-        const peerRole=p.role==='teacher'?'Преподаватель':'Ученик';
-        const peerName=p.display_name||p.username||peerRole;
-        showTypingBanner(`${peerName} печатает...`);
+        if(!p || p.client_id===clientId)return;
+        if (p.cursor?.is_typing) {
+          const peerRole=p.role==='teacher'?'Преподаватель':'Ученик';
+          const peerName=p.display_name||p.username||peerRole;
+          showTypingBanner(`${peerName} печатает...`);
+        }
       });
       workspace.socket.on('workspace_presence',p=>$('#os-presence').textContent=(p.participants||[]).map(x=>x.display_name||x.username).join(' · ')||'Онлайн');
     }else if(workspace.socket.connected){
@@ -265,8 +367,11 @@
   function applySnapshot(s){
     if(!s)return;
     workspace.applying=true;
-    $('#os-code').value=s.code||'';
-    $('#os-answer').value=s.answer||'';
+    const editor=$('#os-code');
+    if(editor) editor.value=s.code||'';
+    workspace.lastSentCode = s.code||'';
+    workspace.pendingOps = [];
+    if($('#os-answer')) $('#os-answer').value=s.answer||'';
     refreshCodeHighlight();
     refreshGutter();
     workspace.applying=false;
@@ -354,20 +459,32 @@
       refreshCodeHighlight();
       refreshGutter();
       if (workspace.applying || !workspace.socket || !workspace.id) return;
+      workspace.lastLocalEditAt = Date.now();
       const doEmit = () => {
         const currentCode = codeEditor.value;
         const prevCode = workspace.lastSentCode !== undefined ? workspace.lastSentCode : currentCode;
+        if (prevCode === currentCode) return;
         const delta = computeDelta(prevCode, currentCode);
         workspace.lastSentCode = currentCode;
+        const opId = crypto.randomUUID();
+        const baseVersion = workspace.version;
+        const op = {
+          op_id: opId,
+          base_version: baseVersion,
+          start: delta.start,
+          end: delta.end,
+          inserted: delta.inserted
+        };
+        workspace.pendingOps.push(op);
         workspace.socket.emit('workspace_patch', {
           ...ctx(),
-          base_version: workspace.version,
+          base_version: baseVersion,
           start: delta.start,
           end: delta.end,
           inserted: delta.inserted,
           full_code: currentCode,
           next: currentCode,
-          op_id: crypto.randomUUID(),
+          op_id: opId,
           updated_at: Date.now()
         });
       };
@@ -375,7 +492,7 @@
       if (immediate) {
         doEmit();
       } else {
-        emitTimer = setTimeout(doEmit, 75);
+        emitTimer = setTimeout(doEmit, 50);
       }
     };
 
@@ -384,10 +501,14 @@
     });
 
     codeEditor.addEventListener('scroll', () => {
-      refreshCodeHighlight();
+      const layer = $('#os-code-highlight');
+      if (layer) {
+        layer.scrollTop = codeEditor.scrollTop;
+        layer.scrollLeft = codeEditor.scrollLeft;
+      }
       const gutter = $('#os-code-gutter');
       if (gutter) gutter.scrollTop = codeEditor.scrollTop;
-    });
+    }, { passive: true });
 
     // Editor fullscreen button (#os-focus-toggle-btn)
     const focusBtn = $('#os-focus-toggle-btn');
@@ -561,7 +682,7 @@
       if(!workspace.socket||!workspace.id||workspace.applying)return;
       clearTimeout(cursorTimer);
       cursorTimer=setTimeout(()=>{
-        workspace.socket.emit('workspace_cursor_update',{...ctx(),cursor:{selection_start:codeEditor.selectionStart,selection_end:codeEditor.selectionEnd,is_typing:true}});
+        workspace.socket.emit('workspace_cursor_update',{...ctx(),cursor:{selection_start:codeEditor.selectionStart,selection_end:codeEditor.selectionEnd,is_typing:false}});
       },120);
     });
     $('#os-save').onclick=async()=>{if(!workspace.id)return;const r=await post('/task-workspace/api/save',{...ctx(),code:codeEditor.value,answer:$('#os-answer').value});toast(r.success?'Сохранено':r.error||'Ошибка')};
@@ -1442,6 +1563,8 @@
       if(!ok)return;
       const editor=$('#os-code');if(!editor)return;
       editor.value=defaultCode;
+      workspace.lastSentCode=defaultCode;
+      workspace.pendingOps=[];
       refreshCodeHighlight();
       refreshGutter();
       if(workspace.socket&&workspace.id){

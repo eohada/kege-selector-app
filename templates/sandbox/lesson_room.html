@@ -243,6 +243,12 @@
               </div>
 
               <div class="room-editor-tools-group">
+                <!-- Индикатор живой активности напарника (аккуратно внутри тулбара, без смещения редактора) -->
+                <div id="os-typing-banner" class="room-typing-pill hidden" aria-live="polite">
+                  <span class="room-typing-pulse-dot"></span>
+                  <span id="os-typing-user-text">Преподаватель печатает...</span>
+                </div>
+
                 <div class="room-lang-selector-pill">
                   <svg class="room-python-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
                     <path d="M11.91 2C6.83 2 7.15 4.21 7.15 4.21L7.16 6.5H12V7.93H4.72S2 7.62 2 12.71C2 17.8 4.38 17.52 4.38 17.52L5.8 17.52V15.42S5.72 12.92 8.24 12.92H12.96S15.35 13.01 15.35 10.63V4.29S15.67 2 11.91 2ZM9.03 3.65C9.64 3.65 10.13 4.14 10.13 4.75C10.13 5.36 9.64 5.85 9.03 5.85C8.42 5.85 7.93 5.36 7.93 4.75C7.93 4.14 8.42 3.65 9.03 3.65Z" fill="#387eb8"/>
@@ -254,12 +260,6 @@
                   <i class="ph-bold ph-corners-out text-base"></i>
                 </button>
               </div>
-            </div>
-
-            <!-- Индикатор живой активности/печати напарника (учитель/ученик) -->
-            <div id="os-typing-banner" class="room-typing-notification-banner hidden" aria-live="polite">
-              <span class="room-typing-pulse-dot"></span>
-              <span id="os-typing-user-text">Преподаватель печатает...</span>
             </div>
 
             <!-- Полотно редактора с нумерацией строк и совместным вводом (Светлая тема) -->

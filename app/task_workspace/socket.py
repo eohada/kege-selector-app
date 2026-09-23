@@ -179,11 +179,13 @@ def register_task_workspace_socket(socketio) -> None:
             return max(0, pos + delta)
         return start + inserted_len
 
-    def _transform_range(start: int, end: int, history: list[dict[str, Any]], base_version: int) -> tuple[int, int]:
+    def _transform_range(start: int, end: int, history: list[dict[str, Any]], base_version: int, client_id: str = "") -> tuple[int, int]:
         next_start = max(0, int(start or 0))
         next_end = max(next_start, int(end or next_start))
         for op in history:
             if int(op.get("version") or 0) <= base_version:
+                continue
+            if client_id and op.get("client_id") == client_id:
                 continue
             next_start = _transform_position(next_start, op)
             next_end = _transform_position(next_end, op)
@@ -446,32 +448,45 @@ def register_task_workspace_socket(socketio) -> None:
         current = _ensure_room_state(room, ctx)
         code = str(current.get("code") or "")
         base_version = max(0, int(data.get("base_version") or current.get("version") or 0))
-        op_id = str(data.get("op_id") or "")
+        client_id = str(data.get("client_id") or "")
+        op_id = str(data.get("op_id") or f"op_{int(time() * 1000)}")
         history = list(current.get("history") or [])
+
+        # Concurrent operations from OTHER participants since base_version
+        concurrent_ops_from_others = [
+            op for op in history
+            if int(op.get("version") or 0) > base_version
+            and (not client_id or op.get("client_id") != client_id)
+        ]
+
         has_explicit_delta = ('start' in data and 'inserted' in data and data.get('start') is not None)
-        if has_explicit_delta and _active_user_count(room) > 1:
-            if base_version < int(current.get("version") or 0):
-                start, end = _transform_range(start, end, history, base_version)
+        if concurrent_ops_from_others and has_explicit_delta:
+            start, end = _transform_range(start, end, concurrent_ops_from_others, base_version, client_id=client_id)
             start = min(start, len(code))
             end = min(max(start, end), len(code))
             next_code = code[:start] + inserted + code[end:]
-        elif _active_user_count(room) <= 1 and has_next_value:
+        elif has_explicit_delta:
+            start = min(start, len(code))
+            end = min(max(start, end), len(code))
+            if has_next_value:
+                next_code = next_value
+            else:
+                next_code = code[:start] + inserted + code[end:]
+        elif has_next_value:
             next_code = next_value
             start, end, inserted = _diff_snapshot(code, next_code)
         elif full_code:
             next_code = full_code
             start, end, inserted = _diff_snapshot(code, next_code)
         else:
-            if base_version < int(current.get("version") or 0):
-                start, end = _transform_range(start, end, history, base_version)
-            start = min(start, len(code))
-            end = min(max(start, end), len(code))
-            next_code = code[:start] + inserted + code[end:]
+            next_code = code
+
         next_version = int(current.get("version") or 0) + 1
         op = {
             "version": next_version,
             "op_id": op_id,
             "user_id": current_user.id,
+            "client_id": client_id,
             "start": start,
             "end": end,
             "inserted": inserted,
