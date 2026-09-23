@@ -170,6 +170,57 @@ def register_lesson_socket(socketio) -> None:
             namespace="/lesson",
         )
 
+    @socketio.on("board_stroke", namespace="/lesson")
+    def _on_board_stroke(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        lesson_id = data.get("lesson_id")
+        stroke = data.get("stroke")
+        if not lesson_id or not stroke:
+            return
+        try:
+            lesson_id = int(lesson_id)
+        except (TypeError, ValueError):
+            return
+        socketio.emit(
+            "board_stroke",
+            {
+                "lesson_id": lesson_id,
+                "stroke": stroke,
+                "user_id": current_user.id,
+                "client_stroke_id": data.get("client_stroke_id")
+            },
+            room=_room(lesson_id),
+            namespace="/lesson",
+            include_self=False,
+        )
+
+    @socketio.on("board_action", namespace="/lesson")
+    def _on_board_action(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        lesson_id = data.get("lesson_id")
+        action = data.get("action")
+        if not lesson_id or not action:
+            return
+        try:
+            lesson_id = int(lesson_id)
+        except (TypeError, ValueError):
+            return
+        socketio.emit(
+            "board_action",
+            {
+                "lesson_id": lesson_id,
+                "action": action,
+                "strokes": data.get("strokes")
+            },
+            room=_room(lesson_id),
+            namespace="/lesson",
+            include_self=False,
+        )
+
 
 def emit_lesson_tasks_updated(lesson_id: int, assignment_type: str) -> None:
     try:
@@ -184,6 +235,22 @@ def emit_lesson_tasks_updated(lesson_id: int, assignment_type: str) -> None:
             )
     except Exception as e:
         logger.warning("emit_lesson_tasks_updated failed: %s", e)
+
+
+def emit_lesson_finished(lesson_id: int, payload: dict = None) -> None:
+    """Notify student and room participants immediately when teacher completes lesson."""
+    try:
+        from flask import current_app
+        sio = getattr(current_app, "socketio", None)
+        if sio:
+            sio.emit(
+                "lesson_finished",
+                payload or {"lesson_id": lesson_id},
+                room=_room(lesson_id),
+                namespace="/lesson",
+            )
+    except Exception as e:
+        logger.warning("emit_lesson_finished failed: %s", e)
 
 
 def emit_lesson_message_new(lesson_id: int, payload: dict) -> None:

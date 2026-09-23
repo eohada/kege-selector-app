@@ -3243,7 +3243,7 @@ def universal_profile_view(user_id=None):
 
         # Level data for "Текущий уровень" (50 levels progression from Python basics to 100 on KEGE)
         from app.utils.xp_service import calculate_level_from_xp, get_level_info, get_all_ranks_list
-        level_xp = int(getattr(student_obj, 'xp', 285) or 285) if student_obj else 285
+        level_xp = int(getattr(student_obj, 'xp', 0) or 0) if student_obj else 0
         level_num = calculate_level_from_xp(level_xp) if student_obj else 1
         if student_obj and student_obj.level != level_num:
             student_obj.level = level_num
@@ -3257,12 +3257,14 @@ def universal_profile_view(user_id=None):
             StudentLearningPlanItem.status.asc(), StudentLearningPlanItem.priority.desc(), StudentLearningPlanItem.item_id.desc()
         ).limit(12).all() if student_obj else []
 
+        real_streak = int(getattr(student_obj, 'streak_days', 0) or 0) if student_obj else 0
+
         if student_obj and not weekly_goals:
             default_goals_seed = [
-                ('Пройти 3 темы по Python', {'current': 1, 'target': 3}),
-                ('Решить 20 задач', {'current': 5, 'target': 20}),
+                ('Пройти 3 темы по Python', {'current': min(read_theory_count, 3), 'target': 3}),
+                ('Решить 20 задач', {'current': min(len(completed_submissions), 20), 'target': 20}),
                 ('Посмотреть дополнительные материалы', {'current': 0, 'target': 5}),
-                ('Поддерживать стрик 7 дней', {'current': 2, 'target': 7}),
+                ('Поддерживать стрик 7 дней', {'current': min(real_streak, 7), 'target': 7}),
             ]
             for title, counts in default_goals_seed:
                 db.session.add(StudentLearningPlanItem(
@@ -3289,8 +3291,16 @@ def universal_profile_view(user_id=None):
                         target = max(1, int(parsed.get('target', 1)))
                 except Exception:
                     pass
-            if goal.status == 'done':
-                curr = target
+
+            goal_title_lower = (goal.title or '').lower()
+            if 'стрик' in goal_title_lower or 'streak' in goal_title_lower:
+                curr = min(target, real_streak)
+            elif 'тем' in goal_title_lower or 'теории' in goal_title_lower:
+                curr = min(target, max(curr, read_theory_count))
+            elif 'задач' in goal_title_lower:
+                curr = min(target, max(curr, len(completed_submissions)))
+
+            if goal.status == 'done' or curr >= target:
                 pct = 100
             else:
                 pct = min(100, max(0, round((curr / target) * 100)))
@@ -3298,7 +3308,7 @@ def universal_profile_view(user_id=None):
             formatted_goals.append({
                 'item_id': goal.item_id,
                 'title': goal.title,
-                'status': goal.status,
+                'status': 'done' if curr >= target and goal.status != 'done' else goal.status,
                 'current_count': curr,
                 'target_count': target,
                 'count_display': f"{curr} / {target}",
@@ -3370,6 +3380,18 @@ def universal_profile_view(user_id=None):
         secret_unlocked_cnt = sum(1 for a in detailed_achievements if a.get('is_secret', False) and a['unlocked'])
         ach_pct = round((unlocked_ach_cnt / max(1, len(detailed_achievements))) * 100)
 
+        school_class_val = getattr(student_obj, 'school_class', None)
+        category_val = getattr(student_obj, 'category', '') or ''
+        if school_class_val == 12 or 'университет' in category_val.lower() or 'вуз' in category_val.lower():
+            school_class_display = 'Университет'
+        elif school_class_val and 1 <= int(school_class_val) <= 11:
+            school_class_display = str(int(school_class_val))
+        elif category_val and any(char.isdigit() for char in category_val):
+            digits = ''.join(c for c in category_val if c.isdigit())
+            school_class_display = digits if digits else None
+        else:
+            school_class_display = None
+
         context.update({
             'profile_display_name': getattr(student_obj, 'name', None) or getattr(target_user, "full_name", "") or target_user.username,
             'profile_avatar_url': getattr(target_user, 'avatar_url', None) or (getattr(target_user.profile, 'avatar_url', None) if getattr(target_user, 'profile', None) else None),
@@ -3377,7 +3399,7 @@ def universal_profile_view(user_id=None):
             'user_handle': target_user.username,
             'user_avatar': getattr(target_user, 'avatar_url', None) or url_for('static', filename='images/default-avatar.svg'),
             'user_cover': getattr(target_user, 'cover_url', None) or (getattr(target_user.profile, 'cover_url', None) if getattr(target_user, 'profile', None) else None),
-            'school_class_display': getattr(student_obj, 'school_class', None),
+            'school_class_display': school_class_display,
             'user_level': level_num,
             'user_xp': level_xp,
             'xp_needed': current_level_info['xp_to_next'],
@@ -4287,6 +4309,7 @@ def api_profile_edit():
 
     telegram_link = data.get('telegram_link') or data.get('telegram_username')
     if telegram_link is not None:
+        clean_tg = telegram_link.strip().lstrip('@')
         current_user.telegram_link = telegram_link.strip()
 
     password = data.get('password')
@@ -4297,12 +4320,27 @@ def api_profile_edit():
     from core.db_models import Student
     student_obj = Student.query.filter_by(user_id=current_user.id).first()
     if student_obj:
+        if full_name and full_name.strip():
+            student_obj.name = full_name.strip()
+        if telegram_link is not None:
+            clean_tg = telegram_link.strip().lstrip('@')
+            student_obj.telegram_username = clean_tg
+            student_obj.telegram = clean_tg
         goal_text = data.get('goal_text') or data.get('goal')
-        if goal_text:
+        if goal_text is not None:
             student_obj.goal_text = goal_text.strip()
-        school_class = data.get('school_class') or data.get('grade')
-        if school_class:
-            student_obj.category = f"{school_class} Класс"
+        school_class_raw = data.get('school_class') or data.get('grade')
+        if school_class_raw is not None:
+            val = str(school_class_raw).strip().lower()
+            if val in ('university', 'вуз', 'университет'):
+                student_obj.school_class = 12
+                student_obj.category = 'Университет'
+            elif val.isdigit() and int(val) in (9, 10, 11):
+                student_obj.school_class = int(val)
+                student_obj.category = f"{val} Класс"
+            elif val in ('', '0', 'none'):
+                student_obj.school_class = None
+                student_obj.category = None
 
     try:
         db.session.commit()
@@ -4432,15 +4470,22 @@ def api_study_heartbeat():
 
     data = request.form if request.form else (request.get_json(silent=True) or {})
     try:
-        sec = int(data.get('duration_seconds') or data.get('seconds') or 30)
+        raw_sec = data.get('duration_seconds') if data.get('duration_seconds') is not None else data.get('seconds')
+        if raw_sec is None or raw_sec == '':
+            return jsonify({'status': 'ignored', 'message': 'No duration'}), 200
+        sec = int(raw_sec)
     except (ValueError, TypeError):
-        sec = 30
-    sec = max(1, min(300, sec))
+        return jsonify({'status': 'ignored', 'message': 'Invalid duration'}), 200
+
+    if sec <= 0:
+        return jsonify({'status': 'ignored', 'message': 'Non-positive duration'}), 200
+
+    sec = min(180, sec)
 
     # Initialize base time if first time tracking
     if not student.study_time_seconds or student.study_time_seconds == 0:
         lesson_completed = Lesson.query.filter_by(student_id=student.student_id, status='completed').count()
-        student.study_time_seconds = max(lesson_completed * 3600, 16320)
+        student.study_time_seconds = lesson_completed * 3600
 
     student.study_time_seconds = (student.study_time_seconds or 0) + sec
     db.session.commit()

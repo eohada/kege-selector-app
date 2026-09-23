@@ -5,7 +5,7 @@
 
 <main class="room-v3-page {% if is_studio_teacher %}room-v3-page-teacher{% else %}room-v3-page-student{% endif %}">
   <div id="lesson-studio-os" class="room-v3 room-redesign room-canvas-redesign" data-lesson-id="{{ lesson_id }}" data-teacher="{{ 'true' if is_studio_teacher else 'false' }}">
-    <script id="studio-os-data" type="application/json">{{ {'tasks': tasks_json|safe, 'state': studio_state, 'materials': lesson.materials or [], 'theory_items': theory_items, 'can_open_generator': can_open_task_generator, 'meeting_user': teacher_name if is_studio_teacher else (student.name if student else 'Ученик'), 'student_notes': '' if is_studio_teacher else (lesson.student_notes or ''), 'video_url': video_url}|tojson }}</script>
+    <script id="studio-os-data" type="application/json">{{ {'tasks': tasks_json|safe, 'state': studio_state, 'materials': lesson.materials or [], 'theory_items': theory_items, 'can_open_generator': can_open_task_generator, 'meeting_user': teacher_name if is_studio_teacher else (student.name if student else 'Ученик'), 'student_notes': '' if is_studio_teacher else (lesson.student_notes or ''), 'video_url': video_url, 'lesson_status': lesson.status}|tojson }}</script>
 
     <!-- 1. Верхняя фирменная шапка по макету -->
     <header class="room-top-header room-lesson-header" aria-label="Шапка урока">
@@ -17,7 +17,7 @@
       <!-- Верхняя строка: Навигация, тема, статус | Мотивационный бабл -->
       <div class="room-header-top-row">
         <div class="room-header-left">
-          <a href="{{ url_for('lessons.lesson_view', lesson_id=lesson_id) }}" class="room-back-circle-btn" aria-label="Вернуться к уроку" title="Вернуться к уроку">
+          <a href="{{ url_for('schedule.schedule') }}" class="room-back-circle-btn" aria-label="Вернуться к расписанию" title="Вернуться к расписанию">
             <i class="ph-bold ph-arrow-left text-lg"></i>
           </a>
           <div class="room-header-meta">
@@ -132,7 +132,7 @@
     <div class="room-main-grid-layout" id="room-main-layout">
 
       <!-- ================= КОЛОНКА 1: ЗАДАНИЕ И МАСКОТ ================= -->
-      <aside class="room-col-task" aria-label="Задание урока">
+      <aside class="room-col-task" id="room-col-task" aria-label="Задание урока">
         <!-- Пагинатор заданий < Задание 1 из 5 > -->
         <div class="room-task-paginator room-task-header">
           <button type="button" id="room-task-prev" class="room-paginator-btn" aria-label="Предыдущее задание" {% if not classwork_tasks %}disabled{% endif %}>
@@ -146,6 +146,14 @@
             <i class="ph-bold ph-caret-right"></i>
           </button>
         </div>
+
+        {% if is_studio_teacher %}
+        <!-- Быстрое добавление заданий в урок преподавателем -->
+        <button type="button" id="room-open-add-task-modal" class="room-btn-add-task" title="Добавить задание в урок">
+          <i class="ph-bold ph-plus-circle text-base"></i>
+          <span>Добавить задание</span>
+        </button>
+        {% endif %}
 
         <!-- Карточка с текстом задания -->
         <div class="room-task-card">
@@ -163,7 +171,7 @@
             <div id="os-task-body" class="room-task-content-body">
               {{ first_task.condition_html|safe if first_task.condition_html else (first_task.condition or 'Условие задания') }}
             </div>
-            <details id="room-task-hint-accordion" class="room-hint-card" open>
+            <details id="room-task-hint-accordion" class="room-hint-card">
               <summary class="room-hint-summary">
                 <div class="room-hint-summary-left">
                   <i class="ph-bold ph-lightbulb text-amber-500 text-base"></i>
@@ -181,7 +189,7 @@
               <p>В этом уроке пока нет прикреплённых заданий.</p>
               <p class="text-slate-500 mt-2">Вы можете писать, запускать и тестировать любой Python-код в редакторе прямо сейчас. Код синхронизируется в реальном времени между преподавателем и учеником.</p>
             </div>
-            <details id="room-task-hint-accordion" class="room-hint-card" open>
+            <details id="room-task-hint-accordion" class="room-hint-card">
               <summary class="room-hint-summary">
                 <div class="room-hint-summary-left">
                   <i class="ph-bold ph-lightbulb text-amber-500 text-base"></i>
@@ -241,7 +249,6 @@
                     <path d="M12.09 22C17.17 22 16.85 19.79 16.85 19.79L16.84 17.5H12V16.07H19.28S22 16.38 22 11.29C22 6.2 19.62 6.48 19.62 6.48L18.2 6.48V8.58S18.28 11.08 15.76 11.08H11.04S8.65 10.99 8.65 13.37V19.71S8.33 22 12.09 22ZM14.97 20.35C14.36 20.35 13.87 19.86 13.87 19.25C13.87 18.64 14.36 18.15 14.97 18.15C15.58 18.15 16.07 18.64 16.07 19.25C16.07 19.86 15.58 20.35 14.97 20.35Z" fill="#ffe052"/>
                   </svg>
                   <span class="room-lang-text">Python</span>
-                  <i class="ph-bold ph-caret-down text-xs text-slate-500"></i>
                 </div>
                 <button type="button" id="os-focus-toggle-btn" class="room-editor-fullscreen-btn" title="Развернуть редактор" aria-pressed="false">
                   <i class="ph-bold ph-corners-out text-base"></i>
@@ -380,7 +387,7 @@
       </section>
 
       <!-- ================= КОЛОНКА 3: ЦЕЛЬ УРОКА, МАТЕРИАЛЫ И ЗАМЕТКИ ================= -->
-      <aside class="room-col-context" aria-label="Цели и материалы">
+      <aside class="room-col-context" id="room-col-sidebar" aria-label="Цели и материалы">
         <!-- 1. Карточка «Цель урока» с чеклистом и прогрессом 1/5 -->
         <div class="room-bento-card room-agenda-card">
           <div class="room-agenda-card-header">
@@ -417,7 +424,7 @@
         </div>
 
         <!-- 2. Карточка «Материалы урока» (аккордеон) -->
-        <details class="room-bento-card room-accordion-card" open>
+        <details class="room-bento-card room-accordion-card">
           <summary class="room-accordion-header">
             <div class="room-accordion-title-wrap">
               <i class="ph-bold ph-book-open text-indigo-600 text-lg"></i>
@@ -509,14 +516,7 @@
           <textarea id="room-checkpoint-blocker"></textarea>
           <button id="room-checkpoint-save"></button>
           {% endif %}
-          <div id="room-student-presence"></div>
-          <aside id="room-task-panel" class="is-collapsed"></aside>
-          <button id="room-task-close"></button>
-          <button id="room-task-toggle"></button>
-          <button id="room-panel-toggle"></button>
-          <button id="room-panel-close"></button>
-          <aside id="room-lesson-panel"></aside>
-          <div id="room-canvas" class="room-canvas tasks-collapsed panel-collapsed"></div>
+          <div id="room-canvas" class="hidden"></div>
         </div>
       </aside>
     </div>
@@ -543,6 +543,7 @@
         <div class="room-video-head-right">
           <button id="room-video-external-win" class="room-icon" aria-label="Открыть в отдельной вкладке" title="Открыть в отдельной вкладке"><i class="ph-bold ph-arrow-square-out"></i></button>
           <button id="room-video-dock-toggle" class="room-icon" aria-label="Закрепить видеозвонок справа"><i class="ph-bold ph-push-pin"></i></button>
+          <button id="room-video-compact-toggle" class="room-icon" aria-label="Только видео (компактный вид)" title="Компактный вид (только видео)"><i class="ph-bold ph-frame-corners"></i></button>
           <button id="room-video-size" class="room-icon" aria-label="Развернуть видеозвонок"><i class="ph-bold ph-arrows-out"></i></button>
           <button id="room-video-close" class="room-icon" aria-label="Скрыть видеозвонок"><i class="ph-bold ph-x"></i></button>
         </div>
@@ -634,20 +635,103 @@
 <div id="os-finish-modal" class="os-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="os-finish-title" aria-hidden="true">
   <div class="os-modal room-completion-modal">
     <div>
-      <span class="room-eyebrow">ЗАВЕРШЕНИЕ УРОКА</span>
-      <h2 id="os-finish-title">Зафиксируем результат</h2>
-      <p>Ученик получит итог, домашнее задание и уведомление после сохранения.</p>
+      <span class="room-eyebrow">{% if is_studio_teacher %}ЗАВЕРШЕНИЕ УРОКА{% else %}ИТОГИ УРОКА{% endif %}</span>
+      <h2 id="os-finish-title">{% if is_studio_teacher %}Зафиксируем результат{% else %}Итоги занятия{% endif %}</h2>
+      <p>{% if is_studio_teacher %}Ученик получит итог, домашнее задание и уведомление после сохранения.{% else %}Итоги, домашнее задание и рекомендации преподавателя.{% endif %}</p>
     </div>
-    <label>Освоено<textarea id="os-outcome-completed" placeholder="По одному пункту с новой строки"></textarea></label>
-    <label>Повторить / разобрать<textarea id="os-outcome-repeat" placeholder="По одному пункту с новой строки"></textarea></label>
-    <label>Домашнее задание<textarea id="os-outcome-homework" placeholder="Что сделать до следующего занятия"></textarea></label>
-    <label>Приватная заметка преподавателя<textarea id="os-outcome-private-note" placeholder="Не попадёт ученику"></textarea></label>
+    <label>Освоено<textarea id="os-outcome-completed" placeholder="По одному пункту с новой строки" {% if not is_studio_teacher %}readonly disabled{% endif %}></textarea></label>
+    <label>Повторить / разобрать<textarea id="os-outcome-repeat" placeholder="По одному пункту с новой строки" {% if not is_studio_teacher %}readonly disabled{% endif %}></textarea></label>
+    <label>Домашнее задание<textarea id="os-outcome-homework" placeholder="Что сделать до следующего занятия" {% if not is_studio_teacher %}readonly disabled{% endif %}></textarea></label>
+    {% if is_studio_teacher %}
+    <label id="os-outcome-private-note-wrap">Приватная заметка преподавателя<textarea id="os-outcome-private-note" placeholder="Не попадёт ученику"></textarea></label>
+    {% endif %}
     <div class="os-modal-actions">
+      {% if is_studio_teacher %}
       <button type="button" id="os-finish-cancel" class="room-action">Продолжить урок</button>
       <button type="button" id="os-finish-confirm" class="room-action room-action-primary">Завершить урок</button>
+      {% else %}
+      <button type="button" id="os-finish-cancel" class="room-action">Закрыть</button>
+      <a href="{{ url_for('schedule.schedule') }}" class="room-action room-action-primary">К расписанию</a>
+      {% endif %}
     </div>
   </div>
 </div>
+
+{% if is_studio_teacher %}
+<!-- Модальное окно добавления заданий преподавателем -->
+<div id="room-add-task-modal" class="os-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="room-add-task-title" aria-hidden="true">
+  <div class="os-modal room-add-task-modal" style="width: min(560px, calc(100vw - 32px)); max-height: 88vh; display: flex; flex-direction: column;">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg shrink-0">
+          <i class="ph-bold ph-plus-circle"></i>
+        </div>
+        <div>
+          <h2 id="room-add-task-title" class="text-base font-black text-slate-900 m-0">Добавить задание в урок</h2>
+          <p class="text-xs text-slate-500 m-0">Из банка задач КЕГЭ или собственное условие</p>
+        </div>
+      </div>
+      <button type="button" id="room-add-task-close" class="room-icon" title="Закрыть"><i class="ph-bold ph-x"></i></button>
+    </div>
+
+    <!-- Tabs: Банк задач / Своё задание -->
+    <div class="flex gap-2 p-1 bg-slate-100 rounded-xl my-3">
+      <button type="button" id="room-add-tab-bank-btn" class="flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all border-0 bg-white text-indigo-600 shadow-xs cursor-pointer">
+        <i class="ph-bold ph-database mr-1"></i> Из банка задач
+      </button>
+      <button type="button" id="room-add-tab-custom-btn" class="flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all border-0 bg-transparent text-slate-600 hover:text-slate-900 cursor-pointer">
+        <i class="ph-bold ph-pencil-simple mr-1"></i> Создать своё
+      </button>
+    </div>
+
+    <!-- Panel 1: Банк задач -->
+    <div id="room-add-tab-bank" class="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
+      <div class="flex gap-2">
+        <select id="room-task-search-num" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+          <option value="">Все задания (1–27)</option>
+          {% for n in range(1, 28) %}
+          <option value="{{ n }}">№{{ n }}</option>
+          {% endfor %}
+        </select>
+        <input type="text" id="room-task-search-query" class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500" placeholder="Поиск по тексту условия...">
+        <button type="button" id="room-task-search-btn" class="room-action room-action-primary shrink-0">
+          <i class="ph-bold ph-magnifying-glass"></i> Найти
+        </button>
+      </div>
+      <div id="room-task-search-results" class="space-y-2 max-h-72 overflow-y-auto custom-scrollbar pt-1">
+        <p class="text-xs text-slate-400 text-center py-6">Нажмите «Найти» или выберите номер задания</p>
+      </div>
+    </div>
+
+    <!-- Panel 2: Своё задание -->
+    <div id="room-add-tab-custom" class="hidden space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[11px] font-bold text-slate-600 block mb-1">Номер задания (1–27)</label>
+          <input type="number" id="room-custom-num" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500" value="1" min="1" max="27">
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-600 block mb-1">Ответ (число/строка)</label>
+          <input type="text" id="room-custom-answer" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500" placeholder="Правильный ответ">
+        </div>
+      </div>
+      <div>
+        <label class="text-[11px] font-bold text-slate-600 block mb-1">Условие задачи *</label>
+        <textarea id="room-custom-content" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 h-28" placeholder="Введите условие задания..."></textarea>
+      </div>
+      <div>
+        <label class="text-[11px] font-bold text-slate-600 block mb-1">Шаблон кода для редактора (опционально)</label>
+        <textarea id="room-custom-code" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500 h-16" placeholder="# Стартовый код для ученика..."></textarea>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" id="room-custom-submit" class="room-action room-action-primary">
+          <i class="ph-bold ph-plus"></i> Добавить в урок
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div id="room-confirm-modal" class="os-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="room-confirm-title" aria-hidden="true">
   <div class="os-modal">
@@ -660,6 +744,7 @@
     </div>
   </div>
 </div>
+
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>

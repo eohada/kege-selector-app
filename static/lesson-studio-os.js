@@ -200,27 +200,55 @@
       workspace.socket.on('connect',()=>workspace.socket.emit('join_workspace',ctx()));
       workspace.socket.on('workspace_snapshot',p=>applySnapshot(p.state));
       workspace.socket.on('workspace_patch',p=>{
-        if(p.client_id===clientId||!p.code_after){
-          if(p.version)workspace.version=Math.max(workspace.version,Number(p.version)||0);
+        if (!p) return;
+        if (p.client_id === clientId) {
+          if (p.version) workspace.version = Math.max(workspace.version, Number(p.version) || 0);
           return;
         }
-        const editor=$('#os-code');
-        const isFocused=document.activeElement===editor;
-        const curStart=editor.selectionStart, curEnd=editor.selectionEnd;
-        const start=Number.isFinite(p.start)?p.start:0, end=Number.isFinite(p.end)?p.end:start;
-        const insertedLen=(p.inserted||'').length, delta=insertedLen-(end-start);
-        let newStart=curStart, newEnd=curEnd;
-        if(curStart>=end){newStart=curStart+delta;}else if(curStart>start){newStart=start+insertedLen;}
-        if(curEnd>=end){newEnd=curEnd+delta;}else if(curEnd>start){newEnd=start+insertedLen;}
-        workspace.applying=true;
-        editor.value=p.code_after;
-        if(isFocused){editor.setSelectionRange(Math.max(0,newStart),Math.max(0,newEnd));}
+        const editor = $('#os-code');
+        if (!editor || typeof p.code_after !== 'string') return;
+        if (p.version) workspace.version = Math.max(workspace.version, Number(p.version) || 0);
+
+        if (editor.value === p.code_after) {
+          workspace.lastSentCode = p.code_after;
+          return;
+        }
+
+        const isFocused = document.activeElement === editor;
+        const curStart = editor.selectionStart, curEnd = editor.selectionEnd;
+        const curScrollTop = editor.scrollTop, curScrollLeft = editor.scrollLeft;
+
+        const start = Number.isFinite(p.start) ? p.start : 0;
+        const end = Number.isFinite(p.end) ? p.end : start;
+        const insertedLen = (p.inserted || '').length;
+        const delta = insertedLen - (end - start);
+
+        let newStart = curStart, newEnd = curEnd;
+        if (curStart >= end) {
+          newStart = curStart + delta;
+        } else if (curStart > start) {
+          newStart = start + insertedLen;
+        }
+        if (curEnd >= end) {
+          newEnd = curEnd + delta;
+        } else if (curEnd > start) {
+          newEnd = start + insertedLen;
+        }
+
+        workspace.applying = true;
+        editor.value = p.code_after;
+        workspace.lastSentCode = p.code_after;
+        if (isFocused) {
+          editor.setSelectionRange(Math.max(0, newStart), Math.max(0, newEnd));
+        }
+        editor.scrollTop = curScrollTop;
+        editor.scrollLeft = curScrollLeft;
         refreshCodeHighlight();
         refreshGutter();
-        workspace.applying=false;
-        workspace.version=p.version||workspace.version;
-        const peerRole=p.role==='teacher'?'Преподаватель':'Ученик';
-        const peerName=p.display_name||p.username||peerRole;
+        workspace.applying = false;
+
+        const peerRole = p.role === 'teacher' ? 'Преподаватель' : 'Ученик';
+        const peerName = p.display_name || p.username || peerRole;
         showTypingBanner(`${peerName} печатает...`);
       });
       workspace.socket.on('workspace_cursor_update',p=>{
@@ -301,35 +329,85 @@
     }
   }
   
+  function computeDelta(before, after) {
+    let prefix = 0;
+    while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) {
+      prefix++;
+    }
+    let suffix = 0;
+    while (suffix < (before.length - prefix) && suffix < (after.length - prefix) && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]) {
+      suffix++;
+    }
+    return {
+      start: prefix,
+      end: before.length - suffix,
+      inserted: after.slice(prefix, after.length - suffix)
+    };
+  }
+
   function bindWorkspace(){
     const codeEditor=$('#os-code');
+    if (!codeEditor) return;
 
-    const emitCodeChange = () => {
+    let emitTimer = null;
+    const emitCodeChange = (immediate = false) => {
       refreshCodeHighlight();
       refreshGutter();
-      if (!workspace.applying && workspace.socket && workspace.id) {
+      if (workspace.applying || !workspace.socket || !workspace.id) return;
+      const doEmit = () => {
+        const currentCode = codeEditor.value;
+        const prevCode = workspace.lastSentCode !== undefined ? workspace.lastSentCode : currentCode;
+        const delta = computeDelta(prevCode, currentCode);
+        workspace.lastSentCode = currentCode;
         workspace.socket.emit('workspace_patch', {
           ...ctx(),
           base_version: workspace.version,
-          full_code: codeEditor.value,
-          next: codeEditor.value,
+          start: delta.start,
+          end: delta.end,
+          inserted: delta.inserted,
+          full_code: currentCode,
+          next: currentCode,
           op_id: crypto.randomUUID(),
           updated_at: Date.now()
         });
+      };
+      clearTimeout(emitTimer);
+      if (immediate) {
+        doEmit();
+      } else {
+        emitTimer = setTimeout(doEmit, 75);
       }
     };
 
-    codeEditor.addEventListener('input',()=>{
-      refreshCodeHighlight();
-      refreshGutter();
-      if(workspace.applying||!workspace.socket||!workspace.id)return;
-      workspace.socket.emit('workspace_patch',{...ctx(),base_version:workspace.version,full_code:codeEditor.value,next:codeEditor.value,op_id:crypto.randomUUID(),updated_at:Date.now()});
+    codeEditor.addEventListener('input', () => {
+      emitCodeChange(false);
     });
-    codeEditor.addEventListener('scroll',()=>{
+
+    codeEditor.addEventListener('scroll', () => {
       refreshCodeHighlight();
-      const gutter=$('#os-code-gutter');
-      if(gutter)gutter.scrollTop=codeEditor.scrollTop;
+      const gutter = $('#os-code-gutter');
+      if (gutter) gutter.scrollTop = codeEditor.scrollTop;
     });
+
+    // Editor fullscreen button (#os-focus-toggle-btn)
+    const focusBtn = $('#os-focus-toggle-btn');
+    const outerCard = codeEditor.closest('.room-editor-outer-card') || $('.room-editor-outer-card');
+    if (focusBtn && outerCard) {
+      focusBtn.addEventListener('click', () => {
+        const isFull = outerCard.classList.toggle('is-fullscreen');
+        focusBtn.setAttribute('aria-pressed', String(isFull));
+        focusBtn.setAttribute('title', isFull ? 'Свернуть редактор' : 'Развернуть редактор');
+        focusBtn.innerHTML = isFull ? '<i class="ph-bold ph-corners-in text-base"></i>' : '<i class="ph-bold ph-corners-out text-base"></i>';
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && outerCard.classList.contains('is-fullscreen')) {
+          outerCard.classList.remove('is-fullscreen');
+          focusBtn.setAttribute('aria-pressed', 'false');
+          focusBtn.setAttribute('title', 'Развернуть редактор');
+          focusBtn.innerHTML = '<i class="ph-bold ph-corners-out text-base"></i>';
+        }
+      });
+    }
 
     codeEditor.addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -365,7 +443,7 @@
           codeEditor.value = val.substring(0, start) + openChar + closeChar + val.substring(end);
           codeEditor.selectionStart = codeEditor.selectionEnd = start + 1;
         }
-        emitCodeChange();
+        emitCodeChange(false);
         return;
       }
 
@@ -378,8 +456,17 @@
         }
       }
 
-      // 3. Smart Backspace: delete empty pair
+      // 3. Smart Backspace: delete 4 spaces or empty pair
       if (e.key === 'Backspace' && !hasSelection && start > 0) {
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+        const lineBeforeCursor = val.substring(lineStart, start);
+        if (/^ {2,}$/.test(lineBeforeCursor) && lineBeforeCursor.length % 4 === 0) {
+          e.preventDefault();
+          codeEditor.value = val.substring(0, start - 4) + val.substring(end);
+          codeEditor.selectionStart = codeEditor.selectionEnd = start - 4;
+          emitCodeChange(true);
+          return;
+        }
         const prev = val[start - 1];
         const next = val[start];
         if (
@@ -392,7 +479,7 @@
           e.preventDefault();
           codeEditor.value = val.substring(0, start - 1) + val.substring(start + 1);
           codeEditor.selectionStart = codeEditor.selectionEnd = start - 1;
-          emitCodeChange();
+          emitCodeChange(true);
           return;
         }
       }
@@ -423,7 +510,7 @@
           codeEditor.value = val.substring(0, start) + '\n' + indent + val.substring(end);
           codeEditor.selectionStart = codeEditor.selectionEnd = start + 1 + indent.length;
         }
-        emitCodeChange();
+        emitCodeChange(true);
         return;
       }
 
@@ -465,7 +552,7 @@
             codeEditor.selectionStart = codeEditor.selectionEnd = start + 4;
           }
         }
-        emitCodeChange();
+        emitCodeChange(true);
         return;
       }
     });
@@ -503,6 +590,9 @@
     return chunks;
   }
   function saveBoardStroke(stroke){
+    if (lessonSocket?.connected) {
+      lessonSocket.emit('board_stroke', {lesson_id: lessonId, stroke});
+    }
     const chunks=splitBoardStrokeForRequest(stroke);
     return chunks.length===1
       ? post(`/lesson/${lessonId}/studio/board`,{action:'append',stroke:chunks[0]})
@@ -599,6 +689,7 @@
         if (e.ctrlKey && e.code === 'KeyZ' && document.querySelector('.room-tab[data-view="board"]')?.classList.contains('active')) {
             e.preventDefault();
             if ((state.board?.strokes || []).length > 0) {
+                if (lessonSocket?.connected) lessonSocket.emit('board_action', {lesson_id: lessonId, action: 'undo'});
                 post(`/lesson/${lessonId}/studio/board`, {action: 'undo'}).then(r => {
                     if (r.success) { state.board = r.board; renderBoard(); }
                 });
@@ -731,8 +822,14 @@
       const updated=await post(`/lesson/${lessonId}/studio/board`,{action:'append',stroke:{tool:'image',url:r.url,image_width:400,image_height:400,coordinate_space:'canvas',points:[{x:cx,y:cy}]}});
       if(updated.success){state.board=updated.board;renderBoard()} e.target.value='';
     };
-    $('#os-board-clear')?.addEventListener('click',()=>post(`/lesson/${lessonId}/studio/board`,{action:'clear'}).then(r=>{if(r.success){state.board=r.board;renderBoard()}}));
-    $('#os-board-undo')?.addEventListener('click',()=>post(`/lesson/${lessonId}/studio/board`,{action:'undo'}).then(r=>{if(r.success){state.board=r.board;renderBoard()}else toast(r.error||'Не удалось отменить действие')}));
+    $('#os-board-clear')?.addEventListener('click',()=>{
+      if (lessonSocket?.connected) lessonSocket.emit('board_action', {lesson_id: lessonId, action: 'clear'});
+      post(`/lesson/${lessonId}/studio/board`,{action:'clear'}).then(r=>{if(r.success){state.board=r.board;renderBoard()}});
+    });
+    $('#os-board-undo')?.addEventListener('click',()=>{
+      if (lessonSocket?.connected) lessonSocket.emit('board_action', {lesson_id: lessonId, action: 'undo'});
+      post(`/lesson/${lessonId}/studio/board`,{action:'undo'}).then(r=>{if(r.success){state.board=r.board;renderBoard()}else toast(r.error||'Не удалось отменить действие')});
+    });
     updateBoardStatus();
     document.addEventListener('paste', async (e) => {
         if (document.querySelector('.room-tab[data-view="board"]')?.classList.contains('active')) {
@@ -780,7 +877,8 @@
       const item=items.find(candidate=>Number(candidate.id)===Number(id));
       if(!item)return;
       state.active_theory_block_id=Number(item.id);
-      frame.innerHTML=`<header><span class="room-eyebrow">${item.task_number ? `ТЕМА ${Number(item.task_number)}` : 'МАТЕРИАЛ КУРСА'}</span><h2>${escape(item.title||'Без названия')}</h2></header><div class="room-theory-prose">${safeTaskHtml(item.content)||'<p>Материал пока не заполнен.</p>'}</div>`;
+      const contentHtml = item.content_html || safeTaskHtml(item.content) || '<p>Материал пока не заполнен.</p>';
+      frame.innerHTML=`<header><span class="room-eyebrow">${item.task_number ? `ТЕМА ${Number(item.task_number)}` : 'МАТЕРИАЛ КУРСА'}</span><h2>${escape(item.title||'Без названия')}</h2></header><div class="room-theory-prose theory-prose">${contentHtml}</div>`;
       frame.dataset.blockId=String(item.id);
       frame.classList.remove('hidden');
       empty?.classList.add('hidden');
@@ -791,7 +889,11 @@
     box.querySelectorAll('[data-theory-id]').forEach(button=>button.onclick=()=>select(button.dataset.theoryId));
     const active=items.find(item=>Number(item.id)===Number(state.active_theory_block_id))||items[0];
     if(active){
-      if(frame.dataset.blockId!==String(active.id)){frame.innerHTML=`<header><span class="room-eyebrow">${active.task_number ? `ТЕМА ${Number(active.task_number)}` : 'МАТЕРИАЛ КУРСА'}</span><h2>${escape(active.title||'Без названия')}</h2></header><div class="room-theory-prose">${safeTaskHtml(active.content)||'<p>Материал пока не заполнен.</p>'}</div>`;frame.dataset.blockId=String(active.id)}
+      if(frame.dataset.blockId!==String(active.id)){
+        const activeHtml = active.content_html || safeTaskHtml(active.content) || '<p>Материал пока не заполнен.</p>';
+        frame.innerHTML=`<header><span class="room-eyebrow">${active.task_number ? `ТЕМА ${Number(active.task_number)}` : 'МАТЕРИАЛ КУРСА'}</span><h2>${escape(active.title||'Без названия')}</h2></header><div class="room-theory-prose theory-prose">${activeHtml}</div>`;
+        frame.dataset.blockId=String(active.id);
+      }
       frame.classList.remove('hidden');empty?.classList.add('hidden');show?.classList.toggle('hidden',!teacher);
     }else{frame.classList.add('hidden');empty?.classList.remove('hidden');show?.classList.add('hidden')}
   }
@@ -869,6 +971,14 @@
       localUi.videoPosition = valid ? { left: Number(position.left), top: Number(position.top) } : null;
       $('#room-video-dock-toggle')?.setAttribute('aria-label', valid ? 'Закрепить видеозвонок справа' : 'Окно закреплено справа');
       if (shouldPersist) persistUi();
+    };
+    const setVideoCompact = compact => {
+      videoDock?.classList.toggle('is-compact', compact);
+      localUi.videoCompact = compact;
+      persistUi();
+      const toggle = $('#room-video-compact-toggle');
+      toggle?.classList.toggle('active', compact);
+      toggle?.setAttribute('aria-pressed', String(compact));
     };
 
     function setProviderTab(provider, userTriggered = true) {
@@ -1151,6 +1261,7 @@
     $('#room-video-close')?.addEventListener('click', () => setVideoOpen(false));
     $('#os-close-video')?.addEventListener('click', () => setVideoOpen(false));
     $('#room-video-size')?.addEventListener('click', () => setVideoLarge(!videoDock?.classList.contains('is-large')));
+    $('#room-video-compact-toggle')?.addEventListener('click', () => setVideoCompact(!videoDock?.classList.contains('is-compact')));
     $('#room-video-dock-toggle')?.addEventListener('click', () => setVideoFloating(null));
     $('#room-video-external-win')?.addEventListener('click', openExternalTab);
     $('#os-meeting-join')?.addEventListener('click', connectDaily);
@@ -1196,6 +1307,7 @@
 
     if (localUi.videoOpen === true) setVideoOpen(true);
     if (localUi.videoLarge === true) setVideoLarge(true);
+    if (localUi.videoCompact === true) setVideoCompact(true);
     if (localUi.videoPosition) setVideoFloating(localUi.videoPosition);
     if (currentProvider) setProviderTab(currentProvider, false);
     const materialFile=$('#os-material-file'),materialUpload=$('#os-material-upload'),materialDropzone=$('#os-material-dropzone');
@@ -1207,16 +1319,38 @@
     ['dragleave','drop'].forEach(name=>materialDropzone?.addEventListener(name,event=>{event.preventDefault();materialDropzone.classList.remove('is-dragging')}));
     materialDropzone?.addEventListener('drop',event=>chooseMaterial(event.dataTransfer?.files?.[0]));
     materialUpload?.addEventListener('click',async()=>{const f=materialFile?.files?.[0];if(!f)return;materialUpload.disabled=true;materialUpload.textContent='Загрузка…';const form=new FormData();form.append('file',f);const r=await postForm(`/lesson/${lessonId}/upload`,form);materialUpload.textContent='Прикрепить';if(r.success){data.materials.push(r.material);materialFile.value='';materialUpload.disabled=true;if(materialDropzone){materialDropzone.classList.remove('has-file');materialDropzone.querySelector('span').textContent='Перетащите файл сюда'}renderMaterials();toast('Материал прикреплён')}else{materialUpload.disabled=false;toast(r.error||'Не удалось прикрепить материал')}});
-    const panel=$('#room-lesson-panel'),canvas=$('#room-canvas'),taskPanel=$('#room-task-panel'),isMobile=()=>window.matchMedia('(max-width: 820px)').matches;
-    const setPanel=open=>{panel?.classList.toggle('is-collapsed',!open);canvas?.classList.toggle('panel-collapsed',!open);$('#room-panel-toggle')?.setAttribute('aria-expanded',String(open));localUi.lessonPanelOpen=open;persistUi()};
+    const panel=$('#room-col-sidebar') || $('#room-lesson-panel');
+    const layout=$('#room-main-layout') || $('#room-canvas');
+    const taskPanel=$('#room-col-task') || $('#room-task-panel');
+    const isMobile=()=>window.matchMedia('(max-width: 820px)').matches;
+
+    const setPanel=open=>{
+      panel?.classList.toggle('is-collapsed',!open);
+      layout?.classList.toggle('sidebar-collapsed',!open);
+      const btn=$('#room-panel-toggle');
+      btn?.setAttribute('aria-expanded',String(open));
+      btn?.classList.toggle('active',open);
+      localUi.lessonPanelOpen=open;
+      persistUi();
+    };
     $('#room-panel-toggle')?.addEventListener('click',()=>setPanel(panel?.classList.contains('is-collapsed')));
     $('#room-panel-close')?.addEventListener('click',()=>setPanel(false));
     if(localUi.lessonPanelOpen!==false)setPanel(true);else setPanel(false);
+
     const taskPanelIsOpen=()=>isMobile()?taskPanel?.classList.contains('is-open'):!taskPanel?.classList.contains('is-collapsed');
-    const setTaskPanel=open=>{taskPanel?.classList.toggle('is-open',open);taskPanel?.classList.toggle('is-collapsed',!open);canvas?.classList.toggle('tasks-collapsed',!open);$('#room-task-toggle')?.setAttribute('aria-expanded',String(open));localUi.taskPanelOpen=open;persistUi()};
+    const setTaskPanel=open=>{
+      taskPanel?.classList.toggle('is-open',open);
+      taskPanel?.classList.toggle('is-collapsed',!open);
+      layout?.classList.toggle('tasks-collapsed',!open);
+      const btn=$('#room-task-toggle');
+      btn?.setAttribute('aria-expanded',String(open));
+      btn?.classList.toggle('active',open);
+      localUi.taskPanelOpen=open;
+      persistUi();
+    };
     $('#room-task-toggle')?.addEventListener('click',()=>setTaskPanel(!taskPanelIsOpen()));
     $('#room-task-close')?.addEventListener('click',()=>setTaskPanel(false));
-    if(localUi.taskPanelOpen===true)setTaskPanel(true);else setTaskPanel(false);
+    if(localUi.taskPanelOpen!==false)setTaskPanel(true);else setTaskPanel(false);
     const setFocusMode=enabled=>{
       root.classList.toggle('room-focus-mode',enabled);
       const icon = $('#os-focus-toggle i');
@@ -1391,16 +1525,249 @@
       if(r.success){ toast('Урок завершён'); state = r.state || state; render(); }
       else toast(r.error || 'Не удалось завершить урок');
     });
-    document.addEventListener('keydown',event=>{if(event.key==='Escape'){const finishModal=$('#os-finish-modal'),confirmModal=$('#room-confirm-modal');if(!finishModal?.classList.contains('hidden'))setModalVisible(finishModal,false);if(!confirmModal?.classList.contains('hidden'))$('#room-confirm-cancel')?.click();if(root.classList.contains('room-focus-mode'))$('#os-focus-toggle')?.click();return}const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag)||event.altKey||event.ctrlKey||event.metaKey)return;if(event.key==='1')activate('work');if(event.key==='2')activate('theory');if(event.key==='3')activate('board');if(event.key==='4')activate('materials');if(event.key.toLowerCase()==='v')setVideoOpen(!videoDock?.classList.contains('hidden'));if(event.key.toLowerCase()==='f'&&teacher)$('#os-follow')?.click()});
+    function bindAddTaskModal() {
+      const modal = $('#room-add-task-modal');
+      if (!modal) return;
+      const openBtn = $('#room-open-add-task-modal');
+      const closeBtn = $('#room-add-task-close');
+      const tabBankBtn = $('#room-add-tab-bank-btn');
+      const tabCustomBtn = $('#room-add-tab-custom-btn');
+      const tabBank = $('#room-add-tab-bank');
+      const tabCustom = $('#room-add-tab-custom');
+
+      const openModal = () => setModalVisible(modal, true);
+      const closeModal = () => setModalVisible(modal, false);
+
+      openBtn?.addEventListener('click', openModal);
+      closeBtn?.addEventListener('click', closeModal);
+
+      const switchTab = toBank => {
+        tabBank?.classList.toggle('hidden', !toBank);
+        tabCustom?.classList.toggle('hidden', toBank);
+        if (tabBankBtn) {
+          tabBankBtn.className = toBank
+            ? 'flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all border-0 bg-white text-indigo-600 shadow-xs cursor-pointer'
+            : 'flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all border-0 bg-transparent text-slate-600 hover:text-slate-900 cursor-pointer';
+        }
+        if (tabCustomBtn) {
+          tabCustomBtn.className = !toBank
+            ? 'flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all border-0 bg-white text-indigo-600 shadow-xs cursor-pointer'
+            : 'flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition-all border-0 bg-transparent text-slate-600 hover:text-slate-900 cursor-pointer';
+        }
+      };
+      tabBankBtn?.addEventListener('click', () => switchTab(true));
+      tabCustomBtn?.addEventListener('click', () => switchTab(false));
+
+      // Bank search
+      const numSelect = $('#room-task-search-num');
+      const queryInput = $('#room-task-search-query');
+      const searchBtn = $('#room-task-search-btn');
+      const resultsContainer = $('#room-task-search-results');
+
+      const performSearch = async () => {
+        if (!resultsContainer) return;
+        const taskNum = numSelect?.value || '';
+        const query = queryInput?.value?.trim() || '';
+        resultsContainer.innerHTML = '<p class="text-xs text-slate-500 text-center py-4"><i class="ph-bold ph-spinner animate-spin mr-1"></i> Поиск заданий...</p>';
+        try {
+          const resp = await fetch(`/lesson/${lessonId}/search-tasks?task_number=${encodeURIComponent(taskNum)}&query=${encodeURIComponent(query)}`);
+          const json = await resp.json();
+          if (!json.success || !json.tasks?.length) {
+            resultsContainer.innerHTML = '<p class="text-xs text-slate-400 text-center py-6">Ничего не найдено. Попробуйте изменить фильтры.</p>';
+            return;
+          }
+          resultsContainer.innerHTML = '';
+          json.tasks.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'p-3 bg-slate-50 hover:bg-indigo-50/40 rounded-xl border border-slate-200/80 transition-all flex flex-col gap-2';
+            card.innerHTML = `
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                  №${item.task_number} · ID #${item.id}
+                </span>
+                <span class="text-[11px] text-slate-400">${item.source || ''}</span>
+              </div>
+              <p class="text-xs text-slate-700 line-clamp-3 font-medium m-0 leading-relaxed">${codeEscape(item.preview)}</p>
+              <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+                <span class="text-[11px] text-slate-500 font-mono">Ответ: <b>${codeEscape(item.answer || '—')}</b></span>
+                <button type="button" class="room-action room-action-primary text-xs py-1 px-2.5 rounded-lg add-btn">
+                  <i class="ph-bold ph-plus"></i> Добавить
+                </button>
+              </div>
+            `;
+            card.querySelector('.add-btn')?.addEventListener('click', async (e) => {
+              const btn = e.currentTarget;
+              btn.disabled = true;
+              btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i>';
+              try {
+                const addResp = await post(`/lesson/${lessonId}/quick-add-task`, {task_id: item.id});
+                if (addResp.success) {
+                  closeModal();
+                  toast('Задание добавлено в урок');
+                  if (addResp.tasks) tasks = addResp.tasks;
+                  else if (addResp.task) tasks.push(addResp.task);
+                  if (addResp.task?.lesson_task_id) openTask(addResp.task.lesson_task_id);
+                  else renderTasks();
+                } else {
+                  toast(addResp.error || 'Ошибка при добавлении задания');
+                  btn.disabled = false;
+                  btn.innerHTML = '<i class="ph-bold ph-plus"></i> Добавить';
+                }
+              } catch(err) {
+                toast('Ошибка сети при добавлении');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph-bold ph-plus"></i> Добавить';
+              }
+            });
+            resultsContainer.appendChild(card);
+          });
+        } catch(err) {
+          resultsContainer.innerHTML = '<p class="text-xs text-rose-500 text-center py-4">Ошибка запроса к банку задач</p>';
+        }
+      };
+
+      searchBtn?.addEventListener('click', performSearch);
+      queryInput?.addEventListener('keydown', e => { if (e.key === 'Enter') performSearch(); });
+      numSelect?.addEventListener('change', performSearch);
+
+      // Custom task creation
+      const customNum = $('#room-custom-num');
+      const customAnswer = $('#room-custom-answer');
+      const customContent = $('#room-custom-content');
+      const customCode = $('#room-custom-code');
+      const customSubmit = $('#room-custom-submit');
+
+      customSubmit?.addEventListener('click', async () => {
+        const content = customContent?.value?.trim();
+        if (!content) {
+          toast('Пожалуйста, введите условие задания');
+          customContent?.focus();
+          return;
+        }
+        customSubmit.disabled = true;
+        customSubmit.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Создание...';
+        try {
+          const payload = {
+            custom: true,
+            task_number: customNum?.value || 1,
+            answer: customAnswer?.value?.trim() || '',
+            content: content,
+            code_template: customCode?.value || ''
+          };
+          const resp = await post(`/lesson/${lessonId}/quick-add-task`, payload);
+          if (resp.success) {
+            closeModal();
+            toast('Собственное задание создано и добавлено');
+            if (customContent) customContent.value = '';
+            if (customAnswer) customAnswer.value = '';
+            if (customCode) customCode.value = '';
+            if (resp.tasks) tasks = resp.tasks;
+            else if (resp.task) tasks.push(resp.task);
+            if (resp.task?.lesson_task_id) openTask(resp.task.lesson_task_id);
+            else renderTasks();
+          } else {
+            toast(resp.error || 'Ошибка при создании задания');
+          }
+        } catch(err) {
+          toast('Ошибка сети при создании задания');
+        } finally {
+          customSubmit.disabled = false;
+          customSubmit.innerHTML = '<i class="ph-bold ph-plus"></i> Добавить в урок';
+        }
+      });
+    }
+
+    bindAddTaskModal();
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'){const finishModal=$('#os-finish-modal'),confirmModal=$('#room-confirm-modal'),addTaskModal=$('#room-add-task-modal');if(!finishModal?.classList.contains('hidden'))setModalVisible(finishModal,false);if(!confirmModal?.classList.contains('hidden'))$('#room-confirm-cancel')?.click();if(!addTaskModal?.classList.contains('hidden'))setModalVisible(addTaskModal,false);if(root.classList.contains('room-focus-mode'))$('#os-focus-toggle')?.click();return}const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag)||event.altKey||event.ctrlKey||event.metaKey)return;if(event.key==='1')activate('work');if(event.key==='2')activate('theory');if(event.key==='3')activate('board');if(event.key==='4')activate('materials');if(event.key.toLowerCase()==='v')setVideoOpen(!videoDock?.classList.contains('hidden'));if(event.key.toLowerCase()==='f'&&teacher)$('#os-follow')?.click()});
   }
-  
+
+  function handleLessonFinished(payload) {
+    if (teacher) return;
+    let overlay = $('#room-finished-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'room-finished-overlay';
+      overlay.className = 'room-finished-backdrop';
+      overlay.innerHTML = `
+        <div class="room-finished-card">
+          <div class="room-finished-icon-squircle">
+            <i class="ph-fill ph-check-circle"></i>
+          </div>
+          <h2>Урок завершён!</h2>
+          <p>${codeEscape(payload?.message || 'Преподаватель завершил данный урок. Отличная работа! Сейчас вы будете перенаправлены в расписание.')}</p>
+          <div class="room-finished-actions">
+            <a href="${payload?.redirect_url || '/schedule'}" class="room-action is-primary" id="room-finished-exit-btn">
+              Перейти в расписание (<span id="room-finished-countdown">5</span>с)
+            </a>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      let secondsLeft = 5;
+      const countdownEl = overlay.querySelector('#room-finished-countdown');
+      const timer = setInterval(() => {
+        secondsLeft -= 1;
+        if (countdownEl) countdownEl.textContent = String(secondsLeft);
+        if (secondsLeft <= 0) {
+          clearInterval(timer);
+          window.location.href = payload?.redirect_url || '/schedule';
+        }
+      }, 1000);
+    }
+  }
+
   const lessonSocket=io('/lesson');
   lessonSocket.on('connect',()=>{setConnection('connected');lessonSocket.emit('join_lesson',{lesson_id:lessonId});refreshStudioState()});
   lessonSocket.on('disconnect',()=>setConnection('disconnected'));
   lessonSocket.on('connect_error',()=>setConnection('disconnected'));
   lessonSocket.io.on('reconnect_attempt',()=>setConnection('connecting'));
+  lessonSocket.on('lesson_finished', handleLessonFinished);
+  lessonSocket.on('board_stroke', p => {
+    if (p.lesson_id !== lessonId || !p.stroke) return;
+    if (!state.board) state.board = {strokes: []};
+    if (!state.board.strokes) state.board.strokes = [];
+    state.board.strokes.push(p.stroke);
+    const canvas = $('#os-board');
+    if (canvas && !canvas.closest('.hidden')) {
+      draw(p.stroke);
+    }
+  });
+  lessonSocket.on('board_action', p => {
+    if (p.lesson_id !== lessonId) return;
+    if (p.action === 'clear') {
+      if (state.board) state.board.strokes = [];
+      const canvas = $('#os-board');
+      if (canvas && !canvas.closest('.hidden')) renderBoard();
+    } else if (p.action === 'undo') {
+      if (state.board?.strokes?.length) {
+        state.board.strokes.pop();
+        const canvas = $('#os-board');
+        if (canvas && !canvas.closest('.hidden')) renderBoard();
+      }
+    }
+  });
+  lessonSocket.on('lesson_tasks_updated', p => {
+    if (p.lesson_id !== lessonId) return;
+    tasks = p.tasks || [];
+    if (!tasks.length) {
+      setupEmptyTaskState();
+    } else {
+      const currentExists = tasks.some(t => String(t.lesson_task_id) === String(activeTask));
+      if (!currentExists) {
+        openTask(tasks[tasks.length - 1].lesson_task_id);
+      } else {
+        renderTasks();
+        const taskIndex = tasks.findIndex(item => String(item.lesson_task_id) === String(activeTask));
+        const counterText = $('#room-task-counter-text');
+        if (counterText) counterText.textContent = `Задание ${taskIndex + 1} из ${Math.max(1, tasks.length)}`;
+      }
+    }
+  });
   lessonSocket.on('lesson_studio_updated',p=>{
     if(p.lesson_id!==lessonId)return;
+    if(p.status === 'completed' || p.state?.status === 'completed') {
+      handleLessonFinished(p);
+    }
     const previousPane=state.active_pane,previousFollow=state.follow_student;
     state=teacher?{...state,...p.state}:p.state;
     render();
@@ -1450,5 +1817,8 @@
   const requestedPane=new URLSearchParams(window.location.search).get('pane');
   if(requestedPane){hasExplicitWorkspaceChoice=true;localUi.activeWorkspace=requestedPane;persistUi()}
   activate(requestedPane||localUi.activeWorkspace||state.active_pane||'work',true);
+  if (!teacher && (data.lesson_status === 'completed' || state.status === 'completed')) {
+    handleLessonFinished();
+  }
   tick();
 })();

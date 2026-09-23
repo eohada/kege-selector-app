@@ -38,6 +38,8 @@
 {% set active_page = 'notifications' %}
 
 {% block sandbox_content %}
+<main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 {% if current_user.is_student() %}lg:pl-28 lg:pr-6{% endif %} pb-20 lg:pb-12 pt-4 sm:pt-6">
+  <div class="max-w-[1600px] mx-auto w-full space-y-5">
 <section class="glass-panel mb-5 w-full">
     <div class="flex justify-between items-start gap-4 flex-wrap">
         <div>
@@ -86,6 +88,8 @@
     </div>
     {% endif %}
 </section>
+  </div>
+</main>
 {% endblock %}
 
 {% block extra_scripts %}

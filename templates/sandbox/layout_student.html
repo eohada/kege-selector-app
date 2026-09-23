@@ -360,34 +360,45 @@
           }
         });
 
-        // 2. Global Student Study Heartbeat (Optimized: activity-based, only active tab, once per 60s)
-        let lastBeat = Date.now();
-        let lastUserActivity = Date.now();
+        // 2. Global Student Study Heartbeat (Active Engagement Tracking: only active tab & real interactions)
+        let lastInteractionTime = 0;
+        let lastTickTime = Date.now();
+        let activeSecondsAccumulated = 0;
 
-        // Passive listeners to detect real user interaction
-        function onUserActive() {
-          lastUserActivity = Date.now();
+        function markUserActivity() {
+          const now = Date.now();
+          if (document.hidden) return;
+          if (lastInteractionTime > 0) {
+            const gap = (now - lastInteractionTime) / 1000;
+            if (gap <= 45) {
+              activeSecondsAccumulated += Math.min(gap, 45);
+            } else {
+              activeSecondsAccumulated += 3;
+            }
+          } else {
+            activeSecondsAccumulated += 3;
+          }
+          lastInteractionTime = now;
         }
-        ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(function(evt) {
-          window.addEventListener(evt, onUserActive, { passive: true });
+
+        ['mousedown', 'keydown', 'touchstart', 'input', 'scroll'].forEach(function(evt) {
+          window.addEventListener(evt, markUserActivity, { passive: true });
         });
 
         function sendStudyHeartbeatGlobal(isSyncBeforeUnload) {
           if (document.hidden && !isSyncBeforeUnload) return;
 
           const now = Date.now();
-          const isUserActive = (now - lastUserActivity) < 180000; // active within last 3 mins
-          if (!isUserActive && !isSyncBeforeUnload) {
-            lastBeat = now;
-            return;
-          }
+          const wallElapsed = Math.max(0, (now - lastTickTime) / 1000);
+          lastTickTime = now;
 
-          const elapsed = Math.min(120, Math.max(1, Math.round((now - lastBeat) / 1000)));
-          lastBeat = now;
-          if (elapsed < 5 && !isSyncBeforeUnload) return;
+          const toSend = Math.min(Math.round(activeSecondsAccumulated), Math.round(wallElapsed), 120);
+          activeSecondsAccumulated = 0;
+
+          if (toSend < 5) return;
 
           const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-          const bodyData = 'duration_seconds=' + elapsed;
+          const bodyData = 'duration_seconds=' + toSend;
 
           if (isSyncBeforeUnload && navigator.sendBeacon) {
             try {
@@ -420,18 +431,19 @@
           .catch(function() {});
         }
 
-        // Send heartbeat at most once every 60 seconds (1 request per minute, 0 CPU impact)
+        // Check and send heartbeat every 60 seconds if user was active
         setInterval(function() {
           sendStudyHeartbeatGlobal(false);
         }, 60000);
 
-        // Sync remaining study seconds when tab is hidden or closed
+        // Sync remaining active seconds on tab leave
         window.addEventListener('visibilitychange', function() {
           if (document.hidden) {
             sendStudyHeartbeatGlobal(true);
+            lastInteractionTime = 0;
           } else {
-            lastBeat = Date.now();
-            lastUserActivity = Date.now();
+            lastTickTime = Date.now();
+            lastInteractionTime = 0;
           }
         });
         window.addEventListener('pagehide', function() {

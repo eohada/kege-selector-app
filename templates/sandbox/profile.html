@@ -74,7 +74,7 @@
 {% set user_bio = profile_bio if (profile_bio is defined and profile_bio) else '' %}
 {% set profile_timezone = display_user.timezone_iana or (display_user.profile.timezone if (display_user.profile and display_user.profile.timezone) else 'Europe/Moscow') %}
 
-{% set school_class_display = school_class_display if (school_class_display is defined and school_class_display) else (student_obj.school_class if (student_obj and student_obj.school_class) else '10') %}
+{% set school_class_display = school_class_display if (school_class_display is defined and school_class_display) else (student_obj.school_class if (student_obj and student_obj.school_class) else '') %}
 {% set user_streak = user_streak if (user_streak is defined and user_streak is not none) else 0 %}
 
 {% set streak_num = user_streak|int %}
@@ -111,15 +111,17 @@
           <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 text-center sm:text-left">
             <!-- Large Avatar in Circular Ring with Edit Button and Online Dot -->
             <div class="relative shrink-0">
-              <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#EBF3FF] border-4 border-white shadow-[0_8px_24px_rgba(99,102,241,0.15)] p-0.5 relative flex items-center justify-center cursor-pointer group" onclick="openProfileEditModal()" title="Изменить фото">
-                <img id="user-avatar-img" src="{{ user_avatar }}" class="w-full h-full rounded-full object-cover group-hover:scale-105 transition-transform duration-200">
+              <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-[#EBF3FF] border-4 border-white shadow-[0_8px_24px_rgba(99,102,241,0.15)] p-0.5 relative flex items-center justify-center {% if is_owner %}cursor-pointer group{% endif %}" {% if is_owner %}onclick="openProfileEditModal()" title="Изменить фото"{% endif %}>
+                <img id="user-avatar-img" src="{{ user_avatar }}" class="w-full h-full rounded-full object-cover {% if is_owner %}group-hover:scale-105 transition-transform duration-200{% endif %}">
                 <!-- Online Status Dot -->
                 <div class="absolute bottom-1 right-2 w-4 h-4 rounded-full {% if is_online is not defined or is_online %}bg-emerald-500{% else %}bg-slate-400{% endif %} border-2 border-white shadow-xs" title="В сети"></div>
               </div>
+              {% if is_owner %}
               <!-- Pencil Edit Button at Top-Right of Avatar Circle -->
               <button type="button" onclick="openProfileEditModal()" class="absolute top-0 right-0 w-7 h-7 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:text-indigo-600 hover:scale-105 transition-all cursor-pointer border-0" title="Редактировать аватар">
                 <i class="ph-bold ph-pencil-simple text-xs"></i>
               </button>
+              {% endif %}
             </div>
 
             <!-- User Info Details -->
@@ -140,7 +142,13 @@
 
               <!-- Subtitle: Role & Class -->
               <p class="text-xs sm:text-sm font-semibold text-slate-500 mb-0">
-                Ученик • {{ school_class_display if (school_class_display and school_class_display != '—') else '10' }} класс
+                {% if school_class_display == 'Университет' or school_class_display == '12' %}
+                  Студент • Университет
+                {% elif school_class_display and school_class_display != '—' %}
+                  Ученик • {{ school_class_display }} класс
+                {% else %}
+                  Ученик
+                {% endif %}
               </p>
 
               <!-- Tactile Pill Badges Row -->
@@ -157,10 +165,12 @@
                 </span>
 
                 <!-- Class Tag -->
+                {% if school_class_display and school_class_display != '—' %}
                 <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 font-medium shadow-xs">
                   <i class="ph-bold ph-graduation-cap text-slate-400"></i>
-                  <span>Класс {{ school_class_display if (school_class_display and school_class_display != '—') else '10' }}</span>
+                  <span>{% if school_class_display == 'Университет' or school_class_display == '12' %}Университет{% else %}Класс {{ school_class_display }}{% endif %}</span>
                 </span>
+                {% endif %}
 
                 <!-- Timezone & Live Clock Tag -->
                 <span id="profile-tz-header-badge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 font-semibold shadow-xs" title="Часовой пояс">
@@ -170,12 +180,13 @@
                 </span>
 
                 <!-- Telegram Tag -->
-                {% if display_user.telegram_username %}
-                <a href="https://t.me/{{ display_user.telegram_username }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 font-semibold shadow-xs hover:bg-sky-100 transition-colors no-underline">
+                {% set tg_user = (student_obj.telegram_username if (student_obj and student_obj.telegram_username) else (student_obj.telegram if (student_obj and student_obj.telegram) else (display_user.telegram_username or display_user.telegram_link))) %}
+                {% if tg_user %}
+                <a href="https://t.me/{{ tg_user }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 font-semibold shadow-xs hover:bg-sky-100 transition-colors no-underline">
                   <i class="ph-bold ph-telegram-logo"></i>
-                  <span>Telegram</span>
+                  <span>@{{ tg_user }}</span>
                 </a>
-                {% else %}
+                {% elif is_owner %}
                 <button type="button" onclick="generateTgCode()" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 text-sky-600 border border-sky-200 font-semibold shadow-xs hover:bg-sky-100 transition-colors cursor-pointer border-0">
                   <i class="ph-bold ph-telegram-logo"></i>
                   <span>Telegram</span>
@@ -195,10 +206,12 @@
 
         <!-- Right Side: Edit Button, Playful Typography & Ghost Mascot -->
         <div class="flex flex-col items-center lg:items-end justify-between self-stretch shrink-0 relative pt-1">
+          {% if is_owner %}
           <!-- Edit Profile Button -->
           <button onclick="openProfileEditModal()" class="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0 self-center sm:self-end">
             <i class="ph-bold ph-pencil-simple text-xs"></i> Редактировать профиль
           </button>
+          {% endif %}
 
           <!-- Middle graphics: Playful cursive lettering & Ghost character -->
           <div class="flex items-center gap-3 sm:gap-6 mt-3 lg:mt-auto relative">
@@ -375,15 +388,17 @@
               </div>
               <h3 class="text-base font-black text-slate-900 font-display mb-0">Цели на неделю</h3>
             </div>
+            {% if is_owner %}
             <button onclick="openGoalsModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
               <i class="ph-bold ph-pencil-simple text-xs"></i> Изменить цели
             </button>
+            {% endif %}
           </div>
 
           <!-- Goal Items List -->
           <div id="goals-list-container" class="space-y-2.5">
             {% for g in formatted_goals %}
-            <div class="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-slate-50/80 transition-colors group cursor-pointer" onclick="toggleWeeklyGoal({{ g.item_id }})">
+            <div class="flex items-center justify-between gap-3 p-2 rounded-xl {% if is_owner %}hover:bg-slate-50/80 cursor-pointer{% endif %} transition-colors group" {% if is_owner %}onclick="toggleWeeklyGoal({{ g.item_id }})"{% endif %}>
               <div class="flex items-center gap-3 min-w-0">
                 <div class="w-5 h-5 rounded-full border-2 {% if g.status == 'done' %}bg-indigo-600 border-indigo-600 text-white{% else %}border-slate-300 text-transparent{% endif %} flex items-center justify-center shrink-0 transition-colors">
                   <i class="ph-bold ph-check text-[10px]"></i>
@@ -402,6 +417,7 @@
             {% endfor %}
           </div>
 
+          {% if is_owner %}
           <!-- Inline Add Goal Form -->
           <div class="pt-2 flex items-center gap-2 border-t border-slate-100">
             <input type="text" id="new-goal-input" placeholder="Новая цель на неделю..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 shadow-inner">
@@ -409,6 +425,7 @@
               <i class="ph-bold ph-plus text-sm"></i>
             </button>
           </div>
+          {% endif %}
         </div>
 
         <!-- Card 3: О себе (With full word-wrap support) -->
@@ -420,14 +437,22 @@
               </div>
               <h3 class="text-base font-black text-slate-900 font-display mb-0">О себе</h3>
             </div>
+            {% if is_owner %}
             <button onclick="openProfileEditModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
               <i class="ph-bold ph-pencil-simple text-xs"></i> Редактировать
             </button>
+            {% endif %}
           </div>
 
           <div class="space-y-1">
             <h4 class="text-sm font-bold text-slate-800 mb-0">
-              Ученик ({{ school_class_display if (school_class_display and school_class_display != '—') else '10' }} класс)
+              {% if school_class_display == 'Университет' or school_class_display == '12' %}
+                Студент (Университет)
+              {% elif school_class_display and school_class_display != '—' %}
+                Ученик ({{ school_class_display }} класс)
+              {% else %}
+                Ученик
+              {% endif %}
             </h4>
             <p id="user-bio-text" class="text-xs text-slate-500 font-medium leading-relaxed mb-0 break-words break-all [overflow-wrap:anywhere] whitespace-pre-wrap">
               {{ user_bio if user_bio else 'Расскажи немного о себе — это поможет преподавателям лучше тебя узнать.' }}
@@ -1021,6 +1046,7 @@
   </div>
 </div>
 
+{% if is_owner %}
 <!-- 3. GOALS EDIT MODAL (Editable Goals System) -->
 <div id="goals-edit-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-3 sm:p-6 transition-all">
   <div id="goals-edit-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-lg max-h-[90vh] flex flex-col p-6 sm:p-8 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
@@ -1109,7 +1135,7 @@
 
 <!-- BENTO 3D EDIT PROFILE MODAL -->
 <div id="profile-edit-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
-  <div id="profile-edit-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full max-w-xl p-6 sm:p-8 space-y-6 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
+  <div id="profile-edit-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full max-w-xl max-h-[92vh] overflow-y-auto p-6 sm:p-8 space-y-6 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
     
     <!-- Modal Header -->
     <div class="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -1119,7 +1145,7 @@
         </div>
         <div>
           <h3 class="text-lg font-black text-slate-800 font-display mb-0">Редактирование профиля</h3>
-          <p class="text-xs font-medium text-slate-400 mb-0">Настройки аватара, обложки и описания</p>
+          <p class="text-xs font-medium text-slate-400 mb-0">Личные данные, класс, аватар и контакты</p>
         </div>
       </div>
       <button onclick="closeProfileEditModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
@@ -1130,6 +1156,33 @@
     <!-- Modal Form -->
     <form id="profile-edit-form" class="space-y-4" enctype="multipart/form-data">
       
+      <!-- Full Name & Class Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Имя и фамилия</label>
+          <input type="text" name="full_name" id="edit-full-name" value="{{ user_name }}" placeholder="Имя и Фамилия" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Класс / Обучение</label>
+          <select name="school_class" id="edit-school-class" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+            <option value="" {% if not school_class_display %}selected{% endif %}>Не указано (Ученик)</option>
+            <option value="9" {% if school_class_display == '9' %}selected{% endif %}>9 класс</option>
+            <option value="10" {% if school_class_display == '10' %}selected{% endif %}>10 класс</option>
+            <option value="11" {% if school_class_display == '11' %}selected{% endif %}>11 класс</option>
+            <option value="university" {% if school_class_display == 'Университет' or (student_obj and student_obj.school_class == 12) %}selected{% endif %}>Университет (ВУЗ)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Telegram Username / Link -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Telegram (юзернейм без @)</label>
+        <div class="relative">
+          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
+          <input type="text" name="telegram_link" id="edit-telegram-link" value="{{ (student_obj.telegram_username if (student_obj and student_obj.telegram_username) else (student_obj.telegram if (student_obj and student_obj.telegram) else (display_user.telegram_username or display_user.telegram_link))) or '' }}" placeholder="username" class="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+        </div>
+      </div>
+
       <!-- Avatar Upload & URL -->
       <div class="space-y-1.5">
         <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Аватар (Загрузить файл или Ссылка)</label>
@@ -1209,6 +1262,7 @@
     </form>
   </div>
 </div>
+{% endif %}
 
 <script>
 function updateProfileTimezoneClocks() {
@@ -1395,17 +1449,25 @@ function filterAchievementsTab(type) {
 
   cards.forEach(c => {
     const status = c.getAttribute('data-status');
-    const isSecret = c.getAttribute('data-secret');
+    const isSecret = c.getAttribute('data-secret') === 'true';
+    let visible = false;
     if (type === 'all') {
-      c.classList.remove('hidden');
+      visible = true;
     } else if (type === 'unlocked') {
-      if (status === 'unlocked') c.classList.remove('hidden'); else c.classList.add('hidden');
+      visible = (status === 'unlocked');
     } else if (type === 'in_progress') {
-      if (status === 'in_progress') c.classList.remove('hidden'); else c.classList.add('hidden');
+      visible = (status === 'in_progress');
     } else if (type === 'locked') {
-      if (status === 'locked' || status === 'secret_locked') c.classList.remove('hidden'); else c.classList.add('hidden');
+      visible = (status === 'locked' || status === 'secret_locked');
     } else if (type === 'secret') {
-      if (isSecret === 'true') c.classList.remove('hidden'); else c.classList.add('hidden');
+      visible = isSecret;
+    }
+    if (visible) {
+      c.classList.remove('hidden');
+      c.style.display = 'flex';
+    } else {
+      c.classList.add('hidden');
+      c.style.display = 'none';
     }
   });
 }

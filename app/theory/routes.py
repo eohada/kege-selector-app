@@ -751,7 +751,20 @@ def _render_theory_content_html(content_value):
         return _stash_custom_block(grid_html)
 
     def _operations_repl(match):
-        body = match.group(1) or ''
+        raw_attrs = match.group(1) or ''
+        body = match.group(2) or ''
+        header_attrs = {
+            m.group(1).lower(): m.group(2).replace('\\"', '"')
+            for m in re.finditer(r'(\w+)="((?:[^"\\]|\\.)*)"', raw_attrs)
+        }
+        col1_title = header_attrs.get('col1', 'Знак')
+        col2_title = header_attrs.get('col2', 'Операция')
+        col3_title = header_attrs.get('col3', 'Пример')
+        col4_title = header_attrs.get('col4', 'Результат')
+        col5_title = header_attrs.get('col5', 'Особенность для ЕГЭ')
+        has_col4 = col4_title.lower() not in {'none', 'false', '0', 'no', '-'}
+        has_col5 = col5_title.lower() not in {'none', 'false', '0', 'no', '-'}
+
         op_matches = list(re.finditer(r'\[OP\s+([^\]]+)\]', body, flags=re.IGNORECASE))
         rows_html = []
         for om in op_matches:
@@ -759,36 +772,56 @@ def _render_theory_content_html(content_value):
                 m.group(1).lower(): m.group(2).replace('\\"', '"')
                 for m in re.finditer(r'(\w+)="((?:[^"\\]|\\.)*)"', om.group(1))
             }
-            sign = attrs.get('sign', '').replace('\\*', '*')
-            name = attrs.get('name', '').replace('\\*', '*')
-            example = attrs.get('example', '').replace('\\*', '*')
-            result = attrs.get('result', '').replace('\\*', '*')
-            note = attrs.get('note', '').replace('\\*', '*')
+            sign = attrs.get('sign') or attrs.get('col1', '')
+            sign = sign.replace('\\*', '*')
+            name = attrs.get('name') or attrs.get('col2', '')
+            name = name.replace('\\*', '*')
+            example = attrs.get('example') or attrs.get('col3', '')
+            example = example.replace('\\*', '*')
+            result = attrs.get('result') or attrs.get('col4', '')
+            result = result.replace('\\*', '*')
+            note = attrs.get('note') or attrs.get('col5', '')
+            note = note.replace('\\*', '*')
+
+            if result:
+                res_cell = f'<span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-mono font-bold text-xs border border-emerald-200">{html.escape(result)}</span>'
+            else:
+                res_cell = f'<span class="text-slate-300 font-mono text-xs">—</span>'
+
+            row_tds = [
+                f'<td class="py-3 px-4 font-mono font-black text-xs sm:text-sm text-indigo-700 whitespace-nowrap">'
+                f'  <span class="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200/80">{html.escape(sign)}</span>'
+                f'</td>',
+                f'<td class="py-3 px-4 font-bold text-slate-900 text-xs sm:text-sm">{html.escape(name)}</td>',
+                f'<td class="py-3 px-4 font-mono text-xs sm:text-sm text-slate-700 whitespace-nowrap">{html.escape(example)}</td>',
+            ]
+            if has_col4:
+                row_tds.append(f'<td class="py-3 px-4 whitespace-nowrap">{res_cell}</td>')
+            if has_col5:
+                row_tds.append(f'<td class="py-3 px-4 text-xs text-slate-500 font-medium leading-snug">{html.escape(note)}</td>')
 
             rows_html.append(
                 f'<tr class="hover:bg-slate-50/80 transition border-b border-slate-100">'
-                f'  <td class="py-3 px-4 font-mono font-black text-sm text-indigo-700 whitespace-nowrap">'
-                f'    <span class="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200/80">{html.escape(sign)}</span>'
-                f'  </td>'
-                f'  <td class="py-3 px-4 font-bold text-slate-900 text-xs sm:text-sm">{html.escape(name)}</td>'
-                f'  <td class="py-3 px-4 font-mono text-xs sm:text-sm text-slate-700 whitespace-nowrap">{html.escape(example)}</td>'
-                f'  <td class="py-3 px-4 whitespace-nowrap">'
-                f'    <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-mono font-bold text-xs border border-emerald-200">{html.escape(result)}</span>'
-                f'  </td>'
-                f'  <td class="py-3 px-4 text-xs text-slate-500 font-medium leading-snug">{html.escape(note)}</td>'
+                f'{"".join(row_tds)}'
                 f'</tr>'
             )
+
+        th_html = [
+            f'<th class="py-3 px-4">{html.escape(col1_title)}</th>',
+            f'<th class="py-3 px-4">{html.escape(col2_title)}</th>',
+            f'<th class="py-3 px-4">{html.escape(col3_title)}</th>',
+        ]
+        if has_col4:
+            th_html.append(f'<th class="py-3 px-4">{html.escape(col4_title)}</th>')
+        if has_col5:
+            th_html.append(f'<th class="py-3 px-4">{html.escape(col5_title)}</th>')
 
         table_html = (
             f'<div class="theory-operators-wrap my-5 overflow-x-auto">'
             f'<table class="theory-table w-full text-left border-collapse text-xs sm:text-sm rounded-xl overflow-hidden border border-slate-200/80">'
             f'  <thead>'
             f'    <tr class="border-b border-slate-200 bg-[#F8FAFC] text-slate-600 font-black uppercase text-[11px] tracking-wider">'
-            f'      <th class="py-3 px-4">Знак</th>'
-            f'      <th class="py-3 px-4">Операция</th>'
-            f'      <th class="py-3 px-4">Пример</th>'
-            f'      <th class="py-3 px-4">Результат</th>'
-            f'      <th class="py-3 px-4">Особенность для ЕГЭ</th>'
+            f'      {"".join(th_html)}'
             f'    </tr>'
             f'  </thead>'
             f'  <tbody class="divide-y divide-slate-100 font-medium text-slate-700 bg-white">'
@@ -1178,17 +1211,19 @@ def _render_theory_content_html(content_value):
     text = re.sub(r"\[TRY(?:\s+title=\"([^\"]*)\")?\](.*?)\[/TRY\]", _try_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[HOW_IT_WORKS(?:\s+speech=\"([^\"]*)\")?\](.*?)\[/HOW_IT_WORKS\]", _how_it_works_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[DATA_TYPES\](.*?)\[/DATA_TYPES\]", _data_types_repl, text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"\[OPERATIONS\](.*?)\[/OPERATIONS\]", _operations_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[OPERATIONS(?:\s+([^\]]+))?\](.*?)\[/OPERATIONS\]", _operations_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CODE_RUNNER(?:\s+([^\]]+))?\](.*?)\[/CODE_RUNNER\]", _code_runner_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
     text = _INTERACTIVE_RE.sub(_interactive_repl, text)
     text = _CHECKPOINT_RE.sub(_checkpoint_repl, text)
     
-    # Ensure Markdown tables have clean blank lines before and after them, and no __THEORY_SPACER__
+    # Ensure Markdown tables and lists have clean blank lines before and after them, and no __THEORY_SPACER__
     text = re.sub(r'__THEORY_SPACER__\s*(\n\s*\|)', r'\1', text)
     text = re.sub(r'(\|\s*\n)\s*__THEORY_SPACER__', r'\1', text)
     text = re.sub(r'([^\n])\n(\s*\|.+?\n\s*\|[-:\s|]+)', r'\1\n\n\2', text)
     text = re.sub(r'(\|[^\n]+)\n([^\n|])', r'\1\n\n\2', text)
+    text = re.sub(r'__THEORY_SPACER__\s*(\n\s*(?:[-*+]\s+|\d+\.\s+))', r'\n\1', text)
+    text = re.sub(r'([^\n])\n(\s*(?:[-*+]\s+|\d+\.\s+))', r'\1\n\n\2', text)
     
     try:
         from markdown import markdown as _md
@@ -1254,13 +1289,12 @@ def _render_theory_content_html(content_value):
             plain = paragraph.get_text(' ', strip=True)
             if ';' not in plain:
                 continue
-            markers = list(re.finditer(r'(?:^|\s)[–—]\s+', plain))
+            markers = list(re.finditer(r'(?:^|;\s*)[–—•-]\s+', plain))
             if len(markers) < 2:
                 continue
             start = markers[0].start()
-            prefix = plain[:start].strip()
-            chunks = re.split(r'\s+[–—-]\s+', plain[start:].lstrip('–—- '))
-            chunks = [chunk.strip(' ;') for chunk in chunks if chunk.strip(' ;')]
+            prefix = plain[:start].strip(' :-')
+            chunks = [chunk.strip(' ;.') for chunk in re.split(r';\s*(?:[–—-•]\s*)?', plain[start:].lstrip('–—-• ')) if chunk.strip(' ;.')]
             if len(chunks) < 2:
                 continue
             # A final sentence after the last semicolon is prose, not a list

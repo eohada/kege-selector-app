@@ -1070,6 +1070,8 @@ def lesson_studio_finish(lesson_id: int):
 
     try:
         _save_lesson_studio_state(lesson, state)
+        from app.lessons.lesson_socket import emit_lesson_finished
+        emit_lesson_finished(lesson.lesson_id, {'lesson_id': lesson.lesson_id, 'outcome': state.get('outcome')})
     except Exception as exc:
         db.session.rollback()
         logger.exception('Unable to finish lesson studio')
@@ -1241,12 +1243,14 @@ def lesson_interactive_room(lesson_id: int):
         .all()
         if lesson_course_id else []
     )
+    from app.theory.routes import _render_theory_content_html
     theory_items = [
         {
             'id': item.id,
             'title': item.title or f'Тема {item.task_number}',
             'task_number': item.task_number,
             'content': item.content,
+            'content_html': _render_theory_content_html(item.content),
             'url': url_for('theory.theory_view_block', block_id=item.id, course_id=lesson_course_id),
         }
         for item in theory_blocks if (item.content or '').strip() and not (item.content or '').lstrip().startswith('<!--status:draft-->')
@@ -3374,6 +3378,124 @@ def lesson_manual_create(lesson_id):
             return jsonify({'success': False, 'error': str(e)}), 500
 
     return render_template('lesson_manual_create.html', lesson=lesson, assignment_type=assignment_type, task_numbers=get_task_numbers(None))
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/search-tasks', methods=['GET'])
+@login_required
+def lesson_room_search_tasks(lesson_id: int):
+    """Поиск заданий из банка для быстрого добавления в урок."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    import re
+    query_text = (request.args.get('q') or '').strip()
+    raw_num = request.args.get('number')
+    q = Tasks.query.filter(getattr(Tasks, 'is_active', True) == True)
+    if raw_num:
+        try:
+            task_num = int(raw_num)
+            q = q.filter(Tasks.task_number == task_num)
+        except (ValueError, TypeError):
+            pass
+    if query_text:
+        q = q.filter(Tasks.content_html.ilike(f'%{query_text}%'))
+    
+    tasks = q.order_by(Tasks.task_number.asc(), Tasks.task_id.desc()).limit(20).all()
+    results = []
+    for t in tasks:
+        clean_text = re.sub(r'<[^>]+>', ' ', t.content_html or '')
+        clean_text = ' '.join(clean_text.split())[:180]
+        results.append({
+            'task_id': t.task_id,
+            'task_number': t.task_number,
+            'site_task_id': t.site_task_id or f'№{t.task_id}',
+            'snippet': clean_text or 'Без описания',
+            'answer': t.answer or '',
+        })
+    return jsonify({'success': True, 'tasks': results})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/quick-add-task', methods=['POST'])
+@login_required
+def lesson_room_quick_add_task(lesson_id: int):
+    """Быстрое добавление задания в индивидуальный урок (из банка или создание нового)."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Добавлять задания может только преподаватель'}), 403
+
+    payload = request.get_json(silent=True) or {}
+    task_id = payload.get('task_id')
+
+    if not task_id:
+        # Ручное создание нового задания на лету
+        content = str(payload.get('content') or '').strip()
+        if not content:
+            return jsonify({'success': False, 'error': 'Условие задания не может быть пустым'}), 400
+        try:
+            task_number = int(payload.get('task_number') or 1)
+        except (ValueError, TypeError):
+            task_number = 1
+        answer = str(payload.get('answer') or '').strip()
+        starter_code = str(payload.get('starter_code') or '').strip()
+
+        new_task = Tasks(
+            course_id=lesson.exam_course_id,
+            task_number=task_number,
+            content_html=f'<div class="task-text">{content}</div>',
+            answer=answer or None,
+            starter_code=starter_code or None,
+            created_by_id=current_user.id,
+            bank_origin='manual',
+            is_active=True,
+        )
+        db.session.add(new_task)
+        db.session.flush()
+        task_id = new_task.task_id
+
+    # Привязываем к уроку как классную работу
+    existing = LessonTask.query.filter_by(
+        lesson_id=lesson.lesson_id,
+        task_id=task_id,
+        assignment_type='classwork'
+    ).first()
+
+    if not existing:
+        lt = LessonTask(
+            lesson_id=lesson.lesson_id,
+            task_id=task_id,
+            assignment_type='classwork',
+            status='pending'
+        )
+        db.session.add(lt)
+        db.session.commit()
+    else:
+        lt = existing
+
+    # Оповещаем комнату через сокеты
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson.lesson_id, 'classwork')
+
+    task_obj = lt.task
+    return jsonify({
+        'success': True,
+        'task': {
+            'lesson_task_id': lt.lesson_task_id,
+            'task_id': lt.task_id,
+            'title': getattr(task_obj, 'title', None) or (f'Задание №{task_obj.task_number}' if task_obj and task_obj.task_number else 'Задание'),
+            'description': task_obj.content_html if task_obj else 'Условие задачи...',
+            'answer': lt.student_answer or (task_obj.answer if task_obj else ''),
+            'student_submission': lt.student_submission or '',
+            'starter_code': (task_obj.starter_code if task_obj else '') or '',
+            'hints': (task_obj.hints if task_obj else []) or [],
+            'teacher_comment': lt.teacher_comment or '',
+            'submission_correct': lt.submission_correct,
+            'status': lt.status or 'pending',
+        }
+    })
+
 
 @lessons_bp.route('/lesson/<int:lesson_id>/content/save', methods=['POST'])
 @login_required

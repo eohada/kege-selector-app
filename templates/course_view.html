@@ -26,7 +26,8 @@
   </article>
 {%- endmacro %}
 {% block sandbox_content %}
-<main class="max-w-[1400px] mx-auto space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+<main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 {% if viewer_is_student %}lg:pl-28 lg:pr-6{% endif %} pb-20 lg:pb-12 pt-4 sm:pt-6">
+  <div class="max-w-[1600px] mx-auto w-full space-y-6">
   <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
     <div class="flex flex-col gap-6 xl:flex-row xl:justify-between">
       <div>
@@ -148,6 +149,7 @@
   {% if unassigned_lessons %}
     <section class="rounded-[2rem] border-2 border-dashed border-amber-200 bg-amber-50 p-6 shadow-[0_4px_0_#FDE68A]"><p class="text-xs font-black uppercase tracking-[.16em] text-amber-700">Черновики программы</p><h2 class="mt-2 text-xl font-black text-slate-900">Уроки без модуля</h2><p class="mt-2 text-sm font-medium text-amber-800">Они сохранены в программе. Назначьте модуль, когда структура курса будет готова.</p><div class="mt-4 grid gap-3 lg:grid-cols-2">{% for lesson in unassigned_lessons %}{{ lesson_card(lesson, True) }}{% endfor %}</div></section>
   {% endif %}
+  </div>
 </main>
 {% if can_manage %}<a href="{{ url_for('courses.course_plan_wizard', course_id=course.course_id) }}" class="fixed bottom-6 right-6 btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-600 px-5 py-3 font-black text-white no-underline">⚙ Собрать маршрут</a>{% endif %}
 {% endblock %}

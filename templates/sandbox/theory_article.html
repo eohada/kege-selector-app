@@ -141,7 +141,7 @@
   @media (max-width:640px) { #article-content .theory-section { padding:1.1rem; border-radius:1.25rem; } #article-content h2 { font-size:1.3rem !important; } }
 </style>
 <main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
-  <div class="max-w-[1400px] mx-auto w-full space-y-6" id="theory-article" data-block-id="{{ block.id }}" data-progress="{{ state.reading_progress if state else 0 }}" data-last-position="{{ state.last_position if state else 0 }}">
+  <div class="max-w-[1600px] mx-auto w-full space-y-6" id="theory-article" data-block-id="{{ block.id }}" data-progress="{{ state.reading_progress if state else 0 }}" data-last-position="{{ state.last_position if state else 0 }}">
     <script id="theory-checkpoint-attempts-data" type="application/json">{{ (checkpoint_attempts_data or {}) | tojson | safe }}</script>
     
     <!-- Top Back Link -->

@@ -448,7 +448,14 @@ def register_task_workspace_socket(socketio) -> None:
         base_version = max(0, int(data.get("base_version") or current.get("version") or 0))
         op_id = str(data.get("op_id") or "")
         history = list(current.get("history") or [])
-        if _active_user_count(room) <= 1 and has_next_value:
+        has_explicit_delta = ('start' in data and 'inserted' in data and data.get('start') is not None)
+        if has_explicit_delta and _active_user_count(room) > 1:
+            if base_version < int(current.get("version") or 0):
+                start, end = _transform_range(start, end, history, base_version)
+            start = min(start, len(code))
+            end = min(max(start, end), len(code))
+            next_code = code[:start] + inserted + code[end:]
+        elif _active_user_count(room) <= 1 and has_next_value:
             next_code = next_value
             start, end, inserted = _diff_snapshot(code, next_code)
         elif full_code:

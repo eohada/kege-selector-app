@@ -977,6 +977,19 @@
   color: #4f46e5;
 }
 
+.room-editor-outer-card.is-fullscreen {
+  position: fixed !important;
+  inset: 16px !important;
+  z-index: 99999 !important;
+  width: calc(100vw - 32px) !important;
+  height: calc(100vh - 32px) !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  box-shadow: 0 25px 70px rgba(15, 23, 42, 0.45) !important;
+  border-radius: 24px !important;
+}
+
 /* Scoped Hidden Helper for room elements without overriding Tailwind utilities like lg:flex */
 #lesson-studio-os .hidden,
 .room-v3-page .hidden,
@@ -1601,5 +1614,160 @@
     width: 100% !important;
     justify-content: space-between !important;
   }
+}
+
+/* Dynamic Column Collapsing */
+.room-main-grid-layout.tasks-collapsed,
+#room-main-layout.tasks-collapsed {
+  grid-template-columns: minmax(0, 1fr) 330px !important;
+}
+.room-main-grid-layout.sidebar-collapsed,
+#room-main-layout.sidebar-collapsed {
+  grid-template-columns: 310px minmax(0, 1fr) !important;
+}
+.room-main-grid-layout.tasks-collapsed.sidebar-collapsed,
+#room-main-layout.tasks-collapsed.sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.room-col-task.is-collapsed {
+  display: none !important;
+}
+.room-col-context.is-collapsed {
+  display: none !important;
+}
+
+/* Quick Add Task Button */
+.room-btn-add-task {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 14px;
+  background: #ffffff;
+  color: #4f46e5;
+  border: 2px dashed #c7d2fe;
+  border-radius: 1.25rem;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 0 #e0e7ff;
+}
+.room-btn-add-task:hover {
+  background: #eef2ff;
+  border-color: #818cf8;
+  color: #3730a3;
+  transform: translateY(-1px);
+}
+.room-btn-add-task:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Video Dock Compact Mode */
+.room-video-dock.is-compact {
+  width: min(380px, calc(100vw - 30px)) !important;
+  height: min(240px, calc(100dvh - 80px)) !important;
+  background: #0f172a !important;
+}
+.room-video-dock.is-compact #os-video-provider-bar,
+.room-video-dock.is-compact #os-video-failover-banner {
+  display: none !important;
+}
+.room-video-dock.is-compact .room-video-head {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 34px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.room-video-dock.is-compact:hover .room-video-head {
+  opacity: 1;
+}
+.room-video-dock.is-compact .room-video-active-wrap {
+  height: 100% !important;
+}
+.room-video-dock.is-compact .room-video-active-bar {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.room-video-dock.is-compact:hover .room-video-active-bar {
+  opacity: 1;
+}
+
+/* Lesson Completion Overlay */
+.room-finished-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeInFinished 0.25s ease forwards;
+}
+@keyframes fadeInFinished {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.room-finished-card {
+  width: 100%;
+  max-width: 480px;
+  background: #ffffff;
+  border-radius: 28px;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.4);
+  padding: 36px 30px 30px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.room-finished-icon-squircle {
+  width: 68px;
+  height: 68px;
+  border-radius: 22px;
+  background: #ecfdf5;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 0 #a7f3d0;
+}
+.room-finished-card h2 {
+  font-size: 22px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 6px 0 10px;
+  line-height: 1.25;
+}
+.room-finished-card p {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.55;
+  margin: 0 0 24px;
+}
+.room-finished-actions {
+  width: 100%;
+}
+.room-finished-actions .room-action {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  border-radius: 14px;
 }
 
