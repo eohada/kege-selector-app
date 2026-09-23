@@ -577,3 +577,119 @@ def add_xp_to_student(student, amount, *, commit=True):
         logger = logging.getLogger(__name__)
         logger.error(f"Error adding XP to student {student.student_id}: {e}", exc_info=True)
         return False
+
+
+def recalculate_student_xp(student, *, commit=True):
+    """
+    Честный пересчёт XP и уровня студента по реальным образовательным активностям.
+    Устраняет искусственное раздувание XP старыми коэффициентами:
+    - Разблокированные достижения (по новым тарифам ACHIEVEMENTS_REGISTRY: 15-50 XP)
+    - Сданные работы (Submissions со статусами SUBMITTED, NEEDS_MANUAL_REVIEW, GRADED): 15 XP
+    - Правильные ответы (Answer.is_correct == True): 5 XP
+    - Стрик дней (student.streak_days): min(streak, 30) * 5 XP
+    - Проверка и корректировка milestone-достижений (lvl_5, xp_1000)
+    """
+    if not student:
+        return 0
+
+    from app.utils.achievement_service import ACHIEVEMENTS_REGISTRY
+    from core.db_models import UserAchievement, Submission, Answer
+
+    # 1. Считаем базовый опыт за все полученные достижения (кроме зависимых от уровня lvl_5 и xp_1000)
+    user_achs = UserAchievement.query.filter_by(student_id=student.student_id).all()
+    ach_xp = 0
+    has_lvl_5 = False
+    has_xp_1000 = False
+    lvl_5_obj = None
+    xp_1000_obj = None
+
+    for ua in user_achs:
+        k = ua.achievement_key
+        if k == 'lvl_5':
+            has_lvl_5 = True
+            lvl_5_obj = ua
+            continue
+        if k == 'xp_1000':
+            has_xp_1000 = True
+            xp_1000_obj = ua
+            continue
+        meta = ACHIEVEMENTS_REGISTRY.get(k, {})
+        ach_xp += meta.get('xp_reward', 20)
+
+    # 2. Опыт за сдачи и правильные ответы
+    valid_statuses = ('SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED', 'completed')
+    subs_count = (
+        Submission.query.filter(
+            Submission.student_id == student.student_id,
+            Submission.status.in_(valid_statuses)
+        ).count()
+    )
+    correct_count = (
+        Answer.query.join(Submission, Answer.submission_id == Submission.submission_id)
+        .filter(Submission.student_id == student.student_id, Answer.is_correct.is_(True))
+        .count()
+    )
+
+    submission_xp = (subs_count * 15) + (correct_count * 5)
+
+    # 3. Бонус за стрик
+    streak_bonus = min(int(student.streak_days or 0), 30) * 5
+
+    # Промежуточный подсчёт
+    total_xp = ach_xp + submission_xp + streak_bonus
+
+    # 4. Проверка milestone-ачивок
+    lvl_5_reward = ACHIEVEMENTS_REGISTRY.get('lvl_5', {}).get('xp_reward', 30)
+    xp_1000_reward = ACHIEVEMENTS_REGISTRY.get('xp_1000', {}).get('xp_reward', 30)
+
+    temp_level = calculate_level_from_xp(total_xp)
+
+    if temp_level >= 5:
+        total_xp += lvl_5_reward
+        if not has_lvl_5:
+            db.session.add(UserAchievement(student_id=student.student_id, achievement_key='lvl_5'))
+    else:
+        if has_lvl_5 and lvl_5_obj:
+            db.session.delete(lvl_5_obj)
+
+    if total_xp >= 1000:
+        total_xp += xp_1000_reward
+        if not has_xp_1000:
+            db.session.add(UserAchievement(student_id=student.student_id, achievement_key='xp_1000'))
+    else:
+        if has_xp_1000 and xp_1000_obj:
+            db.session.delete(xp_1000_obj)
+
+    # Итоговый уровень
+    final_level = calculate_level_from_xp(total_xp)
+    student.xp = total_xp
+    student.level = final_level
+
+    if commit:
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+
+    return total_xp
+
+
+def rebalance_all_students_xp(*, commit=True):
+    """
+    Пересчитывает честный XP и уровень для ВСЕХ студентов.
+    Возвращает словарь со статистикой пересчета.
+    """
+    students = Student.query.all()
+    count = 0
+    for s in students:
+        recalculate_student_xp(s, commit=False)
+        count += 1
+    if commit:
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise
+    return {'total': len(students), 'recalculated': count}
+

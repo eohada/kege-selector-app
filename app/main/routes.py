@@ -3188,6 +3188,12 @@ def universal_profile_view(user_id=None):
 
         xp_points = int(getattr(student_obj, 'xp', 0) or 0)
         level = calculate_level_from_xp(xp_points)
+        if student_obj and getattr(student_obj, 'level', None) != level:
+            try:
+                student_obj.level = level
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
         xp_next_level = get_xp_for_level(level + 1)
         personal_referral = get_or_create_personal_referral_code(target_user) if is_owner else None
         student_stats = {

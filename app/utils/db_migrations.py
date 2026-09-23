@@ -28,6 +28,7 @@ from core.db_models import (
     TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent,
     Subject, KnowledgeNode, UserMastery, AnalyticsEvent, UserTaskMMR, RematchQueue,
     ReferralCode, ReferralUsage, UserAchievement, PromoCode, PromoCodeUsage,
+    SystemSetting,
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
@@ -2187,6 +2188,9 @@ def ensure_schema_columns(app):
             # ===== Связи Преподаватель-Ученик и Приглашения =====
             _migrate_teacher_students_and_invites(app, inspector, table_names, is_postgres)
 
+            # ===== V2 Честный ребаланс опыта и уровней студентов =====
+            _rebalance_v2_student_xp_and_levels(app)
+
             # ===== Сидирование промокодов =====
 
             try:
@@ -2629,5 +2633,24 @@ def _migrate_teacher_students_and_invites(app, inspector, table_names, is_postgr
     except Exception as ex:
         db.session.rollback()
         logger.warning(f"TeacherStudent migration warning: {ex}")
+
+
+def _rebalance_v2_student_xp_and_levels(app):
+    """
+    Однократный пересчёт XP и уровней всех студентов до честных канонических значений V2.
+    Сохраняет маркер в SystemSettings, чтобы повторно не перезаписывать накопленный опыт.
+    """
+    try:
+        marker = SystemSetting.get_value('v2_xp_rebalance_done', '0')
+        if marker == '1':
+            return
+
+        from app.utils.xp_service import rebalance_all_students_xp
+        stats = rebalance_all_students_xp(commit=True)
+        SystemSetting.set_value('v2_xp_rebalance_done', '1', description='V2 honest XP and level rebalance')
+        logger.info(f"V2 student XP and level rebalance completed: {stats}")
+    except Exception as e:
+        logger.warning(f"Could not run V2 student XP rebalance: {e}")
+
 
 

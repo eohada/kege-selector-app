@@ -399,6 +399,13 @@ def create_app(config_name=None):
             ensure_reserved_creator()
             logger.info("✓ Reserved creator account ensured")
 
+            # V2 Автоматический пересчёт уровней и опыта пользователей (однократный запуск)
+            try:
+                from app.utils.db_migrations import _rebalance_v2_student_xp_and_levels
+                _rebalance_v2_student_xp_and_levels(app)
+            except Exception as rebalance_err:
+                logger.warning("⚠ V2 XP rebalance bootstrap warning: %s", rebalance_err)
+
             if ENVIRONMENT in ('local', 'development', 'dev') and not app.config.get('TESTING'):
                 from app.utils.local_dev_profile_pool import ensure_local_dev_profile_pool
                 ensure_local_dev_profile_pool()
