@@ -1044,16 +1044,17 @@
 }
 
 .room-code-line-gutter {
-  width: 44px;
+  width: 48px;
   flex-shrink: 0;
+  box-sizing: border-box !important;
   padding: 14px 8px 14px 4px !important;
   background: #f8fafc;
   border-right: 1.5px solid #e2e8f0;
   color: #94a3b8;
   font-family: 'JetBrains Mono', Consolas, ui-monospace, monospace !important;
   font-size: 14px !important;
-  line-height: 1.6 !important;
-  letter-spacing: 0 !important;
+  line-height: 22px !important;
+  letter-spacing: 0px !important;
   text-align: right;
   user-select: none;
   overflow: hidden;
@@ -1061,26 +1062,41 @@
   flex-direction: column;
 }
 
+.room-code-line-gutter span {
+  height: 22px !important;
+  line-height: 22px !important;
+  display: block !important;
+}
+
 .room-code-surface-wrap pre#os-code-highlight,
 .room-code-surface-wrap textarea#os-code {
   position: absolute;
   top: 0;
-  left: 44px;
+  left: 48px;
   right: 0;
   bottom: 0;
-  box-sizing: border-box;
-  margin: 0;
+  box-sizing: border-box !important;
+  margin: 0 !important;
   padding: 14px 16px !important;
-  font-family: 'JetBrains Mono', Consolas, ui-monospace, monospace !important;
-  font-size: 14px !important;
-  line-height: 1.6 !important;
-  letter-spacing: 0 !important;
-  font-variant-ligatures: none !important;
-  tab-size: 4 !important;
-  white-space: pre !important;
-  overflow: auto !important;
   border: none !important;
   outline: none !important;
+  font-family: 'JetBrains Mono', Consolas, ui-monospace, monospace !important;
+  font-size: 14px !important;
+  line-height: 22px !important;
+  letter-spacing: 0px !important;
+  word-spacing: 0px !important;
+  text-indent: 0px !important;
+  text-transform: none !important;
+  text-align: left !important;
+  font-variant-ligatures: none !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+  tab-size: 4 !important;
+  -moz-tab-size: 4 !important;
+  white-space: pre !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
 }
 
 .room-code-surface-wrap pre#os-code-highlight {
@@ -1088,6 +1104,7 @@
   background: transparent !important;
   color: #0f172a !important;
   z-index: 1 !important;
+  overflow: hidden !important;
 }
 
 .room-code-surface-wrap textarea#os-code {
@@ -1097,6 +1114,7 @@
   caret-color: #4f46e5 !important;
   resize: none !important;
   z-index: 2 !important;
+  overflow: auto !important;
 }
 .room-code-surface-wrap textarea#os-code::selection {
   background: rgba(99, 102, 241, 0.25) !important;
@@ -1104,12 +1122,29 @@
   -webkit-text-fill-color: transparent !important;
 }
 
+/* Guarantee identical character metrics for any nested spans/code */
+.room-code-surface-wrap pre#os-code-highlight * {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: inherit !important;
+  word-spacing: inherit !important;
+  font-variant-ligatures: none !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+  tab-size: 4 !important;
+  -moz-tab-size: 4 !important;
+  white-space: pre !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
 /* Python Tokens inside Light theme */
-.os-token-keyword { color: #7c3aed !important; font-weight: 750; }
-.os-token-builtin { color: #2563eb !important; font-weight: 700; }
-.os-token-string  { color: #059669 !important; font-weight: 500; }
-.os-token-number  { color: #d97706 !important; font-weight: 600; }
-.os-token-comment { color: #94a3b8 !important; font-style: italic; }
+.os-token-keyword { color: #7c3aed !important; font-weight: 600 !important; }
+.os-token-builtin { color: #2563eb !important; font-weight: 600 !important; }
+.os-token-string  { color: #059669 !important; font-weight: 400 !important; }
+.os-token-number  { color: #d97706 !important; font-weight: 500 !important; }
+.os-token-comment { color: #94a3b8 !important; font-style: normal !important; font-weight: 400 !important; }
 
 /* Result Pane for [Результат] Tab */
 .room-result-surface {

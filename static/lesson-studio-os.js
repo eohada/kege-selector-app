@@ -183,8 +183,8 @@
   function ctx(){return {context_type:workspace.kind||(workspace.id===lessonId?'lesson':'lesson_task'),context_id:workspace.id||lessonId,client_id:clientId}}
   const codeEscape=value=>String(value||'').replace(/[&<>]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[char]));
   function highlightPython(value){const source=String(value||''),tokens=/(#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|\b(?:False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|print|range|len|str|int|float|list|dict|set)\b)/g;let result='',cursor=0,match;while((match=tokens.exec(source))){result+=codeEscape(source.slice(cursor,match.index));const token=match[0],kind=token.startsWith('#')?'comment':token.startsWith('"')||token.startsWith("'")?'string':/^\d/.test(token)?'number':/^(print|range|len|str|int|float|list|dict|set)$/.test(token)?'builtin':'keyword';result+=`<span class="os-token-${kind}">${codeEscape(token)}</span>`;cursor=match.index+token.length}return result+codeEscape(source.slice(cursor));}
-  function refreshCodeHighlight(){const editor=$('#os-code'),layer=$('#os-code-highlight');if(!editor||!layer)return;layer.innerHTML=`<code>${highlightPython(editor.value)}\n</code>`;layer.scrollTop=editor.scrollTop;layer.scrollLeft=editor.scrollLeft;}
-  function refreshGutter(){const gutter=$('#os-code-gutter'),editor=$('#os-code');if(!gutter||!editor)return;const lines=(editor.value||'').split('\n').length||1;let html='';for(let i=1;i<=lines;i++){html+=`<span>${i}</span>`;}gutter.innerHTML=html;gutter.scrollTop=editor.scrollTop;}
+  function refreshCodeHighlight(){const editor=$('#os-code'),layer=$('#os-code-highlight');if(!editor||!layer)return;const val=editor.value||'';layer.innerHTML=highlightPython(val)+(val.endsWith('\n')?'\n ':'');layer.scrollTop=editor.scrollTop;layer.scrollLeft=editor.scrollLeft;}
+  function refreshGutter(){const gutter=$('#os-code-gutter'),editor=$('#os-code');if(!gutter||!editor)return;const lines=(editor.value||'').split('\n').length||1;let html='';for(let i=1;i<=lines;i++){html+=`<span style="height:22px;line-height:22px;display:block;">${i}</span>`;}gutter.innerHTML=html;gutter.scrollTop=editor.scrollTop;}
   let typingTimer=null;
   function showTypingBanner(text){const banner=$('#os-typing-banner'),label=$('#os-typing-user-text');if(!banner||!label)return;label.textContent=text;banner.classList.remove('hidden');clearTimeout(typingTimer);typingTimer=setTimeout(()=>banner.classList.add('hidden'),2400);}
   function transformPositionThroughOp(pos, op) {
@@ -247,7 +247,9 @@
         if (pos >= boundedStart) return boundedStart + inserted.length;
         return pos;
       };
-      editor.setSelectionRange(mapCaret(caretStart), mapCaret(caretEnd));
+      const nStart = Math.max(0, Math.min(mapCaret(caretStart), next.length));
+      const nEnd = Math.max(0, Math.min(mapCaret(caretEnd), next.length));
+      editor.setSelectionRange(nStart, nEnd);
     }
     editor.scrollTop = scrollT;
     editor.scrollLeft = scrollL;
@@ -288,7 +290,7 @@
     editor.value = nextCode;
     workspace.lastSentCode = nextCode;
     if (isFocused) {
-      editor.setSelectionRange(Math.max(0, newStart), Math.max(0, newEnd));
+      editor.setSelectionRange(Math.max(0, Math.min(newStart, nextCode.length)), Math.max(0, Math.min(newEnd, nextCode.length)));
     }
     editor.scrollTop = curScrollTop;
     editor.scrollLeft = curScrollLeft;
@@ -454,50 +456,50 @@
     const codeEditor=$('#os-code');
     if (!codeEditor) return;
 
-    let emitTimer = null;
-    const emitCodeChange = (immediate = false) => {
+    let inputSnapshot = '';
+    codeEditor.addEventListener('beforeinput', () => {
+      inputSnapshot = codeEditor.value;
+    });
+
+    const emitCodeChange = () => {
       refreshCodeHighlight();
       refreshGutter();
       if (workspace.applying || !workspace.socket || !workspace.id) return;
       workspace.lastLocalEditAt = Date.now();
-      const doEmit = () => {
-        const currentCode = codeEditor.value;
-        const prevCode = workspace.lastSentCode !== undefined ? workspace.lastSentCode : currentCode;
-        if (prevCode === currentCode) return;
-        const delta = computeDelta(prevCode, currentCode);
-        workspace.lastSentCode = currentCode;
-        const opId = crypto.randomUUID();
-        const baseVersion = workspace.version;
-        const op = {
-          op_id: opId,
-          base_version: baseVersion,
-          start: delta.start,
-          end: delta.end,
-          inserted: delta.inserted
-        };
-        workspace.pendingOps.push(op);
-        workspace.socket.emit('workspace_patch', {
-          ...ctx(),
-          base_version: baseVersion,
-          start: delta.start,
-          end: delta.end,
-          inserted: delta.inserted,
-          full_code: currentCode,
-          next: currentCode,
-          op_id: opId,
-          updated_at: Date.now()
-        });
+      const currentCode = codeEditor.value;
+      const prevCode = workspace.lastSentCode !== undefined ? workspace.lastSentCode : (inputSnapshot || currentCode);
+      if (prevCode === currentCode) return;
+      const delta = computeDelta(prevCode, currentCode);
+      workspace.lastSentCode = currentCode;
+      const opId = crypto.randomUUID();
+      const baseVersion = workspace.version;
+      const op = {
+        op_id: opId,
+        base_version: baseVersion,
+        start: delta.start,
+        end: delta.end,
+        inserted: delta.inserted
       };
-      clearTimeout(emitTimer);
-      if (immediate) {
-        doEmit();
-      } else {
-        emitTimer = setTimeout(doEmit, 50);
-      }
+      workspace.pendingOps.push(op);
+      workspace.socket.emit('workspace_patch', {
+        ...ctx(),
+        base_version: baseVersion,
+        start: delta.start,
+        end: delta.end,
+        inserted: delta.inserted,
+        full_code: currentCode,
+        next: currentCode,
+        op_id: opId,
+        updated_at: Date.now()
+      });
     };
 
     codeEditor.addEventListener('input', () => {
-      emitCodeChange(false);
+      emitCodeChange();
+    });
+
+    codeEditor.addEventListener('mouseup', () => {
+      refreshCodeHighlight();
     });
 
     codeEditor.addEventListener('scroll', () => {
