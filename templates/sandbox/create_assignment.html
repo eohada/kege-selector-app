@@ -197,17 +197,22 @@
           <p class="text-xs leading-relaxed text-slate-500">Выберите готовые задания из банка или создайте своё. Всё сразу сохранится в черновике этой работы.</p>
 
           <!-- Источники заданий без внутренних идентификаторов -->
-          <div class="grid grid-cols-2 gap-2.5">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             <button type="button" onclick="openTaskBankPage()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
               <i class="ph-bold ph-books text-indigo-600"></i> Выбрать из банка
             </button>
             <button type="button" onclick="openCustomTaskModal()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black px-4 py-3 rounded-xl border border-indigo-200 border-b-[4px] shadow-[0_2px_5px_rgba(79,70,229,0.1)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
               <i class="ph-bold ph-plus-circle text-indigo-600"></i> Создать своё
             </button>
+            <button type="button" onclick="openImportAiJsonModal()" class="col-span-2 sm:col-span-1 bg-gradient-to-r from-violet-50 to-indigo-50 hover:from-violet-100 hover:to-indigo-100 text-indigo-800 font-black px-4 py-3 rounded-xl border-2 border-indigo-200 border-b-[4px] shadow-[0_2px_6px_rgba(99,102,241,0.15)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
+              <i class="ph-bold ph-file-arrow-up text-violet-600 text-base"></i>
+              <span>Загрузить ДЗ (JSON)</span>
+              <span class="px-1.5 py-0.5 rounded bg-violet-600 text-white text-[9px] font-black uppercase tracking-wider ml-0.5">AI</span>
+            </button>
             <button onclick="loadQuickMockVariant()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black px-4 py-3 rounded-xl border border-emerald-200 border-b-[4px] shadow-[0_2px_5px_rgba(16,185,129,0.1)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs">
               <i class="ph-bold ph-lightning text-emerald-600"></i> Быстрый пробник
             </button>
-            <a href="{{ url_for('assignments.assignment_templates') }}" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs no-underline">
+            <a href="{{ url_for('assignments.assignment_templates') }}" class="col-span-1 sm:col-span-2 bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs no-underline">
               <i class="ph-bold ph-copy text-indigo-600"></i> Из шаблона
             </a>
           </div>
@@ -552,6 +557,96 @@
       </button>
       <button type="button" onclick="handleFetchTasksByIds()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs">
         Добавить задачи
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО ИМПОРТА ДЗ ИЗ JSON (ОТ ИИ-АГЕНТА) -->
+<div id="import-ai-json-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+  <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_8px_0_#DAE1E9] rounded-[2.5rem] max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b-2 border-slate-200 bg-white/80 backdrop-blur-sm flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <span class="w-10 h-10 rounded-2xl bg-violet-50 border-2 border-violet-200 text-violet-600 flex items-center justify-center shadow-[0_2px_0_#ddd6fe]">
+          <i class="ph-bold ph-sparkle text-xl"></i>
+        </span>
+        <div>
+          <h3 class="text-base sm:text-lg font-black text-slate-800 font-display leading-tight">Импорт ДЗ от ИИ-агента</h3>
+          <p class="text-xs text-slate-500 font-bold">Автоматическое превращение JSON в полноценные задания платформы</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeImportAiJsonModal()" class="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 border-2 border-slate-200 border-b-[3px] text-slate-400 hover:text-slate-600 flex items-center justify-center text-lg font-bold transition-all cursor-pointer">
+        &times;
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="boostudy-scroll p-6 space-y-5 overflow-y-auto flex-1">
+      <!-- Pill-Tabs «Файл .json / Текст JSON» -->
+      <div class="flex items-center p-1.5 bg-slate-200/60 rounded-[1.25rem] border border-slate-300/50 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] w-fit">
+        <button id="import-tab-file" type="button" onclick="switchImportTab('file')" class="bg-white text-indigo-700 font-extrabold shadow-sm rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer">
+          <i class="ph-bold ph-upload-simple mr-1"></i> Загрузить файл
+        </button>
+        <button id="import-tab-text" type="button" onclick="switchImportTab('text')" class="text-slate-500 hover:text-slate-800 font-bold rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer bg-transparent">
+          <i class="ph-bold ph-code mr-1"></i> Вставить JSON текстом
+        </button>
+      </div>
+
+      <!-- Вкладка 1: Дропзона файла -->
+      <div id="import-view-file" class="space-y-3">
+        <label for="import-json-file-input" class="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/30 rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all group">
+          <span class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-[0_2px_0_#C7D2FE]">
+            <i class="ph-bold ph-file-arrow-up text-2xl"></i>
+          </span>
+          <p class="text-sm font-black text-slate-800">Перетащите сюда <span class="text-indigo-600 font-mono">.json</span> файл или нажмите для выбора</p>
+          <p class="text-xs text-slate-400 mt-1">Поддерживает файлы от любого LLM/агента с заданиями по Python, выбором ответа и кодом</p>
+          <input id="import-json-file-input" type="file" accept=".json,application/json" class="hidden" onchange="handleImportFileSelect(event)">
+        </label>
+        <div id="import-file-selected-info" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+          <div class="flex items-center gap-2 text-xs font-bold text-emerald-800">
+            <i class="ph-bold ph-check-circle text-emerald-600 text-base"></i>
+            <span id="import-selected-filename">homework.json</span>
+            <span id="import-selected-filesize" class="text-emerald-600 font-normal"></span>
+          </div>
+          <button type="button" onclick="clearImportFile()" class="text-xs text-rose-500 hover:underline font-bold">Удалить</button>
+        </div>
+      </div>
+
+      <!-- Вкладка 2: Textarea -->
+      <div id="import-view-text" class="hidden space-y-2">
+        <label class="block text-xs font-bold text-slate-600">Вставьте скопированный JSON сюда:</label>
+        <textarea id="import-json-textarea" rows="9" placeholder='{\n  "title": "Практика: условия и циклы",\n  "tasks": [\n    {\n      "type": "choice",\n      ...\n    }\n  ]\n}' class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl p-3.5 text-xs font-mono text-slate-800 outline-none transition-colors leading-relaxed"></textarea>
+      </div>
+
+      <!-- Опции импорта (Чекбоксы) -->
+      <div class="bg-white border-2 border-slate-200 rounded-2xl p-4 space-y-3">
+        <p class="text-[11px] font-black uppercase tracking-wider text-slate-500">Параметры применения</p>
+        <label class="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700">
+          <input id="import-opt-title" type="checkbox" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-0 cursor-pointer">
+          <span>Заполнить название и описание работы из файла</span>
+        </label>
+        <label class="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700">
+          <input id="import-opt-time" type="checkbox" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-0 cursor-pointer">
+          <span>Установить ограничение по времени (если указано в JSON)</span>
+        </label>
+      </div>
+
+      <!-- Статус / Ошибки -->
+      <div id="import-error-banner" class="hidden p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-bold flex items-start gap-2">
+        <i class="ph-bold ph-warning-circle text-base shrink-0 mt-0.5"></i>
+        <span id="import-error-text"></span>
+      </div>
+    </div>
+
+    <!-- Footer Buttons -->
+    <div class="px-6 py-4 border-t-2 border-slate-200 bg-white/80 backdrop-blur-sm flex items-center justify-between gap-3 flex-shrink-0">
+      <button type="button" onclick="closeImportAiJsonModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-2.5 rounded-xl border border-slate-200 border-b-[3px] text-xs transition-all cursor-pointer">
+        Отмена
+      </button>
+      <button id="import-submit-btn" type="button" onclick="submitImportAiJson()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] active:border-b-[1px] active:translate-y-[3px] text-xs transition-all shadow-[0_4px_10px_rgba(79,70,229,0.22)] cursor-pointer flex items-center gap-2">
+        <i class="ph-bold ph-sparkle text-sm"></i>
+        <span>Импортировать в работу</span>
       </button>
     </div>
   </div>
@@ -1331,7 +1426,7 @@ function switchBuilderConditionTab(tab) {
         const cleanLine = l.replace(/^`{1,3}|`{1,3}$/g, '');
         if ((cleanLine.startsWith('  ') || cleanLine.startsWith('\t')) && !/^\s*[-*•\d+\.]\s/.test(cleanS)) return true;
         if (/^(?:def\s|class\s|if\s|elif\s|else:|while\s|for\s|import\s|from\s|return\b|yield\b|try:|except\b|finally:|with\s|break\b|continue\b|pass\b|raise\b|assert\b)/.test(cleanS)) return true;
-        if (/^[a-zA-Z_][a-zA-Z0-9_,\s]*\s*(?:=|\+=|-=|\*=|/=|//=|%=|\*\*=|&=|\|=|\^=|<<=|>>=)\s*[^=].*$/.test(cleanS)) return true;
+        if (/^[a-zA-Z_][a-zA-Z0-9_,\s]*\s*(?:=|\+=|-=|\*=|\/=|\/\/=|%=|\*\*=|&=|\|=|\^=|<<=|>>=)\s*[^=].*$/.test(cleanS)) return true;
         if (/^(?:print|input|open|len|range|int|str|float|list|set|dict|min|max|sum)\s*\(.*\)/.test(cleanS)) return true;
         if (cleanS.startsWith('#')) return true;
         return false;
@@ -1935,6 +2030,161 @@ async function handleFetchTasksByIds() {
     }
   } catch (e) {
     show3DToast('Ошибка запроса задач');
+  }
+}
+
+/* --- ИМПОРТ ДЗ ИЗ JSON (ОТ ИИ-АГЕНТА) --- */
+let currentImportTab = 'file';
+let importedFileContent = '';
+
+function openImportAiJsonModal() {
+  document.getElementById('import-ai-json-modal').classList.remove('hidden');
+  const banner = document.getElementById('import-error-banner');
+  if (banner) banner.classList.add('hidden');
+}
+
+function closeImportAiJsonModal() {
+  document.getElementById('import-ai-json-modal').classList.add('hidden');
+}
+
+function switchImportTab(tab) {
+  currentImportTab = tab;
+  const tabFile = document.getElementById('import-tab-file');
+  const tabText = document.getElementById('import-tab-text');
+  const viewFile = document.getElementById('import-view-file');
+  const viewText = document.getElementById('import-view-text');
+
+  if (tab === 'file') {
+    tabFile.className = 'bg-white text-indigo-700 font-extrabold shadow-sm rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer';
+    tabText.className = 'text-slate-500 hover:text-slate-800 font-bold rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer bg-transparent';
+    viewFile.classList.remove('hidden');
+    viewText.classList.add('hidden');
+  } else {
+    tabText.className = 'bg-white text-indigo-700 font-extrabold shadow-sm rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer';
+    tabFile.className = 'text-slate-500 hover:text-slate-800 font-bold rounded-xl px-5 py-2 transition-all text-xs border-none cursor-pointer bg-transparent';
+    viewText.classList.remove('hidden');
+    viewFile.classList.add('hidden');
+  }
+}
+
+function handleImportFileSelect(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    importedFileContent = evt.target.result;
+    document.getElementById('import-selected-filename').textContent = file.name;
+    document.getElementById('import-selected-filesize').textContent = `(${(file.size / 1024).toFixed(1)} КБ)`;
+    document.getElementById('import-file-selected-info').classList.remove('hidden');
+    const banner = document.getElementById('import-error-banner');
+    if (banner) banner.classList.add('hidden');
+  };
+  reader.onerror = function() {
+    showImportError('Ошибка при чтении файла');
+  };
+  reader.readAsText(file);
+}
+
+function clearImportFile() {
+  importedFileContent = '';
+  document.getElementById('import-json-file-input').value = '';
+  document.getElementById('import-file-selected-info').classList.add('hidden');
+}
+
+function showImportError(msg) {
+  const banner = document.getElementById('import-error-banner');
+  const txt = document.getElementById('import-error-text');
+  if (banner && txt) {
+    txt.textContent = msg;
+    banner.classList.remove('hidden');
+  } else {
+    show3DToast(msg);
+  }
+}
+
+async function submitImportAiJson() {
+  let content = '';
+  if (currentImportTab === 'file') {
+    content = importedFileContent.trim();
+    if (!content) {
+      showImportError('Пожалуйста, выберите файл .json для загрузки');
+      return;
+    }
+  } else {
+    content = document.getElementById('import-json-textarea').value.trim();
+    if (!content) {
+      showImportError('Пожалуйста, вставьте текст JSON в поле');
+      return;
+    }
+  }
+
+  try {
+    JSON.parse(content);
+  } catch (err) {
+    showImportError('Некорректный синтаксис JSON: ' + err.message);
+    return;
+  }
+
+  const courseSelect = document.getElementById('assignment-course');
+  const courseId = courseSelect?.value || null;
+
+  const btn = document.getElementById('import-submit-btn');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-sm"></i><span>Импортируем...</span>';
+
+  try {
+    const resp = await fetch('/assignments/api/import-ai-json', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({
+        json_data: content,
+        course_id: courseId
+      })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      throw new Error(data.message || 'Ошибка импорта заданий');
+    }
+
+    const optTitle = document.getElementById('import-opt-title')?.checked;
+    const optTime = document.getElementById('import-opt-time')?.checked;
+
+    if (optTitle && data.assignment_meta) {
+      const meta = data.assignment_meta;
+      if (meta.title) {
+        const titleInp = document.getElementById('assignment-title');
+        if (titleInp) titleInp.value = meta.title;
+      }
+      if (meta.description) {
+        const descInp = document.getElementById('assignment-description');
+        if (descInp) descInp.value = meta.description;
+      }
+    }
+
+    if (optTime && data.assignment_meta?.time_limit) {
+      const timeInp = document.getElementById('assignment-time-limit');
+      if (timeInp) timeInp.value = data.assignment_meta.time_limit;
+    }
+
+    if (data.tasks && data.tasks.length > 0) {
+      data.tasks.forEach(task => {
+        addTaskToAssignment(task);
+      });
+    }
+
+    closeImportAiJsonModal();
+    show3DToast(data.message || `Импортировано ${data.tasks?.length || 0} заданий!`);
+    scheduleDraftSave();
+  } catch (error) {
+    showImportError(error.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
   }
 }
 

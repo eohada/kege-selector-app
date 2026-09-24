@@ -1,155 +1,712 @@
 {% extends 'sandbox/layout_student.html' if viewer_is_student else 'sandbox/layout_teacher.html' %}
-{% block title %}{{ course.title }} · Программа{% endblock %}
-{% set active_page = 'students' %}
+{% block title %}{{ course.title }} · {% if is_master %}Базовый курс{% else %}Программа ученика{% endif %}{% endblock %}
+{% set active_page = 'courses' %}
+
 {% macro lesson_card(lesson, draft=False) -%}
-  <article class="rounded-[1.5rem] border-2 {% if draft %}border-amber-200{% else %}border-slate-200{% endif %} bg-white p-4">
-    <div class="flex items-start justify-between gap-3">
-      <div>
-        <p class="font-black text-slate-800">{{ lesson.topic }}</p>
-        <p class="mt-1 text-xs font-bold text-slate-400">{{ lesson.course_display_date.strftime('%d.%m.%Y %H:%M') if lesson.course_display_date else 'Дата не назначена' }} · {{ lesson.duration }} мин</p>
+  <article class="rounded-[1.5rem] border-2 {% if draft %}border-amber-200 bg-amber-50/30{% else %}border-slate-200 bg-white{% endif %} p-4 flex flex-col justify-between transition hover:border-slate-300">
+    <div>
+      <div class="flex items-start justify-between gap-3 mb-2">
+        <div class="flex-1 min-w-0">
+          <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+            <!-- Format badge -->
+            {% if lesson.lesson_format %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-black">
+                <i class="ph-bold ph-presentation"></i> {{ lesson.lesson_format }}
+              </span>
+            {% endif %}
+
+            <!-- Duration badge -->
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-bold">
+              <i class="ph-bold ph-clock"></i> {{ lesson.duration or 60 }} мин
+            </span>
+
+            <!-- Order index badge -->
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-mono font-bold">
+              #{{ lesson.course_order_index }}
+            </span>
+          </div>
+
+          <h3 class="font-black text-slate-900 text-base leading-snug">{{ lesson.topic }}</h3>
+
+          <!-- Date for student course -->
+          {% if not is_master %}
+            <p class="mt-1 text-xs font-bold text-slate-400 flex items-center gap-1">
+              <i class="ph-bold ph-calendar"></i>
+              {{ lesson.course_display_date.strftime('%d.%m.%Y %H:%M') if lesson.course_display_date else 'Дата не назначена' }}
+            </p>
+          {% endif %}
+        </div>
+
+        {% if not is_master %}
+          <span class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-black {% if lesson.status == 'completed' %}bg-emerald-100 text-emerald-800 border border-emerald-200{% elif lesson.status == 'in_progress' %}bg-amber-100 text-amber-800 border border-amber-200 animate-pulse{% elif lesson.status == 'planned' %}bg-indigo-50 text-indigo-700 border border-indigo-200{% else %}bg-slate-100 text-slate-600 border border-slate-200{% endif %}">
+            {{ 'Проведён' if lesson.status == 'completed' else ('Идёт' if lesson.status == 'in_progress' else ('В плане' if lesson.status == 'planned' else lesson.status)) }}
+          </span>
+        {% endif %}
       </div>
-      <span class="rounded-lg px-2.5 py-1 text-xs font-black {% if lesson.status == 'completed' %}bg-emerald-100 text-emerald-800{% elif lesson.status == 'planned' %}bg-indigo-100 text-indigo-700{% else %}bg-slate-100 text-slate-600{% endif %}">{{ 'Проведён' if lesson.status == 'completed' else ('В плане' if lesson.status == 'planned' else lesson.status) }}</span>
+
+      <!-- Skills tags -->
+      {% if lesson.skills %}
+        <div class="mt-2.5 flex flex-wrap gap-1">
+          {% for skill in lesson.skills %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold" title="{{ skill.title }}">
+              {% if skill.task_number %}<strong class="text-indigo-600">№{{ skill.task_number }}</strong>{% endif %}
+              <span class="truncate max-w-[160px]">{{ skill.topic_code or skill.title }}</span>
+            </span>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Attachments pill -->
+      {% if lesson.attachments %}
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          {% for att in lesson.attachments %}
+            <a href="{{ att.file_path }}" target="_blank"
+               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold no-underline transition {% if att.target == 'homework' %}bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100{% else %}bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100{% endif %}">
+              <i class="ph-bold ph-paperclip"></i>
+              <span class="truncate max-w-[140px]">{{ att.file_name }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Content Badges -->
+      {% if lesson.studio_scenario or lesson.content or lesson.homework %}
+        <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {% if lesson.studio_scenario %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 text-purple-700 text-[11px] font-bold" title="Сценарий Studio заготовлен">
+              <i class="ph-bold ph-film-strip"></i> Сценарий
+            </span>
+          {% endif %}
+          {% if lesson.content %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 border border-sky-200 text-sky-700 text-[11px] font-bold" title="Теория / Конспект заготовлен">
+              <i class="ph-bold ph-book-open"></i> Теория
+            </span>
+          {% endif %}
+          {% if lesson.homework %}
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold" title="Домашнее задание заготовлено">
+              <i class="ph-bold ph-house-line"></i> ДЗ
+            </span>
+          {% endif %}
+        </div>
+
+        <details class="mt-2.5 group/preview">
+          <summary class="cursor-pointer text-[11px] font-bold text-slate-500 hover:text-indigo-600 inline-flex items-center gap-1 list-none select-none transition">
+            <i class="ph-bold ph-caret-right group-open/preview:rotate-90 transition-transform"></i>
+            <span>Материалы урока</span>
+          </summary>
+          <div class="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-700">
+            {% if lesson.studio_scenario %}
+              <div class="space-y-1">
+                <span class="text-[10px] font-black uppercase tracking-wider text-purple-700 flex items-center gap-1">
+                  <i class="ph-bold ph-film-strip"></i> Сценарий Studio
+                </span>
+                <p class="whitespace-pre-line text-slate-600 text-[11px] leading-relaxed max-h-36 overflow-y-auto">{{ lesson.studio_scenario }}</p>
+              </div>
+            {% endif %}
+            {% if lesson.content %}
+              <div class="space-y-1 {% if lesson.studio_scenario %}pt-2 border-t border-slate-200{% endif %}">
+                <span class="text-[10px] font-black uppercase tracking-wider text-sky-700 flex items-center gap-1">
+                  <i class="ph-bold ph-book-open"></i> Теория / Конспект
+                </span>
+                <div class="text-slate-600 text-[11px] leading-relaxed max-h-40 overflow-y-auto whitespace-pre-wrap">{{ lesson.content }}</div>
+              </div>
+            {% endif %}
+            {% if lesson.homework %}
+              <div class="space-y-1 {% if lesson.studio_scenario or lesson.content %}pt-2 border-t border-slate-200{% endif %}">
+                <span class="text-[10px] font-black uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                  <i class="ph-bold ph-house-line"></i> Домашнее задание
+                </span>
+                <p class="whitespace-pre-line text-slate-600 text-[11px] leading-relaxed max-h-36 overflow-y-auto">{{ lesson.homework }}</p>
+              </div>
+            {% endif %}
+          </div>
+        </details>
+      {% endif %}
     </div>
-    <div class="mt-4 flex flex-wrap gap-2">
-      {% if lesson.status in ['planned', 'draft', 'scheduled'] and can_manage %}
-        <form method="post" action="{{ url_for('courses.course_lesson_start', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="inline">
-          <button type="submit" class="btn-3d rounded-lg border-2 border-indigo-700 bg-indigo-600 px-3 py-2 text-xs font-black text-white">▶ Начать занятие</button>
+
+    <!-- Actions -->
+    <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+      {% if is_master %}
+        <a href="{{ url_for('courses.course_lesson_edit', course_id=course.course_id, lesson_id=lesson.lesson_id) }}"
+           class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-3 py-1.5 rounded-lg border border-indigo-200 text-xs inline-flex items-center gap-1 no-underline transition">
+          <i class="ph-bold ph-pencil-simple"></i> Редактировать план
+        </a>
+      {% elif lesson.status in ['planned', 'draft', 'scheduled'] and can_manage %}
+        <form method="post" action="{{ url_for('courses.course_lesson_start', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="inline m-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-3 py-1.5 rounded-lg border border-indigo-700 border-b-[3px] shadow-xs active:border-b active:translate-y-[1px] transition text-xs inline-flex items-center gap-1">
+            <i class="ph-bold ph-play"></i> Начать занятие
+          </button>
         </form>
       {% else %}
-        <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id, pane='work') }}" class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black text-slate-700 no-underline hover:bg-white">{{ 'Открыть Studio' if lesson.status == 'in_progress' else 'Открыть занятие' }}</a>
+        <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id, pane='work') }}"
+           class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black px-3 py-1.5 rounded-lg border border-indigo-200 text-xs inline-flex items-center gap-1 no-underline transition">
+          <i class="ph-bold ph-chalkboard"></i>
+          {{ 'Открыть Studio' if lesson.status == 'in_progress' else 'Открыть занятие' }}
+        </a>
       {% endif %}
-      {% if can_manage and lesson.status in ['in_progress', 'completed'] %}<a href="{{ url_for('courses.course_lesson_outcome', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 no-underline hover:bg-emerald-100">{{ 'Изменить итог' if lesson.status == 'completed' else 'Зафиксировать итог' }}</a>{% endif %}
-      {% if lesson.status == 'completed' %}<a href="{{ url_for('courses.course_lesson_snapshot', course_id=course.course_id, lesson_id=lesson.lesson_id, view=1) }}" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 no-underline">Архив</a>{% endif %}
-      {% if can_manage %}<a href="{{ url_for('courses.course_lesson_edit', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 no-underline hover:bg-indigo-100">{{ 'Назначить модуль' if draft else 'План' }}</a>{% endif %}
-      {% if can_manage and not draft %}<form method="post" action="{{ url_for('courses.course_lesson_auto_tasks', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="inline"><button type="submit" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700">✦ Подобрать пакет</button></form>{% endif %}
+
+      {% if can_manage and not is_master %}
+        <a href="{{ url_for('courses.course_lesson_edit', course_id=course.course_id, lesson_id=lesson.lesson_id) }}"
+           class="bg-white hover:bg-slate-50 text-slate-700 font-bold px-3 py-1.5 rounded-lg border border-slate-200 text-xs inline-flex items-center gap-1 no-underline transition">
+          <i class="ph-bold ph-pencil-simple"></i>
+          {{ 'Назначить модуль' if draft else 'План' }}
+        </a>
+      {% endif %}
+
+      {% if can_manage %}
+        <!-- Clone Lesson Button -->
+        <form method="post" action="{{ url_for('courses.course_lesson_clone', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="inline m-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" title="Клонировать урок"
+                  class="bg-white hover:bg-slate-50 text-slate-600 font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs inline-flex items-center gap-1 transition">
+            <i class="ph-bold ph-copy"></i>
+          </button>
+        </form>
+      {% endif %}
+
+      {% if not is_master and can_manage and lesson.status in ['in_progress', 'completed'] %}
+        <a href="{{ url_for('courses.course_lesson_outcome', course_id=course.course_id, lesson_id=lesson.lesson_id) }}"
+           class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-black px-3 py-1.5 rounded-lg border border-emerald-200 text-xs inline-flex items-center gap-1 no-underline transition">
+          <i class="ph-bold ph-check-circle"></i>
+          {{ 'Итог' if lesson.status == 'completed' else 'Зафиксировать итог' }}
+        </a>
+      {% endif %}
+
+      {% if not is_master and can_manage and not draft %}
+        <form method="post" action="{{ url_for('courses.course_lesson_auto_tasks', course_id=course.course_id, lesson_id=lesson.lesson_id) }}" class="inline m-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="bg-white hover:bg-slate-50 text-emerald-700 font-bold px-2.5 py-1.5 rounded-lg border border-emerald-200 text-xs inline-flex items-center gap-1 transition">
+            <i class="ph-bold ph-lightning"></i> Пакет
+          </button>
+        </form>
+      {% endif %}
     </div>
   </article>
 {%- endmacro %}
+
 {% block sandbox_content %}
 <main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 {% if viewer_is_student %}lg:pl-28 lg:pr-6{% endif %} pb-20 lg:pb-12 pt-4 sm:pt-6">
   <div class="max-w-[1600px] mx-auto w-full space-y-6">
-  <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
-    <div class="flex flex-col gap-6 xl:flex-row xl:justify-between">
-      <div>
-        <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Индивидуальная программа · {{ student.name }}</p>
-        <div class="mt-3 flex flex-wrap items-center gap-3"><h1 class="text-3xl font-black text-slate-900 sm:text-4xl">{{ course.title }}</h1><span class="rounded-lg border px-3 py-1 text-xs font-black {% if course.status == 'archived' %}border-amber-200 bg-amber-100 text-amber-800{% else %}border-emerald-200 bg-emerald-100 text-emerald-800{% endif %}">{{ 'Архив' if course.status == 'archived' else 'Активен' }}</span></div>
-        <p class="mt-3 text-sm font-black text-indigo-500">{{ course.subject or 'Предмет не указан' }}</p>
-        {% if course.description %}<p class="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-500">{{ course.description }}</p>{% endif %}
-      </div>
-      <div class="flex flex-wrap items-center gap-2.5">
-        <a href="{{ url_for('courses.student_courses', student_id=student.student_id) }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 border-b-[4px] bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[2px] active:border-b-2 no-underline">← Курсы</a>
-        {% if can_manage %}
-        <a href="{{ url_for('courses.course_edit', course_id=course.course_id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 border-b-[4px] bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[2px] active:border-b-2 no-underline">Настроить</a>
-        <a href="{{ url_for('courses.course_versions', course_id=course.course_id, view=1) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 border-b-[4px] bg-white px-3.5 py-2.5 text-sm font-black text-slate-700 shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[2px] active:border-b-2 no-underline" title="История версий"><i class="ph-bold ph-clock-counter-clockwise"></i> Версии</a>
-        <a href="{{ url_for('courses.course_templates', view=1, course_id=course.course_id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 border-b-[4px] bg-indigo-50 px-3.5 py-2.5 text-sm font-black text-indigo-700 shadow-[0_2px_5px_rgba(99,102,241,0.08)] transition-all hover:bg-indigo-100 active:translate-y-[2px] active:border-b-2 no-underline"><i class="ph-bold ph-copy"></i> Шаблоны</a>
-        <form method="post" action="{{ url_for('courses.course_prepare_next_lesson', course_id=course.course_id) }}" class="inline">
-          <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-amber-600 border-b-[4px] bg-amber-500 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(245,158,11,0.2)] transition-all hover:bg-amber-400 active:translate-y-[2px] active:border-b-2">✦ Подготовить следующий</button>
-        </form>
-        <a href="{{ url_for('courses.course_lesson_new', course_id=course.course_id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-700 border-b-[4px] bg-emerald-600 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(5,150,105,0.2)] transition-all hover:bg-emerald-500 active:translate-y-[2px] active:border-b-2 no-underline">＋ Урок</a>
-        <a href="{{ url_for('courses.module_new', course_id=course.course_id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(79,70,229,0.2)] transition-all hover:bg-indigo-500 active:translate-y-[2px] active:border-b-2 no-underline">＋ Модуль</a>
-        {% endif %}
-      </div>
-    </div>
-    <div class="mt-7 grid gap-4 md:grid-cols-[1fr_1fr_160px]">
-      <article class="rounded-[1.5rem] border-2 border-indigo-100 bg-indigo-50 p-5"><p class="text-xs font-black uppercase tracking-wider text-indigo-500">Цель</p><p class="mt-2 font-bold leading-6 text-slate-800">{{ course.learning_goal or 'Цель пока не задана.' }}</p></article>
-      <article class="rounded-[1.5rem] border-2 border-emerald-100 bg-emerald-50 p-5"><p class="text-xs font-black uppercase tracking-wider text-emerald-600">Результат</p><p class="mt-2 font-bold leading-6 text-slate-800">{{ course.expected_result or 'Ожидаемый результат пока не задан.' }}</p></article>
-      <article class="rounded-[1.5rem] border-2 border-slate-200 bg-white p-5"><p class="text-xs font-black uppercase tracking-wider text-slate-400">Программа</p><p class="mt-2 text-3xl font-black text-slate-900">{{ completed_lessons }}/{{ total_lessons }}</p><p class="mt-1 text-xs font-bold text-slate-500">занятий завершено · {{ mastery_percent }}% освоения</p></article>
-    </div>
-  </section>
 
-  {% if latest_adaptive_outcome and latest_adaptive_outcome.adaptive_diff_summary %}
-  {% set adiff = latest_adaptive_outcome.adaptive_diff_summary %}
-  <section class="rounded-[2rem] border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/70 via-white to-sky-50/50 p-6 shadow-[0_4px_0_#C7D2FE] sm:p-7">
-    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div class="flex items-center gap-3">
-        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-indigo-200 bg-indigo-100 text-lg">⚡</span>
+    <!-- Top Hero Card -->
+    <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
+      <div class="flex flex-col gap-6 xl:flex-row xl:justify-between">
         <div>
-          <div class="flex items-center gap-2">
-            <h2 class="text-lg font-black text-slate-900">Курс автоматически адаптирован</h2>
-            <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-black text-indigo-700">После последнего урока</span>
+          <div class="flex items-center gap-2 mb-2">
+            {% if is_master %}
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-800 text-xs font-black uppercase tracking-wider">
+                <i class="ph-bold ph-bookmark-simple"></i> Базовый мастер-курс (Шаблон)
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-black uppercase tracking-wider">
+                <i class="ph-bold ph-user"></i> Индивидуальная программа · {{ student.name if student else 'Ученик' }}
+              </span>
+            {% endif %}
+
+            <span class="rounded-lg border px-2.5 py-0.5 text-xs font-black {% if course.status == 'archived' %}border-amber-200 bg-amber-100 text-amber-800{% else %}border-emerald-200 bg-emerald-100 text-emerald-800{% endif %}">
+              {{ 'Архив' if course.status == 'archived' else 'Активен' }}
+            </span>
           </div>
-          <p class="mt-0.5 text-xs font-bold text-slate-500">
-            Оценка понимания: <span class="text-slate-800">{{ latest_adaptive_outcome.comprehension_score or '—' }}/5</span> ·
-            Самостоятельность: <span class="text-slate-800">{% if latest_adaptive_outcome.independence_level == 'high' %}высокая{% elif latest_adaptive_outcome.independence_level == 'medium' %}средняя{% elif latest_adaptive_outcome.independence_level == 'low' %}низкая{% else %}не указана{% endif %}</span> ·
-            Темп: <span class="text-slate-800">{% if latest_adaptive_outcome.pacing == 'optimal' %}комфортный{% elif latest_adaptive_outcome.pacing == 'too_fast' %}спешили{% elif latest_adaptive_outcome.pacing == 'needs_slowdown' %}требует замедления{% else %}не указан{% endif %}</span>
+
+          <h1 class="text-3xl font-black text-slate-900 sm:text-4xl tracking-tight">{{ course.title }}</h1>
+          <p class="mt-2 text-sm font-black text-indigo-600 flex items-center gap-2">
+            <i class="ph-bold ph-graduation-cap"></i> {{ course.subject or 'Информатика' }}
+            {% if course.target_score %}
+              <span class="text-slate-400">·</span>
+              <span class="text-emerald-700">Цель: {{ course.target_score }}+ баллов</span>
+            {% endif %}
           </p>
+
+          {% if course.description %}
+            <p class="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-500">{{ course.description }}</p>
+          {% endif %}
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 self-start">
+          <a href="{{ url_for('courses.courses_catalog', tab='templates' if is_master else 'students') }}"
+             class="inline-flex items-center gap-2 rounded-xl border border-slate-200 border-b-[4px] bg-white px-4 py-2.5 text-sm font-black text-slate-700 shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[2px] active:border-b-2 no-underline">
+            <i class="ph-bold ph-arrow-left"></i> Каталог программ
+          </a>
+
+          {% if can_manage %}
+            {% if is_master %}
+              <!-- Master Course Action: Assign to Student -->
+              <button type="button" onclick="openAssignModal({{ course.course_id }}, '{{ course.title|e }}')"
+                      class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(79,70,229,0.2)] transition-all hover:bg-indigo-500 active:translate-y-[2px] active:border-b-2">
+                <i class="ph-bold ph-user-plus text-base"></i> Назначить ученику...
+              </button>
+
+              <!-- Duplicate Template -->
+              <form method="post" action="{{ url_for('courses.course_duplicate', course_id=course.course_id) }}" class="inline m-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 border-b-[4px] bg-white px-3.5 py-2.5 text-sm font-black text-slate-700 shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[2px] active:border-b-2">
+                  <i class="ph-bold ph-copy"></i> Дублировать
+                </button>
+              </form>
+
+              <!-- Export JSON -->
+              <a href="{{ url_for('courses.course_export_json', course_id=course.course_id) }}"
+                 class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 border-b-[4px] bg-white px-3.5 py-2.5 text-sm font-black text-slate-700 shadow-[0_2px_5px_rgba(0,0,0,0.05)] transition-all hover:bg-slate-50 active:translate-y-[2px] active:border-b-2 no-underline"
+                 title="Скачать структуру курса в формате JSON">
+                <i class="ph-bold ph-download-simple text-indigo-600"></i> Экспорт JSON
+              </a>
+            {% else %}
+              <form method="post" action="{{ url_for('courses.course_prepare_next_lesson', course_id=course.course_id) }}" class="inline m-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="inline-flex items-center gap-1.5 rounded-xl border border-amber-600 border-b-[4px] bg-amber-500 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(245,158,11,0.2)] transition-all hover:bg-amber-400 active:translate-y-[2px] active:border-b-2">
+                  <i class="ph-bold ph-lightning"></i> Подготовить следующий
+                </button>
+              </form>
+            {% endif %}
+
+            <a href="{{ url_for('courses.course_lesson_new', course_id=course.course_id) }}"
+               class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-700 border-b-[4px] bg-emerald-600 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(5,150,105,0.2)] transition-all hover:bg-emerald-500 active:translate-y-[2px] active:border-b-2 no-underline">
+              <i class="ph-bold ph-plus"></i> Урок
+            </a>
+
+            <a href="{{ url_for('courses.module_new', course_id=course.course_id) }}"
+               class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-4 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(79,70,229,0.2)] transition-all hover:bg-indigo-500 active:translate-y-[2px] active:border-b-2 no-underline">
+              <i class="ph-bold ph-folder-plus"></i> Модуль
+            </a>
+          {% endif %}
         </div>
       </div>
-      <div class="flex flex-wrap gap-2 text-xs font-bold">
-        {% if adiff.rebalance_stats and adiff.rebalance_stats.injected_review_items %}
-          <span class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-800">＋{{ adiff.rebalance_stats.injected_review_items }} на повторение</span>
+
+      <!-- Metrics Row -->
+      <div class="mt-7 grid gap-4 md:grid-cols-[1fr_1fr_200px]">
+        <article class="rounded-[1.5rem] border-2 border-indigo-100 bg-indigo-50 p-5">
+          <p class="text-xs font-black uppercase tracking-wider text-indigo-500 flex items-center gap-1">
+            <i class="ph-bold ph-crosshair"></i> Цель программы
+          </p>
+          <p class="mt-2 font-bold leading-6 text-slate-800">{{ course.learning_goal or 'Цель пока не задана в настройках.' }}</p>
+        </article>
+
+        <article class="rounded-[1.5rem] border-2 border-emerald-100 bg-emerald-50 p-5">
+          <p class="text-xs font-black uppercase tracking-wider text-emerald-600 flex items-center gap-1">
+            <i class="ph-bold ph-check-circle"></i> Планируемый результат
+          </p>
+          <p class="mt-2 font-bold leading-6 text-slate-800">{{ course.expected_result or 'Результат пока не задан в настройках.' }}</p>
+        </article>
+
+        <article class="rounded-[1.5rem] border-2 border-slate-200 bg-white p-5">
+          <p class="text-xs font-black uppercase tracking-wider text-slate-400">Объём курса</p>
+          <p class="mt-2 text-3xl font-black text-slate-900">
+            {% if is_master %}
+              {{ total_lessons }}
+            {% else %}
+              {{ completed_lessons }}/{{ total_lessons }}
+            {% endif %}
+          </p>
+          <p class="mt-1 text-xs font-bold text-slate-500">
+            {% if is_master %}
+              уроков в {{ modules|length }} модулях
+            {% else %}
+              завершено · {{ mastery_percent }}% освоено
+            {% endif %}
+          </p>
+        </article>
+      </div>
+    </section>
+
+    {% if latest_adaptive_outcome and latest_adaptive_outcome.adaptive_diff_summary %}
+    {% set adiff = latest_adaptive_outcome.adaptive_diff_summary %}
+    <section class="rounded-[2rem] border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/70 via-white to-sky-50/50 p-6 shadow-[0_4px_0_#C7D2FE] sm:p-7">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div class="flex items-center gap-3">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-indigo-200 bg-indigo-100 text-lg">
+            <i class="ph-bold ph-lightning text-indigo-600"></i>
+          </span>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg font-black text-slate-900">Курс автоматически адаптирован</h2>
+              <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-black text-indigo-700">После последнего урока</span>
+            </div>
+            <p class="mt-0.5 text-xs font-bold text-slate-500">
+              Оценка понимания: <span class="text-slate-800">{{ latest_adaptive_outcome.comprehension_score or '—' }}/5</span> ·
+              Самостоятельность: <span class="text-slate-800">{% if latest_adaptive_outcome.independence_level == 'high' %}высокая{% elif latest_adaptive_outcome.independence_level == 'medium' %}средняя{% elif latest_adaptive_outcome.independence_level == 'low' %}низкая{% else %}не указана{% endif %}</span> ·
+              Темп: <span class="text-slate-800">{% if latest_adaptive_outcome.pacing == 'optimal' %}комфортный{% elif latest_adaptive_outcome.pacing == 'too_fast' %}спешили{% elif latest_adaptive_outcome.pacing == 'needs_slowdown' %}требует замедления{% else %}не указан{% endif %}</span>
+            </p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs font-bold">
+          {% if adiff.rebalance_stats and adiff.rebalance_stats.injected_review_items %}
+            <span class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-800">＋{{ adiff.rebalance_stats.injected_review_items }} на повторение</span>
+          {% endif %}
+          {% if adiff.rebalance_stats and adiff.rebalance_stats.skipped_practice_items %}
+            <span class="rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-slate-700">⤼ {{ adiff.rebalance_stats.skipped_practice_items }} пропущено (освоено)</span>
+          {% endif %}
+          {% if adiff.skills_updated or adiff.calibrated_skills %}
+            <span class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800">✓ {{ (adiff.skills_updated or adiff.calibrated_skills)|length }} навыков пересчитано</span>
+          {% endif %}
+          {% if adiff.next_lesson %}
+            <span class="rounded-xl border border-indigo-200 bg-indigo-100 px-3 py-1.5 text-indigo-800">Следующий урок подготовлен</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if adiff.next_lesson and adiff.next_lesson.agenda %}
+        <div class="mt-4 rounded-xl border border-indigo-100 bg-white/80 p-3.5 text-xs">
+          <p class="font-black text-indigo-600 uppercase tracking-wider text-[10px]">Фокус следующего занятия:</p>
+          <p class="mt-1 font-bold text-slate-700 leading-5">{{ adiff.next_lesson.agenda }}</p>
+        </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- Skills Bank Bar -->
+    <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9]">
+      <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-200">
+        <div>
+          <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Банк навыков программы</p>
+          <h2 class="mt-1 text-xl font-black text-slate-900">
+            {{ course_skills_count }} {{ 'навык' if course_skills_count == 1 else ('навыка' if 2 <= course_skills_count <= 4 else 'навыков') }} в реестре
+          </h2>
+        </div>
+        {% if can_manage %}
+          <a href="{{ url_for('courses.course_skills_manage', course_id=course.course_id) }}"
+             class="bg-white hover:bg-slate-50 text-indigo-600 font-black px-4 py-2 rounded-xl border border-slate-200 border-b-[3px] shadow-xs active:border-b active:translate-y-[1px] transition text-xs no-underline inline-flex items-center gap-1.5">
+            <i class="ph-bold ph-gear"></i> Настроить банк навыков
+          </a>
         {% endif %}
-        {% if adiff.rebalance_stats and adiff.rebalance_stats.skipped_practice_items %}
-          <span class="rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-slate-700">⤼ {{ adiff.rebalance_stats.skipped_practice_items }} пропущено (освоено)</span>
-        {% endif %}
-        {% if adiff.skills_updated or adiff.calibrated_skills %}
-          <span class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800">✓ {{ (adiff.skills_updated or adiff.calibrated_skills)|length }} навыков пересчитано</span>
-        {% endif %}
-        {% if adiff.next_lesson %}
-          <span class="rounded-xl border border-indigo-200 bg-indigo-100 px-3 py-1.5 text-indigo-800">🎯 Следующий урок подготовлен</span>
-        {% endif %}
+      </div>
+
+      {% if course_skills %}
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {% for skill in course_skills[:8] %}
+            {% set row = skill_rows.get(skill.skill_id) if skill_rows else None %}
+            {% set mastery = row.mastery_percent if row else 0 %}
+            <article class="rounded-xl border border-slate-200 bg-white p-3">
+              <div class="flex items-start justify-between gap-1">
+                <span class="text-xs font-black text-slate-800 truncate">{{ skill.title }}</span>
+                {% if not is_master %}
+                  <span class="text-[11px] font-black text-indigo-600">{{ mastery }}%</span>
+                {% endif %}
+              </div>
+              <div class="mt-1 flex items-center gap-1 text-[10px] font-bold text-slate-400">
+                {% if skill.task_number %}<span>Задание №{{ skill.task_number }}</span> · {% endif %}
+                <span>{{ skill.topic or 'Тема' }}</span>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="mt-3 py-4 text-center">
+          <p class="text-xs font-semibold text-slate-400">Навыки ещё не добавлены в банк курса.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    <!-- Modules Accordion Header -->
+    <div class="flex items-center justify-between gap-4 pt-2">
+      <div class="flex items-center gap-2">
+        <h2 class="text-2xl font-black text-slate-900">Модули курса</h2>
+        <span class="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-xs font-black">
+          {{ modules|length }}
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="toggleAllModules(true)"
+                class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+          Развернуть все
+        </button>
+        <button type="button" onclick="toggleAllModules(false)"
+                class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+          Свернуть все
+        </button>
       </div>
     </div>
-    {% if adiff.next_lesson and adiff.next_lesson.agenda %}
-      <div class="mt-4 rounded-xl border border-indigo-100 bg-white/80 p-3.5 text-xs">
-        <p class="font-black text-indigo-600 uppercase tracking-wider text-[10px]">Фокус следующего занятия:</p>
-        <p class="mt-1 font-bold text-slate-700 leading-5">{{ adiff.next_lesson.agenda }}</p>
-      </div>
-    {% endif %}
-  </section>
-  {% endif %}
 
-  <section class="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]">
-    <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9]">
-      <div class="flex items-center justify-between gap-3"><div><p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Следующие шаги</p><h2 class="mt-2 text-xl font-black text-slate-900">Маршрут на ближайшее время</h2></div><a href="{{ url_for('courses.course_weekly_plan', course_id=course.course_id, view=1) }}" class="text-xs font-black text-indigo-600 no-underline">Весь план →</a></div>
-      {% if route_items %}<div class="mt-4 space-y-2">{% for item in route_items[:4] %}<div class="flex items-center justify-between gap-3 rounded-xl border-2 border-slate-100 bg-[#F4F7FA] px-3 py-2"><span class="min-w-0 truncate text-sm font-bold text-slate-700">{{ item.title }}</span><span class="shrink-0 text-[11px] font-black text-slate-400">{{ item.due_at.strftime('%d.%m') if item.due_at else 'без даты' }}</span></div>{% endfor %}</div>{% else %}<p class="mt-4 rounded-xl border-2 border-dashed border-slate-200 p-4 text-sm font-bold text-slate-400">План пока пуст — добавьте элемент или соберите маршрут.</p>{% endif %}
-    </article>
-    <article class="rounded-[2rem] border-2 border-indigo-100 bg-indigo-50 p-6 shadow-[0_4px_0_#C7D2FE]"><p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Прогноз</p><h2 class="mt-2 text-xl font-black text-slate-900">{{ forecast_value if forecast_value is not none else '—' }}{% if forecast_value is not none %} баллов{% endif %}</h2><p class="mt-2 text-sm font-bold text-indigo-700">{% if forecast_range and forecast_range[0] is not none %}диапазон {{ forecast_range[0] }}–{{ forecast_range[1] }}{% else %}Недостаточно данных для прогноза{% endif %}</p><p class="mt-3 text-xs font-medium text-slate-600">Ориентир обновляется по освоению навыков, а не заменяет результат экзамена.</p></article>
-    {% if can_manage %}<article class="rounded-[2rem] border-2 border-amber-100 bg-amber-50 p-6 shadow-[0_4px_0_#FDE68A]"><div class="flex items-center justify-between gap-2"><p class="text-xs font-black uppercase tracking-[.16em] text-amber-700">Внимание</p><a href="{{ url_for('courses.course_attention', course_id=course.course_id, view=1) }}" class="text-xs font-black text-amber-800 no-underline">Открыть →</a></div><h2 class="mt-2 text-xl font-black text-slate-900">{{ (attention_counts.errors + attention_counts.reviews + attention_counts.overdue) if attention_counts else 0 }} сигналов</h2><p class="mt-2 text-sm font-bold text-amber-800">Ошибки: {{ attention_counts.errors if attention_counts else 0 }} · Повторить: {{ attention_counts.reviews if attention_counts else 0 }} · Просрочено: {{ attention_counts.overdue if attention_counts else 0 }}</p></article>{% endif %}
-  </section>
+    <!-- Modules List (Accordion) -->
+    {% if modules %}
+      <section class="space-y-4" id="modulesAccordion">
+        {% for module in modules %}
+          {% set mod_lessons = lessons_by_module.get(module.module_id, []) %}
+          <article id="module-{{ module.module_id }}"
+                   class="rounded-[2rem] border-2 {% if module.is_control_exam %}border-amber-300 bg-amber-50/20 shadow-[0_4px_0_#FDE68A]{% else %}border-slate-200 bg-[#F4F7FA] shadow-[0_4px_0_#DAE1E9]{% endif %} overflow-hidden transition">
 
-  <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9]"><div class="flex items-center justify-between gap-3"><div><p class="text-xs font-black uppercase tracking-[.16em] text-amber-600">Milestones маршрута</p><h2 class="mt-2 text-xl font-black text-slate-900">Достижения по факту</h2></div><a href="{{ url_for('courses.course_milestones', course_id=course.course_id) }}" class="text-xs font-black text-indigo-600 no-underline">JSON →</a></div><div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{% for milestone in milestones %}<div class="rounded-xl border-2 {% if milestone.achieved %}border-emerald-200 bg-emerald-50{% else %}border-slate-200 bg-white{% endif %} p-3"><p class="text-sm font-black {% if milestone.achieved %}text-emerald-800{% else %}text-slate-500{% endif %}">{{ '✓ ' if milestone.achieved else '○ ' }}{{ milestone.title }}</p></div>{% endfor %}</div></section>
+            <!-- Accordion Header -->
+            <div class="p-6 cursor-pointer select-none flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
+                 onclick="toggleModule({{ module.module_id }})">
+              <div class="flex items-start gap-4">
+                <button type="button" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center shrink-0 transition"
+                        id="chevron-{{ module.module_id }}">
+                  <i class="ph-bold ph-caret-down"></i>
+                </button>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="text-xs font-black uppercase tracking-wider text-indigo-600">
+                      Модуль {{ loop.index }}
+                    </span>
+                    {% if module.is_control_exam %}
+                      <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-black">
+                        <i class="ph-bold ph-shield-check"></i> Контрольный рубеж / Пробник
+                      </span>
+                    {% endif %}
+                    <span class="text-xs font-bold text-slate-400">
+                      {{ mod_lessons|length }} {{ 'урок' if mod_lessons|length == 1 else ('урока' if 2 <= mod_lessons|length <= 4 else 'уроков') }}
+                    </span>
+                  </div>
 
-  <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9]">
-    <div class="flex items-center justify-between gap-3"><div><p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Карта знаний</p><h2 class="mt-2 text-2xl font-black text-slate-900">Освоение навыков</h2></div>{% if can_manage %}<a href="{{ url_for('courses.course_skills_manage', course_id=course.course_id) }}" class="rounded-xl border-2 border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 no-underline">Настроить навыки</a>{% else %}<a href="{{ url_for('courses.course_skills', course_id=course.course_id, view=1) }}" class="rounded-xl border-2 border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 no-underline">Открыть карту</a>{% endif %}</div>
-    {% if course_skills %}<div class="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-      {% for skill in course_skills[:12] %}{% set row = skill_rows.get(skill.skill_id) %}{% set mastery = row.mastery_percent if row else 0 %}
-        <article class="rounded-2xl border-2 border-slate-200 bg-white p-4"><div class="flex items-start justify-between gap-2"><p class="text-sm font-black text-slate-800">{{ skill.title }}</p><span class="text-xs font-black text-indigo-600">{{ mastery }}%</span></div><div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-indigo-500" style="width:{{ mastery }}%"></div></div><p class="mt-2 text-[11px] font-bold text-slate-400">{{ skill.topic or 'Без раздела' }}{% if row %} · {{ {'not_started':'Не начато','learning':'Изучается','reinforcing':'Закрепляется','mastered':'Освоено','needs_review':'Нужно повторить'}.get(row.state, row.state) }}{% endif %}</p></article>
-      {% endfor %}
-    </div>{% else %}
-      <div class="mt-4 rounded-[1.5rem] border-2 border-dashed border-indigo-200 bg-white p-6 sm:p-7 text-center">
-        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-xl font-black text-indigo-600 mb-3">🎯</div>
-        <p class="text-base font-black text-slate-800">В программе ещё нет привязанных навыков</p>
-        <p class="mx-auto mt-2 max-w-lg text-sm font-medium leading-6 text-slate-500">{% if can_manage %}Добавьте проверяемые навыки или привяжите их к урокам: тогда система сможет рассчитывать шкалу мастерства, формировать аналитику и автоматически подбирать задачи.{% else %}Преподаватель ещё настраивает программу.{% endif %}</p>
-        {% if can_manage %}
-        <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
-          <a href="{{ url_for('courses.course_skills_manage', course_id=course.course_id) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-700 border-b-[4px] bg-indigo-600 px-5 py-2.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(79,70,229,0.2)] transition-all hover:bg-indigo-500 active:translate-y-[2px] active:border-b-2 no-underline">＋ Добавить навыки курса</a>
+                  <h3 class="text-xl font-black text-slate-900 tracking-tight">{{ module.title }}</h3>
+
+                  {% if module.learning_result %}
+                    <p class="mt-1 text-xs font-bold text-emerald-700 flex items-center gap-1">
+                      <i class="ph-bold ph-check"></i> Результат: {{ module.learning_result }}
+                    </p>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Module Actions (stop click propagation) -->
+              {% if can_manage %}
+                <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation()">
+                  <a href="{{ url_for('courses.course_lesson_new', course_id=course.course_id, module_id=module.module_id) }}"
+                     class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-3.5 py-2 rounded-xl border border-indigo-700 border-b-[3px] text-xs inline-flex items-center gap-1.5 no-underline transition">
+                    <i class="ph-bold ph-plus"></i> Урок
+                  </a>
+                  <a href="{{ url_for('courses.module_edit', course_id=course.course_id, module_id=module.module_id) }}"
+                     class="bg-white hover:bg-slate-50 text-slate-700 font-bold px-3 py-2 rounded-xl border border-slate-200 text-xs inline-flex items-center gap-1 no-underline transition">
+                    <i class="ph-bold ph-gear"></i> Настроить
+                  </a>
+                </div>
+              {% endif %}
+            </div>
+
+            <!-- Accordion Body -->
+            <div id="module-body-{{ module.module_id }}" class="px-6 pb-6 pt-2 border-t border-slate-200/80">
+              {% if module.description %}
+                <p class="text-xs font-medium text-slate-500 mb-4">{{ module.description }}</p>
+              {% endif %}
+
+              <div class="grid gap-3 lg:grid-cols-2">
+                {% for lesson in mod_lessons %}
+                  {{ lesson_card(lesson) }}
+                {% else %}
+                  <div class="lg:col-span-2 rounded-[1.5rem] border-2 border-dashed border-slate-200 bg-white p-6 text-center text-sm font-semibold text-slate-400">
+                    В этом модуле пока нет уроков. Нажмите «+ Урок», чтобы добавить первый.
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+    {% else %}
+      <section class="rounded-[2rem] border-2 border-dashed border-slate-300 bg-[#F4F7FA] p-12 text-center shadow-[0_4px_0_#DAE1E9]">
+        <div class="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center mx-auto mb-3 text-2xl">
+          <i class="ph-bold ph-folder-plus"></i>
         </div>
+        <h3 class="text-xl font-black text-slate-900">Соберите программу из модулей</h3>
+        <p class="mx-auto mt-2 max-w-lg text-sm font-medium leading-6 text-slate-500">
+          Добавьте первый учебный блок (например: «Системы счисления», «Кодирование», «Программирование»).
+        </p>
+        {% if can_manage %}
+          <a href="{{ url_for('courses.module_new', course_id=course.course_id) }}"
+             class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b active:translate-y-[2px] transition mt-5 inline-flex items-center gap-2 no-underline text-sm">
+            <i class="ph-bold ph-plus"></i> Добавить модуль
+          </a>
         {% endif %}
-      </div>
+      </section>
     {% endif %}
-  </section>
 
-  {% if modules %}
-    <section class="space-y-5">
-      {% for module in modules %}
-        <article id="module-{{ module.module_id }}" class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9]">
-          <div class="flex flex-col gap-4 lg:flex-row lg:justify-between">
-            <div><p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Модуль {{ loop.index }}</p><h2 class="mt-2 text-2xl font-black text-slate-900">{{ module.title }}</h2>{% if module.description %}<p class="mt-2 text-sm font-medium leading-6 text-slate-500">{{ module.description }}</p>{% endif %}{% if module.learning_result %}<p class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">Результат: {{ module.learning_result }}</p>{% endif %}</div>
-            {% if can_manage %}<div class="flex h-fit flex-wrap gap-2"><a href="{{ url_for('courses.module_edit', course_id=course.course_id, module_id=module.module_id) }}" class="rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 no-underline">Настроить модуль</a><a href="{{ url_for('courses.course_lesson_new', course_id=course.course_id, module_id=module.module_id) }}" class="btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white no-underline">＋ Урок</a></div>{% endif %}
+    <!-- Unassigned Lessons (Drafts) -->
+    {% if unassigned_lessons %}
+      <section class="rounded-[2rem] border-2 border-dashed border-amber-200 bg-amber-50/50 p-6 shadow-[0_4px_0_#FDE68A]">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <p class="text-xs font-black uppercase tracking-[.16em] text-amber-700">Черновики программы</p>
+            <h3 class="text-lg font-black text-slate-900">Уроки без модуля</h3>
           </div>
-          <div class="mt-5 grid gap-3 lg:grid-cols-2">{% for lesson in lessons_by_module.get(module.module_id, []) %}{{ lesson_card(lesson) }}{% else %}<div class="rounded-[1.5rem] border-2 border-dashed border-slate-200 bg-white p-5 text-sm font-medium text-slate-500">Уроков в модуле ещё нет.</div>{% endfor %}</div>
-        </article>
-      {% endfor %}
-    </section>
-  {% else %}
-    <section class="rounded-[2rem] border-2 border-dashed border-slate-300 bg-[#F4F7FA] p-12 text-center shadow-[0_4px_0_#DAE1E9]"><h2 class="text-2xl font-black text-slate-900">Соберите программу из модулей</h2><p class="mx-auto mt-3 max-w-lg text-sm font-medium leading-6 text-slate-500">Добавьте первый учебный блок, а уроки без модуля пока останутся в черновиках ниже.</p>{% if can_manage %}<a href="{{ url_for('courses.module_new', course_id=course.course_id) }}" class="btn-3d mt-6 inline-flex rounded-xl border-2 border-indigo-700 bg-indigo-600 px-5 py-3 font-black text-white no-underline">Добавить модуль</a>{% endif %}</section>
-  {% endif %}
+          <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-black">
+            {{ unassigned_lessons|length }}
+          </span>
+        </div>
+        <div class="grid gap-3 lg:grid-cols-2">
+          {% for lesson in unassigned_lessons %}
+            {{ lesson_card(lesson, True) }}
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
 
-  {% if unassigned_lessons %}
-    <section class="rounded-[2rem] border-2 border-dashed border-amber-200 bg-amber-50 p-6 shadow-[0_4px_0_#FDE68A]"><p class="text-xs font-black uppercase tracking-[.16em] text-amber-700">Черновики программы</p><h2 class="mt-2 text-xl font-black text-slate-900">Уроки без модуля</h2><p class="mt-2 text-sm font-medium text-amber-800">Они сохранены в программе. Назначьте модуль, когда структура курса будет готова.</p><div class="mt-4 grid gap-3 lg:grid-cols-2">{% for lesson in unassigned_lessons %}{{ lesson_card(lesson, True) }}{% endfor %}</div></section>
-  {% endif %}
   </div>
 </main>
-{% if can_manage %}<a href="{{ url_for('courses.course_plan_wizard', course_id=course.course_id) }}" class="fixed bottom-6 right-6 btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-600 px-5 py-3 font-black text-white no-underline">⚙ Собрать маршрут</a>{% endif %}
+
+<!-- Modal: Assign Course to Student (Fork) -->
+{% if is_master and can_manage %}
+<div id="assignCourseModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-[2rem] border-2 border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.15)] max-w-lg w-full p-6 sm:p-8 animate-in fade-in duration-200">
+    <div class="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-xl">
+          <i class="ph-bold ph-user-plus"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-900">Назначить курс ученику</h3>
+          <p id="assignCourseTitleText" class="text-xs font-bold text-indigo-600 truncate max-w-xs">{{ course.title }}</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeAssignModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="ph-bold ph-x text-sm"></i>
+      </button>
+    </div>
+
+    <form id="assignCourseForm" method="post" action="{{ url_for('courses.course_assign_to_student', course_id=course.course_id) }}" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Ученик *</label>
+        <select name="student_id" required
+                class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition">
+          <option value="" disabled selected>Выберите ученика из списка...</option>
+          {% for st in all_students %}
+            <option value="{{ st.student_id }}">{{ st.name }} ({{ st.class_grade or '11' }} класс)</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Дата первого занятия *</label>
+        <input type="date" name="start_date" id="assignStartDate" required
+               class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+          Слоты уроков в неделю (дни и время)
+        </label>
+        <p class="text-xs font-medium text-slate-400 mb-3">Дни недели, по которым распределятся все уроки программы</p>
+
+        <div id="slotsContainer" class="space-y-2 mb-3">
+          <div class="slot-row flex items-center gap-2 p-2 bg-[#F4F7FA] rounded-xl border border-slate-200">
+            <select name="slot_weekday" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex-1">
+              <option value="0">Понедельник</option>
+              <option value="1" selected>Вторник</option>
+              <option value="2">Среда</option>
+              <option value="3">Четверг</option>
+              <option value="4">Пятница</option>
+              <option value="5">Суббота</option>
+              <option value="6">Воскресенье</option>
+            </select>
+            <input type="time" name="slot_time" value="18:00" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 w-28">
+            <button type="button" onclick="removeSlotRow(this)" class="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+
+          <div class="slot-row flex items-center gap-2 p-2 bg-[#F4F7FA] rounded-xl border border-slate-200">
+            <select name="slot_weekday" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex-1">
+              <option value="0">Понедельник</option>
+              <option value="1">Вторник</option>
+              <option value="2">Среда</option>
+              <option value="3">Четверг</option>
+              <option value="4" selected>Пятница</option>
+              <option value="5">Суббота</option>
+              <option value="6">Воскресенье</option>
+            </select>
+            <input type="time" name="slot_time" value="16:00" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 w-28">
+            <button type="button" onclick="removeSlotRow(this)" class="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" onclick="addSlotRow()" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1 py-1">
+          <i class="ph-bold ph-plus"></i> Добавить ещё день в неделю
+        </button>
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        <button type="button" onclick="closeAssignModal()"
+                class="px-5 py-2.5 rounded-xl border border-slate-200 font-black text-slate-600 hover:bg-slate-50 transition text-sm">
+          Отмена
+        </button>
+        <button type="submit"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b active:translate-y-[3px] transition-all text-sm">
+          Сгенерировать курс
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<script>
+// Module Accordion
+function toggleModule(moduleId) {
+  const body = document.getElementById(`module-body-${moduleId}`);
+  const chevron = document.getElementById(`chevron-${moduleId}`);
+  if (!body) return;
+
+  if (body.classList.contains('hidden')) {
+    body.classList.remove('hidden');
+    if (chevron) chevron.innerHTML = '<i class="ph-bold ph-caret-down"></i>';
+  } else {
+    body.classList.add('hidden');
+    if (chevron) chevron.innerHTML = '<i class="ph-bold ph-caret-right"></i>';
+  }
+}
+
+function toggleAllModules(expand) {
+  document.querySelectorAll('[id^="module-body-"]').forEach(body => {
+    const id = body.id.replace('module-body-', '');
+    const chevron = document.getElementById(`chevron-${id}`);
+    if (expand) {
+      body.classList.remove('hidden');
+      if (chevron) chevron.innerHTML = '<i class="ph-bold ph-caret-down"></i>';
+    } else {
+      body.classList.add('hidden');
+      if (chevron) chevron.innerHTML = '<i class="ph-bold ph-caret-right"></i>';
+    }
+  });
+}
+
+// Assign Modal
+function openAssignModal(courseId, courseTitle) {
+  const modal = document.getElementById('assignCourseModal');
+  if (!modal) return;
+  const startDateInput = document.getElementById('assignStartDate');
+  if (startDateInput && !startDateInput.value) {
+    const today = new Date();
+    today.setDate(today.getDate() + 1);
+    startDateInput.value = today.toISOString().split('T')[0];
+  }
+  modal.classList.remove('hidden');
+}
+
+function closeAssignModal() {
+  const modal = document.getElementById('assignCourseModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function addSlotRow() {
+  const container = document.getElementById('slotsContainer');
+  const div = document.createElement('div');
+  div.className = 'slot-row flex items-center gap-2 p-2 bg-[#F4F7FA] rounded-xl border border-slate-200';
+  div.innerHTML = `
+    <select name="slot_weekday" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex-1">
+      <option value="0">Понедельник</option>
+      <option value="1">Вторник</option>
+      <option value="2">Среда</option>
+      <option value="3">Четверг</option>
+      <option value="4">Пятница</option>
+      <option value="5">Суббота</option>
+      <option value="6">Воскресенье</option>
+    </select>
+    <input type="time" name="slot_time" value="18:00" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 w-28">
+    <button type="button" onclick="removeSlotRow(this)" class="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center">
+      <i class="ph-bold ph-trash"></i>
+    </button>
+  `;
+  container.appendChild(div);
+}
+
+function removeSlotRow(btn) {
+  const rows = document.querySelectorAll('.slot-row');
+  if (rows.length > 1) {
+    btn.closest('.slot-row').remove();
+  }
+}
+</script>
 {% endblock %}

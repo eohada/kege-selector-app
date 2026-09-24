@@ -1,0 +1,594 @@
+{% extends 'sandbox/layout_teacher.html' %}
+{% block title %}Каталог программ · BooStudy{% endblock %}
+{% set active_page = 'courses' %}
+
+{% block sandbox_content %}
+<div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
+  <!-- Top Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black uppercase tracking-wider mb-2">
+        <i class="ph-bold ph-graduation-cap"></i> Методический центр
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Программы обучения</h1>
+      <p class="text-sm font-semibold text-slate-500 mt-1">Базовые шаблоны курсов и индивидуальные траектории учеников</p>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button type="button" onclick="openImportModal()" class="bg-white hover:bg-slate-50 text-slate-700 font-bold px-4 py-3 rounded-xl border border-slate-300 border-b-[4px] shadow-sm active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center gap-2">
+        <i class="ph-bold ph-upload-simple text-lg text-indigo-600"></i>
+        <span>Импорт JSON</span>
+      </button>
+
+      <button type="button" onclick="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center gap-2">
+        <i class="ph-bold ph-plus-circle text-lg"></i>
+        <span>Создать базовый курс</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Pill-Tabs Filter Controller -->
+  <div class="mb-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+    <div class="flex items-center p-1.5 bg-[#F4F7FA] rounded-[1.25rem] border border-slate-200 shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] overflow-x-auto">
+      <a href="{{ url_for('courses.courses_catalog', tab='templates') }}"
+         class="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2.5 transition-all no-underline {% if active_tab == 'templates' %}bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-black{% else %}text-slate-600 hover:text-slate-900{% endif %}">
+        <i class="ph-bold ph-books"></i>
+        <span>Базовые шаблоны</span>
+        <span class="w-5 h-5 rounded-full {% if active_tab == 'templates' %}bg-indigo-100 text-indigo-700 border border-indigo-200{% else %}bg-slate-200 text-slate-600{% endif %} flex justify-center items-center text-[10px] font-black">
+          {{ template_courses|length }}
+        </span>
+      </a>
+
+      <a href="{{ url_for('courses.courses_catalog', tab='students') }}"
+         class="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2.5 transition-all no-underline {% if active_tab == 'students' %}bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-black{% else %}text-slate-600 hover:text-slate-900{% endif %}">
+        <i class="ph-bold ph-users-three"></i>
+        <span>Курсы учеников</span>
+        <span class="w-5 h-5 rounded-full {% if active_tab == 'students' %}bg-indigo-100 text-indigo-700 border border-indigo-200{% else %}bg-slate-200 text-slate-600{% endif %} flex justify-center items-center text-[10px] font-black">
+          {{ student_courses|length }}
+        </span>
+      </a>
+    </div>
+
+    <div class="text-xs font-bold text-slate-400 flex items-center gap-1.5 self-center sm:self-auto">
+      <i class="ph-bold ph-info"></i>
+      {% if active_tab == 'templates' %}
+        Шаблоны не привязаны к конкретному ученику и не содержат дат
+      {% else %}
+        Индивидуальные курсы привязаны к ученикам и содержат расписание
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tab 1: Templates -->
+  {% if active_tab == 'templates' %}
+    {% if template_courses %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for course in template_courses %}
+          <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 flex flex-col justify-between transition hover:border-slate-300">
+            <div>
+              <div class="flex items-start justify-between gap-3 mb-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black uppercase tracking-wider">
+                  <i class="ph-bold ph-bookmark-simple"></i> Шаблон
+                </span>
+                {% if course.target_score %}
+                  <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black">
+                    <i class="ph-bold ph-target"></i> {{ course.target_score }}+ баллов
+                  </span>
+                {% endif %}
+              </div>
+
+              <h2 class="text-lg font-black text-slate-900 tracking-tight mb-2 hover:text-indigo-600 transition">
+                <a href="{{ url_for('courses.course_view', course_id=course.course_id) }}" class="no-underline text-inherit">
+                  {{ course.title }}
+                </a>
+              </h2>
+
+              <p class="text-xs font-semibold text-slate-500 line-clamp-2 mb-4">
+                {{ course.description or course.learning_goal or 'Базовая методическая программа подготовки к экзамену.' }}
+              </p>
+
+              <!-- Meta pills -->
+              <div class="flex flex-wrap items-center gap-2 mb-6">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                  <i class="ph-bold ph-folders text-slate-400"></i>
+                  Модулей: {{ course.modules|length }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                  <i class="ph-bold ph-chalkboard-teacher text-slate-400"></i>
+                  Уроков: {{ course.lessons|length }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                  <i class="ph-bold ph-clock text-slate-400"></i>
+                  {{ course.default_lesson_duration or 60 }} мин
+                </span>
+              </div>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="pt-4 border-t border-slate-200/80 flex flex-col gap-2">
+              <a href="{{ url_for('courses.course_view', course_id=course.course_id) }}"
+                 class="w-full bg-white hover:bg-slate-50 text-indigo-600 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] shadow-[0_2px_4px_rgba(0,0,0,0.04)] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center justify-center gap-2 no-underline text-sm">
+                <i class="ph-bold ph-folder-open"></i>
+                <span>Открыть программу</span>
+              </a>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button"
+                        onclick="openAssignModal({{ course.course_id }}, '{{ course.title|e }}')"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-3 py-2 rounded-xl border border-indigo-700 border-b-[3px] shadow-[0_2px_6px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center justify-center gap-1.5 text-xs">
+                  <i class="ph-bold ph-user-plus"></i>
+                  <span>Назначить</span>
+                </button>
+
+                <form method="post" action="{{ url_for('courses.course_duplicate', course_id=course.course_id) }}" class="m-0">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit"
+                          class="w-full bg-white hover:bg-slate-50 text-slate-700 font-black px-3 py-2 rounded-xl border border-slate-200 border-b-[3px] shadow-[0_2px_4px_rgba(0,0,0,0.04)] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center justify-center gap-1.5 text-xs">
+                    <i class="ph-bold ph-copy"></i>
+                    <span>Дублировать</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- Empty state for templates -->
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-12 text-center max-w-xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center mx-auto mb-4 text-3xl">
+          <i class="ph-bold ph-books"></i>
+        </div>
+        <h3 class="text-xl font-black text-slate-800 mb-2">Нет базовых программ</h3>
+        <p class="text-sm font-semibold text-slate-500 mb-6">Создайте первый базовый шаблон курса, наполните его модулями, уроками и навыками, чтобы затем быстро назначать ученикам.</p>
+        <button type="button" onclick="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all inline-flex items-center gap-2">
+          <i class="ph-bold ph-plus-circle text-lg"></i>
+          <span>Создать базовый курс</span>
+        </button>
+      </div>
+    {% endif %}
+  {% else %}
+    <!-- Tab 2: Students Courses -->
+    {% if student_courses %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for course in student_courses %}
+          <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 flex flex-col justify-between transition hover:border-slate-300">
+            <div>
+              <div class="flex items-center justify-between gap-3 mb-3">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black">
+                  <i class="ph-bold ph-user-check"></i> Курс ученика
+                </span>
+                <span class="text-xs font-bold text-slate-400">
+                  {{ course.updated_at.strftime('%d.%m.%Y') if course.updated_at else '' }}
+                </span>
+              </div>
+
+              <!-- Student block -->
+              {% if course.student %}
+                <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 mb-4">
+                  <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-black text-sm flex items-center justify-center border border-indigo-200">
+                    {{ course.student.name[:2]|upper }}
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-sm font-black text-slate-900 truncate">{{ course.student.name }}</p>
+                    <p class="text-xs font-bold text-slate-400">
+                      {{ course.student.class_grade or '11' }} класс · Цель: {{ course.target_score or course.student.target_score or '80+' }} б.
+                    </p>
+                  </div>
+                </div>
+              {% endif %}
+
+              <h2 class="text-base font-black text-slate-900 tracking-tight mb-2 hover:text-indigo-600 transition">
+                <a href="{{ url_for('courses.course_view', course_id=course.course_id, student_id=course.student_id) }}" class="no-underline text-inherit">
+                  {{ course.title }}
+                </a>
+              </h2>
+
+              <!-- Progress bar -->
+              {% set total_cnt = course.lessons|length %}
+              {% set completed_cnt = course.lessons|selectattr('status', 'equalto', 'completed')|list|length %}
+              {% set pct = (completed_cnt * 100 / total_cnt)|round|int if total_cnt > 0 else 0 %}
+              <div class="mb-4">
+                <div class="flex items-center justify-between text-xs font-black text-slate-600 mb-1.5">
+                  <span>Прогресс</span>
+                  <span>{{ completed_cnt }} из {{ total_cnt }} уроков ({{ pct }}%)</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                  <div class="bg-indigo-600 h-2.5 rounded-full transition-all" style="width: {{ pct }}%"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Actions -->
+            <div class="pt-4 border-t border-slate-200/80 flex items-center gap-2">
+              <a href="{{ url_for('courses.course_view', course_id=course.course_id, student_id=course.student_id) }}"
+                 class="flex-1 bg-white hover:bg-slate-50 text-indigo-600 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] shadow-[0_2px_4px_rgba(0,0,0,0.04)] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center justify-center gap-2 no-underline text-xs">
+                <i class="ph-bold ph-path"></i>
+                <span>Траектория</span>
+              </a>
+
+              {% if course.student_id %}
+                <a href="{{ url_for('students.student_profile', student_id=course.student_id) }}"
+                   class="bg-white hover:bg-slate-50 text-slate-700 font-black px-3 py-2.5 rounded-xl border border-slate-200 border-b-[3px] shadow-[0_2px_4px_rgba(0,0,0,0.04)] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center justify-center gap-1 text-xs no-underline"
+                   title="Профиль ученика">
+                  <i class="ph-bold ph-user text-sm"></i>
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <!-- Empty state for students -->
+      <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-12 text-center max-w-xl mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center mx-auto mb-4 text-3xl">
+          <i class="ph-bold ph-users-three"></i>
+        </div>
+        <h3 class="text-xl font-black text-slate-800 mb-2">Нет индивидуальных курсов</h3>
+        <p class="text-sm font-semibold text-slate-500 mb-6">Перейдите на вкладку «Базовые шаблоны» и нажмите кнопку «Назначить ученику», чтобы автоматически сформировать персональное расписание.</p>
+        <a href="{{ url_for('courses.courses_catalog', tab='templates') }}" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all inline-flex items-center gap-2 no-underline">
+          <i class="ph-bold ph-books text-lg"></i>
+          <span>Перейти к шаблонам</span>
+        </a>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+<!-- Modal 1: Create Master Course -->
+<div id="createCourseModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-[2rem] border-2 border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.15)] max-w-lg w-full p-6 sm:p-8 animate-in fade-in duration-200">
+    <div class="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-xl">
+          <i class="ph-bold ph-plus-circle"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-900">Новый базовый курс</h3>
+          <p class="text-xs font-bold text-slate-400">Шаблон методической программы</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeCreateModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="ph-bold ph-x text-sm"></i>
+      </button>
+    </div>
+
+    <form method="post" action="{{ url_for('courses.courses_catalog', tab='templates') }}" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Название программы *</label>
+        <input type="text" name="title" required placeholder="Например: ЕГЭ Информатика 2025/2026 (Полный курс)"
+               class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Предмет</label>
+          <input type="text" name="subject" value="Информатика"
+                 class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition">
+        </div>
+        <div>
+          <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Целевой балл</label>
+          <input type="number" name="target_score" value="80" min="40" max="100"
+                 class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Длительность урока по умолчанию (мин)</label>
+        <input type="number" name="default_lesson_duration" value="60" min="15" max="240" step="5"
+               class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Описание программы</label>
+        <textarea name="description" rows="3" placeholder="Краткое описание методики, структуры курса и планируемых результатов"
+                  class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition"></textarea>
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        <button type="button" onclick="closeCreateModal()"
+                class="px-5 py-2.5 rounded-xl border border-slate-200 font-black text-slate-600 hover:bg-slate-50 transition text-sm">
+          Отмена
+        </button>
+        <button type="submit"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all text-sm">
+          Создать базовый курс
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 2: Assign Course to Student (Fork) -->
+<div id="assignCourseModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div class="bg-white rounded-[2rem] border-2 border-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.15)] max-w-lg w-full p-6 sm:p-8 animate-in fade-in duration-200">
+    <div class="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-xl">
+          <i class="ph-bold ph-user-plus"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-900">Назначить курс ученику</h3>
+          <p id="assignCourseTitleText" class="text-xs font-bold text-indigo-600 truncate max-w-xs"></p>
+        </div>
+      </div>
+      <button type="button" onclick="closeAssignModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+        <i class="ph-bold ph-x text-sm"></i>
+      </button>
+    </div>
+
+    <form id="assignCourseForm" method="post" action="" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Ученик *</label>
+        <select name="student_id" required
+                class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition">
+          <option value="" disabled selected>Выберите ученика из списка...</option>
+          {% for st in all_students %}
+            <option value="{{ st.student_id }}">{{ st.name }} ({{ st.class_grade or '11' }} класс)</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Дата первого занятия *</label>
+        <input type="date" name="start_date" id="assignStartDate" required
+               class="w-full px-4 py-3 bg-[#F4F7FA] border-2 border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-hidden focus:border-indigo-600 transition">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+          Слоты уроков в неделю (дни и время)
+        </label>
+        <p class="text-xs font-medium text-slate-400 mb-3">Укажите дни недели, по которым будут распределяться все уроки курса</p>
+
+        <div id="slotsContainer" class="space-y-2 mb-3">
+          <!-- Default slot 1: Tuesday 18:00 -->
+          <div class="slot-row flex items-center gap-2 p-2 bg-[#F4F7FA] rounded-xl border border-slate-200">
+            <select name="slot_weekday" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex-1">
+              <option value="0">Понедельник</option>
+              <option value="1" selected>Вторник</option>
+              <option value="2">Среда</option>
+              <option value="3">Четверг</option>
+              <option value="4">Пятница</option>
+              <option value="5">Суббота</option>
+              <option value="6">Воскресенье</option>
+            </select>
+            <input type="time" name="slot_time" value="18:00" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 w-28">
+            <button type="button" onclick="removeSlotRow(this)" class="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+
+          <!-- Default slot 2: Friday 16:00 -->
+          <div class="slot-row flex items-center gap-2 p-2 bg-[#F4F7FA] rounded-xl border border-slate-200">
+            <select name="slot_weekday" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex-1">
+              <option value="0">Понедельник</option>
+              <option value="1">Вторник</option>
+              <option value="2">Среда</option>
+              <option value="3">Четверг</option>
+              <option value="4" selected>Пятница</option>
+              <option value="5">Суббота</option>
+              <option value="6">Воскресенье</option>
+            </select>
+            <input type="time" name="slot_time" value="16:00" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 w-28">
+            <button type="button" onclick="removeSlotRow(this)" class="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center">
+              <i class="ph-bold ph-trash"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="button" onclick="addSlotRow()" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1 py-1">
+          <i class="ph-bold ph-plus"></i> Добавить ещё день в неделю
+        </button>
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        <button type="button" onclick="closeAssignModal()"
+                class="px-5 py-2.5 rounded-xl border border-slate-200 font-black text-slate-600 hover:bg-slate-50 transition text-sm">
+          Отмена
+        </button>
+        <button type="submit"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all text-sm">
+          Сгенерировать курс
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 3: Import Course (JSON) -->
+<div id="importCourseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+  <div class="bg-white border-2 border-slate-200 shadow-[0_16px_40px_rgba(15,23,42,0.16)] rounded-[2rem] max-w-xl w-full p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
+          <i class="ph-bold ph-upload-simple"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-black text-slate-900">Импорт структуры курса</h2>
+          <p class="text-xs font-semibold text-slate-400 mt-0.5">Загрузка модулей, уроков, навыков и конспекта из JSON</p>
+        </div>
+      </div>
+      <button type="button" onclick="closeImportModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition">
+        <i class="ph-bold ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Import Method Pill Tabs -->
+    <div class="flex p-1 bg-slate-100 rounded-xl mb-5">
+      <button type="button" id="tabBtnFile" onclick="switchImportTab('file')"
+              class="flex-1 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 bg-white text-indigo-700 shadow-xs">
+        <i class="ph-bold ph-file-arrow-up"></i>
+        <span>Файл .json</span>
+      </button>
+      <button type="button" id="tabBtnText" onclick="switchImportTab('text')"
+              class="flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800">
+        <i class="ph-bold ph-code"></i>
+        <span>Вставить JSON текст</span>
+      </button>
+    </div>
+
+    <form id="importCourseForm" action="{{ url_for('courses.course_import') }}" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Pane 1: File Upload -->
+      <div id="importPaneFile" class="space-y-4">
+        <label for="courseJsonFileInput" class="border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50/50 hover:bg-indigo-50/30 rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center cursor-pointer transition group">
+          <div class="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xl mb-3 group-hover:scale-105 transition">
+            <i class="ph-bold ph-cloud-arrow-up"></i>
+          </div>
+          <span class="text-sm font-black text-slate-800 group-hover:text-indigo-600 transition">Нажмите для выбора файла .json</span>
+          <span class="text-xs font-semibold text-slate-400 mt-1">или перетащите файл в эту область</span>
+          <input type="file" id="courseJsonFileInput" name="file" accept=".json,application/json" class="hidden" onchange="handleFileSelect(this)">
+        </label>
+        <div id="selectedFileNameBlock" class="hidden items-center justify-between p-3 rounded-xl bg-indigo-50 border border-indigo-200">
+          <div class="flex items-center gap-2 min-w-0">
+            <i class="ph-bold ph-file-code text-indigo-600 text-lg shrink-0"></i>
+            <span id="selectedFileNameText" class="text-xs font-bold text-indigo-900 truncate"></span>
+          </div>
+          <button type="button" onclick="clearSelectedFile()" class="text-xs font-bold text-rose-600 hover:text-rose-800 ml-2 shrink-0">
+            Удалить
+          </button>
+        </div>
+      </div>
+
+      <!-- Pane 2: Textarea -->
+      <div id="importPaneText" class="hidden space-y-2">
+        <label class="block text-xs font-black text-slate-700 uppercase tracking-wider">
+          Содержимое структуры (JSON):
+        </label>
+        <textarea id="jsonContentInput" name="json_content" rows="10"
+                  class="w-full px-4 py-3 bg-[#F4F7FA] border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-indigo-500 focus:bg-white transition"
+                  placeholder='{\n  "title": "ЕГЭ Информатика (72 урока)",\n  "subject": "Информатика",\n  "modules": [...]\n}'></textarea>
+      </div>
+
+      <!-- Format Tips Note -->
+      <div class="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2.5">
+        <i class="ph-bold ph-info text-indigo-500 text-base shrink-0 mt-0.5"></i>
+        <p class="text-[11px] font-medium text-slate-500 leading-relaxed">
+          Система автоматически создаст мастер-курс, сгруппирует модули по порядку, добавит уроки с таймингами, сценарием, конспектом и привяжет экзаменационные навыки.
+        </p>
+      </div>
+
+      <!-- Actions -->
+      <div class="pt-5 mt-5 border-t border-slate-200 flex items-center justify-end gap-3">
+        <button type="button" onclick="closeImportModal()"
+                class="px-5 py-2.5 rounded-xl border border-slate-200 font-black text-slate-600 hover:bg-slate-50 transition text-sm">
+          Отмена
+        </button>
+        <button type="submit" id="importSubmitBtn"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-6 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all text-sm inline-flex items-center gap-2">
+          <i class="ph-bold ph-check"></i>
+          <span>Импортировать курс</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openCreateModal() {
+  document.getElementById('createCourseModal').classList.remove('hidden');
+}
+function closeCreateModal() {
+  document.getElementById('createCourseModal').classList.add('hidden');
+}
+
+function openImportModal() {
+  document.getElementById('importCourseModal').classList.remove('hidden');
+}
+function closeImportModal() {
+  document.getElementById('importCourseModal').classList.add('hidden');
+}
+
+function switchImportTab(mode) {
+  const fileTab = document.getElementById('tabBtnFile');
+  const textTab = document.getElementById('tabBtnText');
+  const filePane = document.getElementById('importPaneFile');
+  const textPane = document.getElementById('importPaneText');
+
+  if (mode === 'file') {
+    fileTab.className = 'flex-1 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 bg-white text-indigo-700 shadow-xs';
+    textTab.className = 'flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800';
+    filePane.classList.remove('hidden');
+    textPane.classList.add('hidden');
+  } else {
+    textTab.className = 'flex-1 py-2 rounded-lg text-xs font-black transition flex items-center justify-center gap-2 bg-white text-indigo-700 shadow-xs';
+    fileTab.className = 'flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 text-slate-500 hover:text-slate-800';
+    textPane.classList.remove('hidden');
+    filePane.classList.add('hidden');
+  }
+}
+
+function handleFileSelect(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    document.getElementById('selectedFileNameText').textContent = file.name + ' (' + Math.round(file.size / 1024) + ' КБ)';
+    document.getElementById('selectedFileNameBlock').classList.remove('hidden');
+    document.getElementById('selectedFileNameBlock').classList.add('flex');
+  }
+}
+
+function clearSelectedFile() {
+  const input = document.getElementById('courseJsonFileInput');
+  input.value = '';
+  document.getElementById('selectedFileNameBlock').classList.add('hidden');
+  document.getElementById('selectedFileNameBlock').classList.remove('flex');
+}
+
+function openAssignModal(courseId, courseTitle) {
+  const modal = document.getElementById('assignCourseModal');
+  const form = document.getElementById('assignCourseForm');
+  const titleText = document.getElementById('assignCourseTitleText');
+  const startDateInput = document.getElementById('assignStartDate');
+
+  form.action = `/courses/${courseId}/assign-to-student`;
+  titleText.textContent = courseTitle;
+
+  // Default to tomorrow's date if not set
+  if (!startDateInput.value) {
+    const today = new Date();
+    today.setDate(today.getDate() + 1);
+    startDateInput.value = today.toISOString().split('T')[0];
+  }
+
+  modal.classList.remove('hidden');
+}
+function closeAssignModal() {
+  document.getElementById('assignCourseModal').classList.add('hidden');
+}
+
+function addSlotRow() {
+  const container = document.getElementById('slotsContainer');
+  const div = document.createElement('div');
+  div.className = 'slot-row flex items-center gap-2 p-2 bg-[#F4F7FA] rounded-xl border border-slate-200';
+  div.innerHTML = `
+    <select name="slot_weekday" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 flex-1">
+      <option value="0">Понедельник</option>
+      <option value="1">Вторник</option>
+      <option value="2">Среда</option>
+      <option value="3">Четверг</option>
+      <option value="4">Пятница</option>
+      <option value="5">Суббота</option>
+      <option value="6">Воскресенье</option>
+    </select>
+    <input type="time" name="slot_time" value="18:00" class="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 w-28">
+    <button type="button" onclick="removeSlotRow(this)" class="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center">
+      <i class="ph-bold ph-trash"></i>
+    </button>
+  `;
+  container.appendChild(div);
+}
+
+function removeSlotRow(btn) {
+  const rows = document.querySelectorAll('.slot-row');
+  if (rows.length > 1) {
+    btn.closest('.slot-row').remove();
+  }
+}
+</script>
+{% endblock %}

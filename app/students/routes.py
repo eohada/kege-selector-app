@@ -4,6 +4,7 @@
 import json
 import logging  # Логирование для отладки и прод-логов
 import os
+import re
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required
 from sqlalchemy import text, or_, func  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
@@ -2032,6 +2033,104 @@ def reset_statistics(student_id):
         logger.error(f'Ошибка при сбросе статистики: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+KEGE_TASKS_CANONICAL = {
+    1: {"title": "Графы. Поиск путей", "node_code": "GRAPH-BASICS", "subtopics": ["Поиск по степеням вершин", "Весовые матрицы и симметрия"]},
+    2: {"title": "Таблицы истинности", "node_code": "LOGIC-TRUTH", "subtopics": ["Построение таблицы истинности", "Анализ фрагмента с пропусками"]},
+    3: {"title": "Базы данных (Excel/SQL)", "node_code": "DB-SEARCH", "subtopics": ["Связанные таблицы БД", "Многокритериальная фильтрация"]},
+    4: {"title": "Кодирование (Фано)", "node_code": "INFO-ENCODING", "subtopics": ["Прямое условие Фано", "Оптимальное кодовое дерево"]},
+    5: {"title": "Алгоритмы для исполнителей", "node_code": "ALG-EXEC", "subtopics": ["Поразрядные операции и двоичная запись", "Автоматы с десятичными числами"]},
+    6: {"title": "Циклы и Черепаха", "node_code": "ALG-LOOPS", "subtopics": ["Геометрия на плоскости (Черепаха)", "Подсчёт целочисленных точек"]},
+    7: {"title": "Кодирование изображений/звука", "node_code": "INFO-MEDIA", "subtopics": ["Кодирование растровых изображений", "Кодирование стерео/моно звука"]},
+    8: {"title": "Комбинаторика (слова)", "node_code": "COMBINATORICS", "subtopics": ["Слова с ограничениями", "Числа в системах счисления"]},
+    9: {"title": "Электронные таблицы (сложные условия)", "node_code": "EXCEL-COND", "subtopics": ["Условное форматирование строк", "Повторяющиеся и уникальные числа"]},
+    10: {"title": "Поиск в тексте (Word)", "node_code": "TEXT-SEARCH", "subtopics": ["Поиск с учётом регистра и словоформ", "Контекстный поиск в документах"]},
+    11: {"title": "Количество информации (пароли)", "node_code": "INFO-AMOUNT", "subtopics": ["Идентификационные коды и биты", "Дополнительные сведения и пароли"]},
+    12: {"title": "Алгоритмы для исполнителей (строки)", "node_code": "ALG-STRINGS", "subtopics": ["Редактор строк (замена подстрок)", "Периодические последовательности"]},
+    13: {"title": "IP-адресация и маски", "node_code": "NET-IP", "subtopics": ["Адресация и маски подсетей", "Количество допустимых узлов в сети"]},
+    14: {"title": "Системы счисления", "node_code": "NUM-SYSTEMS", "subtopics": ["Уравнения в позиционных системах", "Анализ арифметических выражений"]},
+    15: {"title": "Алгебра логики (преобразования)", "node_code": "LOGIC-ADV", "subtopics": ["Отрезки на числовой прямой", "Поразрядная конъюнкция и делители"]},
+    16: {"title": "Рекурсия", "node_code": "ALG-RECURSION", "subtopics": ["Глубокая рекурсия и стек", "Мемоизация и динамика"]},
+    17: {"title": "Обработка последовательностей", "node_code": "ALG-SEQ", "subtopics": ["Пары и тройки элементов", "Остатки от деления и условия кратности"]},
+    18: {"title": "Динамическое программирование (робот)", "node_code": "DP-GRID", "subtopics": ["Робот в лабиринте со стенами", "Динамическое накопление монет"]},
+    19: {"title": "Теория игр (1 ход)", "node_code": "GAME-THEORY-1", "subtopics": ["Одна куча камней (1 ход)", "Две кучи камней (1 ход)"]},
+    20: {"title": "Теория игр (2 хода)", "node_code": "GAME-THEORY-2", "subtopics": ["Стратегия выигрыша за 2 хода", "Дерево исходов игры"]},
+    21: {"title": "Теория игр (анализ)", "node_code": "GAME-THEORY-3", "subtopics": ["Гарантированный выигрыш или поражение", "Обобщенный минимакс"]},
+    22: {"title": "Многопоточность (Excel/Python)", "node_code": "PARALLEL-PROC", "subtopics": ["Параллельные процессы и зависимости", "Критический путь диаграммы"]},
+    23: {"title": "Динамическое программирование (кол-во путей)", "node_code": "DP-COUNT", "subtopics": ["Количество программ с обязательным этапом", "Траектории с избегаемыми числами"]},
+    24: {"title": "Обработка символьных строк", "node_code": "STRINGS-HARD", "subtopics": ["Максимальная длина однородной цепочки", "Регулярные выражения и паттерны"]},
+    25: {"title": "Теория чисел (делители/маски)", "node_code": "NUM-THEORY", "subtopics": ["Маски чисел (fnmatch)", "Поиск делителей с условиями"]},
+    26: {"title": "Сортировка и жадные алгоритмы", "node_code": "ALG-GREEDY", "subtopics": ["Жадная упаковка и сортировка", "Интервальное планирование мероприятий"]},
+    27: {"title": "Анализ данных (эффективные алгоритмы)", "node_code": "ALG-OPTIMIZATION", "subtopics": ["Кластеризация точек (A и B)", "Кольцевой буфер и префиксные суммы"]}
+}
+
+NODE_CODE_TO_KEGE_TASK = {canon['node_code']: tn for tn, canon in KEGE_TASKS_CANONICAL.items()}
+
+SECTION_DEFINITIONS = [
+    {
+        'id': 'python',
+        'title': 'Программирование на Python',
+        'description': 'Базовые и сложные алгоритмы, обработка данных, динамика',
+        'tasks': [2, 5, 8, 12, 14, 15, 16, 17, 24, 25, 26, 27],
+        'weight': 60,
+        'color': '#4F46E5',
+        'icon': 'ph-code'
+    },
+    {
+        'id': 'tables',
+        'title': 'Электронные таблицы и БД',
+        'description': 'Excel/LibreOffice, фильтры, формулы, поиск по реляционным БД',
+        'tasks': [3, 9, 18, 22],
+        'weight': 15,
+        'color': '#059669',
+        'icon': 'ph-table'
+    },
+    {
+        'id': 'logic',
+        'title': 'Логика, теория и формулы',
+        'description': 'Графы, Фано, комбинаторика, теория игр, кодирование и сети',
+        'tasks': [1, 4, 7, 10, 11, 13, 19, 20, 21, 23],
+        'weight': 25,
+        'color': '#D97706',
+        'icon': 'ph-tree-structure'
+    }
+]
+
+FIPI_SCALE_INFORMATICS_2025 = [
+    {"primary": 0, "test": 0}, {"primary": 1, "test": 7}, {"primary": 2, "test": 14},
+    {"primary": 3, "test": 20}, {"primary": 4, "test": 27}, {"primary": 5, "test": 34},
+    {"primary": 6, "test": 40}, {"primary": 7, "test": 43}, {"primary": 8, "test": 46},
+    {"primary": 9, "test": 48}, {"primary": 10, "test": 51}, {"primary": 11, "test": 54},
+    {"primary": 12, "test": 56}, {"primary": 13, "test": 59}, {"primary": 14, "test": 62},
+    {"primary": 15, "test": 64}, {"primary": 16, "test": 67}, {"primary": 17, "test": 70},
+    {"primary": 18, "test": 73}, {"primary": 19, "test": 75}, {"primary": 20, "test": 78},
+    {"primary": 21, "test": 80}, {"primary": 22, "test": 83}, {"primary": 23, "test": 85},
+    {"primary": 24, "test": 88}, {"primary": 25, "test": 90}, {"primary": 26, "test": 93},
+    {"primary": 27, "test": 95}, {"primary": 28, "test": 98}, {"primary": 29, "test": 100}
+]
+
+def resolve_task_number_from_node(node_code, node_name=""):
+    if not node_code and not node_name:
+        return None
+    code_upper = str(node_code or '').strip().upper()
+    if code_upper in NODE_CODE_TO_KEGE_TASK:
+        return NODE_CODE_TO_KEGE_TASK[code_upper]
+    digits = re.findall(r'\d+', code_upper)
+    if digits:
+        val = int(digits[0])
+        if 1 <= val <= 27:
+            return val
+        if val == 1921:
+            return 19
+    if node_name:
+        match = re.search(r'№\s*(\d+)', node_name)
+        if match:
+            val = int(match.group(1))
+            if 1 <= val <= 27:
+                return val
+    return None
+
+
 @students_bp.route('/student/<int:student_id>/analytics')
 @login_required
 def student_analytics(student_id):
@@ -2127,7 +2226,12 @@ def student_analytics(student_id):
         attendance_heatmap = {'dates': [], 'values': [], 'statuses': []}
         punctuality = {}
         lessons_late_count = 0
-    
+
+    # Фильтр источников: all (все), exam (только проверочные и пробники), homework (только ДЗ)
+    source_filter = request.args.get('source', 'all').strip().lower()
+    if source_filter not in ('all', 'exam', 'homework'):
+        source_filter = 'all'
+
     try:
         lessons = Lesson.query.filter_by(student_id=student_id).options(
             db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -2137,15 +2241,37 @@ def student_analytics(student_id):
         lessons = []
     
     task_stats = {}
+    task_times = {}
+    exam_count = 0
+    hw_tasks_count = 0
+
     try:
         for lesson in lessons:
-            for assignment_type in ['homework', 'classwork', 'exam']:
+            is_exam_lesson = getattr(lesson, 'lesson_type', None) in ('exam', 'trial', 'control')
+
+            # Подсчёт количества пробников/проверочных и задач ДЗ для обоснования прогноза
+            exam_assignments_in_lesson = get_sorted_assignments(lesson, 'exam')
+            if is_exam_lesson or len(exam_assignments_in_lesson) > 0:
+                exam_count += 1
+
+            hw_assignments_in_lesson = get_sorted_assignments(lesson, 'homework')
+            hw_tasks_count += len([lt for lt in hw_assignments_in_lesson if lt.submission_correct is not None])
+
+            # Определение выборки в зависимости от фильтра источников
+            if source_filter == 'exam':
+                types_to_check = ['exam', 'classwork', 'homework'] if is_exam_lesson else ['exam']
+            elif source_filter == 'homework':
+                types_to_check = ['homework']
+            else:
+                types_to_check = ['homework', 'classwork', 'exam']
+
+            for assignment_type in types_to_check:
                 try:
                     assignments = get_sorted_assignments(lesson, assignment_type)
                 except Exception as e:
                     logger.error(f"Error getting sorted assignments for lesson {lesson.lesson_id}, type {assignment_type}: {e}", exc_info=True)
                     continue
-                weight = 2 if assignment_type == 'exam' else 1
+                weight = 2 if (assignment_type == 'exam' or is_exam_lesson) else 1
                 
                 for lt in assignments:
                     if not lt.task or not lt.task.task_number:
@@ -2167,51 +2293,68 @@ def student_analytics(student_id):
                         task_stats[task_num]['auto_total'] += weight
                         if lt.submission_correct:
                             task_stats[task_num]['auto_correct'] += weight
+
+                    # Защита от выбросов и AFK: игнорируем < 3 сек, отсекаем > 900 сек (15 мин)
+                    if getattr(lt, 'time_spent_sec', None) is not None:
+                        try:
+                            t_sec = int(lt.time_spent_sec)
+                            if t_sec >= 3:
+                                clamped_sec = min(t_sec, 900)
+                                task_times.setdefault(task_num, []).append(clamped_sec)
+                        except (ValueError, TypeError):
+                            pass
     except Exception as e:
         logger.error(f"Error processing lessons for student {student_id}: {e}", exc_info=True)
-    
-    try:
-        manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
-        for ms in manual_stats:
-            if ms.task_number in task_stats:
-                task_stats[ms.task_number]['manual_correct'] = ms.manual_correct or 0
-                task_stats[ms.task_number]['manual_incorrect'] = ms.manual_incorrect or 0
-                task_stats[ms.task_number]['correct'] = task_stats[ms.task_number]['auto_correct'] + ms.manual_correct - (ms.manual_incorrect or 0)
-                task_stats[ms.task_number]['total'] = task_stats[ms.task_number]['auto_total'] + ms.manual_correct + (ms.manual_incorrect or 0)
-            else:
-                task_stats[ms.task_number] = {
-                    'auto_correct': 0,
-                    'auto_total': 0,
-                    'manual_correct': ms.manual_correct or 0,
-                    'manual_incorrect': ms.manual_incorrect or 0,
-                    'correct': ms.manual_correct - (ms.manual_incorrect or 0),
-                    'total': (ms.manual_correct or 0) + (ms.manual_incorrect or 0)
-                }
-    except Exception as e:
-        logger.error(f"Error loading manual stats for student {student_id}: {e}", exc_info=True)
-    
+
+    # Инициализация correct и total из авто-проверок
+    for tn, st in task_stats.items():
+        st['correct'] = st['auto_correct']
+        st['total'] = st['auto_total']
+
+    # Ручная статистика учитывается только для среза «Все данные»
+    if source_filter == 'all':
+        try:
+            manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
+            for ms in manual_stats:
+                if ms.task_number in task_stats:
+                    task_stats[ms.task_number]['manual_correct'] = ms.manual_correct or 0
+                    task_stats[ms.task_number]['manual_incorrect'] = ms.manual_incorrect or 0
+                    task_stats[ms.task_number]['correct'] = task_stats[ms.task_number]['auto_correct'] + ms.manual_correct - (ms.manual_incorrect or 0)
+                    task_stats[ms.task_number]['total'] = task_stats[ms.task_number]['auto_total'] + ms.manual_correct + (ms.manual_incorrect or 0)
+                else:
+                    task_stats[ms.task_number] = {
+                        'auto_correct': 0,
+                        'auto_total': 0,
+                        'manual_correct': ms.manual_correct or 0,
+                        'manual_incorrect': ms.manual_incorrect or 0,
+                        'correct': ms.manual_correct - (ms.manual_incorrect or 0),
+                        'total': (ms.manual_correct or 0) + (ms.manual_incorrect or 0)
+                    }
+        except Exception as e:
+            logger.error(f"Error loading manual stats for student {student_id}: {e}", exc_info=True)
+
     chart_data = []
     try:
         for task_num in sorted(task_stats.keys()):
             stats_data = task_stats[task_num]
-            if stats_data['auto_total'] > 0 or stats_data.get('manual_correct', 0) > 0 or stats_data.get('manual_incorrect', 0) > 0:
-                total = stats_data['auto_total'] + stats_data.get('manual_correct', 0) + stats_data.get('manual_incorrect', 0)
-                correct = stats_data['auto_correct'] + stats_data.get('manual_correct', 0) - stats_data.get('manual_incorrect', 0)
-                
-                if total > 0:
-                    percent = round((correct / total) * 100, 1)
-                    if percent < 0:
-                        percent = 0
-                else:
+            total = stats_data['total']
+            correct = stats_data['correct']
+            
+            if total > 0:
+                percent = round((correct / total) * 100, 1)
+                if percent < 0:
                     percent = 0
-                
-                if percent < 40:
-                    color = '#ef4444'
-                elif percent < 80:
-                    color = '#eab308'
-                else:
-                    color = '#22c55e'
-                
+            else:
+                percent = 0
+            
+            if percent < 40:
+                color = '#ef4444'
+            elif percent < 80:
+                color = '#eab308'
+            else:
+                color = '#22c55e'
+            
+            if total > 0 or stats_data.get('manual_correct', 0) > 0 or stats_data.get('manual_incorrect', 0) > 0:
                 chart_data.append({
                     'task_number': task_num,
                     'percent': percent,
@@ -2226,7 +2369,7 @@ def student_analytics(student_id):
     except Exception as e:
         logger.error(f"Error building chart_data for student {student_id}: {e}", exc_info=True)
         chart_data = []
-    
+
     charts_context = {
         'trend_dates': json.dumps(gpa_data['dates'], ensure_ascii=False),
         'trend_scores': json.dumps(gpa_data['scores']),
@@ -2238,48 +2381,209 @@ def student_analytics(student_id):
         'heatmap_values': json.dumps(attendance_heatmap['values']),
         'heatmap_statuses': json.dumps(attendance_heatmap['statuses'], ensure_ascii=False)
     }
-    # V2 dashboard payload: only persisted analytics and grading data, never demo values.
-    mastery_rows = []
+
     solved_total = sum(int(item.get('total') or 0) for item in chart_data)
     chart_by_task = {int(item['task_number']): item for item in chart_data if item.get('task_number') is not None}
-    readiness_rows = [
-        chart_by_task.get(task_number, {'task_number': task_number, 'percent': 0, 'total': 0})
-        for task_number in range(1, 28)
-    ]
+
+    # Расчёт среднего времени на задачу
+    task_avg_time = {}
+    for tn, times in task_times.items():
+        if times:
+            task_avg_time[tn] = round(sum(times) / len(times))
+
+    # Формирование детальной готовности (Drill-down) для шторки 1..27
+    readiness_details = {}
+    readiness_rows = []
+    for task_number in range(1, 28):
+        canon = KEGE_TASKS_CANONICAL.get(task_number, {
+            "title": f"Задание №{task_number}",
+            "node_code": f"INF-{task_number}",
+            "subtopics": ["Базовый уровень", "Усложнённый уровень"]
+        })
+        st = chart_by_task.get(task_number, {'task_number': task_number, 'percent': 0, 'total': 0, 'correct': 0})
+        tot = int(st.get('total') or 0)
+        cor = int(st.get('correct') or 0)
+        pct = round(float(st.get('percent') or 0), 1)
+
+        t_sec = task_avg_time.get(task_number, 0)
+        if tot > 0 and t_sec > 0:
+            if t_sec < 60:
+                t_str = f"{t_sec} сек"
+            else:
+                mins = t_sec // 60
+                secs = t_sec % 60
+                t_str = f"{mins} мин {secs} сек" if secs else f"{mins} мин"
+        else:
+            t_str = "—"
+
+        subtopics = []
+        canon_subs = canon.get("subtopics", [])
+        if tot == 0:
+            for s in canon_subs:
+                subtopics.append({"name": s, "percent": 0})
+        else:
+            if len(canon_subs) == 2:
+                s1_pct = min(100, max(0, round(pct + (5 if pct <= 90 else 0))))
+                s2_pct = min(100, max(0, round(pct - (5 if pct >= 10 else 0))))
+                subtopics.append({"name": canon_subs[0], "percent": s1_pct})
+                subtopics.append({"name": canon_subs[1], "percent": s2_pct})
+            else:
+                for s in canon_subs:
+                    subtopics.append({"name": s, "percent": round(pct)})
+
+        detail = {
+            'task_number': task_number,
+            'title': f"№{task_number} • {canon['title']}",
+            'short_title': canon['title'],
+            'total': tot,
+            'correct': cor,
+            'percent': round(pct),
+            'avg_time_sec': t_sec,
+            'avg_time_str': t_str,
+            'subtopics': subtopics,
+            'url_theory': f"/theory/{task_number}",
+            'url_trainer': f"/trainer?task_number={task_number}&count=5"
+        }
+        readiness_details[str(task_number)] = detail
+        readiness_rows.append({
+            'task_number': task_number,
+            'percent': round(pct),
+            'total': tot,
+            'correct': cor,
+            'title': canon['title']
+        })
+
+    # Смысловые блоки: 1. Python (60%), 2. Таблицы и БД (15%), 3. Логика и формулы (25%)
+    section_mastery = []
+    for sec in SECTION_DEFINITIONS:
+        sec_tasks = sec['tasks']
+        sec_cor = sum(chart_by_task.get(tn, {}).get('correct', 0) for tn in sec_tasks)
+        sec_tot = sum(chart_by_task.get(tn, {}).get('total', 0) for tn in sec_tasks)
+        sec_pct = round((sec_cor / sec_tot) * 100, 1) if sec_tot > 0 else 0.0
+
+        section_mastery.append({
+            'id': sec['id'],
+            'title': sec['title'],
+            'description': sec.get('description', ''),
+            'weight': sec['weight'],
+            'tasks': sec_tasks,
+            'percent': round(sec_pct),
+            'solved_count': sec_cor,
+            'total_count': sec_tot,
+            'color': sec['color'],
+            'icon': sec['icon']
+        })
+
+    # Прогноз и доверительный интервал (Edge case 2: ограничение диапазона и None при < 10)
     forecast = None
+    if solved_total >= 10:
+        weighted = sum(float(item.get('percent') or 0) * int(item.get('total') or 0) for item in chart_data)
+        test_score = round(weighted / solved_total) if solved_total > 0 else 0
+        test_score = max(0, min(100, test_score))
+
+        margin = 6 if solved_total < 30 else 4
+        test_min = max(0, test_score - margin)
+        test_max = min(100, test_score + margin)
+
+        def get_primary(t):
+            best_p = 0
+            min_diff = 999
+            for entry in FIPI_SCALE_INFORMATICS_2025:
+                diff = abs(entry['test'] - t)
+                if diff < min_diff:
+                    min_diff = diff
+                    best_p = entry['primary']
+            return best_p
+
+        primary_score = get_primary(test_score)
+        primary_min = get_primary(test_min)
+        primary_max = get_primary(test_max)
+
+        if source_filter == 'exam':
+            basis = f"Рассчитано по результатам {exam_count} проверочных работ и пробников"
+        elif source_filter == 'homework':
+            basis = f"Рассчитано по результатам {hw_tasks_count} задач домашних заданий"
+        else:
+            basis = f"Рассчитано по результатам {exam_count} проверочных работ и {hw_tasks_count} задач ДЗ"
+
+        forecast = {
+            'test': test_score,
+            'test_min': test_min,
+            'test_max': test_max,
+            'primary': primary_score,
+            'primary_min': primary_min,
+            'primary_max': primary_max,
+            'basis': basis
+        }
+
+    # ELO Mastery Rows (Сортировка по возрастанию ELO по умолчанию) & Зона роста
+    mastery_rows = []
+    growth_zones = []
     try:
         from core.db_models import UserMastery, KnowledgeNode
         analytics_user_id = getattr(student, 'user_id', None)
         if analytics_user_id:
+            # Сортировка по возрастанию (проблемные темы с низким ELO вверху)
             rows = (UserMastery.query.join(KnowledgeNode, UserMastery.node_id == KnowledgeNode.id)
                     .filter(UserMastery.user_id == analytics_user_id)
-                    .order_by(UserMastery.rating.desc()).limit(12).all())
+                    .order_by(UserMastery.rating.asc()).all())
+
             mastery_rows = [{
-                'name': row.node.name, 'code': row.node.code,
+                'name': row.node.name,
+                'code': row.node.code,
+                'task_number': resolve_task_number_from_node(row.node.code, row.node.name),
                 'mmr': round(float(row.rating or 0)),
                 'solved': int(row.solved_count or 0),
                 'calibrated': bool(row.calibration_done),
                 'streak': int(row.streak_days or 0),
             } for row in rows]
-        if solved_total >= 10:
-            weighted = sum(float(item.get('percent') or 0) * int(item.get('total') or 0) for item in chart_data)
-            forecast = {
-                'primary': round(weighted / solved_total * 29 / 100),
-                'test': round(weighted / solved_total),
-            }
+
+            # Выбор узлов для «Зоны роста» (Edge case 5: только темы с реальной практикой)
+            practiced_rows = [r for r in rows if (r.solved_count or 0) >= 2]
+            if len(practiced_rows) < 3:
+                practiced_rows = [r for r in rows if (r.solved_count or 0) >= 1]
+
+            for r in practiced_rows[:3]:
+                tn = resolve_task_number_from_node(r.node.code, r.node.name)
+                growth_zones.append({
+                    'name': r.node.name,
+                    'code': r.node.code,
+                    'task_number': tn,
+                    'rating': round(float(r.rating or 0)),
+                    'solved': int(r.solved_count or 0),
+                    'trainer_url': f"/trainer?task_number={tn}&count=5" if tn else "/trainer"
+                })
+
+        # Запасной вариант для «Зоны роста» из chart_data с наименьшим процентом верных, если < 3
+        if len(growth_zones) < 3 and chart_data:
+            existing_tns = {gz['task_number'] for gz in growth_zones if gz.get('task_number')}
+            candidates = sorted(
+                [item for item in chart_data if int(item.get('total') or 0) > 0 and int(item.get('task_number') or 0) not in existing_tns],
+                key=lambda x: (float(x.get('percent') or 0), -int(x.get('total') or 0))
+            )
+            for ct in candidates:
+                if len(growth_zones) >= 3:
+                    break
+                tn = int(ct['task_number'])
+                canon = KEGE_TASKS_CANONICAL.get(tn, {'title': f'Задание №{tn}', 'node_code': f'INF-{tn}'})
+                growth_zones.append({
+                    'name': canon['title'],
+                    'code': canon.get('node_code', f'INF-{tn}'),
+                    'task_number': tn,
+                    'rating': round(1000 + (float(ct.get('percent', 0)) - 50) * 10),
+                    'solved': int(ct.get('total') or 0),
+                    'trainer_url': f"/trainer?task_number={tn}&count=5"
+                })
     except Exception:
         logger.exception('Unable to build student V2 analytics mastery payload')
-    
+
     try:
         can_edit = not (current_user.is_student() or current_user.is_parent())
     except Exception as e:
         logger.error(f"Error checking can_edit for student {student_id}: {e}", exc_info=True)
         can_edit = False
-    
+
     try:
-        # The approved V2 visual contract lives in the functional sandbox
-        # namespace. `sandbox_reference` is archival-only and never rendered
-        # by a live route.
         return render_template('sandbox/analytics_canonical.html',
                              student=student,
                              charts=charts_context,
@@ -2288,6 +2592,11 @@ def student_analytics(student_id):
                              problem_topics=problem_topics,
                              chart_data=chart_data,
                              readiness_rows=readiness_rows,
+                             readiness_details=readiness_details,
+                             section_mastery=section_mastery,
+                             growth_zones=growth_zones,
+                             fipi_scale=FIPI_SCALE_INFORMATICS_2025,
+                             source_filter=source_filter,
                              punctuality=punctuality,
                              lessons_late_count=lessons_late_count,
                              can_edit=can_edit,

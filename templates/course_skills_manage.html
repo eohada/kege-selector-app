@@ -1,49 +1,239 @@
 {% extends 'sandbox/layout_teacher.html' %}
-{% set active_page = 'students' %}
-{% block title %}Навыки программы · {{ course.title }}{% endblock %}
+{% set active_page = 'courses' %}
+{% block title %}Банк навыков программы · {{ course.title }}{% endblock %}
+
 {% block sandbox_content %}
 <main class="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+  <!-- Top Header -->
   <section class="rounded-[2rem] border-2 border-slate-200 bg-[#F4F7FA] p-6 shadow-[0_4px_0_#DAE1E9] sm:p-8">
     <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
       <div>
-        <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Основа программы</p>
-        <h1 class="mt-2 text-3xl font-black text-slate-900">Навыки и темы</h1>
-        <p class="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-500">Навык — конкретное умение, которое можно проверить: например, «Построить таблицу истинности» или «Решить задачу № 27». Из них строятся маршрут, диагностика и аналитика ученика.</p>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black uppercase tracking-wider mb-2">
+          <i class="ph-bold ph-tree-structure"></i> Методический банк
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-black text-slate-900">Навыки и узлы знаний</h1>
+        <p class="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+          Навык — атомарное умение ученика (например: «Построение IP-адреса и маски сети» или «Динамическое программирование на префиксах»). Навыки связываются с заданиями ЕГЭ и уроками программы.
+        </p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <a href="{{ url_for('courses.course_view', course_id=course.course_id) }}" class="rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 no-underline shadow-[0_3px_0_#dae1e9]">← К программе</a>
-        {% if skills %}<a href="{{ url_for('courses.course_plan_wizard', course_id=course.course_id) }}" class="btn-3d rounded-xl border-2 border-indigo-700 bg-indigo-600 px-4 py-2.5 text-sm font-black text-white no-underline">Собрать маршрут →</a>{% endif %}
+      <div class="flex flex-wrap gap-2.5">
+        <a href="{{ url_for('courses.course_view', course_id=course.course_id) }}"
+           class="bg-white hover:bg-slate-50 text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b active:translate-y-[2px] transition-all no-underline text-sm inline-flex items-center gap-2">
+          <i class="ph-bold ph-arrow-left"></i> В программу
+        </a>
+        {% if skills %}
+          <a href="{{ url_for('courses.course_plan_wizard', course_id=course.course_id) }}"
+             class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-4 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b active:translate-y-[2px] transition-all no-underline text-sm inline-flex items-center gap-2">
+            <i class="ph-bold ph-magic-wand"></i> Собрать маршрут
+          </a>
+        {% endif %}
       </div>
     </div>
   </section>
 
-  <section class="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_420px]">
+  <!-- Quick Filter by Task Number 1..27 -->
+  <section class="rounded-[1.5rem] border-2 border-slate-200 bg-white p-4 shadow-[0_2px_0_#DAE1E9]">
+    <div class="flex items-center justify-between gap-3 mb-2.5">
+      <span class="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+        <i class="ph-bold ph-funnel"></i> Фильтр по номеру задания ЕГЭ:
+      </span>
+      <span id="filteredCount" class="text-xs font-black text-indigo-600">Всего: {{ skills|length }}</span>
+    </div>
+    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 hide-scrollbar">
+      <button type="button" onclick="filterTask('all')"
+              class="task-filter-btn px-3 py-1.5 rounded-lg text-xs font-black transition border border-indigo-200 bg-indigo-600 text-white shadow-xs"
+              data-task="all">
+        Все ({{ skills|length }})
+      </button>
+      {% for tn in exam_tasks %}
+        <button type="button" onclick="filterTask('{{ tn }}')"
+                class="task-filter-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition border border-slate-200 bg-[#F4F7FA] text-slate-600 hover:bg-slate-100"
+                data-task="{{ tn }}">
+          №{{ tn }}
+        </button>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Main Content Grid -->
+  <section class="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_420px]">
+    <!-- Skills List -->
     <div class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9]">
-      <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Банк навыков</p><h2 class="mt-2 text-2xl font-black text-slate-900">{{ skills|length }} {{ 'навык' if skills|length == 1 else ('навыка' if 2 <= skills|length <= 4 else 'навыков') }}</h2></div><span class="rounded-xl border-2 border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700">{{ course.subject or 'Без предмета' }}</span></div>
-      <div class="mt-5 space-y-3">
+      <div class="flex items-start justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Банк навыков</p>
+          <h2 class="mt-1 text-xl font-black text-slate-900">{{ skills|length }} {{ 'навык' if skills|length == 1 else ('навыка' if 2 <= skills|length <= 4 else 'навыков') }}</h2>
+        </div>
+        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black">
+          <i class="ph-bold ph-bookmark"></i> {{ course.subject or 'Информатика' }}
+        </span>
+      </div>
+
+      <div class="mt-5 space-y-3" id="skillsContainer">
         {% for skill in skills %}
-          <article class="rounded-[1.35rem] border-2 border-slate-200 bg-[#F4F7FA] p-4">
-            <div class="flex flex-wrap items-start justify-between gap-3"><div><p class="text-[11px] font-black uppercase tracking-wider text-slate-400">{% if skill.task_number %}Задание № {{ skill.task_number }}{% else %}Без номера задания{% endif %}{% if skill.topic %} · {{ skill.topic }}{% endif %}</p><h3 class="mt-1 text-base font-black text-slate-900">{{ skill.title }}</h3>{% if skill.subtopic %}<p class="mt-1 text-sm font-medium text-slate-500">{{ skill.subtopic }}</p>{% endif %}</div>{% if skill.prerequisite %}<span class="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-800">После: {{ skill.prerequisite.title }}</span>{% endif %}</div>
+          <article class="skill-item rounded-[1.35rem] border-2 border-slate-200 bg-[#F4F7FA] p-4 transition hover:border-slate-300"
+                   data-task-num="{{ skill.task_number or 'none' }}">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="flex-1 min-w-[200px]">
+                <div class="flex items-center gap-2 mb-1">
+                  {% if skill.task_number %}
+                    <span class="px-2 py-0.5 rounded-md bg-indigo-100 border border-indigo-200 text-indigo-800 text-[11px] font-black">
+                      Задание №{{ skill.task_number }}
+                    </span>
+                  {% endif %}
+                  {% if skill.topic_code %}
+                    <code class="px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700 font-mono text-[10px] font-black">
+                      {{ skill.topic_code }}
+                    </code>
+                  {% endif %}
+                  {% if skill.topic %}
+                    <span class="text-xs font-bold text-slate-500">· {{ skill.topic }}</span>
+                  {% endif %}
+                </div>
+
+                <h3 class="text-base font-black text-slate-900 leading-snug">{{ skill.title }}</h3>
+
+                {% if skill.subtopic %}
+                  <p class="mt-1 text-xs font-medium text-slate-500">{{ skill.subtopic }}</p>
+                {% endif %}
+
+                {% if skill.prerequisite_ids %}
+                  <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-amber-700">Пререквизиты:</span>
+                    {% for pid in skill.prerequisite_ids %}
+                      {% set prereq = skills|selectattr('skill_id', 'equalto', pid)|first %}
+                      {% if prereq %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                          <i class="ph-bold ph-arrow-bend-down-right"></i> {{ prereq.title }}
+                        </span>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                {% elif skill.prerequisite %}
+                  <div class="mt-2 flex items-center gap-1.5">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-amber-700">Пререквизит:</span>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                      <i class="ph-bold ph-arrow-bend-down-right"></i> {{ skill.prerequisite.title }}
+                    </span>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
           </article>
         {% else %}
-          <div class="rounded-[1.5rem] border-2 border-dashed border-indigo-200 bg-indigo-50 p-8 text-center"><p class="text-lg font-black text-slate-900">Пока нет ни одного навыка</p><p class="mx-auto mt-2 max-w-md text-sm font-medium leading-6 text-slate-500">Добавьте первые темы справа. Это не заглушки: именно они станут элементами маршрута и шкалой прогресса.</p></div>
+          <div class="rounded-[1.5rem] border-2 border-dashed border-indigo-200 bg-indigo-50/50 p-8 text-center">
+            <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-3 text-2xl">
+              <i class="ph-bold ph-target"></i>
+            </div>
+            <p class="text-base font-black text-slate-900">Пока нет ни одного навыка</p>
+            <p class="mx-auto mt-1 max-w-md text-xs font-semibold leading-5 text-slate-500">Добавьте первые темы в форме справа. Они свяжут банк задач, интерактивную студию и аналитику ученика.</p>
+          </div>
         {% endfor %}
       </div>
     </div>
 
-    <form method="post" class="h-fit rounded-[2rem] border-2 border-indigo-200 bg-indigo-50 p-6 shadow-[0_4px_0_#C7D2FE]">
-      <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-500">Новый навык</p>
-      <h2 class="mt-2 text-2xl font-black text-slate-900">Добавить тему</h2>
-      <p class="mt-2 text-sm font-medium leading-6 text-slate-500">Формулируйте как проверяемое действие, а не как общее название раздела.</p>
-      <label class="mt-5 block text-sm font-black text-slate-700">Что ученик должен уметь<input required name="title" maxlength="300" placeholder="Например: Решать задачу на кодирование" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-400"></label>
-      <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-        <label class="block text-sm font-black text-slate-700">Раздел<input name="topic" maxlength="200" placeholder="Кодирование" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-400"></label>
-        <label class="block text-sm font-black text-slate-700">Номер задания<input name="task_number" inputmode="numeric" min="1" type="number" placeholder="13" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-400"></label>
+    <!-- Create Skill Form -->
+    <div class="h-fit rounded-[2rem] border-2 border-indigo-200 bg-indigo-50/60 p-6 shadow-[0_4px_0_#C7D2FE]">
+      <div class="flex items-center gap-2 mb-1">
+        <i class="ph-bold ph-plus-circle text-indigo-600 text-lg"></i>
+        <p class="text-xs font-black uppercase tracking-[.16em] text-indigo-600">Новый навык</p>
       </div>
-      <label class="mt-4 block text-sm font-black text-slate-700">Уточнение<input name="subtopic" maxlength="200" placeholder="Необязательно" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-400"></label>
-      <label class="mt-4 block text-sm font-black text-slate-700">Сначала освоить<select name="prerequisite_skill_id" class="mt-2 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-400"><option value="">Нет зависимости</option>{% for skill in skills %}<option value="{{ skill.skill_id }}">{{ skill.title }}</option>{% endfor %}</select></label>
-      <button type="submit" class="btn-3d mt-6 w-full rounded-xl border-2 border-indigo-700 bg-indigo-600 px-5 py-3 font-black text-white">Добавить навык</button>
-    </form>
+      <h2 class="text-xl font-black text-slate-900">Добавить в банк</h2>
+      <p class="mt-1 text-xs font-semibold text-slate-500 mb-5">Формулируйте как проверяемое действие ученика.</p>
+
+      <form method="post" action="{{ url_for('courses.course_skills_manage', course_id=course.course_id) }}" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div>
+          <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+            Что ученик должен уметь *
+          </label>
+          <input required name="title" maxlength="300" placeholder="Например: Построить маску сети и определить адрес узла"
+                 class="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-hidden focus:border-indigo-500 transition">
+        </div>
+
+        <div>
+          <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+            Код темы / Узел знаний (topic_code)
+          </label>
+          <input name="topic_code" maxlength="100" placeholder="Например: EGE_INF_13_IPV4"
+                 class="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-mono font-bold text-slate-900 outline-hidden focus:border-indigo-500 transition">
+          <p class="mt-1 text-[11px] font-medium text-slate-400">Уникальный идентификатор для связки с банком задач.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Номер задания ЕГЭ</label>
+            <input name="task_number" inputmode="numeric" min="1" max="27" type="number" placeholder="13"
+                   class="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-hidden focus:border-indigo-500 transition">
+          </div>
+          <div>
+            <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Раздел</label>
+            <input name="topic" maxlength="200" placeholder="Компьютерные сети"
+                   class="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-900 outline-hidden focus:border-indigo-500 transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">Уточнение / тип задачи</label>
+          <input name="subtopic" maxlength="200" placeholder="Определение количества возможных адресов"
+                 class="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 outline-hidden focus:border-indigo-500 transition">
+        </div>
+
+        <div>
+          <label class="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
+            Пререквизиты (дерево зависимостей)
+          </label>
+          <p class="text-[11px] font-medium text-slate-400 mb-2">Выберите навыки, которые нужно освоить до этого:</p>
+          <div class="max-h-40 overflow-y-auto p-2 bg-white rounded-xl border-2 border-slate-200 space-y-1">
+            {% for s in skills %}
+              <label class="flex items-center gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer text-xs font-bold text-slate-700">
+                <input type="checkbox" name="prerequisite_ids" value="{{ s.skill_id }}" class="rounded text-indigo-600 focus:ring-0">
+                <span class="truncate">{% if s.task_number %}№{{ s.task_number }} {% endif %}{{ s.title }}</span>
+              </label>
+            {% else %}
+              <p class="text-xs text-slate-400 p-2 text-center">Сначала добавьте хотя бы один навык</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.2)] active:border-b active:translate-y-[2px] transition-all text-sm flex items-center justify-center gap-2">
+          <i class="ph-bold ph-plus-circle"></i>
+          <span>Добавить навык</span>
+        </button>
+      </form>
+    </div>
   </section>
 </main>
+
+<script>
+function filterTask(taskNum) {
+  // Update buttons state
+  document.querySelectorAll('.task-filter-btn').forEach(btn => {
+    if (btn.dataset.task === taskNum) {
+      btn.className = 'task-filter-btn px-3 py-1.5 rounded-lg text-xs font-black transition border border-indigo-200 bg-indigo-600 text-white shadow-xs';
+    } else {
+      btn.className = 'task-filter-btn px-2.5 py-1.5 rounded-lg text-xs font-bold transition border border-slate-200 bg-[#F4F7FA] text-slate-600 hover:bg-slate-100';
+    }
+  });
+
+  // Filter skills items
+  const items = document.querySelectorAll('.skill-item');
+  let visibleCount = 0;
+  items.forEach(el => {
+    if (taskNum === 'all' || el.dataset.taskNum === taskNum) {
+      el.style.display = '';
+      visibleCount++;
+    } else {
+      el.style.display = 'none';
+    }
+  });
+
+  const countBadge = document.getElementById('filteredCount');
+  if (countBadge) {
+    countBadge.textContent = taskNum === 'all' ? `Всего: ${items.length}` : `Найдено: ${visibleCount}`;
+  }
+}
+</script>
 {% endblock %}

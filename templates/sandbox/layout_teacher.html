@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="user-timezone-effective" content="{{ user_timezone_effective or 'Europe/Moscow' }}">
     <meta name="user-timezone-mode" content="{{ user_timezone_mode or 'auto' }}">
-    <title>BooStudy | Преподаватель (Teacher Workspace)</title>
+    <title>{% block title %}BooStudy | Преподаватель (Teacher Workspace){% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -71,111 +71,263 @@
 </head>
 <body class="min-h-screen bg-[#F8FAFC]">
     {% block sandbox_sidebar %}
+    {% set is_dashboard_active = request.path in ['/dashboard', '/teacher/dashboard'] or (active_page is defined and active_page == 'dashboard') %}
+    {% set is_courses_active = request.path.startswith('/courses') or (active_page is defined and active_page == 'courses') %}
+    {% set is_students_active = (request.path in ['/students', '/teacher/students'] or (active_page is defined and active_page == 'students')) and not is_courses_active and not is_dashboard_active %}
+    {% set is_schedule_active = request.path == '/schedule' or (active_page is defined and active_page == 'schedule') %}
+    {% set is_assignments_active = request.path.startswith('/assignments') or (active_page is defined and active_page == 'assignments') %}
+    {% set is_tasks_active = request.path in ['/tasks', '/task-generator'] or (active_page is defined and active_page == 'tasks') %}
+    {% set is_library_active = request.path in ['/library', '/teacher/library'] or (active_page is defined and active_page == 'library') %}
+    {% set is_analytics_active = request.path in ['/analytics', '/teacher/analytics'] or (active_page is defined and active_page == 'analytics') %}
+    {% set is_tools_active = request.path in ['/groups', '/theory/course-map', '/guidebook'] or request.path.startswith('/teacher/guest-sessions') or request.path.startswith('/admin') %}
+
     <!-- Teacher Centralized Vertical Sidebar Dock -->
-    <nav class="fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex flex-col items-center py-6 shrink-0 z-50">
+    <nav class="fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex flex-col items-center py-5 shrink-0 z-50">
         <!-- Logo -->
-        <a href="/dashboard" class="w-12 h-12 rounded-[1rem] bg-indigo-600 shadow-[0_4px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-6 cursor-pointer hover:-translate-y-1 active:translate-y-[3px] active:shadow-none transition-all" title="Кабинет преподавателя">
+        <a href="/dashboard" class="relative group w-11 h-11 rounded-2xl bg-indigo-600 shadow-[0_4px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-3 cursor-pointer hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none transition-all" title="BooStudy">
             <i class="ph-bold ph-graduation-cap text-2xl"></i>
+            <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                BooStudy
+            </span>
         </a>
 
-        <!-- Dock Items for Teacher (9 Items) -->
-        <div class="flex flex-col gap-2.5 flex-1 w-full px-3 overflow-y-auto hide-scrollbar">
+        <!-- Main Navigation Section -->
+        <div class="flex flex-col items-center gap-1.5 w-full px-2.5">
             
-            <!-- 1. Ученики -->
-            <a href="/students" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/students', '/teacher/students'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="👥 Ученики">
+            <!-- 1. Дашборд -->
+            <a href="/dashboard"
+               class="relative group w-11 h-11 rounded-xl {% if is_dashboard_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all"
+               title="Дашборд">
+                <i class="ph-bold ph-squares-four text-xl"></i>
+                {% if is_dashboard_active %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
+                {% endif %}
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Дашборд
+                </span>
+            </a>
+
+            <!-- 2. Ученики -->
+            <a href="/students"
+               class="relative group w-11 h-11 rounded-xl {% if is_students_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all"
+               title="Ученики">
                 <i class="ph-bold ph-users text-xl"></i>
-                {% if request.path in ['/students', '/teacher/students'] %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% if is_students_active %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
                 {% endif %}
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Ученики
+                </span>
             </a>
 
-            <!-- 2. Группы -->
-            <a href="/groups" class="w-full aspect-square rounded-[1rem] {% if request.path == '/groups' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏫 Группы">
-                <i class="ph-bold ph-users-three text-xl"></i>
-                {% if request.path == '/groups' %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            <!-- 3. Работы -->
-            <a href="/assignments" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/assignments', '/assignments/create'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📚 Работы">
-                <i class="ph-bold ph-books text-xl"></i>
-                {% if request.path in ['/assignments', '/assignments/create'] %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            <!-- 4. Генератор -->
-            <a href="/task-generator" class="w-full aspect-square rounded-[1rem] {% if request.path == '/task-generator' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="⚙️ Генератор">
-                <i class="ph-bold ph-magic-wand text-xl"></i>
-                {% if request.path == '/task-generator' %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            <!-- 5. Библиотека знаний -->
-            <a href="/library" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/library', '/teacher/library'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📁 Библиотека знаний">
-                <i class="ph-bold ph-folder text-xl"></i>
-                {% if request.path in ['/library', '/teacher/library'] %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            <!-- Гостевые сессии -->
-            {% if current_user is defined and current_user and current_user.is_authenticated and current_user.role|lower in ['teacher', 'tutor', 'creator', 'admin', 'chief_admin'] %}
-            <a href="{{ url_for('guest.teacher_sessions') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/teacher/guest-sessions') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Гостевые сессии">
-                <i class="ph-bold ph-link-simple text-xl"></i>
-                {% if request.path.startswith('/teacher/guest-sessions') %}<div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>{% endif %}
-            </a>
-            {% endif %}
-
-            <!-- Гайдбук -->
-            <a href="{{ url_for('main.guidebook') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/guidebook') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📘 Гайдбук">
-                <i class="ph-bold ph-question text-xl"></i>
-                {% if request.path.startswith('/guidebook') %}<div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>{% endif %}
-            </a>
-
-            <!-- 6. Карта курса -->
-            <a href="/theory/course-map" class="w-full aspect-square rounded-[1rem] {% if request.path == '/theory/course-map' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🗺️ Карта курса">
-                <i class="ph-bold ph-map-trifold text-xl"></i>
-                {% if request.path == '/theory/course-map' %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            <!-- 8. Расписание -->
-            <a href="/schedule" class="w-full aspect-square rounded-[1rem] {% if request.path == '/schedule' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📅 Расписание">
+            <!-- 3. Расписание -->
+            <a href="/schedule"
+               class="relative group w-11 h-11 rounded-xl {% if is_schedule_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all"
+               title="Расписание">
                 <i class="ph-bold ph-calendar-blank text-xl"></i>
-                {% if request.path == '/schedule' %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% if is_schedule_active %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
                 {% endif %}
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Расписание
+                </span>
             </a>
 
-            <!-- 9. Аналитика -->
-            <a href="/analytics" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/analytics', '/teacher/analytics'] %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📈 Аналитика">
+            <!-- 4. Задания -->
+            <a href="/assignments"
+               class="relative group w-11 h-11 rounded-xl {% if is_assignments_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all"
+               title="Задания">
+                <i class="ph-bold ph-file-text text-xl"></i>
+                {% if is_assignments_active %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
+                {% endif %}
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Задания
+                </span>
+            </a>
+
+            <!-- 5. Банк задач -->
+            <a href="/tasks"
+               class="relative group w-11 h-11 rounded-xl {% if is_tasks_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all"
+               title="Банк задач">
+                <i class="ph-bold ph-book-open text-xl"></i>
+                {% if is_tasks_active %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
+                {% endif %}
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Банк задач
+                </span>
+            </a>
+
+            <!-- 6. Материалы (Библиотека) -->
+            <a href="/library"
+               class="relative group w-11 h-11 rounded-xl {% if is_library_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all"
+               title="Материалы">
+                <i class="ph-bold ph-folder text-xl"></i>
+                {% if is_library_active %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
+                {% endif %}
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Материалы
+                </span>
+            </a>
+
+            <!-- 7. Аналитика -->
+            <a href="/analytics"
+               class="relative group w-11 h-11 rounded-xl {% if is_analytics_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all"
+               title="Аналитика">
                 <i class="ph-bold ph-chart-line-up text-xl"></i>
-                {% if request.path in ['/analytics', '/teacher/analytics'] %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+                {% if is_analytics_active %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
                 {% endif %}
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Аналитика
+                </span>
             </a>
 
-            {% if current_user is defined and current_user and current_user.is_authenticated and (current_user.role|upper in ['CREATOR', 'ADMIN'] or current_user.is_admin() or current_user.is_creator()) %}
-            <!-- 🛡️ Панель управления (Админка) -->
-            <a href="/admin/users" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/admin') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-rose-50/80 text-rose-500 hover:text-rose-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏛️ Панель управления (Админка)">
-                <i class="ph-bold ph-shield-check text-xl"></i>
-                {% if request.path.startswith('/admin') %}
-                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
+            <!-- 8. Программы (Курсы) -->
+            <a href="{{ url_for('courses.courses_catalog') }}"
+               class="relative group w-11 h-11 rounded-xl {% if is_courses_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all"
+               title="Программы">
+                <i class="ph-bold ph-books text-xl"></i>
+                {% if is_courses_active %}
+                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
                 {% endif %}
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Программы обучения
+                </span>
             </a>
-            {% endif %}
+
+            <!-- Divider -->
+            <div class="w-7 h-[2px] bg-slate-100 rounded-full my-1"></div>
+
+            <!-- 6. Инструменты (Popout Menu) -->
+            <div class="relative w-full flex justify-center">
+                <button type="button" id="toolsMenuBtn"
+                        onclick="toggleToolsMenu(event)"
+                        class="relative group w-11 h-11 rounded-xl {% if is_tools_active %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-xs{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex items-center justify-center transition-all cursor-pointer"
+                        title="Инструменты">
+                    <i class="ph-bold ph-dots-nine text-xl"></i>
+                    {% if is_tools_active %}
+                    <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]"></div>
+                    {% endif %}
+                    <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                        Все инструменты
+                    </span>
+                </button>
+
+                <!-- Tools Popover Card -->
+                <div id="toolsPopover"
+                     class="hidden fixed left-24 bottom-20 z-50 w-72 sm:w-80 bg-white border border-slate-200/90 shadow-[0_16px_40px_rgba(15,23,42,0.12)] rounded-[1.75rem] p-3 text-left">
+                    <div class="px-3 pt-1.5 pb-2.5 border-b border-slate-100 mb-2 flex items-center justify-between">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Методика и сервисы</span>
+                        <span class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">BooStudy</span>
+                    </div>
+
+                    <div class="space-y-1">
+                        <!-- Группы -->
+                        <a href="/groups"
+                           class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition no-underline group {% if request.path == '/groups' %}bg-indigo-50/70 text-indigo-700 font-bold{% else %}text-slate-700{% endif %}">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-base shrink-0 group-hover:bg-indigo-100 transition">
+                                <i class="ph-bold ph-users-three"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-xs font-black text-slate-800 leading-tight">Группы</div>
+                                <div class="text-[11px] font-medium text-slate-400 truncate">Классы и учебные потоки</div>
+                            </div>
+                        </a>
+
+                        <!-- Генератор -->
+                        <a href="/task-generator"
+                           class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition no-underline group {% if request.path == '/task-generator' %}bg-indigo-50/70 text-indigo-700 font-bold{% else %}text-slate-700{% endif %}">
+                            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-base shrink-0 group-hover:bg-amber-100 transition">
+                                <i class="ph-bold ph-magic-wand"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-xs font-black text-slate-800 leading-tight">Генератор задач</div>
+                                <div class="text-[11px] font-medium text-slate-400 truncate">Подборка заданий и вариантов</div>
+                            </div>
+                        </a>
+
+                        <!-- Библиотека -->
+                        <a href="/library"
+                           class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition no-underline group {% if request.path in ['/library', '/teacher/library'] %}bg-indigo-50/70 text-indigo-700 font-bold{% else %}text-slate-700{% endif %}">
+                            <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center text-base shrink-0 group-hover:bg-sky-100 transition">
+                                <i class="ph-bold ph-folder"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-xs font-black text-slate-800 leading-tight">Библиотека знаний</div>
+                                <div class="text-[11px] font-medium text-slate-400 truncate">Файлы, конспекты и материалы</div>
+                            </div>
+                        </a>
+
+                        <!-- Карта курса (теория) -->
+                        <a href="/theory/course-map"
+                           class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition no-underline group {% if request.path == '/theory/course-map' %}bg-indigo-50/70 text-indigo-700 font-bold{% else %}text-slate-700{% endif %}">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-base shrink-0 group-hover:bg-emerald-100 transition">
+                                <i class="ph-bold ph-map-trifold"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-xs font-black text-slate-800 leading-tight">Карта теории</div>
+                                <div class="text-[11px] font-medium text-slate-400 truncate">Дерево тем и навыков</div>
+                            </div>
+                        </a>
+
+                        <!-- Гостевые сессии -->
+                        {% if current_user is defined and current_user and current_user.is_authenticated and current_user.role|lower in ['teacher', 'tutor', 'creator', 'admin', 'chief_admin'] %}
+                        <a href="{{ url_for('guest.teacher_sessions') }}"
+                           class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition no-underline group {% if request.path.startswith('/teacher/guest-sessions') %}bg-indigo-50/70 text-indigo-700 font-bold{% else %}text-slate-700{% endif %}">
+                            <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-base shrink-0 group-hover:bg-purple-100 transition">
+                                <i class="ph-bold ph-link-simple"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-xs font-black text-slate-800 leading-tight">Гостевые сессии</div>
+                                <div class="text-[11px] font-medium text-slate-400 truncate">Ссылки для внешних учеников</div>
+                            </div>
+                        </a>
+                        {% endif %}
+
+                        <!-- Гайдбук -->
+                        <a href="{{ url_for('main.guidebook') }}"
+                           class="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition no-underline group {% if request.path.startswith('/guidebook') %}bg-indigo-50/70 text-indigo-700 font-bold{% else %}text-slate-700{% endif %}">
+                            <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center text-base shrink-0 group-hover:bg-slate-200 transition">
+                                <i class="ph-bold ph-question"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-xs font-black text-slate-800 leading-tight">Гайдбук</div>
+                                <div class="text-[11px] font-medium text-slate-400 truncate">База знаний платформы</div>
+                            </div>
+                        </a>
+
+                        <!-- Админ-панель -->
+                        {% if current_user is defined and current_user and current_user.is_authenticated and (current_user.role|upper in ['CREATOR', 'ADMIN'] or current_user.is_admin() or current_user.is_creator()) %}
+                        <div class="pt-1 border-t border-slate-100 mt-1">
+                            <a href="/admin/users"
+                               class="flex items-center gap-3 p-2 rounded-xl hover:bg-rose-50/70 transition no-underline group {% if request.path.startswith('/admin') %}bg-rose-50 text-rose-700 font-bold{% else %}text-rose-600{% endif %}">
+                                <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-base shrink-0 group-hover:bg-rose-100 transition">
+                                    <i class="ph-bold ph-shield-check"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-xs font-black text-rose-700 leading-tight">Панель управления</div>
+                                    <div class="text-[11px] font-medium text-rose-400 truncate">Администрирование</div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
 
         </div>
 
         <!-- Teacher Mentor Profile Avatar Button -->
-        <div class="mt-auto w-full px-3 pt-3">
-            <a href="/workspace/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/workspace/profile') %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Преподаватель' }}">
+        <div class="mt-auto w-full px-2.5 pt-2 flex justify-center">
+            <a href="/workspace/profile" class="relative group w-11 h-11 rounded-xl {% if request.path.startswith('/workspace/profile') %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all block" title="Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Преподаватель' }}">
                 <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-full h-full object-cover" alt="Аватар профиля">
-                <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+                <div class="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
+                <span class="absolute left-full ml-3 px-2.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl shadow-lg pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    Профиль
+                </span>
             </a>
         </div>
 
@@ -186,9 +338,28 @@
 
     {% include 'sandbox/components/_qa_widget.html' ignore missing %}
 
-    
-
     <script>
+      function toggleToolsMenu(event) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        const popover = document.getElementById('toolsPopover');
+        if (popover) {
+          popover.classList.toggle('hidden');
+        }
+      }
+
+      document.addEventListener('click', (e) => {
+        const popover = document.getElementById('toolsPopover');
+        const btn = document.getElementById('toolsMenuBtn');
+        if (popover && !popover.classList.contains('hidden')) {
+          if (!popover.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            popover.classList.add('hidden');
+          }
+        }
+      });
+
       document.addEventListener("DOMContentLoaded", () => {
         const currentPath = window.location.pathname;
         const navLinks = document.querySelectorAll("nav a[href]");
@@ -202,7 +373,7 @@
             link.classList.add("bg-indigo-50", "text-indigo-600", "border", "border-indigo-200/60", "shadow-sm", "relative");
             if (!link.querySelector('.bg-indigo-500')) {
               const indicator = document.createElement('div');
-              indicator.className = 'absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]';
+              indicator.className = 'absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.625rem+1px)]';
               link.appendChild(indicator);
             }
           }

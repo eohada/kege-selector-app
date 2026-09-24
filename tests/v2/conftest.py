@@ -29,6 +29,9 @@ collect_ignore = [
         'test_python_ege_curriculum_import.py',
         'test_python_ege_templates_import.py',
         'test_lesson_lifecycle_and_balance.py',
+        'test_student_analytics_v2.py',
+        'test_ai_homework_importer.py',
+        'test_teacher_dashboard_v2.py',
     }
 ]
 

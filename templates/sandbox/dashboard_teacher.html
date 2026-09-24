@@ -1,0 +1,1028 @@
+{% extends "sandbox/layout_teacher.html" %}
+{% block title %}Дашборд преподавателя · BooStudy{% endblock %}
+{% set active_page = 'dashboard' %}
+
+{% block sandbox_content %}
+<main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
+  <div class="max-w-[1550px] mx-auto w-full flex flex-col gap-6">
+
+    <!-- 1. Top Header & Hero Banner -->
+    <header class="relative overflow-hidden rounded-[2.25rem] border-2 border-slate-200 bg-gradient-to-r from-white via-indigo-50/40 to-purple-50/50 p-6 sm:p-8 shadow-[0_4px_0_#DAE1E9]">
+      <!-- Background subtle glow -->
+      <div class="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-indigo-200/20 blur-3xl pointer-events-none"></div>
+
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+        <!-- Left: Greetings -->
+        <div class="min-w-0 max-w-lg">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-600 bg-indigo-50/80 px-2.5 py-0.5 rounded-lg border border-indigo-200/60">
+              <i class="ph-bold ph-graduation-cap"></i> Рабочее пространство
+            </span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 leading-tight">
+            {{ greeting_word }}, {{ teacher_name }}! 👋
+          </h1>
+          <p class="text-sm font-bold text-slate-500 mt-1">
+            {{ date_formatted }}
+          </p>
+          <p class="mt-2 text-xs sm:text-sm font-medium text-slate-400 flex items-center gap-1">
+            <span>Небольшие шаги сегодня — большие результаты завтра</span>
+            <span>💜</span>
+          </p>
+        </div>
+
+        <!-- Center: 3D Mascot Character with Laptop -->
+        <div class="relative flex items-center justify-center shrink-0 self-center lg:self-auto my-1 lg:my-0">
+          <div class="relative group">
+            <img src="{{ url_for('static', filename='images/dashboard/hero_student.png') }}"
+                 alt="BooStudy Mascot"
+                 class="h-28 sm:h-32 lg:h-36 max-w-full object-contain select-none pointer-events-none drop-shadow-md hover:scale-105 transition-transform duration-300">
+            <!-- Floating badge -->
+            <div class="absolute -top-1 right-2 sm:right-6 bg-white/95 backdrop-blur-xs border border-indigo-200 shadow-sm rounded-xl px-2.5 py-1 text-[11px] font-black text-indigo-700 animate-bounce">
+              Всё получится! ✨
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Week Summary Card -->
+        <div class="lg:w-80 w-full rounded-[1.75rem] border-2 border-indigo-500 bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-700 text-white p-5 shadow-[0_8px_20px_rgba(79,70,229,0.25)] relative overflow-hidden shrink-0">
+          <div class="flex items-center justify-between mb-3.5">
+            <span class="text-xs font-black tracking-wide flex items-center gap-1.5">
+              {{ hero_card.badge }}
+            </span>
+            <a href="/analytics" class="w-6 h-6 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white text-xs transition no-underline">
+              <i class="ph-bold ph-caret-right"></i>
+            </a>
+          </div>
+
+          <div class="space-y-2.5 text-xs font-semibold">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 text-white/90">
+                <i class="ph-bold ph-check-square-offset text-indigo-200 text-base"></i>
+                <span><strong class="font-black text-white text-sm">{{ hero_card.completed_works }}</strong> работы выполнено</span>
+              </div>
+              <span class="text-[11px] font-black text-emerald-300 bg-emerald-950/30 px-1.5 py-0.5 rounded">
+                {{ hero_card.completed_works_delta }}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 text-white/90">
+                <i class="ph-bold ph-check-circle text-indigo-200 text-base"></i>
+                <span><strong class="font-black text-white text-sm">{{ hero_card.attendance_pct }}%</strong> занятий посещено</span>
+              </div>
+              <span class="text-[11px] font-black text-emerald-300 bg-emerald-950/30 px-1.5 py-0.5 rounded">
+                {{ hero_card.attendance_delta }}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between pt-1 border-t border-white/10">
+              <div class="flex items-center gap-2 text-white/90">
+                <i class="ph-bold ph-trend-up text-indigo-200 text-base"></i>
+                <span><strong class="font-black text-white text-sm">{{ hero_card.improved_students }}</strong> ученика улучшили результат</span>
+              </div>
+              <a href="/analytics" class="text-white/70 hover:text-white transition">
+                <i class="ph-bold ph-arrow-right"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. Row of 4 KPI Metric Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <!-- KPI 1: Active students -->
+      <a href="/students" class="rounded-[1.75rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] hover:border-indigo-300 transition-all no-underline block group">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+            <i class="ph-bold ph-users"></i>
+          </div>
+          <span class="text-xs font-black text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+            {{ kpi.students_delta }}
+          </span>
+        </div>
+        <div class="text-3xl font-black text-slate-900 tracking-tight">{{ kpi.active_students }}</div>
+        <p class="text-xs font-bold text-slate-500 mt-1">активных учеников</p>
+      </a>
+
+      <!-- KPI 2: Review queue -->
+      <a href="/assignments" class="rounded-[1.75rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] hover:border-rose-300 transition-all no-underline block group">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+            <i class="ph-bold ph-file-text"></i>
+          </div>
+          <span class="text-xs font-bold text-rose-600 flex items-center gap-1 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200">
+            {{ kpi.overdue_reviews }}
+          </span>
+        </div>
+        <div class="text-3xl font-black text-slate-900 tracking-tight">{{ kpi.pending_reviews }}</div>
+        <p class="text-xs font-bold text-slate-500 mt-1">работы на проверку</p>
+      </a>
+
+      <!-- KPI 3: Average score -->
+      <a href="/analytics" class="rounded-[1.75rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] hover:border-emerald-300 transition-all no-underline block group">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+            <i class="ph-bold ph-chart-bar"></i>
+          </div>
+          <span class="text-xs font-black text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+            {{ kpi.score_delta }}
+          </span>
+        </div>
+        <div class="text-3xl font-black text-slate-900 tracking-tight">{{ kpi.average_score }}%</div>
+        <p class="text-xs font-bold text-slate-500 mt-1">средний результат</p>
+      </a>
+
+      <!-- KPI 4: Lessons this week -->
+      <a href="/schedule" class="rounded-[1.75rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] hover:border-sky-300 transition-all no-underline block group">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+            <i class="ph-bold ph-calendar-blank"></i>
+          </div>
+          <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">
+            на неделе
+          </span>
+        </div>
+        <div class="text-3xl font-black text-slate-900 tracking-tight">{{ kpi.lessons_this_week }}</div>
+        <p class="text-xs font-bold text-slate-500 mt-1">{{ kpi.next_lesson_subtext }}</p>
+      </a>
+    </section>
+
+    <!-- 3. Middle Grid (3 blocks: Focus Today, Today's Schedule, Quick Actions + To-Do) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <!-- Column 1: Фокус на сегодня (lg:col-span-5) -->
+      <article class="lg:col-span-5 rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between h-full">
+        <div>
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+            <div class="flex items-center gap-2.5">
+              <span class="w-9 h-9 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center text-xl shrink-0">
+                <i class="ph-fill ph-fire"></i>
+              </span>
+              <div>
+                <h2 class="text-lg font-black text-slate-900 tracking-tight">Фокус на сегодня</h2>
+                <p class="text-xs font-semibold text-slate-400">Есть {{ focus_items|length }} вещи, которые стоит разобрать</p>
+              </div>
+            </div>
+            <a href="/analytics" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition no-underline">
+              Смотреть все
+            </a>
+          </div>
+
+          <div class="space-y-3">
+            {% for item in focus_items %}
+            <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-slate-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white hover:shadow-xs transition">
+              <div class="flex items-center gap-3 min-w-0">
+                {% if item.type == 'decline' %}
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+                {% elif item.type == 'review' %}
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                {% elif item.type == 'lesson' %}
+                  <span class="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+                {% else %}
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                {% endif %}
+
+                {% if item.avatar %}
+                <div class="w-9 h-9 rounded-xl bg-slate-200 overflow-hidden shrink-0 border border-slate-300">
+                  <img src="{{ item.avatar }}" alt="{{ item.title }}" class="w-full h-full object-cover">
+                </div>
+                {% elif item.icon %}
+                <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-lg shrink-0">
+                  <i class="{{ item.icon }}"></i>
+                </div>
+                {% endif %}
+
+                <div class="min-w-0">
+                  <div class="text-sm font-black text-slate-900 truncate">{{ item.title }}</div>
+                  <div class="text-xs font-medium text-slate-500 truncate">{{ item.subtitle }}</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                {% if item.progression %}
+                <div class="flex items-center gap-1 text-[11px] font-black">
+                  {% for p in item.progression %}
+                    <span class="px-1.5 py-0.5 rounded {% if loop.last %}bg-rose-50 text-rose-700 border border-rose-200{% elif loop.first %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-amber-50 text-amber-700 border border-amber-200{% endif %}">{{ p }}</span>
+                    {% if not loop.last %}<span class="text-slate-300">→</span>{% endif %}
+                  {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if item.action_url %}
+                <a href="{{ item.action_url }}" class="text-xs font-black {% if item.type == 'decline' %}text-rose-600 hover:text-rose-700{% elif item.type == 'milestone' %}text-emerald-600 hover:text-emerald-700{% else %}text-indigo-600 hover:text-indigo-700{% endif %} no-underline inline-flex items-center gap-1 transition">
+                  <span>{{ item.action_text }}</span>
+                </a>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </article>
+
+      <!-- Column 2: Сегодня (Schedule Timeline) (lg:col-span-4) -->
+      <article class="lg:col-span-4 rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between h-full">
+        <div>
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+            <div class="flex items-center gap-2.5">
+              <span class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
+                <i class="ph-bold ph-calendar"></i>
+              </span>
+              <div>
+                <h2 class="text-lg font-black text-slate-900 tracking-tight">Сегодня</h2>
+                <p class="text-xs font-semibold text-slate-400">{{ today_short }}</p>
+              </div>
+            </div>
+            <a href="/schedule" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition no-underline">
+              Открыть расписание
+            </a>
+          </div>
+
+          <!-- Timeline list -->
+          {% if today_timeline %}
+          <div class="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-200">
+            {% for item in today_timeline %}
+            <div class="relative flex items-center justify-between p-3 rounded-xl bg-[#F8FAFC] border border-slate-200/80 hover:bg-slate-50 transition">
+              <span class="absolute -left-6 w-4 h-4 rounded-full {% if item.status == 'completed' %}bg-emerald-500{% elif item.status == 'in_progress' %}bg-amber-500 animate-pulse{% else %}bg-indigo-600{% endif %} border-2 border-white shadow-xs"></span>
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="text-xs font-mono font-black text-slate-800 w-12">{{ item.time }}</span>
+                <div class="w-8 h-8 rounded-lg bg-slate-200 overflow-hidden shrink-0 border border-slate-300">
+                  <img src="{{ item.avatar }}" alt="{{ item.student_name }}" class="w-full h-full object-cover">
+                </div>
+                <div class="min-w-0">
+                  <div class="text-xs font-black text-slate-900 truncate">{{ item.student_name }}</div>
+                  <div class="text-[11px] font-medium text-slate-500 truncate">{{ item.topic }}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black">
+                  {{ item.duration }}
+                </span>
+                <a href="{{ item.room_url }}" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 px-2 py-1 rounded-lg bg-white border border-slate-200 shadow-2xs no-underline">
+                  Войти
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="py-8 text-center flex flex-col items-center justify-center gap-2.5">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-2xl">
+              <i class="ph-bold ph-calendar-check"></i>
+            </div>
+            <div class="text-sm font-black text-slate-800">На сегодня уроков нет</div>
+            <p class="text-xs text-slate-400 max-w-xs">Свободный день! Вы можете запланировать занятие с учеником или консультацию</p>
+            <button type="button" onclick="openAddLessonModal()"
+                    class="mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs border border-indigo-700 border-b-[3px] active:border-b active:translate-y-[1px] shadow-xs cursor-pointer">
+              + Запланировать занятие
+            </button>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Add lesson button -->
+        <div class="mt-6 pt-4 border-t border-slate-100">
+          <button type="button" onclick="openAddLessonModal()"
+                  class="w-full py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs inline-flex items-center justify-center gap-2 shadow-xs transition">
+            <i class="ph-bold ph-plus"></i> Добавить занятие
+          </button>
+        </div>
+      </article>
+
+      <!-- Column 3: Quick actions + To-Do (lg:col-span-3) -->
+      <div class="lg:col-span-3 space-y-5">
+        <!-- Quick Actions -->
+        <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
+          <div class="flex items-center gap-2 mb-3.5">
+            <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center text-base">
+              <i class="ph-fill ph-lightning"></i>
+            </span>
+            <h2 class="text-sm font-black text-slate-900">Быстрые действия</h2>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <!-- 1. Создать работу -->
+            <a href="/assignments/create"
+               class="p-3 rounded-2xl bg-indigo-50/60 hover:bg-indigo-100/70 border border-indigo-200 text-indigo-700 flex flex-col items-center justify-center text-center gap-1.5 no-underline transition group">
+              <i class="ph-bold ph-file-plus text-xl group-hover:scale-110 transition-transform"></i>
+              <span class="text-[11px] font-black leading-tight">Создать работу</span>
+            </a>
+
+            <!-- 2. Назначить пробник -->
+            <button type="button" onclick="openAssignMockModal()"
+                    class="p-3 rounded-2xl bg-sky-50/60 hover:bg-sky-100/70 border border-sky-200 text-sky-700 flex flex-col items-center justify-center text-center gap-1.5 transition group cursor-pointer">
+              <i class="ph-bold ph-target text-xl group-hover:scale-110 transition-transform"></i>
+              <span class="text-[11px] font-black leading-tight">Назначить пробник</span>
+            </button>
+
+            <!-- 3. Открыть банк задач -->
+            <a href="/tasks"
+               class="p-3 rounded-2xl bg-emerald-50/60 hover:bg-emerald-100/70 border border-emerald-200 text-emerald-700 flex flex-col items-center justify-center text-center gap-1.5 no-underline transition group">
+              <i class="ph-bold ph-book-open text-xl group-hover:scale-110 transition-transform"></i>
+              <span class="text-[11px] font-black leading-tight">Открыть банк задач</span>
+            </a>
+
+            <!-- 4. Добавить ученика -->
+            <button type="button" onclick="openAddStudentModal()"
+                    class="p-3 rounded-2xl bg-amber-50/60 hover:bg-amber-100/70 border border-amber-200 text-amber-700 flex flex-col items-center justify-center text-center gap-1.5 transition group cursor-pointer">
+              <i class="ph-bold ph-user-plus text-xl group-hover:scale-110 transition-transform"></i>
+              <span class="text-[11px] font-black leading-tight">Добавить ученика</span>
+            </button>
+          </div>
+        </article>
+
+        <!-- To-Do Widget: Не забыть! -->
+        <article class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-base">
+                <i class="ph-bold ph-ghost"></i>
+              </div>
+              <h2 class="text-sm font-black text-slate-900">Не забыть!</h2>
+            </div>
+            <button type="button" onclick="promptAddTodo()" class="text-slate-400 hover:text-slate-700 text-xs font-bold" title="Добавить заметку">
+              <i class="ph-bold ph-plus"></i>
+            </button>
+          </div>
+
+          <div id="todoListContainer" class="space-y-2 text-xs">
+            {% for todo in todos %}
+            <label class="group flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition select-none">
+              <div class="flex items-start gap-2.5 min-w-0">
+                <input type="checkbox" onchange="toggleTodo({{ todo.id }}, this)"
+                       class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5 cursor-pointer"
+                       {% if todo.done %}checked{% endif %}>
+                <span class="font-medium text-slate-700 truncate {% if todo.done %}line-through text-slate-400{% endif %}">
+                  {{ todo.text }}
+                </span>
+              </div>
+              <button type="button" onclick="deleteTodo({{ todo.id }}, this)" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition p-1" title="Удалить">
+                <i class="ph-bold ph-trash"></i>
+              </button>
+            </label>
+            {% endfor %}
+          </div>
+        </article>
+      </div>
+
+    </div>
+
+    <!-- 4. Bottom Row (4 blocks: Performance Chart, Student Dynamics, Topic Map, Live Activity) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-5 items-stretch">
+
+      <!-- Card 1: Средний результат учеников (Chart) (lg:col-span-4) -->
+      <article class="lg:col-span-4 rounded-[2rem] border-2 border-slate-200 bg-white p-6 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between">
+        <div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-2">
+              <i class="ph-bold ph-chart-bar text-indigo-600 text-lg"></i>
+              <h2 class="text-sm font-black text-slate-900">Средний результат учеников</h2>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex p-0.5 bg-slate-100 rounded-xl text-[11px] font-bold">
+              <button type="button" onclick="switchChartTab('7d')" id="tab7d" class="px-2.5 py-1 rounded-lg bg-white text-indigo-700 shadow-xs font-black">7 дней</button>
+              <button type="button" onclick="switchChartTab('30d')" id="tab30d" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800">30 дней</button>
+              <button type="button" onclick="switchChartTab('all')" id="tabAll" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800">Весь период</button>
+            </div>
+          </div>
+
+          <!-- Interactive SVG Chart -->
+          <div class="relative w-full h-44 mt-4">
+            <!-- Tooltip badge at peak -->
+            <div id="chartTooltipBadge" class="absolute top-2 right-6 bg-slate-900 text-white rounded-lg px-2 py-1 text-[10px] font-black shadow-md flex items-center gap-1.5 z-10">
+              <span id="chartPeakVal" class="text-emerald-400">{{ chart_data_7d.peak_val }}%</span>
+              <span id="chartPeakLabel" class="text-slate-400">{{ chart_data_7d.peak_label }}</span>
+            </div>
+
+            <svg viewBox="0 0 600 160" class="w-full h-full overflow-visible">
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.0"/>
+                </linearGradient>
+              </defs>
+
+              <!-- Grid horizontal lines -->
+              <line x1="30" y1="25" x2="570" y2="25" stroke="#f1f5f9" stroke-width="1" />
+              <line x1="30" y1="65" x2="570" y2="65" stroke="#f1f5f9" stroke-width="1" />
+              <line x1="30" y1="105" x2="570" y2="105" stroke="#f1f5f9" stroke-width="1" />
+              <line x1="30" y1="135" x2="570" y2="135" stroke="#f1f5f9" stroke-width="1" />
+
+              <!-- Y-axis labels -->
+              <text x="22" y="28" text-anchor="end" class="text-[9px] fill-slate-400 font-mono font-bold">100%</text>
+              <text x="22" y="68" text-anchor="end" class="text-[9px] fill-slate-400 font-mono font-bold">75%</text>
+              <text x="22" y="108" text-anchor="end" class="text-[9px] fill-slate-400 font-mono font-bold">50%</text>
+              <text x="22" y="138" text-anchor="end" class="text-[9px] fill-slate-400 font-mono font-bold">0%</text>
+
+              <!-- Area fill under curve -->
+              <path id="chartAreaPath"
+                    d="{{ chart_data_7d.area_d }}"
+                    fill="url(#chartGrad)"/>
+
+              <!-- Smooth Curve Line -->
+              <path id="chartCurvePath"
+                    d="{{ chart_data_7d.spline_d }}"
+                    fill="none" stroke="#6366f1" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <!-- X axis dates -->
+          <div id="chartXAxisLabels" class="flex justify-between pl-8 pr-4 pt-2 text-[10px] font-bold text-slate-400 font-mono">
+            {% for pt in chart_data_7d.points %}
+            <span class="{% if loop.last %}text-indigo-600 font-black{% endif %}">{{ pt.date }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 2: Динамика учеников (lg:col-span-3) -->
+      <article class="lg:col-span-3 rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between">
+        <div>
+          <!-- Group 1: Набирают темп -->
+          <div class="mb-4">
+            <div class="flex items-center gap-1.5 text-xs font-black text-emerald-600 mb-2.5">
+              <i class="ph-bold ph-arrow-up"></i>
+              <span>Набирают темп</span>
+            </div>
+            <div class="space-y-2">
+              {% for s in gaining_momentum %}
+              <a href="{% if s.student_id %}/student/{{ s.student_id }}/dashboard{% else %}/students{% endif %}" class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition no-underline group">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-7 h-7 rounded-lg bg-slate-200 overflow-hidden shrink-0 border border-slate-300">
+                    <img src="{{ s.avatar or url_for('static', filename='images/default-avatar.svg') }}" alt="{{ s.name }}" class="w-full h-full object-cover">
+                  </div>
+                  <span class="text-xs font-black text-slate-800 truncate">{{ s.name }}</span>
+                </div>
+                <div class="flex items-center gap-1 text-xs font-black text-emerald-600 shrink-0">
+                  <span>{{ s.delta }}</span>
+                  <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-slate-600 transition"></i>
+                </div>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Group 2: Нужна помощь -->
+          <div class="pt-3 border-t border-slate-100">
+            <div class="flex items-center gap-1.5 text-xs font-black text-rose-600 mb-2.5">
+              <i class="ph-bold ph-arrow-down"></i>
+              <span>Нужна помощь</span>
+            </div>
+            <div class="space-y-2">
+              {% for s in needs_help %}
+              <a href="{% if s.student_id %}/student/{{ s.student_id }}/dashboard{% else %}/students{% endif %}" class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition no-underline group">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-7 h-7 rounded-lg bg-slate-200 overflow-hidden shrink-0 border border-slate-300">
+                    <img src="{{ s.avatar or url_for('static', filename='images/default-avatar.svg') }}" alt="{{ s.name }}" class="w-full h-full object-cover">
+                  </div>
+                  <span class="text-xs font-black text-slate-800 truncate">{{ s.name }}</span>
+                </div>
+                <div class="flex items-center gap-1 text-xs font-black text-rose-600 shrink-0">
+                  <span>{{ s.delta }}</span>
+                  <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-slate-600 transition"></i>
+                </div>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 3: Карта тем (lg:col-span-2) -->
+      <article class="lg:col-span-2 rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+            <div class="flex items-center gap-1.5">
+              <i class="ph-bold ph-stack text-indigo-600 text-sm"></i>
+              <h2 class="text-xs font-black text-slate-900">Карта тем</h2>
+            </div>
+            <a href="/courses" class="text-[11px] font-bold text-slate-400 hover:text-indigo-600 transition no-underline">
+              Все темы
+            </a>
+          </div>
+
+          <div class="space-y-3">
+            {% for t in topics_map %}
+            <div>
+              <div class="flex items-center justify-between text-[11px] font-black text-slate-700 mb-1">
+                <span>{{ t.name }}</span>
+                <span class="text-[10px] text-slate-400">{{ t.total }}</span>
+              </div>
+              <!-- Stacked Progress Bar -->
+              <div class="h-2 rounded-full bg-slate-100 flex overflow-hidden">
+                <div style="width: {{ t.pct_mastered }}%" class="bg-emerald-500 h-full" title="Освоено: {{ t.mastered }}"></div>
+                <div style="width: {{ t.pct_in_progress }}%" class="bg-amber-400 h-full" title="В работе: {{ t.in_progress }}"></div>
+                <div style="width: {{ t.pct_problem }}%" class="bg-rose-500 h-full" title="Проблема: {{ t.problem }}"></div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="pt-3 mt-3 border-t border-slate-100 flex flex-wrap gap-2 text-[9px] font-bold text-slate-500">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Освоено</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> В работе</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Проблема</span>
+        </div>
+      </article>
+
+      <!-- Card 4: Последняя активность (lg:col-span-3) -->
+      <article class="lg:col-span-3 rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+            <div class="flex items-center gap-1.5">
+              <i class="ph-bold ph-clock text-indigo-600 text-sm"></i>
+              <h2 class="text-xs font-black text-slate-900">Последняя активность</h2>
+            </div>
+            <a href="/assignments" class="text-[11px] font-bold text-slate-400 hover:text-indigo-600 transition no-underline">
+              Все события
+            </a>
+          </div>
+
+          <div class="space-y-3">
+            {% for act in recent_activity %}
+            <a href="{{ act.url or '/assignments' }}" class="flex items-start gap-2.5 text-xs no-underline group hover:bg-slate-50 p-1.5 rounded-xl transition">
+              <span class="w-2 h-2 rounded-full {% if act.color == 'emerald' %}bg-emerald-500{% elif act.color == 'sky' %}bg-sky-500{% else %}bg-rose-500{% endif %} mt-1 shrink-0"></span>
+              <div class="min-w-0 flex-1">
+                <span class="text-[10px] font-bold text-slate-400 block">{{ act.time }}</span>
+                <p class="font-medium text-slate-700 leading-snug group-hover:text-indigo-600 transition">
+                  <strong class="font-bold text-slate-900">{{ act.user }}</strong> {{ act.action }}
+                  {% if act.score %}
+                  — <span class="font-black text-emerald-600">{{ act.score }}</span>
+                  {% endif %}
+                </p>
+              </div>
+            </a>
+            {% endfor %}
+          </div>
+        </div>
+      </article>
+
+    </div>
+
+  </div>
+</main>
+
+<!-- Modals -->
+<!-- Modal 1: Назначить пробник -->
+<div id="assignMockModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+  <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-[2rem] max-w-md w-full p-6 relative">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-lg">
+          <i class="ph-bold ph-target"></i>
+        </div>
+        <h3 class="text-base font-black text-slate-900">Назначить пробный экзамен</h3>
+      </div>
+      <button type="button" onclick="closeAssignMockModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 flex items-center justify-center">
+        <i class="ph-bold ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <form action="/assignments/create" method="get" class="space-y-4">
+      <input type="hidden" name="type" value="exam">
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">Формат экзамена</label>
+        <select name="subject" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+          <option value="ege_informatics">ЕГЭ Информатика (27 заданий, КЕГЭ · 235 мин)</option>
+          <option value="oge_informatics">ОГЭ Информатика (15 заданий · 150 мин)</option>
+          <option value="mini_mock">Мини-пробник (10 заданий · 60 мин)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">Кому назначить</label>
+        <select name="student_id" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+          <option value="all">Всем активным ученикам ({{ kpi.active_students }})</option>
+          {% for st in students %}
+          <option value="{{ st.student_id }}">{{ st.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">Дедлайн выполнения</label>
+        <input type="date" name="deadline" id="mockDeadlineInput" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+        <button type="button" onclick="closeAssignMockModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Отмена</button>
+        <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs border border-indigo-700 border-b-[3px] active:border-b active:translate-y-[1px] shadow-xs cursor-pointer">
+          Перейти к сборке варианта →
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 2: Добавить ученика -->
+<div id="addStudentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+  <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-[2rem] max-w-md w-full p-6 relative">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
+          <i class="ph-bold ph-user-plus"></i>
+        </div>
+        <h3 class="text-base font-black text-slate-900">Добавить нового ученика</h3>
+      </div>
+      <button type="button" onclick="closeAddStudentModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 flex items-center justify-center">
+        <i class="ph-bold ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Tabs: Invite Link vs Manual Creation -->
+    <div class="flex p-1 bg-slate-100 rounded-xl mb-4 text-xs font-bold">
+      <button type="button" onclick="switchStudentTab('invite')" id="tabStudentInvite" class="flex-1 py-1.5 rounded-lg bg-white text-indigo-700 shadow-xs font-black">
+        Ссылка-приглашение
+      </button>
+      <button type="button" onclick="switchStudentTab('manual')" id="tabStudentManual" class="flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800">
+        Создать вручную
+      </button>
+    </div>
+
+    <!-- Tab 1: Invite Link -->
+    <div id="studentTabInvite" class="space-y-4">
+      <p class="text-xs text-slate-500 leading-relaxed">
+        Сгенерируйте защищённую ссылку. При переходе ученик зарегистрируется и автоматически будет привязан к вашему профилю.
+      </p>
+
+      <div class="space-y-2">
+        <label class="block text-xs font-black text-slate-700">Готовая ссылка для регистрации</label>
+        <div class="flex gap-2">
+          <input type="text" id="generatedInviteUrlInput" readonly placeholder="Нажмите «Сгенерировать ссылку»" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono bg-slate-50 text-slate-700 select-all">
+          <button type="button" id="copyInviteBtn" onclick="copyInviteUrl()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs shrink-0 cursor-pointer">
+            Копировать
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-between items-center gap-2">
+        <button type="button" onclick="closeAddStudentModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Закрыть</button>
+        <button type="button" onclick="generateStudentInvite()" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs border border-indigo-700 border-b-[3px] active:border-b active:translate-y-[1px] shadow-xs cursor-pointer">
+          Сгенерировать ссылку
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab 2: Manual Profile Creation -->
+    <form id="studentTabManual" onsubmit="submitQuickStudent(event)" class="hidden space-y-3.5">
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">Имя и фамилия ученика *</label>
+        <input type="text" id="manualStudentName" required placeholder="Например: Алексей Смирнов" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">Целевой балл</label>
+          <input type="number" id="manualTargetScore" value="80" min="40" max="100" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">Программа</label>
+          <select id="manualCategory" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+            <option value="ЕГЭ Информатика">ЕГЭ Информатика</option>
+            <option value="ОГЭ Информатика">ОГЭ Информатика</option>
+            <option value="Программирование">Программирование</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">Telegram или телефон (необязательно)</label>
+        <input type="text" id="manualTelegram" placeholder="@username или +7..." class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+        <button type="button" onclick="closeAddStudentModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Отмена</button>
+        <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs border border-indigo-700 border-b-[3px] active:border-b active:translate-y-[1px] shadow-xs cursor-pointer">
+          Создать ученика
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 3: Добавить занятие -->
+<div id="addLessonModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+  <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-[2rem] max-w-md w-full p-6 relative">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">
+          <i class="ph-bold ph-calendar-plus"></i>
+        </div>
+        <h3 class="text-base font-black text-slate-900">Запланировать занятие</h3>
+      </div>
+      <button type="button" onclick="closeAddLessonModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 flex items-center justify-center">
+        <i class="ph-bold ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <form onsubmit="submitAddLesson(event)" class="space-y-3.5">
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">Ученик *</label>
+        <select id="lessonStudentSelect" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+          {% if students %}
+            {% for st in students %}
+            <option value="{{ st.student_id }}">{{ st.name }}</option>
+            {% endfor %}
+          {% else %}
+            <option value="">Нет зарегистрированных учеников</option>
+          {% endif %}
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">Дата *</label>
+          <input type="date" id="lessonDateInput" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+        </div>
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1">Время *</label>
+          <input type="time" id="lessonTimeInput" required value="18:00" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">Тема занятия</label>
+        <input type="text" id="lessonTopicInput" placeholder="Например: Разбор задания №27 / Циклы" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+      </div>
+
+      <div>
+        <label class="block text-xs font-black text-slate-700 mb-1">Длительность</label>
+        <select id="lessonDurationSelect" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
+          <option value="60">60 минут (1 час)</option>
+          <option value="45">45 минут</option>
+          <option value="90">90 минут (1.5 часа)</option>
+          <option value="120">120 минут (2 часа)</option>
+        </select>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+        <button type="button" onclick="closeAddLessonModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Отмена</button>
+        <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs border border-indigo-700 border-b-[3px] active:border-b active:translate-y-[1px] shadow-xs cursor-pointer">
+          Создать занятие
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const chartDatasets = {
+  '7d': {{ chart_data_7d|tojson }},
+  '30d': {{ chart_data_30d|tojson }},
+  'all': {{ chart_data_all|tojson }}
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Pre-fill default dates
+  const todayStr = new Date().toISOString().split('T')[0];
+  const dMock = document.getElementById('mockDeadlineInput');
+  if (dMock) {
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 5);
+    dMock.value = nextWeek.toISOString().split('T')[0];
+  }
+  const dLesson = document.getElementById('lessonDateInput');
+  if (dLesson) dLesson.value = todayStr;
+});
+
+function openAssignMockModal() {
+  document.getElementById('assignMockModal').classList.remove('hidden');
+}
+function closeAssignMockModal() {
+  document.getElementById('assignMockModal').classList.add('hidden');
+}
+
+function openAddStudentModal() {
+  document.getElementById('addStudentModal').classList.remove('hidden');
+}
+function closeAddStudentModal() {
+  document.getElementById('addStudentModal').classList.add('hidden');
+}
+
+function openAddLessonModal() {
+  document.getElementById('addLessonModal').classList.remove('hidden');
+}
+function closeAddLessonModal() {
+  document.getElementById('addLessonModal').classList.add('hidden');
+}
+
+function switchStudentTab(tab) {
+  const tInv = document.getElementById('tabStudentInvite');
+  const tMan = document.getElementById('tabStudentManual');
+  const cInv = document.getElementById('studentTabInvite');
+  const cMan = document.getElementById('studentTabManual');
+
+  if (tab === 'invite') {
+    tInv.className = 'flex-1 py-1.5 rounded-lg bg-white text-indigo-700 shadow-xs font-black';
+    tMan.className = 'flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800';
+    cInv.classList.remove('hidden');
+    cMan.classList.add('hidden');
+  } else {
+    tMan.className = 'flex-1 py-1.5 rounded-lg bg-white text-indigo-700 shadow-xs font-black';
+    tInv.className = 'flex-1 py-1.5 rounded-lg text-slate-500 hover:text-slate-800';
+    cMan.classList.remove('hidden');
+    cInv.classList.add('hidden');
+  }
+}
+
+function generateStudentInvite() {
+  fetch('/api/teacher/invites/student', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.invite_url) {
+      const input = document.getElementById('generatedInviteUrlInput');
+      input.value = data.invite_url;
+      input.select();
+    } else {
+      alert(data.message || 'Ошибка генерации ссылки');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Не удалось сгенерировать ссылку');
+  });
+}
+
+function copyInviteUrl() {
+  const input = document.getElementById('generatedInviteUrlInput');
+  if (!input || !input.value) {
+    generateStudentInvite();
+    return;
+  }
+  navigator.clipboard.writeText(input.value).then(() => {
+    const btn = document.getElementById('copyInviteBtn');
+    const oldText = btn.innerText;
+    btn.innerText = 'Скопировано! ✓';
+    btn.classList.add('bg-emerald-100', 'text-emerald-800');
+    setTimeout(() => {
+      btn.innerText = oldText;
+      btn.classList.remove('bg-emerald-100', 'text-emerald-800');
+    }, 2000);
+  });
+}
+
+function submitQuickStudent(e) {
+  e.preventDefault();
+  const name = document.getElementById('manualStudentName').value;
+  const target_score = document.getElementById('manualTargetScore').value;
+  const category = document.getElementById('manualCategory').value;
+  const telegram = document.getElementById('manualTelegram').value;
+
+  fetch('/api/teacher-dashboard/quick-student', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, target_score, category, telegram })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      closeAddStudentModal();
+      window.location.reload();
+    } else {
+      alert(data.message || 'Ошибка при создании ученика');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Не удалось создать ученика');
+  });
+}
+
+function submitAddLesson(e) {
+  e.preventDefault();
+  const student_id = document.getElementById('lessonStudentSelect').value;
+  const dateVal = document.getElementById('lessonDateInput').value;
+  const timeVal = document.getElementById('lessonTimeInput').value;
+  const topic = document.getElementById('lessonTopicInput').value;
+  const duration = document.getElementById('lessonDurationSelect').value;
+
+  if (!student_id) {
+    alert('Выберите ученика или добавьте нового');
+    return;
+  }
+
+  fetch('/api/schedule/create_lesson', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      student_id: parseInt(student_id),
+      date: dateVal,
+      time: timeVal,
+      topic: topic || 'Индивидуальное занятие',
+      duration: parseInt(duration) || 60
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'success' || data.success) {
+      closeAddLessonModal();
+      window.location.reload();
+    } else {
+      alert(data.message || 'Ошибка создания урока');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('Не удалось создать урок');
+  });
+}
+
+function promptAddTodo() {
+  const text = prompt('Введите текст новой заметки:');
+  if (!text || !text.trim()) return;
+
+  fetch('/api/teacher-dashboard/todo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'add', text: text.trim() })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success && Array.isArray(data.todos)) {
+      const newTodo = data.todos[data.todos.length - 1];
+      const container = document.getElementById('todoListContainer');
+      const label = document.createElement('label');
+      label.className = 'group flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition select-none';
+      label.innerHTML = `
+        <div class="flex items-start gap-2.5 min-w-0">
+          <input type="checkbox" onchange="toggleTodo(${newTodo.id}, this)"
+                 class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5 cursor-pointer">
+          <span class="font-medium text-slate-700 truncate">${newTodo.text}</span>
+        </div>
+        <button type="button" onclick="deleteTodo(${newTodo.id}, this)" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition p-1" title="Удалить">
+          <i class="ph-bold ph-trash"></i>
+        </button>
+      `;
+      container.appendChild(label);
+    }
+  })
+  .catch(err => console.error('Error adding todo:', err));
+}
+
+function toggleTodo(id, checkbox) {
+  const span = checkbox.nextElementSibling;
+  if (checkbox.checked) {
+    span.classList.add('line-through', 'text-slate-400');
+  } else {
+    span.classList.remove('line-through', 'text-slate-400');
+  }
+
+  fetch('/api/teacher-dashboard/todo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'toggle', id: id })
+  }).catch(err => console.error('Error toggling todo:', err));
+}
+
+function deleteTodo(id, btn) {
+  const label = btn.closest('label');
+  if (label) label.remove();
+
+  fetch('/api/teacher-dashboard/todo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'delete', id: id })
+  }).catch(err => console.error('Error deleting todo:', err));
+}
+
+function switchChartTab(mode) {
+  const t7 = document.getElementById('tab7d');
+  const t30 = document.getElementById('tab30d');
+  const tAll = document.getElementById('tabAll');
+  const peakVal = document.getElementById('chartPeakVal');
+  const peakLabel = document.getElementById('chartPeakLabel');
+  const curve = document.getElementById('chartCurvePath');
+  const area = document.getElementById('chartAreaPath');
+  const axis = document.getElementById('chartXAxisLabels');
+
+  [t7, t30, tAll].forEach(btn => {
+    btn.className = 'px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800';
+  });
+
+  const activeBtn = mode === '7d' ? t7 : (mode === '30d' ? t30 : tAll);
+  activeBtn.className = 'px-2.5 py-1 rounded-lg bg-white text-indigo-700 shadow-xs font-black';
+
+  const ds = chartDatasets[mode];
+  if (!ds) return;
+
+  if (curve && ds.spline_d) curve.setAttribute('d', ds.spline_d);
+  if (area && ds.area_d) area.setAttribute('d', ds.area_d);
+  if (peakVal) peakVal.innerText = `${ds.peak_val}%`;
+  if (peakLabel) peakLabel.innerText = ds.peak_label;
+
+  if (axis && Array.isArray(ds.points)) {
+    axis.innerHTML = ds.points.map((p, idx) => `
+      <span class="${idx === ds.points.length - 1 ? 'text-indigo-600 font-black' : ''}">${p.date}</span>
+    `).join('');
+  }
+}
+</script>
+{% endblock %}

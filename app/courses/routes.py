@@ -1,14 +1,24 @@
 from __future__ import annotations
 
+import os
 import json
-from flask import render_template, redirect, url_for, flash, request, abort, jsonify, g
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
+from flask import render_template, redirect, url_for, flash, request, abort, jsonify, g, current_app, Response
+from werkzeug.utils import secure_filename
 from flask_login import login_required, current_user
 from sqlalchemy import or_, func
 
+from app import csrf
 from app.courses import courses_bp
+from app.courses.course_io import import_course_from_data, export_course_to_dict
 from app.courses.forms import CourseForm, CourseModuleForm, CourseLessonForm
-from app.models import db, Student, Lesson, LessonTask, Tasks, LearningTrajectory, TrajectoryModule, User, LearningItem, LessonOutcome, ExamSkill, StudentSkill, LearningTrajectoryVersion, StudentDiagnosticCheckpoint, LearningError, LearningTrajectoryTemplate, LearningTrajectoryTemplateModule, LearningTrajectoryTemplateItem
+from app.models import (
+    db, Student, Lesson, LessonTask, Tasks, LearningTrajectory, TrajectoryModule,
+    User, LearningItem, LessonOutcome, ExamSkill, StudentSkill, LearningTrajectoryVersion,
+    StudentDiagnosticCheckpoint, LearningError, LearningTrajectoryTemplate,
+    LearningTrajectoryTemplateModule, LearningTrajectoryTemplateItem,
+    LessonAttachment, lesson_skills
+)
 from core.db_models import utc_now
 from app.auth.rbac_utils import get_active_role, get_user_scope
 from app.utils.datetime_utc import effective_timezone_name
@@ -81,6 +91,10 @@ def _guard_student(student_id: int) -> Student:
 
 def _guard_course(course_id: int) -> LearningTrajectory:
     course = LearningTrajectory.query.get_or_404(course_id)
+    if course.is_template or not course.student_id:
+        if not _course_viewer_can_manage():
+            abort(403)
+        return course
     student = Student.query.get_or_404(course.student_id)
     if not _can_access_student(student):
         abort(403)
@@ -89,6 +103,8 @@ def _guard_course(course_id: int) -> LearningTrajectory:
 
 def _snapshot_course(course: LearningTrajectory, reason: str) -> None:
     """Фиксирует версию маршрута перед изменением без удаления истории."""
+    if course.is_template or not course.student_id:
+        return
     modules = TrajectoryModule.query.filter_by(course_id=course.course_id).order_by(TrajectoryModule.order_index.asc()).all()
     lessons = Lesson.query.filter_by(learning_trajectory_id=course.course_id).order_by(Lesson.course_order_index.asc()).all()
     # Номер версии берём из БД, а не только из кэша объекта курса: это
@@ -182,11 +198,17 @@ def course_edit(course_id: int):
 
 
 @courses_bp.route('/courses/<int:course_id>')
+@courses_bp.route('/courses/<int:course_id>/student/<int:student_id>')
 @login_required
-def course_view(course_id: int):
+def course_view(course_id: int, student_id: int | None = None):
     course = _guard_course(course_id)
-    student = Student.query.get_or_404(course.student_id)
+    is_master = bool(course.is_template or not course.student_id)
     can_manage = _course_viewer_can_manage()
+    student = None
+    if not is_master and course.student_id:
+        student = Student.query.get(course.student_id)
+    elif student_id:
+        student = Student.query.get(student_id)
 
     modules = TrajectoryModule.query.filter_by(course_id=course.course_id).order_by(TrajectoryModule.order_index.asc(), TrajectoryModule.module_id.asc()).all()
     module_ids = [m.module_id for m in modules]
@@ -194,12 +216,16 @@ def course_view(course_id: int):
     course_lesson_filter = Lesson.learning_trajectory_id == course.course_id
     if module_ids:
         course_lesson_filter = or_(course_lesson_filter, Lesson.course_module_id.in_(module_ids))
-    lessons = Lesson.query.filter(
-        Lesson.student_id == student.student_id,
-        course_lesson_filter,
-    ).order_by(
-        Lesson.course_order_index.asc(), Lesson.lesson_date.asc().nullslast(), Lesson.lesson_id.asc()
-    ).all()
+
+    if is_master:
+        lessons = Lesson.query.filter(course_lesson_filter).order_by(
+            Lesson.course_order_index.asc(), Lesson.lesson_id.asc()
+        ).all()
+    else:
+        lessons = Lesson.query.filter(course_lesson_filter).order_by(
+            Lesson.course_order_index.asc(), Lesson.lesson_date.asc().nullslast(), Lesson.lesson_id.asc()
+        ).all()
+
     lessons_by_module = {}
     unassigned_lessons = []
     viewer_timezone = effective_timezone_name(current_user)
@@ -221,21 +247,25 @@ def course_view(course_id: int):
     course_skills = []
     if course.exam_course_id:
         course_skills = ExamSkill.query.filter_by(exam_course_id=course.exam_course_id, is_active=True).order_by(ExamSkill.topic.asc(), ExamSkill.task_number.asc()).all()
-    skill_rows = {row.skill_id: row for row in StudentSkill.query.filter_by(student_id=student.student_id).all()}
+    else:
+        course_skills = ExamSkill.query.filter_by(is_active=True).order_by(ExamSkill.task_number.asc(), ExamSkill.topic.asc()).all()
+    course_skills_count = len(course_skills)
+
+    skill_rows = {row.skill_id: row for row in StudentSkill.query.filter_by(student_id=student.student_id).all()} if student else {}
     route_items = LearningItem.query.filter_by(course_id=course.course_id).filter(
         LearningItem.status.in_(['planned', 'in_progress', 'overdue'])
     ).order_by(LearningItem.due_at.asc(), LearningItem.order_index.asc()).limit(8).all()
     forecast_target = course.target_score or 0
     forecast_value = course.current_forecast
     forecast_range = (course.forecast_low, course.forecast_high)
-    if forecast_value is None and course_skills:
+    if forecast_value is None and course_skills and student:
         weights = sum(float(skill.weight or 1) for skill in course_skills) or 1
         weighted_mastery = sum((skill_rows.get(skill.skill_id).mastery_percent if skill_rows.get(skill.skill_id) else 0) * float(skill.weight or 1) for skill in course_skills)
         mastery_value = round(weighted_mastery / weights)
         forecast_value = round(mastery_value * forecast_target / 100) if forecast_target else mastery_value
         forecast_range = (max(0, forecast_value - 5), min(100, forecast_value + 5))
     attention_counts = None
-    if can_manage:
+    if can_manage and student:
         now = utc_now()
         attention_counts = {
             'errors': LearningError.query.filter_by(student_id=student.student_id).filter(LearningError.resolved_at.is_(None)).count(),
@@ -261,10 +291,13 @@ def course_view(course_id: int):
         if latest_outcome and latest_outcome.adaptive_diff_summary:
             latest_adaptive_outcome = latest_outcome
 
+    all_students = Student.query.order_by(Student.name.asc()).all() if can_manage else []
+
     return render_template(
         'course_view.html',
         student=student,
         course=course,
+        is_master=is_master,
         modules=modules,
         lessons_by_module=lessons_by_module,
         unassigned_lessons=unassigned_lessons,
@@ -276,6 +309,7 @@ def course_view(course_id: int):
         total_items=total_items,
         mastery_percent=mastery_percent,
         course_skills=course_skills,
+        course_skills_count=course_skills_count,
         skill_rows=skill_rows,
         route_items=route_items,
         forecast_value=forecast_value,
@@ -285,6 +319,7 @@ def course_view(course_id: int):
         latest_adaptive_outcome=latest_adaptive_outcome,
         viewer_is_student=_course_viewer_is_read_only(),
         can_manage=can_manage,
+        all_students=all_students,
     )
 
 
@@ -300,7 +335,7 @@ def course_skills(course_id: int):
     mastery = {
         row.skill_id: row
         for row in StudentSkill.query.filter_by(student_id=course.student_id).all()
-    }
+    } if course.student_id else {}
     payload = []
     for skill in skills:
         row = mastery.get(skill.skill_id)
@@ -336,14 +371,18 @@ def course_skills_manage(course_id: int):
     skills_query = ExamSkill.query.filter_by(is_active=True)
     if course.exam_course_id:
         skills_query = skills_query.filter(ExamSkill.exam_course_id == course.exam_course_id)
-    skills = skills_query.order_by(ExamSkill.topic.asc(), ExamSkill.task_number.asc(), ExamSkill.skill_id.asc()).all()
+    skills = skills_query.order_by(ExamSkill.task_number.asc().nullslast(), ExamSkill.topic.asc(), ExamSkill.skill_id.asc()).all()
 
     if request.method == 'POST':
         title = str(request.form.get('title') or '').strip()
         topic = str(request.form.get('topic') or '').strip()
         subtopic = str(request.form.get('subtopic') or '').strip()
         task_number_raw = str(request.form.get('task_number') or '').strip()
+        topic_code = str(request.form.get('topic_code') or '').strip().upper()[:100]
         prerequisite_raw = str(request.form.get('prerequisite_skill_id') or '').strip()
+        prerequisite_ids = [int(pid) for pid in request.form.getlist('prerequisite_ids') if pid.isdigit()]
+        if not prerequisite_ids and prerequisite_raw and prerequisite_raw.isdigit():
+            prerequisite_ids = [int(prerequisite_raw)]
 
         if not title:
             flash('Укажите название навыка.', 'error')
@@ -353,38 +392,41 @@ def course_skills_manage(course_id: int):
             return redirect(url_for('courses.course_skills_manage', course_id=course.course_id))
         try:
             task_number = int(task_number_raw) if task_number_raw else None
-            if task_number is not None and task_number < 1:
+            if task_number is not None and (task_number < 1 or task_number > 27):
                 raise ValueError
         except ValueError:
-            flash('Номер задания должен быть положительным числом.', 'error')
+            flash('Номер задания должен быть числом от 1 до 27.', 'error')
             return redirect(url_for('courses.course_skills_manage', course_id=course.course_id))
 
-        prerequisite_skill_id = None
-        if prerequisite_raw:
-            try:
-                prerequisite_skill_id = int(prerequisite_raw)
-            except ValueError:
-                abort(400)
-            prerequisite = next((skill for skill in skills if skill.skill_id == prerequisite_skill_id), None)
-            if prerequisite is None:
-                flash('Базовый навык должен принадлежать этой программе.', 'error')
-                return redirect(url_for('courses.course_skills_manage', course_id=course.course_id))
+        if not topic_code:
+            # Fallback auto-code
+            topic_code = f"SKILL-T{task_number or 0}-{title[:10].upper().replace(' ', '_')}"
 
-        db.session.add(ExamSkill(
+        prerequisite_skill_id = prerequisite_ids[0] if prerequisite_ids else None
+
+        skill = ExamSkill(
             exam_course_id=course.exam_course_id,
             task_number=task_number,
             title=title,
             subject=(course.subject or '').strip()[:120] or None,
             topic=topic or None,
             subtopic=subtopic or None,
+            topic_code=topic_code,
             prerequisite_skill_id=prerequisite_skill_id,
+            prerequisite_ids=prerequisite_ids or None,
             is_active=True,
-        ))
+        )
+        db.session.add(skill)
         db.session.commit()
-        flash('Навык добавлен в программу. Теперь его можно включить в маршрут.', 'success')
+        flash(f'Навык «{skill.title}» ({skill.topic_code}) добавлен в банк программы.', 'success')
         return redirect(url_for('courses.course_skills_manage', course_id=course.course_id))
 
-    return render_template('course_skills_manage.html', course=course, skills=skills)
+    return render_template(
+        'course_skills_manage.html',
+        course=course,
+        skills=skills,
+        exam_tasks=list(range(1, 28)),
+    )
 
 
 @courses_bp.route('/courses/<int:course_id>/versions', methods=['GET'])
@@ -419,7 +461,7 @@ def course_milestones(course_id: int):
     items = LearningItem.query.filter_by(course_id=course.course_id).all()
     lessons = Lesson.query.filter_by(learning_trajectory_id=course.course_id).all()
     skills = [item.skill_id for item in items if item.skill_id]
-    rows = StudentSkill.query.filter(StudentSkill.student_id == course.student_id, StudentSkill.skill_id.in_(skills)).all() if skills else []
+    rows = StudentSkill.query.filter(StudentSkill.student_id == course.student_id, StudentSkill.skill_id.in_(skills)).all() if (skills and course.student_id) else []
     mastery = round(sum(int(row.mastery_percent or 0) for row in rows) / max(len(skills), 1)) if skills else 0
     completed_lessons = sum(1 for lesson in lessons if lesson.status == 'completed')
     completed_items = sum(1 for item in items if item.status == 'done')
@@ -473,6 +515,8 @@ def course_plan_generate(course_id: int):
     course = _guard_course(course_id)
     if not _course_viewer_can_manage():
         abort(403)
+    if course.is_template or not course.student_id:
+        return jsonify({'success': False, 'error': 'Мастер генерации маршрута доступен только для индивидуального курса ученика'}), 400
     data = request.get_json(silent=True) or request.form
     target = data.get('target_score')
     try:
@@ -586,6 +630,8 @@ def course_mock_replan(course_id: int):
     course = _guard_course(course_id)
     if not _course_viewer_can_manage():
         abort(403)
+    if course.is_template or not course.student_id:
+        return jsonify({'success': False, 'error': 'Доступно только для индивидуального курса ученика'}), 400
     data = request.get_json(silent=True) or {}
     diagnostic = data.get('diagnostic')
     if not isinstance(diagnostic, dict) or not diagnostic:
@@ -694,7 +740,7 @@ def course_plan_wizard(course_id: int):
     if course.exam_course_id:
         skills_query = skills_query.filter(ExamSkill.exam_course_id == course.exam_course_id)
     skills = skills_query.order_by(ExamSkill.topic.asc(), ExamSkill.task_number.asc()).all()
-    mastery = {row.skill_id: row for row in StudentSkill.query.filter_by(student_id=course.student_id).all()}
+    mastery = {row.skill_id: row for row in StudentSkill.query.filter_by(student_id=course.student_id).all()} if course.student_id else {}
     return render_template(
         'course_plan_wizard.html',
         course=course,
@@ -704,10 +750,69 @@ def course_plan_wizard(course_id: int):
     )
 
 
+@courses_bp.route('/courses', methods=['GET'])
+@courses_bp.route('/courses/templates', methods=['GET', 'POST'])
+@login_required
+def courses_catalog():
+    """Каталог базовых программ (Мастер-курсов) и курсов учеников."""
+    if not _course_viewer_can_manage():
+        if getattr(current_user, 'is_student', None) and current_user.is_student():
+            st = Student.query.filter_by(user_id=current_user.id).first()
+            if st:
+                return redirect(url_for('courses.student_courses', student_id=st.student_id))
+        abort(403)
+
+    if request.method == 'POST':
+        title = (request.form.get('title') or '').strip()
+        if not title:
+            flash('Название базовой программы обязательно.', 'error')
+            return redirect(url_for('courses.courses_catalog', tab='templates'))
+
+        target_score_raw = request.form.get('target_score')
+        target_score = int(target_score_raw) if target_score_raw and target_score_raw.isdigit() else None
+        duration = int(request.form.get('default_lesson_duration') or 60)
+
+        master_course = LearningTrajectory(
+            is_template=True,
+            student_id=None,
+            created_by_user_id=current_user.id,
+            title=title,
+            subject=(request.form.get('subject') or '').strip() or 'Информатика',
+            description=(request.form.get('description') or '').strip() or None,
+            learning_goal=(request.form.get('learning_goal') or '').strip() or None,
+            expected_result=(request.form.get('expected_result') or '').strip() or None,
+            target_score=target_score,
+            default_lesson_duration=duration,
+            status='active',
+        )
+        db.session.add(master_course)
+        db.session.commit()
+        flash(f'Базовый курс «{master_course.title}» успешно создан.', 'success')
+        return redirect(url_for('courses.course_view', course_id=master_course.course_id))
+
+    active_tab = request.args.get('tab', 'templates')
+    template_courses = LearningTrajectory.query.filter_by(is_template=True).order_by(LearningTrajectory.updated_at.desc()).all()
+    student_courses = LearningTrajectory.query.filter(
+        LearningTrajectory.is_template == False,
+        LearningTrajectory.student_id.isnot(None)
+    ).order_by(LearningTrajectory.updated_at.desc()).all()
+
+    all_students = Student.query.order_by(Student.name.asc()).all()
+
+    return render_template(
+        'sandbox/courses_catalog.html',
+        template_courses=template_courses,
+        student_courses=student_courses,
+        all_students=all_students,
+        active_tab=active_tab,
+        can_manage=True,
+    )
+
+
 @courses_bp.route('/course-templates', methods=['GET', 'POST'])
 @login_required
 def course_templates():
-    """Каталог шаблонов индивидуальных программ."""
+    """Каталог шаблонов индивидуальных программ (legacy)."""
     if request.method == 'GET':
         templates = LearningTrajectoryTemplate.query.filter_by(is_active=True).order_by(LearningTrajectoryTemplate.updated_at.desc()).all()
         if request.args.get('view') == '1':
@@ -756,6 +861,238 @@ def course_templates():
         flash('Шаблон программы создан.', 'success')
         return redirect(url_for('courses.course_templates', view=1, editor=1, course_id=request.args.get('course_id')))
     return jsonify({'success': True, 'template_id': template.template_id}), 201
+
+
+
+@courses_bp.route('/courses/<int:course_id>/duplicate', methods=['POST'])
+@login_required
+def course_duplicate(course_id: int):
+    """Дублирует базовый шаблон курса со всеми модулями, уроками, навыками и вложениями."""
+    course = _guard_course(course_id)
+    if not _course_viewer_can_manage():
+        abort(403)
+
+    new_course = LearningTrajectory(
+        is_template=True,
+        student_id=None,
+        parent_course_id=course.course_id,
+        created_by_user_id=current_user.id,
+        title=f"{course.title} (Копия)",
+        subject=course.subject,
+        description=course.description,
+        learning_goal=course.learning_goal,
+        expected_result=course.expected_result,
+        exam_course_id=course.exam_course_id,
+        target_score=course.target_score,
+        default_lesson_duration=course.default_lesson_duration,
+        status='active',
+    )
+    db.session.add(new_course)
+    db.session.flush()
+
+    module_map = {}
+    for mod in course.modules:
+        new_mod = TrajectoryModule(
+            course_id=new_course.course_id,
+            title=mod.title,
+            description=mod.description,
+            learning_result=mod.learning_result,
+            order_index=mod.order_index,
+            is_control_exam=mod.is_control_exam,
+        )
+        db.session.add(new_mod)
+        db.session.flush()
+        module_map[mod.module_id] = new_mod.module_id
+
+    lessons = Lesson.query.filter_by(learning_trajectory_id=course.course_id).order_by(Lesson.course_order_index.asc()).all()
+    for l in lessons:
+        new_lesson = Lesson(
+            student_id=None,
+            learning_trajectory_id=new_course.course_id,
+            course_module_id=module_map.get(l.course_module_id),
+            exam_course_id=l.exam_course_id,
+            lesson_type=l.lesson_type,
+            lesson_format=l.lesson_format,
+            duration=l.duration,
+            course_order_index=l.course_order_index,
+            status='planned',
+            topic=l.topic,
+            notes=l.notes,
+            content=l.content,
+            studio_scenario=l.studio_scenario,
+            homework=l.homework,
+            review_summaries=l.review_summaries,
+        )
+        new_lesson.skills = list(l.skills)
+        db.session.add(new_lesson)
+        db.session.flush()
+
+        for att in (l.attachments or []):
+            new_att = LessonAttachment(
+                lesson_id=new_lesson.lesson_id,
+                file_name=att.file_name,
+                file_path=att.file_path,
+                file_size=att.file_size,
+                target=att.target,
+            )
+            db.session.add(new_att)
+
+        _ensure_lesson_learning_item(new_course, new_lesson)
+
+    db.session.commit()
+    flash(f'Копия шаблона «{new_course.title}» успешно создана.', 'success')
+    return redirect(url_for('courses.course_view', course_id=new_course.course_id))
+
+
+@courses_bp.route('/courses/<int:course_id>/assign-to-student', methods=['POST'])
+@login_required
+def course_assign_to_student(course_id: int):
+    """Форк мастер-курса в индивидуальный курс ученика с авто-генерацией дат уроков по слотам."""
+    course = _guard_course(course_id)
+    if not _course_viewer_can_manage():
+        abort(403)
+
+    student_id = request.form.get('student_id', type=int)
+    if not student_id:
+        flash('Выберите ученика.', 'error')
+        return redirect(request.referrer or url_for('courses.courses_catalog'))
+
+    student = Student.query.get_or_404(student_id)
+
+    start_date_str = request.form.get('start_date')
+    start_dt = None
+    if start_date_str:
+        try:
+            if 'T' in start_date_str:
+                start_dt = datetime.strptime(start_date_str, '%Y-%m-%dT%H:%M')
+            else:
+                start_dt = datetime.strptime(start_date_str, '%Y-%m-%d')
+        except Exception:
+            start_dt = None
+
+    if not start_dt:
+        start_dt = datetime.now()
+
+    slot_weekdays = request.form.getlist('slot_weekday')
+    slot_times = request.form.getlist('slot_time')
+
+    slots = []
+    if slot_weekdays:
+        for idx, sw in enumerate(slot_weekdays):
+            try:
+                w_int = int(sw)
+                t_str = slot_times[idx] if idx < len(slot_times) else '18:00'
+                t_hour, t_minute = map(int, t_str.split(':'))
+                slots.append({'weekday': w_int, 'hour': t_hour, 'minute': t_minute})
+            except Exception:
+                pass
+
+    if not slots:
+        slots.append({'weekday': start_dt.weekday(), 'hour': start_dt.hour or 18, 'minute': start_dt.minute or 0})
+
+    slots.sort(key=lambda s: (s['weekday'], s['hour'], s['minute']))
+
+    student_course = LearningTrajectory(
+        is_template=False,
+        student_id=student.student_id,
+        parent_course_id=course.course_id,
+        created_by_user_id=current_user.id,
+        title=course.title,
+        subject=course.subject,
+        description=course.description,
+        learning_goal=course.learning_goal,
+        expected_result=course.expected_result,
+        exam_course_id=course.exam_course_id,
+        target_score=course.target_score,
+        default_lesson_duration=course.default_lesson_duration,
+        status='active',
+    )
+    db.session.add(student_course)
+    db.session.flush()
+
+    module_map = {}
+    for mod in course.modules:
+        new_mod = TrajectoryModule(
+            course_id=student_course.course_id,
+            title=mod.title,
+            description=mod.description,
+            learning_result=mod.learning_result,
+            order_index=mod.order_index,
+            is_control_exam=mod.is_control_exam,
+        )
+        db.session.add(new_mod)
+        db.session.flush()
+        module_map[mod.module_id] = new_mod.module_id
+
+    lessons = Lesson.query.filter_by(learning_trajectory_id=course.course_id).order_by(
+        Lesson.course_order_index.asc(), Lesson.lesson_id.asc()
+    ).all()
+
+    tz_name = effective_timezone_name(current_user)
+
+    def get_slot_dates(num_lessons, from_dt, active_slots):
+        generated = []
+        d = from_dt.date()
+        while len(generated) < num_lessons:
+            day_of_week = d.weekday()
+            day_slots = [s for s in active_slots if s['weekday'] == day_of_week]
+            for s in day_slots:
+                slot_dt = datetime.combine(d, time(s['hour'], s['minute']))
+                if slot_dt >= from_dt:
+                    generated.append(slot_dt)
+                    if len(generated) >= num_lessons:
+                        break
+            d += timedelta(days=1)
+        return generated
+
+    scheduled_dates = get_slot_dates(len(lessons), start_dt, slots)
+
+    for idx, l in enumerate(lessons):
+        assigned_dt = scheduled_dates[idx] if idx < len(scheduled_dates) else None
+        storage_dt = None
+        if assigned_dt:
+            storage_dt = parse_local_lesson_datetime(
+                assigned_dt.strftime('%Y-%m-%d'), assigned_dt.strftime('%H:%M'), tz_name
+            )
+
+        new_lesson = Lesson(
+            student_id=student.student_id,
+            learning_trajectory_id=student_course.course_id,
+            course_module_id=module_map.get(l.course_module_id),
+            exam_course_id=l.exam_course_id,
+            lesson_type=l.lesson_type,
+            lesson_format=l.lesson_format,
+            lesson_date=storage_dt,
+            duration=l.duration,
+            course_order_index=l.course_order_index,
+            status='planned',
+            topic=l.topic,
+            notes=l.notes,
+            content=l.content,
+            studio_scenario=l.studio_scenario,
+            homework=l.homework,
+            homework_status='assigned_not_done' if l.homework else 'not_assigned',
+            review_summaries=l.review_summaries,
+        )
+        new_lesson.skills = list(l.skills)
+        db.session.add(new_lesson)
+        db.session.flush()
+
+        for att in (l.attachments or []):
+            new_att = LessonAttachment(
+                lesson_id=new_lesson.lesson_id,
+                file_name=att.file_name,
+                file_path=att.file_path,
+                file_size=att.file_size,
+                target=att.target,
+            )
+            db.session.add(new_att)
+
+        _ensure_lesson_learning_item(student_course, new_lesson)
+
+    db.session.commit()
+    flash(f'Курс назначен ученику {student.name}. Создано {len(lessons)} уроков по расписанию.', 'success')
+    return redirect(url_for('courses.course_view', course_id=student_course.course_id, student_id=student.student_id))
 
 
 @courses_bp.route('/courses/<int:course_id>/apply-template/<int:template_id>', methods=['POST'])
@@ -1044,6 +1381,10 @@ def module_new(course_id: int):
     student = _require_course_manager(course)
 
     form = CourseModuleForm()
+    if not form.is_submitted():
+        max_order = db.session.query(func.coalesce(func.max(TrajectoryModule.order_index), 0)).filter_by(course_id=course.course_id).scalar() or 0
+        form.order_index.data = max_order + 10
+
     if form.validate_on_submit():
         module = TrajectoryModule(
             course_id=course.course_id,
@@ -1051,6 +1392,7 @@ def module_new(course_id: int):
             description=form.description.data.strip() if form.description.data else None,
             learning_result=form.learning_result.data.strip() if form.learning_result.data else None,
             order_index=form.order_index.data or 0,
+            is_control_exam=bool(form.is_control_exam.data),
         )
         db.session.add(module)
         db.session.commit()
@@ -1073,17 +1415,19 @@ def module_edit(course_id: int, module_id: int):
         module.description = form.description.data.strip() if form.description.data else None
         module.learning_result = form.learning_result.data.strip() if form.learning_result.data else None
         module.order_index = form.order_index.data or 0
+        module.is_control_exam = bool(form.is_control_exam.data)
         db.session.commit()
         flash('Модуль обновлён.', 'success')
         return redirect(url_for('courses.course_view', course_id=course.course_id, _anchor=f'module-{module.module_id}'))
     return render_template('course_module_form.html', form=form, student=student, course=course, module=module, title='Редактировать модуль')
 
 
-def _require_course_manager(course: LearningTrajectory) -> Student:
-    student = Student.query.get_or_404(course.student_id)
+def _require_course_manager(course: LearningTrajectory) -> Student | None:
     if not _course_viewer_can_manage():
         abort(403)
-    return student
+    if course.is_template or not course.student_id:
+        return None
+    return Student.query.get_or_404(course.student_id)
 
 
 def _course_lesson_form(course: LearningTrajectory, lesson: Lesson | None = None) -> CourseLessonForm:
@@ -1096,11 +1440,12 @@ def _course_lesson_form(course: LearningTrajectory, lesson: Lesson | None = None
         form.module_id.data = lesson.course_module_id or 0
         local_date = lesson_storage_to_local(lesson.lesson_date, effective_timezone_name(current_user))
         form.lesson_date.data = local_date.replace(tzinfo=None) if local_date else None
-        form.scenario.data = '\n'.join(
+        form.studio_scenario.data = lesson.studio_scenario or '\n'.join(
             str(item.get('title') or '').strip()
             for item in ((lesson.review_summaries or {}).get('_studio') or {}).get('agenda', [])
             if isinstance(item, dict) and str(item.get('title') or '').strip()
         )
+        form.lesson_format.data = lesson.lesson_format or 'Теория + Практика'
         form.teacher_note.data = lesson.notes or ''
     return form
 
@@ -1118,8 +1463,9 @@ def _save_course_lesson_from_form(course: LearningTrajectory, lesson: Lesson, fo
     else:
         lesson.lesson_date = None
 
+    scenario_text = (form.studio_scenario.data or '').strip()
     agenda = []
-    for index, raw_title in enumerate((form.scenario.data or '').splitlines(), start=1):
+    for index, raw_title in enumerate(scenario_text.splitlines(), start=1):
         title = raw_title.strip(' -•\t')
         if title:
             agenda.append({'id': f'course-step-{index}', 'title': title[:300], 'done': False})
@@ -1134,13 +1480,22 @@ def _save_course_lesson_from_form(course: LearningTrajectory, lesson: Lesson, fo
     lesson.topic = form.topic.data.strip()
     lesson.course_order_index = form.course_order_index.data
     lesson.duration = form.duration.data
-    lesson.lesson_type = form.lesson_type.data
+    lesson.lesson_format = form.lesson_format.data or 'Теория + Практика'
+    lesson.lesson_type = form.lesson_type.data or 'regular'
     lesson.status = form.status.data
+    lesson.studio_scenario = scenario_text or None
     lesson.content = form.content.data.strip() if form.content.data else None
     lesson.homework = form.homework.data.strip() if form.homework.data else None
     lesson.homework_status = 'assigned_not_done' if lesson.homework else 'not_assigned'
     lesson.notes = form.teacher_note.data.strip() if form.teacher_note.data else None
     lesson.review_summaries = summaries
+
+    # Save skills from request
+    skill_ids = [int(sid) for sid in request.form.getlist('skill_ids') if sid.isdigit()]
+    if skill_ids:
+        lesson.skills = ExamSkill.query.filter(ExamSkill.skill_id.in_(skill_ids)).all()
+    else:
+        lesson.skills = []
 
 
 def _ensure_lesson_learning_item(course: LearningTrajectory, lesson: Lesson) -> None:
@@ -1164,16 +1519,9 @@ def _ensure_lesson_learning_item(course: LearningTrajectory, lesson: Lesson) -> 
 
 
 def _next_course_lesson_order(course: LearningTrajectory) -> int:
-    module_ids = [
-        row.module_id
-        for row in TrajectoryModule.query.with_entities(TrajectoryModule.module_id).filter_by(course_id=course.course_id).all()
-    ]
-    belongs_to_course = Lesson.learning_trajectory_id == course.course_id
-    if module_ids:
-        belongs_to_course = or_(belongs_to_course, Lesson.course_module_id.in_(module_ids))
     current_max = (
-        db.session.query(db.func.coalesce(db.func.max(Lesson.course_order_index), 0))
-        .filter(Lesson.student_id == course.student_id, belongs_to_course)
+        db.session.query(func.coalesce(func.max(Lesson.course_order_index), 0))
+        .filter(Lesson.learning_trajectory_id == course.course_id)
         .scalar()
         or 0
     )
@@ -1185,30 +1533,66 @@ def _next_course_lesson_order(course: LearningTrajectory) -> int:
 def course_lesson_new(course_id: int):
     course = _guard_course(course_id)
     student = _require_course_manager(course)
+
+    available_skills = ExamSkill.query.filter_by(is_active=True)
+    if course.exam_course_id:
+        available_skills = available_skills.filter_by(exam_course_id=course.exam_course_id)
+    available_skills = available_skills.order_by(ExamSkill.task_number.asc().nullslast(), ExamSkill.topic.asc()).all()
+
+    req_prev_order = request.args.get('prev_order', type=int)
+    default_order = (req_prev_order + 10) if req_prev_order is not None else _next_course_lesson_order(course)
+
     lesson = Lesson(
-        student_id=student.student_id,
+        student_id=student.student_id if student else None,
         learning_trajectory_id=course.course_id,
-        duration=course.default_lesson_duration or 60,
+        duration=request.args.get('duration', type=int) or course.default_lesson_duration or 60,
         status='planned',
-        lesson_type='regular',
-        course_order_index=_next_course_lesson_order(course),
+        lesson_format=request.args.get('format') or 'Теория + Практика',
+        course_order_index=default_order,
     )
     form = _course_lesson_form(course)
     if not form.is_submitted():
-        form.duration.data = course.default_lesson_duration or 60
+        form.duration.data = lesson.duration
+        form.lesson_format.data = lesson.lesson_format
         form.course_order_index.data = lesson.course_order_index
         requested_module_id = request.args.get('module_id', type=int)
         if requested_module_id and any(module_id == requested_module_id for module_id, _ in form.module_id.choices):
             form.module_id.data = requested_module_id
+            mod = TrajectoryModule.query.get(requested_module_id)
+            if mod and mod.is_control_exam:
+                form.lesson_format.data = 'Контрольный урок / Пробник'
+
     if form.validate_on_submit():
         _save_course_lesson_from_form(course, lesson, form)
         db.session.add(lesson)
         db.session.commit()
         _ensure_lesson_learning_item(course, lesson)
         db.session.commit()
+
+        if request.form.get('submit_action') == 'save_and_next':
+            flash(f'Урок «{lesson.topic}» успешно сохранён. Заполните следующий.', 'success')
+            return redirect(url_for(
+                'courses.course_lesson_new',
+                course_id=course.course_id,
+                module_id=lesson.course_module_id or 0,
+                prev_order=lesson.course_order_index,
+                duration=lesson.duration,
+                format=lesson.lesson_format,
+            ))
+
         flash('Урок добавлен в программу курса.', 'success')
         return redirect(url_for('courses.course_view', course_id=course.course_id))
-    return render_template('course_lesson_form.html', form=form, course=course, student=student, lesson=None, title='Добавить урок')
+
+    return render_template(
+        'course_lesson_form.html',
+        form=form,
+        course=course,
+        student=student,
+        lesson=None,
+        available_skills=available_skills,
+        selected_skill_ids=[],
+        title='Добавить урок',
+    )
 
 
 @courses_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/edit', methods=['GET', 'POST'])
@@ -1216,24 +1600,182 @@ def course_lesson_new(course_id: int):
 def course_lesson_edit(course_id: int, lesson_id: int):
     course = _guard_course(course_id)
     student = _require_course_manager(course)
-    lesson = Lesson.query.filter_by(lesson_id=lesson_id, student_id=student.student_id).first_or_404()
-    belongs_to_course = lesson.learning_trajectory_id == course.course_id
-    if lesson.course_module_id:
-        module = TrajectoryModule.query.filter_by(module_id=lesson.course_module_id, course_id=course.course_id).first()
-        if not module:
-            abort(404)
-        belongs_to_course = True
-    if not belongs_to_course:
+    lesson = Lesson.query.filter_by(lesson_id=lesson_id).first_or_404()
+    if lesson.learning_trajectory_id != course.course_id:
         abort(404)
+
+    available_skills = ExamSkill.query.filter_by(is_active=True)
+    if course.exam_course_id:
+        available_skills = available_skills.filter_by(exam_course_id=course.exam_course_id)
+    available_skills = available_skills.order_by(ExamSkill.task_number.asc().nullslast(), ExamSkill.topic.asc()).all()
+
     form = _course_lesson_form(course, lesson)
     if form.validate_on_submit():
         _snapshot_course(course, 'lesson_edit')
         _save_course_lesson_from_form(course, lesson, form)
         _ensure_lesson_learning_item(course, lesson)
         db.session.commit()
+
+        if request.form.get('submit_action') == 'save_and_next':
+            flash(f'Урок «{lesson.topic}» обновлён. Заполните следующий.', 'success')
+            return redirect(url_for(
+                'courses.course_lesson_new',
+                course_id=course.course_id,
+                module_id=lesson.course_module_id or 0,
+                prev_order=lesson.course_order_index,
+                duration=lesson.duration,
+                format=lesson.lesson_format,
+            ))
+
         flash('План урока обновлён.', 'success')
         return redirect(url_for('courses.course_view', course_id=course.course_id))
-    return render_template('course_lesson_form.html', form=form, course=course, student=student, lesson=lesson, title='Редактировать урок')
+
+    selected_skill_ids = [s.skill_id for s in lesson.skills]
+    return render_template(
+        'course_lesson_form.html',
+        form=form,
+        course=course,
+        student=student,
+        lesson=lesson,
+        available_skills=available_skills,
+        selected_skill_ids=selected_skill_ids,
+        title='Редактировать урок',
+    )
+
+
+@courses_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/clone', methods=['POST'])
+@login_required
+def course_lesson_clone(course_id: int, lesson_id: int):
+    course = _guard_course(course_id)
+    if not _course_viewer_can_manage():
+        abort(403)
+
+    lesson = Lesson.query.filter_by(lesson_id=lesson_id).first_or_404()
+    if lesson.learning_trajectory_id != course.course_id:
+        abort(404)
+
+    next_order = (lesson.course_order_index or 0) + 10
+
+    new_lesson = Lesson(
+        student_id=lesson.student_id,
+        learning_trajectory_id=course.course_id,
+        course_module_id=lesson.course_module_id,
+        exam_course_id=lesson.exam_course_id,
+        lesson_type=lesson.lesson_type,
+        lesson_format=lesson.lesson_format,
+        duration=lesson.duration,
+        course_order_index=next_order,
+        status='planned',
+        topic=f"{lesson.topic} (Копия)",
+        notes=lesson.notes,
+        content=lesson.content,
+        studio_scenario=lesson.studio_scenario,
+        homework=lesson.homework,
+        homework_status='assigned_not_done' if lesson.homework else 'not_assigned',
+        review_summaries=lesson.review_summaries,
+    )
+    new_lesson.skills = list(lesson.skills)
+    db.session.add(new_lesson)
+    db.session.flush()
+
+    for att in (lesson.attachments or []):
+        new_att = LessonAttachment(
+            lesson_id=new_lesson.lesson_id,
+            file_name=att.file_name,
+            file_path=att.file_path,
+            file_size=att.file_size,
+            target=att.target,
+        )
+        db.session.add(new_att)
+
+    _ensure_lesson_learning_item(course, new_lesson)
+    db.session.commit()
+    flash(f'Урок «{lesson.topic}» успешно клонирован.', 'success')
+    return redirect(url_for('courses.course_view', course_id=course.course_id))
+
+
+ALLOWED_LESSON_FILE_EXTENSIONS = {'xlsx', 'xls', 'csv', 'txt', 'docx', 'pdf', 'py'}
+
+def _allowed_lesson_file(filename: str) -> bool:
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_LESSON_FILE_EXTENSIONS
+
+
+@courses_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/attachments/upload', methods=['POST'])
+@login_required
+def upload_lesson_attachment(course_id: int, lesson_id: int):
+    course = _guard_course(course_id)
+    if not _course_viewer_can_manage():
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+
+    lesson = Lesson.query.filter_by(lesson_id=lesson_id).first_or_404()
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'Файл не передан'}), 400
+
+    file = request.files['file']
+    if not file or not file.filename:
+        return jsonify({'success': False, 'error': 'Пустое имя файла'}), 400
+
+    if not _allowed_lesson_file(file.filename):
+        return jsonify({'success': False, 'error': 'Недопустимый формат файла. Разрешены: .xlsx, .xls, .csv, .txt, .docx, .pdf, .py'}), 400
+
+    original_filename = secure_filename(file.filename) or 'attachment'
+    upload_folder = os.path.join(current_app.static_folder, 'uploads', 'courses', str(course_id), 'lessons', str(lesson_id))
+    os.makedirs(upload_folder, exist_ok=True)
+
+    file_path = os.path.join(upload_folder, original_filename)
+    file.save(file_path)
+    file_size = os.path.getsize(file_path)
+
+    relative_url = f"/static/uploads/courses/{course_id}/lessons/{lesson_id}/{original_filename}"
+    target = request.form.get('target', 'theory')
+    if target not in ('theory', 'homework'):
+        target = 'theory'
+
+    attachment = LessonAttachment(
+        lesson_id=lesson.lesson_id,
+        file_name=original_filename,
+        file_path=relative_url,
+        file_size=file_size,
+        target=target,
+    )
+    db.session.add(attachment)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'attachment': {
+            'id': attachment.id,
+            'file_name': attachment.file_name,
+            'file_path': attachment.file_path,
+            'file_size': attachment.file_size,
+            'target': attachment.target,
+        }
+    })
+
+
+@courses_bp.route('/courses/<int:course_id>/attachments/<int:attachment_id>/delete', methods=['POST'])
+@courses_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/attachments/<int:attachment_id>/delete', methods=['POST'])
+@login_required
+def delete_lesson_attachment(course_id: int, attachment_id: int, lesson_id: int | None = None):
+    course = _guard_course(course_id)
+    if not _course_viewer_can_manage():
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+
+    attachment = LessonAttachment.query.get_or_404(attachment_id)
+    lesson = Lesson.query.get(attachment.lesson_id)
+    if not lesson or lesson.learning_trajectory_id != course.course_id:
+        return jsonify({'success': False, 'error': 'Файл не найден'}), 404
+
+    try:
+        full_path = os.path.join(current_app.root_path, attachment.file_path.lstrip('/'))
+        if os.path.isfile(full_path):
+            os.remove(full_path)
+    except Exception:
+        pass
+
+    db.session.delete(attachment)
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 @courses_bp.route('/courses/<int:course_id>/lessons/<int:lesson_id>/start', methods=['POST'])
@@ -1550,19 +2092,32 @@ def course_delete(course_id: int):
     course = _guard_course(course_id)
     _require_course_manager(course)
 
+    is_template = bool(course.is_template or not course.student_id)
     student_id = course.student_id
+
+    # 1. Clean up version snapshots & learning items to prevent FK errors
+    LearningTrajectoryVersion.query.filter_by(course_id=course.course_id).delete(synchronize_session=False)
+    LearningItem.query.filter_by(course_id=course.course_id).delete(synchronize_session=False)
+
     modules = TrajectoryModule.query.filter_by(course_id=course.course_id).all()
     module_ids = [m.module_id for m in modules]
 
-    if module_ids:
-        Lesson.query.filter(Lesson.course_module_id.in_(module_ids)).update(
-            {Lesson.course_module_id: None}, synchronize_session=False
-        )
+    if is_template:
+        template_lessons = Lesson.query.filter_by(learning_trajectory_id=course.course_id).all()
+        for tl in template_lessons:
+            db.session.delete(tl)
+        db.session.flush()
         TrajectoryModule.query.filter_by(course_id=course.course_id).delete(synchronize_session=False)
+    else:
+        if module_ids:
+            Lesson.query.filter(Lesson.course_module_id.in_(module_ids)).update(
+                {Lesson.course_module_id: None}, synchronize_session=False
+            )
+            TrajectoryModule.query.filter_by(course_id=course.course_id).delete(synchronize_session=False)
 
-    Lesson.query.filter_by(learning_trajectory_id=course.course_id).update(
-        {Lesson.learning_trajectory_id: None}, synchronize_session=False
-    )
+        Lesson.query.filter_by(learning_trajectory_id=course.course_id).update(
+            {Lesson.learning_trajectory_id: None}, synchronize_session=False
+        )
 
     db.session.delete(course)
     try:
@@ -1573,6 +2128,8 @@ def course_delete(course_id: int):
         return redirect(url_for('courses.course_view', course_id=course_id))
 
     flash('Курс удалён.', 'success')
+    if is_template or not student_id:
+        return redirect(url_for('courses.courses_catalog', tab='templates'))
     return redirect(url_for('courses.student_courses', student_id=student_id))
 
 
@@ -1597,3 +2154,80 @@ def module_delete(course_id: int, module_id: int):
 
     flash('Модуль удалён.', 'success')
     return redirect(url_for('courses.course_view', course_id=course.course_id))
+
+
+@courses_bp.route('/courses/import', methods=['POST'])
+@csrf.exempt
+@login_required
+def course_import():
+    """Импорт структуры курса из JSON-файла или текста."""
+    if not _course_viewer_can_manage():
+        abort(403)
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
+
+    json_data = None
+    if request.is_json:
+        json_data = request.get_json()
+    elif 'file' in request.files and request.files['file'].filename:
+        file = request.files['file']
+        try:
+            content = file.read().decode('utf-8')
+            json_data = json.loads(content)
+        except Exception as e:
+            if is_ajax:
+                return jsonify({'success': False, 'error': f'Ошибка чтения JSON-файла: {str(e)}'}), 400
+            flash(f'Ошибка чтения JSON-файла: {str(e)}', 'error')
+            return redirect(url_for('courses.courses_catalog', tab='templates'))
+    elif request.form.get('json_content'):
+        try:
+            json_data = json.loads(request.form.get('json_content'))
+        except Exception as e:
+            if is_ajax:
+                return jsonify({'success': False, 'error': f'Некорректный синтаксис JSON: {str(e)}'}), 400
+            flash(f'Некорректный синтаксис JSON: {str(e)}', 'error')
+            return redirect(url_for('courses.courses_catalog', tab='templates'))
+
+    if not json_data:
+        msg = 'Данные для импорта не предоставлены (загрузите файл .json или вставьте JSON-текст).'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'error')
+        return redirect(url_for('courses.courses_catalog', tab='templates'))
+
+    try:
+        trajectory, stats = import_course_from_data(json_data, user_id=current_user.id)
+    except Exception as e:
+        db.session.rollback()
+        if is_ajax:
+            return jsonify({'success': False, 'error': f'Ошибка при создании курса: {str(e)}'}), 400
+        flash(f'Ошибка при создании курса: {str(e)}', 'error')
+        return redirect(url_for('courses.courses_catalog', tab='templates'))
+
+    success_msg = f'Курс «{trajectory.title}» успешно импортирован (модулей: {stats["modules"]}, уроков: {stats["lessons"]}, навыков: {stats["skills"]}).'
+    if is_ajax:
+        return jsonify({
+            'success': True,
+            'course_id': trajectory.course_id,
+            'message': success_msg,
+            'redirect_url': url_for('courses.course_view', course_id=trajectory.course_id)
+        })
+
+    flash(success_msg, 'success')
+    return redirect(url_for('courses.course_view', course_id=trajectory.course_id))
+
+
+@courses_bp.route('/courses/<int:course_id>/export/json', methods=['GET'])
+@login_required
+def course_export_json(course_id: int):
+    """Экспорт структуры курса в каноничный JSON-формат."""
+    course = _guard_course(course_id)
+    payload = export_course_to_dict(course)
+    data_str = json.dumps(payload, ensure_ascii=False, indent=2)
+    filename = secure_filename(f"course_{course.course_id}_{course.title}")[:50] or f"course_{course.course_id}"
+    return Response(
+        data_str,
+        mimetype="application/json",
+        headers={"Content-Disposition": f"attachment;filename={filename}.json"}
+    )
+

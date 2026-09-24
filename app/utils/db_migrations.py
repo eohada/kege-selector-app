@@ -23,6 +23,7 @@ from core.db_models import (
     GroupStudent,
     LessonTaskAttempt,
     SubmissionAttempt,
+    LessonAttachment,
     MaterialAsset, LessonMaterialLink, LessonRoomTemplate, RubricTemplate,
     RecurringLessonSlot,
     TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent,
@@ -531,6 +532,61 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create Courses table: {e}")
                     db.session.rollback()
+            else:
+                c_tbl = _resolve_table_name(table_names, 'Courses')
+                if c_tbl:
+                    c_cols = {c['name'] for c in inspector.get_columns(c_tbl)}
+                    if 'is_template' not in c_cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{c_tbl}" ADD COLUMN is_template BOOLEAN DEFAULT FALSE'))
+                            db.session.commit()
+                            logger.info("Added is_template to Courses")
+                        except Exception as e:
+                            logger.warning(f"Could not add is_template to Courses: {e}")
+                            db.session.rollback()
+                    if 'parent_course_id' not in c_cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{c_tbl}" ADD COLUMN parent_course_id INTEGER'))
+                            db.session.commit()
+                            logger.info("Added parent_course_id to Courses")
+                        except Exception as e:
+                            logger.warning(f"Could not add parent_course_id to Courses: {e}")
+                            db.session.rollback()
+
+                    c_col_map = {c['name']: c for c in inspector.get_columns(c_tbl)}
+                    if c_col_map.get('student_id') and not c_col_map['student_id'].get('nullable', True):
+                        db_url = str(app.config.get('SQLALCHEMY_DATABASE_URI', '') or '')
+                        is_postgres = 'postgresql' in db_url or 'postgres' in db_url
+                        if is_postgres:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{c_tbl}" ALTER COLUMN student_id DROP NOT NULL'))
+                                db.session.commit()
+                                logger.info(f"Made {c_tbl}.student_id nullable (PostgreSQL)")
+                            except Exception as e:
+                                logger.warning(f"Could not drop NOT NULL on {c_tbl}.student_id: {e}")
+                                db.session.rollback()
+                        else:
+                            try:
+                                db.session.execute(text('PRAGMA foreign_keys = OFF;'))
+                                c_sql_row = db.session.execute(text(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{c_tbl}'")).fetchone()
+                                if c_sql_row and 'student_id INTEGER NOT NULL' in c_sql_row[0]:
+                                    new_sql = c_sql_row[0].replace('student_id INTEGER NOT NULL', 'student_id INTEGER')
+                                    new_sql = new_sql.replace(f'CREATE TABLE "{c_tbl}"', f'CREATE TABLE "{c_tbl}_new"')
+                                    new_sql = new_sql.replace(f'CREATE TABLE {c_tbl}', f'CREATE TABLE "{c_tbl}_new"')
+                                    db.session.execute(text(new_sql))
+                                    db.session.execute(text(f'INSERT INTO "{c_tbl}_new" SELECT * FROM "{c_tbl}"'))
+                                    db.session.execute(text(f'DROP TABLE "{c_tbl}"'))
+                                    db.session.execute(text(f'ALTER TABLE "{c_tbl}_new" RENAME TO "{c_tbl}"'))
+                                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Courses_created_by_user_id" ON "{c_tbl}" (created_by_user_id)'))
+                                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Courses_status" ON "{c_tbl}" (status)'))
+                                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Courses_student_id" ON "{c_tbl}" (student_id)'))
+                                    db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Courses_exam_course_id" ON "{c_tbl}" (exam_course_id)'))
+                                    db.session.execute(text('PRAGMA foreign_keys = ON;'))
+                                    db.session.commit()
+                                    logger.info(f"Rebuilt SQLite table {c_tbl} with student_id NULLABLE")
+                            except Exception as e:
+                                logger.warning(f"Could not rebuild SQLite table {c_tbl}: {e}")
+                                db.session.rollback()
 
             if 'CourseModules' not in table_names and 'coursemodules' not in table_names:
                 try:
@@ -539,6 +595,98 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create CourseModules table: {e}")
                     db.session.rollback()
+            else:
+                cm_tbl = _resolve_table_name(table_names, 'CourseModules')
+                if cm_tbl:
+                    cm_cols = {c['name'] for c in inspector.get_columns(cm_tbl)}
+                    if 'is_control_exam' not in cm_cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{cm_tbl}" ADD COLUMN is_control_exam BOOLEAN DEFAULT FALSE'))
+                            db.session.commit()
+                            logger.info("Added is_control_exam to CourseModules")
+                        except Exception as e:
+                            logger.warning(f"Could not add is_control_exam to CourseModules: {e}")
+                            db.session.rollback()
+
+            l_tbl = _resolve_table_name(table_names, 'Lessons')
+            if l_tbl:
+                l_cols = {c['name'] for c in inspector.get_columns(l_tbl)}
+                if 'lesson_format' not in l_cols:
+                    try:
+                        db.session.execute(text(f'ALTER TABLE "{l_tbl}" ADD COLUMN lesson_format VARCHAR(60)'))
+                        db.session.commit()
+                        logger.info("Added lesson_format to Lessons")
+                    except Exception as e:
+                        logger.warning(f"Could not add lesson_format to Lessons: {e}")
+                        db.session.rollback()
+                if 'studio_scenario' not in l_cols:
+                    try:
+                        db.session.execute(text(f'ALTER TABLE "{l_tbl}" ADD COLUMN studio_scenario TEXT'))
+                        db.session.commit()
+                        logger.info("Added studio_scenario to Lessons")
+                    except Exception as e:
+                        logger.warning(f"Could not add studio_scenario to Lessons: {e}")
+                        db.session.rollback()
+
+                l_col_map = {c['name']: c for c in inspector.get_columns(l_tbl)}
+                if l_col_map.get('student_id') and not l_col_map['student_id'].get('nullable', True):
+                    db_url = str(app.config.get('SQLALCHEMY_DATABASE_URI', '') or '')
+                    is_postgres = 'postgresql' in db_url or 'postgres' in db_url
+                    if is_postgres:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{l_tbl}" ALTER COLUMN student_id DROP NOT NULL'))
+                            db.session.commit()
+                            logger.info(f"Made {l_tbl}.student_id nullable (PostgreSQL)")
+                        except Exception as e:
+                            logger.warning(f"Could not drop NOT NULL on {l_tbl}.student_id: {e}")
+                            db.session.rollback()
+                    else:
+                        try:
+                            db.session.execute(text('PRAGMA foreign_keys = OFF;'))
+                            l_sql_row = db.session.execute(text(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{l_tbl}'")).fetchone()
+                            if l_sql_row and 'student_id INTEGER NOT NULL' in l_sql_row[0]:
+                                new_sql = l_sql_row[0].replace('student_id INTEGER NOT NULL', 'student_id INTEGER')
+                                new_sql = new_sql.replace(f'CREATE TABLE "{l_tbl}"', f'CREATE TABLE "{l_tbl}_new"')
+                                new_sql = new_sql.replace(f'CREATE TABLE {l_tbl}', f'CREATE TABLE "{l_tbl}_new"')
+                                db.session.execute(text(new_sql))
+                                db.session.execute(text(f'INSERT INTO "{l_tbl}_new" SELECT * FROM "{l_tbl}"'))
+                                db.session.execute(text(f'DROP TABLE "{l_tbl}"'))
+                                db.session.execute(text(f'ALTER TABLE "{l_tbl}_new" RENAME TO "{l_tbl}"'))
+                                db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Lessons_exam_course_id" ON "{l_tbl}" (exam_course_id)'))
+                                db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Lessons_learning_trajectory_id" ON "{l_tbl}" (learning_trajectory_id)'))
+                                db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Lessons_course_order_index" ON "{l_tbl}" (course_order_index)'))
+                                db.session.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_Lessons_course_module_id" ON "{l_tbl}" (course_module_id)'))
+                                db.session.execute(text(f'CREATE INDEX IF NOT EXISTS idx_lessons_status ON "{l_tbl}"(status)'))
+                                db.session.execute(text(f'CREATE INDEX IF NOT EXISTS idx_lessons_lesson_date ON "{l_tbl}"(lesson_date)'))
+                                db.session.execute(text('PRAGMA foreign_keys = ON;'))
+                                db.session.commit()
+                                logger.info(f"Rebuilt SQLite table {l_tbl} with student_id NULLABLE")
+                        except Exception as e:
+                            logger.warning(f"Could not rebuild SQLite table {l_tbl}: {e}")
+                            db.session.rollback()
+
+            es_tbl = _resolve_table_name(table_names, 'ExamSkills')
+            if es_tbl:
+                es_cols = {c['name'] for c in inspector.get_columns(es_tbl)}
+                if 'topic_code' not in es_cols:
+                    try:
+                        db.session.execute(text(f'ALTER TABLE "{es_tbl}" ADD COLUMN topic_code VARCHAR(100)'))
+                        db.session.commit()
+                        logger.info("Added topic_code to ExamSkills")
+                    except Exception as e:
+                        logger.warning(f"Could not add topic_code to ExamSkills: {e}")
+                        db.session.rollback()
+                if 'prerequisite_ids' not in es_cols:
+                    try:
+                        db.session.execute(text(f'ALTER TABLE "{es_tbl}" ADD COLUMN prerequisite_ids JSON'))
+                        db.session.commit()
+                        logger.info("Added prerequisite_ids to ExamSkills")
+                    except Exception as e:
+                        logger.warning(f"Could not add prerequisite_ids to ExamSkills: {e}")
+                        db.session.rollback()
+
+            # Ensure new tables (lesson_skills, lesson_attachments)
+            db.create_all()
 
             if 'StudentLearningPlanItems' not in table_names and 'studentlearningplanitems' not in table_names:
                 try:

@@ -69,6 +69,11 @@ class CourseAdaptiveEngine:
             'applied_at': utc_now().isoformat(),
         }
 
+        if course.is_template or not course.student_id:
+            outcome.adaptive_diff_summary = diff_summary
+            db.session.commit()
+            return diff_summary
+
         # 1. Считываем метрики итога
         covered_ids = [int(sid) for sid in (outcome.covered or []) if str(sid).isdigit()]
         mastery_eval = (outcome.mastery or 'good').strip().lower()  # good | medium | poor | needs_repeat

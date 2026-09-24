@@ -219,7 +219,9 @@ class ExamSkill(db.Model):
     weight = db.Column(db.Float, nullable=False, default=1.0)
     theory_ref = db.Column(db.String(300), nullable=True)
     mastery_criteria = db.Column(db.JSON, nullable=True)
+    topic_code = db.Column(db.String(100), nullable=True, index=True)  # Узел знаний / код темы (e.g. COMBINATORICS)
     prerequisite_skill_id = db.Column(db.Integer, db.ForeignKey('ExamSkills.skill_id'), nullable=True, index=True)
+    prerequisite_ids = db.Column(db.JSON, nullable=True)  # Мультиселект пререквизитов: [skill_id_1, skill_id_2, ...]
     is_active = db.Column(db.Boolean, nullable=False, default=True, index=True)
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
 
@@ -756,11 +758,14 @@ class GroupStudent(db.Model):
 
 
 class LearningTrajectory(db.Model):
-    """Индивидуальная учебная траектория ученика: траектория -> модули -> уроки."""
+    """Индивидуальная учебная траектория ученика или Мастер-курс (шаблон): траектория -> модули -> уроки."""
     __tablename__ = 'Courses'
     course_id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    is_template = db.Column(db.Boolean, default=False, nullable=False, index=True)  # True = Мастер-курс / Шаблон программы
+    parent_course_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=True, index=True)  # Ссылка на базовый мастер-курс
 
     title = db.Column(db.String(200), nullable=False)
     subject = db.Column(db.String(100), nullable=True)
@@ -788,8 +793,10 @@ class LearningTrajectory(db.Model):
     student = db.relationship('Student', foreign_keys=[student_id])
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
     exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
+    parent_course = db.relationship('LearningTrajectory', remote_side=[course_id], uselist=False, foreign_keys=[parent_course_id])
     modules = db.relationship('TrajectoryModule', back_populates='trajectory', lazy=True, cascade='all, delete-orphan')
     items = db.relationship('LearningItem', foreign_keys='LearningItem.course_id', lazy=True, overlaps='course')
+    lessons = db.relationship('Lesson', foreign_keys='Lesson.learning_trajectory_id', lazy=True, cascade='all, delete-orphan')
 
 
 class TrajectoryModule(db.Model):
@@ -802,6 +809,7 @@ class TrajectoryModule(db.Model):
     description = db.Column(db.Text, nullable=True)
     learning_result = db.Column(db.Text, nullable=True)
     order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
+    is_control_exam = db.Column(db.Boolean, default=False, nullable=False)  # Контрольный модуль / Пробный экзамен
 
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
@@ -994,10 +1002,17 @@ class RubricTemplate(db.Model):
     owner = db.relationship('User', foreign_keys=[owner_user_id])
 
 
+lesson_skills = db.Table(
+    'lesson_skills',
+    db.Column('lesson_id', db.Integer, db.ForeignKey('Lessons.lesson_id', ondelete='CASCADE'), primary_key=True),
+    db.Column('skill_id', db.Integer, db.ForeignKey('ExamSkills.skill_id', ondelete='CASCADE'), primary_key=True)
+)
+
+
 class Lesson(db.Model):
     __tablename__ = 'Lessons'
     lesson_id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
     learning_trajectory_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=True, index=True)
     course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
     exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
@@ -1007,6 +1022,8 @@ class Lesson(db.Model):
     course_order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
     status = db.Column(db.String(50), default='planned')
     topic = db.Column(db.String(300), nullable=True)
+    lesson_format = db.Column(db.String(60), nullable=True)  # «Теория + Практика», «Практикум», «Разбор ДЗ / Пробника», «Контрольный урок / Пробник»
+    studio_scenario = db.Column(db.Text, nullable=True)  # Пошаговый план проведения урока в Studio
     notes = db.Column(db.Text, nullable=True)
     content = db.Column(db.Text, nullable=True)  # Markdown контент урока (теория)
     content_blocks = db.Column(db.JSON, nullable=True)  # Конструктор контента (блоки): [{"type":"paragraph",...}, ...]
@@ -1039,6 +1056,16 @@ class Lesson(db.Model):
     course_module = db.relationship('TrajectoryModule', foreign_keys=[course_module_id], back_populates='lessons')
     exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
     homework_tasks = db.relationship('LessonTask', back_populates='lesson', lazy=True, cascade='all, delete-orphan')
+    skills = db.relationship('ExamSkill', secondary=lesson_skills, backref=db.backref('lessons', lazy=True))
+    attachments = db.relationship('LessonAttachment', back_populates='lesson', lazy=True, cascade='all, delete-orphan')
+
+    @property
+    def theory_attachments(self):
+        return [a for a in (self.attachments or []) if a.target == 'theory']
+
+    @property
+    def homework_attachments(self):
+        return [a for a in (self.attachments or []) if a.target == 'homework']
 
     @property
     def homework_assignments(self):
@@ -1055,6 +1082,14 @@ class Lesson(db.Model):
     @property
     def start_dt(self):
         return self.lesson_date
+
+    @property
+    def course_display_date(self):
+        return getattr(self, '_course_display_date', self.lesson_date)
+
+    @course_display_date.setter
+    def course_display_date(self, val):
+        self._course_display_date = val
 
     @start_dt.setter
     def start_dt(self, val):
@@ -1075,6 +1110,21 @@ class Lesson(db.Model):
     @teacher_user_id.setter
     def teacher_user_id(self, val):
         self._teacher_user_id = val
+
+
+class LessonAttachment(db.Model):
+    """Вложенные файлы к уроку (.xlsx, .txt, .py, .docx, .pdf и т.д.) для теории или ДЗ."""
+    __tablename__ = 'lesson_attachments'
+    id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id', ondelete='CASCADE'), nullable=False, index=True)
+    file_name = db.Column(db.String(255), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    file_size = db.Column(db.Integer, nullable=True)  # в байтах
+    target = db.Column(db.String(20), nullable=False, default='theory')  # 'theory' | 'homework'
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    lesson = db.relationship('Lesson', back_populates='attachments')
+
 
 class LessonTask(db.Model):
     __tablename__ = 'LessonTasks'

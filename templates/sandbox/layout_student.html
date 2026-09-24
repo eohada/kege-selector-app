@@ -34,12 +34,23 @@
     </script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
+        html {
+            overflow-x: clip;
+            scroll-behavior: smooth;
+        }
         body {
             background-color: #F8FAFC;
             color: #0f172a;
             font-family: 'Inter', system-ui, sans-serif;
             -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
+            overflow-x: clip;
+        }
+
+        #desktop-sidebar,
+        #mobile-bottom-nav {
+            transform: translateZ(0);
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
         h1, h2, h3, h4, .font-display {
@@ -153,7 +164,7 @@
         <div class="flex flex-col gap-3 flex-1 w-full px-3">
             
             <!-- 1. Главная -->
-            <a href="/dashboard" class="w-full aspect-square rounded-[1rem] {% if request.path == '/dashboard' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏠 Главная">
+            <a href="/dashboard" class="w-full aspect-square rounded-[1rem] {% if request.path == '/dashboard' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Главная">
                 <i class="ph-bold ph-house text-xl"></i>
                 {% if request.path == '/dashboard' %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
@@ -161,7 +172,7 @@
             </a>
 
             <!-- 2. Мои задания -->
-            <a href="/submissions" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📝 Мои задания">
+            <a href="/submissions" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Мои задания">
                 <i class="ph-bold ph-books text-xl"></i>
                 {% if request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
@@ -169,7 +180,7 @@
             </a>
 
             <!-- 3. Теория & База знаний -->
-            <a href="{{ url_for('theory.theory_index') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/theory') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📖 Теория">
+            <a href="{{ url_for('theory.theory_index') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/theory') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Теория">
                 <i class="ph-bold ph-book-open text-xl"></i>
                 {% if request.path.startswith('/theory') %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
@@ -178,7 +189,7 @@
 
             {% if trainer_available %}
             <!-- 4. Тренажёр -->
-            <a href="{{ url_for('trainer.trainer_v2') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/trainer') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="⚡ Тренажёр">
+            <a href="{{ url_for('trainer.trainer_v2') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/trainer') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Тренажёр">
                 <i class="ph-bold ph-lightning text-xl"></i>
                 {% if request.path.startswith('/trainer') %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
@@ -186,14 +197,14 @@
             </a>
 
             <!-- Гайдбук -->
-            <a href="{{ url_for('main.guidebook') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/guidebook') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📘 Гайдбук">
+            <a href="{{ url_for('main.guidebook') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/guidebook') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Гайдбук">
                 <i class="ph-bold ph-question text-xl"></i>
                 {% if request.path.startswith('/guidebook') %}<div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>{% endif %}
             </a>
             {% endif %}
 
             <!-- 4. Расписание -->
-            <a href="{{ url_for('schedule.schedule') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/schedule') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="📅 Расписание">
+            <a href="{{ url_for('schedule.schedule') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/schedule') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Расписание">
                 <i class="ph-bold ph-calendar-blank text-xl"></i>
                 {% if request.path.startswith('/schedule') %}
                 <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
@@ -201,8 +212,8 @@
             </a>
 
             {% if current_user is defined and current_user and current_user.is_authenticated and (current_user.role|upper in ['CREATOR', 'ADMIN'] or current_user.is_admin() or current_user.is_creator()) %}
-            <!-- 🛡️ Панель управления (Админка) -->
-            <a href="/admin/users" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/admin') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-rose-50/80 text-rose-500 hover:text-rose-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="🏛️ Панель управления (Админка)">
+            <!-- Панель управления (Админка) -->
+            <a href="/admin/users" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/admin') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-rose-50/80 text-rose-500 hover:text-rose-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Панель управления (Админка)">
                 <i class="ph-bold ph-shield-check text-xl"></i>
                 {% if request.path.startswith('/admin') %}
                 <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
@@ -214,7 +225,7 @@
 
         <!-- Student Profile & Logout Links -->
         <div class="mt-auto w-full px-3 flex flex-col items-center gap-2">
-            <a href="/workspace/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/workspace/profile') %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="👤 Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Ученик' }}">
+            <a href="/workspace/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/workspace/profile') %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Ученик' }}">
                 <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}/static/images/default-avatar.svg{% endif %}" onerror="this.onerror=null;this.src='/static/images/default-avatar.svg';" class="w-full h-full object-cover" alt="Профиль">
                 <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
             </a>
@@ -366,10 +377,11 @@
           }
         });
 
-        // 2. Global Student Study Heartbeat (Active Engagement Tracking: only active tab & real interactions)
+        // 2. Global Student Study Heartbeat (Active Engagement Tracking: zero scroll interference)
         let lastInteractionTime = 0;
         let lastTickTime = Date.now();
         let activeSecondsAccumulated = 0;
+        let activityGate = 0;
 
         function markUserActivity() {
           const now = Date.now();
@@ -387,8 +399,16 @@
           lastInteractionTime = now;
         }
 
-        ['mousedown', 'keydown', 'touchstart', 'input', 'scroll'].forEach(function(evt) {
-          window.addEventListener(evt, markUserActivity, { passive: true });
+        function onThrottledActivity() {
+          const now = Date.now();
+          if (now - activityGate < 3000) return;
+          activityGate = now;
+          markUserActivity();
+        }
+
+        // Never attach unthrottled listeners to scroll or input!
+        ['mousedown', 'keydown', 'touchstart'].forEach(function(evt) {
+          window.addEventListener(evt, onThrottledActivity, { passive: true });
         });
 
         function sendStudyHeartbeatGlobal(isSyncBeforeUnload) {

@@ -14,7 +14,7 @@
             </span>
           </div>
           <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">{{ student.name if student and student.name else user.username }}</h1>
-          <p class="mt-1 text-xs sm:text-sm font-bold text-slate-500">Продолжай учиться — у тебя всё получится! 👋</p>
+          <p class="mt-1 text-xs sm:text-sm font-bold text-slate-500">Продолжай учиться — у тебя всё получится!</p>
         </div>
 
         <!-- Центральный персонаж с ноутбуком и слоганом -->
@@ -38,7 +38,7 @@
 
     <!-- 2. Верхний ряд метрик (3 карточки) -->
     <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-      <!-- Карточка 1: Прогресс обучения -->
+      <!-- Карточка 1: Пройдено уроков -->
       <article class="relative flex items-center gap-4 rounded-[1.75rem] border-2 border-slate-200 bg-white p-4 sm:p-5 shadow-[0_4px_0_#DAE1E9]">
         <div class="relative w-14 h-14 shrink-0 flex items-center justify-center">
           <svg class="w-14 h-14 -rotate-90" viewBox="0 0 44 44">
@@ -48,13 +48,13 @@
                     stroke-dashoffset="{{ 113.097 * (1 - ([completion_pct|default(0), 100]|min / 100)) }}"></circle>
           </svg>
           <span class="absolute inset-0 flex items-center justify-center text-indigo-600">
-            <i class="ph-bold ph-graduation-cap text-xl"></i>
+            <i class="ph-bold ph-book-open text-xl"></i>
           </span>
         </div>
         <div>
-          <p class="text-[11px] font-bold text-slate-500">Прогресс обучения</p>
-          <p class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ completion_pct|default(0) }}%</p>
-          <p class="text-xs font-bold text-slate-400">{{ completed_lessons|default(0) }} из {{ total_lessons|default(0) }} завершено</p>
+          <p class="text-[11px] font-bold text-slate-500">Пройдено уроков</p>
+          <p class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ completed_lessons|default(0) }} / {{ total_lessons|default(0) }}</p>
+          <p class="text-xs font-bold text-slate-400">{% if total_lessons == 0 %}Занятия ещё не назначены{% else %}{{ completion_pct }}% от программы{% endif %}</p>
         </div>
       </article>
 
@@ -319,7 +319,7 @@
 
             <!-- Иллюстрация мишени -->
             <div class="shrink-0">
-              <img src="{{ url_for('static', filename='images/dashboard/target_darts.png') }}" alt="" class="h-14 w-14 object-contain select-none pointer-events-none drop-shadow-xs">
+              <img src="{{ url_for('static', filename='images/dashboard/target_darts.png') }}" alt="Слабые темы" class="h-14 w-14 object-contain select-none pointer-events-none drop-shadow-xs" loading="eager" decoding="async">
             </div>
           </div>
         </section>
@@ -336,17 +336,13 @@
             {% endif %}
             <div class="min-w-0">
               <p class="text-[11px] font-bold text-slate-400">Ваш наставник</p>
-              <p class="text-sm font-black text-slate-900 truncate">{{ mentor.full_name or mentor.username if mentor else 'creator' }}</p>
+              <p class="text-sm font-black {% if mentor %}text-slate-900{% else %}text-slate-500{% endif %} truncate">{{ mentor.full_name or mentor.username if mentor else 'Не назначен' }}</p>
             </div>
           </div>
           {% if mentor and mentor.telegram_link %}
-          <a href="{{ mentor.telegram_link }}" target="_blank" rel="noopener" class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition no-underline shrink-0">
-            <i class="ph-bold ph-caret-right text-base"></i>
+          <a href="{{ mentor.telegram_link }}" target="_blank" rel="noopener" class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition no-underline shrink-0" title="Написать наставнику">
+            <i class="ph-bold ph-paper-plane-tilt text-base"></i>
           </a>
-          {% else %}
-          <span class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-            <i class="ph-bold ph-caret-right text-base"></i>
-          </span>
           {% endif %}
         </section>
 

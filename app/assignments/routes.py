@@ -396,6 +396,55 @@ def assignment_builder_save_draft():
         return jsonify({'success': False, 'message': f'Не удалось сохранить черновик: {exc}'}), 500
 
 
+@assignments_bp.route('/assignments/api/import-ai-json', methods=['POST'])
+@login_required
+@check_access('assignment.create')
+def assignment_import_ai_json():
+    """Импорт домашней работы или набора заданий от ИИ-агента в формате JSON."""
+    from app.assignments.ai_importer import parse_and_convert_ai_homework
+
+    course_id = None
+    raw_payload = None
+
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        course_id = data.get('course_id')
+        raw_payload = data.get('json_data') if 'json_data' in data else data
+    else:
+        file = request.files.get('file')
+        if file and file.filename:
+            try:
+                raw_payload = file.read().decode('utf-8')
+            except Exception as e:
+                return jsonify({'success': False, 'message': f'Не удалось прочитать файл: {e}'}), 400
+        else:
+            raw_payload = request.form.get('json_data') or request.form.get('content')
+        course_id = request.form.get('course_id')
+
+    if not raw_payload:
+        return jsonify({'success': False, 'message': 'Загрузите .json файл или вставьте текст JSON'}), 400
+
+    try:
+        parsed_course_id = int(course_id) if course_id else None
+    except (ValueError, TypeError):
+        parsed_course_id = None
+
+    try:
+        result = parse_and_convert_ai_homework(
+            raw_payload,
+            user_id=current_user.id,
+            course_id=parsed_course_id,
+            task_payload_serializer=_assignment_builder_task_payload
+        )
+        return jsonify(result)
+    except ValueError as val_err:
+        return jsonify({'success': False, 'message': str(val_err)}), 400
+    except Exception as exc:
+        db.session.rollback()
+        logger.exception('Failed to import AI homework JSON')
+        return jsonify({'success': False, 'message': f'Ошибка при импорте: {exc}'}), 500
+
+
 def _is_revision_status(submission: Submission) -> bool:
     return normalize_legacy_status(getattr(submission, 'status', None)) == 'RETURNED'
 

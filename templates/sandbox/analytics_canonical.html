@@ -9,7 +9,7 @@
     <!-- 1. HERO BANNER & TABS (Шапка аналитического дашборда) -->
     <div class="w-full bg-white border-2 border-slate-200/80 rounded-[2.5rem] p-6 shadow-sm relative overflow-hidden space-y-6">
       
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
             <i class="ph-bold ph-chart-bar text-indigo-500"></i> Успеваемость & Прогнозы
@@ -19,14 +19,32 @@
           </h1>
         </div>
 
-        <!-- Переключатель вкладок -->
-        <div class="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 shrink-0 border border-slate-200/60">
-          <button id="btn-analytics-skills" onclick="switchAnalyticsTab('skills')" class="seg-btn active px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer">
-            <i class="ph-bold ph-chart-line-up"></i> Навыки и Темы
-          </button>
-          <button id="btn-analytics-elo" onclick="switchAnalyticsTab('elo')" class="seg-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-500 flex items-center gap-2 cursor-pointer">
-            <i class="ph-bold ph-target"></i> Прогноз & ELO
-          </button>
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Фильтр источников: ДЗ vs Пробники -->
+          <div class="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200/60 text-xs font-bold">
+            <a href="{{ url_for('students.student_analytics', student_id=student.student_id, source='all') }}"
+               class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 {{ 'bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-black' if source_filter == 'all' else 'text-slate-500 hover:text-slate-800' }}">
+              <i class="ph-bold ph-squares-four"></i> Все данные
+            </a>
+            <a href="{{ url_for('students.student_analytics', student_id=student.student_id, source='exam') }}"
+               class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 {{ 'bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-black' if source_filter == 'exam' else 'text-slate-500 hover:text-slate-800' }}">
+              <i class="ph-bold ph-trophy"></i> Только пробники
+            </a>
+            <a href="{{ url_for('students.student_analytics', student_id=student.student_id, source='homework') }}"
+               class="px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-1.5 {{ 'bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-black' if source_filter == 'homework' else 'text-slate-500 hover:text-slate-800' }}">
+              <i class="ph-bold ph-book-open"></i> Только ДЗ
+            </a>
+          </div>
+
+          <!-- Переключатель вкладок -->
+          <div class="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 shrink-0 border border-slate-200/60">
+            <button id="btn-analytics-skills" onclick="switchAnalyticsTab('skills')" class="seg-btn active px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer">
+              <i class="ph-bold ph-chart-line-up"></i> Навыки и Темы
+            </button>
+            <button id="btn-analytics-elo" onclick="switchAnalyticsTab('elo')" class="seg-btn px-4 py-2 rounded-xl text-xs font-bold text-slate-500 flex items-center gap-2 cursor-pointer">
+              <i class="ph-bold ph-target"></i> Прогноз & ELO
+            </button>
+          </div>
         </div>
       </div>
 
@@ -110,16 +128,50 @@
         <div id="analytics-trend-bars" class="h-64 w-full flex items-end justify-between gap-3 pt-6 px-2 relative"></div>
       </div>
 
-      <!-- Col-span-5: Уровень освоения по разделам -->
-      <div class="col-span-12 lg:col-span-5 bg-white border-2 border-slate-200/80 rounded-[2rem] p-6 shadow-sm space-y-5">
+      <!-- Col-span-5: Уровень освоения по разделам (3 смысловых блока КЕГЭ) -->
+      <div class="col-span-12 lg:col-span-5 bg-white border-2 border-slate-200/80 rounded-[2rem] p-6 shadow-sm space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <i class="ph-bold ph-brain text-lg text-indigo-500"></i> Освоение разделов
           </h3>
-          <span class="text-xs font-bold text-slate-500">{{ problem_topics|length }} {{ 'блок' if problem_topics|length == 1 else 'блоков' }}</span>
+          <span class="text-xs font-black text-slate-500 uppercase tracking-wider">{{ section_mastery|length }} ключевых блока</span>
         </div>
 
-        <div id="analytics-topic-bars" class="space-y-4"></div>
+        <div class="space-y-3.5">
+          {% for sec in section_mastery %}
+          <div class="bg-[#F8FAFC] border-2 border-slate-200/70 p-4 rounded-2xl flex flex-col gap-3 group hover:border-slate-300 transition-colors">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-base shadow-sm shrink-0" style="background-color: {{ sec.color }};">
+                  <i class="ph-bold {{ sec.icon }}"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs font-black text-slate-800 tracking-tight">{{ sec.title }}</h4>
+                  <p class="text-[10px] font-bold text-slate-400">{{ sec.description }}</p>
+                </div>
+              </div>
+              <div class="text-right shrink-0">
+                <span class="text-sm font-black" style="color: {{ sec.color }};">{{ sec.percent }}%</span>
+                <span class="block text-[9px] font-black text-slate-400 uppercase">вес {{ sec.weight }}%</span>
+              </div>
+            </div>
+
+            <!-- Прогресс-бар -->
+            <div class="w-full h-2.5 bg-slate-200/70 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500" style="width: {{ sec.percent }}%; background-color: {{ sec.color }};"></div>
+            </div>
+
+            <!-- Список заданий блока -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+              {% for tn in sec.tasks %}
+              <button onclick="openReadinessDrawer({{ tn }})" class="px-2 py-0.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-lg text-[10px] font-extrabold text-slate-600 hover:text-indigo-600 transition-all cursor-pointer shadow-2xs" title="Кликните для детальной аналитики задания №{{ tn }}">
+                №{{ tn }}
+              </button>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
       </div>
 
     </div>
@@ -298,38 +350,103 @@
       <div class="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-6 border-b border-slate-800">
         <div>
           <span class="px-3 py-1 bg-indigo-900/50 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold uppercase tracking-wider">
-            Прогноз на основе решённых работ
+            Прогноз на основе проверенных решений
           </span>
           <h2 class="text-2xl sm:text-3xl font-black font-display tracking-tight mt-2">
             Прогноз тестового балла КЕГЭ
           </h2>
           <p class="text-xs font-medium text-slate-400 mt-1">
-            {% if solved_total >= 10 %}Расчёт по {{ solved_total }} решённым задачам и рейтингу компетенций{% else %}Прогноз появится после 10 проверенных решений{% endif %}
+            {% if forecast %}
+              {{ forecast.basis }}
+            {% elif solved_total >= 10 %}
+              Расчёт по {{ solved_total }} решённым задачам
+            {% else %}
+              Прогноз появится после 10 проверенных решений. По выбранному источнику решений пока нет.
+            {% endif %}
           </p>
         </div>
 
-        <!-- Крупные цифры прогноза -->
-        <div class="flex items-center gap-6 bg-slate-800/80 backdrop-blur-md p-5 rounded-2xl border border-slate-700/80 shadow-xl">
+        <!-- Крупные цифры прогноза с доверительным интервалом -->
+        <div class="flex flex-wrap items-center gap-6 bg-slate-800/80 backdrop-blur-md p-5 rounded-2xl border border-slate-700/80 shadow-xl">
           <div>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Первичный балл</p>
-            <h3 class="text-3xl font-black text-indigo-400 font-display">{{ forecast.primary if forecast else '—' }} <span class="text-base text-slate-500">/ 29</span></h3>
+            <h3 class="text-3xl font-black text-indigo-400 font-display">
+              {% if forecast %}
+                {{ forecast.primary_min }}–{{ forecast.primary_max }}
+              {% else %}
+                —
+              {% endif %}
+              <span class="text-base text-slate-500">/ 29</span>
+            </h3>
           </div>
-          <div class="w-px h-10 bg-slate-700"></div>
+          <div class="hidden sm:block w-px h-10 bg-slate-700"></div>
           <div>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Тестовый балл</p>
             <h3 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-300 font-display">
-              {{ forecast.test if forecast else '—' }} <span class="text-sm font-bold text-slate-400">баллов</span>
+              {% if forecast %}
+                {{ forecast.test_min }}–{{ forecast.test_max }}
+              {% else %}
+                —
+              {% endif %}
+              <span class="text-sm font-bold text-slate-400">баллов</span>
             </h3>
           </div>
+          <button onclick="openFipiScaleModal()" class="px-3.5 py-2.5 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-400/40 rounded-xl text-xs font-black text-indigo-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer" title="Посмотреть шкалу перевода баллов ФИПИ">
+            <i class="ph-bold ph-info text-sm"></i> Шкала ФИПИ
+          </button>
         </div>
+      </div>
+
+      <!-- ВИДЖЕТ «ЗОНА РОСТА: ЧТО ПОДТЯНУТЬ ПРЯМО СЕЙЧАС» -->
+      <div class="relative z-10 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+              <i class="ph-bold ph-lightning text-amber-400 text-lg"></i> Зона роста: что подтянуть прямо сейчас
+            </h3>
+            <p class="text-xs font-medium text-slate-400 mt-0.5">Топ проблемных тем с наименьшим рейтингом или точностью</p>
+          </div>
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Приоритет тренировки</span>
+        </div>
+
+        {% if growth_zones %}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {% for gz in growth_zones %}
+          <div class="bg-slate-800/80 border border-slate-700 hover:border-amber-500/50 rounded-2xl p-4 flex flex-col justify-between gap-4 transition-all">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="px-2.5 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-lg text-xs font-black">
+                  №{{ gz.task_number if gz.task_number else '?' }}
+                </span>
+                <span class="text-xs font-black text-rose-400 font-mono">
+                  {{ gz.rating }} ELO
+                </span>
+              </div>
+              <h4 class="text-sm font-black text-white leading-snug line-clamp-2">{{ gz.name }}</h4>
+              <p class="text-[10px] font-bold text-slate-400 font-mono">{{ gz.code }} • {{ gz.solved }} реш.</p>
+            </div>
+            <a href="{{ gz.trainer_url }}" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-[0_3px_0_#9f1239] active:translate-y-0.5 transition-all text-center">
+              <i class="ph-bold ph-play-circle text-base"></i> Потренировать (5 задач)
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-6 text-center text-xs font-medium text-slate-400">
+          Зона роста сформируется после первых проверенных решений.
+        </div>
+        {% endif %}
       </div>
 
       <!-- Таблица ELO-рейтинга по темам -->
       <div class="relative z-10 space-y-4">
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            <i class="ph-bold ph-trophy text-amber-400"></i> ELO-Рейтинг компетенций (MMR)
-          </h3>
+          <div>
+            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <i class="ph-bold ph-trophy text-amber-400"></i> ELO-Рейтинг компетенций (MMR)
+            </h3>
+            <p class="text-xs font-medium text-slate-500 mt-0.5">Кликните по «ELO MMR» для переключения сортировки</p>
+          </div>
           <span class="text-xs font-bold text-slate-400">{{ solved_total }} решённых задач</span>
         </div>
 
@@ -338,10 +455,16 @@
             <thead class="bg-slate-800/90 text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-slate-700/60">
               <tr>
                 <th class="p-4">Узел знаний КЕГЭ</th>
+                <th class="p-4 text-center">Номер ЕГЭ</th>
                 <th class="p-4">Код темы</th>
-                <th class="p-4">ELO MMR</th>
+                <th class="p-4 cursor-pointer hover:text-white select-none transition-colors" onclick="toggleEloSort()" title="Нажмите для переключения сортировки">
+                  <div class="flex items-center gap-1.5">
+                    <span>ELO MMR</span>
+                    <i id="elo-sort-icon" class="ph-bold ph-caret-up text-amber-400"></i>
+                  </div>
+                </th>
                 <th class="p-4">Калибровка</th>
-                <th class="p-4">Серия побед</th>
+                <th class="p-4">Дней практики</th>
               </tr>
             </thead>
             <tbody id="analytics-elo-body" class="divide-y divide-slate-700/40 text-slate-200 font-bold" style="visibility:hidden">
@@ -390,8 +513,142 @@
       </div>
     </div>
 
+    <!-- Боковая шторка Drill-down готовности задания КЕГЭ -->
+    <div id="readiness-backdrop" onclick="closeReadinessDrawer()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+    <div id="readiness-drawer" class="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col justify-between overflow-hidden">
+      
+      <!-- Заголовок шторки -->
+      <div class="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/60">
+        <div class="space-y-1">
+          <span id="drawer-badge" class="px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-xs font-extrabold uppercase">
+            №8
+          </span>
+          <h3 id="drawer-title" class="text-lg font-black text-slate-800 mt-2 font-display">
+            Комбинаторика (слова)
+          </h3>
+          <p id="drawer-short-title" class="text-xs font-bold text-slate-400">Статус освоения темы</p>
+        </div>
+        <button onclick="closeReadinessDrawer()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer" title="Закрыть">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Тело шторки со скроллом -->
+      <div class="p-6 space-y-6 flex-1 overflow-y-auto">
+        <!-- 3 карточки статистики -->
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Решено</p>
+            <p id="drawer-solved" class="text-lg font-black text-slate-800 mt-0.5">0</p>
+            <p id="drawer-correct" class="text-[9px] font-bold text-emerald-600">0 верно</p>
+          </div>
+          <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Точность</p>
+            <p id="drawer-percent" class="text-lg font-black text-indigo-600 mt-0.5">0%</p>
+            <p id="drawer-status" class="text-[9px] font-bold text-slate-400">В процессе</p>
+          </div>
+          <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-center">
+            <p class="text-[10px] font-bold text-slate-400 uppercase">Ср. время</p>
+            <p id="drawer-time" class="text-sm font-black text-slate-800 mt-1.5">—</p>
+            <p class="text-[9px] font-bold text-slate-400">на задачу</p>
+          </div>
+        </div>
+
+        <!-- Список подтем -->
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+            <i class="ph-bold ph-list-checks text-indigo-500"></i> Структура задания & Подтемы
+          </h4>
+          <div id="drawer-subtopics" class="space-y-3">
+            <!-- Генерируется на клиенте за 0ms из readiness-data -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Нижние кнопки действий -->
+      <div class="p-6 border-t border-slate-100 bg-slate-50/60 space-y-3">
+        <a id="drawer-btn-trainer" href="#" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-[0_4px_0_#3730A3] active:translate-y-0.5 transition-all text-center">
+          <i class="ph-bold ph-lightning text-base"></i> Сгенерировать 5 задач на тренировку
+        </a>
+        <a id="drawer-btn-theory" href="#" class="w-full py-3 bg-white hover:bg-slate-100 border-2 border-slate-200 text-slate-700 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-[0_3px_0_#CBD5E1] active:translate-y-0.5 transition-all text-center">
+          <i class="ph-bold ph-book-open text-base text-indigo-500"></i> Перейти к уроку по номеру
+        </a>
+      </div>
+
+    </div>
+
+    <!-- Модальное окно «Шкала перевода баллов ФИПИ» -->
+    <div id="fipi-scale-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+      <div class="bg-white rounded-[2rem] border border-slate-200 shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+          <div>
+            <h3 class="text-base font-black text-slate-800 flex items-center gap-2 font-display">
+              <i class="ph-bold ph-table text-indigo-600"></i> Шкала перевода баллов КЕГЭ 2025
+            </h3>
+            <p class="text-xs font-medium text-slate-400 mt-0.5">Официальное соответствие первичных и тестовых баллов ФИПИ</p>
+          </div>
+          <button onclick="closeFipiScaleModal()" class="w-8 h-8 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition-colors cursor-pointer" title="Закрыть">
+            <i class="ph-bold ph-x"></i>
+          </button>
+        </div>
+        
+        <div class="p-5 overflow-y-auto space-y-4">
+          <div class="grid grid-cols-2 gap-4 text-xs">
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl overflow-hidden">
+              <table class="w-full text-center">
+                <thead class="bg-slate-100 text-slate-500 font-extrabold uppercase text-[9px]">
+                  <tr>
+                    <th class="py-2 px-1">Первичный</th>
+                    <th class="py-2 px-1">Тестовый</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200/60 font-bold text-slate-700">
+                  {% for item in fipi_scale[:15] %}
+                  <tr class="hover:bg-indigo-50/50">
+                    <td class="py-1.5 px-2">{{ item.primary }} б.</td>
+                    <td class="py-1.5 px-2 font-black text-indigo-600">{{ item.test }} б.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl overflow-hidden">
+              <table class="w-full text-center">
+                <thead class="bg-slate-100 text-slate-500 font-extrabold uppercase text-[9px]">
+                  <tr>
+                    <th class="py-2 px-1">Первичный</th>
+                    <th class="py-2 px-1">Тестовый</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200/60 font-bold text-slate-700">
+                  {% for item in fipi_scale[15:] %}
+                  <tr class="hover:bg-indigo-50/50">
+                    <td class="py-1.5 px-2">{{ item.primary }} б.</td>
+                    <td class="py-1.5 px-2 font-black text-indigo-600">{{ item.test }} б.</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 text-center font-medium">Максимальный первичный балл — 29, соответствует 100 тестовым баллам.</p>
+        </div>
+
+        <div class="p-4 border-t border-slate-100 bg-slate-50/60 text-right">
+          <button onclick="closeFipiScaleModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer">
+            Понятно
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </main>
+
+<!-- Кэшированные данные для нулевой задержки шторки (Edge Case 3) -->
+<script id="readiness-data" type="application/json">{{ readiness_details|tojson }}</script>
 
 <script>
   function switchAnalyticsTab(tab) {
@@ -402,7 +659,7 @@
 
     if (tab === 'skills') {
       contentSkills.classList.remove('hidden');
-      contentElo.classList.remove('hidden'); // Показываем оба блока последовательно для полного дашборда
+      contentElo.classList.remove('hidden');
       btnSkills.classList.add('active', 'text-indigo-700');
       btnSkills.classList.remove('text-slate-500');
       btnElo.classList.remove('active', 'text-indigo-700');
@@ -416,14 +673,229 @@
       window.scrollTo({ top: contentElo.offsetTop - 80, behavior: 'smooth' });
     }
   }
+
+  // Боковая шторка Drill-down готовности
+  let readinessCache = null;
+  function getReadinessData() {
+    if (!readinessCache) {
+      try {
+        const raw = document.getElementById('readiness-data')?.textContent;
+        readinessCache = raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        console.error('Error parsing readiness data:', e);
+        readinessCache = {};
+      }
+    }
+    return readinessCache;
+  }
+
+  function openReadinessDrawer(taskNumber) {
+    const data = getReadinessData()[String(taskNumber)];
+    if (!data) return;
+
+    document.getElementById('drawer-badge').textContent = `№${data.task_number}`;
+    document.getElementById('drawer-title').textContent = data.short_title || `Задание №${data.task_number}`;
+    document.getElementById('drawer-short-title').textContent = data.title;
+    document.getElementById('drawer-solved').textContent = data.total;
+    document.getElementById('drawer-correct').textContent = `${data.correct} верно`;
+    
+    const pctElem = document.getElementById('drawer-percent');
+    pctElem.textContent = `${data.percent}%`;
+    const statusElem = document.getElementById('drawer-status');
+    if (data.percent >= 80) {
+      pctElem.className = 'text-lg font-black text-emerald-600 mt-0.5';
+      statusElem.textContent = 'Высокая';
+      statusElem.className = 'text-[9px] font-bold text-emerald-600';
+    } else if (data.percent >= 50) {
+      pctElem.className = 'text-lg font-black text-amber-600 mt-0.5';
+      statusElem.textContent = 'Средняя';
+      statusElem.className = 'text-[9px] font-bold text-amber-600';
+    } else {
+      pctElem.className = 'text-lg font-black text-rose-600 mt-0.5';
+      statusElem.textContent = data.total > 0 ? 'В процессе' : 'Не начато';
+      statusElem.className = 'text-[9px] font-bold text-rose-600';
+    }
+
+    document.getElementById('drawer-time').textContent = data.avg_time_str;
+    document.getElementById('drawer-btn-trainer').href = data.url_trainer;
+    document.getElementById('drawer-btn-theory').href = data.url_theory;
+
+    // Отрисовка подтем
+    const subtopicsContainer = document.getElementById('drawer-subtopics');
+    subtopicsContainer.replaceChildren();
+
+    if (data.subtopics && data.subtopics.length > 0) {
+      data.subtopics.forEach(sub => {
+        const wrap = document.createElement('div');
+        wrap.className = 'bg-slate-50 border border-slate-200/70 rounded-xl p-3 space-y-1.5';
+        
+        const line = document.createElement('div');
+        line.className = 'flex items-center justify-between text-xs font-bold';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'text-slate-700';
+        nameSpan.textContent = sub.name;
+
+        const pctSpan = document.createElement('span');
+        pctSpan.className = sub.percent >= 80 ? 'text-emerald-600 font-black' : sub.percent >= 50 ? 'text-amber-600 font-black' : 'text-slate-500 font-black';
+        pctSpan.textContent = `${sub.percent}%`;
+
+        line.append(nameSpan, pctSpan);
+
+        const barTrack = document.createElement('div');
+        barTrack.className = 'w-full h-2 bg-slate-200/70 rounded-full overflow-hidden';
+        const barFill = document.createElement('div');
+        barFill.className = `h-full rounded-full transition-all duration-300 ${sub.percent >= 80 ? 'bg-emerald-500' : sub.percent >= 50 ? 'bg-amber-500' : 'bg-slate-400'}`;
+        barFill.style.width = `${sub.percent}%`;
+        barTrack.append(barFill);
+
+        wrap.append(line, barTrack);
+        subtopicsContainer.append(wrap);
+      });
+    } else {
+      const p = document.createElement('p');
+      p.className = 'text-xs text-slate-400 py-2';
+      p.textContent = 'Подтемы для этого задания формируются.';
+      subtopicsContainer.append(p);
+    }
+
+    // Открытие шторки
+    const backdrop = document.getElementById('readiness-backdrop');
+    const drawer = document.getElementById('readiness-drawer');
+    backdrop.classList.remove('opacity-0', 'pointer-events-none');
+    backdrop.classList.add('opacity-100');
+    drawer.classList.remove('translate-x-full');
+    drawer.classList.add('translate-x-0');
+  }
+
+  function closeReadinessDrawer() {
+    const backdrop = document.getElementById('readiness-backdrop');
+    const drawer = document.getElementById('readiness-drawer');
+    if (!backdrop || !drawer) return;
+    backdrop.classList.add('opacity-0', 'pointer-events-none');
+    backdrop.classList.remove('opacity-100');
+    drawer.classList.add('translate-x-full');
+    drawer.classList.remove('translate-x-0');
+  }
+
+  // Модальное окно шкалы ФИПИ
+  function openFipiScaleModal() {
+    const modal = document.getElementById('fipi-scale-modal');
+    if (!modal) return;
+    modal.classList.remove('opacity-0', 'pointer-events-none');
+    modal.classList.add('opacity-100');
+  }
+
+  function closeFipiScaleModal() {
+    const modal = document.getElementById('fipi-scale-modal');
+    if (!modal) return;
+    modal.classList.add('opacity-0', 'pointer-events-none');
+    modal.classList.remove('opacity-100');
+  }
+
+  // Закрытие по клавише Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeReadinessDrawer();
+      closeFipiScaleModal();
+    }
+  });
+
+  // Интерактивная сортировка таблицы ELO MMR
+  let eloSortDirection = 'asc';
+  let eloRowsData = {{ mastery_rows|tojson }};
+
+  function renderEloRows(rows) {
+    const body = document.getElementById('analytics-elo-body');
+    if (!body) return;
+    body.replaceChildren();
+
+    if (!rows.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 6;
+      td.className = 'p-6 text-center text-slate-400';
+      td.textContent = 'ELO появится после решений, связанных с графом знаний.';
+      tr.append(td);
+      body.append(tr);
+      return;
+    }
+
+    rows.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-slate-800/50 transition-colors';
+
+      // 1. Узел знаний
+      const tdName = document.createElement('td');
+      tdName.className = 'p-4 text-slate-200 font-bold';
+      tdName.textContent = item.name;
+
+      // 2. Номер ЕГЭ (Badge)
+      const tdTask = document.createElement('td');
+      tdTask.className = 'p-4 text-center';
+      if (item.task_number) {
+        const badge = document.createElement('button');
+        badge.className = 'px-2 py-0.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-[10px] font-black cursor-pointer transition-colors';
+        badge.textContent = `№${item.task_number}`;
+        badge.title = 'Открыть аналитику по этому номеру';
+        badge.onclick = () => openReadinessDrawer(item.task_number);
+        tdTask.append(badge);
+      } else {
+        tdTask.textContent = '—';
+        tdTask.className = 'p-4 text-center text-slate-500';
+      }
+
+      // 3. Код темы
+      const tdCode = document.createElement('td');
+      tdCode.className = 'p-4 text-slate-400 font-mono';
+      tdCode.textContent = item.code;
+
+      // 4. ELO MMR
+      const tdMmr = document.createElement('td');
+      tdMmr.className = 'p-4 text-amber-400 font-black font-mono';
+      tdMmr.textContent = `${item.mmr} ELO`;
+
+      // 5. Калибровка
+      const tdCalib = document.createElement('td');
+      tdCalib.className = 'p-4';
+      const calibBadge = document.createElement('span');
+      if (item.calibrated) {
+        calibBadge.className = 'px-2 py-0.5 bg-emerald-900/40 border border-emerald-500/30 text-emerald-300 rounded text-[10px] font-bold';
+        calibBadge.textContent = 'Калибрована';
+      } else {
+        calibBadge.className = 'px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 rounded text-[10px] font-bold';
+        calibBadge.textContent = 'Нужны решения';
+      }
+      tdCalib.append(calibBadge);
+
+      // 6. Дней практики
+      const tdStreak = document.createElement('td');
+      tdStreak.className = 'p-4 text-slate-300 font-bold';
+      tdStreak.textContent = item.streak ? `🔥 ${item.streak} дн.` : '—';
+
+      tr.append(tdName, tdTask, tdCode, tdMmr, tdCalib, tdStreak);
+      body.append(tr);
+    });
+  }
+
+  function toggleEloSort() {
+    eloSortDirection = eloSortDirection === 'asc' ? 'desc' : 'asc';
+    const icon = document.getElementById('elo-sort-icon');
+    if (icon) {
+      icon.className = eloSortDirection === 'asc' ? 'ph-bold ph-caret-up text-amber-400' : 'ph-bold ph-caret-down text-amber-400';
+    }
+    eloRowsData.sort((a, b) => {
+      return eloSortDirection === 'asc' ? (a.mmr - b.mmr) : (b.mmr - a.mmr);
+    });
+    renderEloRows(eloRowsData);
+  }
 </script>
+
 <script>
   (() => {
     const readiness = {{ readiness_rows|tojson }};
-    const topics = {{ problem_topics|tojson }};
     const trendLabels = {{ charts.trend_dates|safe }};
     const trendScores = {{ charts.trend_scores|safe }};
-    const masteryRows = {{ mastery_rows|tojson }};
     const create = (tag, className, text) => {
       const element = document.createElement(tag);
       if (className) element.className = className;
@@ -431,6 +903,7 @@
       return element;
     };
 
+    // Отрисовка кликабельной карты готовности КЕГЭ (№1–27)
     const readinessGrid = document.getElementById('analytics-readiness-grid');
     if (readinessGrid) {
       readinessGrid.replaceChildren();
@@ -440,40 +913,26 @@
       readiness.forEach((item) => {
         const percent = Number(item.percent || 0);
         const tone = percent >= 80
-          ? ['bg-emerald-50', 'border-emerald-200/80', 'text-emerald-600', 'text-emerald-800']
+          ? ['bg-emerald-50', 'border-emerald-200/80', 'text-emerald-600', 'text-emerald-800', 'hover:border-emerald-400']
           : percent >= 50
-            ? ['bg-amber-50', 'border-amber-200/80', 'text-amber-700', 'text-amber-800']
-            : ['bg-rose-50', 'border-rose-200/80', 'text-rose-700', 'text-rose-800'];
-        const card = create('div', `${tone[0]} border ${tone[1]} p-3 rounded-xl flex flex-col items-center justify-center text-center`);
+            ? ['bg-amber-50', 'border-amber-200/80', 'text-amber-700', 'text-amber-800', 'hover:border-amber-400']
+            : ['bg-rose-50', 'border-rose-200/80', 'text-rose-700', 'text-rose-800', 'hover:border-rose-400'];
+        
+        const card = create('div', `${tone[0]} border ${tone[1]} ${tone[4]} p-3 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xs group`);
+        card.setAttribute('data-task-number', item.task_number);
+        card.setAttribute('title', `Задание №${item.task_number} (${item.title || ''}): точность ${Math.round(percent)}%. Кликните для деталей.`);
+        card.onclick = () => openReadinessDrawer(item.task_number);
+
         card.append(
-          create('span', `text-[10px] font-extrabold ${tone[2]} uppercase`, `№${item.task_number}`),
-          create('span', `text-sm font-black ${tone[3]}`, `${Math.round(percent)}%`),
+          create('span', `text-[10px] font-extrabold ${tone[2]} uppercase group-hover:underline`, `№${item.task_number}`),
+          create('span', `text-sm font-black ${tone[3]} mt-0.5`, `${Math.round(percent)}%`),
         );
         readinessGrid.append(card);
       });
       readinessGrid.style.visibility = 'visible';
     }
 
-    const topicBars = document.getElementById('analytics-topic-bars');
-    if (topicBars) {
-      topicBars.replaceChildren();
-      topics.slice(0, 5).forEach((topic) => {
-        const percent = Number(topic.avg_score ?? topic.pct ?? 0);
-        const wrap = create('div', 'space-y-1.5');
-        const line = create('div', 'flex justify-between items-center text-xs font-bold');
-        line.append(
-          create('span', 'text-slate-800', topic.name || topic.title || 'Тема'),
-          create('span', 'text-indigo-600 font-black', `${Math.round(percent)}%`),
-        );
-        const rail = create('div', 'w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60');
-        const fill = create('div', 'h-full bg-indigo-500 rounded-full');
-        fill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
-        rail.append(fill); wrap.append(line, rail); topicBars.append(wrap);
-      });
-      if (!topics.length) topicBars.append(create('p', 'py-8 text-center text-sm font-bold text-slate-400', 'Темы появятся после проверенных решений.'));
-      topicBars.style.visibility = 'visible';
-    }
-
+    // Отрисовка динамики тестовых баллов
     const trend = document.getElementById('analytics-trend-bars');
     if (trend) {
       trend.replaceChildren();
@@ -496,23 +955,10 @@
       trend.style.visibility = 'visible';
     }
 
+    // Инициализация таблицы ELO MMR
+    renderEloRows(eloRowsData);
     const body = document.getElementById('analytics-elo-body');
-    if (body) {
-      body.replaceChildren();
-      if (!masteryRows.length) {
-        const row = document.createElement('tr');
-        const cell = create('td', 'p-6 text-center text-slate-400', 'ELO появится после решений, связанных с графом знаний.');
-        cell.colSpan = 5; row.append(cell); body.append(row);
-      }
-      masteryRows.forEach((item) => {
-        const row = create('tr', 'hover:bg-slate-800/50 transition-colors');
-        const calibration = item.calibrated ? 'Калибрована' : 'Нужны решения';
-        const values = [item.name, item.code, `${item.mmr} ELO`, calibration, item.streak ? `🔥 ${item.streak} дней` : '—'];
-        values.forEach((value, index) => row.append(create('td', `p-4 ${index === 2 ? 'text-emerald-400 font-black' : index === 1 ? 'text-slate-400 font-mono' : ''}`, value)));
-        body.append(row);
-      });
-      body.style.visibility = 'visible';
-    }
+    if (body) body.style.visibility = 'visible';
   })();
 </script>
 {% endblock %}

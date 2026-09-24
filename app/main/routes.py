@@ -509,18 +509,27 @@ def preparation_mode_page():
     )
 
 
-@main_bp.route('/students')
+@main_bp.route('/students', endpoint='students')
 @main_bp.route('/teacher/students')
 @main_bp.route('/dashboard')
+@main_bp.route('/teacher/dashboard')
 @login_required
 def dashboard():
-    """Главная страница (dashboard) со списком студентов"""
+    """Главная страница (dashboard) со списком студентов или дашбордом преподавателя"""
     active_role = get_active_role()
     if active_role == 'parent' or (current_user.is_parent() and active_role not in ['tutor', 'admin', 'creator']):
         return parents_dashboard()
     
     if current_user.is_student():
         return student_dashboard()
+
+    # Дашборд преподавателя при переходе на /dashboard (без параметров поиска по ученикам)
+    is_dashboard_path = request.path in ['/dashboard', '/teacher/dashboard']
+    has_student_filters = any(k in request.args for k in ['search', 'category', 'show_archive', 'student_scope', 'scope', 'page'])
+    if is_dashboard_path and not has_student_filters:
+        from app.main.teacher_dashboard_service import get_teacher_dashboard_data
+        data = get_teacher_dashboard_data(current_user)
+        return render_template('sandbox/dashboard_teacher.html', **data)
     
     if current_user.is_designer():
         pass  # Продолжаем выполнение, покажем пустой dashboard
@@ -949,6 +958,106 @@ def dashboard():
                          review_lesson_tasks_count=review_lesson_tasks_count,
                          review_submissions_count=review_submissions_count,
                          groups_count=groups_count)
+
+
+@main_bp.route('/api/teacher-dashboard/todo', methods=['POST'])
+@csrf.exempt
+@login_required
+def api_teacher_dashboard_todo():
+    """Интерактивное обновление задач в блоке 'Не забыть!' дашборда преподавателя"""
+    from app.main.teacher_dashboard_service import load_teacher_todos, save_teacher_todos
+    action = request.json.get('action') if request.is_json else request.form.get('action')
+    todos = load_teacher_todos(current_user.id)
+    if action == 'toggle':
+        todo_id = request.json.get('id') if request.is_json else int(request.form.get('id', 0))
+        for t in todos:
+            if t['id'] == todo_id:
+                t['done'] = not t.get('done', False)
+                break
+        save_teacher_todos(current_user.id, todos)
+        return jsonify({'success': True, 'todos': todos})
+    elif action == 'add':
+        text = ((request.json.get('text') if request.is_json else request.form.get('text')) or '').strip()
+        if text:
+            new_id = int(datetime.utcnow().timestamp())
+            todos.append({'id': new_id, 'text': text, 'done': False})
+            save_teacher_todos(current_user.id, todos)
+            return jsonify({'success': True, 'todos': todos})
+    elif action == 'delete':
+        todo_id = request.json.get('id') if request.is_json else int(request.form.get('id', 0))
+        todos = [t for t in todos if t.get('id') != todo_id]
+        save_teacher_todos(current_user.id, todos)
+        return jsonify({'success': True, 'todos': todos})
+    return jsonify({'success': False}), 400
+
+
+@main_bp.route('/api/teacher-dashboard/quick-student', methods=['POST'])
+@csrf.exempt
+@login_required
+def api_teacher_dashboard_quick_student():
+    """Быстрое создание профиля ученика напрямую из дашборда преподавателя"""
+    if not (current_user.is_tutor() or current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'message': 'Доступ запрещён'}), 403
+
+    data = request.get_json(silent=True) or request.form or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'message': 'Укажите имя ученика'}), 400
+
+    target_score = data.get('target_score')
+    try:
+        target_score = int(target_score) if target_score else 80
+    except (ValueError, TypeError):
+        target_score = 80
+
+    telegram = (data.get('telegram') or '').strip() or None
+    email = (data.get('email') or '').strip() or None
+    category = (data.get('category') or 'ЕГЭ Информатика').strip()
+
+    from core.db_models import Student, TeacherStudent, User
+    from app.utils.student_id_manager import assign_platform_id_if_needed
+    import secrets
+
+    user = None
+    if email:
+        user = User.query.filter_by(email=email).first()
+    if not user:
+        st_login = f"student_{secrets.token_hex(4)}"
+        st_email = email or f"{st_login}@boostudy.local"
+        user = User(
+            username=st_login,
+            email=st_email,
+            role='student',
+        )
+        user.set_password(secrets.token_urlsafe(10))
+        db.session.add(user)
+        db.session.flush()
+
+    student = Student(
+        name=name,
+        target_score=target_score,
+        telegram=telegram,
+        email=email or user.email,
+        category=category,
+        mentor_id=current_user.id,
+        user_id=user.id,
+    )
+    assign_platform_id_if_needed(student)
+    db.session.add(student)
+    db.session.flush()
+
+    ts = TeacherStudent.query.filter_by(teacher_id=current_user.id, student_id=user.id).first()
+    if not ts:
+        ts = TeacherStudent(teacher_id=current_user.id, student_id=user.id, status='active')
+        db.session.add(ts)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'student_id': student.student_id,
+        'name': student.name,
+        'message': f'Ученик {student.name} успешно добавлен!'
+    })
 
 
 @main_bp.route('/student/dashboard')
