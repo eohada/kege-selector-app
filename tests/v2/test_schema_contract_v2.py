@@ -103,3 +103,63 @@ def test_schema_bootstrap_then_onboarding_migration_on_empty_database(app):
     assert 'profile_onboarding_completed_at' in columns
     assert 'uq_promocode_usage_per_user' in promo_constraints
     assert 'uq_referral_usage_per_user' in referral_constraints
+
+
+def test_course_lesson_skills_contract_migration():
+    """Verify that rev_course_lesson_skills_contract creates all missing columns, indexes and tables."""
+    project_root = Path(__file__).resolve().parents[2]
+    migration_path = project_root / 'migrations' / 'versions' / 'rev_course_lesson_skills_contract.py'
+    spec = importlib.util.spec_from_file_location('course_lesson_skills_contract_migration', migration_path)
+    migration = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(migration)
+
+    engine = sa.create_engine('sqlite://')
+    with engine.begin() as connection:
+        # Create minimal pre-existing tables mimicking the DB state before this migration
+        connection.execute(text('CREATE TABLE "Students" (student_id INTEGER PRIMARY KEY)'))
+        connection.execute(text('CREATE TABLE "ExamSkills" (skill_id INTEGER PRIMARY KEY)'))
+        connection.execute(text('CREATE TABLE "Courses" (course_id INTEGER PRIMARY KEY, student_id INTEGER)'))
+        connection.execute(text('CREATE TABLE "CourseModules" (module_id INTEGER PRIMARY KEY)'))
+        connection.execute(text('CREATE TABLE "Lessons" (lesson_id INTEGER PRIMARY KEY, student_id INTEGER)'))
+
+        migration.op = Operations(MigrationContext.configure(connection))
+
+        # First run: creates columns, tables, indexes
+        migration.upgrade()
+        # Second run: ensures idempotency (doesn't fail if already run)
+        migration.upgrade()
+
+        inspector = sa.inspect(connection)
+        tables = set(inspector.get_table_names())
+        assert 'lesson_skills' in tables
+        assert 'lesson_attachments' in tables
+
+        cm_cols = {c['name'] for c in inspector.get_columns('CourseModules')}
+        assert 'is_control_exam' in cm_cols
+
+        c_cols = {c['name'] for c in inspector.get_columns('Courses')}
+        assert 'is_template' in c_cols
+        assert 'parent_course_id' in c_cols
+
+        es_cols = {c['name'] for c in inspector.get_columns('ExamSkills')}
+        assert 'topic_code' in es_cols
+        assert 'prerequisite_ids' in es_cols
+
+        l_cols = {c['name'] for c in inspector.get_columns('Lessons')}
+        assert 'lesson_format' in l_cols
+        assert 'studio_scenario' in l_cols
+
+        c_idx = {idx['name'] for idx in inspector.get_indexes('Courses')}
+        assert 'ix_Courses_is_template' in c_idx
+        assert 'ix_Courses_parent_course_id' in c_idx
+
+        es_idx = {idx['name'] for idx in inspector.get_indexes('ExamSkills')}
+        assert 'ix_ExamSkills_topic_code' in es_idx
+
+        l_idx = {idx['name'] for idx in inspector.get_indexes('Lessons')}
+        assert 'ix_Lessons_student_id' in l_idx
+
+        la_idx = {idx['name'] for idx in inspector.get_indexes('lesson_attachments')}
+        assert 'ix_lesson_attachments_lesson_id' in la_idx
+
