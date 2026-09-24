@@ -106,9 +106,9 @@ def test_schema_bootstrap_then_onboarding_migration_on_empty_database(app):
 
 
 def test_course_lesson_skills_contract_migration():
-    """Verify that rev_course_lesson_skills_contract creates all missing columns, indexes and tables."""
+    """Verify that rev_course_lesson_skills creates all missing columns, indexes and tables."""
     project_root = Path(__file__).resolve().parents[2]
-    migration_path = project_root / 'migrations' / 'versions' / 'rev_course_lesson_skills_contract.py'
+    migration_path = project_root / 'migrations' / 'versions' / 'rev_course_lesson_skills.py'
     spec = importlib.util.spec_from_file_location('course_lesson_skills_contract_migration', migration_path)
     migration = importlib.util.module_from_spec(spec)
     assert spec.loader is not None

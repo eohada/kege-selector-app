@@ -1,6 +1,6 @@
 """reconcile course lesson skills schema contract
 
-Revision ID: rev_course_lesson_skills_contract
+Revision ID: rev_course_lesson_skills
 Revises: rev_lesson_outcomes_metrics
 Create Date: 2026-09-24 16:00:00.000000
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = 'rev_course_lesson_skills_contract'
+revision = 'rev_course_lesson_skills'
 down_revision = 'rev_lesson_outcomes_metrics'
 branch_labels = None
 depends_on = None
