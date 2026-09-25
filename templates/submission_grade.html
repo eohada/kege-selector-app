@@ -1940,10 +1940,36 @@
                             {% endif %}
                             {% set effective_answer = g.assignment_task.answer_override or (g.task.answer if g.task else '') %}
                             {% if effective_answer %}
-                            <div style="margin-top: 0.75rem;">
-                                <div style="font-size: 0.85em; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">Правильный ответ:</div>
-                                <div class="student-answer-value correct-ans-val" style="display: inline-block !important; width: 100%;">{{ effective_answer }}</div>
-                            </div>
+                                {% if answer_type == 'matching' and g.parsed_expected_value %}
+                                <div style="margin-top: 0.75rem;">
+                                    <div style="font-size: 0.85em; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">Правильный ответ:</div>
+                                    <div class="teacher-matching-table" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.75rem; padding: 0.5rem 0.75rem;">
+                                        {% set opt_dict_exp = {} %}
+                                        {% for o in spec.get('options', []) %}
+                                            {% set _ = opt_dict_exp.update({o.value: o.label}) %}
+                                        {% endfor %}
+                                        {% for p in spec.get('pairs', []) %}
+                                        {% set exp_val = g.parsed_expected_value.get(p.key) %}
+                                        {% set exp_label = opt_dict_exp.get(exp_val) if exp_val else exp_val %}
+                                        <div class="teacher-matching-row" style="padding: 0.25rem 0; font-size: 0.85rem;">
+                                            <div class="teacher-matching-left">
+                                                <span class="teacher-matching-badge">{{ p.key }}</span>
+                                                <span class="font-medium text-slate-700">{{ p.left }}</span>
+                                            </div>
+                                            <i class="ph-bold ph-arrow-right teacher-matching-arrow text-emerald-600"></i>
+                                            <div class="teacher-matching-right text-emerald-800 font-semibold">
+                                                {{ exp_label or '—' }}
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div style="margin-top: 0.75rem;">
+                                    <div style="font-size: 0.85em; font-weight: 700; color: #64748b; margin-bottom: 0.25rem;">Правильный ответ:</div>
+                                    <div class="student-answer-value correct-ans-val" style="display: inline-block !important; width: 100%;">{{ effective_answer }}</div>
+                                </div>
+                                {% endif %}
                             {% endif %}
                             
                             {% if g.answer and g.answer.student_code %}

@@ -220,7 +220,14 @@ def _deadline_payload_to_utc(raw_value) -> datetime:
     return deadline_from_form_to_utc(dt)
 
 
-def _assignment_builder_task_payload(task: Tasks, *, max_score: int = 1, requires_manual_grading: bool = False) -> dict[str, Any]:
+def _assignment_builder_task_payload(
+    task: Tasks,
+    *,
+    max_score: int = 1,
+    requires_manual_grading: bool = False,
+    answer_override: str | None = None,
+    max_attempts: int | None = None,
+) -> dict[str, Any]:
     """Serialize a task for the V2 assignment builder without exposing legacy HTML routes."""
     solution_text = None
     if hasattr(task, 'task_solution') and task.task_solution:
@@ -231,11 +238,15 @@ def _assignment_builder_task_payload(task: Tasks, *, max_score: int = 1, require
     is_admin = bool(getattr(current_user, 'is_admin', lambda: False)())
     can_edit = bool((task.bank_origin == 'manual' and task.created_by_id == getattr(current_user, 'id', None)) or is_admin)
 
+    effective_ans = answer_override if (answer_override is not None and str(answer_override).strip() != '') else (task.answer or '')
+
     return {
         'task_id': int(task.task_id),
         'task_number': int(task.task_number or 0),
         'max_score': max(1, int(max_score or 1)),
-        'answer': task.answer or '',
+        'answer': effective_ans,
+        'answer_override': answer_override,
+        'max_attempts': max_attempts,
         'source': task.source_url or getattr(task, 'kege_source_tag', None) or 'Банк задач',
         'content_html': normalize_task_content_assets(
             task.content_html or '',
@@ -1427,21 +1438,42 @@ def auto_grade_answer(answer, assignment_task):
     """
     Автоматическая проверка ответа.
     Возвращает (is_correct, score). Работает для любого типа экзамена (ЕГЭ, ОГЭ и т.д.)
-    на основе CourseTaskTemplate: max_primary_score для балла, requires_manual_review не влияет
+    на основе CourseTaskTemplate или параметров assignment_task / task:
+    max_score для балла, requires_manual_review не влияет
     на саму авто-проверку — если задан эталонный ответ, авто-проверка выполняется.
     """
     task = assignment_task.task
     student_answer = (answer.value or '').strip()
     correct_answer = _effective_correct_answer(assignment_task)
 
-    template = _get_task_template(task)
-    if template is None:
-        return None, None
-
     if not correct_answer:
         return None, None
 
-    score_value = template.max_primary_score if template.max_primary_score is not None else assignment_task.max_score
+    template = _get_task_template(task)
+    if template is not None and template.max_primary_score is not None:
+        score_value = template.max_primary_score
+    else:
+        score_value = assignment_task.max_score or getattr(task, 'max_score', 1) or 1
+
+    # Попытка парсинга как JSON (для matching, multiple_choice или dict-ответов)
+    try:
+        s_obj = json.loads(student_answer)
+        c_obj = json.loads(correct_answer)
+        if isinstance(c_obj, dict) and isinstance(s_obj, dict):
+            norm_s = {str(k).strip(): str(v).strip() for k, v in s_obj.items()}
+            norm_c = {str(k).strip(): str(v).strip() for k, v in c_obj.items()}
+            if norm_s == norm_c and norm_c:
+                return True, score_value
+            return False, 0
+        elif isinstance(c_obj, list) and isinstance(s_obj, list):
+            norm_s = sorted(str(x).strip() for x in s_obj)
+            norm_c = sorted(str(x).strip() for x in c_obj)
+            if norm_s == norm_c and norm_c:
+                return True, score_value
+            return False, 0
+    except Exception:
+        pass
+
     normalized_student = normalize_answer_value(student_answer)
     normalized_correct = normalize_answer_value(correct_answer)
     if normalized_student == normalized_correct and normalized_correct != '':
@@ -3036,22 +3068,132 @@ def assignment_create():
 @login_required
 @check_access('assignment.create')
 def assignment_edit(assignment_id: int):
-    """Страница редактирования работы: название, дедлайн, состав заданий."""
+    """Страница редактирования работы в V2-конструкторе: название, дедлайн, параметры, состав заданий, получатели."""
     assignment = Assignment.query.options(
         joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
+        joinedload(Assignment.submissions).joinedload(Submission.student),
         joinedload(Assignment.created_by),
     ).get_or_404(assignment_id)
     scope = get_user_scope(current_user)
     if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('assignments.assignments_list'))
+
     assignment_tasks = sorted(assignment.tasks or [], key=lambda at: (at.order_index, at.assignment_task_id))
+    tasks = [at.task for at in assignment_tasks if at.task]
+
+    # Recipient students options
+    if scope.get('can_see_all'):
+        recipient_options = (
+            Student.query.filter(Student.is_active.is_(True))
+            .order_by(Student.name.asc(), Student.student_id.asc())
+            .limit(500)
+            .all()
+        )
+    else:
+        tutor_students = get_students_for_tutor(current_user.id) or []
+        ids = [int(s.student_id) for s in tutor_students if getattr(s, 'student_id', None)]
+        recipient_options = (
+            Student.query.filter(Student.student_id.in_(ids))
+            .order_by(Student.name.asc(), Student.student_id.asc())
+            .limit(500)
+            .all()
+        ) if ids else []
+
+    from app.models import SchoolGroup
+    if scope.get('can_see_all'):
+        available_groups = SchoolGroup.query.filter_by(status='active').order_by(SchoolGroup.title.asc()).all()
+    else:
+        available_groups = SchoolGroup.query.filter_by(
+            status='active', owner_user_id=current_user.id
+        ).order_by(SchoolGroup.title.asc()).all()
+
+    group_members_map: dict[str, list[int]] = {}
+    try:
+        for _g in available_groups or []:
+            _gid = getattr(_g, 'group_id', None)
+            if _gid is None:
+                continue
+            rows = GroupStudent.query.filter_by(group_id=int(_gid)).all()
+            group_members_map[str(_gid)] = [int(r.student_id) for r in rows if getattr(r, 'student_id', None)]
+    except Exception:
+        group_members_map = {}
+
+    courses_for_probnik = []
+    try:
+        courses_for_probnik = (
+            Course.query.filter_by(is_active=True).order_by(Course.title.asc(), Course.id.asc()).limit(100).all()
+        )
+    except Exception:
+        courses_for_probnik = []
+
+    recipient_student_ids = [sub.student_id for sub in (assignment.submissions or []) if sub.student_id]
+
+    initial_tasks = []
+    for at in assignment_tasks:
+        if at.task:
+            initial_tasks.append(
+                _assignment_builder_task_payload(
+                    at.task,
+                    max_score=at.max_score,
+                    requires_manual_grading=at.requires_manual_grading,
+                    answer_override=at.answer_override,
+                    max_attempts=at.max_attempts,
+                )
+            )
+
+    existing_assignment = {
+        'id': assignment.assignment_id,
+        'assignment_id': assignment.assignment_id,
+        'title': assignment.title or '',
+        'description': assignment.description or '',
+        'assignment_type': assignment.assignment_type or 'homework',
+        'type': assignment.assignment_type or 'homework',
+        'course_id': assignment.exam_course_id,
+        'deadline': _datetime_local_value_for_user(assignment.deadline),
+        'time_limit_minutes': assignment.time_limit_minutes,
+        'time_limit_strict': bool(assignment.time_limit_strict),
+        'max_attempts_default': assignment.max_attempts_default or 1,
+        'hard_deadline': bool(assignment.hard_deadline),
+        'hide_before_start': bool(assignment.hide_before_start),
+        'allow_separate_submission': bool(assignment.allow_separate_submission),
+        'attempts_per_task': bool(assignment.attempts_per_task),
+        'grading_mode': 'rubric' if assignment.rubric_template_id else ('manual' if assignment.assignment_type == 'manual_review' else 'auto'),
+        'tasks': initial_tasks,
+        'recipient_ids': recipient_student_ids,
+    }
+
     return render_template(
-        'assignment_edit.html',
+        'sandbox/create_assignment.html',
         active_page='assignments',
+        is_edit_mode=True,
+        source='edit',
+        source_label=f'Редактирование работы #{assignment.assignment_id}',
+        source_meta={'assignment_id': assignment.assignment_id},
         assignment=assignment,
-        assignment_tasks=assignment_tasks,
-        deadline_input_value=_datetime_local_value_for_user(assignment.deadline),
+        assignment_id=assignment.assignment_id,
+        assignment_type=assignment.assignment_type or 'homework',
+        task_type=None,
+        template_id=None,
+        lesson_id=None,
+        tasks=tasks,
+        initial_tasks=initial_tasks,
+        task_ids=[t.task_id for t in tasks if t and t.task_id],
+        recipient_options=recipient_options,
+        default_recipient_ids=recipient_student_ids,
+        already_sent_task_ids=[],
+        available_groups=available_groups,
+        group_members_map=group_members_map,
+        courses_for_probnik=courses_for_probnik,
+        probnik_mode=(assignment.assignment_type == 'exam'),
+        default_probnik_course_id=assignment.exam_course_id,
+        probnik_random_mode=False,
+        task_card_count=len(tasks),
+        task_exam_number_slots=len({t.task_number for t in tasks if t and t.task_number is not None}),
+        bank_course_id_for_links=assignment.exam_course_id,
+        existing_assignment=existing_assignment,
+        is_admin=bool(scope.get('can_see_all')),
+        courses=[{'id': c.id, 'title': c.title} for c in courses_for_probnik],
     )
 
 
@@ -3059,7 +3201,7 @@ def assignment_edit(assignment_id: int):
 @login_required
 @check_access('assignment.create')
 def assignment_update(assignment_id: int):
-    """Обновление работы: название, описание, дедлайн, состав заданий (порядок, баллы)."""
+    """Обновление работы: название, описание, дедлайн, параметры, состав заданий (порядок, баллы, ручная проверка), получатели."""
     assignment = Assignment.query.get_or_404(assignment_id)
     scope = get_user_scope(current_user)
     if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
@@ -3071,20 +3213,43 @@ def assignment_update(assignment_id: int):
             assignment.title = title
         description = (data.get('description') or '').strip()
         assignment.description = description if description else None
+
+        raw_course_id = data.get('exam_course_id') or data.get('course_id')
+        if raw_course_id:
+            try:
+                assignment.exam_course_id = int(raw_course_id)
+            except (ValueError, TypeError):
+                pass
+
+        grading_mode = str(data.get('grading_mode') or '').strip().lower()
+        if grading_mode == 'manual':
+            assignment.assignment_type = 'manual_review'
+        else:
+            raw_type = data.get('type') or data.get('assignment_type')
+            if raw_type:
+                assignment.assignment_type = _normalize_assignment_type(raw_type) or raw_type
+
         deadline_str = data.get('deadline')
         if deadline_str:
             try:
                 assignment.deadline = _deadline_payload_to_utc(deadline_str)
             except Exception:
                 pass
-        assignment.hard_deadline = bool(data.get('hard_deadline', assignment.hard_deadline))
-        assignment.hide_before_start = bool(data.get('hide_before_start', assignment.hide_before_start))
-        assignment.allow_separate_submission = bool(data.get('allow_separate_submission', assignment.allow_separate_submission))
-        assignment.attempts_per_task = bool(data.get('attempts_per_task', assignment.attempts_per_task))
+        if 'hard_deadline' in data:
+            assignment.hard_deadline = bool(data.get('hard_deadline'))
+        if 'hide_before_start' in data:
+            assignment.hide_before_start = bool(data.get('hide_before_start'))
+        if 'allow_separate_submission' in data:
+            assignment.allow_separate_submission = bool(data.get('allow_separate_submission'))
+        if 'attempts_per_task' in data:
+            assignment.attempts_per_task = bool(data.get('attempts_per_task'))
+            if assignment.attempts_per_task:
+                assignment.allow_separate_submission = True
         if 'time_limit_minutes' in data:
             v = data['time_limit_minutes']
             assignment.time_limit_minutes = int(v) if v is not None and str(v).strip() != '' else None
-        assignment.time_limit_strict = bool(data.get('time_limit_strict', assignment.time_limit_strict))
+        if 'time_limit_strict' in data:
+            assignment.time_limit_strict = bool(data.get('time_limit_strict'))
         if 'max_attempts_default' in data:
             v = data['max_attempts_default']
             try:
@@ -3101,12 +3266,13 @@ def assignment_update(assignment_id: int):
                 task_id = t_data.get('task_id')
                 if not task_id:
                     continue
+                req_manual = t_data.get('requires_manual_grading', False)
                 if task_id not in existing_by_task_id:
                     task = Tasks.query.get(task_id)
                     if not task:
                         continue
                     has_ans = bool((task.answer or '').strip()) or bool((t_data.get('answer_override') or '').strip())
-                    requires_manual = _requires_manual_from_template(task, has_ans, explicit_override=t_data.get('requires_manual_grading', False))
+                    requires_manual = _requires_manual_from_template(task, has_ans, explicit_override=req_manual)
                     at = AssignmentTask(
                         assignment_id=assignment.assignment_id,
                         task_id=task_id,
@@ -3129,14 +3295,44 @@ def assignment_update(assignment_id: int):
                     task = at.task
                     if task:
                         has_ans = bool((task.answer or '').strip()) or bool((at.answer_override or '').strip())
-                        at.requires_manual_grading = _requires_manual_from_template(task, has_ans)
+                        at.requires_manual_grading = _requires_manual_from_template(task, has_ans, explicit_override=req_manual)
             for at in list(assignment.tasks or []):
                 if at.task_id not in new_task_ids:
                     db.session.delete(at)
             db.session.flush()
-            new_total = sum(at.max_score for at in existing_by_task_id.values())
-            for sub in (assignment.submissions or []):
-                sub.max_score = new_total
+            new_total = sum(at.max_score for at in existing_by_task_id.values()) or 1
+        else:
+            new_total = sum(at.max_score for at in (assignment.tasks or [])) or 1
+
+        # Recipient synchronization
+        raw_recipients = data.get('recipientIds') or data.get('recipient_ids') or data.get('target_students')
+        if raw_recipients is not None and isinstance(raw_recipients, list):
+            target_ids = set()
+            for r in raw_recipients:
+                try:
+                    target_ids.add(int(r))
+                except (ValueError, TypeError):
+                    pass
+            existing_subs = {sub.student_id: sub for sub in (assignment.submissions or [])}
+            for sid in target_ids:
+                if sid not in existing_subs:
+                    new_sub = Submission(
+                        assignment_id=assignment.assignment_id,
+                        student_id=sid,
+                        status='ASSIGNED',
+                        assigned_at=utc_now(),
+                        max_score=new_total,
+                    )
+                    db.session.add(new_sub)
+            for sid, sub in existing_subs.items():
+                if sid not in target_ids:
+                    if sub.status == 'ASSIGNED' and not sub.answers:
+                        db.session.delete(sub)
+            db.session.flush()
+
+        for sub in (assignment.submissions or []):
+            sub.max_score = new_total
+
         db.session.commit()
         return jsonify({'success': True, 'redirect': url_for('assignments.assignment_view', assignment_id=assignment.assignment_id)})
     except Exception as e:
@@ -5063,12 +5259,21 @@ def submission_grade_view(submission_id):
             else:
                 parsed_answer_value = answer.value
 
+        parsed_expected_value = None
+        effective_ans = assignment_task.answer_override or (assignment_task.task.answer if assignment_task.task else '')
+        if effective_ans and normalized_spec.get('type') == 'matching':
+            try:
+                parsed_expected_value = json.loads(effective_ans) if isinstance(effective_ans, str) else effective_ans
+            except Exception:
+                parsed_expected_value = {}
+
         tasks_data.append({
             'assignment_task': assignment_task,
             'task': assignment_task.task,
             'answer': answer,
             'answer_spec': normalized_spec,
             'parsed_answer_value': parsed_answer_value,
+            'parsed_expected_value': parsed_expected_value,
             'max_attempts_for_task': max_for_task,
             'task_attempts_used': task_attempts_used,
             'rating_meta': rating_meta,

@@ -213,3 +213,189 @@ def test_ai_importer_bank_http_endpoint(client, role_users):
     assert data['success'] is True
     assert data['count'] == 5
 
+
+def test_ai_importer_matching_task_user_format(app, role_users):
+    """Проверка парсинга формата matching из пользовательского файла (left_items, right_items, correct_matches)."""
+    tutor_id = role_users['tutor_id']
+    user_matching_json = """{
+      "tasks": [
+        {
+          "id": "conditions-v2-03",
+          "type": "matching",
+          "title": "Сопоставь сравнение и результат",
+          "prompt": "Соедини выражение с результатом, который оно даёт.",
+          "left_items": [
+            {"id": "l1", "text": "9 > 4"},
+            {"id": "l2", "text": "7 == 7"},
+            {"id": "l3", "text": "3 != 3"},
+            {"id": "l4", "text": "10 <= 2"}
+          ],
+          "right_items": [
+            {"id": "r1", "text": "False: числа равны, неравенство ложно"},
+            {"id": "r2", "text": "True: девять строго больше четырёх"},
+            {"id": "r3", "text": "True: значения одинаковы"},
+            {"id": "r4", "text": "False: десять не меньше и не равно двум"}
+          ],
+          "correct_matches": [
+            {"left_id": "l1", "right_id": "r2"},
+            {"left_id": "l2", "right_id": "r3"},
+            {"left_id": "l3", "right_id": "r1"},
+            {"left_id": "l4", "right_id": "r4"}
+          ],
+          "points": 2
+        }
+      ]
+    }"""
+
+    with app.app_context():
+        res = parse_and_convert_ai_homework(user_matching_json, user_id=tutor_id)
+        assert res['success'] is True
+        assert res['count'] == 1
+        t_data = res['tasks'][0]
+        assert t_data['max_score'] == 2
+        assert t_data['requires_manual_grading'] is False
+        expected_dict = {"l1": "r2", "l2": "r3", "l3": "r1", "l4": "r4"}
+        assert json.loads(t_data['answer']) == expected_dict
+        spec = t_data['answer_spec']
+        assert spec['type'] == 'matching'
+        assert len(spec['pairs']) == 4
+        assert len(spec['options']) == 4
+        assert spec['correct_matches'] == expected_dict
+
+
+def test_auto_grade_matching_and_custom_task(app, role_users):
+    """Проверка авто-проверки matching и кастомных заданий без CourseTaskTemplate."""
+    from datetime import timedelta
+    from app.assignments.routes import auto_grade_answer
+    from app.utils.timezone import utc_now
+    from core.db_models import Assignment, AssignmentTask, Answer, Tasks
+    from app import db
+
+    with app.app_context():
+        tutor_id = role_users['tutor_id']
+        custom_task = Tasks(
+            task_number=99,
+            site_task_id="test:matching:1",
+            content_html="<p>Сопоставление</p>",
+            answer=json.dumps({"l1": "r2", "l2": "r1"}),
+            created_by_id=tutor_id,
+            difficulty_level=1,
+            max_score=2,
+        )
+        db.session.add(custom_task)
+        db.session.flush()
+
+        assignment = Assignment(
+            title="Тест сопоставления",
+            assignment_type="homework",
+            deadline=utc_now() + timedelta(days=1),
+            created_by_id=tutor_id,
+        )
+        db.session.add(assignment)
+        db.session.flush()
+
+        at = AssignmentTask(
+            assignment_id=assignment.assignment_id,
+            task_id=custom_task.task_id,
+            order_index=1,
+            max_score=2,
+        )
+        db.session.add(at)
+        db.session.flush()
+
+        # Правильный ответ (даже если ключи в другом порядке)
+        correct_ans = Answer(value=json.dumps({"l2": "r1", "l1": "r2"}))
+        is_corr, score = auto_grade_answer(correct_ans, at)
+        assert is_corr is True
+        assert score == 2
+
+        # Неправильный ответ
+        wrong_ans = Answer(value=json.dumps({"l1": "r1", "l2": "r2"}))
+        is_corr, score = auto_grade_answer(wrong_ans, at)
+        assert is_corr is False
+        assert score == 0
+
+
+def test_assignment_edit_and_update_v2(client, role_users, app):
+    """Проверка открытия V2-конструктора при редактировании и успешного обновления через /update."""
+    from datetime import timedelta
+    from app.utils.timezone import utc_now
+    from core.db_models import Assignment, AssignmentTask, Tasks
+    from app import db
+
+    tutor_id = role_users['tutor_id']
+    student_id = role_users['student_id']
+    login_as(client, tutor_id, 'tutor')
+
+    with app.app_context():
+        t1 = Tasks(task_number=1, site_task_id="t1", content_html="Task 1", answer="42", created_by_id=tutor_id)
+        t2 = Tasks(task_number=2, site_task_id="t2", content_html="Task 2", answer="84", created_by_id=tutor_id)
+        db.session.add_all([t1, t2])
+        db.session.flush()
+
+        assign = Assignment(
+            title="Старая работа",
+            description="Старое описание",
+            deadline=utc_now() + timedelta(days=2),
+            created_by_id=tutor_id,
+            assignment_type="homework",
+            max_attempts_default=3,
+        )
+        db.session.add(assign)
+        db.session.flush()
+
+        at1 = AssignmentTask(assignment_id=assign.assignment_id, task_id=t1.task_id, order_index=0, max_score=1)
+        db.session.add(at1)
+        db.session.commit()
+        assign_id = assign.assignment_id
+        t1_id = t1.task_id
+        t2_id = t2.task_id
+
+    # 1. GET /assignments/<id>/edit открывает современный sandbox/create_assignment.html
+    resp = client.get(f'/assignments/{assign_id}/edit')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert 'Редактирование работы' in html
+    assert f'Работа #{assign_id}' in html
+    assert 'isEditMode": true' in html
+
+    # 2. POST /assignments/<id>/update сохраняет измененные поля и задания
+    update_payload = {
+        'title': 'Обновленная работа V2',
+        'description': 'Новое описание',
+        'type': 'test',
+        'time_limit_minutes': 60,
+        'time_limit_strict': True,
+        'hard_deadline': True,
+        'hide_before_start': True,
+        'allow_separate_submission': False,
+        'tasks': [
+            {'task_id': t1_id, 'max_score': 5, 'requires_manual_grading': True},
+            {'task_id': t2_id, 'max_score': 3, 'requires_manual_grading': False},
+        ],
+        'recipientIds': [student_id]
+    }
+    up_resp = client.post(f'/assignments/{assign_id}/update', json=update_payload)
+    assert up_resp.status_code == 200
+    assert up_resp.get_json()['success'] is True
+
+    # 3. Проверка обновленного состояния в БД
+    with app.app_context():
+        refreshed = Assignment.query.get(assign_id)
+        assert refreshed.title == 'Обновленная работа V2'
+        assert refreshed.description == 'Новое описание'
+        assert refreshed.assignment_type == 'test'
+        assert refreshed.time_limit_minutes == 60
+        assert refreshed.time_limit_strict is True
+        assert len(refreshed.tasks) == 2
+        t_map = {at.task_id: at for at in refreshed.tasks}
+        assert t_map[t1_id].max_score == 5
+        assert t_map[t1_id].requires_manual_grading is True
+        assert t_map[t2_id].max_score == 3
+        assert t_map[t2_id].requires_manual_grading is False
+        # Проверяем, что ученик назначен
+        assert len(refreshed.submissions) == 1
+        assert refreshed.submissions[0].student_id == student_id
+        assert refreshed.submissions[0].max_score == 8
+
+

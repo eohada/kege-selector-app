@@ -19,23 +19,29 @@
         <div class="space-y-1.5">
           <div class="flex items-center gap-2">
             <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
-              Работа • выбрать и отправить
+              {% if is_edit_mode %}Редактирование работы{% else %}Работа • выбрать и отправить{% endif %}
             </span>
             <span id="draft-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
-              {% if assignment_id %}Черновик ID #{{ assignment_id }}{% else %}Новая работа{% endif %}
+              {% if is_edit_mode %}Работа #{{ assignment_id }}{% elif assignment_id %}Черновик ID #{{ assignment_id }}{% else %}Новая работа{% endif %}
             </span>
           </div>
           <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display flex items-center gap-3">
-            🛠️ Создайте и отправьте работу
+            {% if is_edit_mode %}✏️ Редактирование работы{% else %}🛠️ Создайте и отправьте работу{% endif %}
           </h1>
         </div>
 
         <!-- Кнопки управления в шапке (Tactile 3D Buttons) -->
         <div class="flex items-center gap-3">
+          {% if is_edit_mode %}
+          <button onclick="submitAssignmentForm()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center gap-1.5 text-xs">
+            <i class="ph-bold ph-floppy-disk text-base"></i> Сохранить изменения
+          </button>
+          {% else %}
           <button onclick="saveAssignmentDraft()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer flex items-center gap-1.5 text-xs">
             <i class="ph-bold ph-floppy-disk text-base text-indigo-600"></i> Сохранить черновик
           </button>
-          <a href="/assignments" class="bg-white hover:bg-slate-50 text-slate-600 font-black px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline flex items-center gap-1.5 text-xs">
+          {% endif %}
+          <a href="{% if is_edit_mode %}/assignments/{{ assignment_id }}{% else %}/assignments{% endif %}" class="bg-white hover:bg-slate-50 text-slate-600 font-black px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,0.05)] active:border-b-[1px] active:translate-y-[3px] transition-all no-underline flex items-center gap-1.5 text-xs">
             <i class="ph-bold ph-x text-base text-slate-400"></i> Отмена
           </a>
         </div>
@@ -270,7 +276,11 @@
 
         <!-- КНОПКА ФИНАЛЬНОГО ДЕЙСТВИЯ (Tactile 3D Main Button) -->
         <button onclick="submitAssignmentForm()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-4 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer w-full flex items-center justify-center gap-2 text-base">
+          {% if is_edit_mode %}
+          <i class="ph-bold ph-floppy-disk text-xl"></i> Сохранить изменения
+          {% else %}
           <i class="ph-bold ph-paper-plane-tilt text-xl"></i> Создать и отправить работу!
+          {% endif %}
         </button>
 
       </div>
@@ -683,7 +693,8 @@
   ],
   "existingAssignment": {{ (existing_assignment if existing_assignment is defined else None) | tojson | safe }},
   "initialTasks": {{ (initial_tasks if initial_tasks is defined else []) | tojson | safe }},
-  "assignmentId": {{ ((source_meta.assignment_id if (source_meta is defined and source_meta and source_meta.assignment_id) else (assignment_id if assignment_id is defined else None))) | tojson | safe }}
+  "assignmentId": {{ ((source_meta.assignment_id if (source_meta is defined and source_meta and source_meta.assignment_id) else (assignment_id if assignment_id is defined else None))) | tojson | safe }},
+  "isEditMode": {{ (is_edit_mode if is_edit_mode is defined else false) | tojson | safe }}
 }
 </script>
 
@@ -778,7 +789,7 @@ function applyPreset(presetType) {
 }
 
 function scheduleDraftSave() {
-  if (!isBuilderReady) return;
+  if (!isBuilderReady || pageData.isEditMode) return;
   window.clearTimeout(draftSaveTimer);
   draftSaveTimer = window.setTimeout(() => saveAssignmentDraft(false), 900);
 }
@@ -807,6 +818,8 @@ function assignmentTaskPayload(task, idx) {
     max_score: task.max_score || 1,
     order_index: idx + 1,
     requires_manual_grading: requiresManualGrading(task),
+    max_attempts: task.max_attempts !== undefined ? task.max_attempts : null,
+    answer_override: task.answer_override || null,
   };
 }
 
@@ -2418,6 +2431,7 @@ async function submitAssignmentForm() {
   const title = titleInput || `${presetType === 'exam' ? 'Пробник' : presetType === 'test' ? 'Контрольная работа' : 'Домашняя работа'} — ${new Intl.DateTimeFormat('ru-RU').format(new Date())}`;
   const body = {
     draft_id: pageData.assignmentId,
+    assignment_id: pageData.assignmentId,
     title,
     description: document.getElementById('assignment-description').value,
     type: presetType,
@@ -2434,7 +2448,8 @@ async function submitAssignmentForm() {
   };
 
   try {
-    const res = await fetch('/assignments/distribute', {
+    const url = pageData.isEditMode ? `/assignments/${pageData.assignmentId}/update` : '/assignments/distribute';
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2444,9 +2459,16 @@ async function submitAssignmentForm() {
     });
     const data = await res.json();
     if (data.success) {
-      show3DToast('Работа создана и отправлена ученикам!', '/assignments');
+      if (pageData.isEditMode) {
+        show3DToast('Изменения сохранены!', data.redirect || `/assignments/${pageData.assignmentId}`);
+        setTimeout(() => {
+          window.location.href = data.redirect || `/assignments/${pageData.assignmentId}`;
+        }, 500);
+      } else {
+        show3DToast('Работа создана и отправлена ученикам!', '/assignments');
+      }
     } else {
-      show3DToast(data.error || data.message || 'Ошибка создания работы');
+      show3DToast(data.error || data.message || (pageData.isEditMode ? 'Ошибка сохранения работы' : 'Ошибка создания работы'));
     }
   } catch (e) {
     show3DToast('Ошибка соединения при отправке работы');
@@ -2475,19 +2497,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (pageData.existingAssignment) {
     const ea = pageData.existingAssignment;
+    if (ea.assignment_type || ea.type) applyPreset(ea.assignment_type || ea.type);
     document.getElementById('assignment-title').value = ea.title || '';
     document.getElementById('assignment-description').value = ea.description || '';
     if (ea.deadline) document.getElementById('assignment-deadline').value = ea.deadline;
-    if (ea.time_limit_minutes) document.getElementById('assignment-time-limit').value = ea.time_limit_minutes;
-    if (ea.max_attempts_default) document.getElementById('assignment-max-attempts').value = ea.max_attempts_default;
-    document.getElementById('assignment-hard-deadline').checked = !!ea.hard_deadline;
-    document.getElementById('assignment-hide-before-start').checked = !!ea.hide_before_start;
-    document.getElementById('assignment-allow-separate').checked = !!ea.allow_separate_submission;
+    if (ea.time_limit_minutes !== undefined && ea.time_limit_minutes !== null && ea.time_limit_minutes !== '') {
+      document.getElementById('assignment-time-limit').value = ea.time_limit_minutes;
+    }
+    if (ea.max_attempts_default !== undefined && ea.max_attempts_default !== null) {
+      document.getElementById('assignment-max-attempts').value = ea.max_attempts_default;
+    }
+    if (ea.hard_deadline !== undefined) document.getElementById('assignment-hard-deadline').checked = !!ea.hard_deadline;
+    if (ea.hide_before_start !== undefined) document.getElementById('assignment-hide-before-start').checked = !!ea.hide_before_start;
+    if (ea.allow_separate_submission !== undefined) {
+      const sep = document.getElementById('assignment-allow-separate');
+      if (sep) {
+        sep.disabled = false;
+        sep.checked = !!ea.allow_separate_submission;
+      }
+    }
     if (ea.course_id) document.getElementById('assignment-course').value = String(ea.course_id);
 
-    if (ea.assignment_type) applyPreset(ea.assignment_type);
+    if (ea.grading_mode) {
+      const gRadio = document.querySelector(`input[name="assignment-grading-mode"][value="${ea.grading_mode}"]`);
+      if (gRadio) gRadio.checked = true;
+    }
+
     if (ea.tasks && ea.tasks.length > 0) {
       attachedTasks = ea.tasks;
+    }
+    if (ea.recipient_ids && Array.isArray(ea.recipient_ids)) {
+      ea.recipient_ids.forEach(id => selectedStudentIds.add(Number(id)));
     }
   } else {
     applyPreset('homework');
@@ -2512,7 +2552,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sessionStorage.removeItem('boostudy.assignment-bank.selection.v1');
   }
 
-  if (pageData.assignmentId) {
+  if (pageData.assignmentId && !pageData.isEditMode) {
     const savedRecipients = sessionStorage.getItem(`draft_recipients_${pageData.assignmentId}`);
     if (savedRecipients) {
       try {

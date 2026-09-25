@@ -165,8 +165,16 @@ def parse_and_convert_ai_homework(
 
     for idx, raw_t in enumerate(raw_tasks_list, start=1):
         task_num = _extract_task_number(raw_t, idx)
-        title = str(raw_t.get('title') or '').strip()
-        prompt = str(raw_t.get('prompt') or raw_t.get('condition') or raw_t.get('content') or raw_t.get('text') or '').strip()
+        title = str(raw_t.get('title') or raw_t.get('name') or raw_t.get('header') or '').strip()
+        prompt = str(
+            raw_t.get('prompt')
+            or raw_t.get('condition')
+            or raw_t.get('content')
+            or raw_t.get('question')
+            or raw_t.get('text')
+            or raw_t.get('description')
+            or ''
+        ).strip()
         raw_type = str(raw_t.get('type') or raw_t.get('task_type') or 'short_answer').strip().lower()
 
         content_html = _build_task_content_html(title, prompt)
@@ -179,15 +187,15 @@ def parse_and_convert_ai_homework(
         hint_text = str(raw_t.get('teacher_hint') or raw_t.get('hint') or '').strip()
 
         # Тип: single_choice
-        if raw_type in ('choice', 'single_choice', 'multiple_choice', 'select'):
-            raw_opts = raw_t.get('options') or []
+        if raw_type in ('choice', 'single_choice', 'select'):
+            raw_opts = raw_t.get('options') or raw_t.get('choices') or raw_t.get('items') or []
             options_list = []
             correct_val = str(raw_t.get('correct_option_id') or raw_t.get('correct_answer') or raw_t.get('answer') or '').strip()
 
             for opt_idx, opt in enumerate(raw_opts, start=1):
                 if isinstance(opt, dict):
                     opt_val = str(opt.get('id') or opt.get('value') or opt_idx).strip()
-                    opt_lbl = str(opt.get('text') or opt.get('label') or opt_val).strip()
+                    opt_lbl = str(opt.get('text') or opt.get('label') or opt.get('title') or opt_val).strip()
                 else:
                     opt_val = str(opt_idx)
                     opt_lbl = str(opt).strip()
@@ -201,6 +209,38 @@ def parse_and_convert_ai_homework(
                 'type': 'single_choice',
                 'options': options_list,
                 'correct_value': correct_val,
+            }
+
+        # Тип: multiple_choice
+        elif raw_type in ('multiple_choice', 'multi_select', 'multiple'):
+            raw_opts = raw_t.get('options') or raw_t.get('choices') or raw_t.get('items') or []
+            options_list = []
+            raw_correct = raw_t.get('correct_option_ids') or raw_t.get('correct_answers') or raw_t.get('correct_answer') or raw_t.get('answer') or []
+            if isinstance(raw_correct, (list, tuple)):
+                correct_vals = [str(x).strip() for x in raw_correct if str(x).strip()]
+            elif isinstance(raw_correct, str) and raw_correct.strip():
+                try:
+                    c_loaded = json.loads(raw_correct)
+                    correct_vals = [str(x).strip() for x in c_loaded if str(x).strip()] if isinstance(c_loaded, list) else [raw_correct.strip()]
+                except Exception:
+                    correct_vals = [s.strip() for s in raw_correct.split(',') if s.strip()]
+            else:
+                correct_vals = []
+
+            for opt_idx, opt in enumerate(raw_opts, start=1):
+                if isinstance(opt, dict):
+                    opt_val = str(opt.get('id') or opt.get('value') or opt_idx).strip()
+                    opt_lbl = str(opt.get('text') or opt.get('label') or opt.get('title') or opt_val).strip()
+                else:
+                    opt_val = str(opt_idx)
+                    opt_lbl = str(opt).strip()
+                options_list.append({'value': opt_val, 'label': opt_lbl})
+
+            answer = json.dumps(sorted(correct_vals), ensure_ascii=False) if correct_vals else None
+            answer_spec = {
+                'type': 'multiple_choice',
+                'options': options_list,
+                'correct_values': sorted(correct_vals),
             }
 
         # Тип: short_answer
@@ -245,21 +285,108 @@ def parse_and_convert_ai_homework(
             if ref_sol and not solution_text:
                 solution_text = ref_sol
 
-        # Тип: matching
-        elif raw_type == 'matching':
+        # Тип: matching (сопоставление)
+        elif raw_type in ('matching', 'match', 'pairs', 'sootvetstvie', 'сопоставление'):
+            raw_left = (
+                raw_t.get('left_items')
+                or raw_t.get('pairs')
+                or raw_t.get('left')
+                or raw_t.get('items')
+                or raw_t.get('premises')
+                or []
+            )
+            pairs = []
+            for p_idx, item in enumerate(raw_left, start=1):
+                if isinstance(item, dict):
+                    k = str(item.get('id') or item.get('key') or chr(64 + p_idx)).strip()
+                    l_text = str(item.get('text') or item.get('left') or item.get('label') or k).strip()
+                else:
+                    k = str(chr(64 + p_idx) if p_idx <= 26 else p_idx)
+                    l_text = str(item).strip()
+                if k and l_text:
+                    pairs.append({'key': k, 'left': l_text})
+
+            raw_right = (
+                raw_t.get('right_items')
+                or raw_t.get('options')
+                or raw_t.get('right')
+                or raw_t.get('choices')
+                or raw_t.get('targets')
+                or []
+            )
+            options = []
+            for opt_idx, item in enumerate(raw_right, start=1):
+                if isinstance(item, dict):
+                    v = str(item.get('id') or item.get('value') or item.get('key') or opt_idx).strip()
+                    lbl = str(item.get('text') or item.get('label') or item.get('right') or v).strip()
+                else:
+                    v = str(opt_idx)
+                    lbl = str(item).strip()
+                if v and lbl:
+                    options.append({'value': v, 'label': lbl})
+
+            raw_matches = (
+                raw_t.get('correct_matches')
+                or raw_t.get('matches')
+                or raw_t.get('correct_pairs')
+                or raw_t.get('pairs_mapping')
+                or raw_t.get('mapping')
+                or raw_t.get('answer')
+                or raw_t.get('correct_answer')
+            )
+            match_dict: dict[str, str] = {}
+            if isinstance(raw_matches, dict):
+                match_dict = {str(k).strip(): str(v).strip() for k, v in raw_matches.items()}
+            elif isinstance(raw_matches, list):
+                for m in raw_matches:
+                    if isinstance(m, dict):
+                        k = m.get('left_id') or m.get('left') or m.get('left_key') or m.get('key')
+                        v = m.get('right_id') or m.get('right') or m.get('right_value') or m.get('value')
+                        if k is not None and v is not None:
+                            match_dict[str(k).strip()] = str(v).strip()
+                    elif isinstance(m, (list, tuple)) and len(m) >= 2:
+                        match_dict[str(m[0]).strip()] = str(m[1]).strip()
+            elif isinstance(raw_matches, str) and raw_matches.strip():
+                try:
+                    loaded = json.loads(raw_matches)
+                    if isinstance(loaded, dict):
+                        match_dict = {str(k).strip(): str(v).strip() for k, v in loaded.items()}
+                    elif isinstance(loaded, list):
+                        for m in loaded:
+                            if isinstance(m, dict):
+                                k = m.get('left_id') or m.get('left') or m.get('left_key') or m.get('key')
+                                v = m.get('right_id') or m.get('right') or m.get('right_value') or m.get('value')
+                                if k is not None and v is not None:
+                                    match_dict[str(k).strip()] = str(v).strip()
+                except Exception:
+                    for part in raw_matches.split(','):
+                        if ':' in part:
+                            k_p, v_p = part.split(':', 1)
+                            match_dict[k_p.strip()] = v_p.strip()
+                        elif '-' in part:
+                            k_p, v_p = part.split('-', 1)
+                            match_dict[k_p.strip()] = v_p.strip()
+
+            answer = json.dumps(match_dict, ensure_ascii=False) if match_dict else None
             answer_spec = {
                 'type': 'matching',
-                'pairs': raw_t.get('pairs') or [],
-                'options': raw_t.get('options') or [],
+                'pairs': pairs,
+                'options': options,
+                'correct_matches': match_dict,
+                'correct_answer': match_dict,
             }
-            answer = str(raw_t.get('answer') or '') or None
+            requires_manual_grading = False
 
         else:
             # Fallback к short_answer
             answer = str(raw_t.get('correct_answer') or raw_t.get('answer') or '').strip()
             answer_spec = {'type': 'short_answer'}
 
-        points = int(raw_t.get('points') or raw_t.get('max_score') or raw_t.get('score') or 1)
+        raw_pts = raw_t.get('points') or raw_t.get('max_score') or raw_t.get('score')
+        try:
+            points = int(raw_pts) if raw_pts is not None else 1
+        except (ValueError, TypeError):
+            points = 1
         points = max(1, min(100, points))
 
         hints = [{'text': hint_text}] if hint_text else None
