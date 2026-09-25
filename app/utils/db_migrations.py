@@ -588,15 +588,6 @@ def ensure_schema_columns(app):
                                 logger.warning(f"Could not rebuild SQLite table {c_tbl}: {e}")
                                 db.session.rollback()
 
-            if 'SubmissionAiReviews' not in table_names and 'submissionaireviews' not in table_names:
-                try:
-                    from core.db_models import SubmissionAiReview
-                    SubmissionAiReview.__table__.create(db.engine)
-                    logger.info("SubmissionAiReviews table created successfully")
-                except Exception as e:
-                    logger.warning(f"Could not create SubmissionAiReviews table: {e}")
-                    db.session.rollback()
-
             if 'CourseModules' not in table_names and 'coursemodules' not in table_names:
                 try:
                     TrajectoryModule.__table__.create(db.engine)

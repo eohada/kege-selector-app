@@ -1497,56 +1497,65 @@
             </div>
         </div>
 
-        <!-- AI Review Assistant Banner -->
-        <div id="ai-review-banner" class="ai-review-banner-container mt-2 mb-3" data-submission-id="{{ submission.submission_id }}">
-            {% if ai_review and ai_review.status == 'pending' %}
-            <div class="ai-banner-card pending flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-4 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 shadow-sm animate-pulse">
+        <!-- AI Review Assistant Banner (BooStudy Canon) -->
+        <div id="ai-review-banner" class="ai-review-banner-container mt-2 mb-4" data-submission-id="{{ submission.submission_id }}">
+            {% if ai_review and ai_review.status in ('pending', 'processing') %}
+            <div class="ai-banner-card pending flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400">
-                        <i class="ph-bold ph-spinner animate-spin text-xl"></i>
+                    <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400">
+                        <i class="ph-bold ph-spinner animate-spin text-lg"></i>
                     </div>
                     <div>
-                        <div class="text-sm font-bold text-indigo-950 dark:text-indigo-100 flex items-center gap-2">
-                            <span>ИИ-ассистент: предпроверка в процессе</span>
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-200/80 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">Анализ ответов</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-slate-900 dark:text-white">Предварительный разбор</span>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/40">
+                                Проверяем...
+                            </span>
                         </div>
-                        <div class="text-xs text-indigo-800/80 dark:text-indigo-300 mt-0.5">
-                            Анализируем ответы и код ученика. Подсказки появятся здесь автоматически...
+                        <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Анализируем ответы и код ученика. Результат появится здесь автоматически.
                         </div>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                    <span>Обновление каждые несколько секунд</span>
+                <div class="text-xs font-medium text-slate-400 dark:text-slate-500">
+                    Фоновая обработка
                 </div>
             </div>
 
             {% elif ai_review and ai_review.status in ('completed', 'accepted') %}
-            <div class="ai-banner-card {{ ai_review.status }} p-4 rounded-2xl bg-gradient-to-r from-violet-50/90 via-indigo-50/80 to-purple-50/90 dark:from-violet-950/30 dark:via-indigo-950/20 dark:to-purple-950/30 border border-violet-200/80 dark:border-violet-800/40 shadow-sm">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-2.5 border-b border-violet-100 dark:border-white/5">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0 text-white shadow-md shadow-violet-500/20">
-                            <i class="ph-bold ph-sparkle text-lg"></i>
+            <div class="ai-banner-card {{ ai_review.status }} p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800/60">
+                    <div class="flex items-start md:items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-700 dark:text-slate-200">
+                            <i class="ph-bold ph-sparkle text-base"></i>
                         </div>
                         <div>
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="text-sm font-black text-slate-900 dark:text-white">ИИ-предпроверка работы</span>
+                                <span class="text-sm font-bold text-slate-900 dark:text-white">Предварительный разбор</span>
                                 {% if ai_review.status == 'accepted' %}
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                    <i class="ph-bold ph-check"></i> Предоценка принята
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40">
+                                    <i class="ph-bold ph-check text-xs"></i> Принято
+                                </span>
+                                {% elif ai_review.teacher_review_required %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/40">
+                                    <i class="ph-bold ph-eye text-xs"></i> Нужен просмотр
                                 </span>
                                 {% else %}
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-100 text-violet-800 dark:bg-violet-950/80 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
-                                    Черновик для учителя
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/40">
+                                    <i class="ph-bold ph-check-circle text-xs text-emerald-600"></i> Готово
                                 </span>
                                 {% endif %}
-                                <span class="text-xs text-slate-500 dark:text-slate-400">
-                                    Ревизия №{{ ai_review.revision_no }} ({{ ai_review.provider|title }})
+                                <span class="text-xs text-slate-400 dark:text-slate-500">
+                                    Ревизия №{{ ai_review.revision_no }}
                                 </span>
                             </div>
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300 mt-1">
-                                <span>Предварительный балл: <strong class="text-violet-700 dark:text-violet-400 font-bold text-sm">{{ ai_review.suggested_total_points }}</strong> б.</span>
+                                <span>Ориентир: <strong class="text-slate-900 dark:text-white font-bold">{{ ai_review.suggested_total_points }}</strong> / {{ submission.max_score or assignment.max_score or 0 }} б.</span>
                                 {% if ai_review.confidence is not none %}
-                                <span>Уверенность модели: <strong class="font-semibold">{{ (ai_review.confidence * 100)|round|int }}%</strong></span>
+                                {% set conf_text = 'Высокая' if ai_review.confidence >= 0.8 else ('Средняя' if ai_review.confidence >= 0.65 else 'Низкая') %}
+                                <span class="text-slate-500 dark:text-slate-400" title="Точность: {{ (ai_review.confidence * 100)|round|int }}%">
+                                    Уверенность: <strong class="font-medium text-slate-700 dark:text-slate-300">{{ conf_text }}</strong>
+                                </span>
                                 {% endif %}
                                 {% if ai_review.accepted_at %}
                                 <span class="text-slate-400">Принято: {{ ai_review.accepted_at|user_dt('%d.%m.%Y %H:%M') }}</span>
@@ -1554,37 +1563,42 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex flex-wrap items-center gap-2 pt-2 lg:pt-0">
-                        <button type="button" id="btn-ai-apply-all" class="neo-button primary sm" style="font-size: 0.8rem; background: #6366f1; color: white;" title="Заполнить поля баллов и комментариев подсказками ИИ">
-                            <i class="ph-bold ph-arrow-circle-down"></i> Применить все подсказки
+                    <div class="flex flex-wrap items-center gap-2 pt-1 lg:pt-0">
+                        <button type="button" id="btn-ai-apply-all" class="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-xs flex items-center gap-1.5 transition-colors" title="Перенести предоценку в черновики баллов и комментариев">
+                            <i class="ph-bold ph-arrow-circle-down"></i> Применить предоценку
                         </button>
-                        {% if ai_review.status != 'accepted' %}
-                        <button type="button" id="btn-ai-accept" class="neo-button accent sm" style="font-size: 0.8rem;" title="Зафиксировать принятие предоценки">
-                            <i class="ph-bold ph-check-circle"></i> Принять предоценку
+                        <button type="button" id="btn-ai-check-manual" class="px-3 py-1.5 rounded-xl font-semibold text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors" title="Перейти к проверке заданий вручную">
+                            Проверить вручную
                         </button>
-                        {% endif %}
-                        <button type="button" id="btn-ai-rerun" class="neo-button ghost sm" style="font-size: 0.8rem;" title="Запросить повторный ИИ-анализ">
-                            <i class="ph-bold ph-arrows-clockwise"></i> Запустить повторно
-                        </button>
-                        <button type="button" id="btn-ai-toggle-summary" class="neo-button ghost sm text-slate-500" style="font-size: 0.8rem;" title="Свернуть / развернуть">
-                            <i class="ph-bold ph-caret-down"></i>
-                        </button>
+                        <div class="relative inline-block text-left" id="ai-more-menu-wrapper">
+                            <button type="button" id="btn-ai-more" class="px-2 py-1.5 rounded-xl font-semibold text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors" title="Дополнительные действия">
+                                <i class="ph-bold ph-dots-three-vertical text-sm"></i>
+                            </button>
+                            <div id="ai-more-dropdown" class="hidden absolute right-0 mt-1 w-44 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg py-1 z-20 text-xs">
+                                <button type="button" id="btn-ai-rerun" class="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2">
+                                    <i class="ph-bold ph-arrows-clockwise text-indigo-600"></i> Запустить повторно
+                                </button>
+                                <button type="button" id="btn-ai-dismiss" class="w-full text-left px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2">
+                                    <i class="ph-bold ph-eye-slash text-slate-500"></i> Не использовать
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 {% if ai_review.summary_for_teacher or ai_review.skill_signals %}
                 <div id="ai-summary-details" class="pt-3 text-xs space-y-2">
                     {% if ai_review.summary_for_teacher %}
-                    <div class="bg-white/80 dark:bg-dark-card/80 p-3 rounded-xl border border-violet-100 dark:border-white/5 text-slate-700 dark:text-slate-300 leading-relaxed">
-                        <strong class="text-slate-900 dark:text-white font-semibold">Резюме для учителя:</strong> {{ ai_review.summary_for_teacher }}
+                    <div class="bg-slate-50/80 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 leading-relaxed">
+                        <strong class="text-slate-900 dark:text-white font-semibold">Резюме:</strong> {{ ai_review.summary_for_teacher }}
                     </div>
                     {% endif %}
                     {% if ai_review.skill_signals %}
-                    <div class="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span class="text-slate-500 text-[11px] font-semibold">Сигналы навыков:</span>
-                        {% for sig in ai_review.skill_signals %}
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium {% if sig.status == 'mastered' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300{% elif sig.status == 'gap' %}bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300{% else %}bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200{% endif %}">
-                            {{ sig.skill_name or sig.skill_key or 'Навык' }}: {{ sig.comment or sig.status }}
+                    <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                        <span class="text-slate-400 text-[11px] font-semibold">Навыки:</span>
+                        {% for sig in (ai_review.skill_signals or [])[:3] %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
+                            {{ sig.skill_id or sig.skill_name or 'Навык' }}
                         </span>
                         {% endfor %}
                     </div>
@@ -1594,44 +1608,97 @@
             </div>
 
             {% elif ai_review and ai_review.status in ('failed', 'unavailable') %}
-            <div class="ai-banner-card failed flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 shadow-sm">
+            <div class="ai-banner-card failed flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400">
-                        <i class="ph-bold ph-warning-circle text-lg"></i>
+                    <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500">
+                        <i class="ph-bold ph-sparkle-slash text-base"></i>
                     </div>
                     <div>
-                        <div class="text-xs font-bold text-amber-950 dark:text-amber-200">
-                            ИИ-предпроверка временно недоступна
+                        <div class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                            {% if ai_review.error_code == 'QUEUE_UNAVAILABLE' %}
+                            Не запущен: фоновая проверка недоступна
+                            {% else %}
+                            Предварительный разбор временно недоступен
+                            {% endif %}
                         </div>
-                        <div class="text-[11px] text-amber-800/80 dark:text-amber-300 mt-0.5">
-                            {{ ai_review.error_message or 'Провайдеры ИИ не ответили вовремя. Вы можете продолжить проверку вручную или попробовать повторить.' }}
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {% if ai_review.error_code == 'QUEUE_UNAVAILABLE' %}
+                            Очередь обработки временно недоступна. Вы можете продолжить проверку вручную или повторить запуск.
+                            {% else %}
+                            Вы можете продолжить проверку вручную или повторить запрос.
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-                <button type="button" id="btn-ai-rerun" class="neo-button ghost sm shrink-0 text-xs" style="color: #b45309;">
-                    <i class="ph-bold ph-arrows-clockwise"></i> Повторить запрос
+                <button type="button" id="btn-ai-rerun" class="px-3 py-1.5 rounded-xl font-semibold text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-1.5 shrink-0">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Повторить
                 </button>
             </div>
 
+            {% elif ai_review and ai_review.status == 'disabled' %}
+            <div class="ai-banner-card disabled flex items-center justify-between p-3 px-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+                <div class="flex items-center gap-2.5 text-slate-600 dark:text-slate-400">
+                    <div class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400">
+                        <i class="ph-bold ph-sparkle-slash text-sm"></i>
+                    </div>
+                    <span class="font-medium text-slate-700 dark:text-slate-300">ИИ-предпроверка отключена</span>
+                </div>
+                <span class="text-[11px] text-slate-400">Ручная проверка</span>
+            </div>
+
             {% elif ai_review and ai_review.status == 'dismissed' %}
-            <div class="ai-banner-card dismissed flex items-center justify-between p-2.5 px-4 rounded-xl bg-slate-50 dark:bg-dark-card border border-slate-200 dark:border-white/5 text-xs text-slate-500">
-                <span>ИИ-предпроверка скрыта</span>
-                <button type="button" id="btn-ai-rerun" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Показать / перепроверить</button>
+            <div class="ai-banner-card dismissed flex items-center justify-between p-3 px-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-xs text-slate-500">
+                <div class="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                    <i class="ph-bold ph-check-circle text-slate-400"></i>
+                    <span>{% if ai_review.error_code == 'NO_ELIGIBLE_TASKS' %}ИИ не нужен: все задания проверены автоматически{% else %}Предварительный разбор не используется{% endif %}</span>
+                </div>
+                <button type="button" id="btn-ai-rerun" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1 text-xs">
+                    <i class="ph-bold ph-arrows-clockwise text-xs"></i> Запустить анализ
+                </button>
             </div>
 
             {% else %}
-            <!-- No review yet; button to run on demand -->
-            <div class="ai-banner-card empty flex items-center justify-between p-3 rounded-2xl bg-slate-50/80 dark:bg-dark-card/60 border border-slate-200/80 dark:border-white/5 text-xs">
-                <div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                    <i class="ph-bold ph-sparkle text-violet-500 text-sm"></i>
-                    <span>ИИ-ассистент: автоматический предварительный анализ развернутых ответов и кода</span>
+            <!-- No review yet -->
+            <div class="ai-banner-card empty flex items-center justify-between p-3 px-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs text-xs">
+                <div class="flex items-center gap-2.5 text-slate-600 dark:text-slate-300">
+                    <div class="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-400">
+                        <i class="ph-bold ph-sparkle text-sm"></i>
+                    </div>
+                    <span>Предварительный разбор ответов и кода</span>
                 </div>
-                <button type="button" id="btn-ai-rerun" class="neo-button ghost sm" style="font-size: 0.78rem;">
-                    <i class="ph-bold ph-sparkle text-violet-600"></i> Запустить ИИ-предпроверку
+                <button type="button" id="btn-ai-rerun" class="px-3 py-1.5 rounded-xl font-semibold text-xs bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-xs flex items-center gap-1.5 transition-colors">
+                    <i class="ph-bold ph-sparkle"></i> Запустить
                 </button>
             </div>
             {% endif %}
         </div>
+
+        <!-- AI Apply Confirmation Modal -->
+        <div id="ai-apply-confirm-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-xl">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                        <i class="ph-bold ph-arrow-circle-down text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-900 dark:text-white">Применить предоценку?</h4>
+                        <p class="text-xs text-slate-500">Заполнение черновиков проверки</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-4">
+                    Будут заполнены черновики баллов и комментариев к заданиям работы. Оценка ученику пока <strong>не отправляется</strong> — вы сможете скорректировать любые баллы вручную перед публикацией.
+                </p>
+                <div class="flex items-center justify-end gap-2">
+                    <button type="button" id="btn-cancel-ai-apply" class="px-3.5 py-1.5 rounded-xl font-semibold text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors">
+                        Отмена
+                    </button>
+                    <button type="button" id="btn-confirm-ai-apply" class="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-sm transition-colors">
+                        Применить к черновику
+                    </button>
+                </div>
+            </div>
+        </div>
+
 
         <div class="task-nav task-nav-grade sticky top-20 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2.5 py-3 rounded-2xl mt-2 mb-2 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-nav dark:shadow-nav-dark min-w-0" id="taskNavGrade">
             <span class="task-nav-label text-small font-extrabold text-slate-500 dark:text-dark-muted uppercase tracking-widest pl-2 shrink-0 hidden sm:block">Задания:</span>
@@ -2001,50 +2068,49 @@
                                 {% endif %}
                             </div>
 
-                            <!-- AI Task Suggestion Box -->
+                            <!-- AI Task Suggestion Box (BooStudy Canon) -->
                             {% set ai_task = ai_task_map.get(g.assignment_task.assignment_task_id) if ai_task_map else none %}
                             {% if ai_task and ai_review and ai_review.status in ('completed', 'accepted') %}
-                            <div class="ai-task-suggestion-box mb-3 rounded-xl border border-violet-200/80 bg-violet-50/70 dark:bg-violet-950/20 dark:border-violet-800/40 p-3 shadow-xs" data-ai-task-id="{{ g.assignment_task.assignment_task_id }}">
-                                <div class="flex items-center justify-between gap-2 mb-1.5">
-                                    <div class="flex items-center gap-1.5 text-xs font-bold text-violet-800 dark:text-violet-300">
-                                        <i class="ph-bold ph-sparkle text-sm text-violet-600"></i>
-                                        <span>ИИ советует:</span>
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-violet-200/80 text-violet-900 dark:bg-violet-800/60 dark:text-violet-100">
-                                            {{ ai_task.suggested_score }} из {{ g.assignment_task.max_score }} б.
+                            {% set suggested_pts = ai_task.suggested_points if ai_task.suggested_points is defined else (ai_task.suggested_score if ai_task.suggested_score is defined else 0) %}
+                            {% set student_feedback_val = ai_task.comment_for_student or ai_task.student_feedback or '' %}
+                            {% set teacher_reason_val = ai_task.comment_for_teacher or ai_task.reasoning_for_teacher or '' %}
+                            <div class="ai-task-suggestion-box mb-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-3 text-xs" data-ai-task-id="{{ g.assignment_task.assignment_task_id }}" data-ai-suggested-score="{{ suggested_pts }}">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/40">
+                                            <i class="ph-bold ph-sparkle text-[11px]"></i> ИИ: {{ suggested_pts }} / {{ g.assignment_task.max_score }} б.
                                         </span>
-                                        {% if ai_task.confidence is defined and ai_task.confidence is not none %}
-                                        <span class="text-[10px] text-violet-600 dark:text-violet-400 font-semibold">({{ (ai_task.confidence * 100)|round|int }}%)</span>
+                                        {% if ai_task.mistake_tags %}
+                                            {% for tag in ai_task.mistake_tags[:2] %}
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                                {{ tag }}
+                                            </span>
+                                            {% endfor %}
                                         {% endif %}
+                                        <span class="ai-task-manual-badge hidden inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                            <i class="ph-bold ph-pencil-simple text-xs"></i> Изменено преподавателем
+                                        </span>
                                     </div>
-                                    <button type="button" class="btn-apply-task-ai neo-button sm" 
+                                    <button type="button" class="btn-apply-task-ai px-2.5 py-1 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 shadow-2xs flex items-center gap-1 transition-colors" 
                                             data-task-id="{{ g.assignment_task.assignment_task_id }}"
-                                            data-suggested-score="{{ ai_task.suggested_score }}"
-                                            data-suggested-comment="{{ ai_task.student_feedback or '' }}"
-                                            title="Применить подсказку к этой оценке и комментарию"
-                                            style="padding: 0.2rem 0.55rem; font-size: 0.75rem; background: #7c3aed; color: #fff;">
+                                            data-suggested-score="{{ suggested_pts }}"
+                                            data-suggested-comment="{{ student_feedback_val }}"
+                                            title="Применить подсказку к этой оценке и комментарию">
                                         <i class="ph-bold ph-arrow-down-left"></i> Применить
                                     </button>
                                 </div>
-                                {% if ai_task.reasoning_for_teacher %}
-                                <div class="text-xs text-slate-700 dark:text-slate-300 mb-1.5 leading-relaxed bg-white/80 dark:bg-dark-card/60 p-2 rounded-lg border border-violet-100 dark:border-white/5">
-                                    <strong class="text-slate-900 dark:text-white font-semibold">Обоснование:</strong> {{ ai_task.reasoning_for_teacher }}
+                                {% if student_feedback_val or teacher_reason_val %}
+                                <div class="mt-1.5 text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    {{ student_feedback_val or teacher_reason_val }}
                                 </div>
                                 {% endif %}
-                                {% if ai_task.student_feedback %}
-                                <div class="text-xs text-slate-600 dark:text-slate-400 leading-snug flex items-start gap-1">
-                                    <span class="text-slate-500 font-semibold shrink-0">Отзыв ученику:</span>
-                                    <span class="italic text-slate-800 dark:text-slate-200">«{{ ai_task.student_feedback }}»</span>
-                                </div>
-                                {% endif %}
-                                {% if ai_task.issues or ai_task.strengths %}
-                                <div class="flex flex-wrap gap-1 mt-2">
-                                    {% for str_item in (ai_task.strengths or []) %}
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">✓ {{ str_item }}</span>
-                                    {% endfor %}
-                                    {% for iss in (ai_task.issues or []) %}
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">⚠ {{ iss }}</span>
-                                    {% endfor %}
-                                </div>
+                                {% if teacher_reason_val and student_feedback_val and teacher_reason_val != student_feedback_val %}
+                                <details class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                    <summary class="cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 font-medium">Почему предложен такой балл</summary>
+                                    <div class="mt-1 p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300">
+                                        {{ teacher_reason_val }}
+                                    </div>
+                                </details>
                                 {% endif %}
                             </div>
                             {% endif %}
@@ -3541,19 +3607,48 @@
         });
 
         // ==========================================
-        // AI Review Assistant Interactions
+        // AI Review Assistant Interactions (BooStudy Canon)
         // ==========================================
+        function updateManualBadgeForTask(taskId, currentScore) {
+            var box = document.querySelector('.ai-task-suggestion-box[data-ai-task-id="' + taskId + '"]');
+            if (!box) return;
+            var suggestedScore = box.getAttribute('data-ai-suggested-score');
+            var badge = box.querySelector('.ai-task-manual-badge');
+            if (!badge || suggestedScore === null) return;
+
+            if (currentScore !== null && currentScore !== '' && String(currentScore) !== String(suggestedScore)) {
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
         function applyAiTaskSuggestion(btn, notify) {
             if (!btn) return;
             var taskId = btn.getAttribute('data-task-id');
             var suggestedScore = btn.getAttribute('data-suggested-score');
             var suggestedComment = btn.getAttribute('data-suggested-comment') || '';
 
-            var scoreInput = document.querySelector('input[name="score_' + taskId + '"]');
-            if (scoreInput && suggestedScore !== null && suggestedScore !== '') {
-                scoreInput.value = suggestedScore;
-                scoreInput.dispatchEvent(new Event('input', { bubbles: true }));
-                scoreInput.dispatchEvent(new Event('change', { bubbles: true }));
+            var scoreGrid = document.querySelector('.score-choice-grid[data-score-control="' + taskId + '"]');
+            if (scoreGrid && suggestedScore !== null && suggestedScore !== '') {
+                var choiceBtn = scoreGrid.querySelector('.score-choice[data-score-value="' + suggestedScore + '"]');
+                if (choiceBtn) {
+                    choiceBtn.click();
+                } else {
+                    var scoreInput = document.querySelector('input[name="score_' + taskId + '"]');
+                    if (scoreInput) {
+                        scoreInput.value = suggestedScore;
+                        scoreInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        scoreInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            } else {
+                var scoreInput = document.querySelector('input[name="score_' + taskId + '"]');
+                if (scoreInput && suggestedScore !== null && suggestedScore !== '') {
+                    scoreInput.value = suggestedScore;
+                    scoreInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    scoreInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             }
 
             var commentInput = document.querySelector('textarea[name="comment_' + taskId + '"]');
@@ -3563,8 +3658,10 @@
                 commentInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
 
+            updateManualBadgeForTask(taskId, suggestedScore);
+
             if (notify) {
-                notifyGrade('✓ Подсказка ИИ применена к заданию', 'success');
+                notifyGrade('✓ Предоценка применена к заданию', 'success');
             }
         }
 
@@ -3574,9 +3671,54 @@
             });
         });
 
+        // Track manual changes by teacher to show "Изменено преподавателем"
+        document.querySelectorAll('.score-choice-grid').forEach(function(grid) {
+            var taskId = grid.getAttribute('data-score-control');
+            grid.addEventListener('click', function(e) {
+                var btn = e.target.closest('.score-choice');
+                if (!btn) return;
+                var val = btn.hasAttribute('data-score-reset') ? null : btn.getAttribute('data-score-value');
+                updateManualBadgeForTask(taskId, val);
+            });
+        });
+
+        document.querySelectorAll('input[name^="score_"]').forEach(function(inp) {
+            var taskId = inp.name.replace('score_', '');
+            inp.addEventListener('input', function() {
+                updateManualBadgeForTask(taskId, this.value);
+            });
+        });
+
+        // Initialize manual badges on page load if scores differ from AI suggestions
+        document.querySelectorAll('.ai-task-suggestion-box').forEach(function(box) {
+            var taskId = box.getAttribute('data-ai-task-id');
+            var scoreInput = document.querySelector('input[name="score_' + taskId + '"]');
+            if (scoreInput && scoreInput.value !== '') {
+                updateManualBadgeForTask(taskId, scoreInput.value);
+            }
+        });
+
+        // Confirmation Modal for Apply All
+        var applyModal = document.getElementById('ai-apply-confirm-modal');
         var btnApplyAll = document.getElementById('btn-ai-apply-all');
-        if (btnApplyAll) {
+        var btnConfirmApply = document.getElementById('btn-confirm-ai-apply');
+        var btnCancelApply = document.getElementById('btn-cancel-ai-apply');
+
+        if (btnApplyAll && applyModal) {
             btnApplyAll.addEventListener('click', function() {
+                applyModal.classList.remove('hidden');
+            });
+        }
+
+        if (btnCancelApply && applyModal) {
+            btnCancelApply.addEventListener('click', function() {
+                applyModal.classList.add('hidden');
+            });
+        }
+
+        if (btnConfirmApply && applyModal) {
+            btnConfirmApply.addEventListener('click', function() {
+                applyModal.classList.add('hidden');
                 var taskBtns = document.querySelectorAll('.btn-apply-task-ai');
                 if (!taskBtns.length) {
                     notifyGrade('Нет доступных подсказок ИИ для применения', 'info');
@@ -3585,16 +3727,43 @@
                 taskBtns.forEach(function(btn) {
                     applyAiTaskSuggestion(btn, false);
                 });
-                notifyGrade('✓ Все подсказки ИИ перенесены в поля формы!', 'success');
+                notifyGrade('✓ Черновики баллов и комментариев заполнены!', 'success');
             });
         }
 
-        var btnAcceptAi = document.getElementById('btn-ai-accept');
-        if (btnAcceptAi) {
-            btnAcceptAi.addEventListener('click', function() {
-                btnAcceptAi.disabled = true;
+        // Manual check button scrolls to first card
+        var btnCheckManual = document.getElementById('btn-ai-check-manual');
+        if (btnCheckManual) {
+            btnCheckManual.addEventListener('click', function() {
+                var firstCard = document.querySelector('.answer-review-card');
+                if (firstCard) {
+                    firstCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        }
+
+        // More dropdown menu
+        var btnAiMore = document.getElementById('btn-ai-more');
+        var aiMoreDropdown = document.getElementById('ai-more-dropdown');
+        if (btnAiMore && aiMoreDropdown) {
+            btnAiMore.addEventListener('click', function(e) {
+                e.stopPropagation();
+                aiMoreDropdown.classList.toggle('hidden');
+            });
+            document.addEventListener('click', function(e) {
+                if (!aiMoreDropdown.contains(e.target) && e.target !== btnAiMore) {
+                    aiMoreDropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // Dismiss action
+        var btnAiDismiss = document.getElementById('btn-ai-dismiss');
+        if (btnAiDismiss) {
+            btnAiDismiss.addEventListener('click', function() {
+                if (aiMoreDropdown) aiMoreDropdown.classList.add('hidden');
                 var csrf = getGradePageCsrfToken();
-                fetch('{{ url_for("assignments.api_submission_ai_review_accept", submission_id=submission.submission_id) }}', {
+                fetch('{{ url_for("assignments.api_submission_ai_review_dismiss", submission_id=submission.submission_id) }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -3605,27 +3774,23 @@
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        var taskBtns = document.querySelectorAll('.btn-apply-task-ai');
-                        taskBtns.forEach(function(btn) { applyAiTaskSuggestion(btn, false); });
-                        notifyGrade('✓ Предоценка принята преподавателем!', 'success');
-                        window.setTimeout(function() { location.reload(); }, 900);
-                    } else {
-                        notifyGrade('✕ ' + (data.error || 'Не удалось принять предоценку'), 'error');
-                        btnAcceptAi.disabled = false;
+                        notifyGrade('Предварительный разбор скрыт', 'info');
+                        window.setTimeout(function() { location.reload(); }, 600);
                     }
                 })
                 .catch(function() {
-                    notifyGrade('✕ Ошибка сети при принятии предоценки', 'error');
-                    btnAcceptAi.disabled = false;
+                    notifyGrade('✕ Ошибка сети при скрытии разбора', 'error');
                 });
             });
         }
 
+        // Rerun action
         document.querySelectorAll('#btn-ai-rerun').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 btn.disabled = true;
+                if (aiMoreDropdown) aiMoreDropdown.classList.add('hidden');
                 var csrf = getGradePageCsrfToken();
-                notifyGrade('Запуск повторной ИИ-предпроверки...', 'info');
+                notifyGrade('Запуск анализа...', 'info');
                 fetch('{{ url_for("assignments.api_submission_ai_review_rerun", submission_id=submission.submission_id) }}', {
                     method: 'POST',
                     headers: {
@@ -3637,34 +3802,25 @@
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        notifyGrade('✓ ИИ-предпроверка успешно запущена!', 'success');
-                        window.setTimeout(function() { location.reload(); }, 800);
+                        notifyGrade('✓ Запрос отправлен', 'success');
+                        window.setTimeout(function() { location.reload(); }, 600);
                     } else {
-                        notifyGrade('✕ ' + (data.error || 'Не удалось запустить ИИ-предпроверку'), 'error');
+                        notifyGrade('✕ ' + (data.error || 'Не удалось запустить анализ'), 'error');
                         btn.disabled = false;
                     }
                 })
                 .catch(function() {
-                    notifyGrade('✕ Ошибка сети при запросе к ИИ', 'error');
+                    notifyGrade('✕ Ошибка сети при запросе', 'error');
                     btn.disabled = false;
                 });
             });
         });
 
-        var btnToggleSummary = document.getElementById('btn-ai-toggle-summary');
-        if (btnToggleSummary) {
-            btnToggleSummary.addEventListener('click', function() {
-                var details = document.getElementById('ai-summary-details');
-                if (details) {
-                    details.classList.toggle('hidden');
-                }
-            });
-        }
-
-        {% if ai_review and ai_review.status == 'pending' %}
+        // Polling when pending or processing
+        {% if ai_review and ai_review.status in ('pending', 'processing') %}
         (function() {
             var pollCount = 0;
-            var maxPolls = 25; // ~75-80 seconds
+            var maxPolls = 30; // ~90 seconds
             var pollTimer = window.setInterval(function() {
                 pollCount++;
                 if (pollCount > maxPolls) {
@@ -3676,13 +3832,13 @@
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    if (data.success && data.ai_review && data.ai_review.status !== 'pending') {
+                    if (data.success && data.ai_review && data.ai_review.status !== 'pending' && data.ai_review.status !== 'processing') {
                         window.clearInterval(pollTimer);
                         location.reload();
                     }
                 })
                 .catch(function() {});
-            }, 3500);
+            }, 3000);
         })();
         {% endif %}
     </script>

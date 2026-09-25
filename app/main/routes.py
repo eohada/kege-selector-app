@@ -4468,23 +4468,18 @@ def api_profile_edit():
         current_user.about_me = about_me.strip()
 
     timezone_mode = (data.get('timezone_mode') or '').strip().lower()
-    timezone_iana = (data.get('timezone_iana') or '').strip()
-    if timezone_mode == 'auto':
-        current_user.timezone_mode = 'auto'
-        current_user.timezone_iana = None
+    timezone_iana = (data.get('timezone_iana') or data.get('timezone') or '').strip()
+    from app.utils.timezone import is_valid_timezone, canonical_timezone_name
+    if timezone_iana:
+        if not is_valid_timezone(timezone_iana):
+            return jsonify({'status': 'error', 'success': False, 'message': 'Укажите корректный часовой пояс IANA.', 'error': 'Некорректный часовой пояс'}), 400
+        norm_tz = canonical_timezone_name(timezone_iana)
+        current_user.timezone_iana = norm_tz[:64]
+        current_user.timezone_mode = 'manual' if timezone_mode != 'auto' else 'auto'
         if current_user.profile:
-            current_user.profile.timezone = None
-    elif timezone_iana or timezone_mode == 'manual':
-        if timezone_iana:
-            from zoneinfo import ZoneInfo
-            try:
-                ZoneInfo(timezone_iana)
-            except Exception:
-                return jsonify({'status': 'error', 'success': False, 'message': 'Укажите корректный часовой пояс.'}), 400
-            current_user.timezone_mode = 'manual'
-            current_user.timezone_iana = timezone_iana[:64]
-            if current_user.profile:
-                current_user.profile.timezone = timezone_iana[:50]
+            current_user.profile.timezone = norm_tz[:50]
+    elif timezone_mode == 'auto':
+        current_user.timezone_mode = 'auto'
 
     telegram_link = data.get('telegram_link') or data.get('telegram_username')
     if telegram_link is not None:
@@ -4535,9 +4530,13 @@ def api_profile_edit():
         if data.get('about_me') or data.get('custom_status'):
             process_achievement_event(student_obj, 'profile_bio_set')
 
+    from app.utils.datetime_utc import effective_timezone_name
     return jsonify({
         'status': 'ok',
         'success': True,
+        'effective': effective_timezone_name(current_user),
+        'timezone': current_user.timezone_iana or (current_user.profile.timezone if current_user.profile else 'Europe/Moscow'),
+        'timezone_iana': current_user.timezone_iana or (current_user.profile.timezone if current_user.profile else 'Europe/Moscow'),
         'avatar_url': current_user.avatar_url,
         'cover_url': current_user.cover_url,
         'message': 'Профиль успешно обновлен!'

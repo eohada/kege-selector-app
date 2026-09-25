@@ -63,24 +63,30 @@ flowchart TD
     Validate --> TeacherDraft[Черновик готов для преподавателя]
 ```
 
-1. **Основной провайдер**: Google Gemini Developer API (`gemini-1.5-flash` с `response_mime_type: application/json`).
-2. **Резервный провайдер**: OpenRouter API (`google/gemini-2.0-flash-exp:free` с `response_format: {"type": "json_object"}`).
+1. **Основной провайдер**: Google Gemini Developer API (модель задаётся через `GEMINI_MODEL`, `response_mime_type: application/json`).
+2. **Резервный провайдер**: OpenRouter API (модель задаётся через `OPENROUTER_MODEL`, `response_format: {"type": "json_object"}`).
 3. **Отказоустойчивость**: если оба провайдера недоступны, статус помечается как `unavailable`, платформа продолжает работать штатно, преподаватель проверяет вручную.
+4. **Единый асинхронный механизм**: Celery. Если очередь или брокер недоступны, сдача сохраняется штатно, а ИИ-проверка получает статус `unavailable` с кодом `QUEUE_UNAVAILABLE` («Не запущен: фоновая проверка недоступна»). Никаких ненадёжных ad-hoc фоновых потоков `threading.Thread`.
 
 ---
 
 ## 4. Переменные окружения (.env)
 
-| Переменная | По умолчанию | Описание |
+> [!IMPORTANT]
+> **Выбор моделей**: в коде отсутствуют захардкоженные дефолтные имена внешних моделей. Перед пилотом администратор/преподаватель самостоятельно выбирает актуальную модель в личном кабинете провайдера (Google AI Studio / OpenRouter).
+> - Для OpenRouter бесплатные модели должны явно содержать суффикс `:free` (например, `google/gemini-2.0-flash-exp:free` или иная актуальная бесплатная модель из каталога OpenRouter). Не используйте платные модели без суффикса `:free` в качестве бесплатного fallback.
+> - Если ключ или имя модели не заданы для включённого провайдера, статус сдачи переходит в **«ИИ-предпроверка отключена» (`disabled`)**, а не в техническую ошибку или `unavailable`.
+
+| Переменная | По умолчанию | Обязательность / Описание |
 |---|---|---|
 | `AI_REVIEW_ENABLED` | `false` | Глобальный переключатель (Kill-switch) модуля |
 | `AI_REVIEW_PRIMARY_PROVIDER` | `gemini` | Основной провайдер (`gemini` или `openrouter`) |
-| `AI_REVIEW_FALLBACK_PROVIDER` | `openrouter` | Резервный провайдер при ошибке основного |
-| `GEMINI_API_KEY` | `""` | Бесплатный ключ Gemini API (Google AI Studio) |
-| `GEMINI_MODEL` | `gemini-1.5-flash` | Модель Gemini для предпроверки |
+| `AI_REVIEW_FALLBACK_PROVIDER` | `openrouter` | Резервный провайдер при retryable-ошибке основного |
+| `GEMINI_API_KEY` | `""` | Ключ Gemini API (Google AI Studio) |
+| `GEMINI_MODEL` | `""` | **Обязательно для Gemini**: название модели из Google AI Studio |
 | `OPENROUTER_API_KEY` | `""` | Ключ OpenRouter API |
-| `OPENROUTER_MODEL` | `google/gemini-2.0-flash-exp:free` | Бесплатная модель OpenRouter |
-| `AI_REVIEW_TIMEOUT_MS` | `25000` | Таймаут одного запроса в миллисекундах |
+| `OPENROUTER_MODEL` | `""` | **Обязательно для OpenRouter**: название модели (с `:free` для бесплатных) |
+| `AI_REVIEW_TIMEOUT_MS` | `25000` | Таймаут одного сетевого запроса в миллисекундах |
 
 ---
 
@@ -91,7 +97,7 @@ flowchart TD
 - `attempt_no`: Номер попытки сдачи работы
 - `revision_no`: Номер ревизии проверки (1, 2, ...)
 - `submission_hash`: sha256 хеш содержимого ответов для идемпотентности
-- `status`: `pending` | `completed` | `accepted` | `unavailable` | `dismissed`
+- `status`: `pending` | `processing` | `completed` | `accepted` | `unavailable` | `dismissed` | `disabled`
 - `provider`: `gemini` | `openrouter` | `none`
 - `model`: Название модели
 - `suggested_total_points`: Предварительный суммарный балл

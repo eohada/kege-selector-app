@@ -22,6 +22,7 @@ from app.telegram.user_notify import notify_user_by_id
 from app.utils.relationship_scope import get_parent_user_ids_for_student
 from app.utils.datetime_utc import effective_timezone_name
 from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local, lesson_storage_to_utc, timezone_from_name, timezone_name, lesson_display_time
+from app.utils.timezone import to_utc_instant, format_utc_iso_z, parse_local_to_utc, canonical_timezone_name
 from core.audit_logger import audit_logger
 import secrets
 
@@ -253,11 +254,25 @@ def _is_lesson_test(lesson) -> bool:
     return False
 
 
-def _extract_clean_lesson_datetime(raw_date: str, raw_time: str, tz_name: str | None) -> datetime:
+def _extract_clean_lesson_datetime(raw_date: str, raw_time: str, tz_name: str | None, start_time_utc: str | None = None) -> datetime:
     """Извлечь дату и время без поломки часовых поясов и вернуть UTC aware datetime."""
-    tz_canonical = timezone_name(tz_name or 'Europe/Moscow')
+    # 1. Если клиент явно прислал start_time_utc в ISO формате с Z или offset
+    if start_time_utc and isinstance(start_time_utc, str):
+        parsed = to_utc_instant(start_time_utc.strip())
+        if parsed:
+            return parsed
+
     raw_date_str = str(raw_date or '').strip()
     raw_time_str = str(raw_time or '').strip()
+
+    # 2. Если raw_date_str сам по себе является ISO строкой с Z или смещением (+/-)
+    if 'Z' in raw_date_str or 'z' in raw_date_str or ('+' in raw_date_str and 'T' in raw_date_str):
+        parsed = to_utc_instant(raw_date_str)
+        if parsed:
+            return parsed
+
+    # 3. Если передан локальный ввод (дата + время + таймзона)
+    tz_canonical = canonical_timezone_name(tz_name or 'Europe/Moscow')
 
     if 'T' in raw_date_str:
         parts = raw_date_str.split('T')
@@ -273,14 +288,14 @@ def _extract_clean_lesson_datetime(raw_date: str, raw_time: str, tz_name: str | 
 
     if not time_part:
         time_part = '12:00'
-    elif len(time_part) > 5:
+    elif len(time_part) > 5 and ':' in time_part[:5]:
         time_part = time_part[:5]
 
-    return parse_local_lesson_datetime(date_part, time_part, tz_canonical)
+    return parse_local_to_utc(date_part, time_part, tz_canonical)
 
 
-def _parse_local_datetime(date_str: str, time_str: str, timezone: str):
-    return _extract_clean_lesson_datetime(date_str, time_str, timezone)
+def _parse_local_datetime(date_str: str, time_str: str, timezone: str, start_time_utc: str | None = None):
+    return _extract_clean_lesson_datetime(date_str, time_str, timezone, start_time_utc=start_time_utc)
 
 
 def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:
@@ -391,32 +406,32 @@ def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int
     """
     if not tutor_user_id or not start_dt or not duration_min:
         return False
-    end_dt = start_dt + timedelta(minutes=duration_min)
-
-    day_start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-    day_end = day_start + timedelta(days=1)
+    start_dt_utc = lesson_storage_to_utc(start_dt)
+    end_dt_utc = lesson_storage_to_utc(start_dt + timedelta(minutes=duration_min))
+    if not start_dt_utc or not end_dt_utc:
+        return False
 
     allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
-    if allowed_student_ids is None:
-        return False
     if not allowed_student_ids:
         return False
 
     q = Lesson.query.filter(
         Lesson.student_id.in_(allowed_student_ids),
-        Lesson.lesson_date >= day_start,
-        Lesson.lesson_date < day_end
+        Lesson.status != 'cancelled',
+        Lesson.lesson_date.isnot(None),
     )
     if exclude_lesson_id:
         q = q.filter(Lesson.lesson_id != exclude_lesson_id)
 
     candidates = q.all()
     for l in candidates:
-        if not l.lesson_date:
+        if not l.lesson_date or _is_lesson_test(l):
             continue
-        l_start = l.lesson_date
-        l_end = l.lesson_date + timedelta(minutes=int(l.duration or 60))
-        if (l_start < end_dt) and (start_dt < l_end):
+        l_start = lesson_storage_to_utc(l.lesson_date)
+        l_end = lesson_storage_to_utc(l.lesson_date + timedelta(minutes=int(l.duration or 60)))
+        if not l_start or not l_end:
+            continue
+        if (l_start < end_dt_utc) and (start_dt_utc < l_end):
             return True
     return False
 
@@ -713,14 +728,15 @@ def schedule():
         if not l.lesson_date:
             continue
         local_start = lesson_storage_to_local(l.lesson_date, timezone)
+        utc_instant = lesson_storage_to_utc(l.lesson_date)
         duration_minutes = int(l.duration or 60)
         local_end = local_start + timedelta(minutes=duration_minutes)
         raw_lessons_payload.append({
             'lesson_id': l.lesson_id,
             'student_name': l.student.name if l.student else 'Ученик',
             'student_id': l.student_id,
-            'lesson_date': local_start.isoformat(),
-            'start_iso': local_start.isoformat(),
+            'lesson_date': format_utc_iso_z(utc_instant),
+            'start_iso': format_utc_iso_z(utc_instant),
             'start_date': local_start.date().isoformat(),
             'start_time': local_start.strftime('%H:%M'),
             'end_time': local_end.strftime('%H:%M'),
@@ -869,6 +885,7 @@ def schedule_create_lesson():
         
     try:
         student_id = request.form.get('student_id', type=int)
+        start_time_utc = request.form.get('start_time_utc')
         lesson_date_str = request.form.get('lesson_date')
         lesson_time_str = request.form.get('lesson_time') or request.form.get('start_time')
         duration = request.form.get('duration', 60, type=int)
@@ -878,7 +895,7 @@ def schedule_create_lesson():
         lesson_mode = request.form.get('lesson_mode', 'single')
         repeat_count = request.form.get('repeat_count', type=int)
 
-        if not student_id or not lesson_date_str:
+        if not student_id or (not lesson_date_str and not start_time_utc):
             error_message = 'Заполните все обязательные поля'
             is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
             if is_ajax:
@@ -889,7 +906,7 @@ def schedule_create_lesson():
             flash(error_message, 'error')
             return redirect(url_for('schedule.schedule'))
 
-        base_lesson_datetime = _extract_clean_lesson_datetime(lesson_date_str, lesson_time_str, timezone)
+        base_lesson_datetime = _extract_clean_lesson_datetime(lesson_date_str, lesson_time_str, timezone, start_time_utc=start_time_utc)
 
         student = Student.query.get_or_404(student_id)
         allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
@@ -1058,15 +1075,16 @@ def schedule_reschedule_lesson(lesson_id: int):
     if not _require_lesson_in_scope(lesson):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
+    start_time_utc = data.get('start_time_utc')
     date_str = (data.get('lesson_date') or '').strip()
     time_str = (data.get('lesson_time') or '').strip()
     timezone = (data.get('timezone') or _schedule_timezone_from_user()).strip()
 
-    if not date_str or not time_str:
+    if not start_time_utc and (not date_str or not time_str):
         return jsonify({'success': False, 'error': 'lesson_date и lesson_time обязательны'}), 400
 
     try:
-        new_dt = _parse_local_datetime(date_str, time_str, timezone)
+        new_dt = _parse_local_datetime(date_str, time_str, timezone, start_time_utc=start_time_utc)
     except Exception as e:
         return jsonify({'success': False, 'error': f'Ошибка формата даты/времени: {e}'}), 400
 
@@ -1123,15 +1141,16 @@ def create_schedule_lesson_api():
 
     try:
         raw_student_id = data.get('student_id') or data.get('student')
+        start_time_utc = data.get('start_time_utc')
         raw_date = data.get('lesson_date') or data.get('start_time') or data.get('date')
         raw_time = data.get('time') or data.get('lesson_time') or ''
         topic = data.get('topic') or data.get('notes') or 'Занятие по расписанию'
         req_tz = (data.get('timezone') or _schedule_timezone_from_user()).strip()
 
-        if not raw_student_id or not raw_date:
+        if not raw_student_id or (not raw_date and not start_time_utc):
             return jsonify({'status': 'error', 'message': 'Укажите ученика и дату урока'}), 400
 
-        clean_date = _extract_clean_lesson_datetime(str(raw_date), str(raw_time), req_tz)
+        clean_date = _extract_clean_lesson_datetime(str(raw_date or ''), str(raw_time or ''), req_tz, start_time_utc=start_time_utc)
 
         student = Student.query.filter(
             (Student.student_id == raw_student_id) | (Student.user_id == raw_student_id)
@@ -1234,11 +1253,12 @@ def update_schedule_lesson_api(lesson_id: int):
 
         if 'topic' in data:
             lesson.topic = str(data['topic']).strip() or lesson.topic
-        if 'lesson_date' in data or 'start_time' in data or 'time' in data:
+        if 'start_time_utc' in data or 'lesson_date' in data or 'start_time' in data or 'time' in data:
+            start_time_utc = data.get('start_time_utc')
             raw_date = data.get('lesson_date') or data.get('start_time')
             raw_time = data.get('time') or data.get('lesson_time') or ''
             req_tz = (data.get('timezone') or _schedule_timezone_from_user()).strip()
-            new_date = _extract_clean_lesson_datetime(str(raw_date), str(raw_time), req_tz)
+            new_date = _extract_clean_lesson_datetime(str(raw_date or ''), str(raw_time or ''), req_tz, start_time_utc=start_time_utc)
         else:
             new_date = lesson.lesson_date
 
@@ -1481,17 +1501,18 @@ def schedule_update_lesson(lesson_id: int):
     duration = data.get('duration')
     lesson_type = data.get('lesson_type')
     topic = data.get('topic')
+    start_time_utc = data.get('start_time_utc')
     lesson_date = data.get('lesson_date')
     lesson_time = data.get('lesson_time')
     timezone = (data.get('timezone') or _schedule_timezone_from_user()).strip()
 
     new_lesson_date = None
-    if lesson_date is not None and lesson_time is not None:
-        date_str = str(lesson_date).strip()
-        time_str = str(lesson_time).strip()
-        if date_str and time_str:
+    if start_time_utc or (lesson_date is not None and lesson_time is not None):
+        date_str = str(lesson_date or '').strip()
+        time_str = str(lesson_time or '').strip()
+        if start_time_utc or (date_str and time_str):
             try:
-                new_lesson_date = _parse_local_datetime(date_str, time_str, timezone)
+                new_lesson_date = _parse_local_datetime(date_str, time_str, timezone, start_time_utc=start_time_utc)
             except Exception as e:
                 return jsonify({'success': False, 'error': f'Ошибка формата даты/времени: {e}'}), 400
 
@@ -1637,6 +1658,7 @@ def schedule_api_events():
             'lesson_type': l.lesson_type,
             'topic': l.topic,
             'duration_minutes': int(l.duration or 60),
+            'start_iso': format_utc_iso_z(lesson_storage_to_utc(l.lesson_date)),
             'date': dt_display.strftime('%Y-%m-%d'),
             'start_time': dt_display.strftime('%H:%M'),
             'start_total': dt_display.hour * 60 + dt_display.minute,

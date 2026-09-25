@@ -993,7 +993,7 @@ def api_analytics_calibration_reset():
 def api_me_timezone():
     """Сохранить режим часового пояса и/или IANA; при auto — обновить UserProfiles.timezone из браузера."""
     try:
-        from zoneinfo import ZoneInfo
+        from app.utils.timezone import is_valid_timezone, canonical_timezone_name
         from app.utils.datetime_utc import effective_timezone_name
 
         data = request.get_json(silent=True) or {}
@@ -1003,31 +1003,23 @@ def api_me_timezone():
 
         if mode in ('auto', 'manual'):
             current_user.timezone_mode = mode
+
         selected_timezone = None
         if iana:
-            try:
-                ZoneInfo(iana)
-                selected_timezone = iana[:64]
-                current_user.timezone_iana = selected_timezone
-            except Exception:
+            if not is_valid_timezone(iana):
                 return jsonify({'success': False, 'error': 'Некорректный часовой пояс IANA'}), 400
-        elif mode == 'auto':
-            current_user.timezone_iana = None
+            selected_timezone = canonical_timezone_name(iana)[:64]
+            current_user.timezone_iana = selected_timezone
+            current_user.timezone_mode = 'manual'
+        elif browser and is_valid_timezone(browser) and mode == 'auto':
+            # For auto mode, only update if user doesn't have an explicit manual selection
+            if getattr(current_user, 'timezone_mode', 'auto') != 'manual':
+                selected_timezone = canonical_timezone_name(browser)[:64]
+                current_user.timezone_iana = selected_timezone
 
-        # User.timezone_iana is the source of truth for display.  Keep the
-        # legacy profile field in sync too: schedules and teacher dashboards
-        # still use it while their data is being migrated to the shared helper.
-        profile_timezone = selected_timezone
-        if not profile_timezone and browser:
-            try:
-                ZoneInfo(browser)
-                profile_timezone = browser[:50]
-            except Exception:
-                pass
-        if profile_timezone:
-            prof = UserProfile.query.filter_by(user_id=current_user.id).first()
-            if prof:
-                prof.timezone = profile_timezone
+        prof = UserProfile.query.filter_by(user_id=current_user.id).first()
+        if selected_timezone and prof:
+            prof.timezone = selected_timezone[:50]
 
         db.session.commit()
         return jsonify({'success': True, 'effective': effective_timezone_name(current_user)})

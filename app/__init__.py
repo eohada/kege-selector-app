@@ -193,7 +193,9 @@ def create_app(config_name=None):
     # default can make one-off production commands discover zero revisions.
     migrate.init_app(app, db, directory=os.path.join(base_dir, 'migrations'))
     from app.commands.schema import schema_audit_command
+    from app.commands.ai_review import ai_review_check_command
     app.cli.add_command(schema_audit_command)
+    app.cli.add_command(ai_review_check_command)
     audit_logger.init_app(app)
 
     from app.storage import storage as file_storage
@@ -275,6 +277,14 @@ def create_app(config_name=None):
             if value_local:
                 return value_local.strftime(format_string)
         return str(dt)
+
+    @app.template_filter('iso_z')
+    def iso_z_filter(dt):
+        """Форматирует aware UTC момент как ISO-8601 строку с Z."""
+        if not dt:
+            return ''
+        from app.utils.timezone import format_utc_iso_z
+        return format_utc_iso_z(dt) or ''
     
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     logger.info(f"=== Application Initialization ===")
@@ -865,6 +875,12 @@ def create_app(config_name=None):
             'Telegram', 'Библиотека', 'Workspace', 'Мобильная версия', 'Общая'
         ]
 
+        try:
+            from app.utils.timezone import get_grouped_timezones_for_ui
+            available_tz_grouped = get_grouped_timezones_for_ui()
+        except Exception:
+            available_tz_grouped = []
+
         return dict(
             current_user=template_user,
             current_student=student_data,
@@ -874,6 +890,7 @@ def create_app(config_name=None):
             user_timezone_effective=tz_eff,
             user_timezone_mode=(getattr(template_user, 'timezone_mode', 'auto') if template_user and template_user.is_authenticated else 'auto'),
             user_timezone_iana=(getattr(template_user, 'timezone_iana', None) if template_user and template_user.is_authenticated else None),
+            available_timezones_grouped=available_tz_grouped,
             release_notes=build_release_notes_text(),
             release_version=RELEASE_VERSION,
             qa_widget_areas=qa_widget_areas,

@@ -130,9 +130,19 @@
           </span>
         </div>
         <select id="tz-select" onchange="changeTimezone(this.value)" class="w-full bg-white border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-700 px-2.5 py-1.5 outline-none focus:border-indigo-400 cursor-pointer shadow-xs">
-          <option value="Europe/Moscow" {% if timezone == 'Europe/Moscow' %}selected{% endif %}>Московское время (UTC+3)</option>
-          <option value="Asia/Yekaterinburg" {% if timezone == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург (UTC+5)</option>
-          <option value="Asia/Novosibirsk" {% if timezone in ('Asia/Novosibirsk', 'Asia/Tomsk', 'Asia/Krasnoyarsk') %}selected{% endif %}>Новосибирск / Томск (UTC+7)</option>
+          {% if available_timezones_grouped %}
+            {% for grp in available_timezones_grouped %}
+            <optgroup label="{{ grp.group }}">
+              {% for z in grp.zones %}
+              <option value="{{ z.key }}" {% if timezone == z.key %}selected{% endif %}>{{ z.full_label }}</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          {% else %}
+            <option value="Europe/Moscow" {% if timezone == 'Europe/Moscow' %}selected{% endif %}>Московское время (UTC+3)</option>
+            <option value="Asia/Yekaterinburg" {% if timezone == 'Asia/Yekaterinburg' %}selected{% endif %}>Екатеринбург (UTC+5)</option>
+            <option value="Asia/Novosibirsk" {% if timezone in ('Asia/Novosibirsk', 'Asia/Tomsk', 'Asia/Krasnoyarsk') %}selected{% endif %}>Новосибирск / Томск (UTC+7)</option>
+          {% endif %}
         </select>
       </div>
 
@@ -721,11 +731,18 @@
 
   function processLessons(lessonsArray) {
     return (lessonsArray || []).map(l => {
-      // Извлекаем точные дату и время, вычисленные бэкендом в часовом поясе расписания,
-      // без смещения локальным часовым поясом операционной системы/браузера
+      // Извлекаем точные дату и время в часовом поясе расписания через BooTimezone
       let startDateStr = l.start_date;
       let startTimeStr = l.start_time;
       let endTimeStr = l.end_time;
+
+      if (window.BooTimezone && (l.start_iso || l.lesson_date)) {
+        const parts = window.BooTimezone.getPartsInTz(l.start_iso || l.lesson_date, state.tzName);
+        if (parts && parts.date && parts.time) {
+          startDateStr = parts.date;
+          startTimeStr = parts.time;
+        }
+      }
 
       if (!startDateStr || !startTimeStr) {
         const rawIso = l.start_iso || l.start_dt || l.lesson_date || '';
@@ -1168,10 +1185,14 @@
       return;
     }
 
+    const activeTz = state.tzName || RAW.timezone || (window.BooTimezone ? window.BooTimezone.getViewerTz() : 'Europe/Moscow');
+    const startTimeUtc = window.BooTimezone ? window.BooTimezone.localToUtcIso(lessonDate, startTime, activeTz) : null;
+
     const payload = {
       student_id: parseInt(studentId, 10),
       lesson_date: lessonDate,
       time: startTime,
+      start_time_utc: startTimeUtc,
       topic: topic,
       duration: duration,
       status: status,
@@ -1182,7 +1203,7 @@
       materials: materials,
       is_test: isTest,
       lesson_type: isTest ? 'test' : 'individual',
-      timezone: RAW.timezone || 'Europe/Moscow'
+      timezone: activeTz
     };
 
     try {
@@ -1714,12 +1735,18 @@
     }
 
     const isTest = Boolean(document.getElementById('edit-is-test')?.checked);
+    const activeTz = state.tzName || RAW.timezone || (window.BooTimezone ? window.BooTimezone.getViewerTz() : 'Europe/Moscow');
+    const editDate = document.getElementById('edit-lesson-date').value;
+    const editTime = document.getElementById('edit-start-time').value;
+    const startTimeUtc = window.BooTimezone ? window.BooTimezone.localToUtcIso(editDate, editTime, activeTz) : null;
+
     const payload = {
       student_id: parseInt(document.getElementById('edit-student-id').value, 10),
       status: document.getElementById('edit-status').value,
       topic: document.getElementById('edit-topic').value,
-      lesson_date: document.getElementById('edit-lesson-date').value,
-      time: document.getElementById('edit-start-time').value,
+      lesson_date: editDate,
+      time: editTime,
+      start_time_utc: startTimeUtc,
       duration: parseInt(document.getElementById('edit-duration').value, 10),
       notes: document.getElementById('edit-notes').value.trim(),
       description: document.getElementById('edit-notes').value.trim(),
@@ -1728,7 +1755,7 @@
       materials: collectMaterials('edit-materials-list'),
       is_test: isTest,
       lesson_type: isTest ? 'test' : 'individual',
-      timezone: RAW.timezone || 'Europe/Moscow'
+      timezone: activeTz
     };
 
     try {

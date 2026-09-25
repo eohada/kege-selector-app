@@ -39,3 +39,27 @@ def process_submission_task(self, submission_id: int):
         }
     except Exception as exc:
         self.retry(exc=exc)
+
+
+@celery.task(bind=True, max_retries=2, default_retry_delay=5)
+def review_submission_ai_task(self, submission_id: int, is_manual_rerun: bool = False):
+    """Фоновая Celery-задача безопасной ИИ-предпроверки сдачи."""
+    try:
+        from core.db_models import db, Submission
+        from app.assignments.ai_review_service import execute_review_pipeline
+
+        submission = db.session.get(Submission, submission_id)
+        if submission is None:
+            return {'status': 'error', 'message': f'Submission {submission_id} not found'}
+
+        ai_review = execute_review_pipeline(submission, is_manual_rerun=is_manual_rerun)
+        return {
+            'status': ai_review.status if ai_review else 'unknown',
+            'submission_id': submission_id,
+            'review_id': ai_review.id if ai_review else None,
+            'ai_review_id': ai_review.id if ai_review else None,
+        }
+    except Exception as exc:
+        if self.request.retries < self.max_retries:
+            self.retry(exc=exc, countdown=5 * (self.request.retries + 1))
+        raise

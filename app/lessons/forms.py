@@ -20,9 +20,22 @@ class LessonForm(FlaskForm):
         ('introductory', 'Вводный урок')
     ], default='regular', validators=[DataRequired()])
     timezone = SelectField('Часовой пояс', choices=[
+        ('Europe/Moscow', 'Московское время (МСК, UTC+3)'),
+        ('Europe/Kaliningrad', 'Калининград (UTC+2)'),
+        ('Europe/Samara', 'Самара (UTC+4)'),
+        ('Asia/Yekaterinburg', 'Екатеринбург (UTC+5)'),
+        ('Asia/Omsk', 'Омск (UTC+6)'),
+        ('Asia/Novosibirsk', 'Новосибирск (UTC+7)'),
+        ('Asia/Tomsk', 'Томск (UTC+7)'),
+        ('Asia/Krasnoyarsk', 'Красноярск (UTC+7)'),
+        ('Asia/Irkutsk', 'Иркутск (UTC+8)'),
+        ('Asia/Yakutsk', 'Якутск (UTC+9)'),
+        ('Asia/Vladivostok', 'Владивосток (UTC+10)'),
+        ('Asia/Magadan', 'Магадан (UTC+11)'),
+        ('Asia/Kamchatka', 'Камчатка (UTC+12)'),
         ('moscow', 'Московское время (МСК)'),
-        ('tomsk', 'Томское время (ТОМСК)')
-    ], default='moscow', validators=[DataRequired()])
+        ('tomsk', 'Томское время (ТОМСК)'),
+    ], default='Europe/Moscow', validators=[DataRequired()])
     lesson_date = DateTimeLocalField('Дата и время урока', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
     duration = IntegerField('Длительность (минуты)', default=60, validators=[DataRequired(), NumberRange(min=15, max=240)])
     status = SelectField('Статус', choices=[

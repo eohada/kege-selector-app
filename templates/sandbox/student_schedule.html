@@ -450,13 +450,45 @@
 
   const dataEl = document.getElementById('schedule-data');
   const RAW = dataEl ? JSON.parse(dataEl.textContent || '{}') : {};
+  const effectiveTz = RAW.timezone || (window.BooTimezone ? window.BooTimezone.getViewerTz() : 'Europe/Moscow');
+
+  function processStudentLessons(lessonsArray, tz) {
+    return (lessonsArray || []).map(l => {
+      let startDateStr = l.start_date;
+      let startTimeStr = l.start_time;
+      let endTimeStr = l.end_time;
+
+      if (window.BooTimezone && (l.start_iso || l.lesson_date)) {
+        const parts = window.BooTimezone.getPartsInTz(l.start_iso || l.lesson_date, tz);
+        if (parts && parts.date && parts.time) {
+          startDateStr = parts.date;
+          startTimeStr = parts.time;
+        }
+      }
+
+      l.start_date = startDateStr || '';
+      l.start_time = startTimeStr || '12:00';
+
+      const dur = Number(l.duration_minutes || l.duration || 60);
+      l.duration_minutes = dur;
+
+      if (!endTimeStr && l.start_time) {
+        const [sh, sm] = l.start_time.split(':').map(Number);
+        const endTotal = ((sh || 0) * 60 + (sm || 0) + dur) % (24 * 60);
+        endTimeStr = `${String(Math.floor(endTotal / 60)).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`;
+      }
+      l.end_time = endTimeStr || '';
+      return l;
+    });
+  }
+
   let state = {
     view: 'week',
     weekOffset: RAW.week_offset || 0,
-    lessons: RAW.lessons || [],
+    tzName: effectiveTz,
+    lessons: processStudentLessons(RAW.lessons || [], effectiveTz),
     weekdays: RAW.weekdays || [],
     todayIso: RAW.today_iso || new Date().toISOString().split('T')[0],
-    tzName: RAW.timezone || 'Europe/Moscow',
     activeHomework: RAW.active_homework || [],
     usefulMaterials: RAW.useful_materials || [],
     studentNotesGeneral: RAW.student_notes_general || '',

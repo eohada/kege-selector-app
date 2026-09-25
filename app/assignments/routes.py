@@ -22,6 +22,7 @@ from core.db_models import SubmissionComment, SubmissionCommentThreadRead, MOSCO
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import utc_now
 from app.utils.datetime_utc import deadline_from_form_to_utc, effective_timezone_name
+from app.utils.timezone import to_utc_instant
 from app.utils.relationship_scope import can_user_access_student
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, notify_user, build_task_number_summary, build_task_number_counts
@@ -206,10 +207,14 @@ def _display_datetime_for_user(dt: datetime | None, user=None) -> str:
 
 
 def _deadline_payload_to_utc(raw_value) -> datetime:
+    tz_name = effective_timezone_name(current_user)
+    parsed = to_utc_instant(raw_value, assume_utc_if_naive=False, legacy_fallback_tz=tz_name)
+    if parsed:
+        return parsed
     dt = datetime.fromisoformat(str(raw_value).replace('Z', '+00:00'))
     if dt.tzinfo is None:
         try:
-            dt = dt.replace(tzinfo=ZoneInfo(effective_timezone_name(current_user)))
+            dt = dt.replace(tzinfo=ZoneInfo(tz_name))
         except Exception:
             dt = dt.replace(tzinfo=MOSCOW_TZ)
     return deadline_from_form_to_utc(dt)
@@ -5131,8 +5136,10 @@ def submission_grade_view(submission_id):
     ai_task_map = {}
     if latest_ai_review and latest_ai_review.task_reviews:
         for tr in latest_ai_review.task_reviews:
-            if isinstance(tr, dict) and 'assignment_task_id' in tr:
-                ai_task_map[tr['assignment_task_id']] = tr
+            if isinstance(tr, dict):
+                tid = tr.get('task_id') or tr.get('assignment_task_id')
+                if tid:
+                    ai_task_map[tid] = tr
 
     return render_template('submission_grade.html',
                          submission=submission,
@@ -5165,8 +5172,6 @@ def _serialize_ai_review(ai_review: Optional[Any]) -> Optional[dict]:
         "submission_id": ai_review.submission_id,
         "revision_no": ai_review.revision_no,
         "status": ai_review.status,
-        "provider": ai_review.provider,
-        "model": ai_review.model,
         "suggested_total_points": ai_review.suggested_total_points,
         "confidence": ai_review.confidence,
         "teacher_review_required": ai_review.teacher_review_required,
@@ -5332,16 +5337,32 @@ def api_submission_ai_review_dismiss(submission_id):
         .order_by(SubmissionAiReview.revision_no.desc())
         .first()
     )
-    if ai_review:
-        ai_review.status = 'dismissed'
-        db.session.commit()
-        audit_logger.log(
-            action='dismiss_ai_review',
-            entity='SubmissionAiReview',
-            entity_id=ai_review.id,
-            status='success',
-            metadata={'submission_id': submission_id}
+    if not ai_review:
+        from app.assignments.ai_review_service import compute_submission_hash
+        ai_review = SubmissionAiReview(
+            submission_id=submission_id,
+            attempt_no=len(submission.attempts or []) or 1,
+            revision_no=1,
+            submission_hash=compute_submission_hash(submission),
+            status='dismissed',
+            provider='none',
+            teacher_review_required=False,
+            error_code='DISMISSED_BY_TEACHER',
+            error_message='Предварительный разбор скрыт преподавателем'
         )
+        db.session.add(ai_review)
+    else:
+        ai_review.status = 'dismissed'
+        ai_review.error_code = 'DISMISSED_BY_TEACHER'
+        ai_review.error_message = 'Предварительный разбор скрыт преподавателем'
+    db.session.commit()
+    audit_logger.log(
+        action='dismiss_ai_review',
+        entity='SubmissionAiReview',
+        entity_id=ai_review.id,
+        status='success',
+        metadata={'submission_id': submission_id}
+    )
 
     return jsonify({
         'success': True,

@@ -28,6 +28,7 @@ from app.notifications.service import notify_student_and_parents, enqueue_assign
 from app.models import FamilyTie  # для доступа родителя к диалогам
 from app.utils.relationship_scope import can_user_access_student
 from app.utils.course_tasks import get_task_numbers
+from app.utils.datetime_utc import effective_timezone_name
 from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local
 
 logger = logging.getLogger(__name__)
@@ -206,11 +207,7 @@ def lesson_edit(lesson_id):
     form = LessonForm(obj=lesson)
     
     if request.method == 'GET':
-        user_tz = 'moscow'
-        if current_user.profile and current_user.profile.timezone:
-            if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
-                user_tz = 'tomsk'
-        
+        user_tz = effective_timezone_name(current_user)
         form.timezone.data = user_tz
         
         if lesson.lesson_date:
@@ -425,11 +422,7 @@ def lesson_complete(lesson_id):
     lesson_time_str = request.form.get('lesson_time', '').strip()
     if lesson_date_str and lesson_time_str:
         try:
-            user_tz = 'moscow'
-            if current_user.profile and current_user.profile.timezone:
-                if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
-                    user_tz = 'tomsk'
-            
+            user_tz = effective_timezone_name(current_user)
             new_lesson_date = parse_local_lesson_datetime(lesson_date_str, lesson_time_str, user_tz)
             lesson.lesson_date = new_lesson_date
         except Exception as e:

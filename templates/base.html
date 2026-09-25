@@ -32,6 +32,7 @@
     <meta name="user-timezone-mode" content="{{ user_timezone_mode | e }}">
     {% if user_timezone_iana %}<meta name="user-timezone-iana" content="{{ user_timezone_iana | e }}">{% endif %}
     {% endif %}
+    <script src="{{ url_for('static', filename='js/timezone-contract.js') }}?v=20260925-v1"></script>
     {% if request.endpoint is defined and request.endpoint %}
     <meta name="page-endpoint" content="{{ request.endpoint }}">
     {% endif %}

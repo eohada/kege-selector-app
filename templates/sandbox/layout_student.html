@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="user-timezone-effective" content="{{ user_timezone_effective or 'Europe/Moscow' }}">
     <meta name="user-timezone-mode" content="{{ user_timezone_mode or 'auto' }}">
+    <script src="{{ url_for('static', filename='js/timezone-contract.js') }}?v=20260925-v1"></script>
     <title>BooStudy | Ученик (Student Workspace)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

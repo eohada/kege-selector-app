@@ -1,84 +1,20 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-from core.db_models import MOSCOW_TZ
-
-UTC = timezone.utc
-LEGACY_STORAGE_TZ = MOSCOW_TZ
-
-_ALIASES = {
-    'moscow': 'Europe/Moscow',
-    'europe/moscow': 'Europe/Moscow',
-    'tomsk': 'Asia/Tomsk',
-    'asia/tomsk': 'Asia/Tomsk',
-    'utc': 'UTC',
-}
-
-
-def timezone_name(name: str | None, fallback: str = 'Europe/Moscow') -> str:
-    """Вернуть валидное каноничное имя IANA без привязки к списку городов."""
-    raw = (name or '').strip()
-    candidate = _ALIASES.get(raw.lower(), raw or fallback)
-    try:
-        return ZoneInfo(candidate).key
-    except (ZoneInfoNotFoundError, ValueError):
-        return fallback
-
-
-def timezone_from_name(name: str | None, fallback: str = 'Europe/Moscow') -> ZoneInfo:
-    return ZoneInfo(timezone_name(name, fallback))
-
-
-def lesson_storage_to_utc(dt: datetime | None) -> datetime | None:
-    """Нормализовать момент урока в UTC.
-
-    Новые записи хранятся aware UTC. Старые naive значения интерпретируются как
-    московское wall time для обратной совместимости уже созданных уроков.
-    """
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        try:
-            from app import db
-            if db.engine.dialect.name == 'sqlite':
-                return dt.replace(tzinfo=UTC)
-        except Exception:
-            pass
-        return dt.replace(tzinfo=LEGACY_STORAGE_TZ).astimezone(UTC)
-    return dt.astimezone(UTC)
-
-
-def parse_local_lesson_datetime(date_str: str, time_str: str, timezone_name_value: str | None) -> datetime:
-    """Преобразовать введённые человеком локальные дату/время в UTC для БД."""
-    tz = timezone_from_name(timezone_name_value)
-    d = (date_str or '').strip()
-    t = (time_str or '12:00').strip()
-    if len(t) > 5:
-        t = t[:5]
-    if '.' in d:
-        try:
-            wall_time = datetime.strptime(f'{d} {t}', '%d.%m.%Y %H:%M')
-        except ValueError:
-            wall_time = datetime.strptime(f'{d} {t}', '%Y-%m-%d %H:%M')
-    else:
-        try:
-            wall_time = datetime.strptime(f'{d} {t}', '%Y-%m-%d %H:%M')
-        except ValueError:
-            wall_time = datetime.strptime(f'{d} {t}', '%d.%m.%Y %H:%M')
-    return wall_time.replace(tzinfo=tz).astimezone(UTC)
-
-
-def lesson_storage_to_local(dt: datetime | None, timezone_name_value: str | None) -> datetime | None:
-    instant = lesson_storage_to_utc(dt)
-    return instant.astimezone(timezone_from_name(timezone_name_value)) if instant else None
+from app.utils.timezone import (
+    UTC,
+    LEGACY_TIMEZONE as LEGACY_STORAGE_TZ,
+    canonical_timezone_name as timezone_name,
+    format_viewer_dt as lesson_display_time,
+    get_timezone as timezone_from_name,
+    parse_local_to_utc as parse_local_lesson_datetime,
+    to_utc_instant as lesson_storage_to_utc,
+    to_viewer_tz as lesson_storage_to_local,
+)
 
 
 def lesson_storage_to_moscow(dt: datetime | None) -> datetime | None:
+    """Нормализовать и отобразить момент урока в московском поясе."""
     return lesson_storage_to_local(dt, 'Europe/Moscow')
-
-
-def lesson_display_time(dt: datetime | None, timezone_name_value: str | None, fmt: str = '%d.%m.%Y %H:%M') -> str:
-    local = lesson_storage_to_local(dt, timezone_name_value)
-    return local.strftime(fmt) if local else '—'
