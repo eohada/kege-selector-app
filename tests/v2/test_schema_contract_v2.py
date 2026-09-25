@@ -163,3 +163,55 @@ def test_course_lesson_skills_contract_migration():
         la_idx = {idx['name'] for idx in inspector.get_indexes('lesson_attachments')}
         assert 'ix_lesson_attachments_lesson_id' in la_idx
 
+
+def test_submission_ai_reviews_migration():
+    """Verify that rev_submission_ai_reviews creates SubmissionAiReviews table, columns and indexes."""
+    project_root = Path(__file__).resolve().parents[2]
+    migration_path = project_root / 'migrations' / 'versions' / 'rev_submission_ai_reviews.py'
+    spec = importlib.util.spec_from_file_location('submission_ai_reviews_migration', migration_path)
+    migration = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(migration)
+
+    engine = sa.create_engine('sqlite://')
+    with engine.begin() as connection:
+        connection.execute(text('CREATE TABLE "Users" (id INTEGER PRIMARY KEY)'))
+        connection.execute(text('CREATE TABLE "Submissions" (submission_id INTEGER PRIMARY KEY)'))
+
+        migration.op = Operations(MigrationContext.configure(connection))
+
+        # First run: creates table and indexes
+        migration.upgrade()
+        # Second run: ensures idempotency
+        migration.upgrade()
+
+        inspector = sa.inspect(connection)
+        tables = set(inspector.get_table_names())
+        assert 'SubmissionAiReviews' in tables
+
+        cols = {c['name'] for c in inspector.get_columns('SubmissionAiReviews')}
+        expected_cols = {
+            'id', 'submission_id', 'attempt_no', 'revision_no', 'submission_hash',
+            'status', 'provider', 'model', 'suggested_total_points', 'confidence',
+            'teacher_review_required', 'summary_for_teacher', 'skill_signals',
+            'task_reviews', 'raw_response', 'error_code', 'error_message',
+            'accepted_by_user_id', 'accepted_at', 'created_at', 'updated_at'
+        }
+        assert expected_cols.issubset(cols)
+
+        indexes = {idx['name'] for idx in inspector.get_indexes('SubmissionAiReviews')}
+        expected_indexes = {
+            'ix_SubmissionAiReviews_submission_id',
+            'ix_SubmissionAiReviews_attempt_no',
+            'ix_SubmissionAiReviews_submission_hash',
+            'ix_SubmissionAiReviews_status',
+            'ix_submission_ai_review_lookup',
+            'ix_submission_ai_review_hash'
+        }
+        assert expected_indexes.issubset(indexes)
+
+        # Test downgrade
+        migration.downgrade()
+        inspector = sa.inspect(connection)
+        assert 'SubmissionAiReviews' not in set(inspector.get_table_names())
+
