@@ -1497,6 +1497,142 @@
             </div>
         </div>
 
+        <!-- AI Review Assistant Banner -->
+        <div id="ai-review-banner" class="ai-review-banner-container mt-2 mb-3" data-submission-id="{{ submission.submission_id }}">
+            {% if ai_review and ai_review.status == 'pending' %}
+            <div class="ai-banner-card pending flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-4 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 shadow-sm animate-pulse">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center shrink-0 text-indigo-600 dark:text-indigo-400">
+                        <i class="ph-bold ph-spinner animate-spin text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold text-indigo-950 dark:text-indigo-100 flex items-center gap-2">
+                            <span>ИИ-ассистент: предпроверка в процессе</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-200/80 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">Анализ ответов</span>
+                        </div>
+                        <div class="text-xs text-indigo-800/80 dark:text-indigo-300 mt-0.5">
+                            Анализируем ответы и код ученика. Подсказки появятся здесь автоматически...
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                    <span>Обновление каждые несколько секунд</span>
+                </div>
+            </div>
+
+            {% elif ai_review and ai_review.status in ('completed', 'accepted') %}
+            <div class="ai-banner-card {{ ai_review.status }} p-4 rounded-2xl bg-gradient-to-r from-violet-50/90 via-indigo-50/80 to-purple-50/90 dark:from-violet-950/30 dark:via-indigo-950/20 dark:to-purple-950/30 border border-violet-200/80 dark:border-violet-800/40 shadow-sm">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-2.5 border-b border-violet-100 dark:border-white/5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-violet-600 flex items-center justify-center shrink-0 text-white shadow-md shadow-violet-500/20">
+                            <i class="ph-bold ph-sparkle text-lg"></i>
+                        </div>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-sm font-black text-slate-900 dark:text-white">ИИ-предпроверка работы</span>
+                                {% if ai_review.status == 'accepted' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                    <i class="ph-bold ph-check"></i> Предоценка принята
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-100 text-violet-800 dark:bg-violet-950/80 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                                    Черновик для учителя
+                                </span>
+                                {% endif %}
+                                <span class="text-xs text-slate-500 dark:text-slate-400">
+                                    Ревизия №{{ ai_review.revision_no }} ({{ ai_review.provider|title }})
+                                </span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300 mt-1">
+                                <span>Предварительный балл: <strong class="text-violet-700 dark:text-violet-400 font-bold text-sm">{{ ai_review.suggested_total_points }}</strong> б.</span>
+                                {% if ai_review.confidence is not none %}
+                                <span>Уверенность модели: <strong class="font-semibold">{{ (ai_review.confidence * 100)|round|int }}%</strong></span>
+                                {% endif %}
+                                {% if ai_review.accepted_at %}
+                                <span class="text-slate-400">Принято: {{ ai_review.accepted_at|user_dt('%d.%m.%Y %H:%M') }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 pt-2 lg:pt-0">
+                        <button type="button" id="btn-ai-apply-all" class="neo-button primary sm" style="font-size: 0.8rem; background: #6366f1; color: white;" title="Заполнить поля баллов и комментариев подсказками ИИ">
+                            <i class="ph-bold ph-arrow-circle-down"></i> Применить все подсказки
+                        </button>
+                        {% if ai_review.status != 'accepted' %}
+                        <button type="button" id="btn-ai-accept" class="neo-button accent sm" style="font-size: 0.8rem;" title="Зафиксировать принятие предоценки">
+                            <i class="ph-bold ph-check-circle"></i> Принять предоценку
+                        </button>
+                        {% endif %}
+                        <button type="button" id="btn-ai-rerun" class="neo-button ghost sm" style="font-size: 0.8rem;" title="Запросить повторный ИИ-анализ">
+                            <i class="ph-bold ph-arrows-clockwise"></i> Запустить повторно
+                        </button>
+                        <button type="button" id="btn-ai-toggle-summary" class="neo-button ghost sm text-slate-500" style="font-size: 0.8rem;" title="Свернуть / развернуть">
+                            <i class="ph-bold ph-caret-down"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {% if ai_review.summary_for_teacher or ai_review.skill_signals %}
+                <div id="ai-summary-details" class="pt-3 text-xs space-y-2">
+                    {% if ai_review.summary_for_teacher %}
+                    <div class="bg-white/80 dark:bg-dark-card/80 p-3 rounded-xl border border-violet-100 dark:border-white/5 text-slate-700 dark:text-slate-300 leading-relaxed">
+                        <strong class="text-slate-900 dark:text-white font-semibold">Резюме для учителя:</strong> {{ ai_review.summary_for_teacher }}
+                    </div>
+                    {% endif %}
+                    {% if ai_review.skill_signals %}
+                    <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span class="text-slate-500 text-[11px] font-semibold">Сигналы навыков:</span>
+                        {% for sig in ai_review.skill_signals %}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium {% if sig.status == 'mastered' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300{% elif sig.status == 'gap' %}bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300{% else %}bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200{% endif %}">
+                            {{ sig.skill_name or sig.skill_key or 'Навык' }}: {{ sig.comment or sig.status }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {% elif ai_review and ai_review.status in ('failed', 'unavailable') %}
+            <div class="ai-banner-card failed flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-3.5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400">
+                        <i class="ph-bold ph-warning-circle text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-amber-950 dark:text-amber-200">
+                            ИИ-предпроверка временно недоступна
+                        </div>
+                        <div class="text-[11px] text-amber-800/80 dark:text-amber-300 mt-0.5">
+                            {{ ai_review.error_message or 'Провайдеры ИИ не ответили вовремя. Вы можете продолжить проверку вручную или попробовать повторить.' }}
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="btn-ai-rerun" class="neo-button ghost sm shrink-0 text-xs" style="color: #b45309;">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Повторить запрос
+                </button>
+            </div>
+
+            {% elif ai_review and ai_review.status == 'dismissed' %}
+            <div class="ai-banner-card dismissed flex items-center justify-between p-2.5 px-4 rounded-xl bg-slate-50 dark:bg-dark-card border border-slate-200 dark:border-white/5 text-xs text-slate-500">
+                <span>ИИ-предпроверка скрыта</span>
+                <button type="button" id="btn-ai-rerun" class="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold">Показать / перепроверить</button>
+            </div>
+
+            {% else %}
+            <!-- No review yet; button to run on demand -->
+            <div class="ai-banner-card empty flex items-center justify-between p-3 rounded-2xl bg-slate-50/80 dark:bg-dark-card/60 border border-slate-200/80 dark:border-white/5 text-xs">
+                <div class="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                    <i class="ph-bold ph-sparkle text-violet-500 text-sm"></i>
+                    <span>ИИ-ассистент: автоматический предварительный анализ развернутых ответов и кода</span>
+                </div>
+                <button type="button" id="btn-ai-rerun" class="neo-button ghost sm" style="font-size: 0.78rem;">
+                    <i class="ph-bold ph-sparkle text-violet-600"></i> Запустить ИИ-предпроверку
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
         <div class="task-nav task-nav-grade sticky top-20 z-40 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-2.5 py-3 rounded-2xl mt-2 mb-2 bg-white/90 dark:bg-dark-card/90 backdrop-blur-xl border border-slate-200 dark:border-white/5 shadow-nav dark:shadow-nav-dark min-w-0" id="taskNavGrade">
             <span class="task-nav-label text-small font-extrabold text-slate-500 dark:text-dark-muted uppercase tracking-widest pl-2 shrink-0 hidden sm:block">Задания:</span>
             <div class="grade-task-strip-outer">
@@ -1864,6 +2000,54 @@
                                 </a>
                                 {% endif %}
                             </div>
+
+                            <!-- AI Task Suggestion Box -->
+                            {% set ai_task = ai_task_map.get(g.assignment_task.assignment_task_id) if ai_task_map else none %}
+                            {% if ai_task and ai_review and ai_review.status in ('completed', 'accepted') %}
+                            <div class="ai-task-suggestion-box mb-3 rounded-xl border border-violet-200/80 bg-violet-50/70 dark:bg-violet-950/20 dark:border-violet-800/40 p-3 shadow-xs" data-ai-task-id="{{ g.assignment_task.assignment_task_id }}">
+                                <div class="flex items-center justify-between gap-2 mb-1.5">
+                                    <div class="flex items-center gap-1.5 text-xs font-bold text-violet-800 dark:text-violet-300">
+                                        <i class="ph-bold ph-sparkle text-sm text-violet-600"></i>
+                                        <span>ИИ советует:</span>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-violet-200/80 text-violet-900 dark:bg-violet-800/60 dark:text-violet-100">
+                                            {{ ai_task.suggested_score }} из {{ g.assignment_task.max_score }} б.
+                                        </span>
+                                        {% if ai_task.confidence is defined and ai_task.confidence is not none %}
+                                        <span class="text-[10px] text-violet-600 dark:text-violet-400 font-semibold">({{ (ai_task.confidence * 100)|round|int }}%)</span>
+                                        {% endif %}
+                                    </div>
+                                    <button type="button" class="btn-apply-task-ai neo-button sm" 
+                                            data-task-id="{{ g.assignment_task.assignment_task_id }}"
+                                            data-suggested-score="{{ ai_task.suggested_score }}"
+                                            data-suggested-comment="{{ ai_task.student_feedback or '' }}"
+                                            title="Применить подсказку к этой оценке и комментарию"
+                                            style="padding: 0.2rem 0.55rem; font-size: 0.75rem; background: #7c3aed; color: #fff;">
+                                        <i class="ph-bold ph-arrow-down-left"></i> Применить
+                                    </button>
+                                </div>
+                                {% if ai_task.reasoning_for_teacher %}
+                                <div class="text-xs text-slate-700 dark:text-slate-300 mb-1.5 leading-relaxed bg-white/80 dark:bg-dark-card/60 p-2 rounded-lg border border-violet-100 dark:border-white/5">
+                                    <strong class="text-slate-900 dark:text-white font-semibold">Обоснование:</strong> {{ ai_task.reasoning_for_teacher }}
+                                </div>
+                                {% endif %}
+                                {% if ai_task.student_feedback %}
+                                <div class="text-xs text-slate-600 dark:text-slate-400 leading-snug flex items-start gap-1">
+                                    <span class="text-slate-500 font-semibold shrink-0">Отзыв ученику:</span>
+                                    <span class="italic text-slate-800 dark:text-slate-200">«{{ ai_task.student_feedback }}»</span>
+                                </div>
+                                {% endif %}
+                                {% if ai_task.issues or ai_task.strengths %}
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    {% for str_item in (ai_task.strengths or []) %}
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">✓ {{ str_item }}</span>
+                                    {% endfor %}
+                                    {% for iss in (ai_task.issues or []) %}
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300">⚠ {{ iss }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
         
                             <!-- Score Input Group -->
                             <div class="score-input-group" style="margin-top: 0.5rem;">
@@ -3355,6 +3539,152 @@
                 notifyGrade('✕ Ошибка сети', 'error');
             });
         });
+
+        // ==========================================
+        // AI Review Assistant Interactions
+        // ==========================================
+        function applyAiTaskSuggestion(btn, notify) {
+            if (!btn) return;
+            var taskId = btn.getAttribute('data-task-id');
+            var suggestedScore = btn.getAttribute('data-suggested-score');
+            var suggestedComment = btn.getAttribute('data-suggested-comment') || '';
+
+            var scoreInput = document.querySelector('input[name="score_' + taskId + '"]');
+            if (scoreInput && suggestedScore !== null && suggestedScore !== '') {
+                scoreInput.value = suggestedScore;
+                scoreInput.dispatchEvent(new Event('input', { bubbles: true }));
+                scoreInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            var commentInput = document.querySelector('textarea[name="comment_' + taskId + '"]');
+            if (commentInput && suggestedComment) {
+                commentInput.value = suggestedComment;
+                commentInput.dispatchEvent(new Event('input', { bubbles: true }));
+                commentInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            if (notify) {
+                notifyGrade('✓ Подсказка ИИ применена к заданию', 'success');
+            }
+        }
+
+        document.querySelectorAll('.btn-apply-task-ai').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                applyAiTaskSuggestion(this, true);
+            });
+        });
+
+        var btnApplyAll = document.getElementById('btn-ai-apply-all');
+        if (btnApplyAll) {
+            btnApplyAll.addEventListener('click', function() {
+                var taskBtns = document.querySelectorAll('.btn-apply-task-ai');
+                if (!taskBtns.length) {
+                    notifyGrade('Нет доступных подсказок ИИ для применения', 'info');
+                    return;
+                }
+                taskBtns.forEach(function(btn) {
+                    applyAiTaskSuggestion(btn, false);
+                });
+                notifyGrade('✓ Все подсказки ИИ перенесены в поля формы!', 'success');
+            });
+        }
+
+        var btnAcceptAi = document.getElementById('btn-ai-accept');
+        if (btnAcceptAi) {
+            btnAcceptAi.addEventListener('click', function() {
+                btnAcceptAi.disabled = true;
+                var csrf = getGradePageCsrfToken();
+                fetch('{{ url_for("assignments.api_submission_ai_review_accept", submission_id=submission.submission_id) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        var taskBtns = document.querySelectorAll('.btn-apply-task-ai');
+                        taskBtns.forEach(function(btn) { applyAiTaskSuggestion(btn, false); });
+                        notifyGrade('✓ Предоценка принята преподавателем!', 'success');
+                        window.setTimeout(function() { location.reload(); }, 900);
+                    } else {
+                        notifyGrade('✕ ' + (data.error || 'Не удалось принять предоценку'), 'error');
+                        btnAcceptAi.disabled = false;
+                    }
+                })
+                .catch(function() {
+                    notifyGrade('✕ Ошибка сети при принятии предоценки', 'error');
+                    btnAcceptAi.disabled = false;
+                });
+            });
+        }
+
+        document.querySelectorAll('#btn-ai-rerun').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                btn.disabled = true;
+                var csrf = getGradePageCsrfToken();
+                notifyGrade('Запуск повторной ИИ-предпроверки...', 'info');
+                fetch('{{ url_for("assignments.api_submission_ai_review_rerun", submission_id=submission.submission_id) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        notifyGrade('✓ ИИ-предпроверка успешно запущена!', 'success');
+                        window.setTimeout(function() { location.reload(); }, 800);
+                    } else {
+                        notifyGrade('✕ ' + (data.error || 'Не удалось запустить ИИ-предпроверку'), 'error');
+                        btn.disabled = false;
+                    }
+                })
+                .catch(function() {
+                    notifyGrade('✕ Ошибка сети при запросе к ИИ', 'error');
+                    btn.disabled = false;
+                });
+            });
+        });
+
+        var btnToggleSummary = document.getElementById('btn-ai-toggle-summary');
+        if (btnToggleSummary) {
+            btnToggleSummary.addEventListener('click', function() {
+                var details = document.getElementById('ai-summary-details');
+                if (details) {
+                    details.classList.toggle('hidden');
+                }
+            });
+        }
+
+        {% if ai_review and ai_review.status == 'pending' %}
+        (function() {
+            var pollCount = 0;
+            var maxPolls = 25; // ~75-80 seconds
+            var pollTimer = window.setInterval(function() {
+                pollCount++;
+                if (pollCount > maxPolls) {
+                    window.clearInterval(pollTimer);
+                    return;
+                }
+                fetch('{{ url_for("assignments.api_submission_ai_review_get", submission_id=submission.submission_id) }}', {
+                    credentials: 'same-origin'
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success && data.ai_review && data.ai_review.status !== 'pending') {
+                        window.clearInterval(pollTimer);
+                        location.reload();
+                    }
+                })
+                .catch(function() {});
+            }, 3500);
+        })();
+        {% endif %}
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
     {% include '_partials/canvas_viewer_modal.html' %}

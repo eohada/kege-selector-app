@@ -2,6 +2,7 @@
 Маршруты для системы заданий и сдачи работ
 """
 import logging
+from typing import Optional, Any, Dict, List
 from datetime import datetime, timedelta, timezone
 from flask import render_template, request, jsonify, flash, redirect, url_for, current_app, session
 from flask_login import login_required, current_user
@@ -4746,6 +4747,14 @@ def submission_submit(submission_id):
         except Exception:
             logger.warning('on_submission_status_changed after submission_submit failed', exc_info=True)
 
+        try:
+            from app.assignments.ai_review_service import trigger_ai_review_async, submission_has_ai_eligible_tasks, get_ai_review_config
+            cfg = get_ai_review_config()
+            if cfg["enabled"] and submission_has_ai_eligible_tasks(submission):
+                trigger_ai_review_async(submission.submission_id)
+        except Exception as ai_err:
+            logger.warning(f"Could not trigger background AI review for submission {submission_id}: {ai_err}")
+
         if creator_id:
             notify_user(
                 creator_id,
@@ -5112,6 +5121,19 @@ def submission_grade_view(submission_id):
     reviewed_count = sum(1 for item in tasks_view if _is_task_reviewed(item))
     review_total = len(tasks_view)
     review_percent = round((reviewed_count / review_total * 100) if review_total else 0)
+    from core.db_models import SubmissionAiReview
+    latest_ai_review = (
+        SubmissionAiReview.query
+        .filter_by(submission_id=submission_id)
+        .order_by(SubmissionAiReview.revision_no.desc())
+        .first()
+    )
+    ai_task_map = {}
+    if latest_ai_review and latest_ai_review.task_reviews:
+        for tr in latest_ai_review.task_reviews:
+            if isinstance(tr, dict) and 'assignment_task_id' in tr:
+                ai_task_map[tr['assignment_task_id']] = tr
+
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
@@ -5130,7 +5152,202 @@ def submission_grade_view(submission_id):
                          unread_task_ids=sorted(unread_task_ids),
                          reviewed_count=reviewed_count,
                          review_total=review_total,
-                         review_percent=review_percent)
+                         review_percent=review_percent,
+                         ai_review=latest_ai_review,
+                         ai_task_map=ai_task_map)
+
+
+def _serialize_ai_review(ai_review: Optional[Any]) -> Optional[dict]:
+    if not ai_review:
+        return None
+    return {
+        "id": ai_review.id,
+        "submission_id": ai_review.submission_id,
+        "revision_no": ai_review.revision_no,
+        "status": ai_review.status,
+        "provider": ai_review.provider,
+        "model": ai_review.model,
+        "suggested_total_points": ai_review.suggested_total_points,
+        "confidence": ai_review.confidence,
+        "teacher_review_required": ai_review.teacher_review_required,
+        "summary_for_teacher": ai_review.summary_for_teacher,
+        "skill_signals": ai_review.skill_signals or [],
+        "task_reviews": ai_review.task_reviews or [],
+        "error_code": ai_review.error_code,
+        "error_message": ai_review.error_message,
+        "accepted_by_user_id": ai_review.accepted_by_user_id,
+        "accepted_at": ai_review.accepted_at.isoformat() if ai_review.accepted_at else None,
+        "created_at": ai_review.created_at.isoformat() if ai_review.created_at else None,
+    }
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/ai-review', methods=['GET'])
+@login_required
+def api_submission_ai_review_get(submission_id):
+    """Получение текущей ИИ-предпроверки для преподавателя"""
+    if current_user.is_student() or current_user.is_parent() or not has_permission(current_user, 'assignment.grade'):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    submission = Submission.query.get_or_404(submission_id)
+    assignment = submission.assignment
+    if not assignment:
+        return jsonify({'success': False, 'error': 'Работа не найдена'}), 404
+
+    from app.utils.relationship_scope import _resolve_active_user
+    active_user = _resolve_active_user(current_user)
+    cur_user_id = active_user.id if active_user else None
+    scope = get_user_scope(active_user or current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != cur_user_id and not _can_current_user_access_submission(submission):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    from core.db_models import SubmissionAiReview
+    ai_review = (
+        SubmissionAiReview.query
+        .filter_by(submission_id=submission_id)
+        .order_by(SubmissionAiReview.revision_no.desc())
+        .first()
+    )
+    return jsonify({
+        'success': True,
+        'ai_review': _serialize_ai_review(ai_review)
+    })
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/ai-review/accept', methods=['POST'])
+@login_required
+def api_submission_ai_review_accept(submission_id):
+    """Принятие ИИ-предпроверки преподавателем (с фиксацией аудита)"""
+    if current_user.is_student() or current_user.is_parent() or not has_permission(current_user, 'assignment.grade'):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    submission = Submission.query.get_or_404(submission_id)
+    assignment = submission.assignment
+    if not assignment:
+        return jsonify({'success': False, 'error': 'Работа не найдена'}), 404
+
+    from app.utils.relationship_scope import _resolve_active_user
+    active_user = _resolve_active_user(current_user)
+    cur_user_id = active_user.id if active_user else None
+    scope = get_user_scope(active_user or current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != cur_user_id and not _can_current_user_access_submission(submission):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    from core.db_models import SubmissionAiReview
+    ai_review = (
+        SubmissionAiReview.query
+        .filter_by(submission_id=submission_id)
+        .order_by(SubmissionAiReview.revision_no.desc())
+        .first()
+    )
+    if not ai_review:
+        return jsonify({'success': False, 'error': 'Предпроверка не найдена'}), 404
+
+    ai_review.status = 'accepted'
+    ai_review.accepted_by_user_id = current_user.id
+    ai_review.accepted_at = utc_now()
+    db.session.commit()
+
+    audit_logger.log(
+        action='accept_ai_review',
+        entity='SubmissionAiReview',
+        entity_id=ai_review.id,
+        status='success',
+        metadata={
+            'submission_id': submission_id,
+            'revision_no': ai_review.revision_no,
+            'suggested_total_points': ai_review.suggested_total_points
+        }
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'ИИ-предпроверка успешно принята преподавателем',
+        'ai_review': _serialize_ai_review(ai_review)
+    })
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/ai-review/rerun', methods=['POST'])
+@login_required
+def api_submission_ai_review_rerun(submission_id):
+    """Повторный запуск ИИ-предпроверки преподавателем (создаёт новую ревизию)"""
+    if current_user.is_student() or current_user.is_parent() or not has_permission(current_user, 'assignment.grade'):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    submission = Submission.query.get_or_404(submission_id)
+    assignment = submission.assignment
+    if not assignment:
+        return jsonify({'success': False, 'error': 'Работа не найдена'}), 404
+
+    from app.utils.relationship_scope import _resolve_active_user
+    active_user = _resolve_active_user(current_user)
+    cur_user_id = active_user.id if active_user else None
+    scope = get_user_scope(active_user or current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != cur_user_id and not _can_current_user_access_submission(submission):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    from app.assignments.ai_review_service import execute_review_pipeline
+    ai_review = execute_review_pipeline(submission, is_manual_rerun=True)
+
+    audit_logger.log(
+        action='rerun_ai_review',
+        entity='SubmissionAiReview',
+        entity_id=ai_review.id,
+        status='success',
+        metadata={
+            'submission_id': submission_id,
+            'revision_no': ai_review.revision_no
+        }
+    )
+
+    return jsonify({
+        'success': True,
+        'message': 'ИИ-предпроверка выполнена повторно',
+        'ai_review': _serialize_ai_review(ai_review)
+    })
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/ai-review/dismiss', methods=['POST'])
+@login_required
+def api_submission_ai_review_dismiss(submission_id):
+    """Скрытие/отклонение ИИ-предпроверки преподавателем"""
+    if current_user.is_student() or current_user.is_parent() or not has_permission(current_user, 'assignment.grade'):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    submission = Submission.query.get_or_404(submission_id)
+    assignment = submission.assignment
+    if not assignment:
+        return jsonify({'success': False, 'error': 'Работа не найдена'}), 404
+
+    from app.utils.relationship_scope import _resolve_active_user
+    active_user = _resolve_active_user(current_user)
+    cur_user_id = active_user.id if active_user else None
+    scope = get_user_scope(active_user or current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != cur_user_id and not _can_current_user_access_submission(submission):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    from core.db_models import SubmissionAiReview
+    ai_review = (
+        SubmissionAiReview.query
+        .filter_by(submission_id=submission_id)
+        .order_by(SubmissionAiReview.revision_no.desc())
+        .first()
+    )
+    if ai_review:
+        ai_review.status = 'dismissed'
+        db.session.commit()
+        audit_logger.log(
+            action='dismiss_ai_review',
+            entity='SubmissionAiReview',
+            entity_id=ai_review.id,
+            status='success',
+            metadata={'submission_id': submission_id}
+        )
+
+    return jsonify({
+        'success': True,
+        'message': 'Предпроверка скрыта',
+        'ai_review': _serialize_ai_review(ai_review)
+    })
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/save-comments', methods=['POST'])

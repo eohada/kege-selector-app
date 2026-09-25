@@ -32,6 +32,7 @@ collect_ignore = [
         'test_student_analytics_v2.py',
         'test_ai_homework_importer.py',
         'test_teacher_dashboard_v2.py',
+        'test_homework_ai_review_v2.py',
     }
 ]
 

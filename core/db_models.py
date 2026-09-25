@@ -2839,6 +2839,52 @@ class TeacherQuickComment(db.Model):
     )
 
 
+class SubmissionAiReview(db.Model):
+    """
+    Результат серверной ИИ-предпроверки сданной работы.
+    Ассистирует преподавателю, не изменяет итоговые баллы и не публикует оценку без подтверждения.
+    """
+    __tablename__ = 'SubmissionAiReviews'
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id', ondelete='CASCADE'), nullable=False, index=True)
+    attempt_no = db.Column(db.Integer, nullable=False, default=1, index=True)
+    revision_no = db.Column(db.Integer, nullable=False, default=1)
+    submission_hash = db.Column(db.String(64), nullable=False, index=True)
+
+    status = db.Column(db.String(32), nullable=False, default='pending', index=True)  # pending | completed | failed | accepted | dismissed | unavailable
+    provider = db.Column(db.String(32), nullable=True)  # gemini | openrouter | none
+    model = db.Column(db.String(100), nullable=True)
+
+    suggested_total_points = db.Column(db.Float, nullable=True)
+    confidence = db.Column(db.Float, nullable=True)
+    teacher_review_required = db.Column(db.Boolean, default=True, nullable=False)
+    summary_for_teacher = db.Column(db.Text, nullable=True)
+
+    skill_signals = db.Column(db.JSON, nullable=True)
+    task_reviews = db.Column(db.JSON, nullable=True)
+    raw_response = db.Column(db.JSON, nullable=True)
+    error_code = db.Column(db.String(64), nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+
+    accepted_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    accepted_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    submission = db.relationship('Submission', backref=db.backref('ai_reviews', lazy=True, cascade='all, delete-orphan', order_by='SubmissionAiReview.revision_no.desc()'))
+    accepted_by = db.relationship('User', foreign_keys=[accepted_by_user_id])
+
+    __table_args__ = (
+        Index('ix_submission_ai_review_lookup', 'submission_id', 'revision_no', unique=True),
+        Index('ix_submission_ai_review_hash', 'submission_id', 'submission_hash'),
+    )
+
+    def __repr__(self):
+        return f'<SubmissionAiReview id={self.id} sub={self.submission_id} rev={self.revision_no} status={self.status}>'
+
+
 class GradebookEntry(db.Model):
     """
     Запись журнала оценок (единая сущность).
