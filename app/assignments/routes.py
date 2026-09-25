@@ -18,7 +18,13 @@ from app.models import (
     TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent, AnalyticsEvent, Course, TeacherQuickComment
 )
 from app.students.utils import get_sorted_assignments
-from core.db_models import SubmissionComment, SubmissionCommentThreadRead, MOSCOW_TZ
+from core.db_models import (
+    SubmissionComment,
+    SubmissionCommentThreadRead,
+    MOSCOW_TZ,
+    CodeWorkspaceVersion,
+    CodePlaybackTrace,
+)
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import utc_now
 from app.utils.datetime_utc import deadline_from_form_to_utc, effective_timezone_name
@@ -3197,6 +3203,30 @@ def assignment_edit(assignment_id: int):
     )
 
 
+def _safe_delete_assignment_task(at: AssignmentTask) -> None:
+    """Безопасное удаление привязки задачи к работе с предварительной очисткой связей ответов и трейсов."""
+    with db.session.no_autoflush:
+        ans_ids = [ans.answer_id for ans in (at.answers or []) if ans and ans.answer_id]
+        if ans_ids:
+            CodeWorkspaceVersion.query.filter(CodeWorkspaceVersion.answer_id.in_(ans_ids)).update(
+                {'answer_id': None}, synchronize_session=False
+            )
+            CodePlaybackTrace.query.filter(CodePlaybackTrace.answer_id.in_(ans_ids)).update(
+                {'answer_id': None}, synchronize_session=False
+            )
+            AnalyticsEvent.query.filter(AnalyticsEvent.answer_id.in_(ans_ids)).update(
+                {'answer_id': None}, synchronize_session=False
+            )
+        if at.assignment_task_id:
+            SubmissionComment.query.filter_by(assignment_task_id=at.assignment_task_id).update(
+                {'assignment_task_id': None}, synchronize_session=False
+            )
+            SubmissionCommentThreadRead.query.filter_by(assignment_task_id=at.assignment_task_id).delete(
+                synchronize_session=False
+            )
+        db.session.delete(at)
+
+
 @assignments_bp.route('/assignments/<int:assignment_id>/update', methods=['POST', 'PUT'])
 @login_required
 @check_access('assignment.create')
@@ -3260,12 +3290,31 @@ def assignment_update(assignment_id: int):
         if isinstance(tasks_data, list) and len(tasks_data) > 0:
             tasks_data = _expand_tasks_data_for_triplets(tasks_data)
         if isinstance(tasks_data, list) and len(tasks_data) > 0:
-            new_task_ids = [t.get('task_id') for t in tasks_data if t.get('task_id')]
-            existing_by_task_id = {at.task_id: at for at in (assignment.tasks or [])}
+            new_task_ids = set()
+            for t in tasks_data:
+                if isinstance(t, dict) and t.get('task_id') is not None:
+                    try:
+                        new_task_ids.add(int(t['task_id']))
+                    except (ValueError, TypeError):
+                        new_task_ids.add(t['task_id'])
+
+            existing_by_task_id = {}
+            for at in (assignment.tasks or []):
+                if at.task_id is not None:
+                    try:
+                        existing_by_task_id[int(at.task_id)] = at
+                    except (ValueError, TypeError):
+                        existing_by_task_id[at.task_id] = at
+
             for idx, t_data in enumerate(tasks_data):
-                task_id = t_data.get('task_id')
-                if not task_id:
+                raw_tid = t_data.get('task_id')
+                if not raw_tid:
                     continue
+                try:
+                    task_id = int(raw_tid)
+                except (ValueError, TypeError):
+                    task_id = raw_tid
+
                 req_manual = t_data.get('requires_manual_grading', False)
                 if task_id not in existing_by_task_id:
                     task = Tasks.query.get(task_id)
@@ -3296,11 +3345,20 @@ def assignment_update(assignment_id: int):
                     if task:
                         has_ans = bool((task.answer or '').strip()) or bool((at.answer_override or '').strip())
                         at.requires_manual_grading = _requires_manual_from_template(task, has_ans, explicit_override=req_manual)
+
             for at in list(assignment.tasks or []):
-                if at.task_id not in new_task_ids:
-                    db.session.delete(at)
+                try:
+                    at_tid = int(at.task_id)
+                except (ValueError, TypeError):
+                    at_tid = at.task_id
+                if at_tid not in new_task_ids:
+                    _safe_delete_assignment_task(at)
+
             db.session.flush()
-            new_total = sum(at.max_score for at in existing_by_task_id.values()) or 1
+            new_total = sum(
+                at.max_score for at in existing_by_task_id.values()
+                if at in db.session and at not in db.session.deleted
+            ) or 1
         else:
             new_total = sum(at.max_score for at in (assignment.tasks or [])) or 1
 

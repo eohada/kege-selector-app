@@ -753,9 +753,9 @@ def _purge_task_dependencies(task_id: int) -> None:
     BlacklistTasks.query.filter_by(task_fk=task_id).delete(synchronize_session=False)
     for lt in LessonTask.query.filter_by(task_id=task_id).all():
         db.session.delete(lt)
-    TemplateTask.query.filter_by(task_id=task_id).delete(synchronize_session=False)
+    from app.assignments.routes import _safe_delete_assignment_task
     for at in AssignmentTask.query.filter_by(task_id=task_id).all():
-        db.session.delete(at)
+        _safe_delete_assignment_task(at)
     TaskReview.query.filter_by(task_id=task_id).delete(synchronize_session=False)
     TaskSolution.query.filter_by(task_id=task_id).delete(synchronize_session=False)
     StudentTaskSeen.query.filter_by(task_id=task_id).delete(synchronize_session=False)

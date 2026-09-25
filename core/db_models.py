@@ -2695,7 +2695,7 @@ class CodePlaybackTrace(db.Model):
     student_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, index=True)
-    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id'), nullable=True, index=True)
+    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id', ondelete='SET NULL'), nullable=True, index=True)
 
     frames = db.Column(db.JSON, nullable=False, default=list)  # [{"ts":..., "code":..., "caret":[s,e], "action":...}, ...]
     meta = db.Column(db.JSON, nullable=True)
@@ -2728,7 +2728,7 @@ class CodeWorkspaceVersion(db.Model):
     student_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, index=True)
-    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id'), nullable=True, index=True)
+    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id', ondelete='SET NULL'), nullable=True, index=True)
 
     code = db.Column(db.Text, nullable=False, default='')
     answer = db.Column(db.Text, nullable=True)
@@ -2786,7 +2786,7 @@ class SubmissionComment(db.Model):
     comment_id = db.Column(db.Integer, primary_key=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
-    assignment_task_id = db.Column(db.Integer, db.ForeignKey('AssignmentTasks.assignment_task_id'), nullable=True)
+    assignment_task_id = db.Column(db.Integer, db.ForeignKey('AssignmentTasks.assignment_task_id', ondelete='SET NULL'), nullable=True)
     
     text = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False, nullable=False)

@@ -2074,6 +2074,24 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not add assignment_task_id to {comments_table}: {e}")
                     db.session.rollback()
 
+            if is_postgres:
+                fk_fixes = [
+                    ('CodeWorkspaceVersions', 'CodeWorkspaceVersions_answer_id_fkey', 'answer_id', 'Answers', 'answer_id'),
+                    ('CodePlaybackTraces', 'CodePlaybackTraces_answer_id_fkey', 'answer_id', 'Answers', 'answer_id'),
+                    ('SubmissionComments', 'SubmissionComments_assignment_task_id_fkey', 'assignment_task_id', 'AssignmentTasks', 'assignment_task_id'),
+                ]
+                for tbl, fk_name, col, ref_tbl, ref_col in fk_fixes:
+                    t_real = _resolve_table_name(table_names, tbl)
+                    ref_real = _resolve_table_name(table_names, ref_tbl)
+                    if t_real and ref_real:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{t_real}" DROP CONSTRAINT IF EXISTS "{fk_name}"'))
+                            db.session.execute(text(f'ALTER TABLE "{t_real}" ADD CONSTRAINT "{fk_name}" FOREIGN KEY ({col}) REFERENCES "{ref_real}"({ref_col}) ON DELETE SET NULL'))
+                            db.session.commit()
+                        except Exception as e:
+                            db.session.rollback()
+                            logger.debug(f"FK constraint update note for {fk_name}: {e}")
+
             try:
                 from core.db_models import SubmissionCommentThreadRead
                 inspector_reads = inspect(db.engine)

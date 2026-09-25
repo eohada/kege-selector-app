@@ -399,3 +399,143 @@ def test_assignment_edit_and_update_v2(client, role_users, app):
         assert refreshed.submissions[0].max_score == 8
 
 
+def test_assignment_update_safely_handles_code_workspace_and_answer_dependencies(app, client):
+    """
+    Проверяет, что при обновлении работы (замена/удаление заданий) строки Answers,
+    на которые ссылаются CodeWorkspaceVersions, CodePlaybackTraces и SubmissionComments,
+    не вызывают ForeignKeyViolation / Query-invoked autoflush error.
+    """
+    import uuid
+    from app.models import db, User, Student, Assignment, AssignmentTask, Submission, Answer
+    from core.db_models import CodeWorkspaceVersion, CodePlaybackTrace, SubmissionComment, Tasks
+
+    with app.app_context():
+        tutor = User(username=f"tutor_dep_{uuid.uuid4().hex[:6]}", role="tutor")
+        tutor.set_password("pass123")
+        db.session.add(tutor)
+        db.session.flush()
+
+        st_user = User(username=f"student_dep_{uuid.uuid4().hex[:6]}", role="student")
+        st_user.set_password("pass123")
+        db.session.add(st_user)
+        db.session.flush()
+
+        student = Student(user_id=st_user.id, name="Test Student Dep")
+        db.session.add(student)
+        db.session.flush()
+
+        t1 = Tasks(task_number=1, site_task_id="dep1", content_html="Task Dep 1", answer="42", max_score=1, created_by_id=tutor.id)
+        t2 = Tasks(task_number=2, site_task_id="dep2", content_html="Task Dep 2", answer="84", max_score=2, created_by_id=tutor.id)
+        t3 = Tasks(task_number=3, site_task_id="dep3", content_html="Task Dep 3", answer="126", max_score=3, created_by_id=tutor.id)
+        db.session.add_all([t1, t2, t3])
+        db.session.flush()
+
+        from core.db_models import utc_now
+        from datetime import timedelta
+
+        assign = Assignment(
+            title="Работа с ответами ученика",
+            created_by_id=tutor.id,
+            assignment_type="homework",
+            deadline=utc_now() + timedelta(days=2),
+        )
+        db.session.add(assign)
+        db.session.flush()
+
+        at1 = AssignmentTask(assignment_id=assign.assignment_id, task_id=t1.task_id, order_index=0, max_score=1)
+        at2 = AssignmentTask(assignment_id=assign.assignment_id, task_id=t2.task_id, order_index=1, max_score=2)
+        db.session.add_all([at1, at2])
+        db.session.flush()
+
+        sub = Submission(
+            assignment_id=assign.assignment_id,
+            student_id=student.student_id,
+            status="SUBMITTED",
+            max_score=3,
+        )
+        db.session.add(sub)
+        db.session.flush()
+
+        ans1 = Answer(
+            submission_id=sub.submission_id,
+            assignment_task_id=at1.assignment_task_id,
+            value="42",
+            student_code="print('hello')",
+        )
+        db.session.add(ans1)
+        db.session.flush()
+
+        cwv = CodeWorkspaceVersion(
+            context_type="submission_task",
+            context_id=sub.submission_id,
+            task_id=t1.task_id,
+            student_id=student.student_id,
+            student_user_id=st_user.id,
+            answer_id=ans1.answer_id,
+            code="print('hello')",
+        )
+        db.session.add(cwv)
+
+        cpt = CodePlaybackTrace(
+            context_type="submission_task",
+            context_id=sub.submission_id,
+            task_id=t1.task_id,
+            student_id=student.student_id,
+            student_user_id=st_user.id,
+            answer_id=ans1.answer_id,
+            frames=[{"ts": 1, "code": "print('hello')"}],
+        )
+        db.session.add(cpt)
+
+        comm = SubmissionComment(
+            submission_id=sub.submission_id,
+            author_id=tutor.id,
+            assignment_task_id=at1.assignment_task_id,
+            text="Молодец!",
+        )
+        db.session.add(comm)
+        db.session.commit()
+
+        assign_id = assign.assignment_id
+        t2_id = t2.task_id
+        t3_id = t3.task_id
+        tutor_username = tutor.username
+        cwv_id = cwv.version_id
+        cpt_id = cpt.trace_id
+        comm_id = comm.comment_id
+
+    # Входим под преподавателем
+    with client.session_transaction() as sess:
+        sess['_user_id'] = str(User.query.filter_by(username=tutor_username).first().id)
+        sess['_fresh'] = True
+
+    # Преподаватель редактирует работу: удаляет задание 1 (которое имеет ответ и трейсы кода)
+    # и оставляет задание 2, а также добавляет задание 3
+    payload = {
+        'title': 'Работа после замены задания',
+        'tasks': [
+            {'task_id': t2_id, 'max_score': 2},
+            {'task_id': t3_id, 'max_score': 3},
+        ],
+    }
+    resp = client.post(f'/assignments/{assign_id}/update', json=payload)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success'] is True
+
+    with app.app_context():
+        # Проверяем, что CodeWorkspaceVersion и CodePlaybackTrace не удалены, а их answer_id отвязан (NULL)
+        refreshed_cwv = CodeWorkspaceVersion.query.get(cwv_id)
+        assert refreshed_cwv is not None
+        assert refreshed_cwv.answer_id is None
+
+        refreshed_cpt = CodePlaybackTrace.query.get(cpt_id)
+        assert refreshed_cpt is not None
+        assert refreshed_cpt.answer_id is None
+
+        refreshed_comm = SubmissionComment.query.get(comm_id)
+        assert refreshed_comm is not None
+        assert refreshed_comm.assignment_task_id is None
+
+
+

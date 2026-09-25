@@ -1995,24 +1995,42 @@ async function createCustomTask(event) {
     show3DToast(attachedIdx !== null ? 'Задание обновлено в работе' : (editId ? 'Изменения задания сохранены' : 'Задание сохранено в вашем банке и добавлено в работу'));
     if (typeof loadBankTasks === 'function') loadBankTasks();
   } catch (error) {
-    show3DToast(error.message || 'Ошибка сохранения задания');
+    show3DToast(error.message || 'Ошибка сохранения задания', null, 'error');
   } finally {
     submitBtn.disabled = false;
   }
 }
 
 /* --- 3D TOAST HELPER (BOOSTUDY UI CANON) --- */
-function show3DToast(message, redirectUrl = null) {
+function show3DToast(message, redirectUrl = null, type = 'success') {
   let toast = document.getElementById('boostudy-3d-toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'boostudy-3d-toast';
-    toast.className = 'bg-emerald-500 text-white border-2 border-emerald-700 shadow-[0_4px_0_#047857] rounded-2xl p-4 font-black flex items-center gap-3 fixed bottom-6 right-6 z-50 transition-all transform duration-300';
     document.body.appendChild(toast);
   }
-  toast.innerHTML = `<i class="ph-bold ph-check-circle text-xl"></i> <span>${message}</span>`;
+  let bgClass, borderClass, shadowClass, iconHtml;
+  if (type === 'error') {
+    bgClass = 'bg-rose-600';
+    borderClass = 'border-rose-800';
+    shadowClass = 'shadow-[0_4px_0_#9f1239]';
+    iconHtml = '<i class="ph-bold ph-warning-circle text-xl flex-shrink-0"></i>';
+  } else if (type === 'warning') {
+    bgClass = 'bg-amber-500';
+    borderClass = 'border-amber-700';
+    shadowClass = 'shadow-[0_4px_0_#b45309]';
+    iconHtml = '<i class="ph-bold ph-warning text-xl flex-shrink-0"></i>';
+  } else {
+    bgClass = 'bg-emerald-500';
+    borderClass = 'border-emerald-700';
+    shadowClass = 'shadow-[0_4px_0_#047857]';
+    iconHtml = '<i class="ph-bold ph-check-circle text-xl flex-shrink-0"></i>';
+  }
+  toast.className = `${bgClass} text-white border-2 ${borderClass} ${shadowClass} rounded-2xl p-4 font-black flex items-center gap-3 fixed bottom-6 right-6 z-50 transition-all transform duration-300 max-w-lg text-xs sm:text-sm`;
+  toast.innerHTML = `${iconHtml} <span>${message}</span>`;
   toast.classList.remove('hidden', 'opacity-0', 'translate-y-4');
 
+  const duration = (type === 'error') ? 5000 : 1500;
   setTimeout(() => {
     if (redirectUrl) {
       window.location.href = redirectUrl;
@@ -2020,7 +2038,7 @@ function show3DToast(message, redirectUrl = null) {
       toast.classList.add('opacity-0', 'translate-y-4');
       setTimeout(() => toast.classList.add('hidden'), 300);
     }
-  }, 1500);
+  }, duration);
 }
 
 async function handleFetchTasksByIds() {
@@ -2468,10 +2486,10 @@ async function submitAssignmentForm() {
         show3DToast('Работа создана и отправлена ученикам!', '/assignments');
       }
     } else {
-      show3DToast(data.error || data.message || (pageData.isEditMode ? 'Ошибка сохранения работы' : 'Ошибка создания работы'));
+      show3DToast(data.error || data.message || (pageData.isEditMode ? 'Ошибка сохранения работы' : 'Ошибка создания работы'), null, 'error');
     }
   } catch (e) {
-    show3DToast('Ошибка соединения при отправке работы');
+    show3DToast('Ошибка соединения при отправке работы', null, 'error');
   }
 }
 
