@@ -40,6 +40,12 @@ def lesson_storage_to_utc(dt: datetime | None) -> datetime | None:
     if dt is None:
         return None
     if dt.tzinfo is None:
+        try:
+            from app import db
+            if db.engine.dialect.name == 'sqlite':
+                return dt.replace(tzinfo=UTC)
+        except Exception:
+            pass
         return dt.replace(tzinfo=LEGACY_STORAGE_TZ).astimezone(UTC)
     return dt.astimezone(UTC)
 
@@ -47,7 +53,20 @@ def lesson_storage_to_utc(dt: datetime | None) -> datetime | None:
 def parse_local_lesson_datetime(date_str: str, time_str: str, timezone_name_value: str | None) -> datetime:
     """Преобразовать введённые человеком локальные дату/время в UTC для БД."""
     tz = timezone_from_name(timezone_name_value)
-    wall_time = datetime.strptime(f'{date_str} {time_str}', '%Y-%m-%d %H:%M')
+    d = (date_str or '').strip()
+    t = (time_str or '12:00').strip()
+    if len(t) > 5:
+        t = t[:5]
+    if '.' in d:
+        try:
+            wall_time = datetime.strptime(f'{d} {t}', '%d.%m.%Y %H:%M')
+        except ValueError:
+            wall_time = datetime.strptime(f'{d} {t}', '%Y-%m-%d %H:%M')
+    else:
+        try:
+            wall_time = datetime.strptime(f'{d} {t}', '%Y-%m-%d %H:%M')
+        except ValueError:
+            wall_time = datetime.strptime(f'{d} {t}', '%d.%m.%Y %H:%M')
     return wall_time.replace(tzinfo=tz).astimezone(UTC)
 
 

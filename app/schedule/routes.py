@@ -294,12 +294,18 @@ def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int,
     # Lesson.lesson_date is stored as naive Moscow wall time, while the
     # comparison below is UTC-aware. Filtering by UTC values in SQL would
     # silently miss the same lesson in Tomsk and other user time zones.
-    q = Lesson.query.filter(Lesson.student_id == student_id, Lesson.status != 'cancelled')
+    q = Lesson.query.filter(
+        Lesson.student_id == student_id,
+        Lesson.status != 'cancelled',
+        Lesson.lesson_date.isnot(None),
+    )
     if exclude_lesson_id:
         q = q.filter(Lesson.lesson_id != exclude_lesson_id)
 
     candidates = q.all()
     for l in candidates:
+        if not l.lesson_date:
+            continue
         if _is_lesson_test(l):
             continue
         l_start = lesson_storage_to_utc(l.lesson_date)
@@ -406,6 +412,8 @@ def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int
 
     candidates = q.all()
     for l in candidates:
+        if not l.lesson_date:
+            continue
         l_start = l.lesson_date
         l_end = l.lesson_date + timedelta(minutes=int(l.duration or 60))
         if (l_start < end_dt) and (start_dt < l_end):
@@ -1806,7 +1814,7 @@ def schedule_export_ics():
         f"X-WR-TIMEZONE:{export_tzid}",
     ]
     for l in lessons:
-        if not l.student:
+        if not l.student or not l.lesson_date:
             continue
         dt_start_local = _dt_to_ics_local(l.lesson_date, export_tzid)
         dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tzid)
@@ -1868,7 +1876,7 @@ def schedule_export_ics_by_token(token: str):
         f"X-WR-TIMEZONE:{export_tzid}",
     ]
     for l in lessons:
-        if not l.student:
+        if not l.student or not l.lesson_date:
             continue
         dt_start_local = _dt_to_ics_local(l.lesson_date, export_tzid)
         dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tzid)

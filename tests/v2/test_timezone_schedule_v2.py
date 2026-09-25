@@ -343,4 +343,63 @@ def test_schedule_delete_with_complex_dependencies(app, client, role_users):
         assert remaining_err.lesson_id is None
 
 
+def test_create_schedule_lesson_with_null_lesson_date_and_various_date_formats(app, client, role_users):
+    """Проверка создания урока, когда в БД есть уроки с lesson_date=None, и поддержка форматов даты."""
+    from app import db
+    from app.models import Lesson
+
+    # Создаём урок без даты (lesson_date=None)
+    with app.app_context():
+        null_date_lesson = Lesson(
+            student_id=role_users['student_id'],
+            lesson_date=None,
+            topic='Урок-черновик без даты',
+            duration=60,
+            status='planned'
+        )
+        db.session.add(null_date_lesson)
+        db.session.commit()
+
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    # Создание урока в формате YYYY-MM-DD не должно падать на NoneType + timedelta
+    res1 = client.post('/api/schedule/create_lesson', json={
+        'student_id': role_users['student_id'],
+        'lesson_date': '2026-09-28',
+        'time': '15:00',
+        'duration': 60,
+        'topic': 'Урок после фикса None lesson_date',
+        'timezone': 'Europe/Moscow'
+    })
+    assert res1.status_code == 200, res1.get_data(as_text=True)
+    data1 = res1.get_json()
+    assert data1['status'] == 'success'
+    created_id = data1['lesson_id']
+
+    # Создание урока в формате DD.MM.YYYY также должно корректно парситься
+    res2 = client.post('/api/schedule/create_lesson', json={
+        'student_id': role_users['student_id'],
+        'lesson_date': '28.09.2026',
+        'time': '17:00',
+        'duration': 60,
+        'topic': 'Урок с датой в формате DD.MM.YYYY',
+        'timezone': 'Europe/Moscow'
+    })
+    assert res2.status_code == 200, res2.get_data(as_text=True)
+    data2 = res2.get_json()
+    assert data2['status'] == 'success'
+
+    # Проверка, что реальное пересечение по времени по-прежнему отлавливается
+    res_overlap = client.post('/api/schedule/create_lesson', json={
+        'student_id': role_users['student_id'],
+        'lesson_date': '2026-09-28',
+        'time': '15:30',
+        'duration': 60,
+        'topic': 'Пересекающийся урок',
+        'timezone': 'Europe/Moscow'
+    })
+    assert res_overlap.status_code == 409
+    assert 'пересекающийся урок' in res_overlap.get_json()['message']
+
+
 
