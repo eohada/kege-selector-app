@@ -112,3 +112,42 @@ def test_course_import_http_routes(client, app, role_users):
     assert export_resp.headers.get('Content-Type') == 'application/json'
     export_data = json.loads(export_resp.data.decode('utf-8'))
     assert export_data['title'] == 'Курс через API Импорт'
+
+
+def test_import_course_with_invalid_or_missing_exam_course_id(client, app, role_users):
+    """
+    Проверяет, что импорт курса с несуществующим exam_course_id (например, 99999)
+    или отсутствующим курсом не вызывает ForeignKeyViolation, а безопасно разрешает
+    или обнуляет exam_course_id.
+    """
+    login_as(client, role_users['tutor_id'], 'tutor')
+
+    course_with_foreign_id = {
+        'title': 'ЕГЭ Информатика: Полный курс подготовки (72 урока)',
+        'subject': 'Информатика',
+        'is_template': True,
+        'student_id': None,
+        'exam_course_id': 999999,  # Несуществующий внешний ID
+        'target_score': 80,
+        'modules': [
+            {
+                'name': 'Раздел 1',
+                'lessons': [
+                    {'title': 'Урок 1', 'duration_minutes': 60}
+                ]
+            }
+        ]
+    }
+
+    with app.app_context():
+        trajectory, stats = import_course_from_data(course_with_foreign_id, user_id=role_users['tutor_id'])
+        assert trajectory.course_id is not None
+        assert trajectory.title == 'ЕГЭ Информатика: Полный курс подготовки (72 урока)'
+        # exam_course_id должен либо указывать на валидный существующий курс, либо быть None, но не 999999
+        from core.db_models import Course
+        if trajectory.exam_course_id:
+            assert Course.query.get(trajectory.exam_course_id) is not None
+        assert trajectory.student_id is None
+        assert stats['modules'] == 1
+        assert stats['lessons'] == 1
+

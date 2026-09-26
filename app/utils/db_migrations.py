@@ -261,7 +261,53 @@ def _fix_postgres_sequences(app, inspector):
             'TrainerLlmLogs': 'log_id',
             'ReferralCodes': 'id',
             'ReferralUsage': 'id',
+            'Courses': 'course_id',
+            'ExamCourses': 'id',
+            'CourseModules': 'module_id',
+            'ExamSkills': 'skill_id',
+            'LearningItems': 'item_id',
+            'LessonSkills': 'id',
+            'LessonMaterials': 'id',
+            'LessonHomework': 'id',
+            'Assignments': 'assignment_id',
+            'AssignmentTasks': 'assignment_task_id',
+            'Submissions': 'submission_id',
+            'Answers': 'answer_id',
+            'CodeWorkspaceVersions': 'version_id',
+            'CodePlaybackTraces': 'trace_id',
+            'SubmissionComments': 'comment_id',
+            'SubmissionCommentThreadRead': 'id',
+            'TeacherQuickComments': 'id',
+            'SubmissionAiReviews': 'review_id',
+            'CourseTaskTemplates': 'id',
+            'GradingScales': 'id',
+            'StudentCourseEnrollments': 'id',
+            'CourseTimelineBlocks': 'id',
+            'TheoryBlocks': 'id',
+            'TheoryGroups': 'id',
+            'StudentTheoryStates': 'id',
+            'StudentTheoryAccess': 'id',
+            'TheoryFeedback': 'id',
+            'TheoryFeedbackHistory': 'id',
         }
+
+        # Автоматическое обнаружение всех PostgreSQL sequences в схеме
+        try:
+            pg_seq_res = db.session.execute(text("""
+                SELECT 
+                    t.relname AS table_name,
+                    a.attname AS column_name
+                FROM pg_class s
+                JOIN pg_depend d ON d.objid = s.oid
+                JOIN pg_class t ON d.refobjid = t.oid
+                JOIN pg_attribute a ON (d.refobjid = a.attrelid AND d.refobjsubid = a.attnum)
+                WHERE s.relkind = 'S'
+            """)).fetchall()
+            for r_tbl, r_col in pg_seq_res:
+                if r_tbl not in sequences_map:
+                    sequences_map[r_tbl] = r_col
+        except Exception as auto_seq_err:
+            logger.debug(f"Dynamic sequence discovery skipped: {auto_seq_err}")
 
         for preferred_table, pk_column in sequences_map.items():
             real_table = _resolve_table_name(table_names, preferred_table)
@@ -553,19 +599,18 @@ def ensure_schema_columns(app):
                             logger.warning(f"Could not add parent_course_id to Courses: {e}")
                             db.session.rollback()
 
-                    c_col_map = {c['name']: c for c in inspector.get_columns(c_tbl)}
-                    if c_col_map.get('student_id') and not c_col_map['student_id'].get('nullable', True):
-                        db_url = str(app.config.get('SQLALCHEMY_DATABASE_URI', '') or '')
-                        is_postgres = 'postgresql' in db_url or 'postgres' in db_url
-                        if is_postgres:
-                            try:
-                                db.session.execute(text(f'ALTER TABLE "{c_tbl}" ALTER COLUMN student_id DROP NOT NULL'))
-                                db.session.commit()
-                                logger.info(f"Made {c_tbl}.student_id nullable (PostgreSQL)")
-                            except Exception as e:
-                                logger.warning(f"Could not drop NOT NULL on {c_tbl}.student_id: {e}")
-                                db.session.rollback()
-                        else:
+                    is_pg = _is_postgres(app)
+                    if is_pg:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{c_tbl}" ALTER COLUMN student_id DROP NOT NULL'))
+                            db.session.commit()
+                            logger.info(f"Made {c_tbl}.student_id nullable (PostgreSQL)")
+                        except Exception as e:
+                            logger.warning(f"Could not drop NOT NULL on {c_tbl}.student_id: {e}")
+                            db.session.rollback()
+                    else:
+                        c_col_map = {c['name']: c for c in inspector.get_columns(c_tbl)}
+                        if c_col_map.get('student_id') and not c_col_map['student_id'].get('nullable', True):
                             try:
                                 db.session.execute(text('PRAGMA foreign_keys = OFF;'))
                                 c_sql_row = db.session.execute(text(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{c_tbl}'")).fetchone()
@@ -628,19 +673,18 @@ def ensure_schema_columns(app):
                         logger.warning(f"Could not add studio_scenario to Lessons: {e}")
                         db.session.rollback()
 
-                l_col_map = {c['name']: c for c in inspector.get_columns(l_tbl)}
-                if l_col_map.get('student_id') and not l_col_map['student_id'].get('nullable', True):
-                    db_url = str(app.config.get('SQLALCHEMY_DATABASE_URI', '') or '')
-                    is_postgres = 'postgresql' in db_url or 'postgres' in db_url
-                    if is_postgres:
-                        try:
-                            db.session.execute(text(f'ALTER TABLE "{l_tbl}" ALTER COLUMN student_id DROP NOT NULL'))
-                            db.session.commit()
-                            logger.info(f"Made {l_tbl}.student_id nullable (PostgreSQL)")
-                        except Exception as e:
-                            logger.warning(f"Could not drop NOT NULL on {l_tbl}.student_id: {e}")
-                            db.session.rollback()
-                    else:
+                is_pg = _is_postgres(app)
+                if is_pg:
+                    try:
+                        db.session.execute(text(f'ALTER TABLE "{l_tbl}" ALTER COLUMN student_id DROP NOT NULL'))
+                        db.session.commit()
+                        logger.info(f"Made {l_tbl}.student_id nullable (PostgreSQL)")
+                    except Exception as e:
+                        logger.warning(f"Could not drop NOT NULL on {l_tbl}.student_id: {e}")
+                        db.session.rollback()
+                else:
+                    l_col_map = {c['name']: c for c in inspector.get_columns(l_tbl)}
+                    if l_col_map.get('student_id') and not l_col_map['student_id'].get('nullable', True):
                         try:
                             db.session.execute(text('PRAGMA foreign_keys = OFF;'))
                             l_sql_row = db.session.execute(text(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{l_tbl}'")).fetchone()

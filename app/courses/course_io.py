@@ -27,6 +27,47 @@ def _parse_target_score(raw: Any) -> Optional[int]:
     return val0 if val0 >= 40 else int(nums[-1])
 
 
+def _ensure_course_db_compat() -> None:
+    """Гарантирует поддержку мастер-курсов (NULL student_id) и синхронизацию sequences в PostgreSQL."""
+    try:
+        from sqlalchemy import text
+        is_postgres = False
+        if hasattr(db, 'engine') and db.engine:
+            is_postgres = (db.engine.dialect.name == 'postgresql')
+        if not is_postgres:
+            return
+
+        # 1. student_id должен быть NULLABLE для мастер-курсов и уроков (если старая база имела NOT NULL)
+        try:
+            db.session.execute(text('ALTER TABLE "Courses" ALTER COLUMN student_id DROP NOT NULL'))
+            db.session.execute(text('ALTER TABLE "Lessons" ALTER COLUMN student_id DROP NOT NULL'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        # 2. Синхронизация последовательностей (sequences) для предотвращения DuplicateKey / Courses_pkey
+        for tbl, pk in [
+            ('Courses', 'course_id'),
+            ('CourseModules', 'module_id'),
+            ('Lessons', 'lesson_id'),
+            ('ExamSkills', 'skill_id'),
+            ('LearningItems', 'item_id'),
+            ('ExamCourses', 'id'),
+        ]:
+            try:
+                max_val = db.session.execute(text(f'SELECT MAX("{pk}") FROM "{tbl}"')).scalar()
+                if max_val and max_val > 0:
+                    db.session.execute(
+                        text(f"SELECT setval(pg_get_serial_sequence('\"{tbl}\"', '{pk}'), :m, true)"),
+                        {'m': max_val}
+                    )
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+    except Exception:
+        db.session.rollback()
+
+
 def import_course_from_data(data: Dict[str, Any], user_id: Optional[int] = None) -> Tuple[LearningTrajectory, Dict[str, int]]:
     """
     Импортирует структуру курса (Мастер-курс / Базовую программу) из словаря/JSON.
@@ -39,6 +80,8 @@ def import_course_from_data(data: Dict[str, Any], user_id: Optional[int] = None)
     if not title:
         raise ValueError("Отсутствует обязательное поле 'title' курса.")
 
+    _ensure_course_db_compat()
+
     subject = (data.get('subject') or 'Информатика').strip()
     target_score = _parse_target_score(data.get('target_score'))
     goal = (data.get('goal') or data.get('learning_goal') or '').strip() or None
@@ -47,17 +90,30 @@ def import_course_from_data(data: Dict[str, Any], user_id: Optional[int] = None)
     is_template = bool(data.get('is_template', True))
     default_duration = int(data.get('default_lesson_duration') or 60)
 
-    # Определение ExamCourse (ЕГЭ Информатика и т.п.)
-    exam_course_id = data.get('exam_course_id')
-    if not exam_course_id:
-        matched_course = Course.query.filter(
-            or_(
-                Course.slug == 'ege_informatics',
-                Course.title.ilike(f'%{subject}%')
-            )
-        ).first()
-        if matched_course:
-            exam_course_id = matched_course.id
+    # Определение ExamCourse (ЕГЭ Информатика и т.п.) с валидацией существования в БД
+    raw_exam_course_id = data.get('exam_course_id')
+    exam_course = None
+    if raw_exam_course_id is not None:
+        try:
+            exam_course = Course.query.get(int(raw_exam_course_id))
+        except (ValueError, TypeError):
+            exam_course = None
+
+    if not exam_course:
+        course_slug = (data.get('course_slug') or data.get('exam_slug') or '').strip()
+        conditions = []
+        if course_slug:
+            conditions.append(Course.slug == course_slug)
+        if subject:
+            conditions.append(Course.title.ilike(f'%{subject}%'))
+            conditions.append(Course.slug.ilike(f'%{subject}%'))
+        conditions.append(Course.slug == 'ege_informatics')
+        exam_course = Course.query.filter(or_(*conditions)).first()
+
+    if not exam_course:
+        exam_course = Course.query.filter_by(is_active=True).first()
+
+    exam_course_id = exam_course.id if exam_course else None
 
     # 1. Создание Мастер-курса
     trajectory = LearningTrajectory(
@@ -75,7 +131,13 @@ def import_course_from_data(data: Dict[str, Any], user_id: Optional[int] = None)
         status='active',
     )
     db.session.add(trajectory)
-    db.session.flush()
+    try:
+        db.session.flush()
+    except Exception:
+        db.session.rollback()
+        _ensure_course_db_compat()
+        db.session.add(trajectory)
+        db.session.flush()
 
     # 2. Обработка навыков (Skills)
     skill_map: Dict[str, ExamSkill] = {}

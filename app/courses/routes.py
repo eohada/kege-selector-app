@@ -2198,10 +2198,18 @@ def course_import():
     try:
         trajectory, stats = import_course_from_data(json_data, user_id=current_user.id)
     except Exception as e:
+        logger.error(f"Error importing course: {e}", exc_info=True)
         db.session.rollback()
+        err_msg = str(e)
+        if "duplicate key" in err_msg.lower() or "unique constraint" in err_msg.lower():
+            err_msg = "Конфликт первичных ключей в базе данных при импорте. Последовательности БД были синхронизированы, повторите попытку."
+        elif "foreign key" in err_msg.lower():
+            err_msg = "Ошибка связей в базе данных: указан некорректный ID курса или темы."
+        elif "not-null" in err_msg.lower() or "null value" in err_msg.lower():
+            err_msg = "Ошибка структуры данных: одно из обязательных полей курса не заполнено."
         if is_ajax:
-            return jsonify({'success': False, 'error': f'Ошибка при создании курса: {str(e)}'}), 400
-        flash(f'Ошибка при создании курса: {str(e)}', 'error')
+            return jsonify({'success': False, 'error': f'Ошибка при создании курса: {err_msg}'}), 400
+        flash(f'Ошибка при создании курса: {err_msg}', 'error')
         return redirect(url_for('courses.courses_catalog', tab='templates'))
 
     success_msg = f'Курс «{trajectory.title}» успешно импортирован (модулей: {stats["modules"]}, уроков: {stats["lessons"]}, навыков: {stats["skills"]}).'
