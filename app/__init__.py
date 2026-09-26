@@ -420,6 +420,13 @@ def create_app(config_name=None):
                 from app.utils.local_dev_profile_pool import ensure_local_dev_profile_pool
                 ensure_local_dev_profile_pool()
                 logger.info("✓ Local role-check profile pool ensured")
+
+            if not app.config.get('TESTING'):
+                try:
+                    from scripts.seed_demo_student import ensure_demo_student_bootstrap
+                    ensure_demo_student_bootstrap(app)
+                except Exception as demo_bootstrap_err:
+                    logger.warning("⚠ Demo student showcase bootstrap warning: %s", demo_bootstrap_err)
     except Exception as creator_error:
         logger.warning("⚠ Reserved creator bootstrap failed: %s", creator_error)
 

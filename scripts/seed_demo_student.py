@@ -748,6 +748,12 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
 
     db.session.commit()
 
+    try:
+        from app.utils.db_migrations import reset_postgres_sequences
+        reset_postgres_sequences()
+    except Exception:
+        pass
+
     print("=" * 70)
     print("🎉 ДЕМОНСТРАЦИОННЫЙ УЧЕНИК УСПЕШНО СОЗДАН И ЗАПОЛНЕН ДАННЫМИ!")
     print("=" * 70)
@@ -763,6 +769,28 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
     print(f"🏆 Достижения:        10 разблокированных наград в профиле")
     print(f"👨‍👩‍👧 Родительский вход: demo_parent (пароль: 123)")
     print("=" * 70)
+
+
+def ensure_demo_student_bootstrap(app=None):
+    """
+    Автоматический bootstrap для создания демонстрационного ученика demo_student
+    при запуске сервера / деплое.
+    """
+    from core.db_models import User, Student, Lesson
+    from app.logging_core import logger
+    try:
+        user = User.query.filter_by(username='demo_student').first()
+        student = Student.query.filter_by(user_id=user.id).first() if user else None
+        has_lessons = False
+        if student:
+            has_lessons = Lesson.query.filter_by(student_id=student.student_id).count() >= 20
+
+        if not user or not student or not has_lessons:
+            logger.info("Initializing demo student showcase (demo_student)...")
+            seed_demo_student()
+            logger.info("✓ Demo student showcase initialized successfully")
+    except Exception as e:
+        logger.warning(f"⚠ Demo student bootstrap failed or skipped: {e}")
 
 
 def main():
