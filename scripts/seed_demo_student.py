@@ -51,6 +51,7 @@ from core.db_models import (
     StudentTaskStatistics, StudentDiagnosticCheckpoint,
     UserAchievement, CodeWorkspaceVersion, CodePlaybackTrace,
     SubmissionComment, Tasks, ExamSkill, StudentSkill,
+    Subject, KnowledgeNode, UserMastery,
 )
 from app.utils.db_migrations import ensure_schema_columns
 
@@ -397,17 +398,39 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
 
             # Привязка задания домашки к уроку (LessonTask)
             t_sample = get_task_for_number(les_num if les_num <= 20 else 17, tutor.id, ege_course.id)
+            is_correct = True
+            if les_num in (3, 7, 13, 18):
+                is_correct = False
+
             lt = LessonTask(
                 lesson_id=les.lesson_id,
                 task_id=t_sample.task_id,
                 assignment_type='homework',
                 status='graded',
-                submission_correct=(comp_score >= 4),
-                student_answer="42",
-                teacher_comment="Отличное решение!" if comp_score == 5 else "Обрати внимание на оформление кода.",
+                submission_correct=is_correct,
+                student_answer="42" if is_correct else "19",
+                teacher_comment="Отличное решение!" if is_correct else "Обрати внимание на проверку условий и границы диапазонов.",
+                difficulty_level=2,
+                time_spent_sec=180 + les_num * 15,
                 date_assigned=l_date,
             )
             db.session.add(lt)
+
+            # На контрольных уроках (10 и 20) добавляем проверочные задания типа 'exam'
+            if les_num in (10, 20):
+                lt_exam = LessonTask(
+                    lesson_id=les.lesson_id,
+                    task_id=get_task_for_number(les_num, tutor.id, ege_course.id).task_id,
+                    assignment_type='exam',
+                    status='graded',
+                    submission_correct=True,
+                    student_answer="128",
+                    teacher_comment="Контрольный срез сдан успешно!",
+                    difficulty_level=3,
+                    time_spent_sec=320,
+                    date_assigned=l_date,
+                )
+                db.session.add(lt_exam)
 
             # Элемент программы (LearningItem)
             item = LearningItem(
@@ -466,12 +489,13 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
     db.session.commit()
     print("✓ Созданы 20 проведенных уроков с итогами (LessonOutcome) и 2 запланированных урока")
 
-    # 8. Создание 6 разноплановых домашних работ и срезов
+    # 8. Создание 10 разноплановых домашних работ и срезов (В работе, На проверке, Завершенные, Пробники)
     assignments_data = [
         {
             'title': "ДЗ №1: Графы и логика (КЕГЭ №1, №2)",
             'type': "homework",
             'days_ago': 65,
+            'deadline_days': 5,
             'tasks': [1, 2],
             'answers': [("54", True, 1), ("yxzw", True, 1)],
             'status': "GRADED",
@@ -482,6 +506,7 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
             'title': "ДЗ №2: Кодирование информации и комбинаторика (КЕГЭ №4, №8)",
             'type': "homework",
             'days_ago': 45,
+            'deadline_days': 5,
             'tasks': [4, 8],
             'answers': [("011", True, 1), ("1562", False, 0)],
             'status': "GRADED",
@@ -491,9 +516,10 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
         {
             'title': "ДЗ №3: Программирование последовательностей (КЕГЭ №17)",
             'type': "homework",
-            'days_ago': 18,
+            'days_ago': 30,
+            'deadline_days': 5,
             'tasks': [17],
-            'answers': [("245 89201", True, 2)],
+            'answers': [("245 89201", True, 1)],
             'status': "GRADED",
             'teacher_feedback': "Идеальная реализация генератора пар, отличное понимание работы с файлами.",
             'student_code': "with open('17.txt') as f:\n    nums = [int(x) for x in f]\nmx = max(x for x in nums if x % 13 == 0)\nres = []\nfor i in range(len(nums) - 1):\n    if (nums[i] % 13 == 0 or nums[i+1] % 13 == 0) and (nums[i] + nums[i+1] < mx):\n        res.append(nums[i] + nums[i+1])\nprint(len(res), max(res))",
@@ -501,7 +527,8 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
         {
             'title': "ДЗ №4: Теория игр на Python (КЕГЭ №19, №20, №21)",
             'type': "homework",
-            'days_ago': 9,
+            'days_ago': 18,
+            'deadline_days': 5,
             'tasks': [19, 20, 21],
             'answers': [("18", True, 1), ("24 35", True, 1), ("31", False, 0)],
             'status': "GRADED",
@@ -511,11 +538,12 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
         {
             'title': "Пробный экзамен №1 (КЕГЭ Срез знаний)",
             'type': "exam",
-            'days_ago': 5,
+            'days_ago': 12,
+            'deadline_days': 7,
             'tasks': [1, 2, 4, 8, 14, 16, 17, 19, 20, 21, 24],
             'answers': [
                 ("54", True, 1), ("yxzw", True, 1), ("011", True, 1), ("1563", True, 1),
-                ("13", True, 1), ("2026", True, 1), ("245 89201", True, 2),
+                ("13", True, 1), ("2026", True, 1), ("245 89201", True, 1),
                 ("18", True, 1), ("24 35", True, 1), ("33", True, 1),
                 ("142", False, 0),
             ],
@@ -524,52 +552,114 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
             'student_code': "s = open('24.txt').readline()\ns = s.replace('XYZ', ' ')\nprint(max(len(c) for c in s.split()))",
         },
         {
+            'title': "Пробный экзамен №2 (Полный пробник)",
+            'type': "exam",
+            'days_ago': 6,
+            'deadline_days': 7,
+            'tasks': [1, 2, 3, 5, 8, 12, 14, 17, 18, 25],
+            'answers': [
+                ("42", True, 1), ("1001", True, 1), ("284", True, 1), ("128", True, 1),
+                ("720", True, 1), ("144", True, 1), ("19", True, 1), ("1102 458", True, 1),
+                ("315", False, 0), ("920", False, 0),
+            ],
+            'status': "GRADED",
+            'teacher_feedback': "Отличная динамика! 8 верных задач из 10 (80%). Ошибки в динамике и теории чисел разберем на ближайшем уроке.",
+            'student_code': "nums = [int(x) for x in open('17_demo.txt')]\nprint(len(nums), max(nums))",
+        },
+        {
             'title': "ДЗ №5: Поиск подстрок и регулярные выражения (КЕГЭ №24)",
             'type': "homework",
-            'days_ago': 1,
+            'days_ago': 2,
+            'deadline_days': 4,
             'tasks': [24],
             'answers': [("389", None, None)],
             'status': "SUBMITTED",
             'teacher_feedback': None,
             'student_code': "with open('24.txt') as f:\n    s = f.read().strip()\n# Поиск максимальной длины цепочки без 'XYZ'\ncur = mx = 0\nfor i in range(len(s)):\n    if s[i:i+3] == 'XYZ':\n        cur = 0\n    else:\n        cur += 1\n        mx = max(mx, cur)\nprint(mx)",
         },
+        {
+            'title': "Практикум №26: Жадные алгоритмы и сортировки (КЕГЭ №26)",
+            'type': "homework",
+            'days_ago': 1,
+            'deadline_days': 4,
+            'tasks': [26],
+            'answers': [("840 32", None, None)],
+            'status': "SUBMITTED",
+            'teacher_feedback': None,
+            'student_code': "with open('26.txt') as f:\n    data = sorted([int(x) for x in f])\nprint(data[:10])",
+        },
+        {
+            'title': "ДЗ №6: Динамическое программирование (КЕГЭ №23, №27)",
+            'type': "homework",
+            'days_ago': 1,
+            'deadline_days': 3,
+            'tasks': [23, 27],
+            'answers': [("48", None, None), ("", None, None)],
+            'status': "IN_PROGRESS",
+            'teacher_feedback': None,
+            'student_code': "def f(a, b):\n    if a == b: return 1\n    if a > b: return 0\n    return f(a + 1, b) + f(a * 2, b)",
+        },
+        {
+            'title': "ДЗ №7: Системы счисления и алгебра логики (КЕГЭ №14, №15)",
+            'type': "homework",
+            'days_ago': 0,
+            'deadline_days': 5,
+            'tasks': [14, 15],
+            'answers': [("", None, None), ("", None, None)],
+            'status': "ASSIGNED",
+            'teacher_feedback': None,
+            'student_code': None,
+        },
     ]
 
     for a_info in assignments_data:
-        existing_assign = Assignment.query.filter_by(
+        assign = Assignment.query.filter_by(
             title=a_info['title'],
             created_by_id=tutor.id,
         ).first()
 
-        if existing_assign:
-            continue
-
         assign_dt = now_utc - timedelta(days=a_info['days_ago'])
-        assign = Assignment(
-            title=a_info['title'],
-            assignment_type=a_info['type'],
-            created_by_id=tutor.id,
-            exam_course_id=ege_course.id,
-            deadline=assign_dt + timedelta(days=5),
-            is_active=True,
-            created_at=assign_dt,
-            updated_at=assign_dt,
-        )
-        db.session.add(assign)
-        db.session.flush()
+        deadline_dt = assign_dt + timedelta(days=a_info.get('deadline_days', 5))
+
+        if not assign:
+            assign = Assignment(
+                title=a_info['title'],
+                assignment_type=a_info['type'],
+                created_by_id=tutor.id,
+                exam_course_id=ege_course.id,
+                deadline=deadline_dt,
+                is_active=True,
+                created_at=assign_dt,
+                updated_at=assign_dt,
+            )
+            db.session.add(assign)
+            db.session.flush()
+        else:
+            assign.assignment_type = a_info['type']
+            assign.deadline = deadline_dt
+            assign.exam_course_id = ege_course.id
+            db.session.flush()
 
         at_list = []
         for idx, tnum in enumerate(a_info['tasks']):
             t_obj = get_task_for_number(tnum, tutor.id, ege_course.id)
-            at = AssignmentTask(
+            at = AssignmentTask.query.filter_by(
                 assignment_id=assign.assignment_id,
-                task_id=t_obj.task_id,
                 order_index=idx,
-                max_score=t_obj.max_score or 1,
-                created_at=assign_dt,
-            )
-            db.session.add(at)
-            db.session.flush()
+            ).first()
+            if not at:
+                at = AssignmentTask(
+                    assignment_id=assign.assignment_id,
+                    task_id=t_obj.task_id,
+                    order_index=idx,
+                    max_score=t_obj.max_score or 1,
+                    created_at=assign_dt,
+                )
+                db.session.add(at)
+                db.session.flush()
+            else:
+                at.task_id = t_obj.task_id
+                at.max_score = t_obj.max_score or 1
             at_list.append(at)
 
         # Сдача работы (Submission)
@@ -578,88 +668,137 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
         max_sc = sum(at.max_score for at in at_list)
         pct = round((tot_score / max_sc) * 100, 1) if (tot_score is not None and max_sc > 0) else None
 
-        sub = Submission(
+        sub = Submission.query.filter_by(
             assignment_id=assign.assignment_id,
             student_id=student.student_id,
-            status=sub_status,
-            assigned_at=assign_dt,
-            started_at=assign_dt + timedelta(hours=2),
-            submitted_at=assign_dt + timedelta(hours=4),
-            graded_at=(assign_dt + timedelta(hours=6)) if sub_status == 'GRADED' else None,
-            total_score=tot_score,
-            max_score=max_sc,
-            percentage=pct,
-            teacher_feedback=a_info['teacher_feedback'],
-            created_at=assign_dt,
-            updated_at=assign_dt + timedelta(hours=6),
-        )
-        db.session.add(sub)
-        db.session.flush()
+        ).first()
+
+        if not sub:
+            sub = Submission(
+                assignment_id=assign.assignment_id,
+                student_id=student.student_id,
+                status=sub_status,
+                assigned_at=assign_dt,
+                started_at=(assign_dt + timedelta(hours=2)) if sub_status in ('IN_PROGRESS', 'SUBMITTED', 'GRADED') else None,
+                submitted_at=(assign_dt + timedelta(hours=4)) if sub_status in ('SUBMITTED', 'GRADED') else None,
+                graded_at=(assign_dt + timedelta(hours=6)) if sub_status == 'GRADED' else None,
+                total_score=tot_score,
+                max_score=max_sc,
+                percentage=pct,
+                teacher_feedback=a_info.get('teacher_feedback'),
+                created_at=assign_dt,
+                updated_at=assign_dt + timedelta(hours=6) if sub_status == 'GRADED' else assign_dt,
+            )
+            db.session.add(sub)
+            db.session.flush()
+        else:
+            sub.status = sub_status
+            sub.total_score = tot_score
+            sub.max_score = max_sc
+            sub.percentage = pct
+            sub.teacher_feedback = a_info.get('teacher_feedback')
+            if sub_status in ('IN_PROGRESS', 'SUBMITTED', 'GRADED') and not sub.started_at:
+                sub.started_at = assign_dt + timedelta(hours=2)
+            if sub_status in ('SUBMITTED', 'GRADED') and not sub.submitted_at:
+                sub.submitted_at = assign_dt + timedelta(hours=4)
+            if sub_status == 'GRADED' and not sub.graded_at:
+                sub.graded_at = assign_dt + timedelta(hours=6)
+            db.session.flush()
 
         # Ответы ученика (Answers)
         for idx, (ans_val, is_corr, sc) in enumerate(a_info['answers']):
             target_at = at_list[idx]
-            ans = Answer(
+            ans = Answer.query.filter_by(
                 submission_id=sub.submission_id,
                 assignment_task_id=target_at.assignment_task_id,
-                value=ans_val,
-                is_correct=is_corr,
-                score=sc,
-                max_score=target_at.max_score,
-                student_code=a_info.get('student_code'),
-                student_code_saved_at=assign_dt + timedelta(hours=3),
-                teacher_comment="Верно!" if is_corr else ("Нужно исправить" if is_corr is False else None),
-                reviewed_at=(assign_dt + timedelta(hours=6)) if sub_status == 'GRADED' else None,
-                created_at=assign_dt + timedelta(hours=3),
-            )
-            db.session.add(ans)
-            db.session.flush()
+            ).first()
+            if not ans:
+                ans = Answer(
+                    submission_id=sub.submission_id,
+                    assignment_task_id=target_at.assignment_task_id,
+                    value=ans_val,
+                    is_correct=is_corr,
+                    score=sc,
+                    max_score=target_at.max_score,
+                    student_code=a_info.get('student_code'),
+                    student_code_saved_at=assign_dt + timedelta(hours=3),
+                    teacher_comment="Верно!" if is_corr else ("Нужно исправить" if is_corr is False else None),
+                    reviewed_at=(assign_dt + timedelta(hours=6)) if sub_status == 'GRADED' else None,
+                    created_at=assign_dt + timedelta(hours=3),
+                )
+                db.session.add(ans)
+                db.session.flush()
+            else:
+                ans.value = ans_val
+                ans.is_correct = is_corr
+                ans.score = sc
+                ans.max_score = target_at.max_score
+                if is_corr is not None:
+                    ans.teacher_comment = "Верно!" if is_corr else "Нужно исправить"
+                db.session.flush()
 
             # Если задача с кодом — добавляем снапшот и воспроизведение ввода
             if a_info.get('student_code') and idx == 0:
-                cwv = CodeWorkspaceVersion(
+                cwv = CodeWorkspaceVersion.query.filter_by(
                     context_type="submission_task",
                     context_id=sub.submission_id,
-                    student_user_id=user.id,
-                    student_id=student.student_id,
                     task_id=target_at.task_id,
-                    answer_id=ans.answer_id,
-                    code=a_info['student_code'],
-                    created_at=assign_dt + timedelta(hours=3),
-                )
-                db.session.add(cwv)
+                ).first()
+                if not cwv:
+                    cwv = CodeWorkspaceVersion(
+                        context_type="submission_task",
+                        context_id=sub.submission_id,
+                        student_user_id=user.id,
+                        student_id=student.student_id,
+                        task_id=target_at.task_id,
+                        answer_id=ans.answer_id,
+                        code=a_info['student_code'],
+                        created_at=assign_dt + timedelta(hours=3),
+                    )
+                    db.session.add(cwv)
 
-                frames = [
-                    {"ts": 100, "code": "# Решение задачи на Python\n", "caret": [27, 27], "action": "type"},
-                    {"ts": 300, "code": a_info['student_code'][:30], "caret": [30, 30], "action": "type"},
-                    {"ts": 600, "code": a_info['student_code'], "caret": [len(a_info['student_code']), len(a_info['student_code'])], "action": "type"},
-                ]
-                cpt = CodePlaybackTrace(
+                cpt = CodePlaybackTrace.query.filter_by(
                     context_type="submission_task",
                     context_id=sub.submission_id,
-                    student_user_id=user.id,
-                    student_id=student.student_id,
                     task_id=target_at.task_id,
-                    answer_id=ans.answer_id,
-                    frames=frames,
-                    created_at=assign_dt + timedelta(hours=3),
-                )
-                db.session.add(cpt)
+                ).first()
+                if not cpt:
+                    frames = [
+                        {"ts": 100, "code": "# Решение задачи на Python\n", "caret": [27, 27], "action": "type"},
+                        {"ts": 300, "code": a_info['student_code'][:30], "caret": [30, 30], "action": "type"},
+                        {"ts": 600, "code": a_info['student_code'], "caret": [len(a_info['student_code']), len(a_info['student_code'])], "action": "type"},
+                    ]
+                    cpt = CodePlaybackTrace(
+                        context_type="submission_task",
+                        context_id=sub.submission_id,
+                        student_user_id=user.id,
+                        student_id=student.student_id,
+                        task_id=target_at.task_id,
+                        answer_id=ans.answer_id,
+                        frames=frames,
+                        created_at=assign_dt + timedelta(hours=3),
+                    )
+                    db.session.add(cpt)
 
                 # Комментарий преподавателя к коду
-                comm_text = "Код написан аккуратно и легко читается." if is_corr else "Обрати внимание на условие остановки цикла."
-                comm = SubmissionComment(
+                comm = SubmissionComment.query.filter_by(
                     submission_id=sub.submission_id,
-                    author_id=tutor.id,
                     assignment_task_id=target_at.assignment_task_id,
-                    text=comm_text,
-                    is_read=True,
-                    created_at=assign_dt + timedelta(hours=6),
-                )
-                db.session.add(comm)
+                ).first()
+                if not comm:
+                    comm_text = "Код написан аккуратно и легко читается." if is_corr else "Обрати внимание на условие остановки цикла."
+                    comm = SubmissionComment(
+                        submission_id=sub.submission_id,
+                        author_id=tutor.id,
+                        assignment_task_id=target_at.assignment_task_id,
+                        text=comm_text,
+                        is_read=True,
+                        created_at=assign_dt + timedelta(hours=6),
+                    )
+                    db.session.add(comm)
 
     db.session.commit()
-    print("✓ Созданы 6 разнообразных домашних заданий и срезов (с кодом и проверками)")
+    print("✓ Созданы 10 разнообразных домашних заданий и срезов (с кодом и проверками)")
 
     # 9. Заполнение статистики по номерам КЕГЭ (StudentTaskStatistics, номера 1-27)
     # Имитируем реальный прогресс сильного ученика
@@ -746,7 +885,78 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
             )
             db.session.add(ach)
 
+    # 12. Граф знаний и ELO MMR рейтинг (Subject, KnowledgeNode, UserMastery)
+    subject = Subject.query.filter_by(slug='informatics').first()
+    if not subject:
+        subject = Subject(slug='informatics', name='Информатика')
+        db.session.add(subject)
+        db.session.flush()
+
+    kege_canonical = {
+        1: ("GRAPH-BASICS", "Графы. Поиск путей", 1350),
+        2: ("LOGIC-TRUTH", "Таблицы истинности", 1280),
+        3: ("DB-SEARCH", "Базы данных (Excel/SQL)", 1310),
+        4: ("INFO-ENCODING", "Кодирование (Фано)", 1290),
+        5: ("ALG-EXEC", "Алгоритмы для исполнителей", 1240),
+        6: ("ALG-LOOPS", "Циклы и Черепаха", 1270),
+        7: ("INFO-MEDIA", "Кодирование изображений/звука", 1190),
+        8: ("COMBINATORICS", "Комбинаторика (слова)", 1220),
+        9: ("EXCEL-COND", "Электронные таблицы (условия)", 1300),
+        10: ("TEXT-SEARCH", "Поиск в тексте (Word)", 1380),
+        11: ("INFO-AMOUNT", "Количество информации (пароли)", 1260),
+        12: ("ALG-STRINGS", "Алгоритмы для строк", 1340),
+        13: ("NET-IP", "IP-адресация и маски", 1230),
+        14: ("NUM-SYSTEMS", "Системы счисления", 1210),
+        15: ("LOGIC-ADV", "Алгебра логики (преобразования)", 920),
+        16: ("ALG-RECURSION", "Рекурсия", 1330),
+        17: ("ALG-SEQ", "Обработка последовательностей", 1290),
+        18: ("DP-GRID", "Динамика в таблицах (Робот)", 1180),
+        19: ("GAME-THEORY-1", "Теория игр (1 ход)", 1250),
+        20: ("GAME-THEORY-2", "Теория игр (2 хода)", 1220),
+        21: ("GAME-THEORY-3", "Теория игр (анализ)", 1190),
+        22: ("PARALLEL-PROC", "Многопоточность процессов", 1270),
+        23: ("DP-COUNT", "Динамика (количество путей)", 1210),
+        24: ("STRINGS-HARD", "Сложная обработка строк", 700),
+        25: ("NUM-THEORY", "Теория чисел и делители", 1150),
+        26: ("ALG-GREEDY", "Жадные алгоритмы и сортировки", 750),
+        27: ("ALG-OPTIMIZATION", "Анализ данных (эффективность)", 580),
+    }
+
+    for tnum, (ncode, nname, elo) in kege_canonical.items():
+        node = KnowledgeNode.query.filter_by(subject_id=subject.id, code=ncode).first()
+        if not node:
+            node = KnowledgeNode(
+                subject_id=subject.id,
+                code=ncode,
+                name=f"№{tnum} {nname}",
+                base_rating=1000,
+                exam_points=2 if tnum in (26, 27) else 1,
+            )
+            db.session.add(node)
+            db.session.flush()
+
+        mastery = UserMastery.query.filter_by(user_id=user.id, node_id=node.id).first()
+        solved = task_accuracy.get(tnum, (5, 1))[0] + task_accuracy.get(tnum, (5, 1))[1]
+        if not mastery:
+            mastery = UserMastery(
+                user_id=user.id,
+                node_id=node.id,
+                rating=float(elo),
+                volatility=120.0,
+                streak_days=5 if elo >= 1200 else (2 if elo >= 1000 else 0),
+                solved_count=solved,
+                calibration_done=True,
+                last_practiced_at=now_utc - timedelta(days=2 if elo < 1000 else 10),
+            )
+            db.session.add(mastery)
+        else:
+            mastery.rating = float(elo)
+            mastery.solved_count = solved
+            mastery.calibration_done = True
+            mastery.streak_days = 5 if elo >= 1200 else (2 if elo >= 1000 else 0)
+
     db.session.commit()
+    print("✓ Заполнены 27 узлов знаний (KnowledgeNode) и ELO MMR рейтинг (UserMastery)")
 
     try:
         from app.utils.db_migrations import reset_postgres_sequences
@@ -763,8 +973,9 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
     print(f"⭐ Уровень / XP:      Уровень {student.level} ({student.xp} XP), стрик {student.streak_days} дней")
     print(f"📚 Проведено уроков:  20 уроков (завершены с оценками и заметками)")
     print(f"📅 Будущие уроки:     2 запланированных урока на следующую неделю")
-    print(f"📝 Домашние работы:   6 заданий (4 проверенных с код-ревью, 1 пробник 88 баллов, 1 ожидает проверки)")
+    print(f"📝 Домашние работы:   10 заданий (4 проверенных ДЗ, 2 пробника 88% и 80%, 2 на проверке, 2 в работе)")
     print(f"📊 Статистика:        Все 27 номеров КЕГЭ (~140 решенных задач)")
+    print(f"🎯 ELO MMR:           27 узлов знаний (Зоны роста: №27 [580], №24 [700], №26 [750])")
     print(f"📈 Контрольные срезы: 62 балла -> 76 баллов -> 88 баллов")
     print(f"🏆 Достижения:        10 разблокированных наград в профиле")
     print(f"👨‍👩‍👧 Родительский вход: demo_parent (пароль: 123)")
@@ -776,16 +987,20 @@ def ensure_demo_student_bootstrap(app=None):
     Автоматический bootstrap для создания демонстрационного ученика demo_student
     при запуске сервера / деплое.
     """
-    from core.db_models import User, Student, Lesson
-    from app.logging_core import logger
+    from core.db_models import User, Student, Lesson, UserMastery
+    import logging
+    logger = logging.getLogger('boostudy')
     try:
         user = User.query.filter_by(username='demo_student').first()
         student = Student.query.filter_by(user_id=user.id).first() if user else None
         has_lessons = False
+        has_mastery = False
         if student:
             has_lessons = Lesson.query.filter_by(student_id=student.student_id).count() >= 20
+        if user:
+            has_mastery = UserMastery.query.filter_by(user_id=user.id).count() >= 20
 
-        if not user or not student or not has_lessons:
+        if not user or not student or not has_lessons or not has_mastery:
             logger.info("Initializing demo student showcase (demo_student)...")
             seed_demo_student()
             logger.info("✓ Demo student showcase initialized successfully")

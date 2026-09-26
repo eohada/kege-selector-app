@@ -936,20 +936,25 @@
     const trend = document.getElementById('analytics-trend-bars');
     if (trend) {
       trend.replaceChildren();
-      const grid = create('div', 'absolute inset-0 flex flex-col justify-between pointer-events-none opacity-40');
-      [100, 80, 60, 40].forEach((mark) => grid.append(create('div', 'border-b border-dashed border-slate-200 w-full text-[10px] font-bold text-slate-400', `${mark} б.`)));
+      const grid = create('div', 'absolute inset-0 pb-6 flex flex-col justify-between pointer-events-none opacity-40');
+      [100, 80, 60, 40].forEach((mark) => grid.append(create('div', 'border-b border-dashed border-slate-200 w-full text-[10px] font-bold text-slate-400 pl-1', `${mark} б.`)));
       trend.append(grid);
       if (!trendLabels.length) trend.append(create('p', 'absolute inset-0 z-10 flex items-center justify-center text-sm font-bold text-slate-400', 'Динамика появится после проверок.'));
       trendLabels.forEach((label, index) => {
         const score = Number(trendScores[index] || 0);
-        const item = create('div', 'flex-1 flex flex-col items-center gap-2 relative z-10 group');
-        const bar = create('div', 'w-full bg-indigo-500 rounded-t-xl transition-all');
-        bar.style.height = `${Math.max(2, Math.min(100, score))}%`;
-        item.append(
-          create('span', 'text-indigo-600 text-[10px] font-black mb-1', `${Math.round(score)} б.`),
-          bar,
-          create('span', 'text-[10px] font-bold text-slate-400 uppercase', label),
-        );
+        const item = create('div', 'flex-1 h-full flex flex-col justify-end items-center relative z-10 group');
+        const barContainer = create('div', 'w-full flex-1 flex flex-col justify-end items-center pb-1');
+        const bar = create('div', 'w-full max-w-[28px] bg-gradient-to-t from-indigo-600 to-indigo-400 rounded-t-lg shadow-sm transition-all duration-300 group-hover:from-indigo-500 group-hover:to-indigo-300');
+        bar.style.height = `${Math.max(4, Math.min(100, score))}%`;
+        
+        const scoreBadge = create('span', 'text-indigo-600 text-[10px] font-black mb-1 transition-transform group-hover:scale-110 whitespace-nowrap', `${Math.round(score)} б.`);
+        barContainer.append(scoreBadge, bar);
+        
+        const shortLabel = label.length > 5 ? label.slice(5) : label;
+        const dateLabel = create('span', 'text-[9px] font-extrabold text-slate-400 uppercase tracking-tight mt-1 whitespace-nowrap', shortLabel);
+        dateLabel.setAttribute('title', label);
+
+        item.append(barContainer, dateLabel);
         trend.append(item);
       });
       trend.style.visibility = 'visible';

@@ -161,6 +161,31 @@ class StatsService:
                 if week_key not in weekly_scores:
                     weekly_scores[week_key] = []
                 weekly_scores[week_key].append(avg_score)
+
+        try:
+            from app.assignments.submission_lifecycle_service import normalize_legacy_status
+            for sub in self._get_submissions():
+                st = normalize_legacy_status(sub.status)
+                if st != 'GRADED':
+                    continue
+                sub_dt = sub.submitted_at or sub.graded_at or sub.assigned_at
+                if not sub_dt:
+                    continue
+                if sub_dt.tzinfo:
+                    sub_dt = sub_dt.replace(tzinfo=None)
+                if sub_dt > now_naive or sub_dt < start_date.replace(tzinfo=None):
+                    continue
+                sub_pct = sub.percentage
+                if sub_pct is None and sub.max_score and sub.total_score is not None:
+                    sub_pct = (sub.total_score / sub.max_score) * 100.0
+                if sub_pct is not None:
+                    week_start = sub_dt - timedelta(days=sub_dt.weekday())
+                    week_key = week_start.strftime('%Y-%m-%d')
+                    if week_key not in weekly_scores:
+                        weekly_scores[week_key] = []
+                    weekly_scores[week_key].append(sub_pct / 100.0)
+        except Exception:
+            pass
         
         dates = []
         scores = []
@@ -250,7 +275,7 @@ class StatsService:
     
     def get_gpa_by_type(self):
         """
-        Получить GPA отдельно по типам работ (ДЗ vs Контрольные)
+        Получить GPA отдельно по типам работ (ДЗ vs Контрольные/Пробники)
         Возвращает: {'homework': %, 'exam': %, 'overall': %}
         """
         lessons = self._get_lessons()
@@ -280,6 +305,33 @@ class StatsService:
                     if lt.submission_correct:
                         exam_score += 2
                         total_score += 2
+
+        # Также учитываем сданные/проверенные работы из раздела заданий (Assignments/Submissions)
+        try:
+            from app.assignments.submission_lifecycle_service import normalize_legacy_status
+            subs = self._get_submissions()
+            for sub in subs:
+                st = normalize_legacy_status(sub.status)
+                if st != 'GRADED' and sub.total_score is None:
+                    continue
+                atype = (sub.assignment.assignment_type if sub.assignment else None) or 'homework'
+                sub_pct = sub.percentage
+                if sub_pct is None and sub.max_score and sub.total_score is not None:
+                    sub_pct = (sub.total_score / sub.max_score) * 100.0
+
+                if sub_pct is not None:
+                    w = 2.0 if atype == 'exam' else 1.0
+                    val = (sub_pct / 100.0) * w
+                    if atype == 'exam':
+                        exam_score += val
+                        exam_weight += w
+                    else:
+                        hw_score += val
+                        hw_weight += w
+                    total_score += val
+                    total_weight += w
+        except Exception as sub_err:
+            logger.debug(f"Submissions GPA calculation skipped: {sub_err}")
         
         hw_gpa = round((hw_score / hw_weight * 100), 1) if hw_weight > 0 else 0
         exam_gpa = round((exam_score / exam_weight * 100), 1) if exam_weight > 0 else 0
