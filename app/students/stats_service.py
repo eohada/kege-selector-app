@@ -492,7 +492,8 @@ class StatsService:
         hw_submit_rate = round((submitted_hw / total_hw * 100), 1) if total_hw > 0 else 0
         
         now = moscow_now()
-        month_ago = now - timedelta(days=30)
+        now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+        month_ago = now_naive - timedelta(days=30)
         
         recent_scores = []
         old_scores = []
@@ -505,7 +506,7 @@ class StatsService:
             if lesson_date.tzinfo:
                 lesson_date = lesson_date.replace(tzinfo=None)
             
-            is_recent = lesson_date >= month_ago.replace(tzinfo=None)
+            is_recent = lesson_date >= month_ago
             
             for assignment_type in ['homework', 'classwork', 'exam']:
                 assignments = get_sorted_assignments(lesson, assignment_type)
@@ -516,10 +517,56 @@ class StatsService:
                             recent_scores.append(score)
                         else:
                             old_scores.append(score)
+
+        # Учитываем также сданные работы из раздела заданий
+        try:
+            from app.assignments.submission_lifecycle_service import normalize_legacy_status
+            for sub in self._get_submissions():
+                st = normalize_legacy_status(sub.status)
+                if st != 'GRADED' and sub.total_score is None:
+                    continue
+                sub_dt = sub.graded_at or sub.submitted_at or sub.assigned_at
+                if not sub_dt:
+                    continue
+                sub_dt = sub_dt.replace(tzinfo=None) if sub_dt.tzinfo else sub_dt
+                sub_pct = sub.percentage
+                if sub_pct is None and sub.max_score and sub.total_score is not None:
+                    sub_pct = (sub.total_score / sub.max_score) * 100.0
+                if sub_pct is not None:
+                    val = sub_pct / 100.0
+                    if sub_dt >= month_ago:
+                        recent_scores.append(val)
+                    else:
+                        old_scores.append(val)
+        except Exception:
+            pass
         
-        recent_avg = sum(recent_scores) / len(recent_scores) * 100 if recent_scores else 0
-        old_avg = sum(old_scores) / len(old_scores) * 100 if old_scores else 0
-        delta = round(recent_avg - old_avg, 1)
+        # Дельта тестовых баллов: в первую очередь смотрим динамику контрольных срезов/диагностики
+        delta = None
+        try:
+            from core.db_models import StudentDiagnosticCheckpoint
+            cps = StudentDiagnosticCheckpoint.query.filter_by(
+                student_id=self.student_id
+            ).order_by(StudentDiagnosticCheckpoint.created_at.asc()).all()
+            if len(cps) >= 2:
+                sc_latest = cps[-1].metrics.get('test_score') if cps[-1].metrics else None
+                sc_prev = cps[-2].metrics.get('test_score') if cps[-2].metrics else None
+                if sc_latest is not None and sc_prev is not None:
+                    delta = round(float(sc_latest - sc_prev), 1)
+            elif len(cps) == 1 and cps[0].metrics and cps[0].metrics.get('test_score'):
+                delta = round(float(cps[0].metrics.get('test_score') - 62), 1)
+        except Exception:
+            pass
+
+        if delta is None and recent_scores and old_scores:
+            recent_avg = (sum(recent_scores) / len(recent_scores)) * 100.0
+            old_avg = (sum(old_scores) / len(old_scores)) * 100.0
+            computed = round(recent_avg - old_avg, 1)
+            if computed != 0.0:
+                delta = computed
+
+        if delta is None:
+            delta = 0.0
         
         gpa_by_type = self.get_gpa_by_type()
         

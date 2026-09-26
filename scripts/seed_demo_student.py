@@ -640,9 +640,17 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
             assign.exam_course_id = ege_course.id
             db.session.flush()
 
+        correct_map = {
+            1: "54", 2: "yxzw", 3: "284", 4: "011", 5: "128", 8: "1563",
+            12: "144", 14: "19", 16: "2026", 17: "245 89201", 18: "1240",
+            19: "18", 20: "24 35", 21: "33", 23: "48", 24: "157", 25: "1480 32",
+            26: "840 32", 27: "98201",
+        }
+
         at_list = []
         for idx, tnum in enumerate(a_info['tasks']):
             t_obj = get_task_for_number(tnum, tutor.id, ege_course.id)
+            c_ans = correct_map.get(tnum, t_obj.answer)
             at = AssignmentTask.query.filter_by(
                 assignment_id=assign.assignment_id,
                 order_index=idx,
@@ -653,6 +661,7 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
                     task_id=t_obj.task_id,
                     order_index=idx,
                     max_score=t_obj.max_score or 1,
+                    answer_override=c_ans,
                     created_at=assign_dt,
                 )
                 db.session.add(at)
@@ -660,6 +669,7 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
             else:
                 at.task_id = t_obj.task_id
                 at.max_score = t_obj.max_score or 1
+                at.answer_override = c_ans
             at_list.append(at)
 
         # Сдача работы (Submission)
@@ -706,8 +716,19 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
             db.session.flush()
 
         # Ответы ученика (Answers)
+        mistake_hints = {
+            8: "В 8 задаче не учел, что нумерация списка начинается с 1, а не с 0. Проверь слово РУПОР!",
+            18: "В таблице робота не учтен угловой барьер в ячейке D8.",
+            21: "В теории игр не учтен ход с удвоением камней противника. Рассмотри позицию S=33.",
+            24: "В строках цепочка символов может прерываться на стыке блоков 'XYZ'.",
+            25: "При переборе делителей забыл отфильтровать нечётные делители.",
+        }
+
         for idx, (ans_val, is_corr, sc) in enumerate(a_info['answers']):
             target_at = at_list[idx]
+            target_tnum = a_info['tasks'][idx]
+            comm_val = "Верно!" if is_corr else (mistake_hints.get(target_tnum, "Нужно исправить") if is_corr is False else None)
+
             ans = Answer.query.filter_by(
                 submission_id=sub.submission_id,
                 assignment_task_id=target_at.assignment_task_id,
@@ -722,7 +743,7 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
                     max_score=target_at.max_score,
                     student_code=a_info.get('student_code'),
                     student_code_saved_at=assign_dt + timedelta(hours=3),
-                    teacher_comment="Верно!" if is_corr else ("Нужно исправить" if is_corr is False else None),
+                    teacher_comment=comm_val,
                     reviewed_at=(assign_dt + timedelta(hours=6)) if sub_status == 'GRADED' else None,
                     created_at=assign_dt + timedelta(hours=3),
                 )
@@ -734,7 +755,7 @@ def seed_demo_student(username: str = "demo_student", password: str = "123", tut
                 ans.score = sc
                 ans.max_score = target_at.max_score
                 if is_corr is not None:
-                    ans.teacher_comment = "Верно!" if is_corr else "Нужно исправить"
+                    ans.teacher_comment = comm_val
                 db.session.flush()
 
             # Если задача с кодом — добавляем снапшот и воспроизведение ввода

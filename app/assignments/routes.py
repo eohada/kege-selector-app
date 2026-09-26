@@ -3915,6 +3915,29 @@ def submissions_list():
             'is_graded': (norm_status == 'GRADED'),
         }
 
+    # Сбор ошибок ученика для интерактивного блока «Работа над ошибками»
+    mistakes = []
+    mistake_task_numbers = set()
+    for sub in submissions:
+        if sub.answers:
+            for ans in sub.answers:
+                if ans.is_correct is False or (ans.score == 0 and getattr(ans, 'reviewed_at', None) is not None):
+                    at = ans.assignment_task
+                    task = at.task if at else None
+                    if task:
+                        mistakes.append({
+                            'answer_id': ans.answer_id,
+                            'submission_id': sub.submission_id,
+                            'assignment_title': sub.assignment.title if sub.assignment else '',
+                            'task_number': task.task_number,
+                            'content_html': task.content_html,
+                            'student_value': ans.value,
+                            'correct_answer': (at.answer_override or task.answer or '').strip(),
+                            'teacher_comment': ans.teacher_comment,
+                            'student_code': ans.student_code,
+                        })
+                        mistake_task_numbers.add(task.task_number)
+
     return render_template(
         'submissions_list.html',
         submissions=submissions,
@@ -3922,6 +3945,8 @@ def submissions_list():
         lesson_workspaces=lesson_workspaces,
         submission_display_status=submission_display_status,
         submission_progress=submission_progress,
+        mistakes=mistakes,
+        mistake_topics_count=len(mistake_task_numbers),
     )
 
 

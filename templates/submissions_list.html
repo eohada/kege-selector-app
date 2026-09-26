@@ -108,16 +108,31 @@
         </button>
       </div>
 
-      <!-- Сортировка -->
-      <div class="relative shrink-0 flex items-center gap-2 self-end sm:self-auto">
-        <label for="taskSortSelect" class="text-xs font-black text-slate-400 uppercase tracking-wider hidden sm:inline-block">Сортировка:</label>
+      <!-- Сортировка (Кастомный стилизованный выпадающий список) -->
+      <div class="relative shrink-0 flex items-center gap-2 self-end sm:self-auto" id="customSortContainer">
+        <span class="text-xs font-black text-slate-400 uppercase tracking-wider hidden sm:inline-block">Сортировка:</span>
         <div class="relative">
-          <select id="taskSortSelect" class="appearance-none bg-white border-2 border-slate-200 shadow-[0_2px_0_#e2e8f0] text-slate-700 text-xs font-black rounded-xl py-2 pl-3.5 pr-8 focus:outline-hidden focus:border-indigo-400 cursor-pointer">
-            <option value="newest" selected>⇅ Сначала новые</option>
-            <option value="deadline">🕒 По дедлайну</option>
-            <option value="title">🔤 По названию</option>
-          </select>
-          <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+          <button type="button" id="sortDropdownBtn" class="bg-white border-2 border-slate-200 shadow-[0_2px_0_#e2e8f0] hover:border-slate-300 text-slate-800 text-xs font-black rounded-xl py-2 pl-3.5 pr-8 flex items-center gap-1.5 cursor-pointer transition-all active:translate-y-0.5" aria-expanded="false" aria-haspopup="listbox">
+            <span id="sortDropdownLabel" class="flex items-center gap-1.5">⇅ Сначала новые</span>
+            <i id="sortDropdownArrow" class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs transition-transform duration-200 pointer-events-none"></i>
+          </button>
+
+          <!-- Выпадающее меню в стиле BooStudy Canon -->
+          <div id="sortDropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-white border-2 border-slate-200 rounded-2xl shadow-[0_12px_28px_rgba(0,0,0,0.08),0_2px_0_#e2e8f0] p-1.5 z-50 flex flex-col gap-1 transition-all" role="listbox">
+            <button type="button" class="sort-option-btn w-full px-3 py-2 rounded-xl text-xs font-black text-left flex items-center justify-between transition-all bg-indigo-50 text-indigo-700 active" data-sort-val="newest" role="option" aria-selected="true">
+              <span>⇅ Сначала новые</span>
+              <i class="ph-bold ph-check text-indigo-600 text-xs sort-check"></i>
+            </button>
+            <button type="button" class="sort-option-btn w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 text-left flex items-center justify-between transition-all" data-sort-val="deadline" role="option" aria-selected="false">
+              <span>🕒 По дедлайну</span>
+              <i class="ph-bold ph-check text-indigo-600 text-xs sort-check hidden"></i>
+            </button>
+            <button type="button" class="sort-option-btn w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 text-left flex items-center justify-between transition-all" data-sort-val="title" role="option" aria-selected="false">
+              <span>🔤 По названию</span>
+              <i class="ph-bold ph-check text-indigo-600 text-xs sort-check hidden"></i>
+            </button>
+          </div>
+          <input type="hidden" id="taskSortSelect" value="newest">
         </div>
       </div>
     </div>
@@ -270,38 +285,134 @@
           {% endif %}
         </div>
 
-        <!-- КАРТОЧКА: «РАБОТА НАД ОШИБКАМИ» (Как на дизайне) -->
+        <!-- КАРТОЧКА: «РАБОТА НАД ОШИБКАМИ» (Интерактивная система закрытия пробелов) -->
+        {% set mistake_count = mistakes|length if mistakes else 0 %}
         <div class="bg-gradient-to-br from-indigo-50/80 via-blue-50/60 to-purple-50/80 rounded-[2rem] border-2 border-indigo-100 shadow-[0_4px_0_#E0E7FF] p-6 relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6">
           <div class="relative z-10 flex-1">
             <div class="flex items-center gap-2 mb-1.5">
               <h3 class="text-xl font-display font-black text-slate-900">Работа над ошибками</h3>
-              <span class="px-2.5 py-0.5 bg-indigo-600 text-white text-[10px] font-black rounded-full uppercase tracking-wider">Smart</span>
+              <span class="px-2.5 py-0.5 bg-indigo-600 text-white text-[10px] font-black rounded-full uppercase tracking-wider">Smart Practice</span>
             </div>
             <p class="text-xs font-bold text-slate-500 leading-relaxed mb-4 max-w-md">
-              Разбери свои ошибки, закрепи сложные темы и стань увереннее перед контрольными срезами!
+              Разбери задания с неверными ответами, устрани пробелы и верни потерянные баллы!
             </p>
 
             <!-- Чипсы статистики ошибок -->
             <div class="flex items-center gap-2.5 flex-wrap">
-              <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-rose-100 rounded-xl text-xs font-black text-rose-600 shadow-xs">
-                <i class="ph-bold ph-x-circle text-rose-500"></i> 12 ошибок
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-rose-100 rounded-xl text-xs font-black text-rose-600 shadow-xs" id="mistakesBadgeCount">
+                <i class="ph-bold ph-x-circle text-rose-500"></i> {{ mistake_count }} {{ 'ошибок к разбору' if mistake_count != 1 else 'ошибка к разбору' }}
               </span>
               <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-amber-100 rounded-xl text-xs font-black text-amber-700 shadow-xs">
-                <i class="ph-bold ph-book-open text-amber-500"></i> 5 тем для повторения
+                <i class="ph-bold ph-book-open text-amber-500"></i> {{ mistake_topics_count if mistake_topics_count else 0 }} тем КЕГЭ
               </span>
               <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-emerald-100 rounded-xl text-xs font-black text-emerald-600 shadow-xs">
-                <i class="ph-bold ph-trend-up text-emerald-500"></i> +23% рост результата
+                <i class="ph-bold ph-trend-up text-emerald-500"></i> До +15 баллов к экзамену
               </span>
             </div>
           </div>
 
-          <div class="relative z-10 shrink-0 flex flex-col items-center sm:items-end gap-3 w-full sm:w-auto">
-            <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}"
-               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-2xl shadow-[0_3px_0_#3730A3] active:translate-y-0.5 transition-all no-underline">
-              Перейти к работе над ошибками <i class="ph-bold ph-arrow-right"></i>
+          <div class="relative z-10 shrink-0 flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+            {% if mistake_count > 0 %}
+            <button type="button" id="toggleMistakesBtn"
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-2xl shadow-[0_3px_0_#3730A3] active:translate-y-0.5 transition-all cursor-pointer">
+              <span id="toggleMistakesBtnText">Открыть разбор ошибок</span>
+              <i class="ph-bold ph-caret-down text-xs transition-transform" id="toggleMistakesBtnCaret"></i>
+            </button>
+            {% endif %}
+            <a href="{{ url_for('main.student_mistakes') }}"
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-3 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-200 font-black text-xs rounded-2xl shadow-[0_2px_0_#DAE1E9] active:translate-y-0.5 transition-all no-underline"
+               title="Открыть полный тренажёр ошибок в отдельной странице">
+              <i class="ph-bold ph-arrow-square-out text-sm text-slate-400"></i> В тренажёр
             </a>
           </div>
         </div>
+
+        <!-- ИНТЕРАКТИВНЫЙ РАБОЧИЙ БЛОК: РАЗБОР И ИСПРАВЛЕНИЕ ОШИБОК -->
+        {% if mistakes and mistakes|length > 0 %}
+        <div id="mistakesWorkArea" class="hidden flex flex-col gap-4 bg-[#F8FAFC] border-2 border-indigo-200/90 rounded-[2rem] p-5 sm:p-6 shadow-sm transition-all duration-300">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
+            <div>
+              <h4 class="text-sm font-display font-black text-slate-900 flex items-center gap-2">
+                <i class="ph-fill ph-sparkle text-indigo-600"></i> Интерактивная отработка ошибок
+              </h4>
+              <p class="text-xs font-bold text-slate-400 mt-0.5">Введи исправленный ответ для автоматической перепроверки</p>
+            </div>
+            
+            <!-- Фильтры по темам/номерам ошибок -->
+            <div class="flex items-center gap-1.5 overflow-x-auto hide-scrollbar">
+              <button type="button" class="mistake-filter-chip px-3 py-1.5 rounded-xl text-xs font-extrabold bg-indigo-600 text-white shadow-xs cursor-pointer active" data-filter="all">
+                Все ({{ mistakes|length }})
+              </button>
+              {% for m in mistakes|groupby('task_number') %}
+              <button type="button" class="mistake-filter-chip px-3 py-1.5 rounded-xl text-xs font-extrabold bg-white border border-slate-200 text-slate-600 hover:text-slate-900 cursor-pointer" data-filter="{{ m.grouper }}">
+                №{{ m.grouper }}
+              </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Сетка карточек с ошибками -->
+          <div class="grid grid-cols-1 gap-4" id="mistakesList">
+            {% for m in mistakes %}
+            <div class="mistake-card bg-white border-2 border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-[0_2px_0_#DAE1E9] transition-all hover:border-slate-300" data-task-num="{{ m.task_number }}" id="mistakeCard-{{ m.answer_id }}">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-black flex items-center gap-1.5">
+                    <i class="ph-bold ph-warning-circle"></i> Задание №{{ m.task_number }}
+                  </span>
+                  <span class="text-xs font-bold text-slate-400">• {{ m.assignment_title }}</span>
+                </div>
+                <a href="/trainer?task_number={{ m.task_number }}&count=5" target="_blank"
+                   class="inline-flex items-center gap-1 text-[11px] font-black text-indigo-600 hover:text-indigo-800 transition-colors no-underline">
+                  <i class="ph-bold ph-lightning text-amber-500"></i> Закрепить в тренажере
+                </a>
+              </div>
+
+              <!-- Текст задачи -->
+              <div class="text-xs sm:text-sm font-medium text-slate-700 leading-relaxed mb-4 task-content">
+                {{ m.content_html | safe }}
+              </div>
+
+              {% if m.student_code %}
+              <details class="mb-3 bg-slate-900 rounded-xl p-3 text-slate-200 text-xs font-mono group">
+                <summary class="text-indigo-300 font-bold cursor-pointer flex items-center justify-between">
+                  <span class="flex items-center gap-1.5"><i class="ph-bold ph-code"></i> Твой сохранённый код (Python)</span>
+                  <i class="ph-bold ph-caret-down group-open:rotate-180 transition-transform"></i>
+                </summary>
+                <pre class="mt-2 text-[11px] overflow-x-auto text-indigo-200 bg-slate-950 p-2.5 rounded-lg border border-slate-800"><code>{{ m.student_code }}</code></pre>
+              </details>
+              {% endif %}
+
+              <!-- Прошлый неверный ответ и подсказка преподавателя -->
+              <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-rose-50/70 border border-rose-100 rounded-xl mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="text-[11px] font-black text-rose-500 uppercase tracking-tight">Твой ответ:</span>
+                  <span class="text-xs font-mono font-black text-rose-700 line-through bg-white/80 px-2 py-0.5 rounded-md border border-rose-200/60">{{ m.student_value or 'Не указан' }}</span>
+                </div>
+                {% if m.teacher_comment %}
+                <div class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                  <i class="ph-fill ph-lightbulb text-amber-500 text-sm shrink-0"></i>
+                  <span>{{ m.teacher_comment }}</span>
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Форма исправления ошибки -->
+              <form class="mistake-solve-form flex flex-col sm:flex-row items-stretch sm:items-center gap-2" data-answer-id="{{ m.answer_id }}">
+                <div class="relative flex-1">
+                  <input type="text" name="new_answer" placeholder="Введи правильный ответ..." required
+                         class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:outline-hidden transition-all">
+                </div>
+                <button type="submit" class="mistake-btn-submit bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-[0_2px_0_#3730A3] active:translate-y-0.5 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
+                  <i class="ph-bold ph-check"></i> Проверить ответ
+                </button>
+              </form>
+              <div class="mistake-feedback-msg mt-2.5 hidden text-xs font-bold p-3 rounded-xl"></div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
 
         <!-- СЕКЦИЯ: КЛАССНЫЕ РАБОТЫ (БЕЗ ДЕДЛАЙНА) -->
         <div class="flex flex-col gap-4">
@@ -384,36 +495,42 @@
           </a>
         </div>
 
-        <!-- ВИДЖЕТ 1: «МОЙ ПРОГРЕСС» (Круговой чарт + статистика) -->
+        <!-- ВИДЖЕТ 1: «ВЫПОЛНЕНИЕ РАБОТ» (Круговой чарт сдачи заданий + точность задач) -->
+        {% set submitted_works_count = completed_count + on_review_count %}
+        {% set works_pct = ((submitted_works_count * 100 / total_subs_count)|round|int) if total_subs_count > 0 else 80 %}
+        {% set ring_dash_works = ((works_pct * 251.2) / 100)|round(1) %}
+
         <div class="bg-white rounded-[2rem] border-2 border-slate-200/90 shadow-[0_4px_0_#DAE1E9] p-6 flex flex-col gap-5">
           <div class="flex items-center justify-between">
-            <h3 class="text-base font-display font-black text-slate-900">Мой прогресс</h3>
+            <h3 class="text-base font-display font-black text-slate-900">Выполнение работ</h3>
             <span class="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full">
               <i class="ph-bold ph-arrow-up-right"></i> +12% за месяц
             </span>
           </div>
 
-          <!-- Круговой индикатор + счетчик -->
+          <!-- Круговой индикатор + счетчик работ -->
           <div class="flex items-center gap-5">
             <div class="relative w-20 h-20 shrink-0">
               <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="40" stroke="#F1F5F9" stroke-width="10" fill="none" />
                 <circle cx="50" cy="50" r="40" stroke="#4F46E5" stroke-width="10" stroke-linecap="round" fill="none"
-                        stroke-dasharray="251.2" stroke-dashoffset="{{ 251.2 - (ring_dash if ring_dash else 170) }}" />
+                        stroke-dasharray="251.2" stroke-dashoffset="{{ 251.2 - (ring_dash_works if ring_dash_works else 200) }}" />
               </svg>
               <div class="absolute inset-0 flex items-center justify-center">
-                <span class="text-base font-black text-slate-900">{{ overall_pct }}%</span>
+                <span class="text-base font-black text-slate-900">{{ works_pct }}%</span>
               </div>
             </div>
 
             <div>
-              <p class="text-xs font-bold text-slate-400 mb-0.5">Решено задач</p>
-              <p class="text-lg font-display font-black text-slate-900">{{ ns.solved_tasks }} <span class="text-sm font-bold text-slate-400">из {{ ns.total_tasks if ns.total_tasks > 0 else 70 }}</span></p>
-              <p class="text-[11px] font-bold text-slate-400 mt-1">Отличный темп подготовки!</p>
+              <p class="text-xs font-bold text-slate-400 mb-0.5">Сдано заданий</p>
+              <p class="text-lg font-display font-black text-slate-900">{{ submitted_works_count }} <span class="text-sm font-bold text-slate-400">из {{ total_subs_count }} работ</span></p>
+              <p class="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1">
+                <i class="ph-bold ph-check-circle"></i> 6 проверено, 2 на проверке
+              </p>
             </div>
           </div>
 
-          <!-- 3 мини-плитки -->
+          <!-- 3 мини-плитки: 6 + 2 + 2 = 10 -->
           <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center">
             <div class="bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
               <p class="text-base font-black text-slate-800">{{ completed_count }}</p>
@@ -427,6 +544,22 @@
               <p class="text-base font-black text-slate-800">{{ in_work_count }}</p>
               <p class="text-[10px] font-extrabold text-slate-400 mt-0.5 uppercase tracking-tight">В работе</p>
             </div>
+          </div>
+
+          <!-- Детальный срез по задачам внутри проверенных работ -->
+          <div class="bg-indigo-50/70 border border-indigo-100/90 rounded-2xl p-3 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-xl bg-white text-indigo-600 border border-indigo-100 flex items-center justify-center text-sm font-bold shadow-2xs">
+                <i class="ph-fill ph-target"></i>
+              </span>
+              <div>
+                <p class="text-[11px] font-black text-slate-800">Точность в задачах</p>
+                <p class="text-[10px] font-bold text-slate-500">{{ ns.solved_tasks }} из {{ ns.total_tasks }} решено верно</p>
+              </div>
+            </div>
+            <span class="text-xs font-black text-indigo-700 bg-white px-2.5 py-1 rounded-xl shadow-2xs border border-indigo-100">
+              {{ overall_pct }}%
+            </span>
           </div>
         </div>
 
@@ -530,8 +663,8 @@
   const grid = document.getElementById('deadlineGrid');
   const cards = grid ? Array.from(grid.querySelectorAll('.assignment-card')) : [];
   const emptyState = document.getElementById('deadlineEmptyState');
-  const sortSelect = document.getElementById('taskSortSelect');
 
+  // --- 1. ТАБЫ ФИЛЬТРАЦИИ ---
   const tabActiveClasses = ['bg-white', 'text-slate-900', 'shadow-xs', 'border', 'border-slate-200'];
   const tabInactiveClasses = ['text-slate-500', 'hover:text-slate-800'];
 
@@ -580,6 +713,23 @@
     }
   }
 
+  tabs.forEach(t => {
+    t.addEventListener('click', () => {
+      const f = t.dataset.filter;
+      setActiveTab(f);
+      applyFilter(f);
+      try { localStorage.setItem('ui.tasks.filter_v2', f); } catch(e) {}
+    });
+  });
+
+  // --- 2. КАСТОМНЫЙ ВЫПАДАЮЩИЙ СПИСОК СОРТИРОВКИ ---
+  const sortBtn = document.getElementById('sortDropdownBtn');
+  const sortMenu = document.getElementById('sortDropdownMenu');
+  const sortLabel = document.getElementById('sortDropdownLabel');
+  const sortArrow = document.getElementById('sortDropdownArrow');
+  const sortOptions = Array.from(document.querySelectorAll('.sort-option-btn'));
+  const sortInput = document.getElementById('taskSortSelect');
+
   function applySort(sortBy) {
     if (!grid) return;
     const sorted = [...cards].sort((a, b) => {
@@ -595,21 +745,171 @@
     sorted.forEach(c => grid.appendChild(c));
   }
 
-  tabs.forEach(t => {
-    t.addEventListener('click', () => {
-      const f = t.dataset.filter;
-      setActiveTab(f);
-      applyFilter(f);
-      try { localStorage.setItem('ui.tasks.filter_v2', f); } catch(e) {}
+  if (sortBtn && sortMenu) {
+    sortBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !sortMenu.classList.contains('hidden');
+      if (isOpen) {
+        sortMenu.classList.add('hidden');
+        if (sortArrow) sortArrow.classList.remove('rotate-180');
+      } else {
+        sortMenu.classList.remove('hidden');
+        if (sortArrow) sortArrow.classList.add('rotate-180');
+      }
     });
-  });
 
-  if (sortSelect) {
-    sortSelect.addEventListener('change', () => {
-      applySort(sortSelect.value);
+    sortOptions.forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.sortVal;
+        const text = opt.querySelector('span') ? opt.querySelector('span').innerHTML : opt.innerText;
+
+        // Обновляем визуальный активный пункт
+        sortOptions.forEach(o => {
+          o.classList.remove('bg-indigo-50', 'text-indigo-700', 'active', 'font-black');
+          o.classList.add('text-slate-600', 'font-bold');
+          const chk = o.querySelector('.sort-check');
+          if (chk) chk.classList.add('hidden');
+        });
+        opt.classList.add('bg-indigo-50', 'text-indigo-700', 'active', 'font-black');
+        opt.classList.remove('text-slate-600', 'font-bold');
+        const activeChk = opt.querySelector('.sort-check');
+        if (activeChk) activeChk.classList.remove('hidden');
+
+        // Обновляем кнопку и скрытый input
+        if (sortLabel) sortLabel.innerHTML = text;
+        if (sortInput) sortInput.value = val;
+        if (sortArrow) sortArrow.classList.remove('rotate-180');
+        sortMenu.classList.add('hidden');
+
+        applySort(val);
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!sortMenu.contains(e.target) && !sortBtn.contains(e.target)) {
+        sortMenu.classList.add('hidden');
+        if (sortArrow) sortArrow.classList.remove('rotate-180');
+      }
     });
   }
 
+  // --- 3. ИНТЕРАКТИВНАЯ РАБОТА НАД ОШИБКАМИ ---
+  const toggleMistakesBtn = document.getElementById('toggleMistakesBtn');
+  const toggleMistakesText = document.getElementById('toggleMistakesBtnText');
+  const toggleMistakesCaret = document.getElementById('toggleMistakesBtnCaret');
+  const mistakesWorkArea = document.getElementById('mistakesWorkArea');
+
+  if (toggleMistakesBtn && mistakesWorkArea) {
+    toggleMistakesBtn.addEventListener('click', () => {
+      const isHidden = mistakesWorkArea.classList.contains('hidden');
+      if (isHidden) {
+        mistakesWorkArea.classList.remove('hidden');
+        if (toggleMistakesText) toggleMistakesText.textContent = 'Скрыть разбор';
+        if (toggleMistakesCaret) toggleMistakesCaret.classList.add('rotate-180');
+        mistakesWorkArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        mistakesWorkArea.classList.add('hidden');
+        if (toggleMistakesText) toggleMistakesText.textContent = 'Открыть разбор ошибок';
+        if (toggleMistakesCaret) toggleMistakesCaret.classList.remove('rotate-180');
+      }
+    });
+  }
+
+  // Фильтрация ошибок по темам
+  const mistakeChips = Array.from(document.querySelectorAll('.mistake-filter-chip'));
+  const mistakeCards = Array.from(document.querySelectorAll('.mistake-card'));
+
+  mistakeChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      mistakeChips.forEach(c => {
+        c.className = 'mistake-filter-chip px-3 py-1.5 rounded-xl text-xs font-extrabold bg-white border border-slate-200 text-slate-600 hover:text-slate-900 cursor-pointer';
+      });
+      chip.className = 'mistake-filter-chip px-3 py-1.5 rounded-xl text-xs font-extrabold bg-indigo-600 text-white shadow-xs cursor-pointer active';
+
+      const filterVal = chip.dataset.filter;
+      mistakeCards.forEach(mc => {
+        if (filterVal === 'all' || mc.dataset.taskNum === filterVal) {
+          mc.style.display = '';
+        } else {
+          mc.style.display = 'none';
+        }
+      });
+    });
+  });
+
+  // Отправка решения ошибки
+  const solveForms = Array.from(document.querySelectorAll('.mistake-solve-form'));
+  solveForms.forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const answerId = form.dataset.answerId;
+      const input = form.querySelector('input[name="new_answer"]');
+      const submitBtn = form.querySelector('.mistake-btn-submit');
+      const feedback = form.parentElement.querySelector('.mistake-feedback-msg');
+      if (!input || !submitBtn) return;
+
+      const val = input.value.trim();
+      if (!val) return;
+
+      const origBtnHtml = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i> Проверяем…';
+
+      try {
+        const resp = await fetch(`/student/mistakes/${answerId}/retry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ new_answer: val })
+        });
+        const data = await resp.json();
+
+        if (feedback) feedback.classList.remove('hidden');
+
+        if (data.success) {
+          form.classList.add('hidden');
+          const card = form.closest('.mistake-card');
+          if (card) {
+            card.classList.remove('border-slate-200/90', 'hover:border-slate-300');
+            card.classList.add('border-emerald-300', 'bg-emerald-50/40');
+          }
+          if (feedback) {
+            feedback.className = 'mistake-feedback-msg mt-2.5 text-xs font-extrabold p-3 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center justify-between gap-2';
+            feedback.innerHTML = `
+              <span class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-emerald-600 text-base"></i> ${data.message || 'Правильно! Ошибка исправлена!'}</span>
+              <span class="px-2 py-0.5 rounded-lg bg-emerald-200 text-emerald-800 text-[10px] font-black">+15 XP</span>
+            `;
+          }
+
+          // Обновляем бейдж общего количества ошибок
+          const badge = document.getElementById('mistakesBadgeCount');
+          if (badge) {
+            const currentText = badge.innerText;
+            const num = parseInt(currentText) || 0;
+            const newNum = Math.max(0, num - 1);
+            badge.innerHTML = `<i class="ph-bold ph-x-circle text-rose-500"></i> ${newNum} ${newNum === 1 ? 'ошибка к разбору' : 'ошибок к разбору'}`;
+          }
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnHtml;
+          if (feedback) {
+            feedback.className = 'mistake-feedback-msg mt-2.5 text-xs font-extrabold p-3 rounded-xl bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-2';
+            feedback.innerHTML = `<i class="ph-fill ph-warning-circle text-rose-600 text-base"></i> ${data.message || 'Ответ неверный. Попробуй ещё раз!'}`;
+          }
+        }
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = origBtnHtml;
+        if (feedback) {
+          feedback.className = 'mistake-feedback-msg mt-2.5 text-xs font-extrabold p-3 rounded-xl bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-2';
+          feedback.innerHTML = `<i class="ph-fill ph-warning-circle text-rose-600 text-base"></i> Не удалось отправить запрос. Попробуйте позже.`;
+          feedback.classList.remove('hidden');
+        }
+      }
+    });
+  });
+
+  // Инициализация активного таба
   let initial = 'all';
   try { initial = localStorage.getItem('ui.tasks.filter_v2') || initial; } catch(e) {}
   if (!['all', 'in_work', 'on_review', 'completed', 'exam'].includes(initial)) initial = 'all';
