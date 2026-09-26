@@ -2126,20 +2126,35 @@ def debug_achievements(student_id):
 @main_bp.route('/student/mistakes')
 @login_required
 def student_mistakes():
-    from app.models import Student, Answer, Submission
+    from app.models import Student, Answer, Submission, db
     from flask import flash, redirect, url_for, render_template
+    from sqlalchemy import or_
     
     student = Student.query.filter_by(user_id=current_user.id).first()
     if not student:
         flash("Только ученики имеют доступ к работе над ошибками.", "warning")
         return redirect(url_for('main.dashboard'))
         
-    mistakes = Answer.query.join(Submission).filter(
+    mistakes_raw = Answer.query.join(Submission).filter(
         Submission.student_id == student.student_id,
-        Answer.is_correct == False
+        or_(
+            Answer.is_correct == False,
+            db.and_(Answer.score == 0, Answer.reviewed_at.isnot(None))
+        )
     ).all()
     
-    return render_template('student_mistakes.html', student=student, mistakes=mistakes)
+    mistakes = [ans for ans in mistakes_raw if ans.assignment_task and ans.assignment_task.task]
+    mistakes.sort(key=lambda a: getattr(a.assignment_task.task, 'task_number', 0) or 0)
+    unique_topics = sorted({a.assignment_task.task.task_number for a in mistakes if a.assignment_task.task.task_number})
+    
+    return render_template(
+        'student_mistakes.html',
+        student=student,
+        mistakes=mistakes,
+        unique_topics=unique_topics,
+        mistakes_count=len(mistakes)
+    )
+
 
 
 @main_bp.route('/student/mistakes/<int:answer_id>/retry', methods=['POST'])
