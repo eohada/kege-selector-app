@@ -83,7 +83,7 @@
     {% set is_tools_active = request.path in ['/groups', '/theory/course-map', '/guidebook'] or request.path.startswith('/teacher/guest-sessions') or request.path.startswith('/admin') %}
 
     <!-- Teacher Centralized Vertical Sidebar Dock -->
-    <nav class="fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex flex-col items-center py-5 shrink-0 z-50">
+    <nav class="fixed left-4 top-4 bottom-4 z-50 hidden w-20 shrink-0 flex-col items-center rounded-[2rem] border border-slate-200/80 bg-white py-5 shadow-[0_8px_25px_rgba(15,23,42,0.06)] lg:flex">
         <!-- Logo -->
         <a href="/dashboard" class="relative group w-11 h-11 rounded-2xl bg-indigo-600 shadow-[0_4px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-3 cursor-pointer hover:-translate-y-0.5 active:translate-y-[2px] active:shadow-none transition-all" title="BooStudy">
             <i class="ph-bold ph-graduation-cap text-2xl"></i>
@@ -332,6 +332,23 @@
             </a>
         </div>
 
+    </nav>
+    <nav class="fixed inset-x-3 bottom-3 z-50 flex items-center justify-around rounded-2xl border border-slate-200/90 bg-white/95 px-1 py-2 shadow-[0_8px_25px_rgba(15,23,42,0.14)] backdrop-blur lg:hidden" aria-label="Основная навигация">
+        <a href="/dashboard" class="flex min-h-12 min-w-12 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[10px] font-bold {% if is_dashboard_active %}bg-indigo-50 text-indigo-600{% else %}text-slate-500{% endif %}">
+            <i class="ph-bold ph-squares-four text-xl"></i><span>Главная</span>
+        </a>
+        <a href="/students" class="flex min-h-12 min-w-12 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[10px] font-bold {% if is_students_active %}bg-indigo-50 text-indigo-600{% else %}text-slate-500{% endif %}">
+            <i class="ph-bold ph-users text-xl"></i><span>Ученики</span>
+        </a>
+        <a href="/schedule" class="flex min-h-12 min-w-12 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[10px] font-bold {% if is_schedule_active %}bg-indigo-50 text-indigo-600{% else %}text-slate-500{% endif %}">
+            <i class="ph-bold ph-calendar-blank text-xl"></i><span>Расписание</span>
+        </a>
+        <a href="/tasks" class="flex min-h-12 min-w-12 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[10px] font-bold {% if is_tasks_active %}bg-indigo-50 text-indigo-600{% else %}text-slate-500{% endif %}">
+            <i class="ph-bold ph-book-open text-xl"></i><span>Задачи</span>
+        </a>
+        <a href="/workspace/profile" class="flex min-h-12 min-w-12 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[10px] font-bold {% if request.path.startswith('/workspace/profile') %}bg-indigo-50 text-indigo-600{% else %}text-slate-500{% endif %}">
+            <i class="ph-bold ph-user-circle text-xl"></i><span>Профиль</span>
+        </a>
     </nav>
     {% endblock %}
 
