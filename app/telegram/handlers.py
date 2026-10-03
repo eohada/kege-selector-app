@@ -456,6 +456,15 @@ def _is_creator(role: str) -> bool:
     return role == 'creator'
 
 
+def _is_qa_navigation_text(text: str) -> bool:
+    if text in {'Мои ученики', 'Мои уроки'}:
+        return True
+    return text.startswith((
+        '🚀 ', '📊 ', '👥 ', '📢 ', '📝 ', '📅 ', '📥 ',
+        '👨‍👩‍👧 ', '💳 ', '🔔 ', '⚙️ ', '🔄 ', '🚪 ',
+    ))
+
+
 def _is_senior_admin(role: str) -> bool:
     return role == 'chief_admin'
 
@@ -1061,14 +1070,16 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
     else:
         # ЕДИНОЕ ТРЕБОВАНИЕ: Если аккаунт НЕ ПРИВЯЗАН
-        from telegram import ReplyKeyboardRemove
+        profile_url = f"{APP_URL.rstrip('/')}/workspace/profile?telegram=connect"
+        connect_keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔗 Открыть профиль и подключить Telegram", url=profile_url),
+        ]])
         await update.message.reply_text(
             "🔒 <b>Ваш Telegram-аккаунт не привязан к платформе BooStudy.</b>\n\n"
-            "Чтобы привязать аккаунт:\n"
-            "1. Зайдите в профиль на сайте (http://127.0.0.1:5000/profile).\n"
-            "2. Нажмите «🔑 Сгенерировать код привязки».\n"
-            "3. Отправьте полученный 6-значный код <code>BS-XXXX</code> сюда в чат.",
-            reply_markup=ReplyKeyboardRemove(),
+            "Откройте профиль кнопкой ниже. Там можно проверить статус, сгенерировать "
+            "одноразовую ссылку или код и сразу вернуться в бот.\n\n"
+            "После привязки профиль обновится автоматически.",
+            reply_markup=connect_keyboard,
             parse_mode='HTML'
         )
 
@@ -4447,7 +4458,7 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
             # Если пишет ключ снова - предупреждаем, если что-то другое - показываем ЛК
             if text_val in QA_TESTERS:
                 await update.message.reply_text(f"Твой аккаунт уже привязан, {tester_info['name']}! Не нужно вводить ключ заново 😉")
-            else:
+            elif not _is_qa_navigation_text(text_val):
                 msg_text = (
                     f"🏢 ТВОЙ ЛИЧНЫЙ КАБИНЕТ QA 🏢\n\n"
                     f"Привет, {tester_info['name']}! 👾\n"
@@ -4460,7 +4471,6 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
                 keyboard = [[InlineKeyboardButton("🔄 Обновить стату", callback_data=f"refresh_stats_{user_id}")]]
                 await update.message.reply_text(msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
-            return
 
         # Если не привязан, пытаемся привязать по ключу
         if text_val in QA_TESTERS:

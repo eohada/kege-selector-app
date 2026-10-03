@@ -565,7 +565,7 @@ def api_telegram_link_code():
             profile = UserProfile(user_id=current_user.id)
             db.session.add(profile)
         
-        code = secrets.token_hex(3).upper()  # 6 символов, например A1B2C3
+        code = f"BS-{secrets.token_hex(3).upper()}"  # формат, принимаемый ботом: BS-A1B2C3
         # До 64 символов для параметра ?start= (Telegram)
         link_token = secrets.token_hex(24)  # 48 hex
         profile.telegram_link_code = code

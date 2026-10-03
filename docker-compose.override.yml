@@ -1,0 +1,4 @@
+services:
+  telegram-poller:
+    extra_hosts:
+      - api.telegram.org:149.154.167.220

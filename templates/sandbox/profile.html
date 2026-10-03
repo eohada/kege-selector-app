@@ -247,6 +247,52 @@
       </div>
     </div>
 
+    <section id="telegram-connection" class="mt-4 rounded-[1.75rem] border-2 border-sky-100 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-4 sm:p-5 shadow-[0_4px_0_#DCEAF6]" aria-labelledby="telegram-connection-title">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex min-w-0 items-start gap-3">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
+            <i class="ph-fill ph-telegram-logo text-2xl"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 id="telegram-connection-title" class="text-base font-black text-slate-900">Telegram и уведомления</h2>
+              <span id="tg-status-pill" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-600">Проверяем статус…</span>
+            </div>
+            <p id="tg-status-description" class="mt-1 text-sm leading-5 text-slate-600">Подключите Telegram, чтобы получать уведомления и открывать BooStudy из бота.</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 lg:justify-end">
+          <button id="tg-connect-button" type="button" onclick="startTelegramConnection()" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_#0284C7] transition hover:bg-sky-600 active:translate-y-0.5 active:shadow-none">
+            <i class="ph-bold ph-link"></i><span>Подключить Telegram</span>
+          </button>
+          <button type="button" onclick="refreshTelegramStatus()" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50" aria-label="Обновить статус Telegram">
+            <i class="ph-bold ph-arrows-clockwise"></i><span class="hidden sm:inline">Обновить</span>
+          </button>
+          <button id="tg-notifications-button" type="button" onclick="toggleTelegramNotifications()" hidden class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100"></button>
+          <button id="tg-unlink-button" type="button" onclick="unlinkTelegram()" hidden class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-bold text-rose-600 transition hover:bg-rose-50">Отвязать</button>
+        </div>
+      </div>
+
+      <div id="tg-link-panel" hidden class="mt-4 rounded-2xl border border-sky-200 bg-white/90 p-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm font-extrabold text-slate-900">Ссылка готова на 15 минут</p>
+            <p class="mt-0.5 text-xs leading-5 text-slate-500">Откройте бота по ссылке — аккаунт подключится автоматически. Если Telegram не открывается, отправьте код в чат с ботом.</p>
+          </div>
+          <a id="tg-deep-link" href="#" target="_blank" rel="noopener" class="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white no-underline shadow-[0_3px_0_#4338CA] transition hover:bg-indigo-700 active:translate-y-0.5 active:shadow-none">
+            <i class="ph-bold ph-paper-plane-tilt"></i>Открыть бота
+          </a>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-3">
+          <span class="text-xs font-bold text-slate-500">Код:</span>
+          <code id="tg-link-code" class="rounded-lg bg-white px-2.5 py-1.5 font-mono text-base font-black tracking-widest text-slate-900 shadow-xs"></code>
+          <button type="button" onclick="copyTelegramLinkCode()" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-extrabold text-slate-700 transition hover:bg-slate-100">Скопировать</button>
+          <span id="tg-link-expiry" class="ml-auto text-xs font-semibold text-slate-500"></span>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
     <!-- 2. METRICS ROW (4 Cards in 1 Row - Level moved below to main content) -->
     <div class="profile-metrics grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mt-3.5">
       
@@ -1894,19 +1940,154 @@ function copyParentLinkCode(btn, code) {
 }
 
 
-function generateTgCode() {
-  fetch('/api/telegram/generate_auth_code', { method: 'POST' })
-  .then(r => r.json())
-  .then(d => {
-    const code = d.code || (d.data && d.data.code);
-    if (code && typeof openTgCodeModal === 'function') {
-      openTgCodeModal(code);
-    } else if (code) {
-      window.BooNotify.info('Код авторизации: ' + code, { title: 'Telegram', duration: 9000 });
-    }
-  })
-  .catch(() => {});
+let telegramConnectionState = { linked: false, notificationsEnabled: true, code: '' };
+
+function telegramNotify(type, message) {
+  if (window.BooNotify && typeof window.BooNotify[type] === 'function') {
+    window.BooNotify[type](message, { title: 'Telegram' });
+    return;
+  }
+  window.alert(message);
 }
+
+function renderTelegramConnection(status) {
+  const linked = Boolean(status.linked);
+  telegramConnectionState = {
+    ...telegramConnectionState,
+    linked,
+    notificationsEnabled: status.notifications_enabled !== false,
+  };
+
+  const pill = document.getElementById('tg-status-pill');
+  const description = document.getElementById('tg-status-description');
+  const connectButton = document.getElementById('tg-connect-button');
+  const unlinkButton = document.getElementById('tg-unlink-button');
+  const notificationsButton = document.getElementById('tg-notifications-button');
+  const panel = document.getElementById('tg-link-panel');
+  if (!pill || !description || !connectButton || !unlinkButton || !notificationsButton || !panel) return;
+
+  pill.className = linked
+    ? 'inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-extrabold text-emerald-700'
+    : 'inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-extrabold text-amber-700';
+  pill.innerHTML = linked
+    ? '<i class="ph-bold ph-check-circle"></i>Подключён'
+    : '<i class="ph-bold ph-warning-circle"></i>Не подключён';
+  description.textContent = linked
+    ? 'Telegram связан с профилем. Управляйте уведомлениями или при необходимости отвяжите аккаунт.'
+    : 'Подключите Telegram, чтобы получать уведомления и открывать BooStudy из бота.';
+  connectButton.hidden = linked;
+  unlinkButton.hidden = !linked;
+  notificationsButton.hidden = !linked;
+  notificationsButton.innerHTML = telegramConnectionState.notificationsEnabled
+    ? '<i class="ph-bold ph-bell"></i>Уведомления включены'
+    : '<i class="ph-bold ph-bell-slash"></i>Уведомления выключены';
+  notificationsButton.className = telegramConnectionState.notificationsEnabled
+    ? 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100'
+    : 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50';
+  if (linked) panel.hidden = true;
+}
+
+async function refreshTelegramStatus() {
+  const pill = document.getElementById('tg-status-pill');
+  try {
+    if (pill) pill.textContent = 'Проверяем статус…';
+    const response = await fetch('/api/telegram/status', { headers: profileApiHeaders() });
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось получить статус');
+    renderTelegramConnection(data);
+    return data;
+  } catch (error) {
+    if (pill) {
+      pill.className = 'inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-extrabold text-rose-700';
+      pill.textContent = 'Статус недоступен';
+    }
+    telegramNotify('error', error.message || 'Не удалось получить статус Telegram');
+    return null;
+  }
+}
+
+async function startTelegramConnection() {
+  const button = document.getElementById('tg-connect-button');
+  const panel = document.getElementById('tg-link-panel');
+  try {
+    if (button) button.disabled = true;
+    const response = await fetch('/api/telegram/link-code', {
+      method: 'POST',
+      headers: profileApiHeaders('application/json'),
+      body: '{}',
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success || !data.code) throw new Error(data.error || 'Не удалось создать код');
+
+    telegramConnectionState.code = data.code;
+    document.getElementById('tg-link-code').textContent = data.code;
+    document.getElementById('tg-link-expiry').textContent = 'Действует 15 минут';
+    const deepLink = document.getElementById('tg-deep-link');
+    deepLink.hidden = !data.deep_link;
+    if (data.deep_link) deepLink.href = data.deep_link;
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    telegramNotify('info', data.deep_link ? 'Откройте бота по ссылке — привязка выполнится автоматически.' : 'Скопируйте код и отправьте его боту.');
+  } catch (error) {
+    telegramNotify('error', error.message || 'Не удалось начать привязку Telegram');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function copyTelegramLinkCode() {
+  if (!telegramConnectionState.code) return;
+  try {
+    await navigator.clipboard.writeText(telegramConnectionState.code);
+    telegramNotify('success', 'Код скопирован. Отправьте его в чат с ботом.');
+  } catch (_) {
+    telegramNotify('info', `Код привязки: ${telegramConnectionState.code}`);
+  }
+}
+
+async function toggleTelegramNotifications() {
+  try {
+    const response = await fetch('/api/telegram/toggle-notifications', {
+      method: 'POST',
+      headers: profileApiHeaders('application/json'),
+      body: JSON.stringify({ enabled: !telegramConnectionState.notificationsEnabled }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось изменить уведомления');
+    telegramConnectionState.notificationsEnabled = data.enabled;
+    renderTelegramConnection({ linked: true, notifications_enabled: data.enabled });
+  } catch (error) {
+    telegramNotify('error', error.message || 'Не удалось изменить уведомления');
+  }
+}
+
+async function unlinkTelegram() {
+  if (!window.confirm('Отвязать Telegram от этого профиля? Уведомления в бот перестанут приходить.')) return;
+  try {
+    const response = await fetch('/api/telegram/unlink', { method: 'POST', headers: profileApiHeaders() });
+    const data = await response.json();
+    if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось отвязать Telegram');
+    document.getElementById('tg-link-panel').hidden = true;
+    renderTelegramConnection({ linked: false, notifications_enabled: true });
+    telegramNotify('success', 'Telegram отвязан от профиля.');
+  } catch (error) {
+    telegramNotify('error', error.message || 'Не удалось отвязать Telegram');
+  }
+}
+
+function generateTgCode() {
+  document.getElementById('telegram-connection')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  startTelegramConnection();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!document.getElementById('telegram-connection')) return;
+  refreshTelegramStatus();
+  if (new URLSearchParams(window.location.search).get('telegram') === 'connect') {
+    startTelegramConnection();
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+});
 
 const cropState = { image: null, input: null, mode: 'avatar', scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0 };
 const cropCanvas = document.getElementById('image-crop-canvas');
