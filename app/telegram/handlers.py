@@ -5153,11 +5153,13 @@ async def _try_link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         user = profile.user
         user.tg_id = chat_id
         if hasattr(user, 'telegram_id'):
-            user.telegram_id = f"@{tg_user.username}" if tg_user.username else str(tg_user.id)
+            user.telegram_id = chat_id
         profile.telegram_id = f"@{tg_user.username}" if tg_user.username else str(tg_user.id)
         profile.telegram_chat_id = chat_id
-        profile.telegram_link_code = None  # гасим одноразовый код
-        profile.telegram_link_expires_at = None
+        profile.telegram_link_code = None
+        profile.telegram_link_code_expires = None
+        profile.telegram_link_token = None
+        profile.telegram_link_token_expires = None
 
         session.commit()
 
