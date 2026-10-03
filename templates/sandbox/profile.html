@@ -2083,6 +2083,10 @@ function generateTgCode() {
 document.addEventListener('DOMContentLoaded', () => {
   if (!document.getElementById('telegram-connection')) return;
   refreshTelegramStatus();
+  window.addEventListener('focus', refreshTelegramStatus);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshTelegramStatus();
+  });
   if (new URLSearchParams(window.location.search).get('telegram') === 'connect') {
     startTelegramConnection();
     window.history.replaceState({}, '', window.location.pathname);
