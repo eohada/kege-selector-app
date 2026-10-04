@@ -158,6 +158,28 @@ run_expand_only_migrations() {
     fi
 }
 
+ensure_internal_token() {
+    local env_file="$APP_DIR/.env"
+    local token
+    [[ -f "$env_file" ]] || return 0
+    if grep -Eq '^BOT_INTERNAL_TOKEN=[^[:space:]]' "$env_file"; then
+        return 0
+    fi
+
+    if command -v openssl >/dev/null 2>&1; then
+        token="$(openssl rand -hex 32)"
+    else
+        token="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d '[:space:]')"
+    fi
+    if grep -q '^BOT_INTERNAL_TOKEN=' "$env_file"; then
+        sed -i "s#^BOT_INTERNAL_TOKEN=.*#BOT_INTERNAL_TOKEN=$token#" "$env_file"
+    else
+        printf '\nBOT_INTERNAL_TOKEN=%s\n' "$token" >> "$env_file"
+    fi
+    chmod 600 "$env_file" || true
+    echo "Generated missing BOT_INTERNAL_TOKEN in $env_file"
+}
+
 deploy() {
     local current target current_service target_service
     current="$(active_color)"
@@ -169,6 +191,7 @@ deploy() {
     ensure_clean_worktree
     git fetch origin "$BRANCH"
     git pull --ff-only origin "$BRANCH"
+    ensure_internal_token
 
     if [[ ! -f "$COMPOSE_FILE" ]]; then
         echo "Missing $APP_DIR/$COMPOSE_FILE. Deploy is stopped before any traffic switch." >&2
