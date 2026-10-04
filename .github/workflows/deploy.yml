@@ -42,6 +42,7 @@ jobs:
           trap 'rm -f "${KEY_FILE}" "${KNOWN_HOSTS}"' EXIT
 
           printf '%s\n' "${SSH_KNOWN_HOSTS}" > "${KNOWN_HOSTS}"
+          cat "${GITHUB_WORKSPACE}/.github/boostudy_known_hosts" >> "${KNOWN_HOSTS}"
 
           for attempt in 1 2 3; do
             echo "SSH deploy attempt ${attempt}/3"
