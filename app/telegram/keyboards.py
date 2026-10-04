@@ -12,8 +12,8 @@ from app.telegram.config import APP_URL
 
 def get_webapp_info(url_path: str = '/tg-app/') -> WebAppInfo:
     base = (APP_URL or os.environ.get('APP_URL') or os.environ.get('BASE_URL') or '').strip().rstrip('/')
-    if not base or base.startswith('http://'):
-        base = 'https://boostudy.ru'
+    if not base:
+        raise RuntimeError('APP_URL/BASE_URL is required to build Telegram Web App buttons')
     full_url = f"{base}/{url_path.lstrip('/')}"
     return WebAppInfo(url=full_url)
 

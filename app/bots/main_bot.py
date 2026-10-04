@@ -2,13 +2,17 @@ import logging
 import os
 from datetime import datetime, timezone
 from flask import current_app
-from core.db_models import db, User, TelegramAuthCode, BugReport, QATestCase, moscow_now, utc_now
+from core.db_models import db, User, UserProfile, TelegramAuthCode, BugReport, QATestCase, moscow_now, utc_now
 from app.services.telegram_notifications import send_telegram_message
+from app.telegram.config import APP_URL
 
 logger = logging.getLogger(__name__)
 
 def _get_app_url():
-    return (os.environ.get('TELEGRAM_WEBHOOK_BASE_URL') or os.environ.get('APP_URL') or 'https://boostudy.ru').rstrip('/')
+    base = (os.environ.get('TELEGRAM_WEBHOOK_BASE_URL') or APP_URL).strip().rstrip('/')
+    if not base:
+        raise RuntimeError('APP_URL/TELEGRAM_WEBHOOK_BASE_URL is required for Telegram links')
+    return base
 
 def get_role_keyboard(user: User):
     app_url = _get_app_url()
@@ -25,17 +29,17 @@ def get_role_keyboard(user: User):
 
     if role == 'student':
         keyboard = [
-            [{"text": "📅 Расписание", "web_app": {"url": f"{app_url}/tma/schedule"}}],
+            [{"text": "📅 Расписание", "web_app": {"url": f"{app_url}/tg-app/"}}],
             [{"text": "📚 Мои ДЗ"}, {"text": "📊 Мой прогресс"}]
         ]
     elif role == 'parent':
         keyboard = [
-            [{"text": "📈 Успеваемость ребёнка", "web_app": {"url": f"{app_url}/tma/parent/digest"}}],
-            [{"text": "🗓️ Расписание", "web_app": {"url": f"{app_url}/tma/schedule"}}, {"text": "💳 Статус оплаты"}]
+            [{"text": "📈 Успеваемость ребёнка", "web_app": {"url": f"{app_url}/tg-app/"}}],
+            [{"text": "🗓️ Расписание", "web_app": {"url": f"{app_url}/tg-app/"}}, {"text": "💳 Статус оплаты"}]
         ]
     elif role == 'teacher':
         keyboard = [
-            [{"text": "📥 Очередь ДЗ"}, {"text": "🗓️ Мои уроки", "web_app": {"url": f"{app_url}/tma/schedule"}}],
+            [{"text": "📥 Очередь ДЗ"}, {"text": "🗓️ Мои уроки", "web_app": {"url": f"{app_url}/tg-app/"}}],
             [{"text": "📢 Анонс группе"}]
         ]
     elif role == 'admin':
@@ -94,9 +98,20 @@ def process_main_bot_update(update: dict) -> dict:
             if auth_code and is_valid_time:
                 user = User.query.get(auth_code.user_id)
                 if user:
-                    user.telegram_id = tg_user_id
-                    user.telegram_chat_id = chat_id
-                    user.tg_id = tg_user_id
+                    from app.telegram.linking import link_telegram_identity
+                    profile = UserProfile.query.filter_by(user_id=user.id).first()
+                    if not profile:
+                        profile = UserProfile(user_id=user.id)
+                        db.session.add(profile)
+                        db.session.flush()
+                    link_telegram_identity(
+                        db.session,
+                        user=user,
+                        profile=profile,
+                        chat_id=chat_id,
+                        telegram_username=from_user.get('username'),
+                        telegram_user_id=tg_user_id,
+                    )
                     user.telegram_linked_at = now
                     auth_code.is_used = True
                     db.session.commit()

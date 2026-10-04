@@ -9,6 +9,7 @@ import hashlib
 import logging
 from datetime import timezone
 from typing import Optional
+from sqlalchemy import or_
 
 from app.models import User, UserProfile
 from app.runtime_state import get_json, set_json
@@ -31,7 +32,21 @@ _KIND_TO_ATTR: dict[str, str] = {
     'subscription_expiring':     'tg_notify_subscription_expiring',
     'bug_report_reply':          'tg_notify_bug_report_reply',
     'daily_digest':              'tg_notify_daily_digest',
+    'review_queue':              'tg_notify_homework_submitted',
+    'child_digest':              'tg_notify_daily_digest',
+    'operational_alert':         'tg_notify_system_errors',
+    'achievement':               'tg_notify_news',
 }
+
+# Public taxonomy for new application services.  Kinds without a profile
+# attribute still honor the global switch, quiet hours and Redis dedupe.
+TELEGRAM_NOTIFICATION_KINDS = frozenset({
+    *_KIND_TO_ATTR.keys(),
+    'review_queue',
+    'child_digest',
+    'operational_alert',
+    'achievement',
+})
 
 # Kinds that bypass quiet hours (urgent or time-sensitive)
 _QUIET_HOURS_BYPASS = {'system_errors', 'bug_report_reply', 'lesson_scheduled', 'lesson_reminder'}
@@ -40,6 +55,14 @@ _STUDENT_ACK_PROMPT = 'Уведомление пришло?(уведомлени
 _STUDENT_ACK_BUTTON = '✅ Пришло'
 _STUDENT_ACK_CALLBACK_PREFIX = 'notif_ack'
 _STUDENT_FEEDBACK_CALLBACK_PREFIX = 'notif_fb'
+
+
+def normalize_notification_kind(kind: Optional[str]) -> Optional[str]:
+    """Keep notification policy keys stable across producers."""
+    if kind is None:
+        return None
+    value = str(kind).strip().lower()
+    return value if value in TELEGRAM_NOTIFICATION_KINDS else 'generic'
 STUDENT_NOTIFICATION_FEEDBACK_OPTIONS: dict[str, str] = {
     'dup': 'Это уведомление продублировалось',
     'late': 'Это уведомление пришло с опозданием',
@@ -85,6 +108,7 @@ def user_allows_telegram_notification(
 
     kind=None — только глобальный переключатель.
     """
+    kind = normalize_notification_kind(kind)
     if not profile or profile.telegram_chat_id is None:
         return False
     if not _truthy(profile.telegram_notifications_enabled):
@@ -232,7 +256,6 @@ def send_student_notification_ack_report(
     feedback_details: str | None = None,
 ) -> int:
     """Сообщить создателям, что ученик дал обратную связь по тестовому уведомлению."""
-    from app.telegram.notifications import send_telegram_message
     from core.db_models import moscow_now
 
     username = (student_username or '').strip().lstrip('@')
@@ -285,8 +308,7 @@ def send_student_notification_ack_report(
         if not chat_id:
             continue
         try:
-            result = send_telegram_message(int(chat_id), report)
-            if result and result.get('ok'):
+            if notify_user_by_id(int(creator.id), report, kind='operational_alert'):
                 sent += 1
         except Exception:
             logger.warning('notification ack report failed creator_id=%s', creator.id, exc_info=True)
@@ -301,23 +323,30 @@ def notify_user_by_id(
     reply_markup: Optional[dict] = None,
 ) -> bool:
     """Отправить сообщение пользователю платформы по user_id."""
-    from app.telegram.notifications import send_telegram_message
+    from app.telegram.delivery import enqueue_delivery
+    from app.models import db
+    kind = normalize_notification_kind(kind)
 
     try:
-        profile = UserProfile.query.filter_by(user_id=user_id).first()
+        profile = get_profile_for_user(int(user_id))
         if not user_allows_telegram_notification(profile, kind):
             return False
         dedupe_text = text
         if _telegram_dedupe_hit(profile, dedupe_text, kind):
             logger.info('Skipped duplicate Telegram notification user_id=%s kind=%s', user_id, kind)
             return True
-        cid = int(profile.telegram_chat_id)
         text, reply_markup = _with_student_ack_controls(profile, text, kind, reply_markup)
-        result = send_telegram_message(cid, text, reply_markup=reply_markup)
-        ok = bool(result and result.get('ok'))
-        if ok:
+        row = enqueue_delivery(
+            int(user_id),
+            text,
+            kind=kind,
+            reply_markup=reply_markup,
+        )
+        db.session.flush()
+        queued = row.status in {'pending', 'processing', 'retry', 'sent'}
+        if queued:
             _mark_telegram_dedupe(profile, dedupe_text, kind)
-        return ok
+        return queued
     except Exception as e:
         logger.warning('notify_user_by_id failed user_id=%s: %s', user_id, e, exc_info=True)
         return False
@@ -331,10 +360,19 @@ def notify_user_by_chat_id(
     reply_markup: Optional[dict] = None,
 ) -> bool:
     """Отправить сообщение по telegram_chat_id с проверкой настроек."""
-    from app.telegram.notifications import send_telegram_message
+    from app.telegram.delivery import enqueue_delivery
+    from app.models import db
+    kind = normalize_notification_kind(kind)
 
     try:
         profile = UserProfile.query.filter_by(telegram_chat_id=chat_id).first()
+        if not profile:
+            user = User.query.filter(or_(
+                User.telegram_chat_id == int(chat_id),
+                User.tg_id == int(chat_id),
+                User.telegram_id == int(chat_id),
+            )).first()
+            profile = get_profile_for_user(user.id) if user else None
         if not user_allows_telegram_notification(profile, kind):
             return False
         dedupe_text = text
@@ -342,15 +380,37 @@ def notify_user_by_chat_id(
             logger.info('Skipped duplicate Telegram notification chat_id=%s kind=%s', chat_id, kind)
             return True
         text, reply_markup = _with_student_ack_controls(profile, text, kind, reply_markup)
-        result = send_telegram_message(int(chat_id), text, reply_markup=reply_markup)
-        ok = bool(result and result.get('ok'))
-        if ok:
+        row = enqueue_delivery(
+            int(profile.user_id),
+            text,
+            kind=kind,
+            reply_markup=reply_markup,
+        )
+        db.session.flush()
+        queued = row.status in {'pending', 'processing', 'retry', 'sent'}
+        if queued:
             _mark_telegram_dedupe(profile, dedupe_text, kind)
-        return ok
+        return queued
     except Exception as e:
         logger.warning('notify_user_by_chat_id failed chat_id=%s: %s', chat_id, e, exc_info=True)
         return False
 
 
 def get_profile_for_user(user_id: int) -> UserProfile | None:
-    return UserProfile.query.filter_by(user_id=user_id).first()
+    profile = UserProfile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        return None
+    if profile.telegram_chat_id is None:
+        user = User.query.get(int(user_id))
+        legacy_chat_id = (
+            getattr(user, 'telegram_chat_id', None)
+            or getattr(user, 'tg_id', None)
+        ) if user else None
+        if legacy_chat_id is not None:
+            try:
+                profile.telegram_chat_id = int(legacy_chat_id)
+                if not profile.telegram_id:
+                    profile.telegram_id = str(getattr(user, 'telegram_id', None) or legacy_chat_id)
+            except (TypeError, ValueError):
+                logger.warning('Could not reconcile legacy Telegram identity user_id=%s', user_id)
+    return profile

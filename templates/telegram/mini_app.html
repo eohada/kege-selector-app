@@ -168,8 +168,16 @@
     <div class="user-chip">
       <span id="user-name-chip" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
       <span id="role-badge" class="role-badge" style="display:none"></span>
+      <button id="context-switch-btn" class="filter-btn" style="display:none" onclick="switchCreatorContext()">Режим</button>
     </div>
   </div>
+
+  <!-- ROLE-AWARE HOME / ACTION CENTER -->
+  <section id="home-panel" class="card" style="margin:12px 0;display:none">
+    <div id="home-title" class="section-title">Что важно сейчас</div>
+    <div id="home-summary" class="muted">Загрузка…</div>
+    <div id="home-actions" style="margin-top:10px"></div>
+  </section>
 
   <!-- STUDENT TABS -->
   <div id="student-tabs" style="display:none">
@@ -206,6 +214,34 @@
 
     <!-- Профиль -->
     <div id="tab-profile" class="tab-panel"></div>
+  </div>
+
+  <!-- PARENT TABS -->
+  <div id="parent-tabs" style="display:none">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="p-children" onclick="switchTab('p-children','parent-tabs')">
+        <span class="icon">👪</span>Дети
+      </button>
+      <button class="tab-btn" data-tab="p-schedule" onclick="switchTab('p-schedule','parent-tabs')">
+        <span class="icon">📅</span>Расписание
+      </button>
+    </div>
+    <div id="tab-p-children" class="tab-panel active"></div>
+    <div id="tab-p-schedule" class="tab-panel"></div>
+  </div>
+
+  <!-- TEACHER TABS -->
+  <div id="teacher-tabs" style="display:none">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="t-review" onclick="switchTab('t-review','teacher-tabs')">
+        <span class="icon">📥</span>Проверка
+      </button>
+      <button class="tab-btn" data-tab="t-schedule" onclick="switchTab('t-schedule','teacher-tabs')">
+        <span class="icon">🎓</span>Уроки
+      </button>
+    </div>
+    <div id="tab-t-review" class="tab-panel active"></div>
+    <div id="tab-t-schedule" class="tab-panel"></div>
   </div>
 
   <!-- CREATOR TABS -->
@@ -267,6 +303,7 @@ if (tg) { tg.ready(); tg.expand(); }
 const initData = tg?.initData || '';
 let _currentUser = null;
 let _isCreator = false;
+let _activeContext = null;
 let _replyReportId = null;
 
 // ──────────────────────────────────────────────
@@ -275,6 +312,9 @@ let _replyReportId = null;
 async function boot() {
   try {
     const dash = await api('/tg-app/api/dashboard', {});
+    const context = await api('/tg-app/api/context', {});
+    _activeContext = context.active_context || null;
+    const home = await api('/tg-app/api/home', { active_context: _activeContext });
     _currentUser = dash.user;
     _isCreator = dash.creator_mode || false;
 
@@ -286,14 +326,28 @@ async function boot() {
     else if (['tutor','content_maker'].includes(dash.user?.role)) {
       badge.textContent = 'Учитель'; badge.style.display = '';
     }
+    if (_isCreator && context.available_contexts?.includes('teacher') && context.available_contexts?.includes('creator')) {
+      const switchBtn = document.getElementById('context-switch-btn');
+      switchBtn.style.display = '';
+      switchBtn.textContent = _activeContext === 'teacher' ? 'Режим: учитель' : 'Режим: создатель';
+    }
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display = '';
+    renderHome(home);
 
     if (_isCreator) {
       document.getElementById('creator-tabs').style.display = '';
       document.getElementById('student-tabs').style.display = 'none';
       loadCreatorStudents();
+    } else if (dash.user?.role === 'parent') {
+      document.getElementById('parent-tabs').style.display = '';
+      document.getElementById('student-tabs').style.display = 'none';
+      loadParentChildren();
+    } else if (['teacher', 'tutor', 'content_maker'].includes(dash.user?.role)) {
+      document.getElementById('teacher-tabs').style.display = '';
+      document.getElementById('student-tabs').style.display = 'none';
+      loadTeacherReviewQueue();
     } else {
       document.getElementById('student-tabs').style.display = '';
       document.getElementById('creator-tabs').style.display = 'none';
@@ -303,6 +357,109 @@ async function boot() {
   } catch(e) {
     showError('Не удалось подключиться к BooStudy. Попробуй позже.');
   }
+}
+
+async function switchCreatorContext() {
+  if (!_isCreator || !_activeContext) return;
+  const next = _activeContext === 'teacher' ? 'creator' : 'teacher';
+  const button = document.getElementById('context-switch-btn');
+  button.disabled = true;
+  try {
+    const context = await api('/tg-app/api/context/switch', { active_context: next });
+    _activeContext = context.active_context;
+    const home = await api('/tg-app/api/home', { active_context: _activeContext });
+    renderHome(home);
+    button.textContent = _activeContext === 'teacher' ? 'Режим: учитель' : 'Режим: создатель';
+  } catch (e) {
+    showToast('Не удалось переключить режим');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function loadTeacherReviewQueue() {
+  const el = document.getElementById('tab-t-review');
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
+  try {
+    const data = await api('/tg-app/api/teacher/review-queue', {});
+    const items = data.items || [];
+    if (!items.length) {
+      el.innerHTML = '<div class="card"><div class="card-empty">✅ Работ на проверку нет</div></div>';
+      return;
+    }
+    el.innerHTML = `<div class="card">${items.map(item => {
+      const link = item.deep_link ? `<a href="${item.deep_link}" style="color:var(--c-link);font-size:11px">Открыть →</a>` : '';
+      return `<div class="assign-row"><div class="assign-title">${esc(item.student_name)} · ${esc(item.assignment_title)}</div><div class="assign-meta">${esc(item.status)} ${link}</div></div>`;
+    }).join('')}</div>`;
+  } catch (e) {
+    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Не удалось загрузить очередь</div></div>';
+  }
+}
+
+async function loadParentChildren() {
+  const el = document.getElementById('tab-p-children');
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
+  try {
+    const data = await api('/tg-app/api/parent/children-summary', {});
+    const children = data.children || [];
+    if (!children.length) {
+      el.innerHTML = '<div class="card"><div class="card-empty">Нет подтверждённых детей</div></div>';
+      return;
+    }
+    el.innerHTML = `<div class="card">${children.map(child => {
+      const lesson = child.next_lesson;
+      const lessonText = lesson?.starts_at ? `Следующий урок: ${fmtDate(lesson.starts_at)}` : 'Ближайших уроков нет';
+      const state = child.overdue_assignments ? `🔴 Просрочено: ${child.overdue_assignments}` : '🟢 Просрочек нет';
+      return `<div class="assign-row"><div class="assign-title">${esc(child.name)}</div><div class="assign-meta">${lessonText} · Активных ДЗ: ${child.active_assignments} · ${state}</div><button class="mini-btn" onclick="switchParentChild(${child.student_id})">✅ Выбрать</button><button class="mini-btn" onclick="loadParentDigest(${child.student_id}, this)">📊 Сводка недели</button><div class="child-digest" id="child-digest-${child.student_id}"></div></div>`;
+    }).join('')}</div>`;
+  } catch (e) {
+    el.innerHTML = '<div class="card"><div class="card-empty">⚠️ Не удалось загрузить данные</div></div>';
+  }
+}
+
+async function switchParentChild(studentId) {
+  try {
+    await api('/tg-app/api/parent/context/switch', { student_id: studentId });
+    const home = await api('/tg-app/api/home', { active_context: 'parent' });
+    renderHome(home);
+    document.getElementById('home-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { /* the current list remains visible; API enforces scope */ }
+}
+
+async function loadParentDigest(studentId, button) {
+  const target = document.getElementById(`child-digest-${studentId}`);
+  button.disabled = true;
+  try {
+    const data = await api('/tg-app/api/parent/digest', { student_id: studentId });
+    const digest = data.digest || {};
+    target.textContent = `За неделю: выполнено ${digest.completed_count}, активно ${digest.active_count}, просрочено ${digest.overdue_count}.` + (digest.latest_results?.length ? ` Результаты: ${digest.latest_results.join('%, ')}%.` : '');
+  } catch (e) { target.textContent = 'Сводка недоступна'; }
+  button.disabled = false;
+}
+
+function renderHome(home) {
+  const panel = document.getElementById('home-panel');
+  const summary = document.getElementById('home-summary');
+  const actions = document.getElementById('home-actions');
+  panel.style.display = '';
+  const lessons = home.lessons || [];
+  const assignments = home.assignments || [];
+  const bits = [];
+  if (lessons.length) bits.push(`Ближайший урок: ${lessons[0].topic || 'Урок'}`);
+  if (home.pending_review_count) bits.push(`На проверке: ${home.pending_review_count}`);
+  if (home.overdue_count) bits.push(`Просрочено: ${home.overdue_count}`);
+  summary.textContent = bits.join(' · ') || 'Срочных действий нет';
+  actions.replaceChildren();
+  (home.actions || []).slice(0, 5).forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'action-row';
+    row.textContent = `${item.priority === 'high' ? '🔴' : '🟡'} ${item.title}${item.description ? ` — ${item.description}` : ''}`;
+    if (item.deep_link) {
+      row.style.cursor = 'pointer';
+      row.onclick = () => window.open(item.deep_link, '_blank', 'noopener');
+    }
+    actions.appendChild(row);
+  });
 }
 
 // ──────────────────────────────────────────────
@@ -379,8 +536,8 @@ async function loadAssignments(filter, btn) {
   const el = document.getElementById('tasks-content');
   el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--c-hint)">Загрузка…</div>';
   try {
-    const data = await api('/tg-app/api/assignments', { status_filter: filter });
-    const subs = data.submissions || [];
+    const data = await api('/tg-app/api/student/assignments', { status_filter: filter });
+    const subs = data.assignments || [];
     if (!subs.length) {
       el.innerHTML = '<div class="card"><div class="card-empty">✅ Заданий в этом разделе нет</div></div>';
       return;
@@ -412,7 +569,7 @@ async function loadProgress() {
     const gb = data.gradebook || [];
     const pending = data.pending_homework || 0;
 
-    const graded = subs.filter(s => ['graded','submitted'].includes(s.status));
+    const graded = subs.filter(s => ['GRADED','CHECKED','COMPLETED','SUBMITTED'].includes(String(s.status || '').toUpperCase()));
     const pct = graded.length ? Math.round(graded.filter(s => (s.percentage||0) >= 80).length / graded.length * 100) : null;
 
     let html = '';

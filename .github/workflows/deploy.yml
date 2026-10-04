@@ -1,37 +1,73 @@
 name: Deploy to VPS (MANUAL PROD)
 
 on:
-  workflow_dispatch: # <-- Вот эта магия делает запуск ручным по кнопке!
+  workflow_dispatch:
+
+concurrency:
+  group: boostudy-production-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - name: Check secrets
-        run: |
-          if [ -z "${{ secrets.HOST }}" ]; then echo "::error::Secret HOST is not set"; exit 1; fi
-          if [ -z "${{ secrets.USERNAME }}" ]; then echo "::error::Secret USERNAME is not set"; exit 1; fi
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "::error::Secret SSH_PRIVATE_KEY is not set"; exit 1; fi
-          echo "Secrets present (host, user, key)"
+    timeout-minutes: 40
+    env:
+      HOST: ${{ secrets.HOST }}
+      USERNAME: ${{ secrets.USERNAME }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          timeout: 30s
-          command_timeout: 25m
-          script: |
-            cd /opt/boostudy
-            git pull origin main
-            if [ -f docker-compose.bluegreen.yml ]; then
-              chmod +x scripts/deploy_blue_green.sh
-              scripts/deploy_blue_green.sh deploy
-            else
-              python3 scripts/ensure_eventlet_compose.py docker-compose.yml
-              docker compose up -d --build
-              docker image prune -f
+    steps:
+      - name: Validate deployment access secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${HOST}" || { echo "::error::Secret HOST is not set"; exit 1; }
+          test -n "${USERNAME}" || { echo "::error::Secret USERNAME is not set"; exit 1; }
+          test -n "${SSH_PRIVATE_KEY}" || { echo "::error::Secret SSH_PRIVATE_KEY is not set"; exit 1; }
+          test -n "${SSH_KNOWN_HOSTS}" || { echo "::error::Secret SSH_KNOWN_HOSTS is not set"; exit 1; }
+          case "${SSH_PORT}" in
+            ''|*[!0-9]*) echo "::error::SSH_PORT must be numeric"; exit 1 ;;
+          esac
+
+      - name: Deploy with blue-green helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY_FILE="$(mktemp)"
+          KNOWN_HOSTS="$(mktemp)"
+          umask 077
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${KEY_FILE}"
+          trap 'rm -f "${KEY_FILE}" "${KNOWN_HOSTS}"' EXIT
+
+          printf '%s\n' "${SSH_KNOWN_HOSTS}" > "${KNOWN_HOSTS}"
+
+          for attempt in 1 2 3; do
+            echo "SSH deploy attempt ${attempt}/3"
+            if ssh -4 -i "${KEY_FILE}" -p "${SSH_PORT}" \
+              -o BatchMode=yes \
+              -o UserKnownHostsFile="${KNOWN_HOSTS}" \
+              -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=25 \
+              -o ServerAliveCountMax=8 \
+              "${USERNAME}@${HOST}" \
+              'sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy'; then
+              exit 0
             fi
+            if [[ "${attempt}" -lt 3 ]]; then
+              sleep 30
+            fi
+          done
+          echo "::error::Blue-green deploy failed after 3 SSH attempts"
+          exit 1
+
+      - name: Public production smoke check
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 https://boostudy.ru/ready >/tmp/boostudy-ready.json
+          curl --fail --silent --show-error --max-time 20 https://boostudy.ru/health >/tmp/boostudy-health.json
+          cat /tmp/boostudy-ready.json
+          cat /tmp/boostudy-health.json

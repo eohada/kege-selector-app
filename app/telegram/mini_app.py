@@ -10,12 +10,14 @@ import hmac
 import json
 import logging
 import os
+import time
 from datetime import timedelta
 from typing import Any
 from urllib.parse import parse_qs
 
 from flask import Blueprint, render_template, request, jsonify, url_for
 from sqlalchemy import text
+from app.telegram.config import MAIN_BOT_TOKEN
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,17 @@ def validate_init_data(init_data: str, bot_token: str) -> dict | None:
     if not hmac.compare_digest(computed_hash, received_hash):
         return None
 
+    # Telegram initData is a bearer proof; limit replay window even when the
+    # HMAC itself is valid.  Keep the deployment override explicit and bounded.
+    try:
+        auth_date = int(flat.get('auth_date', '0'))
+        max_age = max(60, min(int(os.environ.get('TELEGRAM_INIT_DATA_MAX_AGE', '86400')), 604800))
+        now = int(time.time())
+        if not auth_date or auth_date > now + 60 or now - auth_date > max_age:
+            return None
+    except (TypeError, ValueError):
+        return None
+
     if 'user' in flat:
         try:
             flat['user'] = json.loads(flat['user'])
@@ -65,7 +78,7 @@ def validate_init_data(init_data: str, bot_token: str) -> dict | None:
 
 
 def _get_bot_token() -> str:
-    return os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN') or ''
+    return MAIN_BOT_TOKEN
 
 
 def _external_base_url() -> str:
@@ -277,6 +290,347 @@ def mini_app_api_dashboard():
         return jsonify({'ok': False, 'error': 'server_error'}), 500
 
 
+def _application_read_model_payload(view) -> dict:
+    """Serialize Telegram application DTOs without leaking ORM objects."""
+    from dataclasses import asdict
+    from datetime import datetime
+
+    def normalize(value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, tuple):
+            return [normalize(item) for item in value]
+        if isinstance(value, list):
+            return [normalize(item) for item in value]
+        if isinstance(value, dict):
+            return {key: normalize(item) for key, item in value.items()}
+        return value
+
+    return normalize(asdict(view))
+
+
+@tg_app_bp.route('/api/context', methods=['POST'])
+def mini_app_api_context():
+    """Return the verified identity's available role contexts."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    try:
+        from app.models import User
+        from app.telegram.application import context_view
+
+        user = User.query.get(int(user_row[0]))
+        if not user:
+            return jsonify({'ok': False, 'error': 'not_linked'}), 404
+        view = context_view(user, body.get('active_context'))
+        return jsonify({'ok': True, **_application_read_model_payload(view)})
+    except Exception as e:
+        logger.error('mini_app_api_context error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/context/switch', methods=['POST'])
+def mini_app_api_context_switch():
+    """Persist only the creator's teacher/creator display context."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+    requested = str(body.get('active_context') or '').strip().lower()
+    if requested not in {'teacher', 'creator'}:
+        return jsonify({'ok': False, 'error': 'invalid_context'}), 400
+    try:
+        from app.models import User, db
+        user = User.query.get(int(user_row[0]))
+        if not user or not user.is_creator():
+            return jsonify({'ok': False, 'error': 'creator_context_required'}), 403
+        user.creator_bot_mode = 'TEACHER' if requested == 'teacher' else 'ADMIN'
+        db.session.commit()
+        from app.telegram.application import context_view
+        return jsonify({'ok': True, **_application_read_model_payload(context_view(user, requested))})
+    except Exception as e:
+        db.session.rollback()
+        logger.error('mini_app_api_context_switch error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/home', methods=['POST'])
+def mini_app_api_home():
+    """Stable role-aware Home read model for the official Telegram surface."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+
+    try:
+        from app.models import User
+        from app.telegram.application import build_today_view
+
+        user = User.query.get(int(user_row[0]))
+        if not user:
+            return jsonify({'ok': False, 'error': 'not_linked'}), 404
+        view = build_today_view(user, body.get('active_context'))
+        return jsonify({'ok': True, **_application_read_model_payload(view)})
+    except Exception as e:
+        logger.error('mini_app_api_home error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/action-center', methods=['POST'])
+def mini_app_api_action_center():
+    """Return curated attention items for the verified active context."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+    try:
+        from app.models import User
+        from app.telegram.application import build_action_center
+
+        user = User.query.get(int(user_row[0]))
+        if not user:
+            return jsonify({'ok': False, 'error': 'not_linked'}), 404
+        actions = build_action_center(user, body.get('active_context'))
+        return jsonify({'ok': True, 'actions': _application_read_model_payload(actions)})
+    except Exception as e:
+        logger.error('mini_app_api_action_center error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/teacher/review-queue', methods=['POST'])
+def mini_app_api_teacher_review_queue():
+    """Return a scoped teacher review queue; grading remains in BooStudy web."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+    try:
+        from app.models import User
+        from app.telegram.application import build_teacher_review_queue, resolve_active_context
+
+        user = User.query.get(int(user_row[0]))
+        if not user:
+            return jsonify({'ok': False, 'error': 'not_linked'}), 404
+        context = resolve_active_context(user, body.get('active_context'))
+        if context not in {'teacher', 'tutor'}:
+            return jsonify({'ok': False, 'error': 'teacher_context_required'}), 403
+        queue = build_teacher_review_queue(user, limit=body.get('limit', 50))
+        return jsonify({'ok': True, 'items': _application_read_model_payload(queue)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_limit'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_teacher_review_queue error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/teacher/students', methods=['POST'])
+def mini_app_api_teacher_students():
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    try:
+        from app.models import User, db
+        from app.telegram.application import build_teacher_students, resolve_active_context
+        user = db.session.get(User, int(user_row[0]))
+        if not user or resolve_active_context(user, body.get('active_context')) not in {'teacher', 'tutor'}:
+            return jsonify({'ok': False, 'error': 'teacher_context_required'}), 403
+        rows = build_teacher_students(user, query=body.get('query', ''), limit=body.get('limit', 50))
+        return jsonify({'ok': True, 'students': _application_read_model_payload(rows)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_limit'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_teacher_students error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/parent/children-summary', methods=['POST'])
+def mini_app_api_parent_children_summary():
+    """Return confirmed-child summaries without private work content."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+    try:
+        from app.models import User
+        from app.telegram.application import build_parent_children
+
+        user = User.query.get(int(user_row[0]))
+        if not user:
+            return jsonify({'ok': False, 'error': 'not_linked'}), 404
+        children = build_parent_children(user, limit=body.get('limit', 20))
+        if not user.is_parent():
+            return jsonify({'ok': False, 'error': 'parent_context_required'}), 403
+        return jsonify({'ok': True, 'children': _application_read_model_payload(children)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_limit'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_parent_children_summary error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/parent/digest', methods=['POST'])
+def mini_app_api_parent_digest():
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    try:
+        from app.models import User, db
+        from app.telegram.application import build_parent_digest
+        user = db.session.get(User, int(user_row[0]))
+        digest = build_parent_digest(user, body.get('student_id'))
+        if digest is None:
+            return jsonify({'ok': False, 'error': 'forbidden'}), 403
+        return jsonify({'ok': True, 'digest': _application_read_model_payload(digest)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_student_id'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_parent_digest error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/parent/context/switch', methods=['POST'])
+def mini_app_api_parent_context_switch():
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    try:
+        from app.models import User, db
+        from app.telegram.application import select_parent_child
+        user = db.session.get(User, int(user_row[0]))
+        selected = select_parent_child(user, int(body.get('student_id')))
+        if selected is None:
+            return jsonify({'ok': False, 'error': 'forbidden'}), 403
+        return jsonify({'ok': True, 'selected_child_id': selected})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_student_id'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_parent_context_switch error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/operations/summary', methods=['POST'])
+def mini_app_api_operations_summary():
+    """Read-only operational summary for verified admin/creator contexts."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+    try:
+        from app.models import User
+        from app.telegram.application import build_operational_summary, resolve_active_context
+
+        user = User.query.get(int(user_row[0]))
+        if not user:
+            return jsonify({'ok': False, 'error': 'not_linked'}), 404
+        context = resolve_active_context(user, body.get('active_context'))
+        if context not in {'admin', 'creator'}:
+            return jsonify({'ok': False, 'error': 'admin_context_required'}), 403
+        summary = build_operational_summary(user)
+        if summary is None:
+            return jsonify({'ok': False, 'error': 'forbidden'}), 403
+        return jsonify({'ok': True, **_application_read_model_payload(summary)})
+    except Exception as e:
+        logger.error('mini_app_api_operations_summary error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/operations/problems', methods=['POST'])
+def mini_app_api_operations_problems():
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    try:
+        from app.models import User, db
+        from app.telegram.application import build_operational_problems, resolve_active_context
+        user = db.session.get(User, int(user_row[0]))
+        if not user or resolve_active_context(user, body.get('active_context')) not in {'admin', 'creator'}:
+            return jsonify({'ok': False, 'error': 'admin_context_required'}), 403
+        rows = build_operational_problems(user, limit=body.get('limit', 50))
+        return jsonify({'ok': True, 'problems': _application_read_model_payload(rows)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_limit'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_operations_problems error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/operations/users/search', methods=['POST'])
+def mini_app_api_operations_user_search():
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    try:
+        from app.models import User, db
+        from app.telegram.application import resolve_active_context, search_operational_users
+        user = db.session.get(User, int(user_row[0]))
+        if not user or resolve_active_context(user, body.get('active_context')) not in {'admin', 'creator'}:
+            return jsonify({'ok': False, 'error': 'admin_context_required'}), 403
+        rows = search_operational_users(user, body.get('query', ''), limit=body.get('limit', 20))
+        return jsonify({'ok': True, 'users': _application_read_model_payload(rows)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_limit'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_operations_user_search error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
+@tg_app_bp.route('/api/student/assignments', methods=['POST'])
+def mini_app_api_student_assignments():
+    """Return student assignments with canonical lifecycle categories."""
+    body = request.get_json(force=True) if request.is_json else {}
+    _, user_row, err = resolve_user_from_init_data(body)
+    if err:
+        code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
+        return jsonify({'ok': False, 'error': err}), code
+    assert user_row is not None
+    try:
+        from app.models import User
+        from app.telegram.application import build_student_assignments
+
+        user = User.query.get(int(user_row[0]))
+        if not user:
+            return jsonify({'ok': False, 'error': 'not_linked'}), 404
+        if not user.is_student():
+            return jsonify({'ok': False, 'error': 'student_context_required'}), 403
+        rows = build_student_assignments(
+            user,
+            status_filter=body.get('status_filter'),
+            limit=body.get('limit', 100),
+        )
+        return jsonify({'ok': True, 'assignments': _application_read_model_payload(rows)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_limit'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_student_assignments error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
+
+
 @tg_app_bp.route('/api/schedule', methods=['POST'])
 def mini_app_api_schedule():
     body = request.get_json(force=True) if request.is_json else {}
@@ -285,30 +639,19 @@ def mini_app_api_schedule():
         code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
         return jsonify({'ok': False, 'error': err}), code
     assert user_row is not None
-    user_id = int(user_row[0])
-
-    from app.models import db
-    from core.db_models import moscow_now
-
-    student_row = _student_row_for_user(db.session, user_id)
-    if not student_row:
-        return jsonify({'ok': True, 'lessons': []})
-
-    now = moscow_now()
-    since = (now - timedelta(hours=1)).replace(tzinfo=None) if now.tzinfo else (now - timedelta(hours=1))
-    rows = _schedule_rows(db.session, int(student_row[0]), since)
-    lessons = []
-    for lid, ld, topic, dur, ltype, st in rows:
-        lessons.append({
-            'lesson_id': int(lid),
-            'topic': topic or 'Урок',
-            'starts_at': ld.isoformat() if ld else None,
-            'duration': dur or 60,
-            'type': ltype or 'regular',
-            'status': st,
-            'lesson_url': _lesson_room_url(int(lid)),
-        })
-    return jsonify({'ok': True, 'lessons': lessons})
+    from app.models import User, db
+    from app.telegram.application import build_parent_schedule, build_student_schedule
+    user = db.session.get(User, int(user_row[0]))
+    if not user or not (user.is_student() or user.is_parent()):
+        return jsonify({'ok': False, 'error': 'student_context_required'}), 403
+    try:
+        lessons = (build_student_schedule(user, limit=body.get('limit', 20))
+                   if user.is_student() else build_parent_schedule(user, limit=body.get('limit', 20)))
+        if lessons is None:
+            return jsonify({'ok': False, 'error': 'forbidden'}), 403
+        return jsonify({'ok': True, 'lessons': _application_read_model_payload(lessons)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_limit'}), 400
 
 
 @tg_app_bp.route('/api/progress', methods=['POST'])
@@ -319,66 +662,22 @@ def mini_app_api_progress():
         code = 404 if err == 'not_linked' else 403 if err != 'server_error' else 500
         return jsonify({'ok': False, 'error': err}), code
     assert user_row is not None
-    user_id = int(user_row[0])
-
-    from app.models import db
-
-    student_row = _student_row_for_user(db.session, user_id)
-    if not student_row:
-        return jsonify({'ok': True, 'pending_homework': 0, 'submissions': [], 'gradebook': []})
-
-    sid = int(student_row[0])
-    pending_hw = db.session.execute(text("""
-        SELECT COUNT(*)
-        FROM "Lessons"
-        WHERE student_id = :sid
-          AND homework_status IN ('assigned', 'returned')
-    """), {'sid': sid}).scalar() or 0
-
-    sub_rows = db.session.execute(text("""
-        SELECT lesson_id, topic, homework_status, updated_at, homework_result_percent
-        FROM "Lessons"
-        WHERE student_id = :sid
-          AND homework_status != 'not_assigned'
-        ORDER BY updated_at DESC
-        LIMIT 25
-    """), {'sid': sid}).fetchall()
-
-    submissions = []
-    for lid, title, status, activity_at, pct in sub_rows:
-        submissions.append({
-            'title': title or '—',
-            'status': status,
-            'lesson_url': _lesson_room_url(int(lid)),
-            'activity_at': activity_at.isoformat() if activity_at else None,
-            'percentage': round(float(pct), 1) if pct is not None else None,
-        })
-
-    gb_rows = db.session.execute(text("""
-        SELECT topic, homework_result_percent, updated_at
-        FROM "Lessons"
-        WHERE student_id = :sid AND homework_status = 'graded'
-        ORDER BY updated_at DESC
-        LIMIT 8
-    """), {'sid': sid}).fetchall()
-
-    gradebook = []
-    for title, pct, updated_at in gb_rows:
-        gradebook.append({
-            'title': title or '—',
-            'score': round(float(pct), 1) if pct is not None else None,
-            'max_score': 100,
-            'grade_text': '',
-            'created_at': updated_at.isoformat() if updated_at else None,
-        })
-
-    return jsonify({
-        'ok': True,
-        'pending_homework': int(pending_hw),
-        'submissions': submissions,
-        'gradebook': gradebook,
-    })
-
+    from app.models import User, db
+    from app.telegram.application import build_parent_progress, build_student_progress
+    user = db.session.get(User, int(user_row[0]))
+    if not user or not (user.is_student() or user.is_parent()):
+        return jsonify({'ok': False, 'error': 'student_or_parent_context_required'}), 403
+    try:
+        progress = (build_student_progress(user, limit=body.get('limit', 25))
+                    if user.is_student() else build_parent_progress(user, limit=body.get('limit', 25)))
+        if progress is None:
+            return jsonify({'ok': False, 'error': 'forbidden'}), 403
+        return jsonify({'ok': True, **_application_read_model_payload(progress)})
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'invalid_limit'}), 400
+    except Exception as e:
+        logger.error('mini_app_api_progress error: %s', e, exc_info=True)
+        return jsonify({'ok': False, 'error': 'server_error'}), 500
 
 @tg_app_bp.route('/api/theory/index', methods=['POST'])
 def mini_app_api_theory_index():

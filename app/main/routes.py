@@ -4824,8 +4824,9 @@ def api_generate_telegram_auth_code():
         db.session.commit()
 
     formatted_code = f"{code_str[:3]}-{code_str[3:]}" if len(code_str) == 6 else code_str
-    bot_username = os.environ.get('MAIN_BOT_USERNAME') or 'boostudy_bot'
-    deep_link = f"https://t.me/{bot_username}?start={code_str}"
+    from app.telegram.config import TELEGRAM_BOT_USERNAME
+    bot_username = TELEGRAM_BOT_USERNAME or None
+    deep_link = f"https://t.me/{bot_username}?start={code_str}" if bot_username else None
 
     return jsonify({
         'ok': True,
@@ -4844,11 +4845,8 @@ def api_unlink_telegram_account():
     if not current_user or not current_user.is_authenticated:
         return jsonify({'ok': False, 'error': 'Необходима авторизация'}), 401
 
-    current_user.telegram_id = None
-    current_user.telegram_chat_id = None
-    current_user.telegram_linked_at = None
-    if hasattr(current_user, 'tg_id'):
-        current_user.tg_id = None
+    from app.telegram.linking import unlink_telegram_identity
+    unlink_telegram_identity(db.session, user=current_user, profile=getattr(current_user, 'profile', None))
     db.session.commit()
 
     return jsonify({'ok': True, 'message': 'Telegram-аккаунт успешно отвязан'})

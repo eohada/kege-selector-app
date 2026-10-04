@@ -510,8 +510,6 @@ def student_telegram_link_request(student_id: int):
     student.telegram_username = tg_username
     db.session.commit()
 
-    from app.telegram.notifications import send_telegram_message
-
     admin_name = getattr(current_user, 'username', None) or 'администратор'
     msg = (
         '🔗 <b>Запрос на привязку Telegram к BooStudy</b>\n\n'
@@ -523,8 +521,16 @@ def student_telegram_link_request(student_id: int):
         'text': '✅ Подтвердить привязку',
         'callback_data': f'admin_link_confirm:{student_profile.profile_id}:{current_user.id}',
     }]]}
-    result = send_telegram_message(int(target_chat_id), msg, reply_markup=markup)
-    if result and result.get('ok'):
+    from app.telegram.delivery import enqueue_direct_delivery
+    row = enqueue_direct_delivery(
+        int(student_user.id),
+        int(target_chat_id),
+        msg,
+        kind='operational_alert',
+        dedupe_key=f'telegram:student-link-request:{student_profile.profile_id}:{current_user.id}',
+        reply_markup=markup,
+    )
+    if row.status in {'pending', 'processing', 'retry', 'sent'}:
         flash(f'Запрос на привязку отправлен @{tg_username}.', 'success')
     else:
         flash('Не удалось отправить запрос в Telegram. Проверь тег и что ученик писал боту.', 'error')

@@ -69,7 +69,7 @@ def esc(value) -> str:
 
 def get_user_by_chat_id(session, chat_id: int) -> dict | None:
     row = session.execute(text("""
-        SELECT u.id, u.username, u.email, u.role, up.first_name, up.last_name
+        SELECT u.id, u.username, u.email, u.role, u.creator_bot_mode, up.first_name, up.last_name
         FROM "Users" u
         JOIN "UserProfiles" up ON up.user_id = u.id
         WHERE up.telegram_chat_id = :cid
@@ -77,12 +77,13 @@ def get_user_by_chat_id(session, chat_id: int) -> dict | None:
     """), {'cid': chat_id}).fetchone()
     if not row:
         return None
-    uid, username, email, role, first_name, last_name = row
+    uid, username, email, role, creator_bot_mode, first_name, last_name = row
     return {
         'id': uid,
         'username': username,
         'email': email,
         'role': role,
+        'creator_bot_mode': creator_bot_mode,
         'first_name': first_name,
         'last_name': last_name,
     }

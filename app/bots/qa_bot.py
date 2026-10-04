@@ -12,7 +12,10 @@ ALLOWED_QA_ROLES = {'tester', 'chief_tester', 'admin', 'creator', 'chief_admin',
 QA_FSM_STATE = {}
 
 def _get_app_url():
-    return (os.environ.get('TELEGRAM_WEBHOOK_BASE_URL') or os.environ.get('APP_URL') or 'https://boostudy.ru').rstrip('/')
+    base = (os.environ.get('TELEGRAM_WEBHOOK_BASE_URL') or os.environ.get('APP_URL') or '').strip().rstrip('/')
+    if not base:
+        raise RuntimeError('APP_URL/TELEGRAM_WEBHOOK_BASE_URL is required for QA bot links')
+    return base
 
 def get_qa_keyboard(user: User = None):
     app_url = _get_app_url()

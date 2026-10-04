@@ -77,6 +77,7 @@ from core.db_models import (
     UserRole,
     LibraryMaterial,
     UserNotification,
+    TelegramDelivery,
     UserAchievement,
     PendingAssignmentNotification,
     LessonMessage,

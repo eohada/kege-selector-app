@@ -4,11 +4,45 @@ from __future__ import annotations
 import os
 from urllib.parse import urlsplit, urlunsplit
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN') or ''
+MAIN_BOT_TOKEN = (
+    os.environ.get('MAIN_BOT_TOKEN')
+    or os.environ.get('BOT_TOKEN')
+    or os.environ.get('TELEGRAM_BOT_TOKEN')
+    or ''
+).strip()
+QA_BOT_TOKEN = (
+    os.environ.get('QA_BOT_TOKEN')
+    or os.environ.get('TELEGRAM_TESTERS_BOT_TOKEN')
+    or ''
+).strip()
+BOT_TOKEN = MAIN_BOT_TOKEN
 BOT_INTERNAL_TOKEN = os.environ.get('BOT_INTERNAL_TOKEN', '').strip()
-APP_URL = (os.environ.get('APP_URL') or os.environ.get('BASE_URL') or 'http://127.0.0.1:5000/').strip()
+APP_URL = (os.environ.get('APP_URL') or os.environ.get('BASE_URL') or '').strip().rstrip('/')
 APP_OPEN_URL = (os.environ.get('APP_OPEN_URL') or f"{APP_URL.rstrip('/')}/login").strip()
 TELEGRAM_PROXY_URL = (os.environ.get('TELEGRAM_PROXY_URL') or '').strip()
+TELEGRAM_WEBHOOK_SECRET = (
+    os.environ.get('TELEGRAM_WEBHOOK_SECRET')
+    or ''
+).strip()
+TELEGRAM_BOT_USERNAME = (
+    os.environ.get('TELEGRAM_BOT_USERNAME')
+    or os.environ.get('BOT_USERNAME')
+    or ''
+).strip().lstrip('@')
+
+
+def validate_public_telegram_config() -> None:
+    """Fail fast when production would generate unusable public links."""
+    environment = (os.environ.get('ENVIRONMENT') or 'local').strip().lower()
+    if environment in {'production', 'prod', 'staging', 'sandbox'}:
+        if not APP_URL or not APP_URL.startswith('https://') or APP_URL.startswith(('https://127.', 'https://localhost')):
+            raise RuntimeError('APP_URL must be the public HTTPS BooStudy origin in production')
+        if not TELEGRAM_BOT_USERNAME:
+            raise RuntimeError('TELEGRAM_BOT_USERNAME is required in production')
+        if not MAIN_BOT_TOKEN:
+            raise RuntimeError('MAIN_BOT_TOKEN/BOT_TOKEN/TELEGRAM_BOT_TOKEN is required in production')
+        if not BOT_INTERNAL_TOKEN:
+            raise RuntimeError('BOT_INTERNAL_TOKEN is required in production')
 
 def _parse_int_env(key: str, default: int) -> int:
     raw = (os.environ.get(key) or '').strip()

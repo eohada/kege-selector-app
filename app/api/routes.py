@@ -565,7 +565,7 @@ def api_telegram_link_code():
             profile = UserProfile(user_id=current_user.id)
             db.session.add(profile)
         
-        code = f"BS-{secrets.token_hex(3).upper()}"  # формат, принимаемый ботом: BS-A1B2C3
+        code = f"BS-{secrets.token_hex(3).upper()}"
         # До 64 символов для параметра ?start= (Telegram)
         link_token = secrets.token_hex(24)  # 48 hex
         profile.telegram_link_code = code
@@ -597,14 +597,12 @@ def api_telegram_link_code():
 @api_bp.route('/api/telegram/link-bot', methods=['POST'])
 def api_telegram_link_bot():
     """Привязка Telegram аккаунта ботом по коду /link или по deep-link токену ?start="""
+    from app.telegram.linking import TelegramLinkConflict, link_telegram_identity, unlink_telegram_identity
     try:
         expected = (os.environ.get('BOT_INTERNAL_TOKEN') or '').strip()
         provided = (request.headers.get('X-Bot-Token') or '').strip()
-        if expected:
-            if not secrets.compare_digest(provided, expected):
-                return jsonify({'success': False, 'error': 'unauthorized'}), 401
-        else:
-            logger.warning("BOT_INTERNAL_TOKEN не задан, привязка бота доступна без токена")
+        if not expected or not secrets.compare_digest(provided, expected):
+            return jsonify({'success': False, 'error': 'unauthorized'}), 401
 
         data = request.get_json() or {}
         code = (data.get('code') or '').strip().upper()
@@ -628,12 +626,8 @@ def api_telegram_link_bot():
             user = getattr(existing, 'user', None)
             if user and getattr(user, 'is_active', True) and not force:
                 return jsonify({'success': False, 'error': 'already_linked'}), 409
-            existing.telegram_chat_id = None
-            existing.telegram_id = None
-            existing.telegram_link_code = None
-            existing.telegram_link_code_expires = None
-            existing.telegram_link_token = None
-            existing.telegram_link_token_expires = None
+            if user:
+                unlink_telegram_identity(db.session, user=user, profile=existing)
             db.session.flush()
 
         profile = None
@@ -654,17 +648,20 @@ def api_telegram_link_bot():
                 return jsonify({'success': False, 'error': 'expired_code'}), 410
 
         logger.info("api_telegram_link_bot: linking chat_id=%s (int) to user_id=%s profile_id=%s", chat_id, profile.user_id, profile.profile_id)
-        profile.telegram_chat_id = chat_id
-        profile.telegram_link_code = None
-        profile.telegram_link_code_expires = None
-        profile.telegram_link_token = None
-        profile.telegram_link_token_expires = None
-        if telegram_id and not profile.telegram_id:
-            profile.telegram_id = telegram_id
+        link_telegram_identity(
+            db.session,
+            user=profile.user,
+            profile=profile,
+            chat_id=chat_id,
+            telegram_username=telegram_id,
+        )
 
         db.session.commit()
 
         return jsonify({'success': True}), 200
+    except TelegramLinkConflict:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'already_linked'}), 409
     except Exception as e:
         db.session.rollback()
         logger.error(f'Ошибка при привязке Telegram ботом: {e}', exc_info=True)
@@ -683,11 +680,8 @@ def api_telegram_unlink():
         if not profile.telegram_chat_id:
             return jsonify({'success': False, 'error': 'Telegram не привязан'}), 400
         
-        profile.telegram_chat_id = None
-        profile.telegram_link_code = None
-        profile.telegram_link_code_expires = None
-        profile.telegram_link_token = None
-        profile.telegram_link_token_expires = None
+        from app.telegram.linking import unlink_telegram_identity
+        unlink_telegram_identity(db.session, user=current_user, profile=profile)
         
         db.session.commit()
         

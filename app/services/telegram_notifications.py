@@ -3,19 +3,23 @@ import os
 import requests
 from flask import current_app
 from core.db_models import User, db, moscow_now
+from app.telegram.config import MAIN_BOT_TOKEN, QA_BOT_TOKEN
 
 logger = logging.getLogger(__name__)
 
 def _get_main_bot_token():
-    return os.environ.get('MAIN_BOT_TOKEN') or os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN') or ''
+    return MAIN_BOT_TOKEN
 
 def _get_qa_bot_token():
-    return os.environ.get('QA_BOT_TOKEN') or '8933706317:AAFeN6fww_-EjVqM0okB8N1vrDaPM5dA7ws'
+    return QA_BOT_TOKEN
 
 def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, bot_type: str = 'main') -> bool:
     token = _get_qa_bot_token() if bot_type == 'qa' else _get_main_bot_token()
     if not token or not chat_id:
-        logger.warning(f"send_telegram_message ({bot_type}): Missing token or chat_id (chat_id={chat_id})")
+        logger.warning(
+            'send_telegram_message (%s): Telegram token or chat_id is not configured',
+            bot_type,
+        )
         return False
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
@@ -33,6 +37,7 @@ def send_telegram_message(chat_id: int, text: str, reply_markup: dict = None, bo
         return False
 
 def notify_upcoming_lesson(user_id: int, lesson_topic: str, lesson_time_str: str, room_url: str = None) -> bool:
+    from app.telegram.user_notify import notify_user_by_id
     user = User.query.get(user_id)
     if not user or not user.telegram_chat_id:
         return False
@@ -46,9 +51,10 @@ def notify_upcoming_lesson(user_id: int, lesson_topic: str, lesson_time_str: str
         reply_markup = {
             "inline_keyboard": [[{"text": "🚀 Войти в урок", "url": room_url}]]
         }
-    return send_telegram_message(user.telegram_chat_id, msg, reply_markup)
+    return notify_user_by_id(int(user_id), msg, kind='lesson_reminder', reply_markup=reply_markup)
 
 def notify_homework_submitted(teacher_user_id: int, student_name: str, assignment_title: str) -> bool:
+    from app.telegram.user_notify import notify_user_by_id
     teacher = User.query.get(teacher_user_id)
     if not teacher or not teacher.telegram_chat_id:
         return False
@@ -57,9 +63,10 @@ def notify_homework_submitted(teacher_user_id: int, student_name: str, assignmen
         f"👤 <b>Ученик:</b> {student_name}\n"
         f"📝 <b>Задание:</b> {assignment_title}\n"
     )
-    return send_telegram_message(teacher.telegram_chat_id, msg)
+    return notify_user_by_id(int(teacher_user_id), msg, kind='review_queue')
 
 def notify_homework_graded(student_user_id: int, assignment_title: str, score_percent: float) -> bool:
+    from app.telegram.user_notify import notify_user_by_id
     student = User.query.get(student_user_id)
     if not student or not student.telegram_chat_id:
         return False
@@ -68,14 +75,15 @@ def notify_homework_graded(student_user_id: int, assignment_title: str, score_pe
         f"📝 <b>Задание:</b> {assignment_title}\n"
         f"📊 <b>Оценка:</b> {score_percent}%\n"
     )
-    return send_telegram_message(student.telegram_chat_id, msg)
+    return notify_user_by_id(int(student_user_id), msg, kind='homework_checked')
 
 def notify_maintenance_toggle(is_maintenance_on: bool) -> int:
+    from app.telegram.user_notify import notify_user_by_id
     status_str = "🛑 <b>Включен режим технического обслуживания.</b> Доступ к платформе ограничен." if is_maintenance_on else "✅ <b>Технические работы завершены.</b> Платформа снова доступна!"
     users = User.query.filter(User.telegram_chat_id.isnot(None)).all()
     count = 0
     for u in users:
-        if send_telegram_message(u.telegram_chat_id, status_str):
+        if notify_user_by_id(int(u.id), status_str, kind='operational_alert'):
             count += 1
     return count
 

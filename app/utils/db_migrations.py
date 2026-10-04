@@ -1822,6 +1822,14 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add telegram_notifications_enabled to {profiles_table}: {e}")
                             db.session.rollback()
+
+                    if 'telegram_selected_child_id' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_selected_child_id INTEGER'))
+                            logger.info(f"Added telegram_selected_child_id to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_selected_child_id to {profiles_table}: {e}")
+                            db.session.rollback()
                     
                     tg_notify_fields = [
                         'tg_notify_lesson_reminder',

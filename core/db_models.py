@@ -1621,6 +1621,36 @@ class UserNotification(db.Model):
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('notifications', lazy=True, cascade='all, delete-orphan'))
 
 
+class TelegramDelivery(db.Model):
+    """Durable outbox row for Telegram delivery."""
+    __tablename__ = 'TelegramDeliveries'
+
+    delivery_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    notification_id = db.Column(db.Integer, db.ForeignKey('UserNotifications.notification_id', ondelete='SET NULL'), nullable=True, index=True)
+    telegram_chat_id = db.Column(db.BigInteger, nullable=True, index=True)
+    kind = db.Column(db.String(50), nullable=False, default='generic', index=True)
+    payload = db.Column(db.JSON, nullable=False)
+    priority = db.Column(db.String(20), nullable=False, default='normal', index=True)
+    dedupe_key = db.Column(db.String(255), nullable=False, unique=True)
+    status = db.Column(db.String(20), nullable=False, default='pending', index=True)
+    attempt_count = db.Column(db.Integer, nullable=False, default=0)
+    next_attempt_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now, index=True)
+    processing_started_at = db.Column(db.DateTime(timezone=True), nullable=True, index=True)
+    last_attempt_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    sent_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    last_error = db.Column(db.Text, nullable=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    notification = db.relationship('UserNotification', foreign_keys=[notification_id])
+
+    __table_args__ = (
+        db.Index('ix_telegram_delivery_due', 'status', 'next_attempt_at'),
+        db.Index('ix_telegram_delivery_recovery', 'status', 'processing_started_at'),
+    )
+
+
 class PendingAssignmentNotification(db.Model):
     """Отложенные уведомления о прикрепленных заданиях (дебаунс 5 минут)."""
     __tablename__ = 'PendingAssignmentNotifications'
@@ -2126,6 +2156,7 @@ class UserProfile(db.Model):
     tg_notify_daily_digest = db.Column(db.Boolean, default=False, nullable=False)  # Утренний дайджест (opt-in)
     tg_quiet_hours_start = db.Column(db.Integer, nullable=True)  # Тихие часы: начало (0-23, МСК)
     tg_quiet_hours_end = db.Column(db.Integer, nullable=True)    # Тихие часы: конец (0-23, МСК)
+    telegram_selected_child_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='SET NULL'), nullable=True, index=True)
 
     internal_notes = db.Column(db.Text, nullable=True)
     profile_onboarding_completed_at = db.Column(db.DateTime, nullable=True, index=True)

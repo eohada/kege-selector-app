@@ -122,7 +122,7 @@ def send_telegram_photo(
 
 def notify_teacher_manual_review(submission_id: int) -> bool:
     """Уведомить автора задания о поступлении работы на ручную проверку."""
-    from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user
+    from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user, notify_user_by_id
 
     session = get_session()
     try:
@@ -155,8 +155,7 @@ def notify_teacher_manual_review(submission_id: int) -> bool:
             f'\n🔗 {grade_url}'
         )
         markup = {'inline_keyboard': [[{'text': '✅ Проверить', 'url': grade_url}]]}
-        result = send_telegram_message(int(chat_id), msg, reply_markup=markup)
-        return bool(result and result.get('ok'))
+        return notify_user_by_id(int(teacher_uid), msg, kind='homework_submitted', reply_markup=markup)
     except Exception as e:
         logger.error('notify_teacher_manual_review error: %s', e, exc_info=True)
         return False
@@ -212,8 +211,8 @@ def notify_submission_submitted_to_staff(submission_id: int) -> int:
                 return
             if not user_allows_telegram_notification(p, kind):
                 return
-            r = send_telegram_message(cid, msg, reply_markup=markup)
-            if r and r.get('ok'):
+            from app.telegram.user_notify import notify_user_by_id
+            if notify_user_by_id(int(uid), msg, kind=kind, reply_markup=markup):
                 sent += 1
                 seen.add(cid)
 
@@ -323,7 +322,8 @@ def notify_lesson_started_for_lesson(lesson_id: int, *, actor_user_id: int | Non
                     'После этого я отправлю её ученику вместе с сообщением о начале урока.'
                 )
                 markup = {'inline_keyboard': [[{'text': '📎 Отправить ссылку', 'callback_data': f'lesson_call_link:{lesson.lesson_id}'}]]}
-                send_telegram_message(int(prof.telegram_chat_id), msg, reply_markup=markup)
+                from app.telegram.user_notify import notify_user_by_chat_id
+                notify_user_by_chat_id(int(prof.telegram_chat_id), msg, kind='lesson_scheduled', reply_markup=markup)
     except Exception as e:
         logger.warning('notify_lesson_started_for_lesson %s: %s', lesson_id, e, exc_info=True)
 
@@ -351,7 +351,7 @@ def notify_lesson_finished_for_teacher(
     actor_chat_id: int | None = None,
 ) -> bool:
     """Попросить преподавателя оставить ДЗ после завершения урока."""
-    from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user
+    from app.telegram.user_notify import user_allows_telegram_notification, get_profile_for_user, notify_user_by_chat_id
     from app.models import Lesson, UserProfile
 
     lesson = Lesson.query.get(int(lesson_id))
@@ -405,8 +405,7 @@ def notify_lesson_finished_for_teacher(
 
     sent = False
     for chat_id in dict.fromkeys(targets):
-        result = send_telegram_message(int(chat_id), msg, reply_markup=markup)
-        sent = bool(result and result.get('ok')) or sent
+        sent = notify_user_by_chat_id(int(chat_id), msg, kind='lesson_scheduled', reply_markup=markup) or sent
     return sent
 
 
@@ -452,8 +451,8 @@ def notify_bug_report_reply(*, student_chat_id: int, report_id: int, reply_text:
         f'📌 По репорту <b>#{report_id}</b>:\n\n'
         f'{_esc(reply_text)}'
     )
-    result = send_telegram_message(int(student_chat_id), msg)
-    return bool(result and result.get('ok'))
+    from app.telegram.user_notify import notify_user_by_chat_id
+    return notify_user_by_chat_id(int(student_chat_id), msg, kind='bug_report_reply')
 
 
 # ---------------------------------------------------------------------------
@@ -504,8 +503,8 @@ def notify_lesson_reminder_response_to_creators(
     original_text: str,
 ) -> int:
     """Сообщить создателям, как ученик ответил на напоминание."""
-    from app.telegram.notifications import send_telegram_message
     from app.models import User, UserProfile
+    from app.telegram.user_notify import notify_user_by_chat_id
 
     username = (student_username or '').strip().lstrip('@')
     full_name = ' '.join(part for part in [student_first_name, student_last_name] if part).strip()
@@ -547,8 +546,7 @@ def notify_lesson_reminder_response_to_creators(
         if not chat_id:
             continue
         try:
-            result = send_telegram_message(int(chat_id), report)
-            if result and result.get('ok'):
+            if notify_user_by_chat_id(int(chat_id), report, kind='lesson_reminder'):
                 sent += 1
         except Exception:
             logger.warning('lesson reminder response report failed creator_id=%s', creator.id, exc_info=True)
@@ -650,8 +648,8 @@ def notify_teacher_homework_note_reminder(note_id: int) -> bool:
         except Exception:
             pass
 
-    result = send_telegram_message(int(profile.telegram_chat_id), msg)
-    if result and result.get('ok'):
+    from app.telegram.user_notify import notify_user_by_chat_id
+    if notify_user_by_chat_id(int(profile.telegram_chat_id), msg, kind='homework_submitted'):
         note.is_sent = True
         from core.db_models import moscow_now
         note.reminder_sent_at = moscow_now()

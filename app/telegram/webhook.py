@@ -8,6 +8,7 @@ Architecture:
   - ConversationHandlers manage multi-step FSMs (bug report, creator reply).
 """
 import asyncio
+import hmac
 import logging
 import os
 import threading
@@ -25,7 +26,7 @@ from telegram.ext import (
     filters,
 )
 
-from app.telegram.config import telegram_proxy_parts
+from app.telegram.config import MAIN_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, telegram_proxy_parts
 
 logger = logging.getLogger(__name__)
 
@@ -60,10 +61,19 @@ def _env_int(name: str, default: int) -> int:
 
 
 def _get_token() -> str:
-    token = os.environ.get('BOT_TOKEN') or os.environ.get('TELEGRAM_BOT_TOKEN')
+    token = MAIN_BOT_TOKEN
     if not token:
-        raise RuntimeError('BOT_TOKEN / TELEGRAM_BOT_TOKEN env var not set')
+        raise RuntimeError('MAIN_BOT_TOKEN/BOT_TOKEN/TELEGRAM_BOT_TOKEN env var not set')
     return token
+
+
+def _webhook_request_allowed() -> bool:
+    if os.environ.get('FLASK_ENV') == 'testing':
+        return True
+    if not TELEGRAM_WEBHOOK_SECRET:
+        return False
+    provided = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
+    return hmac.compare_digest(provided, TELEGRAM_WEBHOOK_SECRET)
 
 
 def _build_request() -> HTTPXRequest:
@@ -250,10 +260,10 @@ def get_application() -> Application:
     return _application
 
 
-def _run_async(coro):
+def _run_async(coro, timeout: float = 60):
     loop = _ensure_event_loop()
     future = asyncio.run_coroutine_threadsafe(coro, loop)
-    return future.result(timeout=60)
+    return future.result(timeout=timeout)
 
 
 def process_update_sync(update_data: dict) -> dict:
@@ -298,8 +308,14 @@ async def _process_update_once(update_data: dict) -> dict:
 @telegram_bp.route('/telegram', methods=['POST'])
 def telegram_webhook():
     """Receive Telegram updates via webhook."""
+    if request.content_length and request.content_length > 256 * 1024:
+        return jsonify({'ok': False, 'error': 'payload_too_large'}), 413
+    if not _webhook_request_allowed():
+        return jsonify({'ok': False, 'error': 'webhook_disabled_or_unauthorized'}), 403
     try:
         data = request.get_json(force=True)
+        if not isinstance(data, dict):
+            return jsonify({'ok': False, 'error': 'invalid_json_payload'}), 400
         # IMPORTANT: return 200 immediately, process update asynchronously in Celery.
         from app.tasks.telegram_webhook import process_telegram_update_task
 
@@ -316,6 +332,8 @@ def set_webhook():
     internal_token = os.environ.get('BOT_INTERNAL_TOKEN', '').strip()
     if not internal_token or request.headers.get('X-Bot-Token', '') != internal_token:
         return jsonify({'ok': False, 'error': 'unauthorized'}), 403
+    if not TELEGRAM_WEBHOOK_SECRET:
+        return jsonify({'ok': False, 'error': 'TELEGRAM_WEBHOOK_SECRET is not configured'}), 503
 
     payload = request.get_json(force=True) if request.is_json else {}
     webhook_url = (payload.get('url') or '').strip()
@@ -325,7 +343,10 @@ def set_webhook():
 
     try:
         bot_app = get_application()
-        _run_async(bot_app.bot.set_webhook(url=webhook_url))
+        _run_async(bot_app.bot.set_webhook(
+            url=webhook_url,
+            secret_token=TELEGRAM_WEBHOOK_SECRET,
+        ))
         logger.info('Webhook set to %s', webhook_url)
         return jsonify({'ok': True, 'webhook_url': webhook_url})
     except Exception as e:
@@ -337,11 +358,11 @@ def set_webhook():
 def webhook_info():
     """Return current webhook info (debug / health-check)."""
     internal_token = os.environ.get('BOT_INTERNAL_TOKEN', '').strip()
-    if internal_token and request.headers.get('X-Bot-Token', '') != internal_token:
+    if not internal_token or request.headers.get('X-Bot-Token', '') != internal_token:
         return jsonify({'ok': False, 'error': 'unauthorized'}), 403
     try:
         bot_app = get_application()
-        info = _run_async(bot_app.bot.get_webhook_info())
+        info = _run_async(bot_app.bot.get_webhook_info(), timeout=8)
         return jsonify({
             'ok': True,
             'url': info.url,
@@ -349,5 +370,56 @@ def webhook_info():
             'last_error_date': str(info.last_error_date) if info.last_error_date else None,
             'last_error_message': info.last_error_message,
         })
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
+    except Exception:
+        logger.warning('Telegram webhook info check failed', exc_info=True)
+        return jsonify({'ok': False, 'error': 'telegram_api_unavailable'}), 503
+
+
+@telegram_bp.route('/telegram/status', methods=['GET'])
+def telegram_status():
+    """Protected, non-invasive Telegram/Celery delivery diagnostics."""
+    internal_token = os.environ.get('BOT_INTERNAL_TOKEN', '').strip()
+    if not internal_token or request.headers.get('X-Bot-Token', '') != internal_token:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 403
+
+    from app.telegram.config import APP_URL, MAIN_BOT_TOKEN, QA_BOT_TOKEN, TELEGRAM_BOT_USERNAME
+    from app.models import TelegramDelivery, db
+    from sqlalchemy import func
+
+    outbox_ok = True
+    try:
+        counts = dict(
+            db.session.query(TelegramDelivery.status, func.count(TelegramDelivery.delivery_id))
+            .group_by(TelegramDelivery.status)
+            .all()
+        )
+    except Exception:
+        db.session.rollback()
+        counts = {}
+        outbox_ok = False
+        logger.warning('Telegram outbox status query failed', exc_info=True)
+    broker_ok = False
+    try:
+        from app.runtime_state import redis_ping
+        broker_ok = bool(redis_ping())
+    except Exception:
+        logger.warning('Telegram status Redis check failed', exc_info=True)
+
+    return jsonify({
+        'ok': outbox_ok,
+        'configuration': {
+            'app_url_configured': bool(APP_URL),
+            'bot_username_configured': bool(TELEGRAM_BOT_USERNAME),
+            'main_token_configured': bool(MAIN_BOT_TOKEN),
+            'qa_token_configured': bool(QA_BOT_TOKEN),
+        },
+        'broker': {'redis_reachable': broker_ok},
+        'outbox': {
+            'available': outbox_ok,
+            'pending': int(counts.get('pending', 0)),
+            'processing': int(counts.get('processing', 0)),
+            'retry': int(counts.get('retry', 0)),
+            'sent': int(counts.get('sent', 0)),
+            'failed': int(counts.get('failed', 0)),
+        },
+    })

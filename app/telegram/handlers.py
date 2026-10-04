@@ -20,6 +20,7 @@ import secrets
 import time
 from datetime import datetime, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from telegram import (
     Update,
@@ -212,16 +213,16 @@ async def send_or_edit(target, text: str, reply_markup=None, parse_mode='HTML'):
 
 def _mini_app_url() -> str:
     base = (APP_URL or os.environ.get('APP_URL') or os.environ.get('BASE_URL') or '').strip().rstrip('/')
-    if not base or base.startswith('http://'):
-        base = 'https://boostudy.ru'
+    if not base:
+        raise RuntimeError('APP_URL/BASE_URL is required to build Telegram Mini App links')
     return f'{base}/tg-app/'
 
 
 def make_webapp_button(text_label: str, url_path: str) -> InlineKeyboardButton:
     base = (APP_URL or os.environ.get('APP_URL') or os.environ.get('BASE_URL') or '').strip().rstrip('/')
+    if not base:
+        raise RuntimeError('APP_URL/BASE_URL is required to build Telegram Web App buttons')
     full_url = f"{base}/{url_path.lstrip('/')}"
-    if full_url.startswith('http://'):
-        full_url = full_url.replace(base, 'https://boostudy.ru')
     return InlineKeyboardButton(text=text_label, web_app=WebAppInfo(url=full_url))
 
 
@@ -456,13 +457,83 @@ def _is_creator(role: str) -> bool:
     return role == 'creator'
 
 
+_QA_NAVIGATION_LABELS = frozenset({
+    '🚀 Панель Преподавателя',
+    '🚀 Кабинет Родителя',
+    '🚀 Открыть BooStudy',
+    '📊 Сводка',
+    '📊 Статистика',
+    '👥 Пользователи',
+    '📢 Рассылка',
+    '📝 Ученики',
+    '📅 Уроки на сегодня',
+    '📅 Мое расписание',
+    'Мои уроки',
+    '📥 На проверку',
+    '📝 Очередь ДЗ',
+    '👥 Мои ученики',
+    'Мои ученики',
+    '👨‍👩‍👧 Мои дети',
+    '💳 Семейный баланс',
+    '🔔 Настройки отчетов',
+    '📊 Мой прогресс',
+    '⚙️ Профиль',
+    '🔄 Режим: 👑 Создатель',
+    '🔄 Режим: 👨‍🏫 Преподаватель',
+    '🚪 Отвязать аккаунт',
+})
+
+
 def _is_qa_navigation_text(text: str) -> bool:
-    if text in {'Мои ученики', 'Мои уроки'}:
-        return True
-    return text.startswith((
-        '🚀 ', '📊 ', '👥 ', '📢 ', '📝 ', '📅 ', '📥 ',
-        '👨‍👩‍👧 ', '💳 ', '🔔 ', '⚙️ ', '🔄 ', '🚪 ',
-    ))
+    return text in _QA_NAVIGATION_LABELS or text.startswith('🔄 Режим:')
+
+
+def _persist_creator_mode(user_id: int, mode: str) -> None:
+    """Persist creator context; UI state never grants the underlying role."""
+    normalized = 'TEACHER' if str(mode).lower() == 'teacher' else 'ADMIN'
+    session = get_session()
+    try:
+        from app.models import User
+        user = session.get(User, int(user_id))
+        if not user or not user.is_creator():
+            return
+        user.creator_bot_mode = normalized
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.exception('Could not persist creator Telegram context user_id=%s', user_id)
+    finally:
+        close_session(session)
+
+
+def _application_home_text(user_id: int, requested_context: str | None = None) -> str | None:
+    """Render the bounded application Home for teacher/parent/creator roles."""
+    from app.models import User
+    from app.telegram.application import build_today_view
+
+    user = User.query.get(int(user_id))
+    if not user:
+        return None
+    view = build_today_view(user, requested_context)
+    try:
+        zone = ZoneInfo(view.timezone)
+    except Exception:
+        zone = timezone.utc
+    lines = [f'👋 <b>Привет, {esc(view.display_name)}!</b>', '', '📌 <b>Что важно сейчас</b>']
+    if view.lessons:
+        lines.append('')
+        lines.append('🎓 <b>Ближайшие уроки</b>')
+        for lesson in view.lessons[:4]:
+            starts = lesson.get('starts_at')
+            when = starts.astimezone(zone).strftime('%d.%m %H:%M') if starts else 'время не указано'
+            lines.append(f'• {esc(when)} — {esc(lesson.get("topic") or "Урок")}')
+    if view.pending_review_count:
+        lines.extend(('', f'📥 Работ ждут проверки: <b>{view.pending_review_count}</b>'))
+    if view.overdue_count:
+        lines.extend(('', f'🔴 Просроченных заданий: <b>{view.overdue_count}</b>'))
+    if not view.lessons and not view.actions and not view.pending_review_count:
+        lines.extend(('', '✅ Сейчас нет срочных действий.'))
+    return '\n'.join(lines)
 
 
 def _is_senior_admin(role: str) -> bool:
@@ -1005,7 +1076,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         first_name=update.effective_user.first_name,
         last_name=update.effective_user.last_name,
     )
-    creator_mode = context.user_data.get('creator_mode', 'creator')
+    creator_mode = context.user_data.get('creator_mode')
+    if not creator_mode and user and _is_creator(user.get('role', '')):
+        creator_mode = 'teacher' if str(user.get('creator_bot_mode', '')).upper() == 'TEACHER' else 'creator'
+    creator_mode = creator_mode or 'creator'
     mini_kb = _reply_keyboard_with_mini_app(user, creator_mode=creator_mode)
 
     if user:
@@ -1032,10 +1106,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             finally:
                 close_session(session)
         else:
+            application_context = creator_mode if _is_creator(user.get('role', '')) else user.get('role', '')
+            home_text = _application_home_text(int(user['id']), application_context)
             await update.message.reply_text(
-                f'👋 <b>Привет, {esc(name)}!</b>\n\n'
-                f'Ты привязан к BooStudy как <b>{esc(user.get("username", ""))}</b>.\n'
-                'Используй клавиатуру ниже или /menu для навигации.',
+                home_text or (
+                    f'👋 <b>Привет, {esc(name)}!</b>\n\n'
+                    f'Ты привязан к BooStudy как <b>{esc(user.get("username", ""))}</b>.'
+                ),
                 parse_mode='HTML',
                 reply_markup=mini_kb,
             )
@@ -1050,6 +1127,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id = update.effective_chat.id
             new_mode = 'teacher' if 'Преподаватель' in raw_text else 'creator'
             context.user_data['creator_mode'] = new_mode
+            if user:
+                _persist_creator_mode(int(user['id']), new_mode)
             from app.telegram.keyboards import get_main_keyboard
             kb = get_main_keyboard(user_role='creator', creator_mode=new_mode)
             mode_label = '👨‍🏫 Преподаватель' if new_mode == 'teacher' else '👑 Создатель'
@@ -3362,7 +3441,7 @@ async def _cb_student_tg_unlink(query, session, user, data: str):
         return
 
     try:
-        from app.models import db, Student, UserProfile
+        from app.models import db, Student, User, UserProfile
         profile = UserProfile.query.filter_by(user_id=student_user_id).first()
         student = Student.query.get(student_id)
         if not profile or (not profile.telegram_chat_id and not profile.telegram_id):
@@ -3374,12 +3453,13 @@ async def _cb_student_tg_unlink(query, session, user, data: str):
                 ]),
             )
             return
-        profile.telegram_chat_id = None
-        profile.telegram_id = None
-        profile.telegram_link_code = None
-        profile.telegram_link_code_expires = None
-        profile.telegram_link_token = None
-        profile.telegram_link_token_expires = None
+        from app.telegram.linking import unlink_telegram_identity
+        student_user = session.get(User, student_user_id)
+        if student_user:
+            unlink_telegram_identity(session, user=student_user, profile=profile)
+        else:
+            profile.telegram_chat_id = None
+            profile.telegram_id = None
         if student:
             student.telegram = None
             student.telegram_username = None
@@ -3910,8 +3990,8 @@ async def _cb_parent_child_detail(query, session, user, data: str):
 
     from app.models import Student, User, UserProfile, UserSubscription
 
-    tie = get_family_tie_between(int(user['id']), student_user_id, include_pending=True)
-    if not tie:
+    tie = get_family_tie_between(int(user['id']), student_user_id, include_pending=False)
+    if not tie or not getattr(tie, 'is_confirmed', False):
         await query.edit_message_text('⚠️ Связь с учеником не найдена.', reply_markup=_back_keyboard())
         return
 
@@ -3995,7 +4075,7 @@ async def _cb_parent_debts(query, session, user):
     if not children:
         lines.append('Пока не прикреплен ни один ученик.')
     for student_user_id, student_id, name, username, confirmed in children[:5]:
-        if not student_id:
+        if not student_id or not confirmed:
             continue
         count = session.execute(text("""
             SELECT COUNT(*)
@@ -4016,6 +4096,8 @@ async def _cb_parent_subscription(query, session, user):
     if not children:
         lines.append('Пока не прикреплен ни один ученик.')
     for student_user_id, _student_id, name, username, confirmed in children[:5]:
+        if not confirmed:
+            continue
         summary = subscription_summary_for_user(int(student_user_id))
         lines.append(f'<b>{esc(name or username or "Ученик")}</b>')
         lines.append(f'  Тариф: {esc(summary.plan_title)}')
@@ -4621,12 +4703,14 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     if _is_creator(user_role):
         if "Преподаватель" in text_val:
             context.user_data['creator_mode'] = 'teacher'
+            _persist_creator_mode(int(user['id']), 'teacher')
             from app.telegram.keyboards import get_main_keyboard
             new_kb = get_main_keyboard('creator', creator_mode='teacher')
             await update.message.reply_text("👨‍🏫 Переключено в режим <b>Преподавателя</b>", reply_markup=new_kb, parse_mode='HTML')
             return
         elif "Создатель" in text_val:
             context.user_data['creator_mode'] = 'creator'
+            _persist_creator_mode(int(user['id']), 'creator')
             from app.telegram.keyboards import get_main_keyboard
             new_kb = get_main_keyboard('creator', creator_mode='creator')
             await update.message.reply_text("👑 Переключено в режим <b>Создателя</b>", reply_markup=new_kb, parse_mode='HTML')
@@ -5080,16 +5164,9 @@ async def _cb_confirm_unlink(query: CallbackQuery, context: ContextTypes.DEFAULT
                 db_user = session.query(User).get(profile.user_id)
 
         if db_user:
-            db_user.tg_id = None
-            if hasattr(db_user, 'telegram_id'):
-                db_user.telegram_id = None
-            
+            from app.telegram.linking import unlink_telegram_identity
             profile = session.query(UserProfile).filter_by(user_id=db_user.id).first()
-            if profile:
-                profile.telegram_id = None
-                profile.telegram_chat_id = None
-                profile.telegram_link_code = None
-                profile.telegram_link_expires_at = None
+            unlink_telegram_identity(session, user=db_user, profile=profile)
                 
             session.commit()
 
@@ -5151,15 +5228,15 @@ async def _try_link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE, 
                 return False
 
         user = profile.user
-        user.tg_id = chat_id
-        if hasattr(user, 'telegram_id'):
-            user.telegram_id = chat_id
-        profile.telegram_id = f"@{tg_user.username}" if tg_user.username else str(tg_user.id)
-        profile.telegram_chat_id = chat_id
-        profile.telegram_link_code = None
-        profile.telegram_link_code_expires = None
-        profile.telegram_link_token = None
-        profile.telegram_link_token_expires = None
+        from app.telegram.linking import link_telegram_identity
+        link_telegram_identity(
+            session,
+            user=user,
+            profile=profile,
+            chat_id=chat_id,
+            telegram_username=tg_user.username,
+            telegram_user_id=tg_user.id,
+        )
 
         session.commit()
 
@@ -5175,5 +5252,15 @@ async def _try_link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE, 
             parse_mode='HTML'
         )
         return True
+    except Exception as exc:
+        from app.telegram.linking import TelegramLinkConflict
+        if isinstance(exc, TelegramLinkConflict):
+            session.rollback()
+            await update.message.reply_text(
+                '⚠️ Этот Telegram уже привязан к другому аккаунту BooStudy. '
+                'Отвяжите его в прежнем профиле или обратитесь к администратору.'
+            )
+            return False
+        raise
     finally:
         close_session(session)

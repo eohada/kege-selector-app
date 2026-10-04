@@ -51,7 +51,7 @@ def _count_linked_student_targets() -> int:
 def process_telegram_broadcast_batch(self, broadcast_id: int) -> dict:
     from app.models import TelegramBroadcast, db
     from core.db_models import moscow_now
-    from app.telegram.notifications import send_telegram_message, send_telegram_photo
+    from app.telegram.delivery import enqueue_delivery
 
     br = TelegramBroadcast.query.get(broadcast_id)
     if not br:
@@ -85,16 +85,17 @@ def process_telegram_broadcast_batch(self, broadcast_id: int) -> dict:
                 continue
             ok = False
             try:
-                if (br.photo_url or '').strip():
-                    r = send_telegram_photo(
-                        cid,
-                        br.photo_url.strip(),
-                        caption=(br.message_text or '')[:1024] or None,
-                        parse_mode=None,
-                    )
-                else:
-                    r = send_telegram_message(cid, br.message_text or '', parse_mode=None)
-                ok = bool(r and r.get('ok'))
+                row = enqueue_delivery(
+                    int(uid),
+                    br.message_text or '',
+                    kind='news',
+                    priority='high',
+                    dedupe_key=f'telegram:broadcast:{broadcast_id}:{int(uid)}',
+                    photo_url=br.photo_url.strip() if (br.photo_url or '').strip() else None,
+                    caption=(br.message_text or '')[:1024] or None,
+                )
+                db.session.flush()
+                ok = row.status in {'pending', 'processing', 'retry', 'sent'}
             except Exception as send_err:
                 logger.warning('broadcast %s send to %s failed: %s', broadcast_id, cid, send_err)
             if ok:

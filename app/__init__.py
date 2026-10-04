@@ -78,9 +78,27 @@ def create_app(config_name=None):
     elif postgres_alt_url:
         selected_database_url = postgres_alt_url
         database_url_source = 'POSTGRES_URL'
-    elif os.environ.get('ENVIRONMENT') == 'production' or os.path.exists('/.dockerenv'):
+    elif os.path.exists('/.dockerenv'):
         selected_database_url = 'postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod'
         database_url_source = 'production_docker_default'
+
+    runtime_environment = (os.environ.get('ENVIRONMENT') or 'local').strip().lower()
+    if runtime_environment in {'production', 'staging', 'sandbox'}:
+        from app.telegram.config import validate_public_telegram_config
+        validate_public_telegram_config()
+    if not selected_database_url and runtime_environment in {'production', 'staging', 'sandbox'}:
+        raise RuntimeError(
+            f"DATABASE_URL is required in '{runtime_environment}' environment. "
+            "Refusing to start with local SQLite storage."
+        )
+    if (
+        selected_database_url
+        and runtime_environment in {'production', 'staging', 'sandbox'}
+        and not any(token in selected_database_url.lower() for token in ('postgresql://', 'postgres://'))
+    ):
+        raise RuntimeError(
+            f"A PostgreSQL DATABASE_URL is required in '{runtime_environment}' environment."
+        )
 
     if selected_database_url:
         database_url = selected_database_url
@@ -750,6 +768,19 @@ def create_app(config_name=None):
 
     from app.telegram.mini_app import (
         mini_app_api_dashboard,
+        mini_app_api_context,
+        mini_app_api_context_switch,
+        mini_app_api_home,
+        mini_app_api_action_center,
+        mini_app_api_teacher_review_queue,
+        mini_app_api_teacher_students,
+        mini_app_api_parent_children_summary,
+        mini_app_api_parent_digest,
+        mini_app_api_parent_context_switch,
+        mini_app_api_operations_summary,
+        mini_app_api_operations_problems,
+        mini_app_api_operations_user_search,
+        mini_app_api_student_assignments,
         mini_app_api_schedule,
         mini_app_api_progress,
         mini_app_api_theory_index,
@@ -766,6 +797,19 @@ def create_app(config_name=None):
     )
     for _fn in (
         mini_app_api_dashboard,
+        mini_app_api_context,
+        mini_app_api_context_switch,
+        mini_app_api_home,
+        mini_app_api_action_center,
+        mini_app_api_teacher_review_queue,
+        mini_app_api_teacher_students,
+        mini_app_api_parent_children_summary,
+        mini_app_api_parent_digest,
+        mini_app_api_parent_context_switch,
+        mini_app_api_operations_summary,
+        mini_app_api_operations_problems,
+        mini_app_api_operations_user_search,
+        mini_app_api_student_assignments,
         mini_app_api_schedule,
         mini_app_api_progress,
         mini_app_api_theory_index,

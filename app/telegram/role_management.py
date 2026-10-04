@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from app.models import db, User, UserRole, UserProfile, FamilyTie, Enrollment, UserSubscription
 from app.utils.relationship_scope import get_confirmed_family_ties_for_parent, get_family_ties_for_student
-from app.telegram.notifications import send_telegram_message
 
 logger = logging.getLogger(__name__)
 
@@ -167,8 +166,8 @@ def notify_role_changed(user: User, old_role: str | None, new_role: str | None, 
             f'{actor_line}\n\n'
             'Если это ошибка, напишите администратору.'
         )
-    result = send_telegram_message(int(profile.telegram_chat_id), msg, parse_mode=None)
-    return bool(result and result.get('ok'))
+    from app.telegram.user_notify import notify_user_by_id
+    return notify_user_by_id(int(user.id), msg, kind='operational_alert')
 
 
 def notify_relations_changed(user: User, *, actor: User | None = None) -> bool:
@@ -182,8 +181,8 @@ def notify_relations_changed(user: User, *, actor: User | None = None) -> bool:
         f'{relation_summary(user)}'
         f'{actor_line}'
     )
-    result = send_telegram_message(int(profile.telegram_chat_id), msg, parse_mode=None)
-    return bool(result and result.get('ok'))
+    from app.telegram.user_notify import notify_user_by_id
+    return notify_user_by_id(int(user.id), msg, kind='operational_alert')
 
 
 @dataclass

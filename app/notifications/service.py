@@ -103,7 +103,7 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
     # Mirror important in-app notifications to Telegram when the user has it enabled.
     # This keeps the platform notification model and Telegram delivery in sync.
     try:
-        from app.tasks.telegram_dispatch import telegram_notify_user_task
+        from app.telegram.delivery import enqueue_delivery
 
         telegram_lines = [
             f'🔔 <b>{html.escape(str(title or "Уведомление"))}</b>',
@@ -113,12 +113,14 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
         if link_url:
             telegram_lines.extend(['', str(link_url)])
         telegram_text = '\n'.join(telegram_lines)
-        telegram_notify_user_task.apply_async(
-            args=[int(user_id), telegram_text, kind],
-            retry=False
-        )
+        db.session.flush()
+        enqueue_delivery(int(user_id), telegram_text, kind=kind, notification_id=n.notification_id)
     except Exception as e:
-        logger.warning('Could not enqueue Telegram mirror for notification user_id=%s kind=%s: %s', user_id, kind, e)
+        # Do not commit an in-app notification without its durable outbox row.
+        # The Telegram HTTP call happens later in Celery, outside this DB
+        # transaction, so transport failure still cannot break the domain write.
+        logger.error('Could not enqueue Telegram mirror for notification user_id=%s kind=%s: %s', user_id, kind, e, exc_info=True)
+        raise
 
 
 def notify_family_tie(parent_id: int, student_id: int, *, kind: str, title: str, body: str | None = None, tie_id: int | None = None, meta: dict | None = None) -> None:

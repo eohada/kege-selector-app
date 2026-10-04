@@ -19,18 +19,9 @@ def _truthy(value: str | None) -> bool:
     return (value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
-async def _debug_incoming_logger(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = update.effective_user
-    username = f"@{user.username}" if user and user.username else "no_username"
-    user_id = user.id if user else "unknown"
-    if update.message:
-        text = update.message.text or "не текст (media/other)"
-        print(f"📥 [ВХОДЯЩЕЕ СООБЩЕНИЕ] От: {username} (ID: {user_id}) | Текст: {text}")
-        logger.info("📥 [ВХОДЯЩЕЕ СООБЩЕНИЕ] От: %s (ID: %s) | Текст: %s", username, user_id, text)
-    elif update.callback_query:
-        cb_data = update.callback_query.data or ""
-        print(f"📥 [НАЖАТИЕ КНОПКИ] От: {username} (ID: {user_id}) | Data: {cb_data}")
-        logger.info("📥 [НАЖАТИЕ КНОПКИ] От: %s (ID: %s) | Data: %s", username, user_id, cb_data)
+def _drop_pending_updates() -> bool:
+    """Preserve updates across normal restarts unless explicitly requested."""
+    return _truthy(os.environ.get('TELEGRAM_POLLING_DROP_PENDING_UPDATES'))
 
 
 async def _log_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -55,10 +46,6 @@ def main() -> None:
             cmd_lessonnotes,
         )
         
-        # Добавляем глобальный отладочный логгер входящих сообщений (group=-1)
-        application.add_handler(MessageHandler(filters.ALL, _debug_incoming_logger), group=-1)
-        application.add_handler(CallbackQueryHandler(_debug_incoming_logger), group=-1)
-
         lesson_call_link_conv = ConversationHandler(
             entry_points=[
                 CallbackQueryHandler(lesson_call_link_start, pattern=r'^lesson_call_link:\d+$'),
@@ -101,7 +88,9 @@ def main() -> None:
         
         async def _clear_webhook():
             try:
-                await application.bot.delete_webhook(drop_pending_updates=True)
+                await application.bot.delete_webhook(
+                    drop_pending_updates=_drop_pending_updates()
+                )
                 print("✅ Webhook успешно сброшен, переходим в режим Long Polling")
                 logger.info("✅ Telegram Webhook cleared successfully.")
             except Exception as e:
@@ -117,7 +106,7 @@ def main() -> None:
         logger.info('Starting Telegram long-polling runner')
         application.run_polling(
             allowed_updates=['message', 'callback_query'],
-            drop_pending_updates=True,
+            drop_pending_updates=_drop_pending_updates(),
             bootstrap_retries=-1,
             close_loop=True,
         )

@@ -32,6 +32,8 @@ services:
       --concurrency=2
     env_file: .env
     environment:
+      - ENVIRONMENT=production
+      - FLASK_ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
@@ -48,6 +50,8 @@ services:
     command: python -m app.telegram.polling
     env_file: .env
     environment:
+      - ENVIRONMENT=production
+      - FLASK_ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
@@ -55,6 +59,20 @@ services:
     depends_on:
       redis:
         condition: service_started
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  telegram-qa-poller:
+    build: .
+    command: python -m app.bots.qa_polling
+    env_file: .env
+    environment:
+      - ENVIRONMENT=production
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod
+      - TELEGRAM_QA_POLLING_DROP_PENDING_UPDATES=false
+    depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
@@ -67,6 +85,8 @@ services:
       --loglevel=info
     env_file: .env
     environment:
+      - ENVIRONMENT=production
+      - FLASK_ENV=production
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DATABASE_URL=postgresql://boostudy_user:boostudy_password@db:5432/boostudy_prod

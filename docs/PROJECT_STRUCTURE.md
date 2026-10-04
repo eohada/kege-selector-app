@@ -60,7 +60,9 @@ kege_selector_app_current/
 
 ### `urep_bot/`
 
-Shared utilities для production Telegram-интеграции. В production бот работает не отдельным long-polling сервисом, а внутри Flask через webhook `POST /webhook/telegram`.
+Shared utilities для production Telegram-интеграции. Канонический production runtime
+работает отдельным long-polling сервисом; webhook `POST /webhook/telegram` —
+защищённая альтернативная схема.
 
 ### `telegram_bot/`
 

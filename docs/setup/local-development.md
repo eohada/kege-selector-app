@@ -126,7 +126,9 @@ streamlit run trainer_app/app.py
 
 ### Production-style Telegram webhook
 
-Основной Telegram-контур встроен в Flask и использует webhook endpoint `POST /webhook/telegram`.
+Основной Telegram-контур запускается отдельным polling-процессом
+`python -m app.telegram.polling`; webhook `POST /webhook/telegram` используется
+только как явно настроенная альтернатива с secret header.
 
 Для локальной отладки потребуется корректная настройка связанных токенов и внешней доступности endpoint, если вы тестируете настоящий webhook.
 

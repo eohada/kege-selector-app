@@ -24,12 +24,11 @@ Production deploy описан через ручной GitHub Actions workflow `
 
 Логика:
 
-1. Проверка SSH secrets.
-2. SSH на сервер.
-3. `cd /opt/boostudy`
-4. `git pull origin main`
-5. `docker compose up -d --build`
-6. `docker image prune -f`
+1. Проверка SSH secrets и pinned host key.
+2. SSH на сервер deploy-пользователем.
+3. `sudo -n /opt/boostudy/scripts/deploy_blue_green.sh deploy`.
+4. Build неактивного цвета, expand-only migrations и локальный `/ready`.
+5. Переключение Nginx и внешний `/ready`/`/health` smoke check.
 
 ### Sandbox
 
@@ -94,7 +93,7 @@ Sandbox deploy описан в `.github/workflows/deploy_sandbox.yml`.
 
 ### Что уже хорошо
 
-- production deploy отделён в ручной workflow;
+- production deploy отделён в ручной workflow и использует blue-green helper;
 - sandbox deploy имеет retry-логику для SSH;
 - sandbox workflow документирует сетевые проблемы GitHub-hosted runners.
 
@@ -102,18 +101,20 @@ Sandbox deploy описан в `.github/workflows/deploy_sandbox.yml`.
 
 - автоматических тестов перед деплоем;
 - линтинга;
-- smoke checks после деплоя;
+- автоматических тестов и smoke checks до деплоя;
 - централизованного описания rollback-процедуры;
 - versioned server-side deploy scripts внутри репозитория.
 
 ## 7. Telegram в production
 
-Главный production Telegram-бот не должен жить отдельным контейнером, если использовать webhook-модель, описанную в `DEPLOY_TELEGRAM_WEBHOOK.md`.
+Канонический production Telegram-бот работает отдельным polling-сервисом;
+webhook остаётся защищённой альтернативой.
 
 Практический вывод:
 
-- основной канал Telegram интеграции обслуживается внутри web runtime;
-- отдельный standalone `telegram_bot/` решает другую задачу и не должен смешиваться с production webhook-контуром.
+- основной канал обслуживает `telegram-poller`;
+- QA-бот обслуживает отдельный `telegram-qa-poller`;
+- webhook и polling нельзя запускать одновременно для одного токена.
 
 ## 8. Рекомендованный operational checklist перед деплоем
 

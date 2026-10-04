@@ -1,6 +1,7 @@
-# Telegram-бот на сервере (webhook)
+# Telegram-бот на сервере: polling и защищённый webhook
 
-После перехода на вебхук **отдельный контейнер `bot_prod` не нужен**. Если в логах было:
+В production основной runtime — отдельный `telegram-poller`; отдельный legacy
+контейнер `bot_prod` с `urep_bot/run_bot.py` не используется. Если в логах было:
 
 `can't open file '/app/urep_bot/run_bot.py'`
 
@@ -11,12 +12,15 @@
 1. **Откройте** `docker-compose.yml` на сервере (в каталоге проекта, например `/opt/boostudy`).
 2. **Удалите или закомментируйте** весь блок сервиса с именем вроде `bot_prod`, `bot`, у которого в `command` указано `urep_bot/run_bot.py`.
 3. **Перезапустите** стек: `docker compose up -d` (или ваш способ).
-4. Убедитесь, что **работает только `web`** (gunicorn/uwsgi) и что снаружи доступен URL вида
-  `https://ваш-домен/webhook/telegram`.
-5. **Webhook в Telegram** должен указывать на этот URL. При необходимости выставьте его через внутренний endpoint (с заголовком `X-Bot-Token`) или вручную у @BotFather / через API.
-
-Бот обрабатывается **в том же процессе, что и сайт**; отдельный контейнер для polling больше не используется.
+4. Для polling убедитесь, что запущен только один `telegram-poller` для основного
+   токена. Pending updates не удаляйте без явной операции восстановления.
+5. Webhook — альтернативная схема: настройте `TELEGRAM_WEBHOOK_SECRET`, задайте
+   Telegram secret header и вызывайте `/webhook/telegram/set` только с
+   `X-Bot-Token`.
 
 ## Редирект на логин (302) для `/webhook/telegram`
 
-Если в логах видно `require_login: redirecting ... from /webhook/telegram to login`, глобальная проверка авторизации мешала Telegram. В коде пути `/webhook/`* и `/tg-app/*` исключены из обязательного входа (см. `app/utils/hooks.py`). После деплоя перезапустите `web` и при необходимости заново выставьте webhook.
+Если в логах видно `require_login: redirecting ... from /webhook/telegram to login`,
+глобальная проверка авторизации мешала Telegram. В коде пути `/webhook/*` и
+`/tg-app/*` исключены из обязательного входа (см. `app/utils/hooks.py`), но
+webhook всё равно проверяет `X-Telegram-Bot-Api-Secret-Token`.
