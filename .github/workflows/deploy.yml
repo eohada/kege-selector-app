@@ -31,6 +31,11 @@ jobs:
             ''|*[!0-9]*) echo "::error::SSH_PORT must be numeric"; exit 1 ;;
           esac
 
+      - name: Checkout deployment files
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Deploy with blue-green helper
         shell: bash
         run: |
