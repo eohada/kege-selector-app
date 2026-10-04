@@ -1,12 +1,12 @@
 """complete Telegram delivery outbox index contract
 
-Revision ID: telegram_delivery_contract_indexes
+Revision ID: tg_delivery_contract_idx
 Revises: telegram_delivery_indexes
 """
 from alembic import op
 
 
-revision = 'telegram_delivery_contract_indexes'
+revision = 'tg_delivery_contract_idx'
 down_revision = 'telegram_delivery_indexes'
 branch_labels = None
 depends_on = None
