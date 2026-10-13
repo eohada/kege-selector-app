@@ -91,11 +91,17 @@ def _workspace_context_scope(task_id: int, context_type: str | None, context_id:
     # Task Workspace uses the explicit UI name ``submission_task``.  Canvas
     # storage is shared by the whole submission task and must resolve to the
     # protected submission scope, otherwise a teacher cannot view the drawing.
-    if context_type == 'submission_task':
+    submission_slot_id = None
+    if context_type.startswith('submission_task_'):
+        try:
+            submission_slot_id = int(context_type.removeprefix('submission_task_'))
+        except ValueError:
+            abort(400)
+    elif context_type == 'submission_task':
         context_type = 'submission'
     elif context_type == 'lesson_task':
         context_type = 'lesson'
-    if context_type == 'submission':
+    if context_type == 'submission' or submission_slot_id is not None:
         if not context_id:
             abort(400, description='context_id required')
         submission = (
@@ -111,7 +117,11 @@ def _workspace_context_scope(task_id: int, context_type: str | None, context_id:
         if not student or not student.user_id:
             abort(404)
         assignment_tasks = list(getattr(submission.assignment, 'tasks', None) or [])
-        if not any(int(getattr(item, 'task_id', 0) or 0) == int(task_id) for item in assignment_tasks):
+        if not any(
+            int(getattr(item, 'task_id', 0) or 0) == int(task_id)
+            and (submission_slot_id is None or int(item.assignment_task_id) == submission_slot_id)
+            for item in assignment_tasks
+        ):
             abort(403)
         if not can_user_access_student(current_user, student_user_id=int(student.user_id)):
             abort(403)
@@ -119,9 +129,10 @@ def _workspace_context_scope(task_id: int, context_type: str | None, context_id:
             abort(403)
         return {
             'owner_user_id': int(student.user_id),
-            'context_type': 'submission',
+            'context_type': context_type if submission_slot_id is not None else 'submission',
             'context_id': int(context_id),
             'can_write': int(current_user.id) == int(student.user_id) and not _is_parent_user(),
+            'legacy_safe': submission_slot_id is not None and sum(int(getattr(item, 'task_id', 0) or 0) == int(task_id) for item in assignment_tasks) == 1,
         }
 
     if context_type == 'lesson':
@@ -441,6 +452,11 @@ def list_files():
     if scope['context_id'] is not None:
         files = files.filter_by(context_id=scope['context_id'])
     files = files.order_by(StudentWorkspaceFile.created_at.desc()).all()
+    if scope.get('legacy_safe'):
+        files += StudentWorkspaceFile.query.filter_by(
+            user_id=scope['owner_user_id'], task_id=task_id,
+            context_type='submission', context_id=scope['context_id'],
+        ).order_by(StudentWorkspaceFile.created_at.desc()).all()
     return jsonify({'success': True, 'files': [f.to_dict() for f in files]})
 
 
@@ -969,6 +985,12 @@ def canvas_save():
         context_id=scope['context_id'],
     ).first()
 
+    if not drawing and scope.get('legacy_safe'):
+        drawing = TaskCanvasDrawing.query.filter_by(
+            user_id=scope['owner_user_id'], task_id=task_id,
+            context_type='submission', context_id=scope['context_id'],
+        ).first()
+
     if drawing:
         drawing.strokes_json = strokes
         if thumbnail:
@@ -1006,6 +1028,12 @@ def canvas_load():
         context_type=scope['context_type'],
         context_id=scope['context_id'],
     ).first()
+
+    if not drawing and scope.get('legacy_safe'):
+        drawing = TaskCanvasDrawing.query.filter_by(
+            user_id=scope['owner_user_id'], task_id=task_id,
+            context_type='submission', context_id=scope['context_id'],
+        ).first()
 
     if not drawing:
         return jsonify({'success': True, 'strokes': '[]', 'exists': False})

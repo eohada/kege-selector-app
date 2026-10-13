@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import time
 import base64
+import uuid
+import re
 
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, session
 from flask_login import login_required
 
 from app.models import db
-from core.db_models import User, Lesson, LessonTask, Submission, StudentWorkspaceFile, TaskCanvasDrawing
+from core.db_models import User, Lesson, LessonTask, Submission, AssignmentTask, Answer, StudentWorkspaceFile, TaskCanvasDrawing
 
 from app.assignments.routes import _collect_sandbox_files
 from app.limiter import limiter
 from app.sandbox.python_runner import normalize_leading_tabs_to_spaces, run_python_sandbox
+from app.workspace.routes import _read_file_bytes, _write_workspace_bytes
 
 from .error_hints import explain_python_error
 from .service import (
@@ -21,7 +24,6 @@ from .service import (
     load_workspace_state_payload,
     restore_workspace_version,
     load_workspace_notes,
-    load_workspace_state_payload,
     save_workspace_version,
 )
 from .socket import emit_workspace_snapshot
@@ -244,18 +246,43 @@ def workspace_bridge_api():
         return jsonify({
             "success": True,
             "lesson": {"id": lesson.lesson_id, "title": lesson.topic or "Урок", "url": f"/lesson/{lesson.lesson_id}/room"} if lesson else None,
-            "lesson_tasks": [{"id": item.lesson_task_id, "title": item.task.title or f"Задание {item.task_id}"} for item in lesson_tasks],
+            "lesson_os_code": bool(((lesson.review_summaries or {}).get("_os_workspace") or {}).get("code")) if lesson else False,
+            "lesson_tasks": [{"id": item.lesson_task_id, "title": (getattr(item.task, "title", None) or f"Задание {item.task_id}")} for item in lesson_tasks],
             "assignment_tasks": [item for item in ctx.tasks_nav if item["assignment_task_id"] != ctx.assignment_task_id],
         })
     if not ctx.can_edit or actor.id != ctx.student_user_id:
         abort(403)
+    if data.get("direction") == "to_lesson":
+        if not lesson:
+            abort(404)
+        current_state = load_workspace_state_payload(ctx)
+        note_parts = [current_state["notes"]]
+        if data.get("include_code", True) and current_state["code"].strip():
+            note_parts.append(f"Код из задания {ctx.task_position}:\n```python\n{current_state['code']}\n```")
+        start = f"[Домашняя работа #{ctx.submission_id} · задание {ctx.task_position}]"
+        end = "[/Домашняя работа]"
+        existing = re.sub(re.escape(start) + r".*?" + re.escape(end), "", lesson.student_notes or "", flags=re.DOTALL).strip()
+        block = "\n\n".join(part.strip() for part in note_parts if part.strip())
+        merged = (existing + "\n\n" + start + "\n" + block + "\n" + end).strip()
+        if len(merged) > 20_000:
+            return jsonify({"success": False, "error": "В заметках урока не хватает места для переноса"}), 400
+        lesson.student_notes = merged
+        db.session.commit()
+        return jsonify({"success": True, "message": "Заметки и код сохранены в OS урока"})
     source_type = str(data.get("source_type") or "")
     source_id = data.get("source_id")
+    source_ctx = None
     if source_type == "lesson_notes":
         if not lesson:
             abort(404)
         source_notes = lesson.student_notes or ""
         source_state = None
+    elif source_type == "lesson_os":
+        if not lesson or source_id != lesson.lesson_id:
+            abort(403)
+        stored_os = (lesson.review_summaries or {}).get("_os_workspace") or {}
+        source_state = {"code": stored_os.get("code") or ""}
+        source_notes = lesson.student_notes or ""
     elif source_type == "lesson_task":
         if not any(item.lesson_task_id == source_id for item in lesson_tasks):
             abort(403)
@@ -274,18 +301,44 @@ def workspace_bridge_api():
     merged_notes = "\n\n".join(part for part in [target_state["notes"].strip(), source_notes.strip()] if part)[:20_000]
     copied_code = source_state["code"] if source_state and data.get("include_code", True) else target_state["code"]
     save_workspace_version(ctx, copied_code, target_state["answer"], source="transfer", notes=merged_notes)
-    if source_state:
-        source_kind = "lesson" if source_type == "lesson_task" else "submission"
+    if source_state and data.get("include_code", True):
+        answer_row = Answer.query.filter_by(submission_id=ctx.submission_id, assignment_task_id=ctx.assignment_task_id).first()
+        if not answer_row:
+            assignment_task = db.session.get(AssignmentTask, ctx.assignment_task_id)
+            answer_row = Answer(
+                submission_id=ctx.submission_id,
+                assignment_task_id=ctx.assignment_task_id,
+                max_score=assignment_task.max_score,
+            )
+            db.session.add(answer_row)
+        answer_row.student_code = copied_code
+    if source_ctx is not None:
+        source_kind = "lesson" if source_type == "lesson_task" else f"submission_task_{source_id}"
+        target_kind = f"submission_task_{ctx.assignment_task_id}"
         source_files = StudentWorkspaceFile.query.filter_by(
             user_id=ctx.student_user_id, task_id=source_ctx.task_id,
             context_type=source_kind, context_id=source_ctx.context_id,
         ).all()
+        if not source_files and source_type == "assignment_task" and sum(item["task_id"] == source_ctx.task_id for item in ctx.tasks_nav) == 1:
+            source_files = StudentWorkspaceFile.query.filter_by(
+                user_id=ctx.student_user_id, task_id=source_ctx.task_id,
+                context_type="submission", context_id=ctx.submission_id,
+            ).all()
         target_files = StudentWorkspaceFile.query.filter_by(
             user_id=ctx.student_user_id, task_id=ctx.task_id,
-            context_type="submission", context_id=ctx.submission_id,
+            context_type=target_kind, context_id=ctx.submission_id,
         ).all()
+        if sum(item["task_id"] == ctx.task_id for item in ctx.tasks_nav) == 1:
+            target_files += StudentWorkspaceFile.query.filter_by(
+                user_id=ctx.student_user_id, task_id=ctx.task_id,
+                context_type="submission", context_id=ctx.submission_id,
+            ).all()
         names = {item.current_filename for item in target_files}
         for item in source_files:
+            file_bytes = _read_file_bytes(item)
+            if file_bytes is None:
+                db.session.rollback()
+                return jsonify({"success": False, "error": f"Не удалось скопировать файл {item.current_filename}"}), 409
             name = item.current_filename
             if name in names:
                 stem, dot, ext = name.rpartition(".")
@@ -293,11 +346,12 @@ def workspace_bridge_api():
                 ext = "." + ext if dot else ""
                 name = f"{stem}-копия-{item.id}{ext}"
             names.add(name)
+            storage_path = _write_workspace_bytes(file_bytes, ctx.student_user_id, ctx.task_id, f"{uuid.uuid4().hex}_{name}")
             db.session.add(StudentWorkspaceFile(
                 user_id=ctx.student_user_id, task_id=ctx.task_id,
-                context_type="submission", context_id=ctx.submission_id,
+                context_type=target_kind, context_id=ctx.submission_id,
                 original_filename=item.original_filename, current_filename=name,
-                storage_path=item.storage_path, file_size=item.file_size,
+                storage_path=storage_path, file_size=len(file_bytes),
                 mime_type=item.mime_type, is_from_task=False,
             ))
         drawing = TaskCanvasDrawing.query.filter_by(
@@ -307,12 +361,12 @@ def workspace_bridge_api():
         if drawing and data.get("include_canvas", True):
             target_drawing = TaskCanvasDrawing.query.filter_by(
                 user_id=ctx.student_user_id, task_id=ctx.task_id,
-                context_type="submission", context_id=ctx.submission_id,
+                context_type=target_kind, context_id=ctx.submission_id,
             ).first()
             if not target_drawing:
                 target_drawing = TaskCanvasDrawing(
                     user_id=ctx.student_user_id, task_id=ctx.task_id,
-                    context_type="submission", context_id=ctx.submission_id,
+                    context_type=target_kind, context_id=ctx.submission_id,
                 )
                 db.session.add(target_drawing)
             target_drawing.strokes_json = drawing.strokes_json

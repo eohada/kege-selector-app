@@ -764,7 +764,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         subtitle=f"{student.user.username if student.user else 'ученик'} · {submission.assignment.assignment_type}",
         source_label="Работа / задание",
         assignment_title=submission.assignment.title or "Работа",
-        return_url="/submissions",
+        return_url=url_for('assignments.submission_grade_view', submission_id=submission.submission_id) if can_review else "/submissions",
         student_id=student.student_id,
         student_user_id=student.user_id,
         submission_id=submission.submission_id,
@@ -924,13 +924,14 @@ def save_workspace_draft(ctx: WorkspaceContext, code: str, answer: str = "", fra
         raise
 
 
-def _trace_lookup(ctx: WorkspaceContext):
+def _trace_lookup(ctx: WorkspaceContext, *, legacy: bool = False):
+    scope_id = ctx.context_id if legacy or ctx.context_type != "submission_task" else ctx.assignment_task_id
     query = CodePlaybackTrace.query.filter_by(
         context_type=ctx.context_type,
-        context_id=ctx.context_id,
+        context_id=scope_id,
         task_id=ctx.task_id,
     )
-    if ctx.context_type == "submission_task" and ctx.answer_id:
+    if legacy and ctx.context_type == "submission_task" and ctx.answer_id:
         query = query.filter(db.or_(CodePlaybackTrace.answer_id == ctx.answer_id, CodePlaybackTrace.answer_id.is_(None)))
     if ctx.student_id:
         query = query.filter_by(student_id=ctx.student_id)
@@ -940,6 +941,8 @@ def _trace_lookup(ctx: WorkspaceContext):
 def load_workspace_trace_payload(ctx: WorkspaceContext) -> dict[str, Any]:
     try:
         trace = _trace_lookup(ctx).first()
+        if not trace and ctx.context_type == "submission_task":
+            trace = _trace_lookup(ctx, legacy=True).first()
     except Exception:
         return {"trace_id": None, "frames": [], "meta": {}, "updated_at": None, "frame_count": 0}
     if not trace:
@@ -962,7 +965,7 @@ def save_workspace_trace(ctx: WorkspaceContext, frames: list[dict[str, Any]] | N
     if not trace:
         trace = CodePlaybackTrace(
             context_type=ctx.context_type,
-            context_id=ctx.context_id,
+            context_id=ctx.assignment_task_id if ctx.context_type == "submission_task" else ctx.context_id,
             task_id=ctx.task_id,
             student_user_id=ctx.student_user_id,
             student_id=ctx.student_id,
@@ -981,17 +984,21 @@ def save_workspace_trace(ctx: WorkspaceContext, frames: list[dict[str, Any]] | N
     return trace
 
 
-def _version_lookup(ctx: WorkspaceContext):
+def _version_lookup(ctx: WorkspaceContext, *, legacy: bool = False):
+    scope_id = ctx.context_id if legacy or ctx.context_type != "submission_task" else ctx.assignment_task_id
     query = CodeWorkspaceVersion.query.filter_by(
         context_type=ctx.context_type,
-        context_id=ctx.context_id,
+        context_id=scope_id,
         task_id=ctx.task_id,
     )
-    if ctx.context_type == "submission_task" and ctx.answer_id:
+    if legacy and ctx.context_type == "submission_task" and ctx.answer_id:
         query = query.filter(db.or_(CodeWorkspaceVersion.answer_id == ctx.answer_id, CodeWorkspaceVersion.answer_id.is_(None)))
     if ctx.student_id:
         query = query.filter_by(student_id=ctx.student_id)
-    return query.order_by(CodeWorkspaceVersion.created_at.desc(), CodeWorkspaceVersion.version_id.desc())
+    query = query.order_by(CodeWorkspaceVersion.created_at.desc(), CodeWorkspaceVersion.version_id.desc())
+    if not legacy and ctx.context_type == "submission_task" and not query.first():
+        return _version_lookup(ctx, legacy=True)
+    return query
 
 
 def load_workspace_versions_payload(ctx: WorkspaceContext) -> dict[str, Any]:
@@ -1090,7 +1097,7 @@ def save_workspace_version(ctx: WorkspaceContext, code: str, answer: str = "", s
     try:
         version = CodeWorkspaceVersion(
             context_type=ctx.context_type,
-            context_id=ctx.context_id,
+            context_id=ctx.assignment_task_id if ctx.context_type == "submission_task" else ctx.context_id,
             student_user_id=ctx.student_user_id,
             student_id=ctx.student_id,
             task_id=ctx.task_id,

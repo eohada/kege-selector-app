@@ -26,6 +26,7 @@
         <div class="hw-os-actions">
             {% if workspace.can_review %}<span class="hw-os-viewing"><i class="ph-bold ph-eye"></i> Просмотр ученика</span>{% endif %}
             {% if workspace.can_edit %}<button type="button" id="hw-os-transfer-open" class="hw-os-action"><i class="ph-bold ph-copy"></i><span>Копировать материалы</span></button>{% endif %}
+            {% if workspace.can_edit %}<button type="button" id="hw-os-send-lesson" class="hw-os-action" hidden><i class="ph-bold ph-upload-simple"></i><span>Сохранить в урок</span></button>{% endif %}
             <a id="hw-os-lesson-link" class="hw-os-action" href="#" hidden><i class="ph-bold ph-chalkboard-teacher"></i><span>OS урока</span></a>
         </div>
     </header>
@@ -34,7 +35,7 @@
         {% for item in workspace.tasks_nav %}<a class="hw-os-tab{% if item.is_current %} is-active{% endif %}" href="{{ item.url }}" {% if item.is_current %}aria-current="page"{% endif %}><span class="hw-os-tab-number">{{ item.position }}</span><span class="hw-os-tab-title">Задание {{ item.position }}</span>{% if item.is_completed %}<i class="ph-bold ph-check-circle"></i>{% endif %}</a>{% endfor %}
     </nav>
     {% if workspace.can_edit %}<dialog id="hw-os-transfer" class="hw-os-dialog" aria-labelledby="hw-os-transfer-title">
-        <form method="dialog" class="hw-os-dialog-body"><div class="hw-os-dialog-heading"><div><span class="hw-os-kicker">BooStudy OS</span><h2 id="hw-os-transfer-title">Копировать в задание {{ workspace.task_position }}</h2></div><button type="submit" class="hw-os-dialog-close" aria-label="Закрыть"><i class="ph-bold ph-x"></i></button></div>
+        <form method="dialog" class="hw-os-dialog-body"><div class="hw-os-dialog-heading"><div><span class="hw-os-kicker">BooStudy OS</span><h2 id="hw-os-transfer-title">Копировать в задание {{ workspace.task_position }}</h2></div><button type="button" class="hw-os-dialog-close" aria-label="Закрыть"><i class="ph-bold ph-x"></i></button></div>
             <p>Выберите пространство, из которого нужно взять код, заметки, файлы и рисунок. Исходное пространство сохранится.</p>
             <label for="hw-os-transfer-source">Источник</label><select id="hw-os-transfer-source" required><option value="">Загружаем пространства…</option></select>
             <div class="hw-os-dialog-footer"><span id="hw-os-transfer-status" role="status"></span><button type="button" id="hw-os-transfer-confirm" class="hw-os-confirm">Копировать <i class="ph-bold ph-arrow-right"></i></button></div>

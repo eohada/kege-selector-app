@@ -327,6 +327,7 @@
             client_id: workspaceClientId,
             code: code.value,
             answer: currentAnswer,
+            notes: notes?.value || '',
             playback_frames: playback.frames,
             ui_state: localUiState(),
         };
@@ -2004,7 +2005,7 @@
 
     function workspaceFileScope() {
         if (!['submission_task', 'lesson_task'].includes(ws.context_type)) return null;
-        return { context_type: ws.context_type === 'submission_task' ? 'submission' : 'lesson', context_id: ws.context_id, task_id: ws.task_id };
+        return { context_type: ws.context_type === 'submission_task' ? `submission_task_${ws.assignment_task_id}` : 'lesson', context_id: ws.context_id, task_id: ws.task_id };
     }
 
     async function loadWorkspaceFiles() {
@@ -2941,7 +2942,7 @@
 
     // Инициализация холста рисования
     if (window.BooCanvasOverlay && ws.task_id) {
-        window.BooCanvasOverlay.setContext(ws.task_id, ws.context_type, ws.context_id);
+        window.BooCanvasOverlay.setContext(ws.task_id, ws.context_type === 'submission_task' ? `submission_task_${ws.assignment_task_id}` : ws.context_type, ws.context_id);
     }
     initializeWorkspaceMode();
 })();

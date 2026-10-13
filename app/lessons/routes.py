@@ -1237,6 +1237,32 @@ def lesson_studio_student_notes_save(lesson_id: int):
     return jsonify({'success': True, 'notes': notes})
 
 
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/os-code', methods=['GET', 'POST'])
+@login_required
+def lesson_os_code_save(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    stored = (lesson.review_summaries or {}).get('_os_workspace') or {}
+    if request.method == 'GET':
+        return jsonify({'success': True, 'code': stored.get('code') or '', 'file_name': stored.get('file_name') or 'main.py'})
+    is_student = current_user.is_student() and bool(_get_current_lesson_student(lesson))
+    if is_student:
+        from app.lessons.lesson_socket import _room_control
+        is_student = bool(_room_control(lesson_id).get('student_code_editing'))
+    if not (_lesson_studio_is_teacher() or is_student):
+        abort(403)
+    payload = request.get_json(silent=True) or {}
+    code = str(payload.get('code') or '')
+    if len(code) > 100_000:
+        return jsonify({'success': False, 'error': 'Код слишком длинный'}), 400
+    summaries = dict(lesson.review_summaries or {})
+    summaries['_os_workspace'] = {'code': code, 'file_name': str(payload.get('file_name') or 'main.py')[:120]}
+    lesson.review_summaries = summaries
+    flag_modified(lesson, 'review_summaries')
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 @lessons_bp.route('/lesson/<int:lesson_id>/status', methods=['GET'])
 @login_required
 def lesson_status_get(lesson_id: int):
@@ -1397,6 +1423,15 @@ def lesson_interactive_room(lesson_id: int):
     if not isinstance(room_materials, list):
         room_materials = []
 
+    linked_homework_url = None
+    linked_assignments = Assignment.query.filter_by(lesson_id=lesson.lesson_id, assignment_type='homework', is_active=True).order_by(Assignment.assignment_id.desc()).all()
+    for linked_assignment in linked_assignments:
+        linked_submission = Submission.query.filter_by(assignment_id=linked_assignment.assignment_id, student_id=lesson.student_id).first()
+        linked_task = min(linked_assignment.tasks, key=lambda item: (item.order_index, item.assignment_task_id)) if linked_assignment.tasks else None
+        if linked_submission and linked_task:
+            linked_homework_url = url_for('task_workspace.workspace_page', context_type='submission_task', context_id=linked_submission.submission_id, assignment_task_id=linked_task.assignment_task_id)
+            break
+
     return render_template(
         'sandbox/trainer.html',
         lesson=lesson,
@@ -1415,6 +1450,8 @@ def lesson_interactive_room(lesson_id: int):
         can_open_task_generator=can_open_task_generator,
         theory_items=theory_items,
         room_materials=room_materials,
+        room_os_code=((lesson.review_summaries or {}).get('_os_workspace') or {}).get('code') or '',
+        linked_homework_url=linked_homework_url,
         is_demo_preview=demo_preview,
         room_mode=True,
         room_student_notes=lesson.student_notes or '',

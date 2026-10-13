@@ -2,7 +2,7 @@
 {% set room_lesson = lesson|default(none) %}
 {% set room_task = (classwork_tasks[0] if classwork_tasks else none) if room_mode else none %}
 {% set room_task_title = (room_task.task.title if room_task and room_task.task and room_task.task.title else 'Фокус урока') %}
-{% set room_starter_code = (room_task.task.starter_code if room_task and room_task.task and room_task.task.starter_code else '') %}
+{% set room_starter_code = room_os_code|default('') or (room_task.task.starter_code if room_task and room_task.task and room_task.task.starter_code else '') %}
 {% extends "sandbox/layout_teacher.html" if (room_mode and is_studio_teacher|default(false)) else "sandbox/layout_student.html" %}
 {% set active_page = 'lesson_room' if room_mode else 'trainer' %}
 
@@ -2178,6 +2178,7 @@
           <div class="lesson-os-system-title"><strong>{{ room_lesson.topic or 'Комната урока' }}</strong><span>{% if room_lesson.subject %}{{ room_lesson.subject }}{% else %}BooStudy OS{% endif %}</span></div>
         </div>
         <div class="lesson-os-system-right">
+          {% if linked_homework_url %}<a class="lesson-os-system-action" href="{{ linked_homework_url }}"><i class="ph-bold ph-notebook" aria-hidden="true"></i><span>Домашняя OS</span></a>{% endif %}
           <div class="lesson-os-presence-wrap">
             <button type="button" id="lesson-os-presence-toggle" class="lesson-os-system-action" aria-label="Участники урока" aria-expanded="false" aria-controls="lesson-os-presence-list"><i class="ph-bold ph-users" aria-hidden="true"></i><span id="lesson-os-participants">Участники</span></button>
             <div id="lesson-os-presence-list" class="lesson-os-presence-list hidden" role="region" aria-label="Участники онлайн"></div>
@@ -3385,6 +3386,7 @@
 
         {% if room_mode %}
         <div id="dock-icon-files-window" class="board-dock-item group relative" data-room-label="Файлы" role="button" tabindex="0" aria-label="Открыть файлы урока" title="Файлы урока" onclick="toggleDockWindow('files-window')"><i class="ph-bold ph-folder text-lg" aria-hidden="true"></i></div>
+        {% if linked_homework_url %}<a class="board-dock-item group relative" data-room-label="Домашняя OS" href="{{ linked_homework_url }}" aria-label="Открыть домашнюю OS" title="Открыть домашнюю OS"><i class="ph-bold ph-notebook text-lg" aria-hidden="true"></i></a>{% endif %}
         {% endif %}
 
         <!-- App 5: Reference Viewer (Teal) -->
@@ -7913,8 +7915,19 @@
     }
 
     let codeSyncTimer = null;
+    let codePersistTimer = null;
 
     function queueCodeSync(code = virtualFS[activeFileName] || '', fileName = activeFileName) {
+      if (trainerOsConfig.room_mode && (state.role === 'teacher' || controlState().student_code_editing === true)) {
+        clearTimeout(codePersistTimer);
+        codePersistTimer = setTimeout(() => {
+          fetch(`/lesson/${encodeURIComponent(lessonId)}/studio/os-code`, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+            body: JSON.stringify({ code: String(code || ''), file_name: fileName }),
+          }).catch(() => {});
+        }, 900);
+      }
       if (!state.socket || controlState().code_sync === false || (state.role !== 'teacher' && controlState().student_code_editing !== true)) return;
       clearTimeout(codeSyncTimer);
       codeSyncTimer = setTimeout(() => {
