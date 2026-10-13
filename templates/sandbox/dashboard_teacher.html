@@ -1,8 +1,120 @@
-{% extends "sandbox/layout_teacher.html" %}
+{% extends "sandbox/layout_dashboard.html" %}
 {% block title %}Дашборд преподавателя · BooStudy{% endblock %}
 {% set active_page = 'dashboard' %}
 
 {% block sandbox_content %}
+<main class="bs-dashboard-page bs-teacher-dashboard">
+  <div class="bs-teacher-hero-grid">
+    <section class="bs-teacher-hero bs-dashboard-hero-card">
+      <div class="bs-teacher-hero-copy bs-dashboard-hero-copy">
+        <span class="bs-dashboard-eyebrow"><i class="ph ph-graduation-cap"></i> Рабочее пространство</span>
+        <h1>{{ greeting_word }}, {{ teacher_name }}!</h1>
+        <p class="bs-teacher-hero-date">{{ date_formatted }}</p>
+        <p>Соберите день вокруг главного: поддержать учеников, проверить работы и спокойно провести ближайшие занятия.</p>
+        <div class="bs-teacher-hero-actions">
+          <a href="{{ url_for('main.teacher_analytics_view') }}" class="bs-button bs-button-soft"><span>Открыть аналитику</span><i class="ph ph-arrow-up-right"></i></a>
+          <span class="bs-teacher-hero-note"><i class="ph ph-sparkle"></i> Маленькие шаги дают большой результат</span>
+        </div>
+      </div>
+      <div class="bs-teacher-hero-art" aria-hidden="true">
+        <span class="bs-teacher-art-orb bs-teacher-art-orb-one"></span>
+        <span class="bs-teacher-art-orb bs-teacher-art-orb-two"></span>
+        <span class="bs-teacher-art-spark bs-teacher-art-spark-one"><i class="ph-fill ph-star"></i></span>
+        <span class="bs-teacher-art-spark bs-teacher-art-spark-two"><i class="ph-bold ph-code"></i></span>
+        <img src="{{ url_for('static', filename='images/dashboard/hero_student.png') }}" alt="BooStudy помогает преподавателю" class="bs-teacher-hero-mascot">
+        <span class="bs-teacher-art-bubble">Сегодня<br><strong>всё под контролем</strong></span>
+      </div>
+    </section>
+
+    <aside class="bs-dashboard-goal-card bs-teacher-summary-card">
+      <div class="bs-dashboard-card-header">
+        <div class="bs-teacher-summary-title"><span class="bs-summary-icon"><i class="ph ph-target"></i></span><div><h2>Сводка недели</h2><p class="bs-dashboard-card-subtitle">Пульс команды</p></div></div>
+        <a href="{{ url_for('main.teacher_analytics_view') }}" aria-label="Открыть аналитику"><i class="ph ph-arrow-up-right"></i></a>
+      </div>
+      <div class="bs-teacher-summary-list">
+        <div class="bs-teacher-summary-primary"><span class="bs-summary-icon is-success"><i class="ph ph-trend-up"></i></span><span><strong>{{ hero_card.improved_students }}</strong><small>ученика улучшили результат</small></span><a href="/students">К ученикам <i class="ph ph-arrow-right"></i></a></div>
+        <div class="bs-teacher-summary-metrics">
+          <div><small><i class="ph ph-check-square-offset"></i> Работы выполнены</small><strong>{{ hero_card.completed_works }}</strong><em>{{ hero_card.completed_works_delta }}</em></div>
+          <div><small><i class="ph ph-check-circle"></i> Посещаемость</small><strong>{{ hero_card.attendance_pct }}%</strong><em>{{ hero_card.attendance_delta }}</em></div>
+        </div>
+        <div class="bs-teacher-summary-progress"><span style="width: {{ hero_card.attendance_pct|default(0)|int }}%"></span></div>
+      </div>
+    </aside>
+  </div>
+
+  <section class="bs-dashboard-metrics bs-teacher-metrics" aria-label="Ключевые показатели">
+    <a href="/students" class="bs-dashboard-metric bs-hover-lift bs-metric-indigo">
+      <div class="bs-dashboard-metric-head"><span class="bs-dashboard-metric-icon"><i class="ph ph-users-three"></i></span><span class="bs-badge bs-status-completed">{{ kpi.students_delta }}</span></div><span class="bs-teacher-mini-bars is-indigo" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></span>
+      <div><div class="bs-dashboard-metric-value">{{ kpi.active_students }}</div><span class="bs-dashboard-metric-label">активных учеников</span></div>
+    </a>
+    <a href="/assignments" class="bs-dashboard-metric bs-hover-lift bs-metric-danger">
+      <div class="bs-dashboard-metric-head"><span class="bs-dashboard-metric-icon"><i class="ph ph-files"></i></span><span class="bs-badge bs-status-overdue">{{ kpi.overdue_reviews }}</span></div><span class="bs-teacher-mini-line is-danger" aria-hidden="true"><svg viewBox="0 0 90 24"><path d="M2 18C14 17 18 7 28 12s13 8 21 2 10-8 17-2 11 8 22-7"/></svg></span>
+      <div><div class="bs-dashboard-metric-value">{{ kpi.pending_reviews }}</div><span class="bs-dashboard-metric-label">работы на проверку</span></div>
+    </a>
+    <a href="/analytics" class="bs-dashboard-metric bs-hover-lift bs-metric-success">
+      <div class="bs-dashboard-metric-head"><span class="bs-dashboard-metric-icon"><i class="ph ph-chart-line-up"></i></span><span class="bs-badge bs-status-completed">{{ kpi.score_delta }}</span></div><span class="bs-teacher-mini-line is-success" aria-hidden="true"><svg viewBox="0 0 90 24"><path d="M2 19C12 18 17 10 27 14s14 1 22-3 14 9 22 2 10-12 17-10"/></svg></span>
+      <div><div class="bs-dashboard-metric-value">{{ kpi.average_score }}%</div><span class="bs-dashboard-metric-label">средний результат</span></div>
+    </a>
+    <a href="/schedule" class="bs-dashboard-metric bs-hover-lift bs-metric-info">
+      <div class="bs-dashboard-metric-head"><span class="bs-dashboard-metric-icon"><i class="ph ph-calendar-blank"></i></span><span class="bs-badge bs-status-in-progress">на неделе</span></div><span class="bs-teacher-mini-calendar" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <div><div class="bs-dashboard-metric-value">{{ kpi.lessons_this_week }}</div><span class="bs-dashboard-metric-label">{{ kpi.next_lesson_subtext }}</span></div>
+    </a>
+  </section>
+
+  <section class="bs-teacher-main-grid">
+    <article class="bs-dashboard-card bs-teacher-focus-card">
+      <div class="bs-dashboard-card-header"><div><h2>Фокус на сегодня</h2><p class="bs-dashboard-card-subtitle">Есть {{ focus_items|length }} вещи, которые стоит разобрать</p></div><a href="{{ url_for('main.teacher_analytics_view') }}">Смотреть всё <i class="ph ph-arrow-right"></i></a></div>
+      <div class="bs-teacher-focus-list">
+        {% for item in focus_items[:3] %}
+        <div class="bs-teacher-focus-item">
+          <span class="bs-teacher-focus-dot {% if item.type == 'decline' %}is-danger{% elif item.type == 'review' %}is-warning{% elif item.type == 'lesson' %}is-info{% else %}is-success{% endif %}"></span>
+          {% if item.avatar %}<img src="{{ item.avatar }}" alt="{{ item.title }}" class="bs-teacher-focus-avatar">{% elif item.icon %}<span class="bs-teacher-focus-icon"><i class="{{ item.icon }}"></i></span>{% endif %}
+          <div class="bs-teacher-focus-copy"><strong>{{ item.title }}</strong><span>{{ item.subtitle }}</span></div>
+          {% if item.progression %}<span class="bs-teacher-focus-progress">{% for p in item.progression %}<b>{{ p }}</b>{% if not loop.last %}<i class="ph ph-caret-right"></i>{% endif %}{% endfor %}</span>{% endif %}
+          {% if item.action_url %}<a href="{{ item.action_url }}" class="bs-teacher-inline-action">{{ item.action_text }}</a>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="bs-dashboard-card bs-teacher-schedule-card">
+      <div class="bs-dashboard-card-header"><div><h2>Сегодня</h2><p class="bs-dashboard-card-subtitle">{{ today_short }}</p></div><a href="/schedule">Открыть <i class="ph ph-arrow-up-right"></i></a></div>
+      {% if today_timeline %}
+      <div class="bs-teacher-timeline">{% for item in today_timeline %}<div class="bs-teacher-timeline-item"><span class="bs-teacher-timeline-time">{{ item.time }}</span><span class="bs-teacher-timeline-dot {% if item.status == 'completed' %}is-success{% elif item.status == 'in_progress' %}is-warning{% endif %}"></span><img src="{{ item.avatar }}" alt="{{ item.student_name }}"><div><strong>{{ item.student_name }}</strong><span>{{ item.topic }}</span></div><span class="bs-badge bs-status-in-progress">{{ item.duration }}</span><a href="{{ item.room_url }}" class="bs-dashboard-soft-action">Войти</a></div>{% endfor %}</div>
+      {% else %}<div class="bs-teacher-featured-empty"><span class="bs-summary-icon"><i class="ph ph-calendar-check"></i></span><span><strong>На сегодня уроков нет</strong><small>Свободный день для планирования занятия.</small></span><button type="button" class="bs-button bs-button-soft" onclick="openAddLessonModal()">Запланировать <i class="ph ph-plus"></i></button></div>{% endif %}
+      <button type="button" class="bs-dashboard-soft-action bs-teacher-add-lesson" onclick="openAddLessonModal()"><i class="ph ph-plus"></i> Добавить занятие</button>
+    </article>
+
+    <div class="bs-teacher-actions-stack">
+      <article class="bs-dashboard-card bs-teacher-actions-card"><div class="bs-dashboard-card-header"><div><h2>Быстрые действия</h2><p class="bs-dashboard-card-subtitle">Инструменты на сегодня</p></div><span class="bs-summary-icon is-warning"><i class="ph ph-lightning"></i></span></div><div class="bs-dashboard-action-grid bs-teacher-action-grid"><a href="/assignments/create" class="bs-dashboard-action"><i class="ph ph-file-plus"></i><span>Создать работу</span></a><button type="button" class="bs-dashboard-action" onclick="openAssignMockModal()"><i class="ph ph-target"></i><span>Назначить пробник</span></button><a href="/task-generator/bank" class="bs-dashboard-action"><i class="ph ph-books"></i><span>Открыть банк задач</span></a><button type="button" class="bs-dashboard-action" onclick="openAddStudentModal()"><i class="ph ph-user-plus"></i><span>Добавить ученика</span></button></div><div class="bs-teacher-todo-inline"><div class="bs-teacher-todo-inline-head"><strong>Не забыть</strong><button type="button" class="bs-icon-button" onclick="promptAddTodo()" title="Добавить заметку" aria-label="Добавить заметку"><i class="ph ph-plus"></i></button></div><div id="todoListContainer" class="bs-teacher-todo-list">{% for todo in todos[:2] %}<label class="bs-teacher-todo-item"><span><input type="checkbox" onchange="toggleTodo({{ todo.id }}, this)" {% if todo.done %}checked{% endif %}><span class="{% if todo.done %}is-done{% endif %}">{{ todo.text }}</span></span><button type="button" onclick="deleteTodo({{ todo.id }}, this)" title="Удалить"><i class="ph ph-trash"></i></button></label>{% endfor %}</div></div></article>
+    </div>
+  </section>
+
+  <section class="bs-teacher-bottom-grid">
+    <article class="bs-dashboard-card bs-teacher-chart-card"><div class="bs-dashboard-card-header"><div><h2>Средний результат учеников</h2><p class="bs-dashboard-card-subtitle">Короткий pulse за период</p></div><a href="{{ url_for('main.teacher_analytics_view') }}">Подробно <i class="ph ph-arrow-up-right"></i></a></div><div class="bs-teacher-chart-summary"><span><strong>{{ kpi.average_score }}%</strong><small>текущий результат</small></span><span class="bs-teacher-chart-trend"><i class="ph ph-trend-up"></i>{{ kpi.score_delta }}</span></div><div class="bs-teacher-chart-tabs"><button type="button" onclick="switchChartTab('7d')" id="tab7d" class="is-active">7 дней</button><button type="button" onclick="switchChartTab('30d')" id="tab30d">30 дней</button><button type="button" onclick="switchChartTab('all')" id="tabAll">Весь период</button></div><div class="bs-teacher-chart-wrap"><div id="chartTooltipBadge" class="bs-teacher-chart-tooltip"><span id="chartPeakVal">{{ chart_data_7d.peak_val }}%</span><span id="chartPeakLabel">{{ chart_data_7d.peak_label }}</span></div><div id="chartEmptyState" class="bs-teacher-chart-empty" hidden>Нет новых оценок за выбранный период</div><svg id="teacherPerformanceChart" data-teacher-chart viewBox="0 0 600 160" role="img" aria-label="Динамика среднего результата"><defs><linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5b35f5" stop-opacity=".22"/><stop offset="100%" stop-color="#5b35f5" stop-opacity="0"/></linearGradient></defs><g id="chartGrid" aria-hidden="true"></g><path id="chartAreaPath" fill="url(#chartGrad)"></path><path id="chartCurvePath" fill="none" stroke="#5b35f5" stroke-width="3" stroke-linecap="round"></path><g id="chartPointLayer" aria-hidden="true"></g></svg></div><div id="chartXAxisLabels" class="bs-teacher-chart-axis">{% for pt in chart_data_7d.points %}<span>{{ pt.date }}</span>{% endfor %}</div></article>
+
+    <article class="bs-dashboard-card bs-teacher-students-card"><div class="bs-dashboard-card-header"><div><h2>Кому нужна поддержка</h2><p class="bs-dashboard-card-subtitle">Самые важные сигналы</p></div><a href="/students">Все ученики <i class="ph ph-arrow-right"></i></a></div><div class="bs-teacher-student-groups"><div><div class="bs-teacher-group-title is-success"><i class="ph ph-trend-up"></i> Набирают темп</div>{% for s in gaining_momentum[:2] %}<a class="bs-teacher-student-row" href="{% if s.student_id %}/student/{{ s.student_id }}/dashboard{% else %}/students{% endif %}"><img src="{{ s.avatar or url_for('static', filename='images/default-avatar.svg') }}" alt="{{ s.name }}"><span>{{ s.name }}</span><strong>{{ s.delta }} <i class="ph ph-caret-right"></i></strong></a>{% endfor %}</div>{% if needs_help %}<div class="bs-teacher-help-group"><div class="bs-teacher-group-title is-danger"><i class="ph ph-warning-circle"></i> Нужна помощь</div>{% for s in needs_help[:2] %}<a class="bs-teacher-student-row" href="{% if s.student_id %}/student/{{ s.student_id }}/dashboard{% else %}/students{% endif %}"><img src="{{ s.avatar or url_for('static', filename='images/default-avatar.svg') }}" alt="{{ s.name }}"><span>{{ s.name }}</span><strong>{{ s.delta }} <i class="ph ph-caret-right"></i></strong></a>{% endfor %}</div>{% endif %}</div></article>
+
+    <article class="bs-dashboard-card bs-teacher-activity-card"><div class="bs-dashboard-card-header"><div><h2>Активность</h2><p class="bs-dashboard-card-subtitle">Последние события</p></div><a href="{{ url_for('main.teacher_analytics_view') }}">Все события <i class="ph ph-arrow-up-right"></i></a></div><div class="bs-teacher-activity-list">{% for act in recent_activity[:3] %}<a href="{{ act.url or url_for('main.teacher_analytics_view') }}" class="bs-teacher-activity-item"><span class="bs-teacher-activity-dot {% if act.color == 'emerald' %}is-success{% elif act.color == 'sky' %}is-info{% else %}is-danger{% endif %}"></span><span><small>{{ act.time }}</small><strong>{{ act.user }}</strong><em>{{ act.action }}{% if act.score %} — {{ act.score }}{% endif %}</em></span></a>{% endfor %}</div></article>
+  </section>
+</main>
+
+<div id="addTodoModal" class="bs-dashboard-modal hidden" role="dialog" aria-modal="true" aria-labelledby="addTodoModalTitle">
+  <div class="bs-dashboard-modal-backdrop" onclick="closeAddTodoModal()" aria-hidden="true"></div>
+  <div class="bs-dashboard-modal-card" role="document">
+    <div class="bs-dashboard-modal-header">
+      <div><span class="bs-summary-icon is-warning"><i class="ph ph-note-pencil"></i></span><div><h2 id="addTodoModalTitle">Новая заметка</h2><p>Добавьте короткое напоминание на сегодня.</p></div></div>
+      <button type="button" class="bs-icon-button" onclick="closeAddTodoModal()" aria-label="Закрыть"><i class="ph ph-x"></i></button>
+    </div>
+    <form onsubmit="submitAddTodo(event)">
+      <label class="bs-dashboard-modal-label" for="todoTextInput">Текст заметки</label>
+      <input id="todoTextInput" class="bs-dashboard-modal-input" type="text" maxlength="140" required placeholder="Например: проверить две работы">
+      <div class="bs-dashboard-modal-actions"><button type="button" class="bs-dashboard-modal-secondary" onclick="closeAddTodoModal()">Отмена</button><button type="submit" class="bs-dashboard-modal-primary">Добавить <i class="ph ph-plus"></i></button></div>
+    </form>
+  </div>
+</div>
+
+{% if false %}
 <main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
   <div class="max-w-[1550px] mx-auto w-full flex flex-col gap-6">
 
@@ -20,14 +132,13 @@
             </span>
           </div>
           <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 leading-tight">
-            {{ greeting_word }}, {{ teacher_name }}! 👋
+            {{ greeting_word }}, {{ teacher_name }}!
           </h1>
           <p class="text-sm font-bold text-slate-500 mt-1">
             {{ date_formatted }}
           </p>
           <p class="mt-2 text-xs sm:text-sm font-medium text-slate-400 flex items-center gap-1">
             <span>Небольшие шаги сегодня — большие результаты завтра</span>
-            <span>💜</span>
           </p>
         </div>
 
@@ -39,7 +150,7 @@
                  class="h-28 sm:h-32 lg:h-36 max-w-full object-contain select-none pointer-events-none drop-shadow-md hover:scale-105 transition-transform duration-300">
             <!-- Floating badge -->
             <div class="absolute -top-1 right-2 sm:right-6 bg-white/95 backdrop-blur-xs border border-indigo-200 shadow-sm rounded-xl px-2.5 py-1 text-[11px] font-black text-indigo-700 animate-bounce">
-              Всё получится! ✨
+              Всё получится!
             </div>
           </div>
         </div>
@@ -318,7 +429,7 @@
             </button>
 
             <!-- 3. Открыть банк задач -->
-            <a href="/tasks"
+            <a href="/task-generator/bank"
                class="p-3 rounded-2xl bg-emerald-50/60 hover:bg-emerald-100/70 border border-emerald-200 text-emerald-700 flex flex-col items-center justify-center text-center gap-1.5 no-underline transition group">
               <i class="ph-bold ph-book-open text-xl group-hover:scale-110 transition-transform"></i>
               <span class="text-[11px] font-black leading-tight">Открыть банк задач</span>
@@ -566,6 +677,7 @@
 
   </div>
 </main>
+{% endif %}
 
 <!-- Modals -->
 <!-- Modal 1: Назначить пробник -->
@@ -936,13 +1048,28 @@ function submitAddLesson(e) {
 }
 
 function promptAddTodo() {
-  const text = prompt('Введите текст новой заметки:');
-  if (!text || !text.trim()) return;
+  const modal = document.getElementById('addTodoModal');
+  const input = document.getElementById('todoTextInput');
+  if (!modal || !input) return;
+  modal.classList.remove('hidden');
+  input.value = '';
+  window.setTimeout(() => input.focus(), 0);
+}
 
+function closeAddTodoModal() {
+  const modal = document.getElementById('addTodoModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function submitAddTodo(event) {
+  event.preventDefault();
+  const input = document.getElementById('todoTextInput');
+  const text = input ? input.value.trim() : '';
+  if (!text) return;
   fetch('/api/teacher-dashboard/todo', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'add', text: text.trim() })
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+    body: JSON.stringify({ action: 'add', text: text })
   })
   .then(r => r.json())
   .then(data => {
@@ -950,21 +1077,27 @@ function promptAddTodo() {
       const newTodo = data.todos[data.todos.length - 1];
       const container = document.getElementById('todoListContainer');
       const label = document.createElement('label');
-      label.className = 'group flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 cursor-pointer transition select-none';
-      label.innerHTML = `
-        <div class="flex items-start gap-2.5 min-w-0">
-          <input type="checkbox" onchange="toggleTodo(${newTodo.id}, this)"
-                 class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mt-0.5 cursor-pointer">
-          <span class="font-medium text-slate-700 truncate">${newTodo.text}</span>
-        </div>
-        <button type="button" onclick="deleteTodo(${newTodo.id}, this)" class="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition p-1" title="Удалить">
-          <i class="ph-bold ph-trash"></i>
-        </button>
-      `;
-      container.appendChild(label);
+      label.className = 'bs-teacher-todo-item';
+      const left = document.createElement('span');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.addEventListener('change', function () { toggleTodo(newTodo.id, checkbox); });
+      const copy = document.createElement('span');
+      copy.textContent = newTodo.text;
+      left.append(checkbox, copy);
+      const deleteButton = document.createElement('button');
+      deleteButton.type = 'button';
+      deleteButton.title = 'Удалить';
+      deleteButton.innerHTML = '<i class="ph ph-trash"></i>';
+      deleteButton.addEventListener('click', function () { deleteTodo(newTodo.id, deleteButton); });
+      label.append(left, deleteButton);
+      if (container) container.appendChild(label);
+      closeAddTodoModal();
+    } else {
+      alert(data.message || 'Не удалось добавить заметку');
     }
   })
-  .catch(err => console.error('Error adding todo:', err));
+  .catch(err => { console.error('Error adding todo:', err); alert('Не удалось добавить заметку'); });
 }
 
 function toggleTodo(id, checkbox) {
@@ -993,36 +1126,113 @@ function deleteTodo(id, btn) {
   }).catch(err => console.error('Error deleting todo:', err));
 }
 
-function switchChartTab(mode) {
-  const t7 = document.getElementById('tab7d');
-  const t30 = document.getElementById('tab30d');
-  const tAll = document.getElementById('tabAll');
-  const peakVal = document.getElementById('chartPeakVal');
-  const peakLabel = document.getElementById('chartPeakLabel');
+function renderTeacherChart(mode) {
+  const ds = chartDatasets[mode];
   const curve = document.getElementById('chartCurvePath');
   const area = document.getElementById('chartAreaPath');
+  const grid = document.getElementById('chartGrid');
+  const pointsLayer = document.getElementById('chartPointLayer');
   const axis = document.getElementById('chartXAxisLabels');
+  const peakVal = document.getElementById('chartPeakVal');
+  const peakLabel = document.getElementById('chartPeakLabel');
+  const chartWrap = document.querySelector('.bs-teacher-chart-wrap');
+  const emptyState = document.getElementById('chartEmptyState');
+  if (!ds || !Array.isArray(ds.points) || !curve || !area) return;
 
-  [t7, t30, tAll].forEach(btn => {
-    btn.className = 'px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-800';
+  const hasData = ds.has_data !== false;
+  chartWrap?.classList.toggle('is-empty', !hasData);
+  if (emptyState) emptyState.hidden = hasData;
+  const tooltip = document.getElementById('chartTooltipBadge');
+  if (tooltip) tooltip.hidden = !hasData;
+
+  const width = 600;
+  const height = 160;
+  const padX = 30;
+  const padTop = 20;
+  const padBottom = 28;
+  const values = ds.points.map(point => Number(point.val)).filter(value => Number.isFinite(value));
+  const minValue = values.length ? Math.min(...values) : 0;
+  const maxValue = values.length ? Math.max(...values) : 0;
+  const spread = Math.max(maxValue - minValue, 10);
+  const domainMin = Math.max(0, minValue - spread * 0.25);
+  const domainMax = Math.min(100, maxValue + spread * 0.25);
+  const domainRange = Math.max(1, domainMax - domainMin);
+  const lastIndex = Math.max(1, ds.points.length - 1);
+  const points = ds.points.map((point, index) => {
+    const value = Number(point.val);
+    const safeValue = Number.isFinite(value) ? value : domainMin;
+    return {
+      x: padX + ((width - padX * 2) * index / lastIndex),
+      y: padTop + ((height - padTop - padBottom) * (1 - ((safeValue - domainMin) / domainRange))),
+      value: safeValue,
+      date: point.date || ''
+    };
   });
+  if (!points.length) return;
 
-  const activeBtn = mode === '7d' ? t7 : (mode === '30d' ? t30 : tAll);
-  activeBtn.className = 'px-2.5 py-1 rounded-lg bg-white text-indigo-700 shadow-xs font-black';
+  let linePath = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    const midX = (previous.x + current.x) / 2;
+    const midY = (previous.y + current.y) / 2;
+    linePath += ` Q ${midX.toFixed(1)} ${previous.y.toFixed(1)} ${midX.toFixed(1)} ${midY.toFixed(1)}`;
+    linePath += ` Q ${midX.toFixed(1)} ${current.y.toFixed(1)} ${current.x.toFixed(1)} ${current.y.toFixed(1)}`;
+  }
+  curve.setAttribute('d', linePath);
+  const baseline = height - padBottom;
+  area.setAttribute('d', `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${baseline} L ${points[0].x.toFixed(1)} ${baseline} Z`);
 
-  const ds = chartDatasets[mode];
-  if (!ds) return;
+  if (grid) {
+    grid.replaceChildren();
+    for (let index = 0; index < 4; index += 1) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      const y = padTop + ((height - padTop - padBottom) * index / 3);
+      line.setAttribute('x1', String(padX));
+      line.setAttribute('x2', String(width - padX));
+      line.setAttribute('y1', y.toFixed(1));
+      line.setAttribute('y2', y.toFixed(1));
+      line.setAttribute('stroke', '#e9edf7');
+      line.setAttribute('stroke-width', '1');
+      grid.appendChild(line);
+    }
+  }
 
-  if (curve && ds.spline_d) curve.setAttribute('d', ds.spline_d);
-  if (area && ds.area_d) area.setAttribute('d', ds.area_d);
-  if (peakVal) peakVal.innerText = `${ds.peak_val}%`;
-  if (peakLabel) peakLabel.innerText = ds.peak_label;
+  const peakIndex = points.reduce((best, point, index) => point.value > points[best].value ? index : best, 0);
+  if (peakVal) peakVal.textContent = `${Math.round(points[peakIndex].value)}%`;
+  if (peakLabel) peakLabel.textContent = points[peakIndex].date;
+  if (pointsLayer) {
+    pointsLayer.replaceChildren();
+    [points[peakIndex], points[points.length - 1]].filter((point, index, list) => list.indexOf(point) === index).forEach(point => {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', point.x.toFixed(1));
+      circle.setAttribute('cy', point.y.toFixed(1));
+      circle.setAttribute('r', '3.5');
+      circle.setAttribute('fill', '#fff');
+      circle.setAttribute('stroke', '#5b35f5');
+      circle.setAttribute('stroke-width', '2');
+      pointsLayer.appendChild(circle);
+    });
+  }
 
-  if (axis && Array.isArray(ds.points)) {
-    axis.innerHTML = ds.points.map((p, idx) => `
-      <span class="${idx === ds.points.length - 1 ? 'text-indigo-600 font-black' : ''}">${p.date}</span>
-    `).join('');
+  if (axis) {
+    axis.replaceChildren();
+    ds.points.forEach((point, index) => {
+      const label = document.createElement('span');
+      label.textContent = point.date || '';
+      if (index === ds.points.length - 1) label.className = 'is-current';
+      axis.appendChild(label);
+    });
   }
 }
+
+function switchChartTab(mode) {
+  const buttons = [document.getElementById('tab7d'), document.getElementById('tab30d'), document.getElementById('tabAll')];
+  const activeButton = mode === '7d' ? buttons[0] : (mode === '30d' ? buttons[1] : buttons[2]);
+  buttons.forEach(button => button?.classList.toggle('is-active', button === activeButton));
+  renderTeacherChart(mode);
+}
+
+renderTeacherChart('7d');
 </script>
 {% endblock %}

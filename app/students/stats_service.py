@@ -166,7 +166,7 @@ class StatsService:
             from app.assignments.submission_lifecycle_service import normalize_legacy_status
             for sub in self._get_submissions():
                 st = normalize_legacy_status(sub.status)
-                if st != 'GRADED':
+                if st not in ('GRADED', 'SUBMITTED') and sub.total_score is None:
                     continue
                 sub_dt = sub.submitted_at or sub.graded_at or sub.assigned_at
                 if not sub_dt:
@@ -333,14 +333,18 @@ class StatsService:
         except Exception as sub_err:
             logger.debug(f"Submissions GPA calculation skipped: {sub_err}")
         
-        hw_gpa = round((hw_score / hw_weight * 100), 1) if hw_weight > 0 else 0
-        exam_gpa = round((exam_score / exam_weight * 100), 1) if exam_weight > 0 else 0
+        has_homework = hw_weight > 0
+        has_exam = exam_weight > 0
+        hw_gpa = round((hw_score / hw_weight * 100), 1) if has_homework else 0
+        exam_gpa = round((exam_score / exam_weight * 100), 1) if has_exam else 0
         overall_gpa = round((total_score / total_weight * 100), 1) if total_weight > 0 else 0
         
         return {
             'homework': hw_gpa,
             'exam': exam_gpa,
-            'overall': overall_gpa
+            'overall': overall_gpa,
+            'has_homework': has_homework,
+            'has_exam': has_exam
         }
     
     def get_attendance_heatmap(self, weeks=52):
@@ -488,6 +492,18 @@ class StatsService:
             hw_assignments = lesson.homework_assignments
             total_hw += len(hw_assignments)
             submitted_hw += sum(1 for lt in hw_assignments if lt.submission_correct is not None)
+
+        try:
+            from app.assignments.submission_lifecycle_service import normalize_legacy_status
+            for sub in self._get_submissions():
+                atype = (sub.assignment.assignment_type if sub.assignment else None) or 'homework'
+                if atype == 'homework':
+                    total_hw += 1
+                    st = normalize_legacy_status(sub.status)
+                    if st in ('SUBMITTED', 'GRADED') or sub.total_score is not None:
+                        submitted_hw += 1
+        except Exception:
+            pass
         
         hw_submit_rate = round((submitted_hw / total_hw * 100), 1) if total_hw > 0 else 0
         
@@ -570,6 +586,13 @@ class StatsService:
         
         gpa_by_type = self.get_gpa_by_type()
         
+        completed_lessons = sum(1 for l in lessons if (l.status or '').lower() == 'completed')
+        missed_lessons = sum(1 for l in lessons if (l.status or '').lower() == 'missed')
+        canceled_lessons = sum(1 for l in lessons if (l.status or '').lower() in ('canceled_student', 'cancelled'))
+        past_lessons = completed_lessons + missed_lessons + canceled_lessons
+        planned_lessons = sum(1 for l in lessons if (l.status or '').lower() in ('planned', 'rescheduled') or not l.status)
+        attendance_pct = round((completed_lessons / past_lessons) * 100) if past_lessons > 0 else 100
+
         return {
             'current_gpa': current_gpa,
             'gpa_homework': gpa_by_type['homework'],
@@ -577,8 +600,14 @@ class StatsService:
             'hw_submit_rate': hw_submit_rate,
             'delta': delta,
             'total_lessons': len(lessons),
-            'completed_lessons': sum(1 for l in lessons if l.status == 'completed'),
-            'missed_lessons': sum(1 for l in lessons if l.status == 'missed')
+            'completed_lessons': completed_lessons,
+            'missed_lessons': missed_lessons,
+            'canceled_lessons': canceled_lessons,
+            'past_lessons': past_lessons,
+            'planned_lessons': planned_lessons,
+            'attendance_pct': attendance_pct,
+            'total_hw': total_hw,
+            'submitted_hw': submitted_hw,
         }
     
     def get_problem_topics(self, threshold=60):

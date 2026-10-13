@@ -136,7 +136,12 @@
     <script src="{{ url_for('static', filename='confirm-modal.js') }}?v=20260528-v26"></script>
     <script defer src="{{ url_for('static', filename='spa-nav-sync.js') }}?v=20260528-v26"></script>
 
-    {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user %}
+    {# The legacy cinema and the current Boo companion both react to demo
+       navigation.  Mounting them together lets the old engine redirect a
+       valid guided scene (notably the lesson room) back to the dashboard.
+       Keep the legacy player only for sessions that explicitly carry its
+       historical scene payload; all new demos use the companion alone. #}
+    {% if current_user is defined and current_user.is_authenticated and current_user.is_demo_user and cinema_demo_ids is defined and cinema_demo_ids %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/demo_cinema.css') }}">
     {% if cinema_demo_ids is defined and cinema_demo_ids %}
     <meta name="cinema-demo-ids" content='{{ cinema_demo_ids | tojson }}'>

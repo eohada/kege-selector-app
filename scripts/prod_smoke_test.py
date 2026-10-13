@@ -5,10 +5,10 @@ BooStudy Production Smoke Test
 
 Проверяет:
 1. Импорты всех основных модулей системы
-2. Подключение к БД (PostgreSQL / SQLite)
+2. Подключение к production БД PostgreSQL (SQLite только с `ALLOW_LOCAL_SMOKE=1`)
 3. Наличие и целостность критических Jinja2 шаблонов
 4. Состояние Alembic миграций (соответствие HEAD)
-5. Подключение к Redis (при наличии)
+5. Обязательное подключение к Redis (в локальном режиме допускается пропуск)
 6. Работоспособность базовых HTTP-эндпоинтов (/health, /ready, /login, /register, /preparation)
 7. Авторизацию и дашборды ролей (Teacher, Student, Parent)
 """
@@ -29,7 +29,19 @@ logger = logging.getLogger("smoke_test")
 
 def run_smoke_tests():
     errors = []
+    allow_local = os.environ.get('ALLOW_LOCAL_SMOKE', '').strip().lower() in {'1', 'true', 'yes'}
+    database_url = (os.environ.get('DATABASE_URL') or '').strip().lower()
+    redis_url = (os.environ.get('REDIS_URL') or '').strip()
     logger.info("🚀 Запуск Production Smoke Test...")
+
+    if not allow_local and not any(token in database_url for token in ('postgresql://', 'postgres://')):
+        errors.append('Production smoke test требует PostgreSQL DATABASE_URL; для локальной SQLite-проверки задайте ALLOW_LOCAL_SMOKE=1.')
+    if not allow_local and not redis_url:
+        errors.append('Production smoke test требует REDIS_URL; Redis нельзя молча пропускать.')
+    if errors:
+        for err in errors:
+            logger.error(f"  ❌ {err}")
+        return False
 
     # 1. Импорты модулей
     logger.info("1/7 Проверка импортов модулей...")
@@ -91,7 +103,6 @@ def run_smoke_tests():
 
     # 5. Проверка подключения к Redis (если задан REDIS_URL)
     logger.info("5/7 Проверка соединения с Redis...")
-    redis_url = os.environ.get("REDIS_URL")
     if redis_url:
         try:
             import redis

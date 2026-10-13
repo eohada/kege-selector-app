@@ -1592,7 +1592,7 @@
       "level": "базовый",
       "title": "Базовый вывод: Практические мини-задачи",
       "content_html": "Что выведет программа: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1602,7 +1602,7 @@
       "level": "базовый",
       "title": "Проверка результата: Практические мини-задачи",
       "content_html": "Определите результат выполнения: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1612,7 +1612,7 @@
       "level": "базовый",
       "title": "Трассировка: Практические мини-задачи",
       "content_html": "Вычислите значение, не запуская программу: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1622,7 +1622,7 @@
       "level": "средний",
       "title": "Изменение данных: Практические мини-задачи",
       "content_html": "Какой результат получится после выполнения: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1632,7 +1632,7 @@
       "level": "средний",
       "title": "Поиск ошибки: Практические мини-задачи",
       "content_html": "Укажите правильный результат программы: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1642,7 +1642,7 @@
       "level": "средний",
       "title": "Мини-задача: Практические мини-задачи",
       "content_html": "Решите короткую задачу: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1652,7 +1652,7 @@
       "level": "средний",
       "title": "Условия границы: Практические мини-задачи",
       "content_html": "Проверьте программу на указанном наборе: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1662,7 +1662,7 @@
       "level": "продвинутый",
       "title": "Разбор выражения: Практические мини-задачи",
       "content_html": "Запишите значение выражения: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1672,7 +1672,7 @@
       "level": "продвинутый",
       "title": "Практика: Практические мини-задачи",
       "content_html": "Получите ответ по фрагменту кода: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     },
@@ -1682,7 +1682,7 @@
       "level": "продвинутый",
       "title": "Закрепление: Практические мини-задачи",
       "content_html": "Укажите результат работы кода: <pre><code>s='aaabbcaa'; print(max(s.count(c) for c in set(s)))</code></pre> Ответ запишите точно, включая регистр и знаки препинания, если они есть.",
-      "answer": "4",
+      "answer": "5",
       "solution": "s='aaabbcaa'; print(max(s.count(c) for c in set(s)))",
       "starter_code": "# Практические мини-задачи\\ns='aaabbcaa'; print(max(s.count(c) for c in set(s)))"
     }

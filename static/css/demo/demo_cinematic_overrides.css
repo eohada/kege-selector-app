@@ -1,0 +1,122 @@
+/* Last-mile cinematic rules.  Loaded after the legacy companion stylesheet so
+   every story surface has one visual language and one unobstructed action. */
+#boo-companion-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147480000;
+  pointer-events: none;
+}
+
+/* Keep the transparent root out of the application's way, while ensuring the
+   actual cinematic controls are above every product surface and clickable. */
+#boo-companion-root > * {
+  pointer-events: auto;
+}
+
+/* Visual-novel dialogue: Boo is a character on stage, not a toast in the
+   corner. The backdrop stays softly present after the line is dismissed so
+   the next highlighted action remains the visual focus. */
+.boo-companion-card,
+.boo-story-guide { display: none !important; }
+#boo-companion-root .boo-focus-veil { position: fixed; inset: 0; z-index: 2147480050; background: rgba(9, 13, 42, .16); backdrop-filter: blur(1px); pointer-events: none; transition: opacity .28s ease; }
+.boo-focus-veil[hidden] { display: none; }
+.boo-focus-hole { position: fixed; z-index: 2147480050; box-sizing: border-box; border: 1px solid rgba(133, 119, 255, .58); background: transparent; box-shadow: 0 0 0 100vmax rgba(9, 13, 42, .23), 0 0 12px rgba(103, 84, 255, .2); pointer-events: none; animation: boo-objective-frame 1.7s ease-in-out infinite; }
+/* The legacy companion gives every root child pointer events.  The cut-out is
+   deliberately transparent: it must never become a glass pane above the CTA. */
+#boo-companion-root .boo-focus-hole { pointer-events: none !important; }
+.boo-focus-hole[hidden] { display: none; }
+/* The objective is rendered exclusively by the fixed viewport frame above.
+   Styling the product node itself made its border and caption scroll with the
+   page, stack on top of native controls, and occasionally capture the click. */
+.boo-target-pulse {
+  position: static !important;
+  z-index: auto !important;
+  outline: 0 !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+.boo-target-pulse[data-boo-next-label]::after {
+  display: none !important;
+}
+.boo-guided-locked {
+  pointer-events: none !important;
+  opacity: .48;
+  filter: grayscale(.25);
+  cursor: not-allowed;
+}
+.demo-focus-target {
+  outline: 0 !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+@keyframes boo-objective-frame {
+  50% {
+    border-color: rgba(166, 151, 255, .78);
+    box-shadow: 0 0 0 100vmax rgba(9, 13, 42, .2), 0 0 17px rgba(103, 84, 255, .28);
+  }
+}
+html.boo-objective-lock,
+html.boo-objective-lock body { overscroll-behavior: auto; }
+/* Mission progress is conveyed inside the current scene; the old fixed badge
+   competes with the story and obscures the product header. */
+.boo-chapter2-mission { display: none !important; }
+#boo-companion-root .boo-novel-dialogue { pointer-events: none; }
+#boo-companion-root .boo-novel-dialogue .boo-novel-backdrop,
+#boo-companion-root .boo-novel-dialogue .boo-novel-mascot { pointer-events: none; }
+.boo-novel-dialogue { position: fixed; inset: 0; z-index: 2147480100; display: flex; align-items: flex-end; justify-content: center; padding: 0 7vw 5vh; color: #fff; pointer-events: none; }
+.boo-novel-dialogue[hidden] { display: none; }
+.boo-novel-backdrop { position: absolute; inset: 0; background: rgba(9, 13, 42, .72); backdrop-filter: blur(5px); transition: background .35s ease, backdrop-filter .35s ease; }
+.boo-novel-dialogue.is-settled .boo-novel-backdrop { background: rgba(9, 13, 42, .22); backdrop-filter: blur(1px); }
+.boo-novel-mascot { position: absolute; left: clamp(20px, 9vw, 150px); bottom: 7vh; width: min(31vw, 380px); z-index: 1; animation: boo-novel-enter .45s ease both; }
+.boo-novel-mascot img { display: block; width: 100%; height: auto; filter: drop-shadow(0 22px 26px rgba(13, 17, 67, .48)); }
+#boo-companion-root .boo-novel-dialogue .boo-novel-box { position: relative; z-index: 2; width: min(850px, 82vw); margin-left: min(22vw, 260px); padding: 22px 28px 18px; border: 1px solid rgba(220, 224, 255, .45); border-radius: 22px; background: rgba(25, 31, 79, .92); box-shadow: 0 20px 70px rgba(3, 7, 35, .42); animation: boo-novel-rise .42s ease both; pointer-events: auto; }
+.boo-novel-name { color: #bcb5ff; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.boo-novel-text { min-height: 3.2em; margin: 8px 0 14px; font-size: clamp(1rem, 1.8vw, 1.24rem); line-height: 1.5; }
+.boo-novel-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.boo-novel-choice, .boo-novel-close { border: 1px solid #9186ff; border-radius: 10px; padding: 9px 14px; color: #fff; background: rgba(92, 72, 239, .75); font: inherit; font-size: .86rem; cursor: pointer; }
+.boo-novel-close { background: transparent; color: #d9d6ff; }
+.boo-novel-dialogue.is-settled .boo-novel-box,
+.boo-novel-dialogue.is-settled .boo-novel-mascot { opacity: 0; pointer-events: none; transform: translateY(16px); transition: opacity .25s ease, transform .25s ease; }
+.boo-route-guard { z-index: 2147480200 !important; }
+.boo-route-guard .boo-route-guard-backdrop { background: rgba(9, 13, 42, .72); backdrop-filter: blur(5px); }
+.boo-route-guard-card { width: min(850px, 82vw) !important; min-height: 0 !important; margin-left: min(22vw, 260px); padding: 22px 28px !important; border-radius: 22px !important; background: rgba(25, 31, 79, .94) !important; color: #fff !important; box-shadow: 0 20px 70px rgba(3, 7, 35, .42) !important; }
+.boo-route-guard-card img { position: fixed; left: clamp(20px, 9vw, 150px); bottom: 7vh; width: min(31vw, 380px) !important; height: auto !important; }
+.boo-route-guard-card h2 { color: #fff !important; }
+.boo-route-guard-card p { color: #e7e7ff !important; }
+@keyframes boo-novel-enter { from { opacity: 0; transform: translateY(20px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes boo-novel-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+.boo-story-guide { width: min(500px, calc(100vw - 48px)); padding: 16px 42px 16px 15px; }
+.boo-story-guide img { width: 128px; height: 128px; }
+.boo-story-guide strong { font-size: .96rem; line-height: 1.45; }
+.boo-story-guide button { min-height: 38px; font-size: .78rem; }
+
+/* Workspaces retain the conversation, but keep it clear of the fixed submit
+   toolbar at the bottom of the product. */
+body.boo-workspace-active .boo-story-guide { right: 28px; top: 92px; bottom: auto; max-width: 470px; }
+
+/* A detour is a cinematic pause, not another dialog box. */
+.boo-route-guard { z-index: 11000; padding: 4vh 7vw; }
+.boo-route-guard-card { width: min(1120px, 94vw); max-width: none; min-height: 70vh; justify-content: center; gap: clamp(20px, 5vw, 80px); padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; color: #fff; }
+.boo-route-guard-card img { width: min(40vw, 440px); height: min(40vw, 440px); filter: drop-shadow(0 24px 40px rgba(8, 12, 54, .45)); }
+.boo-route-guard-card > div { max-width: 490px; }
+.boo-route-guard-card span { color: #d7d2ff; font-size: .82rem; }
+.boo-route-guard-card h2 { font-size: clamp(2.2rem, 5vw, 4.8rem); }
+.boo-route-guard-card p { font-size: clamp(1rem, 1.8vw, 1.3rem); max-width: 42ch; }
+.boo-route-guard-card button { font-size: .95rem; padding: .9rem 1.25rem; }
+
+@media (max-width: 700px) {
+  .boo-novel-dialogue { padding: 0 12px 16px; }
+  .boo-novel-mascot { left: 8px; bottom: 118px; width: 170px; }
+  .boo-novel-box { width: calc(100vw - 24px); margin-left: 0; padding: 16px 16px 13px; }
+  .boo-novel-text { font-size: .98rem; }
+  body.boo-workspace-active .boo-story-guide { right: 12px; top: 64px; bottom: auto; }
+  .boo-route-guard-card { width: calc(100vw - 24px) !important; margin-left: 0; padding: 16px !important; }
+  .boo-route-guard-card img { left: 8px; bottom: 118px; width: 170px !important; height: auto !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boo-focus-hole { animation: none !important; transition: none !important; }
+}
+.demo-no-motion .boo-focus-hole { animation: none !important; transition: none !important; }

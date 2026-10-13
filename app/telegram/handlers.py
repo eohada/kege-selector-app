@@ -1450,6 +1450,13 @@ async def cmd_random(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_blitz(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/blitz — ежедневная блиц-задача для стрика."""
+    chat_id = update.effective_chat.id
+    touch_telegram_activity(chat_id)
+    await _send_blitz_to_chat(update.message, chat_id)
+
+
 async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/settings — настройки уведомлений."""
     chat_id = update.effective_chat.id
@@ -2140,6 +2147,88 @@ async def lesson_hw_note_cancel(update: Update, context: ContextTypes.DEFAULT_TY
     return ConversationHandler.END
 
 
+async def _cb_blitz_answer(query, data: str):
+    """Обработка ответа ученика на блиц-задачу дня в Telegram."""
+    parts = data.split(':')
+    if len(parts) < 3:
+        return
+    blitz_id = parts[1]
+    try:
+        opt_idx = int(parts[2])
+    except ValueError:
+        return
+
+    chat_id = query.message.chat_id if query.message else None
+    if not chat_id:
+        return
+
+    from app.telegram.compat import get_session, close_session, get_user_by_chat_id
+    from app.telegram.blitz_service import check_blitz_answer
+    from app.models import User
+
+    session = get_session()
+    try:
+        u_dict = get_user_by_chat_id(session, chat_id)
+        if not u_dict:
+            await query.answer('Пожалуйста, сначала привяжи свой аккаунт: /start', show_alert=True)
+            return
+        user_id = u_dict.get('id')
+    finally:
+        close_session(session)
+
+    user = User.query.get(user_id)
+    if not user:
+        await query.answer('Пользователь не найден.', show_alert=True)
+        return
+
+    res = check_blitz_answer(user, blitz_id, opt_idx)
+    if res.get('is_correct'):
+        # Ответ верный: редактируем сообщение с триумфальным текстом
+        await query.edit_message_text(
+            res.get('message', '🎉 Верно! Стрик продлен!'),
+            parse_mode='HTML'
+        )
+    else:
+        # Ответ неверный: подсказка
+        await query.answer('❌ Не совсем так! Попробуй другой вариант.', show_alert=True)
+
+
+async def _send_blitz_to_chat(message, chat_id: int):
+    """Отправляет задачу дня в чат ученика."""
+    from app.telegram.compat import get_session, close_session, get_user_by_chat_id
+    from app.telegram.blitz_service import get_daily_blitz, format_blitz_message
+    from app.models import User, Student
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+
+    session = get_session()
+    try:
+        u_dict = get_user_by_chat_id(session, chat_id)
+        if not u_dict:
+            await message.reply_text('⚠️ Сначала привяжи свой аккаунт к платформе: /start')
+            return
+        user_id = u_dict.get('id')
+    finally:
+        close_session(session)
+
+    user = User.query.get(user_id)
+    student = getattr(user, 'student_profile', None) or (Student.query.filter_by(user_id=user.id).first() if user else None)
+    streak_days = student.streak_days if student else 0
+
+    blitz = get_daily_blitz()
+    text_msg = format_blitz_message(blitz, streak_days=int(streak_days or 0))
+
+    keyboard_rows = []
+    letters = ['A', 'B', 'C', 'D', 'E']
+    for idx, opt_text in enumerate(blitz['options']):
+        letter = letters[idx] if idx < len(letters) else str(idx + 1)
+        btn_text = f"{letter}) {opt_text}"
+        callback_data = f"blitz_ans:{blitz['id']}:{idx}"
+        keyboard_rows.append([InlineKeyboardButton(text=btn_text, callback_data=callback_data)])
+
+    markup = InlineKeyboardMarkup(keyboard_rows)
+    await message.reply_text(text_msg, parse_mode='HTML', reply_markup=markup)
+
+
 # ===========================================================================
 # Callback query dispatcher
 # ===========================================================================
@@ -2154,6 +2243,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data or ''
     chat_id = update.effective_chat.id
     touch_telegram_activity(chat_id)
+
+    # Ответ на блиц-задачу дня
+    if data.startswith('blitz_ans:'):
+        await _cb_blitz_answer(query, data)
+        return
 
     # Student confirms that a test notification arrived
     if _is_notification_ack_callback(data):
@@ -4753,6 +4847,10 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
                 await _cb_teacher_students(update.message, session, user)
         finally:
             close_session(session)
+        return
+
+    elif text_val in ["🔥 Задача дня (Стрик)", "/blitz", "задача дня", "блиц"]:
+        await _send_blitz_to_chat(update.message, chat_id)
         return
 
     elif text_val in ["📅 Уроки на сегодня", "📅 Мое расписание", "Мои уроки"]:

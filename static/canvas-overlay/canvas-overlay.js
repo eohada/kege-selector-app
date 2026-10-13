@@ -29,15 +29,21 @@
   let toolbar = null;
   let fab = null;
   let fabBadge = null;
+  let embeddedTarget = null;
 
   let dpr = 1;
   let strokes = [];
   let redoStack = [];
   let drawing = false;
   let currentStroke = null;
-  let tool = 'pen'; // 'pen' | 'eraser'
+  let tool = 'pen'; // pen | eraser | pan | text | line | rectangle | ellipse
   let penColor = '#ef4444';
   let penSize = 3;
+  let viewScale = 1;
+  let viewOffsetX = 0;
+  let viewOffsetY = 0;
+  let panStart = null;
+  let textEditor = null;
   let dirty = false;
   let saveTimer = null;
   let pendingSavePromise = null;
@@ -106,6 +112,9 @@
       toolbar = null;
       fab = null;
       fabBadge = null;
+      embeddedTarget = null;
+      textEditor?.remove();
+      textEditor = null;
     }
 
     createFab();
@@ -137,6 +146,8 @@
     overlay = document.createElement('div');
     overlay.className = 'boo-canvas-overlay';
     canvas = document.createElement('canvas');
+    canvas.setAttribute('aria-label', 'Область холста. Используйте инструменты рисования, перемещения и масштабирования.');
+    canvas.tabIndex = 0;
     overlay.appendChild(canvas);
     document.body.appendChild(overlay);
 
@@ -166,6 +177,26 @@
     const eraserBtn = mkBtn('ph-eraser', 'Ластик', () => setTool('eraser'));
     eraserBtn.id = 'boo-tb-eraser';
     toolbar.appendChild(eraserBtn);
+
+    const panBtn = mkBtn('ph-hand', 'Переместить холст', () => setTool('pan'));
+    panBtn.id = 'boo-tb-pan';
+    toolbar.appendChild(panBtn);
+
+    const textBtn = mkBtn('ph-text-t', 'Текст: щёлкните по холсту, чтобы добавить подпись', () => setTool('text'));
+    textBtn.id = 'boo-tb-text';
+    toolbar.appendChild(textBtn);
+
+    const lineBtn = mkBtn('ph-line-segment', 'Нарисовать линию', () => setTool('line'));
+    lineBtn.id = 'boo-tb-line';
+    toolbar.appendChild(lineBtn);
+
+    const rectangleBtn = mkBtn('ph-rectangle', 'Нарисовать прямоугольник', () => setTool('rectangle'));
+    rectangleBtn.id = 'boo-tb-rectangle';
+    toolbar.appendChild(rectangleBtn);
+
+    const ellipseBtn = mkBtn('ph-circle', 'Нарисовать эллипс', () => setTool('ellipse'));
+    ellipseBtn.id = 'boo-tb-ellipse';
+    toolbar.appendChild(ellipseBtn);
 
     toolbar.appendChild(mkSep());
 
@@ -229,6 +260,20 @@
 
     toolbar.appendChild(mkSep());
 
+    const zoomOutBtn = mkBtn('ph-magnifying-glass-minus', 'Уменьшить масштаб', () => zoomBy(1 / 1.2));
+    zoomOutBtn.id = 'boo-tb-zoom-out';
+    toolbar.appendChild(zoomOutBtn);
+    const zoomLabel = document.createElement('span');
+    zoomLabel.className = 'tb-zoom-label';
+    zoomLabel.id = 'boo-tb-zoom-label';
+    zoomLabel.textContent = '100%';
+    toolbar.appendChild(zoomLabel);
+    const zoomInBtn = mkBtn('ph-magnifying-glass-plus', 'Увеличить масштаб', () => zoomBy(1.2));
+    zoomInBtn.id = 'boo-tb-zoom-in';
+    toolbar.appendChild(zoomInBtn);
+
+    toolbar.appendChild(mkSep());
+
     // Save
     toolbar.appendChild(mkBtn('ph-floppy-disk', 'Сохранить', () => saveToServer()));
 
@@ -239,6 +284,7 @@
 
     document.body.appendChild(toolbar);
     toolbar.style.display = 'none';
+    setTool(tool);
   }
 
   function mkBtn(icon, title, handler) {
@@ -246,6 +292,7 @@
     btn.type = 'button';
     btn.className = 'tb-btn';
     btn.title = title;
+    btn.setAttribute('aria-label', title);
     btn.innerHTML = `<i class="ph-bold ${icon}"></i>`;
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -261,18 +308,60 @@
   }
 
   function setTool(t) {
+    if (textEditor && t !== 'text') finishTextEntry(true);
     tool = t;
-    const penBtn = document.getElementById('boo-tb-pen');
-    const eraserBtn = document.getElementById('boo-tb-eraser');
-    if (penBtn) penBtn.classList.toggle('active', t === 'pen');
-    if (eraserBtn) eraserBtn.classList.toggle('active', t === 'eraser');
-    canvas.style.cursor = t === 'eraser' ? 'cell' : 'crosshair';
+    const buttons = {
+      pen: 'boo-tb-pen',
+      eraser: 'boo-tb-eraser',
+      pan: 'boo-tb-pan',
+      text: 'boo-tb-text',
+      line: 'boo-tb-line',
+      rectangle: 'boo-tb-rectangle',
+      ellipse: 'boo-tb-ellipse',
+    };
+    Object.entries(buttons).forEach(([name, id]) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+      const active = name === t;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    if (canvas) {
+      canvas.style.cursor = t === 'eraser' ? 'cell' : (t === 'pan' ? 'grab' : 'crosshair');
+    }
+  }
+
+  function zoomBy(factor) {
+    viewScale = Math.max(0.5, Math.min(3, viewScale * factor));
+    const zoomLabel = document.getElementById('boo-tb-zoom-label');
+    if (zoomLabel) zoomLabel.textContent = `${Math.round(viewScale * 100)}%`;
+    redraw();
+  }
+
+  function canvasOrigin() {
+    if (!overlay) return { left: 0, top: 0 };
+    const rect = overlay.getBoundingClientRect();
+    return { left: rect.left + window.scrollX, top: rect.top + window.scrollY };
   }
 
   // --- Drawing ---
 
   function resizeCanvas() {
     if (!canvas) return;
+    if (embeddedTarget && !embeddedTarget.isConnected) embeddedTarget = null;
+    if (embeddedTarget) {
+      const width = Math.max(1, embeddedTarget.clientWidth);
+      const height = Math.max(1, embeddedTarget.clientHeight);
+      dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      overlay.style.width = `${width}px`;
+      overlay.style.height = `${height}px`;
+      redraw();
+      return;
+    }
     const doc = document.documentElement;
     const body = document.body;
     const width = Math.max(
@@ -316,6 +405,18 @@
   function drawStroke(s) {
     if (!s.points || s.points.length < 1) return;
     const activeRect = getActiveTaskContentRect();
+    const origin = canvasOrigin();
+    const width = canvas.width / Math.max(dpr, 1);
+    const height = canvas.height / Math.max(dpr, 1);
+    const screenPoints = s.points.map((point) => {
+      const mapped = resolvePointForRender(point, s, activeRect);
+      const localX = mapped.x - origin.left;
+      const localY = mapped.y - origin.top;
+      return {
+        x: width / 2 + (localX - width / 2) * viewScale + viewOffsetX,
+        y: height / 2 + (localY - height / 2) * viewScale + viewOffsetY,
+      };
+    });
     ctx.save();
     if (s.eraser) {
       ctx.globalCompositeOperation = 'destination-out';
@@ -325,17 +426,60 @@
       ctx.strokeStyle = s.color || '#000';
     }
     ctx.lineWidth = s.width || 3;
+
+    if (s.type === 'text') {
+      ctx.fillStyle = s.color || '#000';
+      ctx.font = `${Math.max(12, Number(s.fontSize) || 20) * viewScale}px system-ui, sans-serif`;
+      ctx.textBaseline = 'top';
+      ctx.fillText(String(s.text || ''), screenPoints[0].x, screenPoints[0].y);
+      ctx.restore();
+      return;
+    }
+
     ctx.beginPath();
-    s.points.forEach((p, i) => {
-      const mapped = resolvePointForRender(p, s, activeRect);
-      if (i === 0) ctx.moveTo(mapped.x, mapped.y);
-      else ctx.lineTo(mapped.x, mapped.y);
-    });
+    if (s.type === 'shape') {
+      const [start, end] = screenPoints;
+      if (!start || !end) {
+        ctx.restore();
+        return;
+      }
+      if (s.shape === 'rectangle') {
+        ctx.rect(start.x, start.y, end.x - start.x, end.y - start.y);
+      } else if (s.shape === 'ellipse') {
+        ctx.ellipse(
+          (start.x + end.x) / 2,
+          (start.y + end.y) / 2,
+          Math.max(0.5, Math.abs(end.x - start.x) / 2),
+          Math.max(0.5, Math.abs(end.y - start.y) / 2),
+          0,
+          0,
+          Math.PI * 2
+        );
+      } else {
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+      }
+    } else {
+      screenPoints.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+      });
+    }
     ctx.stroke();
     ctx.restore();
   }
 
   function getActiveTaskContentRect() {
+    if (embeddedTarget) {
+      const rect = embeddedTarget.getBoundingClientRect();
+      return {
+        left: rect.left + window.scrollX,
+        top: rect.top + window.scrollY,
+        width: Math.max(rect.width, 1),
+        height: Math.max(rect.height, 1),
+        task_id: document.querySelector('.tw-shell')?.dataset.assignmentTaskId || taskId,
+      };
+    }
     let el = null;
     
     // Специальный блок для страницы Task Workspace
@@ -382,8 +526,13 @@
   }
 
   function pointForEvent(e, space) {
-    const x = e.pageX;
-    const y = e.pageY;
+    const origin = canvasOrigin();
+    const width = canvas.width / Math.max(dpr, 1);
+    const height = canvas.height / Math.max(dpr, 1);
+    const displayedX = e.pageX - origin.left;
+    const displayedY = e.pageY - origin.top;
+    const x = origin.left + (displayedX - width / 2 - viewOffsetX) / viewScale + width / 2;
+    const y = origin.top + (displayedY - height / 2 - viewOffsetY) / viewScale + height / 2;
     if (!space) return { x, y };
     const rx = (x - space.left) / Math.max(space.width, 1);
     const ry = (y - space.top) / Math.max(space.height, 1);
@@ -413,13 +562,91 @@
     };
   }
 
+  function finishTextEntry(shouldCommit) {
+    const input = textEditor;
+    if (!input) return;
+    textEditor = null;
+    const text = String(input.value || '').trim();
+    const draft = input._canvasTextDraft;
+    input.remove();
+    if (!shouldCommit || !text || !draft) return;
+
+    strokes.push({
+      type: 'text',
+      text,
+      color: draft.color,
+      fontSize: draft.fontSize,
+      space: draft.space,
+      points: [draft.point],
+    });
+    redoStack = [];
+    dirty = true;
+    saveLocal();
+    redraw();
+    scheduleSave();
+  }
+
+  function beginTextEntry(e, space, point) {
+    finishTextEntry(true);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'boo-canvas-text-editor';
+    input.setAttribute('aria-label', 'Текстовая заметка на холсте');
+    input.placeholder = 'Введите текст и нажмите Enter';
+    input._canvasTextDraft = {
+      point,
+      color: penColor,
+      fontSize: Math.max(14, penSize * 6),
+      space: space ? {
+        left: space.left,
+        top: space.top,
+        width: space.width,
+        height: space.height,
+        task_id: space.task_id,
+      } : null,
+    };
+    input.style.left = `${Math.max(8, Math.min(e.clientX, window.innerWidth - 240))}px`;
+    input.style.top = `${Math.max(8, Math.min(e.clientY, window.innerHeight - 48))}px`;
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+        finishTextEntry(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        finishTextEntry(false);
+      }
+    });
+    input.addEventListener('blur', () => finishTextEntry(true), { once: true });
+    document.body.appendChild(input);
+    textEditor = input;
+    input.focus();
+  }
+
   function onPointerDown(e) {
     if (e.button !== 0) return;
     resizeCanvas();
-    drawing = true;
+    if (tool === 'pan') {
+      drawing = true;
+      panStart = { x: e.clientX, y: e.clientY, offsetX: viewOffsetX, offsetY: viewOffsetY };
+      canvas.style.cursor = 'grabbing';
+      canvas.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+      return;
+    }
     const space = getActiveTaskContentRect();
     const pos = pointForEvent(e, space);
+    if (tool === 'text') {
+      beginTextEntry(e, space, pos);
+      e.preventDefault();
+      return;
+    }
+    drawing = true;
+    const shape = ['line', 'rectangle', 'ellipse'].includes(tool) ? tool : null;
     currentStroke = {
+      type: shape ? 'shape' : 'stroke',
+      shape,
       color: tool === 'eraser' ? null : penColor,
       width: tool === 'eraser' ? penSize * 3 : penSize,
       eraser: tool === 'eraser',
@@ -435,12 +662,22 @@
     strokes.push(currentStroke);
     redoStack = [];
     redraw();
+    canvas.setPointerCapture?.(e.pointerId);
     e.preventDefault();
   }
 
   function onPointerMove(e) {
+    if (drawing && tool === 'pan' && panStart) {
+      viewOffsetX = panStart.offsetX + e.clientX - panStart.x;
+      viewOffsetY = panStart.offsetY + e.clientY - panStart.y;
+      redraw();
+      e.preventDefault();
+      return;
+    }
     if (!drawing || !currentStroke) return;
-    currentStroke.points.push(pointForEvent(e, currentStroke.space));
+    const point = pointForEvent(e, currentStroke.space);
+    if (currentStroke.type === 'shape') currentStroke.points[1] = point;
+    else currentStroke.points.push(point);
     redraw();
     e.preventDefault();
   }
@@ -448,6 +685,11 @@
   function onPointerUp(e) {
     if (!drawing) return;
     drawing = false;
+    if (tool === 'pan') {
+      panStart = null;
+      canvas.style.cursor = 'grab';
+      return;
+    }
     currentStroke = null;
     dirty = true;
     saveLocal();
@@ -494,8 +736,9 @@
 
   async function saveToServer() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-    if (!taskId) return;
-    if (!dirty && strokes.length === 0) return;
+    if (!taskId) return false;
+    if (pendingSavePromise) await waitPendingSave();
+    if (!dirty && strokes.length === 0) return true;
 
     const body = {
       task_id: taskId,
@@ -506,7 +749,7 @@
 
     pendingSavePromise = (async () => {
       try {
-        await fetch('/api/canvas/save', {
+        const response = await fetch('/api/canvas/save', {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
@@ -516,6 +759,7 @@
           },
           body: JSON.stringify(body),
         });
+        if (!response.ok) throw new Error('Не удалось сохранить холст');
         dirty = false;
         if (strokes && strokes.length > 0 && typeof window.triggerAchievement === 'function') {
           window.triggerAchievement('canvas_save');
@@ -524,13 +768,15 @@
         loadState.lastData = null;
         saveLocal();
         updateBadge();
+        return true;
       } catch (e) {
         console.warn('Canvas save failed:', e);
+        return false;
       } finally {
         pendingSavePromise = null;
       }
     })();
-    await pendingSavePromise;
+    return await pendingSavePromise;
   }
 
   async function waitPendingSave() {
@@ -632,30 +878,50 @@
     if (isOpen || !hasValidContext()) return;
     isOpen = true;
     if (typeof window.triggerAchievement === 'function') window.triggerAchievement('canvas_open');
-    resizeCanvas();
     overlay.classList.add('active');
+    resizeCanvas();
     toolbar.style.display = '';
     fab.style.display = 'none';
+    window.dispatchEvent(new CustomEvent('boo-canvas:statechange', { detail: { open: true, embedded: Boolean(embeddedTarget) } }));
     await loadFromServer();
   }
 
   function close() {
     if (!isOpen) return;
+    if (textEditor) finishTextEntry(true);
     if (dirty) {
       saveToServer();
     }
     isOpen = false;
     overlay.classList.remove('active');
     toolbar.style.display = 'none';
-    fab.style.display = '';
+    fab.style.display = embeddedTarget ? 'none' : '';
     drawing = false;
     currentStroke = null;
     syncFabVisibility();
+    window.dispatchEvent(new CustomEvent('boo-canvas:statechange', { detail: { open: false, embedded: Boolean(embeddedTarget) } }));
   }
 
   function toggle() {
     if (!hasValidContext()) return;
     if (isOpen) close(); else open();
+  }
+
+  function openIn(target) {
+    if (!target || typeof target.appendChild !== 'function' || !hasValidContext()) return false;
+    init();
+    if (embeddedTarget && embeddedTarget !== target) {
+      embeddedTarget.classList.remove('boo-canvas-embedded-host');
+    }
+    embeddedTarget = target;
+    embeddedTarget.classList.add('boo-canvas-embedded-host');
+    embeddedTarget.appendChild(overlay);
+    embeddedTarget.appendChild(toolbar);
+    overlay.classList.add('is-embedded');
+    toolbar.classList.add('is-embedded');
+    resizeCanvas();
+    if (!isOpen) open();
+    return true;
   }
 
   function setContext(tid, ctype, cid) {
@@ -686,7 +952,7 @@
 
   function syncFabVisibility() {
     if (!fab) return;
-    fab.style.display = hasValidContext() ? '' : 'none';
+    fab.style.display = hasValidContext() && !embeddedTarget ? '' : 'none';
   }
 
   async function checkExistingDrawing() {
@@ -710,9 +976,31 @@
 
   function onKeyDown(e) {
     if (!isOpen) return;
-    if (e.key === 'Escape') { close(); return; }
+    if (e.key === 'Escape') {
+      if (textEditor) {
+        finishTextEntry(false);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      close();
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { undo(); e.preventDefault(); }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { redo(); e.preventDefault(); }
+    if (tool === 'pan' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && (e.target === canvas || e.target === document.body)) {
+      const step = e.shiftKey ? 64 : 24;
+      if (e.key === 'ArrowLeft') viewOffsetX += step;
+      if (e.key === 'ArrowRight') viewOffsetX -= step;
+      if (e.key === 'ArrowUp') viewOffsetY += step;
+      if (e.key === 'ArrowDown') viewOffsetY -= step;
+      redraw();
+      e.preventDefault();
+    }
+    if ((e.target === canvas || e.target === document.body) && (e.key === '+' || e.key === '=' || e.key === '-')) {
+      zoomBy(e.key === '-' ? 1 / 1.2 : 1.2);
+      e.preventDefault();
+    }
   }
 
   // --- Toolbar drag ---
@@ -770,5 +1058,5 @@
     window.initCanvasOverlay();
   }
 
-  window.BooCanvasOverlay = { open, close, toggle, setContext, init: window.initCanvasOverlay };
+  window.BooCanvasOverlay = { open, openIn, close, toggle, setContext, save: saveToServer, hasContent: () => strokes.length > 0, init: window.initCanvasOverlay };
 })();

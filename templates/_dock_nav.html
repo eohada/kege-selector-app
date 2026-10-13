@@ -53,7 +53,7 @@
             {# === STUDENT role === #}
             {% elif current_user.is_student() %}
             {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
-            {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
+            {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else False) %}
             {% if current_student %}
             <a {{ spa_main_nav_attrs(url_for('main.dashboard'), 'student_dashboard') }} class="dock-nav-item {% if active_page in ['student_dashboard','dashboard'] %}active{% endif %}">
                 <i class="ph-bold ph-house text-lg"></i> Главная

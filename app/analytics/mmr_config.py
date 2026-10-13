@@ -11,6 +11,8 @@ MMR_DEFAULTS: dict[str, object] = {
     "initial_mmr": 1000.0,
     "min_mmr": 0.0,
     "max_mmr": 2500.0,
+    "k_factor": 36.0,
+    "scale_divisor": 400.0,
     "difficulty_weight": {
         "base": 800.0,
         "standard": 1500.0,

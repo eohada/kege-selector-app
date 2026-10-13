@@ -23,6 +23,9 @@
   #image-crop-modal { align-items: flex-end; padding: 0; }
   #image-crop-modal > div { border-radius: 1.75rem 1.75rem 0 0; max-width: none; }
 }
+{% if current_user.is_authenticated and current_user.is_demo_user %}
+[data-demo-target="profile-achievements"] > * { pointer-events: none; }
+{% endif %}
 
 /* Custom styled scrollbars */
 .custom-scrollbar::-webkit-scrollbar,
@@ -75,7 +78,7 @@
 {% set profile_timezone = display_user.timezone_iana or (display_user.profile.timezone if (display_user.profile and display_user.profile.timezone) else 'Europe/Moscow') %}
 
 {% set school_class_display = school_class_display if (school_class_display is defined and school_class_display) else (student_obj.school_class if (student_obj and student_obj.school_class) else '') %}
-{% set user_streak = user_streak if (user_streak is defined and user_streak is not none) else 0 %}
+{% set user_streak = 41 if (current_user.is_authenticated and current_user.is_demo_user) else (user_streak if (user_streak is defined and user_streak is not none) else 0) %}
 
 {% set streak_num = user_streak|int %}
 {% set streak_mod10 = streak_num % 10 %}
@@ -98,9 +101,47 @@
 <!-- Canvas Master Container -->
 <main id="profile-page-shell" class="min-h-screen flex-1 relative z-10 bg-[#F8FAFC] font-sans p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6 overflow-x-hidden">
   <div class="max-w-[1600px] mx-auto w-full space-y-4">
-    
+    {% if can_manage_student %}
+    <!-- STAFF MANAGEMENT BANNER (Режим просмотра и управления со стороны преподавателя/админа) -->
+    <div class="w-full bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 rounded-[2rem] p-4 sm:p-5 shadow-[0_5px_0_#312E81] text-white flex flex-col sm:flex-row items-center justify-between gap-4 border-2 border-indigo-500/50 relative overflow-hidden">
+      <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="flex items-center gap-3.5 relative z-10">
+        <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center shrink-0 border border-white/30 text-2xl shadow-inner">
+          <i class="ph-fill ph-shield-check"></i>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-900 shadow-xs">
+              {{ 'Создатель' if viewer_is_creator else ('Администратор' if viewer_is_admin else 'Преподаватель') }}
+            </span>
+            <span class="text-xs font-bold text-indigo-100 flex items-center gap-1">
+              <i class="ph-bold ph-eye"></i> Просмотр профиля ученика
+            </span>
+          </div>
+          <p class="text-base sm:text-lg font-black tracking-tight text-white mb-0 mt-0.5">
+            {{ user_name }}
+          </p>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 relative z-10 w-full sm:w-auto justify-end">
+        <button type="button" onclick="openManageXpModal()" class="px-3.5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow-[0_3px_0_#B45309] flex items-center gap-1.5 transition-all active:translate-y-0.5 cursor-pointer border-0">
+          <i class="ph-fill ph-lightning"></i> <span>XP / Бонус</span>
+        </button>
+        <button type="button" onclick="openManageStreakModal()" class="px-3.5 py-2 bg-orange-500 hover:bg-orange-400 text-white font-black text-xs rounded-xl shadow-[0_3px_0_#9A3412] flex items-center gap-1.5 transition-all active:translate-y-0.5 cursor-pointer border-0">
+          <i class="ph-fill ph-fire"></i> <span>Стрик</span>
+        </button>
+        <button type="button" onclick="openManageStudyTimeModal()" class="px-3.5 py-2 bg-sky-500 hover:bg-sky-400 text-white font-black text-xs rounded-xl shadow-[0_3px_0_#0369A1] flex items-center gap-1.5 transition-all active:translate-y-0.5 cursor-pointer border-0">
+          <i class="ph-bold ph-clock"></i> <span>Время</span>
+        </button>
+        <a href="{{ url_for('main.teacher_dashboard') if viewer_is_teacher else url_for('admin.users_list') }}" class="px-3.5 py-2 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl border border-white/30 flex items-center gap-1.5 no-underline transition-colors">
+          <i class="ph-bold ph-arrow-left"></i> <span>К дашборду</span>
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- 1. HERO & PROFILE HEADER (BooStudy UI Canon 3D Bento Card) -->
-    <div class="w-full bg-white border-2 border-slate-200/90 rounded-[2rem] p-5 sm:p-7 shadow-[0_5px_0_#DAE1E9] relative overflow-hidden">
+    <div class="profile-hero w-full bg-white border-2 border-slate-200/90 rounded-[2rem] p-5 sm:p-7 shadow-[0_5px_0_#DAE1E9] relative overflow-hidden">
       <!-- Decorative soft background highlights -->
       <div class="absolute -right-16 -top-16 w-80 h-80 bg-indigo-50/70 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -left-16 -bottom-16 w-80 h-80 bg-blue-50/60 rounded-full blur-3xl pointer-events-none"></div>
@@ -218,6 +259,19 @@
               <i class="ph-bold ph-sign-out text-sm"></i> <span>Выйти</span>
             </a>
           </div>
+          {% elif can_manage_student %}
+          <!-- Actions Row for Staff Viewing Student -->
+          <div class="flex flex-wrap items-center gap-2 self-center sm:self-end">
+            <button type="button" onclick="openManageXpModal()" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow-[0_2px_0_#B45309] flex items-center gap-1.5 transition-all active:translate-y-0.5 cursor-pointer border-0">
+              <i class="ph-fill ph-lightning"></i> <span>XP / Бонус</span>
+            </button>
+            <button type="button" onclick="openManageStreakModal()" class="px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white font-black text-xs rounded-xl shadow-[0_2px_0_#9A3412] flex items-center gap-1.5 transition-all active:translate-y-0.5 cursor-pointer border-0">
+              <i class="ph-fill ph-fire"></i> <span>Стрик</span>
+            </button>
+            <button type="button" onclick="openManageStudyTimeModal()" class="px-3 py-1.5 bg-sky-500 hover:bg-sky-400 text-white font-black text-xs rounded-xl shadow-[0_2px_0_#0369A1] flex items-center gap-1.5 transition-all active:translate-y-0.5 cursor-pointer border-0">
+              <i class="ph-bold ph-clock"></i> <span>Время</span>
+            </button>
+          </div>
           {% endif %}
 
           <!-- Middle graphics: Playful cursive lettering & Ghost character -->
@@ -230,17 +284,17 @@
             </div>
 
             <!-- Floating 3D-styled chart badge -->
-            <div class="hidden md:flex w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white items-center justify-center shadow-md shadow-indigo-200/80 transform -rotate-12 absolute -top-4 left-14 pointer-events-none">
+            <div class="profile-hero-float-icon hidden md:flex w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white items-center justify-center shadow-md shadow-indigo-200/80 transform -rotate-12 absolute -top-4 left-14 pointer-events-none">
               <i class="ph-bold ph-chart-bar text-lg"></i>
             </div>
 
             <!-- Floating 3D-styled trophy badge -->
-            <div class="hidden md:flex w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white items-center justify-center shadow-md shadow-purple-200/80 transform rotate-12 absolute -top-2 right-4 pointer-events-none">
+            <div class="profile-hero-float-icon hidden md:flex w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white items-center justify-center shadow-md shadow-purple-200/80 transform rotate-12 absolute -top-2 right-4 pointer-events-none">
               <i class="ph-fill ph-trophy text-base text-amber-300"></i>
             </div>
 
             <!-- Ghost Mascot Image (Image 2 as requested!) -->
-            <img src="/static/images/profile/hero_ghost.png" alt="BooStudy Ghost Mascot" class="h-36 sm:h-44 lg:h-52 object-contain drop-shadow-xl select-none pointer-events-none transform hover:scale-105 transition-transform duration-300">
+            <img src="/static/images/profile/hero_ghost.png" id="hero-mascot-ghost" alt="BooStudy Ghost Mascot" class="h-36 sm:h-44 lg:h-52 object-contain drop-shadow-xl select-none cursor-pointer transform hover:scale-105 transition-transform duration-300" title="Бу-призрак (погладь меня!)">
           </div>
         </div>
 
@@ -251,7 +305,7 @@
     <section id="telegram-connection" class="mt-4 rounded-[1.75rem] border-2 border-sky-100 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-4 sm:p-5 shadow-[0_4px_0_#DCEAF6]" aria-labelledby="telegram-connection-title">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex min-w-0 items-start gap-3">
-          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
+          <div class="tg-connection-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
             <i class="ph-fill ph-telegram-logo text-2xl"></i>
           </div>
           <div class="min-w-0">
@@ -306,26 +360,43 @@
           <span class="text-xs font-bold text-slate-500">Прогресс обучения</span>
         </div>
         <div>
-          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ progress_pct }}%</h3>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ 74 if (current_user.is_authenticated and current_user.is_demo_user) else progress_pct }}%</h3>
           <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-            <div class="h-full bg-purple-600 rounded-full transition-all duration-500" style="width: {{ progress_pct }}%;"></div>
+            <div class="h-full bg-purple-600 rounded-full transition-all duration-500" style="width: {{ 74 if (current_user.is_authenticated and current_user.is_demo_user) else progress_pct }}%;"></div>
           </div>
         </div>
-        <p class="text-[11px] font-medium text-slate-400 truncate mb-0">{{ completed_steps }} из {{ total_steps }} этапов пройдено</p>
+        <p class="text-[11px] font-medium text-slate-400 truncate mb-0">{% if current_user.is_authenticated and current_user.is_demo_user %}С начала пути: 48% → 74%{% else %}{{ completed_steps }} из {{ total_steps }} этапов пройдено{% endif %}</p>
       </div>
 
       <!-- Metric 2: Стрик -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
-            <i class="ph-fill ph-fire text-base"></i>
+      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5 relative group">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center shrink-0">
+              <i class="ph-fill ph-fire text-base"></i>
+            </div>
+            <span class="text-xs font-bold text-slate-500">Серия активности</span>
           </div>
-          <span class="text-xs font-bold text-slate-500">Стрик</span>
+          {% if can_manage_student %}
+          <button type="button" onclick="openManageStreakModal()" class="px-2 py-0.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-600 text-[10px] font-black border border-orange-200 cursor-pointer flex items-center gap-1 transition-colors" title="Управление стриком">
+            <i class="ph-bold ph-pencil-simple"></i> Изменить
+          </button>
+          {% elif user_streak_weeks is defined and user_streak_weeks > 0 %}
+          <span class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200/60 flex items-center gap-1">
+            <i class="ph-bold ph-calendar-check"></i> {{ user_streak_weeks }} нед.
+          </span>
+          {% endif %}
         </div>
         <div>
-          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ user_streak }} {{ days_word }}</h3>
+          <h3 id="user-streak-display" class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ user_streak }} {{ days_word }}</h3>
+          {% if user_streak_weeks is defined and user_streak_weeks > 0 %}
+          <p id="user-streak-weeks-display" class="text-[11px] font-bold text-indigo-600 mt-1 flex items-center gap-1 mb-0">
+            <i class="ph-bold ph-calendar-check"></i> Ритм: {{ user_streak_weeks }} {{ weeks_word if weeks_word is defined else 'недель' }} подряд
+          </p>
+          {% else %}
+          <p id="user-streak-weeks-display" class="text-[11px] font-semibold text-orange-500 mt-1 mb-0">Продолжай в том же духе!</p>
+          {% endif %}
         </div>
-        <p class="text-[11px] font-semibold text-orange-500 mb-0">Продолжай в том же духе!</p>
       </div>
 
       <!-- Metric 3: Пройдено уроков -->
@@ -337,10 +408,10 @@
           <span class="text-xs font-bold text-slate-500">Пройдено уроков</span>
         </div>
         <div>
-          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ module_completed_cnt if module_completed_cnt is defined else completed_cnt }} / {{ module_total_cnt if module_total_cnt is defined else total_cnt }}</h3>
+          <h3 class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{% if current_user.is_authenticated and current_user.is_demo_user %}36{% else %}{{ module_completed_cnt if module_completed_cnt is defined else completed_cnt }} / {{ module_total_cnt if module_total_cnt is defined else total_cnt }}{% endif %}</h3>
         </div>
         <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-          <span class="truncate max-w-[80%]" title="{{ module_label if module_label is defined else 'Всего уроков' }}">{{ module_label if module_label is defined else 'Всего уроков' }}</span>
+          <span class="truncate max-w-[80%]" title="{{ '7 тем освоено' if (current_user.is_authenticated and current_user.is_demo_user) else (module_label if module_label is defined else 'Всего уроков') }}">{{ '7 тем освоено' if (current_user.is_authenticated and current_user.is_demo_user) else (module_label if module_label is defined else 'Всего уроков') }}</span>
           <span class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[9px] shrink-0">
             <i class="ph-bold ph-check"></i>
           </span>
@@ -348,12 +419,19 @@
       </div>
 
       <!-- Metric 4: Учебное время (Real Heartbeat Tracker) -->
-      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <i class="ph-bold ph-clock text-base"></i>
+      <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5 relative group">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <i class="ph-bold ph-clock text-base"></i>
+            </div>
+            <span class="text-xs font-bold text-slate-500">Учебное время</span>
           </div>
-          <span class="text-xs font-bold text-slate-500">Учебное время</span>
+          {% if can_manage_student %}
+          <button type="button" onclick="openManageStudyTimeModal()" class="px-2 py-0.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-[10px] font-black border border-blue-200 cursor-pointer flex items-center gap-1 transition-colors" title="Управление учебным временем">
+            <i class="ph-bold ph-pencil-simple"></i> Изменить
+          </button>
+          {% endif %}
         </div>
         <div>
           <h3 id="study-time-val" class="text-2xl sm:text-3xl font-black text-slate-900 font-display leading-none">{{ study_time_display if study_time_display is defined else '0 мин' }}</h3>
@@ -364,7 +442,7 @@
     </div>
 
     <!-- 3. MAIN CONTENT (2 Columns: Left 7 cols, Right 5 cols) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 mt-3.5 items-start">
+    <div class="profile-main-grid grid grid-cols-1 lg:grid-cols-12 gap-3.5 mt-3.5 items-start">
       
       <!-- LEFT COLUMN (7 cols) -->
       <div class="lg:col-span-7 space-y-3.5">
@@ -378,31 +456,38 @@
               </div>
               <h3 class="text-base font-black text-slate-900 font-display mb-0">Текущий уровень</h3>
             </div>
-            <button onclick="openRanksModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
-              <span>Все уровни и ранги</span> <i class="ph-bold ph-arrow-right text-xs"></i>
-            </button>
+            <div class="flex items-center gap-2">
+              {% if can_manage_student %}
+              <button type="button" onclick="openManageXpModal()" class="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow-[0_2px_0_#B45309] flex items-center gap-1.5 transition-all active:translate-y-0.5 cursor-pointer border-0">
+                <i class="ph-fill ph-lightning text-xs"></i> <span>Изменить XP / Бонус</span>
+              </button>
+              {% endif %}
+              <button onclick="openRanksModal()" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
+                <span>Все уровни</span> <i class="ph-bold ph-arrow-right text-xs"></i>
+              </button>
+            </div>
           </div>
 
           <div class="flex flex-col sm:flex-row items-center sm:items-stretch justify-between gap-4">
             <div class="space-y-2 flex-1 min-w-0">
-              <span class="px-2.5 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[10px] font-black border border-amber-200 inline-block uppercase tracking-wider">
+              <span id="user-level-badge" class="px-2.5 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[10px] font-black border border-amber-200 inline-block uppercase tracking-wider">
                 Уровень {{ current_level_info.number }} • {{ current_level_info.title }}
               </span>
-              <h4 class="text-lg sm:text-xl font-black text-slate-900 font-display leading-snug mb-0">
+              <h4 id="user-level-title" class="text-lg sm:text-xl font-black text-slate-900 font-display leading-snug mb-0">
                 Уровень {{ current_level_info.number }} — {{ current_level_info.title }}
               </h4>
-              <p class="text-xs text-slate-500 font-medium leading-relaxed mb-0">
-                {{ current_level_info.desc }} До следующего уровня осталось <strong class="text-indigo-600 font-bold">{{ current_level_info.xp_to_next }} XP</strong>.
+              <p id="user-level-desc" class="text-xs text-slate-500 font-medium leading-relaxed mb-0">
+                {{ current_level_info.desc }} До следующего уровня осталось <strong id="user-xp-needed" class="text-indigo-600 font-bold">{{ current_level_info.xp_to_next }} XP</strong>.
               </p>
 
               <!-- Progress Bar -->
               <div class="pt-2 space-y-1.5">
                 <div class="flex items-center justify-between text-xs font-bold">
-                  <span class="text-slate-500 font-mono">{{ current_level_info.current_xp }} XP / {{ current_level_info.target_xp }} XP</span>
-                  <span class="text-amber-600 font-black">{{ current_level_info.progress_pct }}%</span>
+                  <span id="user-xp-counter" class="text-slate-500 font-mono">{{ current_level_info.current_xp }} XP / {{ current_level_info.target_xp }} XP</span>
+                  <span id="user-xp-pct" class="text-amber-600 font-black">{{ current_level_info.progress_pct }}%</span>
                 </div>
                 <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-amber-400 via-orange-500 to-indigo-600 rounded-full transition-all duration-500" style="width: {{ current_level_info.progress_pct }}%;"></div>
+                  <div id="user-xp-bar" class="h-full bg-gradient-to-r from-amber-400 via-orange-500 to-indigo-600 rounded-full transition-all duration-500" style="width: {{ current_level_info.progress_pct }}%;"></div>
                 </div>
               </div>
 
@@ -419,7 +504,7 @@
 
             <!-- Right 3D Visual Block (Clickable to open ranks modal) -->
             <div onclick="openRanksModal()" class="relative w-32 h-32 rounded-2xl bg-gradient-to-br from-amber-400/20 via-indigo-500/20 to-purple-600/20 p-0.5 shadow-[0_6px_20px_rgba(245,158,11,0.2)] flex items-center justify-center shrink-0 self-center cursor-pointer hover:scale-105 active:scale-95 transition-all" title="Посмотреть все уровни и ранги">
-              <div class="w-full h-full rounded-[14px] bg-gradient-to-b from-white to-amber-50/60 border border-amber-200/60 flex flex-col items-center justify-center relative overflow-hidden text-center p-2">
+              <div class="profile-level-badge w-full h-full rounded-[14px] bg-gradient-to-b from-white to-amber-50/60 border border-amber-200/60 flex flex-col items-center justify-center relative overflow-hidden text-center p-2">
                 <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-2xl shadow-sm mb-1 transform hover:scale-110 transition-transform">
                   <i class="ph-fill ph-trophy"></i>
                 </div>
@@ -442,7 +527,7 @@
               </div>
               <h3 class="text-base font-black text-slate-900 font-display mb-0">Цели на неделю</h3>
             </div>
-            {% if is_owner %}
+            {% if is_owner or can_manage_student %}
             <button onclick="openGoalsModal()" class="px-3.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
               <i class="ph-bold ph-pencil-simple text-xs"></i> Изменить цели
             </button>
@@ -452,7 +537,7 @@
           <!-- Goal Items List -->
           <div id="goals-list-container" class="space-y-2.5">
             {% for g in formatted_goals %}
-            <div class="flex items-center justify-between gap-3 p-2 rounded-xl {% if is_owner %}hover:bg-slate-50/80 cursor-pointer{% endif %} transition-colors group" {% if is_owner %}onclick="toggleWeeklyGoal({{ g.item_id }})"{% endif %}>
+            <div class="flex items-center justify-between gap-3 p-2 rounded-xl {% if is_owner or can_manage_student %}hover:bg-slate-50/80 cursor-pointer{% endif %} transition-colors group" {% if is_owner or can_manage_student %}onclick="toggleWeeklyGoal({{ g.item_id }})"{% endif %}>
               <div class="flex items-center gap-3 min-w-0">
                 <div class="w-5 h-5 rounded-full border-2 {% if g.status == 'done' %}bg-indigo-600 border-indigo-600 text-white{% else %}border-slate-300 text-transparent{% endif %} flex items-center justify-center shrink-0 transition-colors">
                   <i class="ph-bold ph-check text-[10px]"></i>
@@ -471,7 +556,7 @@
             {% endfor %}
           </div>
 
-          {% if is_owner %}
+          {% if is_owner or can_manage_student %}
           <!-- Inline Add Goal Form -->
           <div class="pt-2 flex items-center gap-2 border-t border-slate-100">
             <input type="text" id="new-goal-input" placeholder="Новая цель на неделю..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 shadow-inner">
@@ -534,12 +619,12 @@
           </div>
 
           <!-- 5 Badges Showcase Row (Dynamic rarest achievements) -->
-          <div class="grid grid-cols-5 gap-2">
+              <div class="grid grid-cols-5 gap-2"{% if current_user.is_authenticated and current_user.is_demo_user %} data-demo-target="profile-achievements" aria-label="Витрина достижений демо"{% endif %}>
             {% for item in (showcase_achievements if showcase_achievements is defined and showcase_achievements else (detailed_achievements[:5] if detailed_achievements else [])) %}
               {% if item %}
                 <div class="flex flex-col items-center text-center p-1 cursor-pointer hover:scale-105 transition-transform" onclick="openAchievementsModal()">
                   {% if item.unlocked %}
-                    <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 mb-1.5">
+                    <div class="profile-achievement-icon w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center mb-1.5">
                       <i class="ph-fill {{ item.icon }} text-xl sm:text-2xl"></i>
                     </div>
                     <span class="text-[10px] sm:text-[11px] font-black text-slate-800 leading-tight truncate w-full">{{ item.title }}</span>
@@ -553,8 +638,9 @@
                   {% endif %}
                 </div>
               {% endif %}
-            {% endfor %}
+          {% endfor %}
           </div>
+          {% if current_user.is_authenticated and current_user.is_demo_user %}<button type="button" data-demo-target="profile-achievements-action" hidden onclick="event.stopPropagation(); window.BooCompanion && window.BooCompanion._onTargetInteracted('profile-achievements-action');" class="mt-4 rounded-xl border-2 border-indigo-300 bg-white px-4 py-3 text-sm font-black text-indigo-700">Посмотреть витрину достижений</button>{% endif %}
         </div>
 
         <!-- Card 2: Реферальная программа (Detailing exactly matching mockup) -->
@@ -573,6 +659,7 @@
                 </div>
                 <h3 class="text-base sm:text-lg font-black text-white font-display mb-0">Реферальная программа</h3>
               </div>
+              {% if current_user.is_authenticated and current_user.is_demo_user %}<button type="button" data-demo-target="profile-continue" hidden class="mt-4 rounded-xl border-2 border-indigo-300 bg-white px-4 py-3 text-sm font-black text-indigo-700">К финалу демо</button>{% endif %}
               <p class="text-xs sm:text-sm text-white/95 font-medium leading-relaxed mb-0">
                 Приглашай друзей и получай <strong class="text-white font-black drop-shadow-xs">+100 XP</strong> за каждого, кто зарегистрируется!
               </p>
@@ -587,7 +674,7 @@
                   </button>
                 </div>
                 <!-- White Share Button -->
-                <button type="button" onclick="shareReferralCode('{{ ref_code }}')" class="px-4 py-2 bg-white hover:bg-slate-50 text-[#605DEC] font-black text-xs sm:text-sm rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
+                <button type="button" onclick="shareReferralCode('{{ ref_code }}')" class="profile-referral-share px-4 py-2 bg-white hover:bg-slate-50 text-[#605DEC] font-black text-xs sm:text-sm rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border-0">
                   <span>Поделиться</span>
                 </button>
                 <!-- Playful curved arrow pointing toward the gift -->
@@ -658,7 +745,10 @@
   </div>
 </div>
 
-{% if show_profile_onboarding is defined and show_profile_onboarding %}
+{# The standard first-login checklist competes with the guided demo scene.
+   A demo account has its own visual-novel onboarding, so it must be the only
+   foreground layer on this page. #}
+{% if show_profile_onboarding is defined and show_profile_onboarding and not (current_user.is_authenticated and current_user.is_demo_user) %}
 <div id="profile-onboarding" class="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/45 backdrop-blur-sm p-4">
   <section class="w-full max-w-lg rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-[0_8px_0_#DAE1E9]">
     <p class="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500">Первый вход</p>
@@ -1114,7 +1204,7 @@
   </div>
 </div>
 
-{% if is_owner %}
+{% if is_owner or can_manage_student %}
 <!-- 3. GOALS EDIT MODAL (Editable Goals System) -->
 <div id="goals-edit-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-3 sm:p-6 transition-all">
   <div id="goals-edit-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.35)] w-full max-w-lg max-h-[90vh] flex flex-col p-6 sm:p-8 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
@@ -1223,6 +1313,7 @@
 
     <!-- Modal Form -->
     <form id="profile-edit-form" class="space-y-4" enctype="multipart/form-data">
+      <input type="hidden" name="target_user_id" value="{{ display_user.id }}">
       
       <!-- Full Name & Class Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1271,10 +1362,16 @@
         <textarea name="about_me" id="edit-about-me" rows="3" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 resize-none">{{ user_bio }}</textarea>
       </div>
 
-      <!-- Goal Text -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Главная цель обучения</label>
-        <input type="text" name="goal_text" id="edit-goal-text" value="{{ student_obj.goal_text if (student_obj and student_obj.goal_text) else '' }}" placeholder="Например: сдать КЕГЭ на 85 баллов" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+      <!-- Goal Text & Target Score Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Главная цель обучения</label>
+          <input type="text" name="goal_text" id="edit-goal-text" value="{{ student_obj.goal_text if (student_obj and student_obj.goal_text) else '' }}" placeholder="Например: сдать КЕГЭ на 85 баллов" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Целевой балл КЕГЭ</label>
+          <input type="number" name="target_score" id="edit-target-score" min="0" max="100" value="{{ student_obj.target_score if (student_obj and student_obj.target_score) else 80 }}" placeholder="80" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+        </div>
       </div>
 
       <!-- Timezone & Password Grid -->
@@ -1337,7 +1434,516 @@
 </div>
 {% endif %}
 
+{% if can_manage_student %}
+<!-- 4. MANAGE XP MODAL -->
+<div id="manage-xp-modal" class="fixed inset-0 z-[10000] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
+  <div id="manage-xp-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 sm:p-8 space-y-5 relative transform transition-all scale-95 opacity-0 duration-300">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-xl shadow-xs">
+          <i class="ph-fill ph-lightning"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-800 font-display mb-0">Управление опытом</h3>
+          <p class="text-xs font-semibold text-slate-400 mb-0">Ученик: {{ user_name }}</p>
+        </div>
+      </div>
+      <button onclick="closeManageXpModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+
+    <!-- Mode Switcher Tabs -->
+    <div class="flex p-1 bg-slate-100 rounded-xl gap-1">
+      <button type="button" id="xp-tab-bonus" onclick="switchXpMode('bonus')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-white text-slate-900 shadow-xs">
+        🎁 Поощрительный бонус (+XP)
+      </button>
+      <button type="button" id="xp-tab-set" onclick="switchXpMode('set')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-transparent text-slate-500">
+        ⚙️ Установить точный опыт
+      </button>
+    </div>
+
+    <!-- Bonus XP Panel -->
+    <div id="xp-panel-bonus" class="space-y-4">
+      <div class="space-y-1.5">
+        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Быстрые бонусы</label>
+        <div class="grid grid-cols-4 gap-2">
+          <button type="button" onclick="setBonusXp(50)" class="py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-black text-xs rounded-xl border border-amber-200 transition-colors cursor-pointer">+50</button>
+          <button type="button" onclick="setBonusXp(100)" class="py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-black text-xs rounded-xl border border-amber-200 transition-colors cursor-pointer">+100</button>
+          <button type="button" onclick="setBonusXp(250)" class="py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-black text-xs rounded-xl border border-amber-200 transition-colors cursor-pointer">+250</button>
+          <button type="button" onclick="setBonusXp(500)" class="py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-black text-xs rounded-xl border border-amber-200 transition-colors cursor-pointer">+500</button>
+        </div>
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Сумма бонуса (XP)</label>
+        <input type="number" id="input-bonus-xp" min="1" max="100000" value="100" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Причина / комментарий (опционально)</label>
+        <input type="text" id="input-bonus-reason" placeholder="Например: Отличная работа над сложным ДЗ" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+      </div>
+    </div>
+
+    <!-- Set XP Panel -->
+    <div id="xp-panel-set" class="space-y-4 hidden">
+      <div class="space-y-1.5">
+        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Новое точное значение опыта (XP)</label>
+        <input type="number" id="input-set-xp" min="0" max="1000000" value="{{ student_obj.xp if student_obj else 0 }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
+        <p class="text-[11px] font-semibold text-slate-400 mb-0">Уровень и ранг будут автоматически пересчитаны системой.</p>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+      <button type="button" onclick="closeManageXpModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors">Отмена</button>
+      <button type="button" onclick="submitManageXp()" class="btn-3d px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-[0_3px_0_#B45309] border-0 cursor-pointer transition-all active:translate-y-0.5">
+        Сохранить изменения
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 5. MANAGE STREAK MODAL -->
+<div id="manage-streak-modal" class="fixed inset-0 z-[10000] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
+  <div id="manage-streak-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 sm:p-8 space-y-5 relative transform transition-all scale-95 opacity-0 duration-300">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xl shadow-xs">
+          <i class="ph-fill ph-fire"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-800 font-display mb-0">Управление стриком</h3>
+          <p class="text-xs font-semibold text-slate-400 mb-0">Серии активности: дни и недели</p>
+        </div>
+      </div>
+      <button onclick="closeManageStreakModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+
+    <div class="space-y-4">
+      <!-- Daily Streak -->
+      <div class="p-4 bg-orange-50/60 border border-orange-100 rounded-2xl space-y-3">
+        <h4 class="text-xs font-black text-orange-900 uppercase tracking-wider flex items-center gap-1.5 mb-0">
+          <i class="ph-fill ph-fire text-orange-500"></i> Ежедневная серия (Дни)
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-600 block">Дней подряд:</label>
+            <input type="number" id="input-streak-days" min="0" max="9999" value="{{ student_obj.streak_days if student_obj else 0 }}" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-800 focus:outline-none focus:border-orange-500">
+          </div>
+          <div class="flex items-center pt-5">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" id="input-streak-frozen" {% if student_obj and student_obj.streak_frozen %}checked{% endif %} class="w-4 h-4 rounded text-orange-500 focus:ring-orange-400">
+              <span class="text-xs font-bold text-slate-700">Заморозка (щит) 🧊</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Streak -->
+      <div class="p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl space-y-3">
+        <h4 class="text-xs font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1.5 mb-0">
+          <i class="ph-bold ph-calendar-check text-indigo-600"></i> Недельный ритм (Недели)
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="text-[11px] font-bold text-slate-600 block">Недель подряд:</label>
+            <input type="number" id="input-streak-weeks" min="0" max="999" value="{{ student_obj.streak_weeks if student_obj else 0 }}" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-800 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div class="flex items-center pt-5">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" id="input-weeks-frozen" {% if student_obj and student_obj.streak_weeks_frozen %}checked{% endif %} class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-400">
+              <span class="text-xs font-bold text-slate-700">Заморозка недели 🛡</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Danger Reset Action -->
+      <div class="pt-1 flex items-center justify-between">
+        <button type="button" onclick="resetStudentStreak()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl border border-rose-200 flex items-center gap-1 transition-colors cursor-pointer">
+          <i class="ph-bold ph-trash"></i> Сбросить стрик до 0
+        </button>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+      <button type="button" onclick="closeManageStreakModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors">Отмена</button>
+      <button type="button" onclick="submitManageStreak()" class="btn-3d px-5 py-2.5 bg-orange-500 hover:bg-orange-400 text-white font-black text-xs rounded-xl shadow-[0_3px_0_#9A3412] border-0 cursor-pointer transition-all active:translate-y-0.5">
+        Сохранить стрик
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 6. MANAGE STUDY TIME MODAL -->
+<div id="manage-study-time-modal" class="fixed inset-0 z-[10000] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
+  <div id="manage-study-time-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full max-w-lg max-h-[92vh] overflow-y-auto p-6 sm:p-8 space-y-5 relative transform transition-all scale-95 opacity-0 duration-300">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xl shadow-xs">
+          <i class="ph-bold ph-clock"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-black text-slate-800 font-display mb-0">Учебное время</h3>
+          <p class="text-xs font-semibold text-slate-400 mb-0">Корректировка и добавление часов</p>
+        </div>
+      </div>
+      <button onclick="closeManageStudyTimeModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+
+    <!-- Mode Switcher Tabs -->
+    <div class="flex p-1 bg-slate-100 rounded-xl gap-1">
+      <button type="button" id="time-tab-add" onclick="switchTimeMode('add')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-white text-slate-900 shadow-xs">
+        ➕ Добавить время (+мин/ч)
+      </button>
+      <button type="button" id="time-tab-set" onclick="switchTimeMode('set')" class="flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-transparent text-slate-500">
+        ⚙️ Установить точное
+      </button>
+    </div>
+
+    <!-- Add Time Panel -->
+    <div id="time-panel-add" class="space-y-4">
+      <div class="space-y-1.5">
+        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Быстрое добавление</label>
+        <div class="grid grid-cols-4 gap-2">
+          <button type="button" onclick="setAddMinutes(30)" class="py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-black text-xs rounded-xl border border-blue-200 transition-colors cursor-pointer">+30 мин</button>
+          <button type="button" onclick="setAddMinutes(45)" class="py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-black text-xs rounded-xl border border-blue-200 transition-colors cursor-pointer">+45 мин</button>
+          <button type="button" onclick="setAddMinutes(60)" class="py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-black text-xs rounded-xl border border-blue-200 transition-colors cursor-pointer">+1 ч</button>
+          <button type="button" onclick="setAddMinutes(120)" class="py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-black text-xs rounded-xl border border-blue-200 transition-colors cursor-pointer">+2 ч</button>
+        </div>
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Добавить минут</label>
+        <input type="number" id="input-add-minutes" min="1" max="9999" value="60" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500">
+      </div>
+    </div>
+
+    <!-- Set Time Panel -->
+    <div id="time-panel-set" class="space-y-4 hidden">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="space-y-1.5">
+          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Часы</label>
+          <input type="number" id="input-set-hours" min="0" max="9999" value="{{ total_study_sec // 3600 if total_study_sec is defined else 0 }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Минуты</label>
+          <input type="number" id="input-set-minutes" min="0" max="59" value="{{ (total_study_sec % 3600) // 60 if total_study_sec is defined else 0 }}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500">
+        </div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+      <button type="button" onclick="closeManageStudyTimeModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border-0 cursor-pointer transition-colors">Отмена</button>
+      <button type="button" onclick="submitManageStudyTime()" class="btn-3d px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-black text-xs rounded-xl shadow-[0_3px_0_#0369A1] border-0 cursor-pointer transition-all active:translate-y-0.5">
+        Сохранить время
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <script>
+const CURRENT_STUDENT_ID = {{ student_obj.student_id if (student_obj and student_obj.student_id) else 'null' }};
+const CAN_MANAGE_STUDENT = {{ 'true' if can_manage_student else 'false' }};
+
+let currentXpMode = 'bonus';
+let currentTimeMode = 'add';
+
+function openManageXpModal() {
+  const modal = document.getElementById('manage-xp-modal');
+  const card = document.getElementById('manage-xp-card');
+  if (!modal || !card) return;
+  setModalScrollLock(true);
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+  }, 10);
+}
+
+function closeManageXpModal() {
+  const modal = document.getElementById('manage-xp-modal');
+  const card = document.getElementById('manage-xp-card');
+  if (!modal || !card) return;
+  setModalScrollLock(false);
+  card.classList.remove('scale-100', 'opacity-100');
+  card.classList.add('scale-95', 'opacity-0');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+
+function switchXpMode(mode) {
+  currentXpMode = mode;
+  const tabBonus = document.getElementById('xp-tab-bonus');
+  const tabSet = document.getElementById('xp-tab-set');
+  const panelBonus = document.getElementById('xp-panel-bonus');
+  const panelSet = document.getElementById('xp-panel-set');
+  if (!tabBonus || !tabSet || !panelBonus || !panelSet) return;
+
+  if (mode === 'bonus') {
+    tabBonus.className = 'flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-white text-slate-900 shadow-xs';
+    tabSet.className = 'flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-transparent text-slate-500';
+    panelBonus.classList.remove('hidden');
+    panelSet.classList.add('hidden');
+  } else {
+    tabSet.className = 'flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-white text-slate-900 shadow-xs';
+    tabBonus.className = 'flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-transparent text-slate-500';
+    panelSet.classList.remove('hidden');
+    panelBonus.classList.add('hidden');
+  }
+}
+
+function setBonusXp(val) {
+  const input = document.getElementById('input-bonus-xp');
+  if (input) input.value = val;
+}
+
+function submitManageXp() {
+  if (!CURRENT_STUDENT_ID) {
+    if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('ID ученика не найден');
+    return;
+  }
+  const payload = { mode: currentXpMode };
+  if (currentXpMode === 'bonus') {
+    const bonusVal = parseInt(document.getElementById('input-bonus-xp')?.value, 10);
+    const reason = document.getElementById('input-bonus-reason')?.value?.trim() || '';
+    if (isNaN(bonusVal) || bonusVal <= 0) {
+      if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('Укажите корректный бонус XP');
+      return;
+    }
+    payload.bonus_xp = bonusVal;
+    payload.reason = reason;
+  } else {
+    const setVal = parseInt(document.getElementById('input-set-xp')?.value, 10);
+    if (isNaN(setVal) || setVal < 0) {
+      if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('Укажите корректное количество XP');
+      return;
+    }
+    payload.new_xp = setVal;
+  }
+
+  fetch(`/student/${CURRENT_STUDENT_ID}/xp`, {
+    method: 'POST',
+    headers: profileApiHeaders('application/json'),
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      if (window.BooNotify && window.BooNotify.success) {
+        window.BooNotify.success(data.message || 'Опыт успешно обновлен!');
+      } else if (typeof showToast === 'function') {
+        showToast(data.message || 'Опыт успешно обновлен!', 'success');
+      }
+      closeManageXpModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      const err = data.message || 'Ошибка обновления опыта';
+      if (window.BooNotify && window.BooNotify.error) window.BooNotify.error(err);
+      else if (typeof showToast === 'function') showToast(err, 'error');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('Ошибка сети при обновлении опыта');
+  });
+}
+
+function openManageStreakModal() {
+  const modal = document.getElementById('manage-streak-modal');
+  const card = document.getElementById('manage-streak-card');
+  if (!modal || !card) return;
+  setModalScrollLock(true);
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+  }, 10);
+}
+
+function closeManageStreakModal() {
+  const modal = document.getElementById('manage-streak-modal');
+  const card = document.getElementById('manage-streak-card');
+  if (!modal || !card) return;
+  setModalScrollLock(false);
+  card.classList.remove('scale-100', 'opacity-100');
+  card.classList.add('scale-95', 'opacity-0');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+
+function resetStudentStreak() {
+  if (!CURRENT_STUDENT_ID) return;
+  if (!confirm('Вы уверены, что хотите сбросить стрик ученика до 0?')) return;
+  fetch(`/student/${CURRENT_STUDENT_ID}/streak`, {
+    method: 'POST',
+    headers: profileApiHeaders('application/json'),
+    body: JSON.stringify({ action: 'reset' })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      if (window.BooNotify && window.BooNotify.success) {
+        window.BooNotify.success(data.message || 'Стрик сброшен');
+      } else if (typeof showToast === 'function') {
+        showToast(data.message || 'Стрик сброшен', 'success');
+      }
+      closeManageStreakModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      const err = data.message || 'Ошибка сброса стрика';
+      if (window.BooNotify && window.BooNotify.error) window.BooNotify.error(err);
+      else if (typeof showToast === 'function') showToast(err, 'error');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('Ошибка сети при сбросе стрика');
+  });
+}
+
+function submitManageStreak() {
+  if (!CURRENT_STUDENT_ID) return;
+  const days = parseInt(document.getElementById('input-streak-days')?.value, 10) || 0;
+  const frozen = Boolean(document.getElementById('input-streak-frozen')?.checked);
+  const weeks = parseInt(document.getElementById('input-streak-weeks')?.value, 10) || 0;
+  const weeksFrozen = Boolean(document.getElementById('input-weeks-frozen')?.checked);
+
+  fetch(`/student/${CURRENT_STUDENT_ID}/streak`, {
+    method: 'POST',
+    headers: profileApiHeaders('application/json'),
+    body: JSON.stringify({
+      streak_days: days,
+      streak_frozen: frozen,
+      streak_weeks: weeks,
+      streak_weeks_frozen: weeksFrozen
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      if (window.BooNotify && window.BooNotify.success) {
+        window.BooNotify.success(data.message || 'Стрик сохранен!');
+      } else if (typeof showToast === 'function') {
+        showToast(data.message || 'Стрик сохранен!', 'success');
+      }
+      closeManageStreakModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      const err = data.message || 'Ошибка сохранения стрика';
+      if (window.BooNotify && window.BooNotify.error) window.BooNotify.error(err);
+      else if (typeof showToast === 'function') showToast(err, 'error');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('Ошибка сети при сохранении стрика');
+  });
+}
+
+function openManageStudyTimeModal() {
+  const modal = document.getElementById('manage-study-time-modal');
+  const card = document.getElementById('manage-study-time-card');
+  if (!modal || !card) return;
+  setModalScrollLock(true);
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    card.classList.remove('scale-95', 'opacity-0');
+    card.classList.add('scale-100', 'opacity-100');
+  }, 10);
+}
+
+function closeManageStudyTimeModal() {
+  const modal = document.getElementById('manage-study-time-modal');
+  const card = document.getElementById('manage-study-time-card');
+  if (!modal || !card) return;
+  setModalScrollLock(false);
+  card.classList.remove('scale-100', 'opacity-100');
+  card.classList.add('scale-95', 'opacity-0');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+
+function switchTimeMode(mode) {
+  currentTimeMode = mode;
+  const tabAdd = document.getElementById('time-tab-add');
+  const tabSet = document.getElementById('time-tab-set');
+  const panelAdd = document.getElementById('time-panel-add');
+  const panelSet = document.getElementById('time-panel-set');
+  if (!tabAdd || !tabSet || !panelAdd || !panelSet) return;
+
+  if (mode === 'add') {
+    tabAdd.className = 'flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-white text-slate-900 shadow-xs';
+    tabSet.className = 'flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-transparent text-slate-500';
+    panelAdd.classList.remove('hidden');
+    panelSet.classList.add('hidden');
+  } else {
+    tabSet.className = 'flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-white text-slate-900 shadow-xs';
+    tabAdd.className = 'flex-1 py-2 text-xs font-black rounded-lg transition-all border-0 cursor-pointer bg-transparent text-slate-500';
+    panelSet.classList.remove('hidden');
+    panelAdd.classList.add('hidden');
+  }
+}
+
+function setAddMinutes(val) {
+  const input = document.getElementById('input-add-minutes');
+  if (input) input.value = val;
+}
+
+function submitManageStudyTime() {
+  if (!CURRENT_STUDENT_ID) return;
+  const payload = { mode: currentTimeMode };
+  if (currentTimeMode === 'add') {
+    const mins = parseInt(document.getElementById('input-add-minutes')?.value, 10);
+    if (isNaN(mins) || mins <= 0) {
+      if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('Укажите корректное количество минут');
+      return;
+    }
+    payload.minutes = mins;
+  } else {
+    const hours = parseInt(document.getElementById('input-set-hours')?.value, 10) || 0;
+    const mins = parseInt(document.getElementById('input-set-minutes')?.value, 10) || 0;
+    if (hours < 0 || mins < 0 || mins >= 60) {
+      if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('Укажите корректные часы и минуты (0-59)');
+      return;
+    }
+    payload.hours = hours;
+    payload.minutes = mins;
+  }
+
+  fetch(`/student/${CURRENT_STUDENT_ID}/study_time`, {
+    method: 'POST',
+    headers: profileApiHeaders('application/json'),
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === 'ok') {
+      if (window.BooNotify && window.BooNotify.success) {
+        window.BooNotify.success(data.message || 'Учебное время обновлено!');
+      } else if (typeof showToast === 'function') {
+        showToast(data.message || 'Учебное время обновлено!', 'success');
+      }
+      closeManageStudyTimeModal();
+      setTimeout(() => window.location.reload(), 400);
+    } else {
+      const err = data.message || 'Ошибка обновления времени';
+      if (window.BooNotify && window.BooNotify.error) window.BooNotify.error(err);
+      else if (typeof showToast === 'function') showToast(err, 'error');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    if (window.BooNotify && window.BooNotify.error) window.BooNotify.error('Ошибка сети при сохранении учебного времени');
+  });
+}
+
 function updateProfileTimezoneClocks() {
   const effectiveTz = document.querySelector('meta[name="user-timezone-effective"]')?.getAttribute('content') || 'Europe/Moscow';
 
@@ -1550,7 +2156,7 @@ function filterAchievementsTab(type) {
   let ghostClicks = 0;
   let ghostTimer = null;
   document.addEventListener('click', (e) => {
-    const ghost = e.target && e.target.closest ? e.target.closest('#profile-mascot-ghost') : null;
+    const ghost = e.target && e.target.closest ? e.target.closest('#profile-mascot-ghost, #hero-mascot-ghost') : null;
     if (!ghost) return;
     ghostClicks++;
     clearTimeout(ghostTimer);
@@ -1623,11 +2229,13 @@ function saveGoalItem(itemId) {
   const title = document.getElementById('goal-title-' + itemId)?.value?.trim();
   const curr = document.getElementById('goal-curr-' + itemId)?.value;
   const target = document.getElementById('goal-target-' + itemId)?.value;
+  let body = `title=${encodeURIComponent(title || '')}&current_count=${encodeURIComponent(curr || 0)}&target_count=${encodeURIComponent(target || 1)}`;
+  if (CURRENT_STUDENT_ID) body += `&student_id=${encodeURIComponent(CURRENT_STUDENT_ID)}`;
 
   fetch('/api/profile/goal/edit/' + itemId, {
     method: 'POST',
     headers: profileApiHeaders('application/x-www-form-urlencoded'),
-    body: `title=${encodeURIComponent(title || '')}&current_count=${encodeURIComponent(curr || 0)}&target_count=${encodeURIComponent(target || 1)}`
+    body: body
   })
   .then(r => r.json())
   .then(data => {
@@ -1647,9 +2255,11 @@ function saveGoalItem(itemId) {
 }
 
 function deleteGoalItem(itemId) {
+  const body = CURRENT_STUDENT_ID ? `student_id=${encodeURIComponent(CURRENT_STUDENT_ID)}` : '';
   fetch('/api/profile/goal/delete/' + itemId, {
     method: 'POST',
-    headers: profileApiHeaders()
+    headers: profileApiHeaders('application/x-www-form-urlencoded'),
+    body: body
   })
   .then(r => r.json())
   .then(data => {
@@ -1667,10 +2277,13 @@ function addNewGoalFromModal() {
   const input = document.getElementById('modal-new-goal-title');
   if (!input || !input.value.trim()) return;
 
+  let body = 'title=' + encodeURIComponent(input.value.trim());
+  if (CURRENT_STUDENT_ID) body += `&student_id=${encodeURIComponent(CURRENT_STUDENT_ID)}`;
+
   fetch('/api/profile/goal/add', {
     method: 'POST',
     headers: profileApiHeaders('application/x-www-form-urlencoded'),
-    body: 'title=' + encodeURIComponent(input.value.trim())
+    body: body
   })
   .then(r => r.json())
   .then(data => {
@@ -1711,10 +2324,13 @@ function submitGoalResult() {
   const note = document.getElementById('result-note-input').value;
   if (!id) return;
 
+  let body = 'result_note=' + encodeURIComponent(note);
+  if (CURRENT_STUDENT_ID) body += `&student_id=${encodeURIComponent(CURRENT_STUDENT_ID)}`;
+
   fetch('/api/profile/goal/result/' + id, {
     method: 'POST',
     headers: profileApiHeaders('application/x-www-form-urlencoded'),
-    body: 'result_note=' + encodeURIComponent(note)
+    body: body
   })
   .then(r => r.json())
   .then(data => {
@@ -1782,7 +2398,12 @@ function shareReferralCode(code) {
 }
 
 function toggleWeeklyGoal(itemId) {
-  fetch('/api/profile/goal/toggle/' + itemId, { method: 'POST', headers: profileApiHeaders() })
+  const body = CURRENT_STUDENT_ID ? `student_id=${encodeURIComponent(CURRENT_STUDENT_ID)}` : '';
+  fetch('/api/profile/goal/toggle/' + itemId, {
+    method: 'POST',
+    headers: profileApiHeaders('application/x-www-form-urlencoded'),
+    body: body
+  })
     .then(r => r.json())
     .then(data => {
       if (data.status === 'ok') {
@@ -1797,10 +2418,13 @@ function addNewGoal() {
   const input = document.getElementById('new-goal-input');
   if (!input || !input.value.trim()) return;
   
+  let body = 'title=' + encodeURIComponent(input.value.trim());
+  if (CURRENT_STUDENT_ID) body += `&student_id=${encodeURIComponent(CURRENT_STUDENT_ID)}`;
+
   fetch('/api/profile/goal/add', {
     method: 'POST',
     headers: profileApiHeaders('application/x-www-form-urlencoded'),
-    body: 'title=' + encodeURIComponent(input.value.trim())
+    body: body
   })
   .then(r => r.json())
   .then(data => {
@@ -1956,7 +2580,7 @@ function renderTelegramConnection(status) {
   telegramConnectionState = {
     ...telegramConnectionState,
     linked,
-    notificationsEnabled: status.notifications_enabled !== false,
+    notificationsEnabled: linked && status.notifications_enabled !== false,
   };
 
   const pill = document.getElementById('tg-status-pill');

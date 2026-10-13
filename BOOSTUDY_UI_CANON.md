@@ -107,5 +107,21 @@
    - Любые уведомления об успехе, генерации кодов, копировании, ошибках и подтверждениях ОБЯЗАНЫ выводиться через стилизованные BooStudy Bento 3D-модалки (`#tg-code-modal`) или всплывающие тосты.
 5. **⛔ ИММУНИТЕТ АККАУНТА CREATOR:**
    - Аккаунт с `username='creator'` неприкосновен. Запрещено его удаление, зануление или смена роли как в локальной базе данных, так и на сервере продакшена.
+6. **⛔ КАТЕГОРИЧЕСКИЙ ЗАПРЕТ НА СМАЙЛИКИ (EMOJIS) В ИНТЕРФЕЙСЕ:**
+   - В UI платформы (заголовки, бейджи, кнопки, табы, карточки, уведомления, списки, подсказки, модалки) КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО использовать символы эмодзи / смайлики (например: 🟢, 📦, 🎭, 👑, 🛡️, ⚙️, 🛠️, 👨‍🏫, 🔥, 🚀 и т.д.).
+   - Для всех иконок, статусов и визуальных маркеров ОБЯЗАТЕЛЬНО использовать ТОЛЬКО векторные иконки библиотеки Phosphor Icons (`<i class="ph-bold ph-..."></i>`, `<i class="ph ph-..."></i>`) либо чистые геометрические CSS-индикаторы (например, цветные точки `<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>`).
+   - Исключение: текст, введённый самим пользователем в сообщениях или заметках.
+
+---
+
+## 4. Golden Dashboard и Visual Engineering System
+
+Утверждённый dashboard reference закреплён в `design/references/dashboard/golden-dashboard.png` и описан в `design/references/dashboard/README.md`. Он имеет приоритет для нового визуального направления BooStudy: desktop left sidebar, topbar search, notifications/profile справа, constrained content area, bento card grammar, умеренная elevation и tactile states.
+
+Новые UI-страницы используют source of truth chain: Golden Dashboard → `--bs-*` tokens из `static/css/boostudy-design-system.css` → shared/sandbox primitives → page composition. Bento separation строится прежде всего на `gap + border + background + radius`; не применять тяжёлую одинаковую тень ко всем элементам.
+
+Подробные tokens и правила находятся в `design/system/`. Workflow агента закреплён в `.codex/skills/boostudy-ui/`, а критический visual audit — в `.codex/skills/boostudy-visual-qa/`. Живой каталог доступен только в development/testing через `/dev/ui`.
+
+Исторические tactile-классы выше сохраняются для совместимости. При конфликте с Golden Dashboard для новых страниц действует новый reference и token system; массовая миграция старых страниц не выполняется автоматически.
 
 

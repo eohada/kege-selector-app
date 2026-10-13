@@ -19,15 +19,61 @@ def _require_admin():
         abort(403)
 
 
+def _build_dynamic_pricing() -> dict | None:
+    """Загружает активные тарифы из БД для публичной страницы биллинга."""
+    try:
+        active_plans = (
+            TariffPlan.query
+            .filter_by(is_active=True)
+            .order_by(TariffPlan.order_index.asc(), TariffPlan.plan_id.asc())
+            .all()
+        )
+        if not active_plans:
+            return None
+
+        pricing: dict[str, dict[str, list]] = {}
+        for p in active_plans:
+            if p.exam == 'oge':
+                db_key = 'oge'
+            elif p.exam == 'ege':
+                if p.subject == 'math':
+                    db_key = 'ege_prof' if (p.level == 'prof') else 'ege_base'
+                else:
+                    db_key = 'ege'
+            else:
+                db_key = p.exam or 'oge'
+
+            fmt = p.format or 'solo'
+            if db_key not in pricing:
+                pricing[db_key] = {}
+            if fmt not in pricing[db_key]:
+                pricing[db_key][fmt] = []
+
+            pricing[db_key][fmt].append({
+                'id': p.plan_id,
+                'label': p.title,
+                'price': p.price_rub or 0,
+                'desc': p.description or '',
+                'hot': bool(p.badge),
+                'badge': p.badge,
+                'lessons_count': p.lessons_count,
+                'allow_trainer': p.allow_trainer,
+                'allow_lessons': p.allow_lessons,
+                'allow_referral': p.allow_referral,
+                'allow_promocode': p.allow_promocode,
+                'features': p.features or [],
+            })
+        return pricing
+    except Exception as e:
+        logger.warning(f"Could not load dynamic pricing from DB: {e}")
+        return None
+
+
 @billing_bp.route('/billing/plans/public')
 def billing_plans_public():
-    """Публичная страница тарифов (без авторизации). Полностью статический шаблон.
-
-    Раньше здесь подгружались TariffGroup/TariffPlan, но шаблон их не использует.
-    Любой запрос к БД при недоступном или медленном Postgres может «висеть» до таймаута
-    прокси и превращаться в 502; отдельный try/except не спасает от блокировки без исключения.
-    """
-    return render_template('billing_plans_public.html')
+    """Публичная страница тарифов (без авторизации). Подгружает динамические цены из БД с fallback."""
+    dynamic_pricing = _build_dynamic_pricing()
+    return render_template('billing_plans_public.html', dynamic_pricing=dynamic_pricing)
 
 
 @billing_bp.route('/billing/plans')
@@ -100,8 +146,17 @@ def billing_plan_toggle(plan_id: int):
     except Exception as e:
         db.session.rollback()
         audit_logger.log_error(action='billing_plan_toggle', entity='TariffPlan', entity_id=plan_id, error=str(e))
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'success': False, 'error': 'Не удалось изменить статус тарифа.'}), 500
         flash('Не удалось изменить статус тарифа.', 'danger')
         return redirect(url_for('billing.billing_plans'))
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({
+            'success': True,
+            'plan_id': plan.plan_id,
+            'is_active': plan.is_active,
+            'message': f'Статус тарифа «{plan.title}» изменён: {"активен" if plan.is_active else "неактивен"}.'
+        })
     flash('Статус тарифа обновлён.', 'success')
     return redirect(url_for('billing.billing_plans'))
 
@@ -170,8 +225,17 @@ def billing_group_toggle(group_id: int):
     except Exception as e:
         db.session.rollback()
         audit_logger.log_error(action='billing_group_toggle', entity='TariffGroup', entity_id=group_id, error=str(e))
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'success': False, 'error': 'Не удалось изменить статус группы.'}), 500
         flash('Не удалось изменить статус группы.', 'danger')
         return redirect(url_for('billing.billing_plans'))
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({
+            'success': True,
+            'group_id': g.group_id,
+            'is_active': g.is_active,
+            'message': f'Статус группы «{g.title}» обновлён.'
+        })
     flash('Статус группы обновлён.', 'success')
     return redirect(url_for('billing.billing_plans'))
 

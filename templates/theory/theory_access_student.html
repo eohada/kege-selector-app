@@ -48,6 +48,155 @@
       </div>
     </header>
 
+    <!-- Мониторинг попыток сдачи итогового теста -->
+    <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-[0_4px_0_#DAE1E9] space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
+        <div>
+          <div class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-indigo-700">
+            <i class="ph-bold ph-graduation-cap"></i>
+            <span>Итоговое тестирование</span>
+          </div>
+          <h2 class="mt-2 text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            История и детали попыток ученика
+          </h2>
+          <p class="text-xs sm:text-sm font-semibold text-slate-500 mt-0.5">
+            Фиксация каждого прохождения: баллы, разбивка по блокам, точные ответы ученика и разбор ошибок.
+          </p>
+        </div>
+
+        {% if test_attempts %}
+          {% set has_passed = test_attempts | selectattr('passed') | list | length > 0 %}
+          {% set max_score = (test_attempts | map(attribute='score') | max) %}
+          <div class="flex items-center gap-3">
+            <div class="px-4 py-2 rounded-xl border-2 {{ 'border-emerald-200 bg-emerald-50 text-emerald-800' if has_passed else 'border-amber-200 bg-amber-50 text-amber-800' }} text-center">
+              <div class="text-[10px] font-black uppercase tracking-wider">{{ 'Зачёт получен' if has_passed else 'Пока не сдан' }}</div>
+              <div class="text-base font-black">Рекорд: {{ max_score }} / 20</div>
+            </div>
+            <div class="px-3.5 py-2 rounded-xl border-2 border-slate-200 bg-slate-50 text-center">
+              <div class="text-[10px] font-black uppercase tracking-wider text-slate-400">Попыток</div>
+              <div class="text-base font-black text-slate-800">{{ test_attempts|length }}</div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      {% if not test_attempts %}
+        <div class="p-6 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/60 text-center text-slate-500">
+          <i class="ph-bold ph-hourglass-simple text-3xl text-slate-400 mb-2 inline-block"></i>
+          <p class="text-sm font-bold text-slate-700">Ученик ещё не проходил итоговое тестирование</p>
+          <p class="text-xs text-slate-400 mt-1">Как только ученик завершит и проверит свой первый вариант, здесь появятся полная статистика и все его ответы.</p>
+        </div>
+      {% else %}
+        <div class="space-y-3">
+          {% for a in test_attempts %}
+            <details class="group rounded-2xl border-2 {{ 'border-emerald-200 bg-emerald-50/20' if a.passed else 'border-slate-200 bg-slate-50/40' }} transition-all" {% if loop.first %}open{% endif %}>
+              <summary class="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 cursor-pointer list-none select-none hover:bg-slate-100/60 rounded-2xl transition">
+                <div class="flex items-center gap-3">
+                  <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl {{ 'bg-emerald-600 text-white' if a.passed else 'bg-slate-700 text-white' }} text-xs font-black shadow-xs">
+                    #{{ a.attempt_number }}
+                  </span>
+                  <div>
+                    <div class="text-sm font-black text-slate-900">
+                      Попытка №{{ a.attempt_number }}
+                      <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-black {{ 'bg-emerald-100 text-emerald-800 border border-emerald-300' if a.passed else 'bg-rose-100 text-rose-800 border border-rose-300' }}">
+                        {{ 'Сдано (Зачёт)' if a.passed else 'Не сдано' }}
+                      </span>
+                    </div>
+                    <div class="text-[11px] font-semibold text-slate-400 mt-0.5">
+                      {{ a.created_at.strftime('%d.%m.%Y в %H:%M') if a.created_at else 'Дата не указана' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                  <div class="text-right">
+                    <div class="text-base font-black {{ 'text-emerald-700' if a.passed else 'text-slate-800' }}">
+                      {{ a.score }} / {{ a.total }}
+                      <span class="text-xs font-bold text-slate-400">({{ ((a.score / a.total) * 100)|round|int }}%)</span>
+                    </div>
+                    <div class="text-[10px] font-bold text-slate-400">Порог: 18 / 20 (90%)</div>
+                  </div>
+                  <i class="ph-bold ph-caret-down text-base text-slate-400 transition-transform group-open:rotate-180"></i>
+                </div>
+              </summary>
+
+              <div class="p-4 sm:p-6 border-t border-slate-200/70 bg-white rounded-b-2xl space-y-5">
+                <!-- Блоки -->
+                {% if a.block_scores %}
+                  <div>
+                    <div class="text-xs font-black uppercase tracking-wider text-slate-400 mb-2.5">Результаты по 4 тематическим блокам:</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {% for b_key in ['1', '2', '3', '4'] %}
+                        {% set b_data = a.block_scores.get(b_key, {}) %}
+                        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/80">
+                          <div class="text-[11px] font-extrabold text-slate-600 truncate">{{ b_data.title or ('Блок ' ~ b_key) }}</div>
+                          <div class="mt-1 flex items-baseline justify-between">
+                            <span class="text-sm font-black text-slate-900">{{ b_data.correct|default(0) }} / {{ b_data.total|default(5) }}</span>
+                            <span class="text-[10px] font-bold text-slate-400">
+                              {% if b_data.total %}{{ ((b_data.correct / b_data.total) * 100)|round|int }}%{% else %}0%{% endif %}
+                            </span>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                <!-- Таблица/детализация по всем 20 заданиям -->
+                {% if a.details %}
+                  <div>
+                    <div class="text-xs font-black uppercase tracking-wider text-slate-400 mb-2.5">Ответы ученика по каждому заданию:</div>
+                    <div class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white text-xs">
+                      {% for det in a.details %}
+                        <div class="p-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-3 {{ 'bg-emerald-50/20' if det.is_correct or det.correct else 'bg-rose-50/20' }}">
+                          <div class="min-w-0 flex-1 space-y-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <span class="inline-flex h-5 w-5 items-center justify-center rounded-md {{ 'bg-emerald-600' if det.is_correct or det.correct else 'bg-rose-600' }} text-[10px] font-black text-white">
+                                {{ loop.index }}
+                              </span>
+                              <span class="font-bold text-slate-900">{{ det.title or det.id }}</span>
+                              <span class="text-slate-400">·</span>
+                              <span class="text-[11px] font-medium text-slate-500">{{ det.topic }}</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 font-mono text-[11.5px]">
+                              <div class="p-2.5 rounded-xl {{ 'bg-emerald-100/60 text-emerald-950 border border-emerald-200' if det.is_correct or det.correct else 'bg-rose-100/60 text-rose-950 border border-rose-200' }}">
+                                <span class="font-sans font-black text-[10px] uppercase tracking-wider text-slate-500 block mb-0.5">Ответ ученика:</span>
+                                <span class="font-semibold">{{ det.user_answer_text or det.user_answer if det.user_answer is not none else '— не отвечено —' }}</span>
+                              </div>
+                              {% if not (det.is_correct or det.correct) and (det.correct_answer_text or det.correct_answer) %}
+                                <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950">
+                                  <span class="font-sans font-black text-[10px] uppercase tracking-wider text-emerald-700 block mb-0.5">Правильный ответ:</span>
+                                  <span class="font-semibold">{{ det.correct_answer_text or det.correct_answer }}</span>
+                                </div>
+                              {% endif %}
+                            </div>
+                            {% if det.explanation %}
+                              <div class="text-[11px] text-slate-500 pt-1 font-sans">
+                                <span class="font-bold text-slate-700">Разбор:</span> {{ det.explanation|safe }}
+                              </div>
+                            {% endif %}
+                          </div>
+                          <div class="shrink-0 self-start">
+                            <span class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-black {{ 'bg-emerald-100 text-emerald-800' if det.is_correct or det.correct else 'bg-rose-100 text-rose-800' }}">
+                              {% if det.is_correct or det.correct %}
+                                <i class="ph-bold ph-check"></i> +1 балл
+                              {% else %}
+                                <i class="ph-bold ph-x"></i> 0 баллов
+                              {% endif %}
+                            </span>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+            </details>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
+
     <form method="post" id="access-form" action="{{ url_for('theory.manage_access_student', student_id=student.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=student.student_id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% if course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}

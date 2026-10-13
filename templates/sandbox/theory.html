@@ -1,6 +1,7 @@
 {% extends "sandbox/layout_teacher.html" if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() else "sandbox/layout_student.html" %}
 
 {% block sandbox_content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
 <style>
   .styled-scrollbar::-webkit-scrollbar {
     height: 6px;
@@ -20,6 +21,421 @@
     scrollbar-width: thin;
     scrollbar-color: #CBD5E1 #F1F5F9;
   }
+  .final-test-task pre,
+  .final-test-review-item pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .final-test-task pre,
+  .final-test-task code,
+  .final-test-review-item pre,
+  .final-test-review-item code {
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Consolas', monospace;
+  }
+  .final-test-task pre,
+  .final-test-review-item pre {
+    margin: .75rem 0;
+    border: 1px solid rgba(165, 180, 252, .22);
+    border-radius: .8rem;
+    background: rgba(2, 6, 23, .62);
+    padding: .8rem .9rem;
+    color: #d1fae5;
+    font-size: .74rem;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .final-test-task :not(pre) > code,
+  .final-test-review-item :not(pre) > code {
+    border: 1px solid rgba(165, 180, 252, .25);
+    border-radius: .35rem;
+    background: rgba(2, 6, 23, .5);
+    padding: .12rem .3rem;
+    color: #c4b5fd;
+    font-size: .78rem;
+  }
+  .final-test-task .py-token-keyword,
+  .final-test-review-item .py-token-keyword { color: #c4b5fd; font-weight: 800; }
+  .final-test-task .py-token-builtin,
+  .final-test-review-item .py-token-builtin { color: #67e8f9; }
+  .final-test-task .py-token-string,
+  .final-test-review-item .py-token-string { color: #86efac; }
+  .final-test-task .py-token-number,
+  .final-test-review-item .py-token-number { color: #fcd34d; }
+  .final-test-task .py-token-comment,
+  .final-test-review-item .py-token-comment { color: #94a3b8; font-style: italic; }
+  .final-test-task .py-token-function,
+  .final-test-review-item .py-token-function { color: #f9a8d4; }
+  .final-test-task .py-token-operator,
+  .final-test-review-item .py-token-operator { color: #f0abfc; }
+  .final-test-task textarea {
+    min-height: 2.75rem;
+    resize: vertical;
+  }
+  .final-test-task.is-correct {
+    border-color: rgba(52, 211, 153, .75);
+    background: rgba(6, 78, 59, .3);
+  }
+  .final-test-task.is-wrong {
+    border-color: rgba(251, 113, 133, .75);
+    background: rgba(127, 29, 29, .24);
+  }
+  #python-final-test.final-test-passed {
+    border-color: rgba(52, 211, 153, .9);
+    background:
+      radial-gradient(circle at 88% 12%, rgba(110, 231, 183, .24), transparent 32%),
+      linear-gradient(135deg, #052e2b 0%, #064e3b 52%, #115e59 100%);
+    box-shadow: 0 5px 0 #047857, inset 0 0 0 1px rgba(167, 243, 208, .12);
+  }
+  #python-final-test.final-test-passed #python-final-test-review {
+    border-color: rgba(167, 243, 208, .5);
+    background: rgba(6, 78, 59, .28);
+  }
+  #python-final-test.final-test-passed #python-final-test-status {
+    border-color: rgba(110, 231, 183, .45);
+    background: rgba(6, 78, 59, .35);
+    color: #d1fae5;
+  }
+  #python-final-test.final-test-passed .final-test-grid > div {
+    border-color: rgba(167, 243, 208, .2);
+    background: rgba(255, 255, 255, .1);
+  }
+  #python-final-test.final-test-passed .final-test-intro-complete,
+  #python-final-test.final-test-passed #python-final-test-results > div:first-child {
+    display: none;
+  }
+  .final-test-review-dot {
+    display: inline-flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: .65rem;
+    font-size: .7rem;
+    font-weight: 900;
+  }
+  .final-test-review-dot.correct { background: rgba(52, 211, 153, .2); color: #6ee7b7; border: 1px solid rgba(52, 211, 153, .45); }
+  .final-test-review-dot.wrong { background: rgba(251, 113, 133, .2); color: #fda4af; border: 1px solid rgba(251, 113, 133, .45); }
+  .final-test-review-item {
+    border: 1px solid rgba(165, 180, 252, .22);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, .06);
+    padding: .9rem 1rem;
+  }
+  .final-test-review-item.correct { border-color: rgba(52, 211, 153, .55); }
+  .final-test-review-item.wrong { border-color: rgba(251, 113, 133, .55); }
+  .final-test-review-item pre { margin-top: .65rem; }
+  #python-final-test-review.final-test-review-success {
+    border-color: rgba(52, 211, 153, .65);
+    background: linear-gradient(135deg, rgba(6, 78, 59, .42), rgba(15, 23, 42, .42));
+    box-shadow: inset 0 0 0 1px rgba(110, 231, 183, .08);
+  }
+
+  /* Финишная проверка (Итоговый тест по программированию) */
+  #python-final-test.final-test-shell {
+    position: relative;
+    border-radius: 1.5rem !important;
+    padding: 1.25rem 1.75rem !important;
+    border: 2px solid #e0e7ff !important;
+    background:
+      radial-gradient(circle at 92% 15%, rgba(199, 210, 254, 0.4), transparent 45%),
+      linear-gradient(135deg, #ffffff 0%, #fbfbfe 50%, #f5f3ff 100%) !important;
+    box-shadow: 0 4px 0 #c7d2fe, 0 10px 24px rgba(79, 70, 229, 0.06) !important;
+    color: #1e293b;
+    overflow: hidden;
+  }
+  .final-test-header-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+  @media (max-width: 960px) {
+    .final-test-header-wrap {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1.25rem;
+    }
+  }
+  .final-test-info {
+    flex: 1 1 500px;
+    min-width: 0;
+  }
+  .final-test-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #4f46e5;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    line-height: 1.4;
+  }
+  .final-test-title {
+    font: 900 1.4rem/1.25 'Golos Text', var(--bs-font-family);
+    color: #0f172a !important;
+    letter-spacing: -0.02em;
+    margin: 0.4rem 0 0.25rem 0;
+  }
+  .final-test-desc {
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1.45;
+    color: #475569 !important;
+    max-width: 680px;
+    margin: 0;
+  }
+  .final-test-pills {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .final-test-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    font-size: 11.5px;
+    line-height: 1;
+  }
+  .final-test-pill i {
+    color: #6366f1;
+    font-size: 14px;
+  }
+  .final-test-pill .pill-label {
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .final-test-pill .pill-val {
+    font-weight: 800;
+    color: #1e293b;
+  }
+  .final-test-status-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-shrink: 0;
+    width: 250px;
+  }
+  @media (max-width: 960px) {
+    .final-test-status-column {
+      width: 100%;
+      align-items: stretch;
+    }
+  }
+  #python-final-test-start {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px 18px;
+    border-radius: 14px;
+    background: #ffffff;
+    border: 2px solid #818cf8;
+    border-bottom: 4px solid #6366f1;
+    box-shadow: 0 2px 0 #6366f1, 0 6px 14px rgba(99, 102, 241, 0.12);
+    font: 800 13px/1 'Golos Text', var(--bs-font-family);
+    color: #312e81;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  #python-final-test-start:hover {
+    background: #f5f3ff;
+    border-color: #6366f1;
+    color: #1e1b4b;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 0 #4f46e5, 0 8px 18px rgba(99, 102, 241, 0.18);
+  }
+  #python-final-test-start:active {
+    transform: translateY(2px);
+    border-bottom-width: 2px;
+    box-shadow: none;
+  }
+  #python-final-test-start .btn-icon {
+    font-size: 18px;
+    color: #4f46e5;
+  }
+  #python-final-test-start .btn-arrow {
+    font-size: 14px;
+    color: #818cf8;
+    margin-left: auto;
+    transition: transform 0.15s ease;
+  }
+  #python-final-test-start:hover .btn-arrow {
+    transform: translateX(3px);
+    color: #4f46e5;
+  }
+  .final-test-note {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #64748b;
+    text-align: center;
+    margin: 0;
+    line-height: 1.25;
+  }
+  .final-test-preview-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 9px 14px;
+    border-radius: 12px;
+    background: #ffffff !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-bottom: 3px solid #94a3b8 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    font: 800 12px/1 'Golos Text', var(--bs-font-family);
+    color: #334155 !important;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    margin-top: 4px;
+  }
+  .final-test-preview-btn:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+  .final-test-preview-btn:active {
+    transform: translateY(1px);
+    border-bottom-width: 1.5px !important;
+    box-shadow: none;
+  }
+  .final-test-preview-btn i {
+    font-size: 15px;
+    color: #6366f1;
+  }
+  .final-test-locked-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1.5px dashed #cbd5e1;
+    width: 100%;
+  }
+  .final-test-locked-card i {
+    font-size: 22px;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .final-test-locked-card strong {
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    color: #334155;
+  }
+  .final-test-locked-card small {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #64748b;
+    margin-top: 1px;
+  }
+
+  #python-final-test h2,
+  #python-final-test h3,
+  #python-final-test .text-white { color: #172554 !important; }
+  #python-final-test .text-indigo-100,
+  #python-final-test .text-indigo-200,
+  #python-final-test .text-indigo-50\/90 { color: #52607a !important; }
+  #python-final-test [class*="bg-white/"],
+  #python-final-test [class*="bg-black/"] { background: rgba(255, 255, 255, .78) !important; }
+  #python-final-test [class*="border-white/"] { border-color: #dfe4f2 !important; }
+  #python-final-test .final-test-task pre,
+  #python-final-test .final-test-review-item pre,
+  #python-final-test .matching-code-block {
+    background: #0b1021 !important;
+    border: 1px solid #1e293b !important;
+    color: #f8fafc !important;
+    border-radius: 0.75rem !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    font-size: 0.825rem !important;
+    line-height: 1.5 !important;
+    overflow-x: auto !important;
+    tab-size: 4 !important;
+  }
+  #python-final-test .matching-code-block {
+    margin: 0 !important;
+    padding: 0.6rem 0.85rem !important;
+    font-size: 0.8rem !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+  }
+  #python-final-test .final-test-task :not(pre) > code,
+  #python-final-test .final-test-review-item :not(pre) > code { background: #f1efff !important; border-color: #ddd6fe !important; color: #4338ca !important; }
+  /* Prism syntax token highlighting */
+  #python-final-test .token.comment, #python-final-test .token.prolog, #python-final-test .token.doctype, #python-final-test .token.cdata {
+    color: #94a3b8 !important;
+    font-style: italic !important;
+  }
+  #python-final-test .token.punctuation { color: #94a3b8 !important; }
+  #python-final-test .token.property, #python-final-test .token.tag, #python-final-test .token.boolean, #python-final-test .token.number, #python-final-test .token.constant, #python-final-test .token.symbol, #python-final-test .token.deleted {
+    color: #f59e0b !important;
+    font-weight: 700 !important;
+  }
+  #python-final-test .token.selector, #python-final-test .token.attr-name, #python-final-test .token.string, #python-final-test .token.char, #python-final-test .token.builtin, #python-final-test .token.inserted {
+    color: #34d399 !important;
+  }
+  #python-final-test .token.operator, #python-final-test .token.entity, #python-final-test .token.url, #python-final-test .token.variable {
+    color: #38bdf8 !important;
+  }
+  #python-final-test .token.atrule, #python-final-test .token.attr-value, #python-final-test .token.keyword {
+    color: #c084fc !important;
+    font-weight: 800 !important;
+  }
+  #python-final-test .token.function, #python-final-test .token.class-name {
+    color: #60a5fa !important;
+    font-weight: 700 !important;
+  }
+  #python-final-test .token.regex, #python-final-test .token.important { color: #f43f5e !important; }
+  #python-final-test .final-test-task.is-correct { background: #ecfdf5; border-color: #a7f3d0; }
+  #python-final-test .final-test-task.is-wrong { background: #fff1f2; border-color: #fecdd3; }
+  #python-final-test select { background: #ffffff !important; color: #1e293b !important; border-color: #cbd5e1 !important; }
+  #python-final-test input[type="text"] { background: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+  #python-final-test .final-test-option-label { background: #ffffff !important; color: #1e293b !important; border-color: #e2e8f0 !important; }
+  #python-final-test .final-test-option-label:hover { background: #f8fafc !important; border-color: #cbd5e1 !important; }
+  #python-final-test .final-test-review-item { background: #ffffff; border-color: #dfe4f2; }
+  #python-final-test .final-test-review-item.correct { border-color: #a7f3d0; }
+  #python-final-test .final-test-review-item.wrong { border-color: #fecdd3; }
+  #python-final-test.final-test-passed {
+    background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 56%, #eefcf8 100%) !important;
+    border-color: #a7f3d0 !important;
+    box-shadow: 0 4px 0 #a7f3d0, 0 10px 24px rgba(16, 185, 129, .08) !important;
+  }
+  #python-final-test.final-test-passed #python-final-test-review { background: #f0fdf4; border-color: #a7f3d0; }
+  .final-test-completion {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    border: 1px solid rgba(110, 231, 183, .35);
+    border-radius: 1rem;
+    background: rgba(52, 211, 153, .14);
+    padding: .8rem 1rem;
+  }
 </style>
 
 <main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
@@ -30,7 +446,7 @@
     <div class="flex items-center gap-2 overflow-x-auto pb-2 styled-scrollbar">
       {% for c in available_courses %}
         <a href="{{ url_for('theory.theory_index', course_id=c.id) }}"
-           class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black transition no-underline {{ 'bg-indigo-600 text-white shadow-sm border-b-2 border-indigo-800' if c.id == course_id else 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50' }}">
+           class="bs-theory-course-tab whitespace-nowrap px-4 py-2 rounded-xl text-xs font-black transition no-underline {{ 'is-active' if c.id == course_id else '' }}">
           {{ c.title }}
         </a>
       {% endfor %}
@@ -55,17 +471,19 @@
         <div class="flex flex-col items-start lg:items-end gap-3 shrink-0">
           {% if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() %}
           <div class="flex items-center gap-2 flex-wrap">
-            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) }}"
-               class="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-indigo-200 bg-indigo-50/80 px-4 py-2.5 text-xs font-black text-indigo-700 shadow-[0_3px_0_#C7D2FE] transition hover:bg-indigo-100 active:translate-y-0.5 active:shadow-none no-underline">
-              <i class="ph-bold ph-lock-key"></i>
-              <span>Права доступа</span>
+            <a href="{{ url_for('theory.manage_list', course_id=course_id, tab='students') }}"
+               class="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-[0_3px_0_#DAE1E9] transition hover:bg-slate-50 active:translate-y-0.5 active:shadow-none no-underline">
+              <i class="ph-bold ph-users-three text-indigo-600"></i>
+              <span>Ученики и доступы</span>
             </a>
             <a href="{{ url_for('theory.manage_list', course_id=course_id) }}"
-               class="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-[0_3px_0_#DAE1E9] transition hover:bg-slate-50 active:translate-y-0.5 active:shadow-none no-underline">
-              <i class="ph-bold ph-sliders-horizontal"></i>
-              <span>Управлять материалами</span>
+               class="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-indigo-700 bg-indigo-600 px-4 py-2.5 text-xs font-black text-white shadow-[0_3px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-0.5 active:shadow-none no-underline">
+              <i class="ph-bold ph-gauge"></i>
+              <span>Пульт управления теорией</span>
             </a>
           </div>
+          {% elif python_final_test_passed %}
+          <div class="hidden" aria-hidden="true"></div>
           {% else %}
           <a href="{{ url_for('main.dashboard') }}"
              class="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-[0_3px_0_#DAE1E9] transition hover:bg-slate-50 active:translate-y-0.5 active:shadow-none no-underline">
@@ -140,17 +558,110 @@
     {% if visible_groups and visible_groups|length > 1 %}
     <div class="flex items-center gap-2 overflow-x-auto pb-2 pt-1 styled-scrollbar" id="theory-module-tabs">
       <button type="button" onclick="filterTheoryGroup('all')" id="tab-btn-all"
-              class="module-tab-btn whitespace-nowrap rounded-xl border-b-2 border-indigo-800 bg-indigo-600 px-4 py-2 text-xs font-black text-white transition shadow-sm">
+              class="module-tab-btn bs-theory-module-tab is-active whitespace-nowrap rounded-xl border-b-2 border-indigo-800 bg-indigo-600 px-4 py-2 text-xs font-black text-white transition shadow-sm">
         Все разделы ({{ total_blocks }})
       </button>
       {% for pack in visible_groups %}
       <button type="button" onclick="filterTheoryGroup('group-{{ pack.group.id }}')" id="tab-btn-group-{{ pack.group.id }}"
-              class="module-tab-btn whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50">
+              class="module-tab-btn bs-theory-module-tab whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50">
         {{ pack.group.name }} ({{ pack.blocks|length }})
       </button>
       {% endfor %}
     </div>
     {% endif %}
+
+    <!-- Итоговый тест по программированию -->
+    <section class="final-test-shell {{ 'final-test-passed' if python_final_test_passed else '' }}" id="python-final-test">
+      <div class="relative z-10 final-test-header-wrap">
+        <div class="final-test-info {{ 'final-test-intro-complete' if python_final_test_passed else '' }}">
+          <div class="final-test-badge">
+            <i class="ph-bold ph-terminal-window"></i> ФИНИШНАЯ ПРОВЕРКА
+          </div>
+          <h2 class="final-test-title">Итоговый тест по программированию</h2>
+          <p class="final-test-desc">
+            Проверь весь блок целиком: алгоритмы, строки, списки, функции, файлы и типовые конструкции Python в одном случайном варианте.
+          </p>
+          <div class="final-test-pills">
+            <div class="final-test-pill">
+              <i class="ph-bold ph-list-numbers"></i>
+              <span class="pill-label">Вариант:</span>
+              <strong class="pill-val">20 заданий</strong>
+            </div>
+            <div class="final-test-pill">
+              <i class="ph-bold ph-lock-key"></i>
+              <span class="pill-label">Контрольная:</span>
+              <strong class="pill-val">Вариант закреплён</strong>
+            </div>
+            <a href="{{ url_for('theory.theory_bank_preview', course_id=course_id) }}" class="final-test-pill hover:bg-white/20 transition cursor-pointer" target="_blank" title="Посмотреть все 200 заданий банка с ответами">
+              <i class="ph-bold ph-eye"></i>
+              <span class="pill-label">Банк:</span>
+              <strong id="python-final-test-bank-count" class="pill-val text-amber-200">200 заданий ↗</strong>
+            </a>
+          </div>
+        </div>
+
+        <div class="final-test-status-column">
+          {% if programming_progress >= 100 and not python_final_test_passed %}
+          <button type="button" id="python-final-test-start">
+            <i class="ph-bold ph-play-circle btn-icon"></i>
+            <span>Собрать мой вариант</span>
+            <i class="ph-bold ph-arrow-right btn-arrow"></i>
+          </button>
+          <p class="final-test-note">После запуска вариант изменять нельзя</p>
+          {% elif python_final_test_passed %}
+          <div class="hidden" aria-hidden="true"></div>
+          {% else %}
+          <div class="final-test-locked-card">
+            <i class="ph-bold ph-lock-key"></i>
+            <div>
+              <strong>Тест пока закрыт</strong>
+              <small>Сначала прочитай блок. Прогресс: {{ programming_progress }}% из 100%</small>
+            </div>
+          </div>
+          {% endif %}
+
+          <a href="{{ url_for('theory.theory_bank_preview', course_id=course_id) }}" class="final-test-preview-btn" target="_blank" title="Открыть банк всех 200 заданий с ответами и пояснениями">
+            <i class="ph-bold ph-eye"></i>
+            <span>Банк заданий (200)</span>
+            <i class="ph-bold ph-arrow-square-out text-slate-400 ml-auto"></i>
+          </a>
+        </div>
+      </div>
+
+      <div id="python-final-test-status" class="relative z-10 mt-5 rounded-2xl border border-white/15 bg-black/15 px-4 py-3 text-xs font-bold text-indigo-100 {{ '' if python_final_test_passed else 'hidden' }}" role="status" aria-live="polite">{% if python_final_test_passed %}<i class="ph-fill ph-seal-check mr-1 text-emerald-300"></i> Итоговый тест уже пройден. Новый вариант недоступен.{% endif %}</div>
+
+      <div id="python-final-test-results" class="relative z-10 mt-5 {{ '' if python_final_test_passed else 'hidden' }} border-t border-white/15 pt-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div class="text-[10px] font-black uppercase tracking-[.16em] text-indigo-200/70">Закреплённый вариант</div>
+            <h3 class="mt-1 text-lg font-black text-white"><span id="python-final-test-count">20</span> заданий для итоговой проверки</h3>
+          </div>
+        </div>
+        <div id="python-final-test-list" class="mt-4 grid gap-3"></div>
+        <div id="python-final-test-review" class="mt-5 {{ 'final-test-review-success' if python_final_test_passed else 'hidden' }} rounded-2xl border border-white/15 bg-black/15 p-4">
+          <div id="python-final-test-completion" class="final-test-completion {{ '' if python_final_test_passed else 'hidden' }}">
+            <i class="ph-fill ph-seal-check text-3xl text-emerald-300"></i>
+            <div>
+              <div class="text-sm font-black text-emerald-100">Блок программирования завершён</div>
+              <div class="mt-0.5 text-[11px] font-semibold text-emerald-200/80">Итоговый тест пройден. Повторная попытка недоступна.</div>
+            </div>
+          </div>
+          <div class="text-[10px] font-black uppercase tracking-[.16em] text-indigo-200/70 {{ 'hidden' if python_final_test_passed else '' }}">Разбор результата</div>
+          <p id="python-final-test-review-message" class="mt-1 text-sm font-black text-white">{% if python_final_test_passed %}Результат уже закреплён: {{ python_final_test_score }} из 20.{% endif %}</p>
+          <div id="python-final-test-indicators" class="mt-3 flex flex-wrap gap-2"></div>
+          <div id="python-final-test-review-list" class="mt-4 grid gap-2.5"></div>
+          <button type="button" id="python-final-test-retry" class="mt-4 hidden inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-indigo-300 border-b-4 bg-white px-5 py-3 text-xs font-black text-indigo-900 shadow-[0_4px_0_#a5b4fc] transition hover:bg-indigo-50 active:translate-y-1 active:shadow-none">
+            <i class="ph-bold ph-arrow-clockwise"></i> Получить новый вариант
+          </button>
+        </div>
+        <div class="mt-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <button type="button" id="python-final-test-submit" class="{{ 'hidden' if python_final_test_passed else '' }} inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-300 border-b-4 bg-emerald-500 px-5 py-3 text-xs font-black text-white shadow-[0_4px_0_#047857] transition hover:bg-emerald-400 active:translate-y-1 active:shadow-none">
+            <i class="ph-bold ph-check-circle text-base"></i> Проверить ответы
+          </button>
+          <div id="python-final-test-score" class="hidden rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-xs font-black text-white" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
 
     <!-- 3. Двухколоночный макет: Темы (слева) + Сайдбар (справа) -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
@@ -160,17 +671,19 @@
         {% if visible_groups %}
           {% set topic_counter = namespace(count=0) %}
           {% for pack in visible_groups %}
-            <div class="theory-group-section space-y-3" id="section-group-{{ pack.group.id }}" data-group-id="group-{{ pack.group.id }}">
+            <div class="theory-group-section space-y-3" id="section-group-{{ pack.group.id }}" data-group-id="group-{{ pack.group.id }}" data-group-open="false">
               
               <!-- Заголовок модуля / группы -->
-              <div class="flex items-center justify-between px-1 pt-2">
+              <button type="button" class="theory-group-toggle w-full flex items-center justify-between gap-3 rounded-2xl border-2 border-slate-200/80 bg-white px-4 py-3 text-left shadow-[0_3px_0_#DAE1E9] transition hover:border-indigo-200 hover:bg-indigo-50/30" aria-expanded="false" aria-controls="theory-group-body-{{ pack.group.id }}" onclick="toggleTheoryGroup('section-group-{{ pack.group.id }}')">
                 <div class="flex items-center gap-2">
                   <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
                   <h2 class="text-base sm:text-lg font-black text-slate-900 tracking-tight">{{ pack.group.name }}</h2>
                   <span class="text-xs font-bold text-slate-400">({{ pack.blocks|length }} тем)</span>
                 </div>
-              </div>
+                <span class="theory-group-caret flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400"><i class="ph-bold ph-caret-down"></i></span>
+              </button>
 
+              <div id="theory-group-body-{{ pack.group.id }}" class="theory-group-body hidden space-y-3">
               {% for block in pack.blocks %}
                 {% set topic_counter.count = topic_counter.count + 1 %}
                 {% set item_state = state_by_number.get(block.task_number, {}) %}
@@ -184,6 +697,7 @@
 
                   <!-- Заголовок темы (клик переключает аккордеон) -->
                   <button type="button"
+                          data-demo-target="theory-material"
                           class="theory-accordion-toggle w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left bg-white hover:bg-slate-50/70 transition cursor-pointer select-none"
                           onclick="toggleTheoryTopic('topic-card-{{ block.id }}')">
                     <div class="flex items-center gap-3.5 min-w-0 flex-1">
@@ -321,6 +835,7 @@
                   </div>
                 </div>
               {% endfor %}
+              </div>
             </div>
           {% endfor %}
         {% else %}
@@ -449,7 +964,23 @@
   </div>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
 <script>
+function toggleTheoryGroup(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (!section) return;
+  const body = section.querySelector('.theory-group-body');
+  const toggle = section.querySelector('.theory-group-toggle');
+  const caret = section.querySelector('.theory-group-caret i');
+  const isOpen = section.getAttribute('data-group-open') === 'true';
+  section.setAttribute('data-group-open', String(!isOpen));
+  body?.classList.toggle('hidden', isOpen);
+  toggle?.setAttribute('aria-expanded', String(!isOpen));
+  caret?.classList.toggle('rotate-180', !isOpen);
+}
+
 function toggleTheoryTopic(cardId) {
   const card = document.getElementById(cardId);
   if (!card) return;
@@ -480,11 +1011,11 @@ function toggleTheoryTopic(cardId) {
 function filterTheoryGroup(groupId) {
   const buttons = document.querySelectorAll('.module-tab-btn');
   buttons.forEach(btn => {
-    btn.className = 'module-tab-btn whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50';
+    btn.className = 'module-tab-btn bs-theory-module-tab whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50';
   });
   const activeBtn = document.getElementById('tab-btn-' + groupId);
   if (activeBtn) {
-    activeBtn.className = 'module-tab-btn whitespace-nowrap rounded-xl border-b-2 border-indigo-800 bg-indigo-600 px-4 py-2 text-xs font-black text-white transition shadow-sm';
+    activeBtn.className = 'module-tab-btn bs-theory-module-tab is-active whitespace-nowrap rounded-xl border-b-2 border-indigo-800 bg-indigo-600 px-4 py-2 text-xs font-black text-white transition shadow-sm';
   }
 
   const sections = document.querySelectorAll('.theory-group-section');
@@ -496,5 +1027,382 @@ function filterTheoryGroup(groupId) {
     }
   });
 }
+
+function escapeFinalTestText(value) {
+  const div = document.createElement('div');
+  div.textContent = value == null ? '' : String(value);
+  return div.innerHTML;
+}
+
+function finalTestLevelLabel(level) {
+  const labels = {
+    'базовый': 'База',
+    'егэ-практика': 'ЕГЭ-практика',
+  };
+  return labels[level] || level || 'Практика';
+}
+
+function pythonTaskAnnotation(topic) {
+  const value = String(topic || '').toLowerCase();
+  if (value.includes('перем') || value.includes('тип')) return 'типы данных, преобразования и базовый вывод';
+  if (value.includes('арифмет')) return 'приоритет операций, целочисленная арифметика и логика';
+  if (value.includes('ввод') || value.includes('вывод')) return 'чтение данных и точный формат результата';
+  if (value.includes('услов')) return 'ветвления и составные логические условия';
+  if (value.includes('цикл')) return 'повторение действий, счётчики и накопители';
+  if (value.includes('строк')) return 'индексация, поиск, срезы и обработка текста';
+  if (value.includes('списк') || value.includes('срез')) return 'изменяемые последовательности и операции со списками';
+  if (value.includes('матриц')) return 'вложенные циклы и обработка двумерных данных';
+  if (value.includes('словар') || value.includes('множ')) return 'коллекции, подсчёт частот и уникальные значения';
+  if (value.includes('функц')) return 'параметры, возвращаемые значения и декомпозиция программы';
+  if (value.includes('рекурс')) return 'базовый случай и переход к следующему уровню рекурсии';
+  if (value.includes('файл')) return 'чтение набора данных и обработка строк файла';
+  if (value.includes('сортиров') || value.includes('поиск')) return 'сортировка, ключи и эффективный поиск';
+  if (value.includes('исключ')) return 'обработка ошибок выполнения и порядок исполнения';
+  if (value.includes('перебор') || value.includes('делител')) return 'полный перебор кандидатов и проверка ограничений';
+  if (value.includes('систем') || value.includes('логик')) return 'представление чисел и логические выражения';
+  if (value.includes('оптим') || value.includes('жадн')) return 'выбор эффективного алгоритма и оценка результата';
+  if (value.includes('симуляц')) return 'пошаговое моделирование состояния объекта';
+  if (value.includes('комплекс')) return 'сочетание нескольких конструкций Python в одной задаче';
+  return 'практическое применение Python в задачах ЕГЭ';
+}
+
+function formatPythonCode(value) {
+  return String(value || '')
+    .replace(/\\r?\\n/g, '\n')
+    .replace(/;\s*/g, ';\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function highlightPythonCode(value) {
+  const tokenPattern = /(#[^\n]*|'''[\s\S]*?'''|"""[\s\S]*?"""|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|\b(?:False|None|True|and|as|assert|break|class|continue|def|elif|else|for|from|if|import|in|is|lambda|not|or|pass|raise|return|try|while|with|yield)\b|\b(?:bool|dict|float|input|int|len|list|max|min|open|print|range|set|sorted|str|sum|tuple|type)\b|\b\d+(?:\.\d+)?\b|\b[A-Za-z_]\w*(?=\s*\()|==|!=|<=|>=|\/\/|\*\*|[+*\/%<>=-])/g;
+  let output = '';
+  let cursor = 0;
+  let match;
+  while ((match = tokenPattern.exec(String(value || ''))) !== null) {
+    output += escapeFinalTestText(String(value || '').slice(cursor, match.index));
+    const token = match[0];
+    let type = 'operator';
+    if (token.startsWith('#')) type = 'comment';
+    else if (/^(?:'''|"""|'|")/.test(token)) type = 'string';
+    else if (/^\d/.test(token)) type = 'number';
+    else if (/^(?:False|None|True|and|as|assert|break|class|continue|def|elif|else|for|from|if|import|in|is|lambda|not|or|pass|raise|return|try|while|with|yield)$/.test(token)) type = 'keyword';
+    else if (/^(?:bool|dict|float|input|int|len|list|max|min|open|print|range|set|sorted|str|sum|tuple|type)$/.test(token)) type = 'builtin';
+    else if (/^[A-Za-z_]/.test(token)) type = 'function';
+    output += `<span class="py-token-${type}">${escapeFinalTestText(token)}</span>`;
+    cursor = match.index + token.length;
+  }
+  return output + escapeFinalTestText(String(value || '').slice(cursor));
+}
+
+function formatFinalTestCode(list) {
+  if (!list) return;
+  list.querySelectorAll('pre').forEach((pre) => {
+    let code = pre.querySelector('code');
+    if (!code) {
+      code = document.createElement('code');
+      code.innerHTML = pre.innerHTML;
+      pre.innerHTML = '';
+      pre.appendChild(code);
+    }
+    if (!code.classList.contains('language-python')) {
+      code.classList.add('language-python');
+    }
+    if (window.Prism && typeof window.Prism.highlightElement === 'function') {
+      try {
+        window.Prism.highlightElement(code);
+      } catch (e) {}
+    } else {
+      code.innerHTML = highlightPythonCode(formatPythonCode(code.textContent));
+    }
+  });
+}
+
+let pythonFinalTestTasks = [];
+
+function renderPythonFinalTest(tasks) {
+  const list = document.getElementById('python-final-test-list');
+  const count = document.getElementById('python-final-test-count');
+  if (!list) return;
+  pythonFinalTestTasks = tasks;
+  if (count) count.textContent = tasks.length;
+  list.innerHTML = tasks.map((task, index) => {
+    const isSingleChoice = task.type === 'single_choice';
+    const isMatching = task.type === 'matching';
+
+    let interactionHtml = '';
+    if (isSingleChoice && task.options && task.options.length) {
+      interactionHtml = `
+        <div class="mt-4 pt-3 border-t border-white/10">
+          <label class="block text-[11px] font-black uppercase tracking-wider text-indigo-200/80 mb-2">Выбери вариант ответа:</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" role="radiogroup">
+            ${task.options.map(opt => `
+              <label class="final-test-option-label flex items-center gap-2.5 rounded-xl border border-white/15 bg-white/[.06] p-2.5 text-xs font-bold text-white hover:bg-white/10 cursor-pointer transition">
+                <input type="radio" name="task_${escapeFinalTestText(task.id)}" value="${escapeFinalTestText(opt.id)}" class="h-4 w-4 text-indigo-400 focus:ring-0">
+                <span class="inline-flex h-5 w-5 items-center justify-center rounded-md bg-white/15 text-[10px] font-black text-indigo-100">${escapeFinalTestText(opt.id)}</span>
+                <span class="flex-1">${escapeFinalTestText(opt.text)}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } else if (isMatching && task.matching_left && task.matching_right) {
+      interactionHtml = `
+        <div class="mt-4 pt-3 border-t border-white/10">
+          <label class="block text-[11px] font-black uppercase tracking-wider text-indigo-200/80 mb-2">Сопоставь пары (выбери букву для каждого пункта):</label>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+            <div class="rounded-xl border border-white/15 bg-white/[.05] p-3 text-xs">
+              <div class="text-[10px] font-black uppercase tracking-wider text-indigo-200/70 mb-2 flex items-center justify-between">
+                <span>Элементы (1, 2, 3, 4)</span>
+                <span class="text-[10px] font-bold text-indigo-200/50">Код программы</span>
+              </div>
+              <div class="space-y-2.5">
+                ${task.matching_left.map(left => `
+                  <div class="rounded-xl border border-white/10 bg-slate-950/40 p-2.5 flex items-start gap-2.5 shadow-xs">
+                    <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white font-black text-xs shadow-xs mt-0.5">${escapeFinalTestText(left.id)}</span>
+                    <div class="flex-1 min-w-0">
+                      <pre class="matching-code-block"><code class="language-python">${escapeFinalTestText(left.text)}</code></pre>
+                    </div>
+                    <select data-matching-task="${escapeFinalTestText(task.id)}" data-matching-key="${escapeFinalTestText(left.id)}" class="rounded-lg border border-white/20 bg-slate-900 px-2.5 py-1.5 text-xs font-black text-white focus:border-indigo-400 shrink-0 self-center">
+                      <option value="">—</option>
+                      <option value="A">А</option>
+                      <option value="B">Б</option>
+                      <option value="C">В</option>
+                      <option value="D">Г</option>
+                    </select>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <div class="rounded-xl border border-white/15 bg-white/[.05] p-3 text-xs">
+              <div class="text-[10px] font-black uppercase tracking-wider text-indigo-200/70 mb-2 flex items-center justify-between">
+                <span>Варианты (А, Б, В, Г)</span>
+                <span class="text-[10px] font-bold text-indigo-200/50">Результат / вывод</span>
+              </div>
+              <div class="space-y-2.5 text-indigo-100/90 font-medium">
+                ${task.matching_right.map(right => `
+                  <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3 flex items-center gap-2.5 min-h-[46px] shadow-xs">
+                    <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-purple-600 text-white font-black text-xs shadow-xs">${escapeFinalTestText(right.id)}</span>
+                    <div class="flex-1 text-xs font-bold text-white/90 leading-snug">${escapeFinalTestText(right.text)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      interactionHtml = `
+        <div class="mt-4 pt-3 border-t border-white/10">
+          <label class="block text-[11px] font-black uppercase tracking-wider text-indigo-200/80 mb-2" for="python-answer-${escapeFinalTestText(task.id)}">Твой точный ответ</label>
+          <input type="text" id="python-answer-${escapeFinalTestText(task.id)}" data-python-task-id="${escapeFinalTestText(task.id)}" class="w-full rounded-xl border border-white/20 bg-slate-950/40 px-3 py-2.5 text-sm font-semibold text-white outline-none placeholder:text-indigo-200/40 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-300/20" placeholder="Введи число или строку…" spellcheck="false" autocomplete="off">
+        </div>
+      `;
+    }
+
+    let typeBadge = '';
+    if (isSingleChoice) {
+      typeBadge = '<span class="rounded-full border border-blue-400/30 bg-blue-400/20 px-2.5 py-1 text-[10px] font-black text-blue-200">Выбор варианта</span>';
+    } else if (isMatching) {
+      typeBadge = '<span class="rounded-full border border-purple-400/30 bg-purple-400/20 px-2.5 py-1 text-[10px] font-black text-purple-200">Сопоставление</span>';
+    } else {
+      typeBadge = '<span class="rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2.5 py-1 text-[10px] font-black text-emerald-200">Точное значение</span>';
+    }
+
+    return `
+      <article class="final-test-task rounded-2xl border border-white/15 bg-white/[.08] p-4 sm:p-5 transition hover:bg-white/[.12]" data-card-task-id="${escapeFinalTestText(task.id)}">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-lg bg-indigo-400/20 px-2 text-xs font-black text-indigo-100">${index + 1}</span>
+          <span class="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-black text-indigo-100">${escapeFinalTestText(task.topic)}</span>
+          ${typeBadge}
+          <span class="rounded-full border border-white/15 px-2.5 py-1 text-[10px] font-bold text-indigo-200/75">${escapeFinalTestText(finalTestLevelLabel(task.level))}</span>
+        </div>
+        <h4 class="mt-3 text-sm font-black text-white">${escapeFinalTestText(task.title)}</h4>
+        <div class="mt-1 text-[11px] font-semibold text-cyan-100/75"><span class="font-black text-indigo-200">Что проверяет:</span> ${escapeFinalTestText(pythonTaskAnnotation(task.topic))}</div>
+        <div class="mt-2 text-xs font-medium leading-relaxed text-indigo-50/90">${task.content_html || '<span class="text-indigo-200/60">Условие задания не заполнено.</span>'}</div>
+        ${interactionHtml}
+        <div class="python-task-result mt-2 hidden text-[11px] font-black"></div>
+      </article>
+    `;
+  }).join('');
+  formatFinalTestCode(list);
+}
+
+function renderPythonFinalTestReview(results) {
+  const reviewList = document.getElementById('python-final-test-review-list');
+  if (!reviewList) return;
+  const resultById = Object.fromEntries(results.map(result => [result.id, result]));
+  reviewList.innerHTML = pythonFinalTestTasks.map((task, index) => {
+    const result = resultById[task.id] || { correct: false };
+    const status = result.correct ? 'Верно (+1)' : 'Ошибка';
+    return `
+      <article class="final-test-review-item ${result.correct ? 'correct' : 'wrong'}">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-lg bg-indigo-400/20 px-2 text-xs font-black text-indigo-100">${index + 1}</span>
+            <span class="text-xs font-black text-white">${escapeFinalTestText(task.title)}</span>
+          </div>
+          <span class="rounded-full px-2.5 py-1 text-[10px] font-black ${result.correct ? 'bg-emerald-400/20 text-emerald-200' : 'bg-rose-400/20 text-rose-200'}">${status}</span>
+        </div>
+        <div class="mt-2 text-[11px] font-semibold text-indigo-200/80">${escapeFinalTestText(task.topic)} · ${escapeFinalTestText(finalTestLevelLabel(task.level))}</div>
+        <div class="final-test-review-condition mt-2 text-xs leading-relaxed text-indigo-50/90">${task.content_html || 'Условие не заполнено.'}</div>
+      </article>
+    `;
+  }).join('');
+  formatFinalTestCode(reviewList);
+}
+
+async function loadPythonFinalTest(retry = false) {
+  const startButton = document.getElementById('python-final-test-start');
+  const results = document.getElementById('python-final-test-results');
+  const status = document.getElementById('python-final-test-status');
+  const list = document.getElementById('python-final-test-list');
+  const review = document.getElementById('python-final-test-review');
+  const completion = document.getElementById('python-final-test-completion');
+  const reviewMessage = document.getElementById('python-final-test-review-message');
+  const reviewList = document.getElementById('python-final-test-review-list');
+  const submitButton = document.getElementById('python-final-test-submit');
+  const score = document.getElementById('python-final-test-score');
+  const shell = document.getElementById('python-final-test');
+  if (!startButton || !results || !status) return;
+
+  startButton.disabled = true;
+  startButton.classList.add('opacity-70', 'cursor-wait');
+  status.classList.remove('hidden');
+  status.innerHTML = '<i class="ph-bold ph-spinner-gap animate-spin mr-1"></i> Собираю вариант из банка заданий…';
+  list?.classList.remove('hidden');
+  review?.classList.add('hidden');
+  review?.classList.remove('final-test-review-success');
+  completion?.classList.add('hidden');
+  reviewList?.classList.remove('hidden');
+  submitButton?.classList.remove('hidden');
+  score?.classList.add('hidden');
+  shell?.classList.remove('final-test-passed');
+
+  try {
+    const retryQuery = retry ? '&retry=1' : '';
+    const response = await fetch(`/api/python-programming/final-test?course_id={{ course_id }}${retryQuery}`, { headers: { 'Accept': 'application/json' } });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось собрать вариант');
+    renderPythonFinalTest(payload.tasks || []);
+    results.classList.remove('hidden');
+    const bankCount = document.getElementById('python-final-test-bank-count');
+    if (bankCount) bankCount.textContent = `${payload.bank.total} заданий ↗`;
+    if (payload.passed) {
+      shell?.classList.add('final-test-passed');
+      startButton.classList.add('hidden');
+      list?.classList.add('hidden');
+      submitButton?.classList.add('hidden');
+      review?.classList.remove('hidden');
+      review?.classList.add('final-test-review-success');
+      completion?.classList.remove('hidden');
+      reviewList?.classList.add('hidden');
+      if (reviewMessage) reviewMessage.textContent = `Результат уже закреплён: ${payload.score} из 20.`;
+      status.innerHTML = '<i class="ph-fill ph-seal-check mr-1 text-emerald-300"></i> Итоговый тест уже пройден (порог 90% выполнен). Новый вариант недоступен.';
+    } else {
+      status.innerHTML = `<i class="ph-bold ph-lock-key mr-1"></i> Вариант закреплён: ${payload.size} заданий по 4 блокам. В банке ${payload.bank.total} заданий. Проходной балл: 18 из 20 (90%).`;
+    }
+    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) {
+    status.innerHTML = `<i class="ph-bold ph-warning-circle mr-1"></i> ${escapeFinalTestText(error.message || 'Произошла ошибка. Попробуй ещё раз.')}`;
+  } finally {
+    startButton.disabled = false;
+    startButton.classList.remove('opacity-70', 'cursor-wait');
+  }
+}
+
+async function gradePythonFinalTest() {
+  const submitButton = document.getElementById('python-final-test-submit');
+  const score = document.getElementById('python-final-test-score');
+  const list = document.getElementById('python-final-test-list');
+  const review = document.getElementById('python-final-test-review');
+  const reviewMessage = document.getElementById('python-final-test-review-message');
+  const indicators = document.getElementById('python-final-test-indicators');
+  const retryButton = document.getElementById('python-final-test-retry');
+  const shell = document.getElementById('python-final-test');
+  const completion = document.getElementById('python-final-test-completion');
+  const reviewList = document.getElementById('python-final-test-review-list');
+  if (!submitButton || !score || !pythonFinalTestTasks.length) return;
+
+  submitButton.disabled = true;
+  submitButton.classList.add('opacity-70', 'cursor-wait');
+  score.classList.remove('hidden');
+  score.textContent = 'Проверяю ответы…';
+
+  try {
+    const answers = {};
+    pythonFinalTestTasks.forEach(task => {
+      if (task.type === 'matching') {
+        const matchObj = {};
+        const selects = document.querySelectorAll(`[data-matching-task="${task.id}"]`);
+        selects.forEach(sel => {
+          if (sel.value) matchObj[sel.dataset.matchingKey] = sel.value;
+        });
+        answers[task.id] = matchObj;
+      } else if (task.type === 'single_choice') {
+        const checked = document.querySelector(`input[name="task_${task.id}"]:checked`);
+        answers[task.id] = checked ? checked.value : '';
+      } else {
+        const field = document.getElementById(`python-answer-${task.id}`);
+        answers[task.id] = field ? field.value.trim() : '';
+      }
+    });
+
+    const response = await fetch('/api/python-programming/final-test/grade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ answers, course_id: {{ course_id }} }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось проверить ответы');
+
+    const resultById = Object.fromEntries(payload.results.map(result => [result.id, result.correct]));
+    pythonFinalTestTasks.forEach(task => {
+      const card = document.querySelector(`[data-card-task-id="${task.id}"]`);
+      const resultElem = card?.querySelector('.python-task-result');
+      const correct = resultById[task.id];
+      card?.classList.toggle('is-correct', correct === true);
+      card?.classList.toggle('is-wrong', correct === false);
+      if (resultElem) {
+        resultElem.className = `python-task-result mt-2 text-[11px] font-black ${correct ? 'text-emerald-300' : 'text-rose-300'}`;
+        resultElem.textContent = correct ? 'Верно (+1 балл)' : 'Есть ошибка — попробуй ещё раз.';
+        resultElem.classList.remove('hidden');
+      }
+    });
+
+    score.textContent = payload.passed
+      ? `ЗАСЧИТАНО: ${payload.correct} из ${payload.total} (порог 90% успешно пройден!)`
+      : `Не засчитано: ${payload.correct} из ${payload.total}. Нужно минимум ${payload.threshold} (90%).`;
+    list?.classList.add('hidden');
+    submitButton.classList.add('hidden');
+    review?.classList.remove('hidden');
+    if (reviewMessage) {
+      reviewMessage.textContent = payload.passed
+        ? `Тест сдан на 90%+. Результат закреплён: ${payload.correct} из ${payload.total}.`
+        : `Вариант не засчитан. Правильных ответов: ${payload.correct} из ${payload.total}. Порог — 18 из 20 (90%). Ниже показаны условия и статусы заданий.`;
+    }
+    if (indicators) {
+      indicators.innerHTML = payload.results.map((result, index) =>
+        `<span class="final-test-review-dot ${result.correct ? 'correct' : 'wrong'}" title="Задание ${index + 1}: ${result.correct ? 'верно' : 'ошибка'}">${index + 1}</span>`
+      ).join('');
+    }
+    renderPythonFinalTestReview(payload.results || []);
+    review?.classList.toggle('final-test-review-success', payload.passed);
+    completion?.classList.toggle('hidden', !payload.passed);
+    reviewList?.classList.toggle('hidden', payload.passed);
+    if (payload.passed) document.getElementById('python-final-test-start')?.classList.add('hidden');
+    retryButton?.classList.toggle('hidden', payload.passed);
+    shell?.classList.toggle('final-test-passed', payload.passed);
+  } catch (error) {
+    score.textContent = error.message || 'Не удалось проверить ответы.';
+  } finally {
+    submitButton.disabled = false;
+    submitButton.classList.remove('opacity-70', 'cursor-wait');
+  }
+}
+
+document.getElementById('python-final-test-start')?.addEventListener('click', loadPythonFinalTest);
+document.getElementById('python-final-test-submit')?.addEventListener('click', gradePythonFinalTest);
+document.getElementById('python-final-test-retry')?.addEventListener('click', () => loadPythonFinalTest(true));
 </script>
 {% endblock %}

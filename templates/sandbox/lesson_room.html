@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='lesson-studio-os.css') }}?v=20260922-mockup-v1">
 
 <main class="room-v3-page {% if is_studio_teacher %}room-v3-page-teacher{% else %}room-v3-page-student{% endif %}">
-  <div id="lesson-studio-os" class="room-v3 room-redesign room-canvas-redesign" data-lesson-id="{{ lesson_id }}" data-teacher="{{ 'true' if is_studio_teacher else 'false' }}">
+  <div id="lesson-studio-os" class="room-v3 room-redesign room-canvas-redesign" data-lesson-id="{{ lesson_id }}" data-teacher="{{ 'true' if is_studio_teacher else 'false' }}"{% if is_demo_preview %} data-demo-preview="true"{% endif %}>
     <script id="studio-os-data" type="application/json">{{ {'tasks': tasks_json|safe, 'state': studio_state, 'materials': lesson.materials or [], 'theory_items': theory_items, 'can_open_generator': can_open_task_generator, 'meeting_user': teacher_name if is_studio_teacher else (student.name if student else 'Ученик'), 'student_notes': '' if is_studio_teacher else (lesson.student_notes or ''), 'video_url': video_url, 'lesson_status': lesson.status}|tojson }}</script>
 
     <!-- 1. Верхняя фирменная шапка по макету -->
@@ -44,7 +44,7 @@
 
       <!-- Нижняя строка: Маршрут урока (степпер) | Таймер, Видео, Завершить урок -->
       <div class="room-header-bottom-row">
-        <div id="os-phases" class="room-phase-stepper" aria-label="Маршрут урока">
+        <div id="os-phases" class="room-phase-stepper" aria-label="Маршрут урока"{% if is_demo_preview %} data-demo-target="lesson-room-tour"{% endif %}>
           <button type="button" class="room-stepper-btn room-phase active" data-phase="preparation">
             <span class="room-step-num">1</span> Подготовка
           </button>
@@ -749,5 +749,5 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
 <script crossorigin src="https://unpkg.com/@daily-co/daily-js"></script>
 <script src="https://meet.jit.si/external_api.js"></script>
-<script src="{{ url_for('static', filename='lesson-studio-os.js') }}?v=20260922-mockup-v1"></script>
+<script src="{{ url_for('static', filename='lesson-studio-os.js') }}?v=20260930-demo-preview-v2"></script>
 {% endblock %}

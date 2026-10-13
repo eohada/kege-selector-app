@@ -578,6 +578,11 @@ class Student(db.Model):
     streak_days = db.Column(db.Integer, default=0, nullable=False)
     last_activity_date = db.Column(db.Date, nullable=True)
     streak_frozen = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Недельный ритм (Недельный стрик)
+    streak_weeks = db.Column(db.Integer, default=0, nullable=False)
+    last_completed_week = db.Column(db.String(20), nullable=True)
+    streak_weeks_frozen = db.Column(db.Boolean, default=False, nullable=False)
     
     # Опыт и Уровни
     xp = db.Column(db.Integer, default=0, nullable=False)
@@ -1135,6 +1140,10 @@ class LessonTask(db.Model):
     notes = db.Column(db.Text, nullable=True)
     student_answer = db.Column(db.Text, nullable=True)
     assignment_type = db.Column(db.String(20), default='homework')
+    # Преподаватель может подготовить задание заранее и отдельно показать его ученику.
+    is_visible_to_student = db.Column(db.Boolean, default=True, nullable=False)
+    # Эталонный ответ раскрывается ученику только отдельной командой преподавателя.
+    is_answer_visible_to_student = db.Column(db.Boolean, default=False, nullable=False)
     student_submission = db.Column(db.Text, nullable=True)
     submission_correct = db.Column(db.Boolean, nullable=True)
     
@@ -1433,7 +1442,7 @@ class User(db.Model):
     def is_tutor(self):
         """Проверка, является ли пользователь тьютором (creator также может работать как tutor)"""
         r = self.roles()
-        return 'tutor' in r or 'creator' in r
+        return 'tutor' in r or 'teacher' in r or 'creator' in r
 
     def is_student(self):
         """Проверка, является ли пользователь учеником"""
@@ -1716,6 +1725,9 @@ class CallRequest(db.Model):
     preferred_at = db.Column(db.DateTime, nullable=True)
     message = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(30), default='new', nullable=False, index=True)  # new|seen|scheduled|closed
+    is_demo = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    consent_given_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    source = db.Column(db.String(50), nullable=True, index=True)
 
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
@@ -1725,7 +1737,7 @@ class CallRequest(db.Model):
 
 
 class LessonWhiteboard(db.Model):
-    """Интерактивная доска Miro, привязанная к уроку."""
+    """Доска урока. Старые поля Miro сохранены для архивной совместимости."""
     __tablename__ = 'LessonWhiteboards'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -1734,6 +1746,11 @@ class LessonWhiteboard(db.Model):
     miro_board_id = db.Column(db.String(100), nullable=False, index=True)  # ID доски в Miro
     miro_board_url = db.Column(db.String(500), nullable=True)  # Полная ссылка на доску (для редактирования)
     miro_view_link = db.Column(db.String(500), nullable=True)  # Публичная ссылка для просмотра
+
+    provider = db.Column(db.String(32), nullable=False, default='boostudy', index=True)
+    document_state = db.Column(db.JSON, nullable=False, default=dict)
+    document_version = db.Column(db.Integer, nullable=False, default=0)
+    last_saved_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
     
     is_active = db.Column(db.Boolean, default=True, nullable=False)  # Активна ли доска (во время урока = True)
     allow_student_edit = db.Column(db.Boolean, default=True, nullable=False)  # Может ли ученик редактировать
@@ -1743,6 +1760,24 @@ class LessonWhiteboard(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
     lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('whiteboard', uselist=False, lazy=True, cascade='all, delete-orphan'))
+    last_saved_by = db.relationship('User', foreign_keys=[last_saved_by_user_id])
+
+
+class LessonWhiteboardOperation(db.Model):
+    """Идемпотентный журнал операций внутренней доски урока."""
+    __tablename__ = 'LessonWhiteboardOperations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    whiteboard_id = db.Column(db.Integer, db.ForeignKey('LessonWhiteboards.id'), nullable=False, index=True)
+    operation_id = db.Column(db.String(96), nullable=False, unique=True, index=True)
+    version = db.Column(db.Integer, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    operation_type = db.Column(db.String(64), nullable=False)
+    payload = db.Column(db.JSON, nullable=False, default=dict)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    whiteboard = db.relationship('LessonWhiteboard', foreign_keys=[whiteboard_id])
+    user = db.relationship('User', foreign_keys=[user_id])
 
 
 class MiroUserToken(db.Model):
@@ -2420,6 +2455,15 @@ class TariffPlan(db.Model):
 
     allow_lessons = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
     allow_trainer = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
+    allow_referral = db.Column(db.Boolean, default=True, nullable=True)   # Доступна ли реферальная программа
+    allow_promocode = db.Column(db.Boolean, default=True, nullable=True)  # Доступно ли применение промокода
+
+    exam = db.Column(db.String(50), nullable=True, index=True)       # 'ege', 'oge'
+    subject = db.Column(db.String(50), nullable=True, index=True)    # 'inf', 'math'
+    format = db.Column(db.String(50), nullable=True, index=True)     # 'solo', 'mentor', 'godmode', 'custom'
+    level = db.Column(db.String(50), nullable=True)                  # 'prof', 'base'
+    badge = db.Column(db.String(100), nullable=True)                 # 'Хит', 'Выгодно', 'Популярный'
+    features = db.Column(db.JSON, nullable=True)                     # Список преимуществ / фич
 
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
@@ -3270,6 +3314,28 @@ class TheoryStudyAssignment(db.Model):
     __table_args__ = (
         db.UniqueConstraint('student_id', 'block_id', name='uq_theory_study_assignment'),
     )
+
+
+class TheoryFinalTestAttempt(db.Model):
+    """Полноценная фиксация каждой попытки сдачи итогового теста по теории для преподавателя."""
+    __tablename__ = 'TheoryFinalTestAttempts'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='SET NULL'), nullable=True, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id', ondelete='CASCADE'), nullable=False, index=True)
+    attempt_number = db.Column(db.Integer, nullable=False, default=1)
+    score = db.Column(db.Integer, nullable=False)
+    total = db.Column(db.Integer, nullable=False, default=20)
+    passed = db.Column(db.Boolean, nullable=False, default=False)
+    task_ids = db.Column(db.JSON, nullable=False)
+    answers = db.Column(db.JSON, nullable=False)
+    details = db.Column(db.JSON, nullable=False)
+    block_scores = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+    course = db.relationship('Course', foreign_keys=[course_id])
 
 
 class TheoryFeedback(db.Model):

@@ -66,9 +66,9 @@ def get_main_keyboard(user_role: str, creator_mode: str = 'creator') -> ReplyKey
     # 🎓 УЧЕНИК
     else:
         keyboard = [
-            [KeyboardButton(text="🚀 Открыть BooStudy", web_app=webapp_info), KeyboardButton(text="📅 Мое расписание")],
-            [KeyboardButton(text="📝 Очередь ДЗ"), KeyboardButton(text="📊 Мой прогресс")],
-            [KeyboardButton(text="⚙️ Профиль"), KeyboardButton(text="🚪 Отвязать аккаунт")]
+            [KeyboardButton(text="🚀 Открыть BooStudy", web_app=webapp_info), KeyboardButton(text="🔥 Задача дня (Стрик)")],
+            [KeyboardButton(text="📅 Мое расписание"), KeyboardButton(text="📝 Очередь ДЗ")],
+            [KeyboardButton(text="📊 Мой прогресс"), KeyboardButton(text="🚪 Отвязать аккаунт")]
         ]
 
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)

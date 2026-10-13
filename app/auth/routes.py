@@ -42,10 +42,8 @@ def _redirect_after_login(user):
         return url_for('parents.parent_dashboard')
     if user.is_student():
         eff = get_effective_access_for_user(user.id)
-        allow_lessons = True if eff.allow_lessons is None else bool(eff.allow_lessons)
-        allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', False)) and (
-            True if eff.allow_trainer is None else bool(eff.allow_trainer)
-        )
+        allow_lessons = bool(eff.allow_lessons) if eff.allow_lessons is not None else False
+        allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', True)) and bool(eff.allow_trainer)
         if eff.status == 'expired':
             return url_for('main.workspace_profile')
         if (allow_lessons is False) and (allow_trainer is True):
@@ -159,10 +157,8 @@ def login():
                         next_page = url_for('parents.parent_dashboard')
                     elif user.is_student():
                         eff = get_effective_access_for_user(user.id)
-                        allow_lessons = True if eff.allow_lessons is None else bool(eff.allow_lessons)
-                        allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', False)) and (
-                            True if eff.allow_trainer is None else bool(eff.allow_trainer)
-                        )
+                        allow_lessons = bool(eff.allow_lessons) if eff.allow_lessons is not None else False
+                        allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', True)) and bool(eff.allow_trainer)
                         if eff.status == 'expired':
                             next_page = url_for('main.workspace_profile')
 
@@ -232,8 +228,8 @@ def logout():
 
 @auth_bp.route('/demo')
 def demo_choose():
-    """Страница выбора экзамена (ОГЭ или ЕГЭ) перед запуском демо-тура."""
-    return render_template('demo_choose.html')
+    """Каноничная точка входа в интерактивную демоверсию."""
+    return redirect(url_for('demo.demo_entry'))
 
 
 DEMO_ACCESS_CODE = 'test'

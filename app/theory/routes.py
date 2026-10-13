@@ -8,8 +8,10 @@ import re
 import subprocess
 import html
 import mimetypes
+import hashlib
+import random
 from collections import defaultdict
-from flask import make_response, render_template, request, redirect, url_for, flash, abort, jsonify, current_app, send_file
+from flask import make_response, render_template, request, redirect, url_for, flash, abort, jsonify, current_app, send_file, session
 from markupsafe import Markup
 from flask_login import login_required, current_user
 from sqlalchemy import func, or_
@@ -34,6 +36,7 @@ from app.models import (
     TheoryStudyAssignment,
     TheoryFeedback,
     TheoryFeedbackHistory,
+    TheoryFinalTestAttempt,
     moscow_now,
 )
 from app.auth.rbac_utils import has_permission
@@ -46,19 +49,37 @@ try:
 except ImportError:
     _HAS_PYGMENTS = False
 
+import io
+try:
+    import reportlab
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, Preformatted, HRFlowable
+    )
+    from reportlab.pdfgen import canvas
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    _HAS_REPORTLAB = True
+except ImportError:
+    _HAS_REPORTLAB = False
+
+_PDF_FONTS_REGISTERED = False
+
 logger = logging.getLogger(__name__)
 
 
-_CHECKPOINT_RE = re.compile(r'\[CHECKPOINT\s+((?:[^"\]]|"[^"]*")+)\]', re.IGNORECASE)
-_CHECKPOINT_ATTR_RE = re.compile(r'(key|question|options|answer|explanation)="((?:[^"\\]|\\.)*)"', re.IGNORECASE)
-_INTERACTIVE_RE = re.compile(r'\[INTERACTIVE\s+((?:[^"\]]|"[^"]*")+)\]', re.IGNORECASE)
-_INTERACTIVE_ATTR_RE = re.compile(r'(type|key|prompt|answer|options|code|expected|placeholder|rows)="((?:[^"\\]|\\.)*)"', re.IGNORECASE)
+_CHECKPOINT_RE = re.compile(r'\[CHECKPOINT\s+((?:[^"\]]|"(?:[^"\\]|\\.)*")+)\s*\]', re.IGNORECASE | re.DOTALL)
+_CHECKPOINT_ATTR_RE = re.compile(r'(key|question|options|answer|explanation|hint)="((?:[^"\\]|\\.)*)"', re.IGNORECASE | re.DOTALL)
+_INTERACTIVE_RE = re.compile(r'\[INTERACTIVE\s+((?:[^"\]]|"(?:[^"\\]|\\.)*")+)\s*\]', re.IGNORECASE | re.DOTALL)
+_INTERACTIVE_ATTR_RE = re.compile(r'(type|key|prompt|answer|options|code|expected|placeholder|rows|hint)="((?:[^"\\]|\\.)*)"', re.IGNORECASE | re.DOTALL)
 
 
 def _parse_theory_checkpoints(content_value):
     """Read author-defined micro-checkpoints from a theory article.
 
-    Format: [CHECKPOINT key="logic-1" question="..." options="A|B|C" answer="B" explanation="..."]
+    Format: [CHECKPOINT key="logic-1" question="..." options="A|B|C" answer="B" explanation="..." hint="..."]
     The answer stays server-side; the client receives only question and options.
     """
     checkpoints = []
@@ -75,6 +96,7 @@ def _parse_theory_checkpoints(content_value):
             'options': options,
             'answer': answer,
             'explanation': attrs.get('explanation', ''),
+            'hint': attrs.get('hint', ''),
         })
     # Hands-on activities use the same persistence contract as checkpoints.
     for item in _parse_theory_interactives(content_value):
@@ -272,10 +294,23 @@ def _render_theory_content_html(content_value):
         Keeps display stable even if client-side KaTeX auto-render fails.
         """
         src = html.unescape((expr or '').strip())
+        # Clean LaTeX text wrappers and spacing commands
+        src = re.sub(r'\\text\{([^{}]+)\}', r'\1', src)
+        src = re.sub(r'\\mathbf\{([^{}]+)\}', r'\1', src)
+        src = re.sub(r'\\mathit\{([^{}]+)\}', r'\1', src)
+        src = re.sub(r'\\quad', ' ', src)
+        src = re.sub(r'\\[,;!]', ' ', src)
         src = src.replace('\\cdot', '·')
         src = src.replace('\\times', '×')
         src = src.replace('\\ge', '≥')
         src = src.replace('\\le', '≤')
+        src = src.replace('\\ne', '≠')
+        src = src.replace('\\to', '→')
+        src = src.replace('\\equiv', '≡')
+        src = src.replace('\\land', '∧')
+        src = src.replace('\\lor', '∨')
+        src = src.replace('\\neg', '¬')
+        src = re.sub(r'\\sqrt\{([^{}]+)\}', r'√(\1)', src)
 
         out = html.escape(src)
         # x_{abc} / x_a
@@ -285,6 +320,7 @@ def _render_theory_content_html(content_value):
         out = re.sub(r'\^\{([^{}]+)\}', r'<sup>\1</sup>', out)
         out = re.sub(r'\^([A-Za-zА-Яа-я0-9]+)', r'<sup>\1</sup>', out)
         return out
+
 
     def _render_math_in_html_fragment(fragment):
         if not fragment:
@@ -497,10 +533,10 @@ def _render_theory_content_html(content_value):
             '''
         
         return (
-            f'<div class="theory-smart-code theory-embed-code my-5 rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm" data-lang="{lang}">'
+            f'<div class="theory-smart-code theory-embed-code my-5 rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-[0_4px_0_#CBD5E1,0_8px_20px_rgba(96,75,91,0.05)]" data-lang="{lang}">'
             f'<div class="px-4 py-2.5 border-b border-slate-200 bg-[#F8FAFC] flex items-center justify-between">'
             f'<div class="flex items-center gap-2 text-xs font-bold text-slate-700">{py_icon}<span>{code_title}</span></div>'
-            f'<button type="button" class="theory-copy-btn inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition cursor-pointer" onclick="theoryCopyCode(this)">'
+            f'<button type="button" class="theory-copy-btn inline-flex items-center gap-1.5 rounded-lg border border-slate-200 border-b-2 border-b-slate-300 bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 active:translate-y-0.5 transition cursor-pointer" onclick="theoryCopyCode(this)">'
             f'<i class="ph-bold ph-copy"></i><span>Скопировать</span></button>'
             f'</div>'
             f'<textarea class="theory-code-raw hidden">{html.escape(code_body)}</textarea>'
@@ -547,12 +583,28 @@ def _render_theory_content_html(content_value):
         body = (body or '').replace('__THEORY_SPACER__', '\n').replace('THEORY_SPACER', '\n').strip()
         body = body.replace(r'\*', '*')
 
-        lines = [line.strip() for line in body.split('\n') if line.strip()]
-        is_numbered_steps = len(lines) >= 2 and all(re.match(r'^\d+\.\s+', line) for line in lines)
+        # Extract fenced code blocks ```[lang]\n...\n```
+        fenced_blocks = []
+        def _stash_fenced(m):
+            f_code = m.group(1).strip()
+            f_hl = _highlight_python_html(f_code)
+            block_html = (
+                f'<div class="my-3 rounded-xl bg-[#0F172A] border border-slate-700/80 p-3.5 font-mono text-xs text-slate-100 overflow-x-auto shadow-sm">'
+                f'<pre class="m-0 p-0 font-mono text-xs sm:text-sm leading-relaxed text-slate-200"><code>{f_hl}</code></pre>'
+                f'</div>'
+            )
+            idx = len(fenced_blocks)
+            fenced_blocks.append(block_html)
+            return f'__THEORY_CALLOUT_CODE_{idx}__'
+
+        body = re.sub(r'```(?:python)?\s*\n([\s\S]*?)\n```', _stash_fenced, body, flags=re.IGNORECASE)
+
+        lines = [line.rstrip() for line in body.split('\n') if line.strip()]
+        is_numbered_steps = len(lines) >= 2 and all(re.match(r'^\d+\.\s+', line.strip()) for line in lines)
         if is_numbered_steps:
             step_items = []
             for line in lines:
-                m = re.match(r'^(\d+)\.\s+(.*)$', line)
+                m = re.match(r'^(\d+)\.\s+(.*)$', line.strip())
                 if m:
                     num, txt = m.group(1), m.group(2)
                     step_items.append(
@@ -561,17 +613,22 @@ def _render_theory_content_html(content_value):
                         f'<div class="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium flex-1">{_format_inline_text(txt)}</div>'
                         f'</div>'
                     )
-            return f'<div class="theory-steps space-y-2 my-2">{"".join(step_items)}</div>'
+            res = f'<div class="theory-steps space-y-2 my-2">{"".join(step_items)}</div>'
+        else:
+            rendered_lines = [_format_inline_text(line) for line in lines]
+            res = '<br>'.join(rendered_lines)
 
-        rendered_lines = [_format_inline_text(line) for line in lines]
-        return '<br>'.join(rendered_lines)
+        for idx, b_html in enumerate(fenced_blocks):
+            res = res.replace(f'__THEORY_CALLOUT_CODE_{idx}__', b_html)
+
+        return res
 
     def _remember_repl(match):
         body = match.group(1).strip()
         safe_body = _format_callout_body(body)
         html_card = (
-            f'<div class="theory-callout-remember my-5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/70 p-4 sm:p-5 shadow-sm flex items-start gap-3.5">'
-            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm mt-0.5">'
+            f'<div class="theory-callout-remember my-6 rounded-[1.5rem] border-2 border-indigo-200 bg-gradient-to-r from-[#EEF2FF] via-white to-[#F5F3FF] p-4 sm:p-5 shadow-[0_3px_0_#C7D2FE] flex items-start gap-3.5">'
+            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs mt-0.5">'
             f'<i class="ph-fill ph-target text-lg"></i></div>'
             f'<div class="flex-1">'
             f'<div class="text-xs font-black uppercase tracking-wider text-indigo-700 mb-0.5">Запомни</div>'
@@ -586,12 +643,12 @@ def _render_theory_content_html(content_value):
         body = match.group(2).strip()
         safe_body = _format_callout_body(body)
         html_card = (
-            f'<div class="theory-callout-important my-6 rounded-2xl border-2 border-amber-300 bg-amber-50/80 p-4 sm:p-5 shadow-sm flex items-start gap-3.5">'
-            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm mt-0.5">'
+            f'<div class="theory-callout-important my-6 rounded-[1.5rem] border-2 border-amber-300 bg-gradient-to-r from-[#FFFBEB] via-white to-[#FEF3C7]/60 p-4 sm:p-5 shadow-[0_3px_0_#FDE68A] flex items-start gap-3.5">'
+            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs mt-0.5">'
             f'<i class="ph-fill ph-warning text-lg"></i></div>'
             f'<div class="flex-1 min-w-0">'
             f'<div class="text-xs font-black uppercase tracking-wider text-amber-800 mb-1">{html.escape(title)}</div>'
-            f'<div class="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">{safe_body}</div>'
+            f'<div class="text-xs sm:text-sm text-slate-800 leading-relaxed font-semibold">{safe_body}</div>'
             f'</div>'
             f'</div>'
         )
@@ -602,12 +659,12 @@ def _render_theory_content_html(content_value):
         body = match.group(2).strip()
         safe_body = _format_callout_body(body)
         html_card = (
-            f'<div class="theory-callout-note my-6 rounded-2xl border-2 border-indigo-200 bg-indigo-50/70 p-4 sm:p-5 shadow-sm flex items-start gap-3.5">'
-            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm mt-0.5">'
+            f'<div class="theory-callout-note my-6 rounded-[1.5rem] border-2 border-indigo-200 bg-gradient-to-r from-[#F0F9FF] via-white to-[#EEF2FF] p-4 sm:p-5 shadow-[0_3px_0_#BAE6FD] flex items-start gap-3.5">'
+            f'<div class="w-9 h-9 shrink-0 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs mt-0.5">'
             f'<i class="ph-fill ph-note-pencil text-lg"></i></div>'
             f'<div class="flex-1 min-w-0">'
             f'<div class="text-xs font-black uppercase tracking-wider text-indigo-700 mb-1">{html.escape(title)}</div>'
-            f'<div class="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">{safe_body}</div>'
+            f'<div class="text-xs sm:text-sm text-slate-800 leading-relaxed font-semibold">{safe_body}</div>'
             f'</div>'
             f'</div>'
         )
@@ -682,11 +739,11 @@ def _render_theory_content_html(content_value):
         body = match.group(2).strip()
         safe_body = _format_callout_body(body)
         html_card = (
-            f'<div class="theory-how-it-works my-6 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/80 via-white to-indigo-50/40 p-5 sm:p-6 shadow-sm relative overflow-hidden">'
+            f'<div class="theory-how-it-works my-6 rounded-[2rem] border-2 border-indigo-200 bg-gradient-to-br from-[#EEF2FF] via-white to-[#FAF5FF] p-5 sm:p-7 shadow-[0_6px_0_#C7D2FE,0_12px_28px_rgba(99,102,241,0.07)] relative overflow-hidden">'
             f'<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-indigo-100">'
             f'  <div class="flex items-center gap-3">'
-            f'    <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">'
-            f'      <i class="ph-fill ph-sparkle text-lg"></i>'
+            f'    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-xs">'
+            f'      <i class="ph-fill ph-sparkle text-xl"></i>'
             f'    </div>'
             f'    <div>'
             f'      <div class="text-[11px] font-black uppercase tracking-wider text-indigo-600">Разбор принципа</div>'
@@ -694,7 +751,7 @@ def _render_theory_content_html(content_value):
             f'    </div>'
             f'  </div>'
             f'  <div class="flex items-center gap-3 self-end sm:self-auto">'
-            f'    <div class="relative bg-white border border-indigo-200 rounded-xl px-3 py-1.5 text-xs font-bold text-indigo-900 shadow-sm">'
+            f'    <div class="relative bg-white border border-indigo-200 rounded-xl px-3.5 py-1.5 text-xs font-bold text-indigo-900 shadow-xs">'
             f'      <span>{html.escape(speech)}</span>'
             f'      <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white border-b border-r border-indigo-200 rotate-45"></div>'
             f'    </div>'
@@ -732,7 +789,7 @@ def _render_theory_content_html(content_value):
 
             highlighted_code = _highlight_python_html(code)
             cards_html.append(
-                f'<div class="rounded-xl border border-slate-200/90 bg-[#F8FAFC] p-4 flex flex-col justify-between hover:border-indigo-200 hover:bg-indigo-50/20 transition">'
+                f'<div class="rounded-2xl border-2 border-slate-200 bg-white p-4 sm:p-5 flex flex-col justify-between shadow-[0_3px_0_#DAE1E9] hover:border-indigo-300 hover:shadow-[0_4px_0_#C4B5FD] transition">'
                 f'  <div>'
                 f'    <div class="flex items-center justify-between mb-2.5">'
                 f'      <span class="px-2.5 py-1 rounded-lg text-xs font-black font-mono border {badge_classes}">{html.escape(name)}</span>'
@@ -740,7 +797,7 @@ def _render_theory_content_html(content_value):
                 f'    </div>'
                 f'    <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-3">{html.escape(desc)}</p>'
                 f'  </div>'
-                f'  <div class="bg-white border border-slate-200/70 rounded-lg p-2.5 font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">{highlighted_code}</div>'
+                f'  <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">{highlighted_code}</div>'
                 f'</div>'
             )
         grid_html = (
@@ -817,10 +874,11 @@ def _render_theory_content_html(content_value):
             th_html.append(f'<th class="py-3 px-4">{html.escape(col5_title)}</th>')
 
         table_html = (
-            f'<div class="theory-operators-wrap my-5 overflow-x-auto">'
-            f'<table class="theory-table w-full text-left border-collapse text-xs sm:text-sm rounded-xl overflow-hidden border border-slate-200/80">'
+            f'<div class="theory-operators-wrap my-6 overflow-hidden rounded-[1.25rem] border-2 border-slate-200 bg-white shadow-[0_3px_0_#DAE1E9]">'
+            f'<div class="overflow-x-auto">'
+            f'<table class="theory-table w-full text-left border-collapse text-xs sm:text-sm">'
             f'  <thead>'
-            f'    <tr class="border-b border-slate-200 bg-[#F8FAFC] text-slate-600 font-black uppercase text-[11px] tracking-wider">'
+            f'    <tr class="border-b-2 border-slate-200 bg-[#F8FAFC] text-slate-700 font-black uppercase text-[11px] tracking-wider">'
             f'      {"".join(th_html)}'
             f'    </tr>'
             f'  </thead>'
@@ -828,6 +886,7 @@ def _render_theory_content_html(content_value):
             f'    {"".join(rows_html)}'
             f'  </tbody>'
             f'</table>'
+            f'</div>'
             f'</div>'
         )
         return _stash_custom_block(table_html)
@@ -852,7 +911,7 @@ def _render_theory_content_html(content_value):
         stdin_block = ''
         if input_val:
             input_badge = (
-                f'<span class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm">'
+                f'<span class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 shadow-xs">'
                 f'<span class="text-slate-400 font-medium">Ввод:</span> {html.escape(input_val)}</span>'
             )
             stdin_block = (
@@ -870,8 +929,8 @@ def _render_theory_content_html(content_value):
             )
 
         runner_html = (
-            f'<div class="theory-code-runner my-6 rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm" data-lang="{lang}">'
-            f'<div class="px-4 py-3 border-b border-slate-200 bg-[#F8FAFC] flex flex-wrap items-center justify-between gap-3">'
+            f'<div class="theory-code-runner my-6 rounded-[1.75rem] border-2 border-slate-200 overflow-hidden bg-white shadow-[0_4px_0_#DAE1E9]" data-lang="{lang}">'
+            f'<div class="px-4 py-3 border-b-2 border-slate-100 bg-gradient-to-r from-slate-50 via-white to-indigo-50/20 flex flex-wrap items-center justify-between gap-3">'
             f'  <div class="flex items-center gap-3">'
             f'    <div class="flex items-center gap-1.5">'
             f'      <span class="w-3 h-3 rounded-full bg-rose-400 inline-block"></span>'
@@ -879,15 +938,15 @@ def _render_theory_content_html(content_value):
             f'      <span class="w-3 h-3 rounded-full bg-emerald-400 inline-block"></span>'
             f'    </div>'
             f'    <div class="flex items-center gap-2 text-xs font-bold text-slate-700">'
-            f'      <span class="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-bold">Python</span>'
+            f'      <span class="font-mono text-[11px] px-2 py-0.5 rounded-md bg-slate-200/90 text-slate-700 font-bold">Python</span>'
             f'      <span>{html.escape(title)}</span>'
             f'    </div>'
             f'  </div>'
             f'  <div class="flex items-center gap-2">'
-            f'    <button type="button" class="theory-copy-btn inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 transition cursor-pointer" onclick="theoryCopyCode(this)">'
+            f'    <button type="button" class="theory-copy-btn inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-200 border-b-[3px] border-b-slate-300 bg-white hover:bg-slate-50 px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-xs transition active:translate-y-0.5 cursor-pointer whitespace-nowrap" onclick="theoryCopyCode(this)">'
             f'      <i class="ph-bold ph-copy text-sm"></i><span>Скопировать</span>'
             f'    </button>'
-            f'    <button type="button" class="theory-run-btn inline-flex items-center gap-1.5 rounded-xl border-b-2 border-emerald-700 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-black shadow-sm transition active:translate-y-0.5 cursor-pointer" onclick="theoryRunCode(this)">'
+            f'    <button type="button" class="theory-run-btn inline-flex items-center gap-1.5 rounded-xl border-b-[3px] border-emerald-700 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 text-xs font-black shadow-xs transition active:translate-y-0.5 cursor-pointer" onclick="theoryRunCode(this)">'
             f'      <i class="ph-bold ph-play text-sm"></i><span>Запустить</span>'
             f'    </button>'
             f'  </div>'
@@ -900,7 +959,7 @@ def _render_theory_content_html(content_value):
             f'  </div>'
             f'</div>'
             f'{stdin_block}'
-            f'<div class="theory-result-box bg-[#ECFDF5] border-t border-emerald-100 p-3.5 sm:p-4 rounded-b-2xl flex flex-wrap items-center justify-between gap-3">'
+            f'<div class="theory-result-box bg-gradient-to-r from-[#F0FDF4] to-[#ECFDF5] border-t-2 border-emerald-100 p-3.5 sm:p-4 rounded-b-[1.75rem] flex flex-wrap items-center justify-between gap-3">'
             f'  <div class="flex items-center flex-wrap gap-2.5">'
             f'    <span class="inline-flex items-center gap-1.5 text-xs font-black text-emerald-800">'
             f'      <i class="ph-fill ph-play-circle text-base text-emerald-600"></i>Результат работы'
@@ -911,7 +970,7 @@ def _render_theory_content_html(content_value):
             f'  <span class="theory-status-badge inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100/70 px-2.5 py-0.5 text-[11px] font-black text-emerald-700">'
             f'    <i class="ph-bold ph-check text-xs"></i>Пример готов'
             f'  </span>'
-            f'  <div class="theory-live-output hidden w-full mt-2 rounded-xl bg-[#F8FAFC] border-2 border-slate-200 text-slate-800 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed shadow-inner"></div>'
+            f'  <div class="theory-live-output hidden w-full mt-2 rounded-xl bg-white border-2 border-emerald-200 text-slate-800 font-mono text-xs p-3.5 whitespace-pre-wrap leading-relaxed shadow-inner"></div>'
             f'</div>'
             f'</div>'
         )
@@ -924,15 +983,15 @@ def _render_theory_content_html(content_value):
         safe_body = _format_callout_body(body)
 
         theme = {
-            'attention': {'bg': '#FFFBEB', 'border': '#FDE68A', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FEF3C7', 'icon_color': '#D97706'},
-            'warning': {'bg': '#FFFBEB', 'border': '#FDE68A', 'icon': 'ph-fill ph-lightbulb', 'icon_bg': '#FEF3C7', 'icon_color': '#D97706'},
-            'tip': {'bg': '#EEF2FF', 'border': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'},
-            'info': {'bg': '#EEF2FF', 'border': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'},
-            'danger': {'bg': '#FEF2F2', 'border': '#FECACA', 'icon': 'ph-fill ph-shield-warning', 'icon_bg': '#FEE2E2', 'icon_color': '#DC2626'},
-        }.get(ctype, {'bg': '#EEF2FF', 'border': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'})
+            'attention': {'bg': '#FFFBEB', 'border': '#FDE68A', 'shadow': '#FDE68A', 'icon': 'ph-fill ph-warning-circle', 'icon_bg': '#FEF3C7', 'icon_color': '#D97706'},
+            'warning': {'bg': '#FFFBEB', 'border': '#FDE68A', 'shadow': '#FDE68A', 'icon': 'ph-fill ph-lightbulb', 'icon_bg': '#FEF3C7', 'icon_color': '#D97706'},
+            'tip': {'bg': '#EEF2FF', 'border': '#C7D2FE', 'shadow': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'},
+            'info': {'bg': '#EEF2FF', 'border': '#C7D2FE', 'shadow': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'},
+            'danger': {'bg': '#FEF2F2', 'border': '#FECACA', 'shadow': '#FECACA', 'icon': 'ph-fill ph-shield-warning', 'icon_bg': '#FEE2E2', 'icon_color': '#DC2626'},
+        }.get(ctype, {'bg': '#EEF2FF', 'border': '#C7D2FE', 'shadow': '#C7D2FE', 'icon': 'ph-fill ph-info', 'icon_bg': '#E0E7FF', 'icon_color': '#4F46E5'})
         return (
-            f'<div class="theory-callout theory-callout--{html.escape(ctype)} my-4 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-sm" style="background:{theme["bg"]};border:1.5px solid {theme["border"]};">'
-            f'<div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center mt-0.5" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};">'
+            f'<div class="theory-callout theory-callout--{html.escape(ctype)} my-5 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5" style="background:{theme["bg"]};border:2px solid {theme["border"]};box-shadow:0 3px 0 {theme["shadow"]};">'
+            f'<div class="w-8 h-8 shrink-0 rounded-xl flex items-center justify-center mt-0.5 shadow-xs" style="background:{theme["icon_bg"]};color:{theme["icon_color"]};">'
             f'<i class="{theme["icon"]} text-lg"></i></div>'
             f'<div class="text-xs sm:text-sm leading-relaxed text-slate-800 font-medium flex-1">{safe_body}</div>'
             '</div>'
@@ -956,10 +1015,55 @@ def _render_theory_content_html(content_value):
         if '`' in raw_str:
             return re.sub(
                 r'`([^`]+)`',
-                r'<code class="language-python font-mono text-xs px-1.5 py-0.5 rounded bg-slate-100 text-indigo-900 border border-slate-200 whitespace-nowrap">\1</code>',
+                r'<code class="checkpoint-code-pill font-mono text-xs px-2 py-0.5 rounded-lg bg-indigo-50/80 text-indigo-900 border border-indigo-200/70 whitespace-nowrap font-bold">\1</code>',
                 escaped,
             )
         return escaped
+
+    def _format_checkpoint_question_html(raw_question):
+        if not raw_question:
+            return ''
+
+        prompt_text = None
+        code_body = None
+
+        if '\n' in raw_question:
+            parts = raw_question.split('\n', 1)
+            prompt_text = parts[0].strip()
+            code_body = parts[1].strip()
+        elif ';' in raw_question and any(kw in raw_question for kw in ['=', 'print', 'for ', 'if ']):
+            m = re.match(r'^(.*?(?:кода|программы|фрагмента)?[:?])\s*(.*)$', raw_question)
+            if m and (';' in m.group(2)):
+                prompt_text = m.group(1).strip()
+                statements = [s.strip() for s in m.group(2).rstrip('?').split(';') if s.strip()]
+                code_body = '\n'.join(statements)
+        else:
+            code_match = re.search(r'^(.*?:)\s*([a-zA-Z_0-9\(\)\'\":=\s+\-*\/%]+[?]?)$', raw_question)
+            if code_match and any(kw in code_match.group(2) for kw in ['print', 'if ', 'for ', 'def ', '==', '!=', 'range', 'len', '//', '%']):
+                prompt_text = code_match.group(1).strip()
+                code_body = code_match.group(2).strip().rstrip('?')
+
+        if prompt_text and code_body:
+            highlighted = _highlight_python_html(code_body)
+            code_card = (
+                f'<div class="my-3.5 rounded-2xl bg-[#0F172A] border-2 border-slate-700/80 p-3.5 sm:p-4 font-mono text-xs sm:text-sm text-slate-100 shadow-md">'
+                f'  <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-700/60 text-[11px] text-slate-400 font-bold">'
+                f'    <span class="flex items-center gap-1.5">'
+                f'      <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>'
+                f'      <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>'
+                f'      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>'
+                f'      <span class="ml-1 text-indigo-300 font-mono font-bold">Python 3.12</span>'
+                f'    </span>'
+                f'    <span class="text-slate-400 font-sans text-xs font-semibold">Фрагмент программы</span>'
+                f'  </div>'
+                f'  <div class="overflow-x-auto">'
+                f'    <pre class="m-0 p-0 font-mono text-xs sm:text-sm leading-relaxed text-slate-200"><code>{highlighted}</code></pre>'
+                f'  </div>'
+                f'</div>'
+            )
+            return f'<h3 class="text-base sm:text-lg font-black text-slate-900 leading-snug">{_format_inline_code_markup(prompt_text)}</h3>{code_card}'
+
+        return f'<h3 class="text-base sm:text-lg font-black text-slate-900 leading-snug">{_format_inline_code_markup(raw_question)}</h3>'
 
     def _interactive_repl(match):
         attrs = {name.lower(): value.strip() for name, value in _INTERACTIVE_ATTR_RE.findall(match.group(1))}
@@ -982,32 +1086,36 @@ def _render_theory_content_html(content_value):
         icon, label = type_labels.get(kind, ('ph-bold ph-lightning', 'Практическое задание'))
 
         base = (
-            f'<div class="theory-interactive theory-interactive-card my-6 rounded-2xl border-2 border-indigo-100 bg-white p-5 sm:p-6 shadow-sm" '
+            f'<div class="theory-interactive theory-interactive-card my-6 rounded-[2rem] border-2 border-indigo-200 bg-white p-6 sm:p-7 shadow-[0_5px_0_#C4B5FD]" '
             f'data-interactive-key="{key}" data-interactive-type="{html.escape(kind, quote=True)}">'
-            f'<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black">'
+            f'<div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-black shadow-xs">'
             f'<i class="{icon}"></i><span>{label}</span></div>'
-            f'<h3 class="mt-3 text-base sm:text-lg font-black text-slate-900 leading-snug">{prompt}</h3>'
+            f'<h3 class="mt-3.5 text-base sm:text-lg font-black text-slate-900 leading-snug">{prompt}</h3>'
         )
 
         if kind == 'choice':
             options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
+            letters = ['A', 'B', 'C', 'D', 'E', 'F']
             controls = ''.join(
                 f'<button type="button" data-interactive-option="{html.escape(option, quote=True)}" '
-                f'class="option-btn w-full text-left p-3.5 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/40 transition font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between group">'
-                f'<span>{_format_inline_code_markup(option)}</span>'
-                f'<span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0"></span>'
+                f'class="option-btn w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 border-slate-200 border-b-[4px] border-b-slate-300 bg-[#FAFAFA] hover:bg-indigo-50/30 hover:border-indigo-300 hover:border-b-indigo-400 transition-all font-bold text-xs sm:text-sm text-slate-800 flex items-center justify-between group active:translate-y-0.5 shadow-xs">'
+                f'<span class="flex items-center gap-3 min-w-0 pr-2">'
+                f'<span class="w-6 h-6 rounded-lg bg-slate-100 group-hover:bg-indigo-100 border border-slate-200 group-hover:border-indigo-300 text-slate-600 group-hover:text-indigo-700 font-black text-xs flex items-center justify-center shrink-0 transition-colors">{letters[idx] if idx < len(letters) else str(idx+1)}</span>'
+                f'<span class="leading-relaxed break-words">{_format_inline_code_markup(option)}</span>'
+                f'</span>'
+                f'<span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0 bg-white"></span>'
                 f'</button>'
-                for option in options
+                for idx, option in enumerate(options)
             )
             controls = f'<div class="mt-4 space-y-2.5">{controls}</div>'
         elif kind == 'hotspot':
             controls = '<div class="mt-4 grid max-w-xs grid-cols-3 gap-2" role="group" aria-label="Карта выбора клетки">' + ''.join(
-                f'<button type="button" data-interactive-option="{i}" aria-label="Клетка {i}" class="option-btn rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-4 text-center text-sm font-black text-slate-700 shadow-sm hover:border-indigo-400 transition">{i}</button>' for i in range(1, 10)
+                f'<button type="button" data-interactive-option="{i}" aria-label="Клетка {i}" class="option-btn rounded-xl border-2 border-slate-200 border-b-[3px] border-b-slate-300 bg-[#FAFAFA] p-4 text-center text-sm font-black text-slate-700 shadow-xs hover:border-indigo-400 transition active:translate-y-0.5">{i}</button>' for i in range(1, 10)
             ) + '</div>'
         elif kind in {'order', 'sequence'}:
             options = [x.strip() for x in attrs.get('options', '').split('|') if x.strip()]
             controls = '<div class="theory-order-options mt-4 flex flex-wrap gap-2">' + ''.join(
-                f'<button type="button" data-order-value="{html.escape(option, quote=True)}" class="rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-400 px-3.5 py-2 text-xs font-black text-slate-700 shadow-sm transition cursor-pointer">{html.escape(option)}</button>'
+                f'<button type="button" data-order-value="{html.escape(option, quote=True)}" class="rounded-xl border-2 border-slate-200 border-b-[3px] border-b-slate-300 bg-[#FAFAFA] hover:border-indigo-400 px-3.5 py-2 text-xs font-black text-slate-700 shadow-xs transition active:translate-y-0.5 cursor-pointer">{html.escape(option)}</button>'
                 for option in options
             ) + '</div><p class="mt-2 text-xs font-bold text-slate-400">Нажимайте элементы по порядку формирования.</p>'
         elif kind in {'table', 'trace'}:
@@ -1016,17 +1124,17 @@ def _render_theory_content_html(content_value):
             except ValueError:
                 rows = 2
             controls = '<div class="mt-4 grid max-w-xl grid-cols-2 gap-2.5">' + ''.join(
-                f'<input data-table-cell="{i}" class="rounded-xl border-2 border-slate-200 bg-[#F8FAFC] px-3.5 py-2 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white" placeholder="Значение {i + 1}">' for i in range(rows)
+                f'<input data-table-cell="{i}" class="rounded-xl border-2 border-slate-200 bg-[#FAFAFA] px-3.5 py-2 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white" placeholder="Значение {i + 1}">' for i in range(rows)
             ) + '</div>'
         elif kind == 'boolean':
             controls = (
-                '<div class="mt-4 grid max-w-xl gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Выберите ответ" data-interactive-boolean>'
+                '<div class="mt-4 grid max-w-xl gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Выберите ответ" data-interactive-boolean>'
                 '<button type="button" data-interactive-option="true" role="radio" aria-checked="false" '
-                'class="option-btn p-3.5 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/40 transition font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between group">'
-                '<span>Да, утверждение верно</span><span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0"></span></button>'
+                'class="option-btn p-3.5 sm:p-4 rounded-2xl border-2 border-slate-200 border-b-[4px] border-b-slate-300 bg-[#FAFAFA] hover:border-emerald-400 hover:border-b-emerald-500 hover:bg-emerald-50/30 transition-all font-bold text-xs sm:text-sm text-slate-800 flex items-center justify-between group active:translate-y-0.5 shadow-xs">'
+                '<span class="flex items-center gap-2.5"><span class="w-6 h-6 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-700 font-black text-xs flex items-center justify-center shrink-0">✓</span><span>Да, утверждение верно</span></span><span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-emerald-400 flex items-center justify-center shrink-0 bg-white"></span></button>'
                 '<button type="button" data-interactive-option="false" role="radio" aria-checked="false" '
-                'class="option-btn p-3.5 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/40 transition font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between group">'
-                '<span>Нет, утверждение неверно</span><span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0"></span></button>'
+                'class="option-btn p-3.5 sm:p-4 rounded-2xl border-2 border-slate-200 border-b-[4px] border-b-slate-300 bg-[#FAFAFA] hover:border-rose-400 hover:border-b-rose-500 hover:bg-rose-50/30 transition-all font-bold text-xs sm:text-sm text-slate-800 flex items-center justify-between group active:translate-y-0.5 shadow-xs">'
+                '<span class="flex items-center gap-2.5"><span class="w-6 h-6 rounded-lg bg-rose-100 border border-rose-300 text-rose-700 font-black text-xs flex items-center justify-center shrink-0">✕</span><span>Нет, утверждение неверно</span></span><span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-rose-400 flex items-center justify-center shrink-0 bg-white"></span></button>'
                 '</div>'
             )
         elif kind in {'code', 'debug'}:
@@ -1079,7 +1187,7 @@ def _render_theory_content_html(content_value):
             f'<button type="button" data-action="interactive-submit" class="px-5 py-2.5 rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 hover:bg-indigo-700 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 flex items-center gap-1.5"><i class="ph-bold ph-check"></i>Проверить</button>'
             f'</div>'
         )
-        return base + controls + submit + '<div data-interactive-result class="mt-3 hidden rounded-xl p-3.5 text-xs sm:text-sm font-bold"></div></div>'
+        return _stash_custom_block(base + controls + submit + '<div data-interactive-result class="mt-3 hidden rounded-xl p-3.5 text-xs sm:text-sm font-bold"></div></div>')
 
     checkpoint_items = _parse_theory_checkpoints(text)
     checkpoint_by_key = {item['key']: item for item in checkpoint_items}
@@ -1090,24 +1198,56 @@ def _render_theory_content_html(content_value):
         item = checkpoint_by_key.get(key)
         if not item:
             return ''
-        options_html = ''.join(
-            f'<button type="button" data-action="checkpoint-choice" data-checkpoint-key="{html.escape(item["key"], quote=True)}" data-answer="{html.escape(option, quote=True)}" '
-            f'class="option-btn w-full text-left p-3.5 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/40 transition font-bold text-xs sm:text-sm text-slate-700 flex items-center justify-between group">'
-            f'<span>{_format_inline_code_markup(option)}</span>'
-            f'<span class="radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0"></span>'
-            f'</button>'
-            for option in item['options']
-        )
-        return (
-            f'<div class="theory-checkpoint theory-interactive-card my-6 rounded-2xl border-2 border-indigo-100 bg-white p-5 sm:p-6 shadow-sm" '
+
+        raw_options = list(item['options'])
+        # Deterministically shuffle based on checkpoint key so positions A, B, C, D vary evenly across topics
+        seed_val = int(hashlib.md5(f"cp_order_{item.get('key', '')}".encode('utf-8')).hexdigest()[:8], 16)
+        rng = random.Random(seed_val)
+        display_options = list(raw_options)
+        rng.shuffle(display_options)
+
+        letters = ['A', 'B', 'C', 'D', 'E', 'F']
+        options_html_list = []
+        for opt_idx, option in enumerate(display_options):
+            letter = letters[opt_idx] if opt_idx < len(letters) else str(opt_idx + 1)
+            is_code = (
+                bool(re.search(r'^(?:[A-Za-z_]\w*\(|[\'\"].*[\'\"]$|\d+$|\[|\{)', option.strip())) or
+                any(op in option for op in ['==', '!=', '>=', '<=', '+', '-', '*', '/', '%', '//', '**']) or
+                '`' in option
+            )
+            formatted_opt = _format_inline_code_markup(option)
+            font_class = 'font-mono text-xs sm:text-sm font-bold text-slate-900' if is_code else 'text-xs sm:text-sm font-bold text-slate-800'
+            options_html_list.append(
+                f'<button type="button" data-action="checkpoint-choice" data-checkpoint-key="{html.escape(item["key"], quote=True)}" data-answer="{html.escape(option, quote=True)}" '
+                f'class="checkpoint-option-btn group w-full text-left p-3.5 sm:p-4 rounded-2xl border-2 border-slate-200 border-b-[4px] border-b-slate-300 bg-white hover:border-indigo-400 hover:border-b-indigo-500 hover:bg-indigo-50/40 active:translate-y-[2px] active:border-b-[2px] transition flex items-center justify-between gap-3 cursor-pointer shadow-xs">'
+                f'<div class="flex items-center gap-3 min-w-0">'
+                f'  <span class="checkpoint-letter-badge w-7 h-7 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 font-mono font-black text-xs flex items-center justify-center shrink-0 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition" data-letter="{letter}">{letter}</span>'
+                f'  <span class="checkpoint-option-text {font_class} leading-snug">{formatted_opt}</span>'
+                f'</div>'
+                f'<span class="checkpoint-radio-indicator w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 flex items-center justify-center shrink-0 transition"></span>'
+                f'</button>'
+            )
+        options_html = ''.join(options_html_list)
+
+        q_html = _format_checkpoint_question_html(item["question"])
+
+        card_html = (
+            f'<div class="theory-checkpoint theory-interactive-card my-6 rounded-[2rem] border-2 border-indigo-200 bg-gradient-to-b from-[#FAF5FF]/60 via-white to-[#F5F3FF]/80 p-5 sm:p-7 shadow-[0_6px_0_#C4B5FD,0_12px_28px_rgba(99,102,241,0.08)] transition" '
             f'data-checkpoint-key="{html.escape(item["key"], quote=True)}">'
-            f'<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black">'
-            f'<i class="ph-fill ph-lightning"></i><span>Быстрая проверка</span></div>'
-            f'<h3 class="mt-3 text-base sm:text-lg font-black text-slate-900 leading-snug">{_format_inline_code_markup(item["question"])}</h3>'
-            f'<div class="mt-4 space-y-2.5">{options_html}</div>'
-            f'<div data-checkpoint-result class="hidden mt-3 p-3.5 rounded-xl text-xs sm:text-sm font-bold"></div>'
+            f'<div class="flex items-center justify-between pb-3.5 mb-3.5 border-b border-indigo-100">'
+            f'  <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black shadow-xs">'
+            f'    <i class="ph-fill ph-lightning text-amber-300 text-sm"></i><span>Микро-проверка</span>'
+            f'  </div>'
+            f'  <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white border border-indigo-200 text-[11px] font-black text-indigo-700 shadow-xs">'
+            f'    <i class="ph-bold ph-sparkle text-amber-500"></i><span>+15 XP</span>'
+            f'  </div>'
+            f'</div>'
+            f'<div class="checkpoint-question-wrap">{q_html}</div>'
+            f'<div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">{options_html}</div>'
+            f'<div data-checkpoint-result class="hidden mt-4 p-4 rounded-2xl text-xs sm:text-sm font-bold border-2 transition"></div>'
             f'</div>'
         )
+        return _stash_custom_block(card_html)
 
     def _preserve_blank_lines(src):
         # Convert each extra blank line into explicit spacer markers before markdown.
@@ -1122,19 +1262,26 @@ def _render_theory_content_html(content_value):
         Help Python-Markdown recognize list blocks even when author
         writes list right after plain text line without an empty line.
         """
-        # Imported lessons often flatten numbered algorithm steps into one
-        # physical line (`1. ... 2. ... 3. ...`). Restore list boundaries
-        # before Markdown parses the document.
-        normalized = re.sub(r'(?<!\n)\s+([1-9])\.\s+', r'\n\1. ', src or '')
-        lines = normalized.split('\n')
+        lines = (src or '').split('\n')
         out = []
         prev_was_list = False
         list_item_re = re.compile(r'^\s*(?:[-*+]\s+|\d+\.\s+)')
+        flattened_step_re = re.compile(r'^\s*1\.\s+.+?\s+[2-9]\.\s+')
         for line in lines:
+            # Only unflatten if a line contains multiple sequential numbered steps like `1. ... 2. ...`
+            if flattened_step_re.match(line):
+                sub_lines = re.sub(r'\s+([2-9])\.\s+', r'\n\1. ', line).split('\n')
+                for sline in sub_lines:
+                    if out and out[-1].strip() and not prev_was_list:
+                        out.append('')
+                    out.append(sline)
+                    prev_was_list = True
+                continue
+
             is_list = bool(list_item_re.match(line or ''))
             if is_list and out:
                 prev = out[-1]
-                if prev.strip() and not prev_was_list:
+                if prev.strip() and not prev_was_list and not prev.strip().startswith('|'):
                     out.append('')
             out.append(line)
             prev_was_list = is_list
@@ -1176,6 +1323,14 @@ def _render_theory_content_html(content_value):
         parts.append(_preserve_blank_lines(src[pos:]))
         return ''.join(parts)
 
+    # Stash interactive and snippet code blocks FIRST so their code and comments
+    # Stash interactive and snippet code blocks FIRST so their code and comments
+    # are completely immune to markdown transforms, spacing, and math parsers
+    text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[CODE_RUNNER(?:\s+([^\]]+))?\](.*?)\[/CODE_RUNNER\]", _code_runner_repl, text, flags=re.DOTALL | re.IGNORECASE)
+    text = _INTERACTIVE_RE.sub(_interactive_repl, text)
+    text = _CHECKPOINT_RE.sub(_checkpoint_repl, text)
+
     text = _normalize_markdown_lists(text)
     # Старые и импортированные конспекты часто содержат названия разделов
     # отдельной строкой без Markdown-маркера. Превращаем только устойчивый
@@ -1200,7 +1355,6 @@ def _render_theory_content_html(content_value):
     # to reduce cases where raw "*" leaks into rendered text.
     text = re.sub(r'(?m)^\s*\*\s+', '- ', text)
     text = re.sub(r'\[GHOST_IMAGE(?:\s+name="([^"]*)")?\]', '', text, flags=re.IGNORECASE)
-    text = re.sub(r"\[CODE\s+lang=\"([^\"]+)\"\](.*?)\[/CODE\]", _code_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[CALLOUT\s+type=\"([^\"]+)\"\](.*?)\[/CALLOUT\]", _callout_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[REMEMBER\](.*?)\[/REMEMBER\]", _remember_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[IMPORTANT(?:\s+title=\"([^\"]*)\")?\](.*?)\[/IMPORTANT\]", _important_repl, text, flags=re.DOTALL | re.IGNORECASE)
@@ -1212,18 +1366,16 @@ def _render_theory_content_html(content_value):
     text = re.sub(r"\[HOW_IT_WORKS(?:\s+speech=\"([^\"]*)\")?\](.*?)\[/HOW_IT_WORKS\]", _how_it_works_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[DATA_TYPES\](.*?)\[/DATA_TYPES\]", _data_types_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[OPERATIONS(?:\s+([^\]]+))?\](.*?)\[/OPERATIONS\]", _operations_repl, text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"\[CODE_RUNNER(?:\s+([^\]]+))?\](.*?)\[/CODE_RUNNER\]", _code_runner_repl, text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"\[PRACTICE_TASK\s+id=\"([^\"]+)\"\]", _practice_repl, text, flags=re.IGNORECASE)
-    text = _INTERACTIVE_RE.sub(_interactive_repl, text)
-    text = _CHECKPOINT_RE.sub(_checkpoint_repl, text)
     
     # Ensure Markdown tables and lists have clean blank lines before and after them, and no __THEORY_SPACER__
     text = re.sub(r'__THEORY_SPACER__\s*(\n\s*\|)', r'\1', text)
     text = re.sub(r'(\|\s*\n)\s*__THEORY_SPACER__', r'\1', text)
-    text = re.sub(r'([^\n])\n(\s*\|.+?\n\s*\|[-:\s|]+)', r'\1\n\n\2', text)
+    # Only separate tables from preceding non-table lines, checking for actual header separator row with ---
+    text = re.sub(r'(?m)^([^\n|].*)\n([ \t]*\|[^\n]+\n[ \t]*\|[ \t]*:?---)', r'\1\n\n\2', text)
     text = re.sub(r'(\|[^\n]+)\n([^\n|])', r'\1\n\n\2', text)
     text = re.sub(r'__THEORY_SPACER__\s*(\n\s*(?:[-*+]\s+|\d+\.\s+))', r'\n\1', text)
-    text = re.sub(r'([^\n])\n(\s*(?:[-*+]\s+|\d+\.\s+))', r'\1\n\n\2', text)
+    text = re.sub(r'([^\n|])\n(\s*(?:[-*+]\s+|\d+\.\s+))', r'\1\n\n\2', text)
     
     try:
         from markdown import markdown as _md
@@ -1355,14 +1507,19 @@ def _render_theory_content_html(content_value):
         # lesson structure automatically.
         section_kinds = {
             'Что проверяет экзамен': 'goal',
+            'Зачем это нужно в ЕГЭ': 'goal',
             'Теория': 'concept',
+            'Синтаксис и визуальная схема памяти': 'concept',
+            'Синтаксис и наглядная визуальная схема': 'concept',
             'Универсальный алгоритм решения': 'method',
             'Пошаговый алгоритм решения': 'method',
             'Практика прямо в материале': 'practice',
+            'Примеры кода и результат': 'practice',
             'Лаборатория темы': 'practice',
             'Проверка именно этой темы': 'practice',
             'Типовые ошибки и самопроверка': 'warning',
             'Типичные ошибки и диагностика': 'warning',
+            'Ловушки и частые ошибки на экзамене': 'warning',
             'Итог темы': 'summary',
             'Микро-проверки': 'check',
         }
@@ -1372,10 +1529,27 @@ def _render_theory_content_html(content_value):
         ]
         for index, heading in enumerate(top_level_headings, start=1):
             title = heading.get_text(' ', strip=True)
+            title_lower = title.lower()
+            if title in section_kinds:
+                section_kind = section_kinds[title]
+            elif 'ошибк' in title_lower or 'ловушк' in title_lower:
+                section_kind = 'warning'
+            elif 'зачем' in title_lower or 'егэ' in title_lower or 'экзамен' in title_lower:
+                section_kind = 'goal'
+            elif 'пример' in title_lower or 'практик' in title_lower:
+                section_kind = 'practice'
+            elif 'проверк' in title_lower or 'тест' in title_lower:
+                section_kind = 'check'
+            elif 'итог' in title_lower:
+                section_kind = 'summary'
+            elif 'алгоритм' in title_lower:
+                section_kind = 'method'
+            else:
+                section_kind = 'concept'
             section = soup.new_tag('section')
-            section_kind = section_kinds.get(title, 'concept')
             section['class'] = ['theory-section', f'theory-section--{section_kind}']
             section['data-section'] = str(index)
+            section['id'] = f'theory-section-{index}'
             marker = soup.new_tag('span')
             marker['class'] = ['theory-section-marker']
             marker.string = f'{index:02d}'
@@ -1392,8 +1566,9 @@ def _render_theory_content_html(content_value):
             first_paragraph = section.find('p', recursive=False)
             if first_paragraph and not first_paragraph.find_parent(class_='theory-interactive'):
                 first_paragraph['class'] = list(first_paragraph.get('class', [])) + ['theory-section-lead']
-            for ordered in section.find_all('ol', recursive=False):
-                ordered['class'] = list(ordered.get('class', [])) + ['theory-steps']
+            if section_kind == 'method':
+                for ordered in section.find_all('ol', recursive=False):
+                    ordered['class'] = list(ordered.get('class', [])) + ['theory-steps']
             for unordered in section.find_all('ul', recursive=False):
                 unordered['class'] = list(unordered.get('class', [])) + ['theory-checklist']
         for spacer in soup.select('.theory-spacer'):
@@ -1454,6 +1629,41 @@ def _render_theory_content_html(content_value):
             img['loading'] = 'lazy'
             img['style'] = 'max-width: min(100%, 920px); height: auto; border-radius: 16px; border: 1px solid rgba(148,163,184,.35); display:block; margin: .35rem 0;'
             block.replace_with(img)
+
+        # Transform standard Markdown <pre><code> blocks into tactile, syntax-highlighted IDE snippets
+        for pre in list(soup.find_all('pre')):
+            if pre.find_parent(class_=['theory-code-runner', 'theory-interactive-editor', 'checkpoint-code-card', 'theory-editor-wrap', 'theory-code-snippet']):
+                continue
+            code_tag = pre.find('code')
+            raw_code = (code_tag.get_text() if code_tag else pre.get_text()) or ''
+            raw_code = raw_code.strip()
+            if not raw_code:
+                continue
+            highlighted = _highlight_python_html(raw_code)
+            snippet_html = (
+                f'<div class="theory-code-snippet my-5 rounded-2xl border-2 border-slate-200 bg-white overflow-hidden shadow-[0_3px_0_#DAE1E9]">'
+                f'  <div class="px-4 py-2.5 border-b border-slate-200 bg-[#F8FAFC] flex items-center justify-between text-xs font-bold text-slate-600">'
+                f'    <div class="flex items-center gap-2">'
+                f'      <div class="flex items-center gap-1.5">'
+                f'        <span class="w-2.5 h-2.5 rounded-full bg-rose-400 inline-block"></span>'
+                f'        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>'
+                f'        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>'
+                f'      </div>'
+                f'      <span class="font-mono text-[11px] px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-black">Python</span>'
+                f'    </div>'
+                f'    <button type="button" onclick="theoryCopySnippet(this)" class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-slate-600 hover:text-slate-900 shadow-sm transition active:scale-95 flex items-center gap-1.5 cursor-pointer">'
+                f'      <i class="ph-bold ph-copy"></i><span>Копировать</span>'
+                f'    </button>'
+                f'  </div>'
+                f'  <div class="p-4 overflow-x-auto bg-[#FAFAFA]">'
+                f'    <pre class="m-0 p-0 font-mono text-xs sm:text-sm leading-relaxed text-slate-800"><code class="language-python">{highlighted}</code></pre>'
+                f'  </div>'
+                f'</div>'
+            )
+            parsed_snippet = BeautifulSoup(snippet_html, 'html.parser').find('div')
+            if parsed_snippet:
+                pre.replace_with(parsed_snippet)
+
         # Serialize all DOM-level normalization back to the fragment. Without
         # this assignment BeautifulSoup fixes (headings, lists, classes and
         # resolved images) never reach the template.
@@ -1614,7 +1824,7 @@ def _get_course_groups_with_blocks(course_id):
 def _build_visible_with_state(course_id):
     """Student dataset: groups + blocks + read/bookmark states + lock states."""
     groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
-    student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_student() else None
+    student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_authenticated else None
 
     teacher_locked_numbers = set()
     if student:
@@ -1639,6 +1849,8 @@ def _build_visible_with_state(course_id):
     visible_groups = []
     for group in groups:
         group_items = blocks_by_group.get(group.id, [])
+        if not _can_manage_theory():
+            group_items = [b for b in group_items if _extract_status(b.content) == 'published']
         items = []
         for idx, block in enumerate(group_items):
             is_teacher_locked = (block.task_number in teacher_locked_numbers) if student else False
@@ -1679,6 +1891,12 @@ def _build_catalog_context(course_id, selected_group_id=None):
     course = Course.query.get(course_id)
     available_courses = Course.query.filter_by(is_active=True).all()
     all_blocks = [block for pack in visible_groups for block in pack['blocks']]
+    programming_blocks = [
+        block
+        for pack in visible_groups
+        if any(marker in (pack['group'].name or '').casefold() for marker in ('программ', 'python'))
+        for block in pack['blocks']
+    ]
     student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_student() else None
     completed_count = sum(
         1 for block in all_blocks
@@ -1690,6 +1908,12 @@ def _build_catalog_context(course_id, selected_group_id=None):
         if 0 < state_by_number.get(block.task_number, {}).get('reading_progress', 0) < 100
     )
     saved_count = sum(1 for block in all_blocks if state_by_number.get(block.task_number, {}).get('bookmarked'))
+    programming_completed_count = sum(
+        1 for block in programming_blocks
+        if state_by_number.get(block.task_number, {}).get('read')
+        or state_by_number.get(block.task_number, {}).get('reading_progress', 0) >= 100
+    )
+    final_test_state = session.get(f'python_final_test_{course_id}') or {}
 
     group_cards = []
     for pack in visible_groups:
@@ -1751,6 +1975,11 @@ def _build_catalog_context(course_id, selected_group_id=None):
         'in_progress_count': in_progress_count,
         'saved_count': saved_count,
         'overall_progress': round(completed_count * 100 / len(all_blocks)) if all_blocks else 0,
+        'programming_total_blocks': len(programming_blocks),
+        'programming_completed_count': programming_completed_count,
+        'programming_progress': round(programming_completed_count * 100 / len(programming_blocks)) if programming_blocks else 0,
+        'python_final_test_passed': bool(final_test_state.get('passed')),
+        'python_final_test_score': int(final_test_state.get('score', 0)),
         'avg_read_minutes': avg_read_minutes,
         'spent_hours': spent_hours,
         'spent_mins': spent_mins,
@@ -1768,12 +1997,105 @@ def theory_index():
         flash('У вас нет доступа к теории.', 'warning')
         return redirect(url_for('main.dashboard'))
 
-    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
-    if course_id is None:
-        flash('Нет доступных курсов.', 'warning')
-        return redirect(url_for('main.dashboard'))
+    # Преподавателей и администраторов по умолчанию направляем в пульт управления теорией,
+    # если явно не запрошен режим предпросмотра ученика (?view=student).
+    if _can_manage_theory() and request.args.get('view') != 'student':
+        cid = request.args.get('course_id', type=int)
+        return redirect(url_for('theory.manage_list', course_id=cid) if cid else url_for('theory.manage_list'))
 
-    return render_template('sandbox/theory.html', **_build_catalog_context(course_id))
+    return _render_theory_experience(request.args.get('course_id', type=int))
+
+
+def _render_theory_experience(course_id=None, group_id=None):
+    from app.theory.experience import build_experience
+
+    manager = _can_manage_theory()
+    student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_student() else None
+    experience = build_experience(student.student_id if student else None, staff=manager)
+    selected = None
+    selected_group = None
+    is_final_test = False
+    if course_id is not None:
+        selected = next((c for c in experience['courses'] if c['id'] == course_id), None)
+        if selected is None:
+            abort(404)
+        if not selected.get('final_test_passed'):
+            session_key = f'python_final_test_{current_user.id}_{course_id}' if current_user.is_authenticated else f'python_final_test_{course_id}'
+            final_test_state = session.get(session_key) or {}
+            if final_test_state.get('passed'):
+                selected['final_test_passed'] = True
+                selected['final_test_score'] = int(final_test_state.get('score', 0))
+        requested_group = str(group_id) if group_id is not None else request.args.get('group')
+        if request.args.get('assessment') == '1' or requested_group == 'final_test':
+            is_final_test = True
+            selected_group = None
+        else:
+            selected_group = next((g for g in selected['groups'] if str(g['id'] or 'ungrouped') == requested_group), None)
+            if selected_group is None:
+                continuation = selected['continue_topic']
+                selected_group = next((g for g in selected['groups'] if continuation and g['id'] == continuation['group_id']), None)
+                selected_group = selected_group or next((g for g in selected['groups'] if g['topics']), None)
+                selected_group = selected_group or next(iter(selected['groups']), None)
+    return render_template(
+        'sandbox/theory_experience.html', experience=experience,
+        selected_course=selected, selected_group=selected_group,
+        is_final_test=is_final_test,
+        can_manage=manager, active_page='theory',
+    )
+
+
+@theory_bp.route('/theory/course/<int:course_id>')
+@login_required
+def theory_course(course_id):
+    if not has_permission(current_user, 'theory.view'):
+        abort(403)
+    if _can_manage_theory() and request.args.get('view') != 'student':
+        return redirect(url_for('theory.manage_list', course_id=course_id))
+
+    if current_user.is_student() and not _can_manage_theory():
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if student:
+            enrollment = StudentCourseEnrollment.query.filter_by(
+                student_id=student.student_id,
+                course_id=course_id
+            ).first()
+            if enrollment and not enrollment.is_active:
+                course = Course.query.get(course_id)
+                course_name = f'«{course.title}»' if course else 'этот курс'
+                flash(f'Курс {course_name} назначен преподавателем, но ожидает активации и пока не инициализирован.', 'warning')
+                return redirect(url_for('theory.theory_index'))
+
+    return _render_theory_experience(course_id)
+
+
+@theory_bp.route('/theory/bank-preview')
+@login_required
+def theory_bank_preview():
+    """Временная страница просмотра всех 200 заданий банка с ответами для отладки и проверки."""
+    from app.utils.python_programming_bank import load_programming_bank
+
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    tasks = load_programming_bank()
+
+    blocks_meta = [
+        {"num": 1, "title": "Синтаксис, типы, арифметика и ввод-вывод", "count": 50},
+        {"num": 2, "title": "Логика и ветвления в Python", "count": 50},
+        {"num": 3, "title": "Циклы for, while и range", "count": 50},
+        {"num": 4, "title": "Строки, списки, функции и файлы", "count": 50},
+    ]
+
+    tasks_by_block = {1: [], 2: [], 3: [], 4: []}
+    for task in tasks:
+        tasks_by_block.setdefault(task.block, []).append(task)
+
+    return render_template(
+        'sandbox/theory_bank_preview.html',
+        course_id=course_id,
+        blocks_meta=blocks_meta,
+        tasks_by_block=tasks_by_block,
+        total_tasks=len(tasks),
+        title="Банк заданий по программированию (200 задач)",
+    )
 
 
 @theory_bp.route('/theory/group/<int:group_id>')
@@ -1783,19 +2105,8 @@ def theory_group_view(group_id):
         flash('У вас нет доступа к разделу «Теория».', 'warning')
         return redirect(url_for('main.dashboard'))
 
-    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
-    if course_id is None:
-        flash('Нет доступных курсов.', 'warning')
-        return redirect(url_for('main.dashboard'))
-
-    context = _build_catalog_context(course_id, selected_group_id=group_id)
-    selected_group_pack = next((x for x in context['visible_groups'] if x['group'].id == group_id), None)
-    if not selected_group_pack:
-        return redirect(url_for('theory.theory_index', course_id=course_id))
-
-    # The V2 catalogue is the only live entry point.  Keep group URLs as a
-    # useful deep link, but render them through the same canonical screen.
-    return render_template('sandbox/theory.html', **context)
+    group = TheoryGroup.query.get_or_404(group_id)
+    return _render_theory_experience(group.course_id, group_id)
 
 
 @theory_bp.route('/theory/<int:task_number>')
@@ -1861,18 +2172,33 @@ def theory_view_block(block_id):
         flash('У вас нет доступа к разделу «Теория».', 'warning')
         return redirect(url_for('main.dashboard'))
 
-    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
-    if course_id is None:
-        flash('Нет доступных курсов.', 'warning')
-        return redirect(url_for('main.dashboard'))
-
-    block = TheoryBlock.query.filter_by(id=block_id, course_id=course_id).first_or_404()
+    block = TheoryBlock.query.get_or_404(block_id)
+    course_id = request.args.get('course_id', type=int) or block.course_id
+    if block.course_id != course_id:
+        course_id = block.course_id
+    if not _can_manage_theory():
+        if _extract_status(block.content) != 'published' or not block.course or not block.course.is_active:
+            abort(404)
     task_number = block.task_number
 
     student = None
-    if current_user.is_student():
+    if current_user.is_authenticated:
         student = Student.query.filter_by(user_id=current_user.id).first()
-        if student:
+        if not student and (current_user.is_tutor() or current_user.is_admin() or current_user.is_creator()):
+            student = Student(user_id=current_user.id, name=current_user.username or f"User {current_user.id}")
+            db.session.add(student)
+            db.session.commit()
+        if student and current_user.is_student():
+            # 0. Check uninitialized course
+            if course_id:
+                enrollment = StudentCourseEnrollment.query.filter_by(
+                    student_id=student.student_id,
+                    course_id=course_id
+                ).first()
+                if enrollment and not enrollment.is_active:
+                    flash('Курс ожидает активации преподавателем.', 'warning')
+                    return redirect(url_for('theory.theory_index'))
+
             # 1. Teacher lock check
             access_row = StudentTheoryAccess.query.filter_by(
                 student_id=student.student_id,
@@ -1972,14 +2298,381 @@ def theory_view_block(block_id):
     return response
 
 
+# --- PDF-генератор конспектов и шпаргалок ---
+
+def _ensure_pdf_fonts():
+    """Ensure Cyrillic TTFonts are registered in ReportLab."""
+    if not _HAS_REPORTLAB:
+        return ('Helvetica', 'Helvetica-Bold', 'Courier')
+
+    global _PDF_FONTS_REGISTERED
+    if _PDF_FONTS_REGISTERED:
+        return ('BooSans', 'BooSansBold', 'BooSansMono')
+
+    font_candidates = [
+        ('BooSans', 'BooSansBold', 'C:/Windows/Fonts/arial.ttf', 'C:/Windows/Fonts/arialbd.ttf'),
+        ('BooSans', 'BooSansBold', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'),
+        ('BooSans', 'BooSansBold', '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf', '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf'),
+    ]
+    mono_candidates = [
+        ('BooSansMono', 'C:/Windows/Fonts/consola.ttf'),
+        ('BooSansMono', 'C:/Windows/Fonts/cour.ttf'),
+        ('BooSansMono', '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf'),
+        ('BooSansMono', '/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf'),
+    ]
+
+    has_regular = False
+    for regular_name, bold_name, regular_path, bold_path in font_candidates:
+        if os.path.exists(regular_path):
+            try:
+                pdfmetrics.registerFont(TTFont(regular_name, regular_path))
+                if os.path.exists(bold_path):
+                    pdfmetrics.registerFont(TTFont(bold_name, bold_path))
+                else:
+                    pdfmetrics.registerFont(TTFont(bold_name, regular_path))
+                has_regular = True
+                break
+            except Exception:
+                pass
+
+    has_mono = False
+    for mono_name, mono_path in mono_candidates:
+        if os.path.exists(mono_path):
+            try:
+                pdfmetrics.registerFont(TTFont(mono_name, mono_path))
+                has_mono = True
+                break
+            except Exception:
+                pass
+
+    if has_regular:
+        _PDF_FONTS_REGISTERED = True
+        return ('BooSans', 'BooSansBold', 'BooSansMono' if has_mono else 'BooSans')
+    return ('Helvetica', 'Helvetica-Bold', 'Courier')
+
+
+def _format_pdf_inline_markup(text):
+    """Format markdown bold/italic/code for ReportLab Paragraph XML."""
+    if not text:
+        return ''
+    text = text.replace(r'\*', '*')
+    # Convert `code` to <b><font color="#4338CA">code</font></b>
+    text = re.sub(r'`([^`]+)`', r'<b><font color="#4338CA">\1</font></b>', text)
+    # Convert **bold** to <b>bold</b>
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+    # Convert *italic* to <i>italic</i>
+    text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<i>\1</i>', text)
+    # Strip any remaining arbitrary HTML tags except <b>, <i>, <font>, <u>
+    text = re.sub(r'<(?!/?(?:b|i|u|font)\b)[^>]*>', '', text)
+    return text
+
+
+def _generate_theory_cheatsheet_pdf(block):
+    """Generate a high quality, printable PDF cheatsheet for a theory topic block."""
+    if not _HAS_REPORTLAB:
+        raise RuntimeError("Библиотека reportlab не установлена на сервере.")
+
+    font_regular, font_bold, font_mono = _ensure_pdf_fonts()
+
+    class NumberedCanvas(canvas.Canvas):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._saved_page_states = []
+
+        def showPage(self):
+            self._saved_page_states.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            num_pages = len(self._saved_page_states)
+            for state in self._saved_page_states:
+                self.__dict__.update(state)
+                self.draw_footer(num_pages)
+                canvas.Canvas.showPage(self)
+            canvas.Canvas.save(self)
+
+        def draw_footer(self, page_count):
+            self.saveState()
+            self.setFont(font_regular, 8)
+            self.setFillColor(colors.HexColor('#64748B'))
+            self.setStrokeColor(colors.HexColor('#E2E8F0'))
+            self.setLineWidth(0.5)
+            self.line(36, 28, 559, 28)
+            topic_num = block.task_number or 0
+            self.drawString(36, 16, f"BooStudy · Шпаргалка к заданию №{topic_num} ЕГЭ")
+            page_str = f"Страница {self._pageNumber} из {page_count}"
+            self.drawRightString(559, 16, page_str)
+            self.restoreState()
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=38,
+    )
+
+    title_style = ParagraphStyle(
+        'HeaderTitle',
+        fontName=font_bold,
+        fontSize=15,
+        leading=19,
+        textColor=colors.white,
+    )
+    meta_style = ParagraphStyle(
+        'HeaderMeta',
+        fontName=font_regular,
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor('#C7D2FE'),
+    )
+    h1_style = ParagraphStyle(
+        'SectionH1',
+        fontName=font_bold,
+        fontSize=12,
+        leading=16,
+        textColor=colors.HexColor('#1E1B4B'),
+        spaceBefore=10,
+        spaceAfter=4,
+    )
+    h2_style = ParagraphStyle(
+        'SectionH2',
+        fontName=font_bold,
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#312E81'),
+        spaceBefore=6,
+        spaceAfter=3,
+    )
+    body_style = ParagraphStyle(
+        'BodyDark',
+        fontName=font_regular,
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor('#1E293B'),
+        spaceAfter=4,
+    )
+    bullet_style = ParagraphStyle(
+        'BulletItem',
+        fontName=font_regular,
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor('#1E293B'),
+        leftIndent=12,
+        spaceAfter=2,
+    )
+    callout_style = ParagraphStyle(
+        'CalloutText',
+        fontName=font_regular,
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor('#0F172A'),
+    )
+    code_title_style = ParagraphStyle(
+        'CodeTitle',
+        fontName=font_bold,
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor('#E0E7FF'),
+    )
+    code_style = ParagraphStyle(
+        'CodeBlock',
+        fontName=font_mono,
+        fontSize=8,
+        leading=11,
+        textColor=colors.HexColor('#F8FAFC'),
+    )
+
+    story = []
+
+    # 1. Header Banner Box
+    group_name = block.group.name if block.group else "Курс подготовки"
+    read_mins = block.read_minutes or 15
+    header_html = (
+        f"<b>№{block.task_number} · {html.escape(block.title or 'Теоретический материал')}</b>"
+    )
+    meta_html = (
+        f"{html.escape(group_name)}  |  Время чтения: ~{read_mins} мин  |  Информатика ЕГЭ"
+    )
+
+    header_cell = [
+        Paragraph(header_html, title_style),
+        Spacer(1, 3),
+        Paragraph(meta_html, meta_style),
+    ]
+    header_table = Table([[header_cell]], colWidths=[523])
+    header_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#4338CA')),
+        ('ROUNDEDCORNERS', [8, 8, 8, 8]),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 10))
+
+    # 2. Parse content sections
+    raw_text = _strip_status_marker(block.content or '')
+    raw_text = re.sub(r'\[CHECKPOINT[\s\S]*?\]', '', raw_text)
+    raw_text = re.sub(r'\[INTERACTIVE[\s\S]*?\]', '', raw_text)
+    raw_text = re.sub(r'\[LEVEL[\s\S]*?\]', '', raw_text)
+    raw_text = re.sub(r'\[/LEVEL\]', '', raw_text)
+
+    # Clean LaTeX macros in text
+    raw_text = re.sub(r'\\text\{([^{}]+)\}', r'\1', raw_text)
+    raw_text = re.sub(r'\\mathbf\{([^{}]+)\}', r'\1', raw_text)
+    raw_text = raw_text.replace(r'\quad', ' ')
+    raw_text = re.sub(r'\$\$([\s\S]*?)\$\$', r'\1', raw_text)
+
+    lines = raw_text.split('\n')
+    i = 0
+    while i < len(lines):
+        line = lines[i].rstrip()
+        stripped = line.strip()
+
+        if not stripped:
+            i += 1
+            continue
+
+        # Code Runner block: [CODE_RUNNER title="..." input="..." output="..."]
+        if stripped.startswith('[CODE_RUNNER'):
+            code_title_match = re.search(r'title="([^"]*)"', stripped)
+            code_title = code_title_match.group(1) if code_title_match else "Пример кода на Python"
+            output_match = re.search(r'output="([^"]*)"', stripped)
+            code_output = output_match.group(1).replace(r'\n', '\n') if output_match else ""
+
+            code_lines = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith('[/CODE_RUNNER]'):
+                code_lines.append(lines[i])
+                i += 1
+            i += 1  # skip [/CODE_RUNNER]
+
+            code_body = '\n'.join(code_lines).strip()
+            code_story = [
+                Paragraph(f"▸ {html.escape(code_title)}", code_title_style),
+                Spacer(1, 4),
+                Preformatted(code_body, code_style),
+            ]
+            if code_output:
+                code_story.append(Spacer(1, 4))
+                code_story.append(Paragraph("<font color='#A5B4FC'># Вывод программы:</font>", code_style))
+                code_story.append(Preformatted(code_output.strip(), code_style))
+
+            code_table = Table([[code_story]], colWidths=[523])
+            code_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#0F172A')),
+                ('ROUNDEDCORNERS', [6, 6, 6, 6]),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ]))
+            story.append(KeepTogether(code_table))
+            story.append(Spacer(1, 6))
+            continue
+
+        # Markdown headings
+        if stripped.startswith('## '):
+            h_text = html.escape(stripped[3:].strip())
+            story.append(Spacer(1, 4))
+            story.append(Paragraph(f"<b>{h_text}</b>", h1_style))
+            story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#E0E7FF'), spaceAfter=5))
+            i += 1
+            continue
+        elif stripped.startswith('### '):
+            h_text = html.escape(stripped[4:].strip())
+            story.append(Paragraph(f"<b>{h_text}</b>", h2_style))
+            i += 1
+            continue
+
+        # HTML callouts / div wrappers
+        if '<div' in stripped or '</div' in stripped:
+            soup = BeautifulSoup(line, 'html.parser')
+            clean_div_text = soup.get_text(' ', strip=True)
+            if clean_div_text and len(clean_div_text) > 3:
+                callout_p = Paragraph(f"• {html.escape(clean_div_text)}", callout_style)
+                callout_t = Table([[callout_p]], colWidths=[523])
+                callout_t.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8FAFC')),
+                    ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E2E8F0')),
+                    ('ROUNDEDCORNERS', [4, 4, 4, 4]),
+                    ('TOPPADDING', (0, 0), (-1, -1), 5),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                story.append(callout_t)
+                story.append(Spacer(1, 4))
+            i += 1
+            continue
+
+        # Bullet list items
+        if stripped.startswith(('- ', '* ')):
+            item_text = stripped[2:].strip()
+            item_text = _format_pdf_inline_markup(item_text)
+            story.append(Paragraph(f"• {item_text}", bullet_style))
+            i += 1
+            continue
+
+        # Plain paragraph
+        p_text = _format_pdf_inline_markup(stripped)
+        story.append(Paragraph(p_text, body_style))
+        i += 1
+
+    doc.build(story, canvasmaker=NumberedCanvas)
+    buf.seek(0)
+    return buf
+
+
+@theory_bp.route('/theory/topic/<int:block_id>/pdf')
+@login_required
+def theory_block_pdf(block_id):
+    """Генерация и отдача PDF-шпаргалки по теме."""
+    if not has_permission(current_user, 'theory.view'):
+        flash('У вас нет доступа к разделу «Теория».', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    block = TheoryBlock.query.get_or_404(block_id)
+    if not _can_manage_theory():
+        if _extract_status(block.content) != 'published' or not block.course or not block.course.is_active:
+            abort(404)
+
+    pdf_buffer = _generate_theory_cheatsheet_pdf(block)
+    response = make_response(pdf_buffer.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    safe_filename = f"boostudy_theory_{block.task_number}.pdf"
+    response.headers['Content-Disposition'] = f'inline; filename="{safe_filename}"'
+    return response
+
+
+@theory_bp.route('/theory/<int:task_number>/pdf')
+@login_required
+def theory_task_pdf(task_number):
+    """Редирект на PDF-шпаргалку по номеру темы task_number."""
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    block = TheoryBlock.query.filter_by(task_number=task_number, course_id=course_id).first_or_404()
+    return redirect(url_for('theory.theory_block_pdf', block_id=block.id, course_id=course_id))
+
+
 # --- Управление для тьютора/админа ---
 
 def _can_manage_theory():
     if not current_user.is_authenticated:
         return False
-    # Creator must always have full access to theory workspace,
+    # Creator, teacher, tutor, admin must always have full access to theory workspace,
     # even if granular RBAC mapping is missing for this permission.
-    if current_user.is_creator() or current_user.is_tutor() or current_user.is_admin():
+    user_role = getattr(current_user, 'role', '')
+    if (
+        user_role in ('creator', 'teacher', 'tutor', 'admin', 'chief_admin')
+        or current_user.is_creator()
+        or current_user.is_tutor()
+        or current_user.is_admin()
+        or (hasattr(current_user, 'is_teacher') and current_user.is_teacher())
+    ):
         return True
     return bool(has_permission(current_user, 'theory.manage'))
 
@@ -2083,27 +2776,27 @@ def manage_list():
         flash('Недостаточно прав для управления теорией.', 'danger')
         return redirect(url_for('main.dashboard'))
 
+    courses = Course.query.order_by(Course.id).all()
     course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None and courses:
+        course_id = courses[0].id
+
     if course_id is None:
-        flash('Нет доступных курсов. Создайте курс в настройках.', 'warning')
+        flash('Нет доступных курсов. Создайте первый курс.', 'info')
         return render_template(
-            'theory/theory_manage_list.html',
+            'sandbox/theory_admin_hub.html',
+            courses=[],
+            selected_course=None,
             groups=[],
+            blocks=[],
             blocks_by_group={},
-            selected_group=None,
-            selected_block=None,
-            selected_group_id=None,
-            selected_block_id=None,
-            completion_percent=0,
-            published_count=0,
-            total_count=0,
-            student_stats=[],
-            comments_history=[],
-            checkpoint_stats=[],
-            course_insights=[],
-            scoped_students_count=0,
-            course_id=None,
-            active_page='theory_manage',
+            students=[],
+            enrollments=set(),
+            locked_by_student={},
+            feedbacks=[],
+            final_test_attempts=[],
+            avg_course_rating=5.0,
+            can_manage=True,
         )
 
     groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
@@ -2382,35 +3075,752 @@ def manage_list():
             })
 
     from app.models import Course as ExamCourse
-    course = ExamCourse.query.get(course_id) if course_id else None
+    selected_course = ExamCourse.query.get(course_id) if course_id else (courses[0] if courses else None)
+
+    all_blocks = [b for items in blocks_by_group.values() for b in items]
+    all_blocks.sort(key=lambda x: (x.group_id or 0, x.position or 0, x.task_number or 0))
+
+    feedbacks_query = TheoryFeedback.query.filter_by(course_id=course_id).all() if course_id else []
+    feedback_by_task = defaultdict(list)
+    for fb in feedbacks_query:
+        feedback_by_task[fb.task_number].append(fb)
+
+    group_map = {g.id: g.name for g in groups}
+    blocks_data = []
+    blocks_by_group_data = defaultdict(list)
+    for b in all_blocks:
+        fbs = feedback_by_task.get(b.task_number, [])
+        avg_r = round(sum(f.rating for f in fbs) / len(fbs), 1) if fbs else None
+        b_dict = {
+            'id': b.id,
+            'task_number': b.task_number,
+            'position': b.position,
+            'title': b.title or f'Тема {b.position or b.task_number}',
+            'description': b.description or '',
+            'group_id': b.group_id,
+            'group_name': group_map.get(b.group_id, 'Без модуля'),
+            'status': _extract_status(b.content),
+            'read_minutes': b.read_minutes or 15,
+            'avg_rating': f"{avg_r:.1f}" if avg_r else None,
+            'feedback_count': len(fbs),
+        }
+        blocks_data.append(b_dict)
+        if b.group_id:
+            blocks_by_group_data[b.group_id].append(b_dict)
+
+    all_enrollments = StudentCourseEnrollment.query.filter_by(course_id=course_id).all() if course_id else []
+    enrollments_map = {e.student_id: e for e in all_enrollments}
+    active_enrollments = {
+        (e.student_id, e.course_id) for e in all_enrollments if e.is_active
+    }
+
+    locked_rows = StudentTheoryAccess.query.filter(
+        StudentTheoryAccess.course_id == course_id,
+        StudentTheoryAccess.can_view == False
+    ).all() if course_id else []
+    locked_by_student = defaultdict(set)
+    for r in locked_rows:
+        locked_by_student[r.student_id].add(r.task_number)
+
+    completed_rows = db.session.query(
+        StudentTheoryState.student_id, func.count(StudentTheoryState.id)
+    ).filter(
+        StudentTheoryState.course_id == course_id,
+        StudentTheoryState.is_read == True
+    ).group_by(StudentTheoryState.student_id).all() if course_id else []
+    completed_by_student = dict(completed_rows)
+
+    u_ids = [s.user_id for s in scoped_students if s.user_id]
+    users_map = {u.id: u for u in User.query.filter(User.id.in_(u_ids)).all()} if u_ids else {}
+
+    all_active_courses = Course.query.filter_by(is_active=True).all()
+    course_titles = {c.id: c.title for c in all_active_courses}
+
+    all_student_enrollments = StudentCourseEnrollment.query.all()
+    courses_by_student = defaultdict(list)
+    for e in all_student_enrollments:
+        if e.course_id in course_titles:
+            courses_by_student[e.student_id].append({
+                'course_id': e.course_id,
+                'title': course_titles[e.course_id],
+                'status': 'active' if e.is_active else 'assigned',
+            })
+
+    TEST_STUDENT_PREFIXES = ('qa_', 'release_')
+
+    def is_test_user(s_name, u_name):
+        n = (s_name or '').strip().lower()
+        u = (u_name or '').strip().lower()
+        return any(n.startswith(p) or u.startswith(p) for p in TEST_STUDENT_PREFIXES)
+
+    students_data = []
+    for s in scoped_students:
+        u = users_map.get(s.user_id)
+        s_name = s.name or (u.display_name if u else f'Ученик #{s.student_id}')
+        username = u.username if u else f'student_{s.student_id}'
+        is_test = is_test_user(s_name, username)
+
+        enr = enrollments_map.get(s.student_id)
+        if enr is not None:
+            status = 'active' if enr.is_active else 'assigned'
+        else:
+            status = 'none'
+
+        locked_set = locked_by_student.get(s.student_id, set())
+
+        parts = s_name.split()
+        if len(parts) >= 2:
+            initials = (parts[0][0] + parts[1][0]).upper()
+        elif parts and parts[0]:
+            initials = parts[0][:2].upper()
+        else:
+            initials = 'ST'
+
+        c_summary = courses_by_student.get(s.student_id, [])
+
+        students_data.append({
+            'student_id': s.student_id,
+            'name': s_name,
+            'username': username,
+            'initials': initials,
+            'is_test': is_test,
+            'status': status,
+            'courses_summary': c_summary,
+            'assigned_count': len(c_summary),
+            'locked_count': len(locked_set),
+            'locked_topics': sorted(list(locked_set)),
+            'completed_count': completed_by_student.get(s.student_id, 0),
+        })
+
+    def sort_key(st):
+        assigned_rank = 0 if st['assigned_count'] > 0 else 1
+        test_rank = 1 if st['is_test'] else 0
+        return (assigned_rank, test_rank, st['name'].lower())
+
+    students_data.sort(key=sort_key)
+
+    feedbacks_list = []
+    student_ids_for_fb = list({f.student_id for f in feedbacks_query})
+    students_fb_map = {
+        s.student_id: s.name
+        for s in Student.query.filter(Student.student_id.in_(student_ids_for_fb)).all()
+    } if student_ids_for_fb else {}
+    block_title_map = {b['task_number']: b['title'] for b in blocks_data}
+    for f in sorted(feedbacks_query, key=lambda x: x.created_at or moscow_now(), reverse=True):
+        feedbacks_list.append({
+            'student_name': students_fb_map.get(f.student_id, f'Ученик #{f.student_id}'),
+            'task_number': f.task_number,
+            'topic_title': block_title_map.get(f.task_number, f'Тема {f.task_number}'),
+            'rating': f.rating,
+            'comment': f.comment or '',
+            'created_at': f.created_at.strftime('%d.%m.%Y %H:%M') if f.created_at else '—',
+        })
+
+    avg_course_rating = (
+        f"{sum(f['rating'] for f in feedbacks_list) / len(feedbacks_list):.1f}"
+        if feedbacks_list else "5.0"
+    )
+
+    attempts_query = TheoryFinalTestAttempt.query
+    if course_id:
+        attempts_query = attempts_query.filter_by(course_id=course_id)
+    all_attempts = attempts_query.order_by(
+        TheoryFinalTestAttempt.created_at.desc(),
+        TheoryFinalTestAttempt.attempt_number.desc(),
+    ).limit(100).all()
+
+    att_student_ids = list({a.student_id for a in all_attempts if a.student_id})
+    att_user_ids = list({a.user_id for a in all_attempts if a.user_id})
+    st_by_sid = {s.student_id: s.name for s in Student.query.filter(Student.student_id.in_(att_student_ids)).all()} if att_student_ids else {}
+    st_by_uid = {s.user_id: s.name for s in Student.query.filter(Student.user_id.in_(att_user_ids)).all()} if att_user_ids else {}
+
+    final_test_attempts = []
+    for a in all_attempts:
+        st_name = st_by_sid.get(a.student_id) or st_by_uid.get(a.user_id) or (f'Ученик #{a.student_id}' if a.student_id else 'Ученик')
+        final_test_attempts.append({
+            'id': a.id,
+            'student_name': st_name,
+            'attempt_number': a.attempt_number or 1,
+            'score': a.score or 0,
+            'total': a.total or 20,
+            'percent': round((a.score / a.total) * 100) if a.total else 0,
+            'passed': bool(a.passed),
+            'created_at': a.created_at.strftime('%d.%m.%Y %H:%M') if a.created_at else '—',
+            'details': a.details or [],
+        })
 
     return render_template(
-        'theory/theory_manage_list.html',
+        'sandbox/theory_admin_hub.html',
+        courses=courses,
+        selected_course=selected_course,
         groups=groups,
-        blocks_by_group=blocks_by_group,
-        selected_group=selected_group,
-        selected_block=selected_block,
-        selected_block_status=selected_block_status,
-        selected_task_number=selected_task_number,
-        selected_display_number=selected_display_number,
-        grid_states=grid_states,
-        task_numbers=task_numbers,
-        slots=slots,
-        selected_group_id=(selected_group.id if selected_group else None),
-        selected_block_id=(selected_block.id if selected_block else None),
-        completion_percent=completion_percent,
-        published_count=published_count,
-        total_count=total_count,
-        student_stats=student_stats,
-        comments_history=comments_history,
-        checkpoint_stats=checkpoint_stats,
-        course_insights=course_insights,
-        scoped_students_count=len(scoped_student_ids),
-        scoped_students=scoped_students,
-        course_id=course_id,
-        course=course,
+        blocks=blocks_data,
+        blocks_by_group=blocks_by_group_data,
+        students=students_data,
+        enrollments=active_enrollments,
+        locked_by_student=locked_by_student,
+        feedbacks=feedbacks_list,
+        final_test_attempts=final_test_attempts,
+        avg_course_rating=avg_course_rating,
+        can_manage=True,
         active_page='theory_manage',
     )
+
+
+@theory_bp.route('/theory/api/manage/course/save', methods=['POST'])
+@login_required
+def api_manage_course_save():
+    """Сохранение (создание или редактирование) курса."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    course_id = payload.get('id')
+    title = (payload.get('title') or '').strip()
+    slug = (payload.get('slug') or '').strip()
+    is_active = bool(payload.get('is_active', True))
+    if not title:
+        return jsonify({'success': False, 'error': 'Название курса обязательно'}), 400
+
+    if not slug:
+        base_slug = re.sub(r'[^a-zA-Z0-9_\-]+', '-', title.lower()).strip('-')
+        slug = base_slug or f'course-{int(moscow_now().timestamp())}'
+
+    if course_id:
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Курс не найден'}), 404
+        duplicate = Course.query.filter(Course.slug == slug, Course.id != course.id).first()
+        if duplicate:
+            return jsonify({'success': False, 'error': f'Слаг {slug} уже используется'}), 400
+        course.title = title
+        course.slug = slug
+        course.is_active = is_active
+    else:
+        duplicate = Course.query.filter_by(slug=slug).first()
+        if duplicate:
+            slug = f"{slug}-{int(moscow_now().timestamp()) % 10000}"
+        course = Course(title=title, slug=slug, is_active=is_active)
+        db.session.add(course)
+        db.session.flush()
+
+    db.session.commit()
+    return jsonify({'success': True, 'course_id': course.id})
+
+
+@theory_bp.route('/theory/api/manage/group/save', methods=['POST'])
+@login_required
+def api_manage_group_save():
+    """Сохранение (создание или редактирование) учебного модуля."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    group_id = payload.get('id')
+    course_id = payload.get('course_id') or _get_default_course_id()
+    name = (payload.get('name') or '').strip()
+    position = payload.get('position', 1)
+    description = (payload.get('description') or '').strip()
+
+    if not name:
+        return jsonify({'success': False, 'error': 'Название модуля обязательно'}), 400
+
+    if group_id:
+        group = TheoryGroup.query.get(group_id)
+        if not group:
+            return jsonify({'success': False, 'error': 'Модуль не найден'}), 404
+        duplicate = TheoryGroup.query.filter(
+            TheoryGroup.course_id == group.course_id,
+            TheoryGroup.name == name,
+            TheoryGroup.id != group.id
+        ).first()
+        if duplicate:
+            return jsonify({'success': False, 'error': 'Модуль с таким названием уже существует'}), 400
+        group.name = name
+        group.description = description or None
+        group.position = int(position or 1)
+    else:
+        duplicate = TheoryGroup.query.filter_by(course_id=course_id, name=name).first()
+        if duplicate:
+            return jsonify({'success': False, 'error': 'Модуль с таким названием уже существует'}), 400
+        group = TheoryGroup(
+            course_id=course_id,
+            name=name,
+            description=description or None,
+            position=int(position or 1),
+            created_by=current_user.id
+        )
+        db.session.add(group)
+        db.session.flush()
+
+    db.session.commit()
+    return jsonify({'success': True, 'group_id': group.id})
+
+
+@theory_bp.route('/theory/api/manage/group/delete', methods=['POST'])
+@login_required
+def api_manage_group_delete():
+    """Удаление учебного модуля с переносом тем в соседний модуль."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    group_id = payload.get('id')
+    group = TheoryGroup.query.get(group_id)
+    if not group:
+        return jsonify({'success': False, 'error': 'Модуль не найден'}), 404
+
+    fallback = TheoryGroup.query.filter(
+        TheoryGroup.course_id == group.course_id,
+        TheoryGroup.id != group.id
+    ).order_by(TheoryGroup.position, TheoryGroup.id).first()
+
+    if fallback:
+        TheoryBlock.query.filter_by(group_id=group.id).update({'group_id': fallback.id})
+    else:
+        TheoryBlock.query.filter_by(group_id=group.id).update({'group_id': None})
+
+    db.session.delete(group)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@theory_bp.route('/theory/api/manage/block/<int:block_id>', methods=['GET'])
+@login_required
+def api_manage_block_get(block_id):
+    """Получение данных конспекта для модального редактора."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    block = TheoryBlock.query.get(block_id)
+    if not block:
+        return jsonify({'success': False, 'error': 'Тема не найдена'}), 404
+
+    status = _extract_status(block.content or '')
+    clean_content = re.sub(r'^<!--status:(?:draft|published)-->\s*', '', block.content or '')
+
+    return jsonify({
+        'success': True,
+        'block': {
+            'id': block.id,
+            'task_number': block.task_number,
+            'group_id': block.group_id,
+            'title': block.title,
+            'description': block.description or '',
+            'read_minutes': block.read_minutes or 15,
+            'status': status,
+            'content': clean_content,
+        }
+    })
+
+
+@theory_bp.route('/theory/api/manage/block/save', methods=['POST'])
+@login_required
+def api_manage_block_save():
+    """Сохранение темы из модального редактора."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    block_id = payload.get('id')
+    course_id = payload.get('course_id') or _get_default_course_id()
+    group_id = payload.get('group_id')
+    task_number = payload.get('task_number')
+    title = (payload.get('title') or '').strip()
+    description = (payload.get('description') or '').strip()
+    read_minutes = int(payload.get('read_minutes') or 15)
+    status = (payload.get('status') or 'published').strip().lower()
+    if status not in ('draft', 'published'):
+        status = 'published'
+    raw_content = payload.get('content') or ''
+    content_with_status = _with_status_prefix(raw_content, status)
+
+    if not title:
+        return jsonify({'success': False, 'error': 'Название темы обязательно'}), 400
+
+    if block_id:
+        block = TheoryBlock.query.get(block_id)
+        if not block:
+            return jsonify({'success': False, 'error': 'Тема не найдена'}), 404
+        if task_number is not None:
+            duplicate = TheoryBlock.query.filter(
+                TheoryBlock.course_id == block.course_id,
+                TheoryBlock.task_number == int(task_number),
+                TheoryBlock.id != block.id
+            ).first()
+            if duplicate:
+                return jsonify({'success': False, 'error': f'Тема с номером {task_number} уже существует в этом курсе'}), 400
+            block.task_number = int(task_number)
+        block.group_id = group_id
+        block.title = title
+        block.description = description or None
+        block.read_minutes = max(1, min(180, read_minutes))
+        block.content = content_with_status
+        block.updated_at = moscow_now()
+    else:
+        if task_number is None:
+            task_number = (db.session.query(func.coalesce(func.max(TheoryBlock.task_number), 0)).filter_by(course_id=course_id).scalar() or 0) + 1
+        else:
+            task_number = int(task_number)
+            duplicate = TheoryBlock.query.filter_by(course_id=course_id, task_number=task_number).first()
+            if duplicate:
+                return jsonify({'success': False, 'error': f'Тема с номером {task_number} уже существует в этом курсе'}), 400
+
+        next_pos = (db.session.query(func.coalesce(func.max(TheoryBlock.position), 0)).filter_by(course_id=course_id, group_id=group_id).scalar() or 0) + 1
+        block = TheoryBlock(
+            course_id=course_id,
+            group_id=group_id,
+            task_number=task_number,
+            position=next_pos,
+            title=title,
+            description=description or None,
+            read_minutes=max(1, min(180, read_minutes)),
+            content=content_with_status,
+            author_id=current_user.id
+        )
+        db.session.add(block)
+        db.session.flush()
+
+    db.session.commit()
+    return jsonify({'success': True, 'block_id': block.id})
+
+
+@theory_bp.route('/theory/api/manage/block/toggle-status', methods=['POST'])
+@login_required
+def api_manage_block_toggle_status():
+    """Быстрое переключение статуса публикации (Черновик / Опубликовано)."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    block_id = payload.get('id')
+    status = (payload.get('status') or 'published').strip().lower()
+    if status not in ('draft', 'published'):
+        status = 'published'
+
+    block = TheoryBlock.query.get(block_id)
+    if not block:
+        return jsonify({'success': False, 'error': 'Тема не найдена'}), 404
+
+    clean_content = re.sub(r'^<!--status:(?:draft|published)-->\s*', '', block.content or '')
+    block.content = _with_status_prefix(clean_content, status)
+    block.updated_at = moscow_now()
+    db.session.commit()
+
+    return jsonify({'success': True, 'status': status})
+
+
+@theory_bp.route('/theory/api/manage/block/delete', methods=['POST'])
+@login_required
+def api_manage_block_delete():
+    """Удаление темы из базы данных."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    block_id = payload.get('id')
+    block = TheoryBlock.query.get(block_id)
+    if not block:
+        return jsonify({'success': False, 'error': 'Тема не найдена'}), 404
+
+    db.session.delete(block)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@theory_bp.route('/theory/api/manage/student/course-status', methods=['POST'])
+@login_required
+def api_manage_student_course_status():
+    """Установка статуса курса для ученика: 'none', 'assigned', 'active'."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    student_id = payload.get('student_id')
+    course_id = payload.get('course_id')
+    status = payload.get('status')
+
+    if not student_id or not course_id or status not in ('none', 'assigned', 'active'):
+        return jsonify({'success': False, 'error': 'Некорректные параметры'}), 400
+
+    student_id = int(student_id)
+    course_id = int(course_id)
+
+    enrollment = StudentCourseEnrollment.query.filter_by(
+        student_id=student_id,
+        course_id=course_id
+    ).first()
+
+    if status == 'none':
+        if enrollment:
+            db.session.delete(enrollment)
+            db.session.commit()
+        return jsonify({'success': True, 'status': 'none', 'message': 'Курс не назначен'})
+
+    is_active = (status == 'active')
+    if not enrollment:
+        enrollment = StudentCourseEnrollment(
+            student_id=student_id,
+            course_id=course_id,
+            is_active=is_active
+        )
+        db.session.add(enrollment)
+    else:
+        enrollment.is_active = is_active
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'status': status,
+        'is_active': is_active,
+        'message': 'Курс активирован' if is_active else 'Курс назначен (не инициализирован)'
+    })
+
+
+@theory_bp.route('/theory/api/manage/student/<int:student_id>/theory-profile', methods=['GET'])
+@login_required
+def api_manage_student_theory_profile(student_id):
+    """Полный мини-профиль теории ученика по ВСЕМ доступным курсам платформы."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    student = Student.query.get_or_404(student_id)
+    user = User.query.get(student.user_id) if student.user_id else None
+
+    # Все активные курсы (ЕГЭ Информатика, Python и др.)
+    courses = Course.query.filter_by(is_active=True).order_by(Course.id).all()
+    if not courses:
+        courses = Course.query.order_by(Course.id).all()
+
+    # Зачисления ученика
+    enrollments = {
+        e.course_id: e
+        for e in StudentCourseEnrollment.query.filter_by(student_id=student_id).all()
+    }
+
+    # Изученные темы (is_read == True)
+    completed_states = StudentTheoryState.query.filter_by(
+        student_id=student_id,
+        is_read=True
+    ).all()
+    completed_topics_by_course = defaultdict(set)
+    for st in completed_states:
+        completed_topics_by_course[st.course_id].add(st.task_number)
+
+    # Заблокированные темы
+    locked_rows = StudentTheoryAccess.query.filter_by(
+        student_id=student_id,
+        can_view=False
+    ).all()
+    locked_by_course = defaultdict(set)
+    for r in locked_rows:
+        locked_by_course[r.course_id].add(r.task_number)
+
+    # Попытки итоговых тестов
+    attempts = TheoryFinalTestAttempt.query.filter(
+        or_(
+            TheoryFinalTestAttempt.student_id == student_id,
+            TheoryFinalTestAttempt.user_id == (user.id if user else -1)
+        )
+    ).order_by(TheoryFinalTestAttempt.score.desc(), TheoryFinalTestAttempt.created_at.desc()).all()
+    attempts_by_course = defaultdict(list)
+    for a in attempts:
+        attempts_by_course[a.course_id].append(a)
+
+    courses_data = []
+    for c in courses:
+        blocks = TheoryBlock.query.filter_by(course_id=c.id).order_by(TheoryBlock.position, TheoryBlock.task_number).all()
+        # Показываем основные курсы или курсы с темами
+        if not blocks and c.id not in (1, 6):
+            continue
+
+        enr = enrollments.get(c.id)
+        if enr is not None:
+            status = 'active' if enr.is_active else 'assigned'
+        else:
+            status = 'none'
+
+        locked_set = locked_by_course.get(c.id, set())
+        completed_set = completed_topics_by_course.get(c.id, set())
+        c_attempts = attempts_by_course.get(c.id, [])
+        best_attempt = c_attempts[0] if c_attempts else None
+
+        has_test = any(marker in (c.title or '').casefold() for marker in ('программ', 'python'))
+
+        topics_data = []
+        for b in blocks:
+            topics_data.append({
+                'task_number': b.task_number,
+                'title': b.title or f'Тема {b.task_number}',
+                'is_locked': b.task_number in locked_set,
+                'is_read': b.task_number in completed_set,
+            })
+
+        completed_in_blocks = len(completed_set.intersection({b.task_number for b in blocks}))
+        total_b = len(blocks)
+        progress_pct = round((completed_in_blocks / total_b) * 100) if total_b else 0
+
+        serialized_attempts = []
+        for att in sorted(c_attempts, key=lambda x: (x.attempt_number or 0, x.id or 0), reverse=True):
+            serialized_attempts.append({
+                'id': att.id,
+                'attempt_number': att.attempt_number or 1,
+                'score': att.score,
+                'total': att.total,
+                'passed': bool(att.passed),
+                'percent': round((att.score / att.total * 100)) if att.total else 0,
+                'created_at': att.created_at.strftime('%d.%m.%Y %H:%M') if att.created_at else '',
+                'details': att.details or [],
+                'block_scores': att.block_scores or {},
+            })
+
+        courses_data.append({
+            'course_id': c.id,
+            'title': c.title,
+            'slug': c.slug,
+            'status': status,
+            'total_topics': total_b,
+            'completed_topics': completed_in_blocks,
+            'progress_percent': progress_pct,
+            'locked_count': len(locked_set),
+            'locked_topics': sorted(list(locked_set)),
+            'has_final_test': has_test,
+            'final_test_passed': bool(best_attempt and best_attempt.passed),
+            'final_test_score': best_attempt.score if best_attempt else None,
+            'final_test_total': best_attempt.total if best_attempt else 20,
+            'final_test_attempts_count': len(c_attempts),
+            'final_test_attempts': serialized_attempts,
+            'topics': topics_data,
+        })
+
+    s_name = student.name or (user.display_name if user else f'Ученик #{student.student_id}')
+    username = user.username if user else f'student_{student.student_id}'
+    parts = s_name.split()
+    initials = (parts[0][0] + (parts[1][0] if len(parts) > 1 else (parts[0][1] if len(parts[0]) > 1 else ''))).upper() if parts else 'ST'
+
+    return jsonify({
+        'success': True,
+        'student': {
+            'student_id': student.student_id,
+            'user_id': user.id if user else None,
+            'name': s_name,
+            'username': username,
+            'initials': initials,
+            'assigned_courses_count': len([c for c in courses_data if c['status'] in ('active', 'assigned')]),
+        },
+        'courses': courses_data,
+    })
+
+
+@theory_bp.route('/theory/api/manage/student/enroll-toggle', methods=['POST'])
+@login_required
+def api_manage_student_enroll_toggle():
+    """Переключение зачисления ученика на курс (совместимость с V2 статусами)."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    student_id = payload.get('student_id')
+    course_id = payload.get('course_id')
+
+    if 'status' in payload:
+        return api_manage_student_course_status()
+
+    is_active = bool(payload.get('is_active', True))
+    if not student_id or not course_id:
+        return jsonify({'success': False, 'error': 'Некорректные параметры'}), 400
+
+    enrollment = StudentCourseEnrollment.query.filter_by(
+        student_id=student_id,
+        course_id=course_id
+    ).first()
+
+    if not enrollment:
+        enrollment = StudentCourseEnrollment(
+            student_id=student_id,
+            course_id=course_id,
+            is_active=is_active
+        )
+        db.session.add(enrollment)
+    else:
+        enrollment.is_active = is_active
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'is_active': enrollment.is_active,
+        'status': 'active' if enrollment.is_active else 'assigned'
+    })
+
+
+@theory_bp.route('/theory/api/manage/student/access-toggle', methods=['POST'])
+@login_required
+def api_manage_student_access_toggle():
+    """Переключение доступа к отдельной теме курса для ученика."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    student_id = payload.get('student_id')
+    course_id = payload.get('course_id')
+    task_number = payload.get('task_number')
+    can_view = bool(payload.get('can_view', True))
+
+    if not student_id or not course_id or task_number is None:
+        return jsonify({'success': False, 'error': 'Некорректные параметры'}), 400
+
+    access = StudentTheoryAccess.query.filter_by(
+        student_id=student_id,
+        course_id=course_id,
+        task_number=int(task_number)
+    ).first()
+
+    if not access:
+        access = StudentTheoryAccess(
+            student_id=student_id,
+            course_id=course_id,
+            task_number=int(task_number),
+            can_view=can_view
+        )
+        db.session.add(access)
+    else:
+        access.can_view = can_view
+        access.updated_at = moscow_now()
+
+    db.session.commit()
+    return jsonify({'success': True, 'can_view': access.can_view})
+
+
+@theory_bp.route('/theory/api/manage/student/access-batch', methods=['POST'])
+@login_required
+def api_manage_student_access_batch():
+    """Пакетное открытие или блокировка всех тем курса для ученика."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    payload = request.get_json(silent=True) or {}
+    student_id = payload.get('student_id')
+    course_id = payload.get('course_id')
+    action = payload.get('action')
+
+    if not student_id or not course_id or action not in ('unlock_all', 'lock_all'):
+        return jsonify({'success': False, 'error': 'Некорректные параметры'}), 400
+
+    all_tasks = [b.task_number for b in TheoryBlock.query.filter_by(course_id=course_id).all()]
+
+    if action == 'unlock_all':
+        StudentTheoryAccess.query.filter_by(
+            student_id=student_id,
+            course_id=course_id
+        ).update({'can_view': True, 'updated_at': moscow_now()})
+    else:
+        existing = {
+            a.task_number: a
+            for a in StudentTheoryAccess.query.filter_by(student_id=student_id, course_id=course_id).all()
+        }
+        for tn in all_tasks:
+            if tn in existing:
+                existing[tn].can_view = False
+                existing[tn].updated_at = moscow_now()
+            else:
+                db.session.add(StudentTheoryAccess(
+                    student_id=student_id,
+                    course_id=course_id,
+                    task_number=tn,
+                    can_view=False
+                ))
+
+    db.session.commit()
+    return jsonify({'success': True, 'action': action})
 
 
 @theory_bp.route('/theory/upload-image', methods=['POST'])
@@ -2530,6 +3940,113 @@ def theory_uploaded_file(rel_path):
 
     guessed_mime, _ = mimetypes.guess_type(abs_path)
     return send_file(abs_path, mimetype=(guessed_mime or 'application/octet-stream'), as_attachment=False)
+
+
+@theory_bp.route('/theory/api/manage/students/search')
+@login_required
+def api_manage_students_search():
+    """Полнотекстовый поиск учеников для таба Ученики и доступы (с мини-профилями)."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    query = (request.args.get('q') or '').strip().lower()
+    hide_test = request.args.get('hide_test', '1').lower() in ('1', 'true', 'yes')
+
+    scoped_students = _get_scoped_students_for_theory_manager()
+    u_ids = [s.user_id for s in scoped_students if s.user_id]
+    users_map = {u.id: u for u in User.query.filter(User.id.in_(u_ids)).all()} if u_ids else {}
+
+    all_enrollments = StudentCourseEnrollment.query.filter_by(course_id=course_id).all() if course_id else []
+    enrollments_map = {e.student_id: e for e in all_enrollments}
+
+    locked_rows = StudentTheoryAccess.query.filter(
+        StudentTheoryAccess.course_id == course_id,
+        StudentTheoryAccess.can_view == False
+    ).all() if course_id else []
+    locked_by_student = defaultdict(set)
+    for r in locked_rows:
+        locked_by_student[r.student_id].add(r.task_number)
+
+    completed_rows = db.session.query(
+        StudentTheoryState.student_id, func.count(StudentTheoryState.id)
+    ).filter(
+        StudentTheoryState.course_id == course_id,
+        StudentTheoryState.is_read == True
+    ).group_by(StudentTheoryState.student_id).all() if course_id else []
+    completed_by_student = dict(completed_rows)
+
+    all_active_courses = Course.query.filter_by(is_active=True).all()
+    course_titles = {c.id: c.title for c in all_active_courses}
+
+    all_student_enrollments = StudentCourseEnrollment.query.all()
+    courses_by_student = defaultdict(list)
+    for e in all_student_enrollments:
+        if e.course_id in course_titles:
+            courses_by_student[e.student_id].append({
+                'course_id': e.course_id,
+                'title': course_titles[e.course_id],
+                'status': 'active' if e.is_active else 'assigned',
+            })
+
+    TEST_PREFIXES = ('qa_', 'release_')
+
+    results = []
+    for s in scoped_students:
+        u = users_map.get(s.user_id)
+        s_name = s.name or (u.display_name if u else f'Ученик #{s.student_id}')
+        username = u.username if u else f'student_{s.student_id}'
+        sid_str = str(s.student_id)
+
+        if query:
+            if query not in s_name.lower() and query not in username.lower() and query not in sid_str:
+                continue
+
+        n_lower = s_name.strip().lower()
+        u_lower = username.strip().lower()
+        is_test = any(n_lower.startswith(p) or u_lower.startswith(p) for p in TEST_PREFIXES)
+
+        if not query and hide_test and is_test:
+            continue
+
+        enr = enrollments_map.get(s.student_id)
+        if enr is not None:
+            status = 'active' if enr.is_active else 'assigned'
+        else:
+            status = 'none'
+
+        locked_set = locked_by_student.get(s.student_id, set())
+
+        parts = s_name.split()
+        if len(parts) >= 2:
+            initials = (parts[0][0] + parts[1][0]).upper()
+        elif parts and parts[0]:
+            initials = parts[0][:2].upper()
+        else:
+            initials = 'ST'
+
+        c_summary = courses_by_student.get(s.student_id, [])
+
+        results.append({
+            'student_id': s.student_id,
+            'name': s_name,
+            'username': username,
+            'initials': initials,
+            'is_test': is_test,
+            'status': status,
+            'courses_summary': c_summary,
+            'assigned_count': len(c_summary),
+            'locked_count': len(locked_set),
+            'locked_topics': sorted(list(locked_set)),
+            'completed_count': completed_by_student.get(s.student_id, 0),
+        })
+
+    def sort_key(st):
+        assigned_rank = 0 if st['assigned_count'] > 0 else 1
+        test_rank = 1 if st['is_test'] else 0
+        return (assigned_rank, test_rank, st['name'].lower())
+
+    results.sort(key=sort_key)
+    return jsonify({'success': True, 'students': results[:100]})
 
 
 @theory_bp.route('/theory/manage/new', methods=['GET', 'POST'])
@@ -2891,13 +4408,22 @@ def theory_api_progress():
 @theory_bp.route('/theory/api/checkpoint', methods=['POST'])
 @login_required
 def theory_api_checkpoint():
-    if not current_user.is_student():
-        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
     payload = request.get_json(silent=True) or {}
-    resolved, error = _resolve_student_block_from_payload(payload)
-    if error:
-        return jsonify({'success': False, 'error': error}), 404
-    student, block = resolved
+    block_id = payload.get('block_id')
+    student = None
+    block = None
+    if current_user.is_student():
+        resolved, error = _resolve_student_block_from_payload(payload)
+        if error:
+            return jsonify({'success': False, 'error': error}), 404
+        student, block = resolved
+    else:
+        # Teacher/admin preview mode
+        if block_id:
+            block = TheoryBlock.query.get(block_id)
+        if not block:
+            return jsonify({'success': False, 'error': 'Материал не найден.'}), 404
+
     checkpoint_key = (payload.get('checkpoint_key') or '').strip()
     selected_answer = (payload.get('answer') or '').strip()
     checkpoint = next((item for item in _parse_theory_checkpoints(block.content) if item['key'] == checkpoint_key), None)
@@ -2932,33 +4458,62 @@ def theory_api_checkpoint():
         # comparison server-side and return 200/false for a wrong value so the
         # student never sees a misleading 404 toast.
         is_correct = selected_answer.strip().lower() == expected_answer.strip().lower()
-    attempt = TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key).first()
-    if not attempt:
-        attempt = TheoryCheckpointAttempt(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key, selected_answer=selected_answer, is_correct=is_correct)
-        db.session.add(attempt)
-    else:
-        attempt.selected_answer = selected_answer
-        attempt.is_correct = is_correct
-        attempt.attempts_count = int(attempt.attempts_count or 0) + 1
-        attempt.answered_at = moscow_now()
-    db.session.commit()
-    explanation = (checkpoint or {}).get('explanation') or (interactive or {}).get('explanation') or ''
-    return jsonify({'success': True, 'correct': is_correct, 'explanation': explanation, 'attempts': attempt.attempts_count})
+
+    attempts_count = 1
+    if student:
+        attempt = TheoryCheckpointAttempt.query.filter_by(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key).first()
+        if not attempt:
+            attempt = TheoryCheckpointAttempt(student_id=student.student_id, block_id=block.id, checkpoint_key=checkpoint_key, selected_answer=selected_answer, is_correct=is_correct)
+            db.session.add(attempt)
+        else:
+            attempt.selected_answer = selected_answer
+            attempt.is_correct = is_correct
+            attempt.attempts_count = int(attempt.attempts_count or 0) + 1
+            attempt.answered_at = moscow_now()
+        db.session.commit()
+        attempts_count = attempt.attempts_count
+
+    hint = (checkpoint or {}).get('hint') or (interactive or {}).get('hint') or 'Обратите внимание на типы данных, логику условий и последовательность выполнения шагов.'
+    if not is_correct:
+        return jsonify({
+            'success': True,
+            'correct': False,
+            'hint': hint,
+            'attempts': attempts_count,
+        })
+
+    explanation = (checkpoint or {}).get('explanation') or (interactive or {}).get('explanation') or 'Отлично! Всё верно.'
+    return jsonify({
+        'success': True,
+        'correct': True,
+        'explanation': explanation,
+        'attempts': attempts_count,
+    })
 
 
 @theory_bp.route('/theory/api/note', methods=['POST'])
 @login_required
 def theory_api_note():
-    if not current_user.is_student():
-        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
     payload = request.get_json(silent=True) or {}
-    resolved, error = _resolve_student_block_from_payload(payload)
-    if error:
-        return jsonify({'success': False, 'error': error}), 404
-    student, block = resolved
+    try:
+        block_id = int(payload.get('block_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Не передан материал.'}), 400
+
+    block = TheoryBlock.query.get(block_id)
+    if not block:
+        return jsonify({'success': False, 'error': 'Материал не найден.'}), 404
+
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        student = Student(user_id=current_user.id, name=current_user.username or f"User {current_user.id}")
+        db.session.add(student)
+        db.session.commit()
+
     content = (payload.get('content') or '').strip()
     if len(content) > 5000:
         return jsonify({'success': False, 'error': 'Заметка не может быть длиннее 5000 символов.'}), 400
+
     note = StudentTheoryNote.query.filter_by(student_id=student.student_id, block_id=block.id).first()
     if not note and content:
         note = StudentTheoryNote(student_id=student.student_id, block_id=block.id, content=content)
@@ -2972,21 +4527,39 @@ def theory_api_note():
 @theory_bp.route('/theory/api/bookmark', methods=['POST'])
 @login_required
 def theory_api_bookmark():
-    if not current_user.is_student():
-        return jsonify({'success': False, 'error': 'Только для учеников'}), 403
     payload = request.get_json(silent=True) or {}
-    resolved, error = _resolve_student_block_from_payload(payload)
-    if error:
-        return jsonify({'success': False, 'error': error}), 404
-    student, block = resolved
-    value = bool(payload.get('value'))
+    try:
+        block_id = int(payload.get('block_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Не передан материал.'}), 400
+
+    block = TheoryBlock.query.get(block_id)
+    if not block:
+        return jsonify({'success': False, 'error': 'Материал не найден.'}), 404
+
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        student = Student(user_id=current_user.id, name=current_user.username or f"User {current_user.id}")
+        db.session.add(student)
+        db.session.commit()
+
     row = StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number).first()
     if not row:
         row = StudentTheoryState(student_id=student.student_id, course_id=block.course_id, task_number=block.task_number)
         db.session.add(row)
-    row.is_bookmarked = value
+
+    if 'value' in payload:
+        row.is_bookmarked = bool(payload.get('value'))
+    else:
+        row.is_bookmarked = not bool(row.is_bookmarked)
+
     db.session.commit()
-    return jsonify({'success': True, 'bookmarked': row.is_bookmarked})
+    return jsonify({
+        'success': True,
+        'bookmarked': bool(row.is_bookmarked),
+        'block_id': block.id,
+        'task_number': block.task_number,
+    })
 
 
 @theory_bp.route('/theory/api/feedback', methods=['POST'])
@@ -3041,61 +4614,25 @@ def theory_api_feedback():
 @theory_bp.route('/theory/manage/access')
 @login_required
 def manage_access_index():
-    """Список учеников для настройки доступа к теории по номерам."""
+    """Список учеников для настройки доступа к теории по номерам (V2 редирект в пульт управления)."""
     if not _can_manage_theory():
         flash('Недостаточно прав.', 'danger')
         return redirect(url_for('main.dashboard'))
 
     course_id = request.args.get('course_id', type=int) or _get_default_course_id()
-    if course_id is None:
-        flash('Нет доступных курсов.', 'warning')
-        return redirect(url_for('theory.manage_list'))
-
-    course = Course.query.get(course_id) if course_id else None
-    students = _get_scoped_students_for_theory_manager()
-
-    locked_counts = {}
-    if students and course_id:
-        s_ids = [s.student_id for s in students]
-        rows = StudentTheoryAccess.query.filter(
-            StudentTheoryAccess.course_id == course_id,
-            StudentTheoryAccess.student_id.in_(s_ids),
-            StudentTheoryAccess.can_view == False
-        ).all()
-        for r in rows:
-            locked_counts[r.student_id] = locked_counts.get(r.student_id, 0) + 1
-
-    total_blocks_count = TheoryBlock.query.filter_by(course_id=course_id).count()
-
-    return render_template(
-        'theory/theory_access_list.html',
-        students=students,
-        course=course,
-        course_id=course_id,
-        locked_counts=locked_counts,
-        total_blocks_count=total_blocks_count,
-        active_page='theory_manage',
-    )
+    return redirect(url_for('theory.manage_list', tab='students', course_id=course_id))
 
 
 @theory_bp.route('/theory/manage/access/<int:student_id>', methods=['GET', 'POST'])
 @login_required
 def manage_access_student(student_id):
-    """Включение/выключение просмотра теории по темам и номерам курса для ученика."""
+    """Включение/выключение просмотра теории по темам и номерам курса для ученика (V2 редирект)."""
     if not _can_manage_theory():
         flash('Недостаточно прав.', 'danger')
         return redirect(url_for('main.dashboard'))
 
     course_id = request.args.get('course_id', type=int) or request.form.get('course_id', type=int) or _get_default_course_id()
-    if course_id is None:
-        flash('Нет доступных курсов.', 'danger')
-        return redirect(url_for('theory.manage_list'))
-
-    course = Course.query.get(course_id) if course_id else None
-    student = Student.query.get_or_404(student_id)
-    if student.student_id not in {item.student_id for item in _get_scoped_students_for_theory_manager()}:
-        flash('Нет доступа к этому ученику.', 'danger')
-        return redirect(url_for('theory.manage_access_index', course_id=course_id))
+    return redirect(url_for('theory.manage_list', tab='students', course_id=course_id))
 
     groups, blocks_by_group = _get_course_groups_with_blocks(course_id)
     all_blocks = TheoryBlock.query.filter_by(course_id=course_id).order_by(TheoryBlock.position, TheoryBlock.id).all()
@@ -3181,6 +4718,19 @@ def manage_access_student(student_id):
         flash(f'Доступ к теории для {student.name or "ученика"} успешно обновлён.', 'success')
         return redirect(url_for('theory.manage_access_student', student_id=student_id, course_id=course_id))
 
+    attempts_query = TheoryFinalTestAttempt.query.filter(
+        or_(
+            TheoryFinalTestAttempt.student_id == student_id,
+            TheoryFinalTestAttempt.user_id == student.user_id,
+        )
+    )
+    if course_id:
+        attempts_query = attempts_query.filter_by(course_id=course_id)
+    test_attempts = attempts_query.order_by(
+        TheoryFinalTestAttempt.attempt_number.desc(),
+        TheoryFinalTestAttempt.created_at.desc(),
+    ).all()
+
     return render_template(
         'theory/theory_access_student.html',
         student=student,
@@ -3190,8 +4740,55 @@ def manage_access_student(student_id):
         all_blocks=all_blocks,
         task_numbers=all_task_numbers,
         access_by_number=access_by_number,
+        test_attempts=test_attempts,
         active_page='theory_manage',
     )
+
+
+@theory_bp.route('/theory/api/student/<int:student_id>/final-test-attempts')
+@login_required
+def api_student_final_test_attempts(student_id):
+    """API для преподавателя: просмотр всех попыток сдачи итогового теста учеником."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    student = Student.query.get_or_404(student_id)
+    course_id = request.args.get('course_id', type=int)
+
+    attempts_query = TheoryFinalTestAttempt.query.filter(
+        or_(
+            TheoryFinalTestAttempt.student_id == student_id,
+            TheoryFinalTestAttempt.user_id == student.user_id,
+        )
+    )
+    if course_id:
+        attempts_query = attempts_query.filter_by(course_id=course_id)
+    attempts = attempts_query.order_by(
+        TheoryFinalTestAttempt.attempt_number.desc(),
+        TheoryFinalTestAttempt.created_at.desc(),
+    ).all()
+
+    data = []
+    for a in attempts:
+        data.append({
+            'id': a.id,
+            'attempt_number': a.attempt_number,
+            'score': a.score,
+            'total': a.total,
+            'passed': a.passed,
+            'percent': round((a.score / a.total) * 100) if a.total else 0,
+            'block_scores': a.block_scores,
+            'created_at': a.created_at.strftime('%d.%m.%Y %H:%M') if a.created_at else '',
+            'answers': a.answers,
+            'details': a.details,
+        })
+
+    return jsonify({
+        'success': True,
+        'student_id': student_id,
+        'student_name': student.name or f'Ученик #{student_id}',
+        'attempts': data,
+    })
 
 
 @theory_bp.route('/theory/course-map')

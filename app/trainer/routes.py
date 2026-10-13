@@ -30,13 +30,39 @@ logger = logging.getLogger(__name__)
 
 
 @trainer_bp.before_request
-def block_trainer_until_subscription_rollout():
-    """Keep every trainer endpoint closed while the paid rollout is not enabled."""
-    if current_app.config.get('TRAINER_ENABLED', False):
-        return None
+def check_trainer_access():
+    """Enforce trainer access: enabled in config AND user has active subscription with allow_trainer (or staff)."""
+    if not current_app.config.get('TRAINER_ENABLED', True):
+        if request.path.startswith('/internal/trainer/'):
+            return jsonify({'success': False, 'code': 'trainer_unavailable'}), 404
+        abort(404)
+
+    # Internal API endpoints are authenticated per-request via trainer token in _get_trainer_user_from_token
     if request.path.startswith('/internal/trainer/'):
-        return jsonify({'success': False, 'code': 'trainer_unavailable'}), 404
-    abort(404)
+        return None
+
+    # Web UI routes require authentication
+    if not current_user.is_authenticated:
+        return redirect(url_for('auth.login', next=request.url))
+
+    # Staff (admin, creator, tutor) bypass subscription paywall
+    is_staff = (
+        getattr(current_user, 'is_admin', lambda: False)()
+        or getattr(current_user, 'is_creator', lambda: False)()
+        or getattr(current_user, 'is_tutor', lambda: False)()
+        or getattr(current_user, 'role', '') in ('admin', 'creator', 'tutor')
+    )
+    if is_staff:
+        return None
+
+    from app.utils.subscription_access import get_effective_access_for_user
+    eff = get_effective_access_for_user(current_user.id)
+    if eff.status != 'active' or not eff.allow_trainer:
+        from flask import flash
+        flash("Тренажёр доступен только по подписке с включённым тренажёром.", "warning")
+        return redirect(url_for('billing.billing_plans_public'))
+
+    return None
 
 
 def _extract_trainer_token_from_request() -> str:
@@ -74,6 +100,19 @@ def _get_trainer_user_from_token(require_permission: str | None = 'trainer.use')
 
     if require_permission and (not has_permission(user, require_permission)):
         abort(403)
+
+    # Check subscription for non-staff users
+    is_staff = (
+        getattr(user, 'is_admin', lambda: False)()
+        or getattr(user, 'is_creator', lambda: False)()
+        or getattr(user, 'is_tutor', lambda: False)()
+        or getattr(user, 'role', '') in ('admin', 'creator', 'tutor')
+    )
+    if not is_staff:
+        from app.utils.subscription_access import get_effective_access_for_user
+        eff = get_effective_access_for_user(user.id)
+        if eff.status != 'active' or not eff.allow_trainer:
+            abort(403)
 
     return user
 
@@ -747,6 +786,23 @@ def trainer_submit_answer():
         mode=mode,
         manual_low_mmr_mode=manual_low_mmr_mode,
     )
+
+    if is_correct and not getattr(user, 'is_demo_user', False):
+        student = getattr(user, 'student_profile', None)
+        if student:
+            try:
+                prev_correct = (
+                    AnalyticsEvent.query.filter_by(
+                        user_id=user.id,
+                        task_id=task.task_id,
+                        is_correct=True
+                    ).count()
+                )
+                if prev_correct <= 1:
+                    from app.utils.gamification_service import reward_single_task_correct
+                    reward_single_task_correct(student)
+            except Exception as rxp_err:
+                logger.warning("Could not award trainer task XP: %s", rxp_err)
 
     if request.headers.get('HX-Request'):
         response = make_response(render_template(

@@ -123,6 +123,79 @@ def test_boolean_interactive_offers_two_mutually_exclusive_answers():
     assert 'role="radio"' in rendered
 
 
+def test_theory_experience_keeps_course_identity_and_uses_real_completion(app, client, role_users):
+    from app import db
+    from app.models import Course, StudentTheoryState, TheoryBlock
+    from app.theory.experience import build_experience
+
+    fixture = _theory_fixture(app, role_users)
+    with app.app_context():
+        other = Course(title='Другой курс', slug='theory-other', is_active=True)
+        db.session.add(other)
+        db.session.flush()
+        db.session.add(TheoryBlock(course_id=other.id, task_number=1, title='Другая тема', content='Материал'))
+        db.session.add(StudentTheoryState(
+            student_id=role_users['student_id'], course_id=fixture['course_id'],
+            task_number=1, is_read=True, reading_progress=100,
+        ))
+        db.session.commit()
+        data = build_experience(role_users['student_id'])
+        primary = next(c for c in data['courses'] if c['id'] == fixture['course_id'])
+        secondary = next(c for c in data['courses'] if c['id'] == other.id)
+        assert primary['progress'] == 50
+        assert secondary['progress'] == 0
+        assert data['study_minutes'] == 5
+        assert data['study_time_display'] == '5 мин'
+        assert primary['continue_topic']['id'] == fixture['second_id']
+        assert data['continue_topic'] is None  # No opening history, no arbitrary recommendation.
+        assert not db.session.dirty
+    login_as(client, role_users['student_user_id'], 'student')
+    for path in ('/theory', f"/theory/course/{fixture['course_id']}", f"/theory?course_id={fixture['course_id']}"):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'data-theory-experience' in response.get_data(as_text=True)
+
+
+def test_theory_experience_excludes_drafts_and_respects_teacher_locks(app, role_users):
+    from app import db
+    from app.models import StudentTheoryAccess, TheoryBlock
+    from app.theory.experience import build_experience
+
+    fixture = _theory_fixture(app, role_users)
+    with app.app_context():
+        db.session.add(TheoryBlock(course_id=fixture['course_id'], task_number=3,
+                                   title='Секретный черновик', content='<!--status:draft-->\nПриватный текст'))
+        db.session.add(StudentTheoryAccess(student_id=role_users['student_id'],
+                                          course_id=fixture['course_id'], task_number=1, can_view=False))
+        db.session.commit()
+        data = build_experience(role_users['student_id'])
+        course = next(c for c in data['courses'] if c['id'] == fixture['course_id'])
+        assert course['total'] == 2
+        assert course['topics'][0]['locked']
+        assert course['topics'][0]['description'] is None
+        assert course['topics'][0]['pdf_path'] is None
+        assert course['topics'][1]['locked']
+        assert course['continue_topic'] is None
+        assert all('content' not in t for t in course['topics'])
+
+
+def test_theory_experience_empty_course_renders_without_writes(app, client, role_users):
+    from app import db
+    from app.models import Course, TheoryGroup
+
+    with app.app_context():
+        course = Course(title='Пустой курс', slug='empty-theory', is_active=True)
+        db.session.add(course)
+        db.session.commit()
+        course_id = course.id
+    login_as(client, role_users['student_user_id'], 'student')
+    response = client.get(f'/theory/course/{course_id}')
+    assert response.status_code == 200
+    assert 'пока нет доступных материалов' in response.get_data(as_text=True)
+    with app.app_context():
+        assert TheoryGroup.query.filter_by(course_id=course_id).count() == 0
+
+
 def test_tutor_can_assign_theory_to_scoped_student(app, client, role_users):
     from app import db
     from app.models import TheoryStudyAssignment

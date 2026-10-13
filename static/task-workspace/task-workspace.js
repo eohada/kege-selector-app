@@ -48,11 +48,16 @@
     const commentText = document.getElementById('tw-comment-text');
     const commentSend = document.getElementById('tw-comment-send');
     const modeSwitch = document.querySelector('[data-workspace-mode-switch]');
-    const codeWorkspace = document.getElementById('tw-code-workspace-grid');
-    const answerWorkspace = document.getElementById('tw-standard-workspace-grid');
+    const codeWorkspace = document.getElementById('tw-editor-panel');
+    const codeOutputWorkspace = document.getElementById('tw-output-panel');
+    const answerWorkspace = document.getElementById('tw-answer-workspace');
+    const canvasWorkspace = document.getElementById('tw-canvas-workspace');
+    const canvasHost = document.getElementById('tw-canvas-host');
     const commentsCard = document.getElementById('tw-comments-card');
     const commentsCodeSlot = document.getElementById('tw-code-comments-slot') || document.getElementById('tw-output-panel');
     const commentsAnswerSlot = document.getElementById('tw-standard-comments-slot');
+    let activeWorkspaceMode = null;
+    let previousWorkspaceMode = 'answer';
     let selectedWorkspaceFile = null;
     const storageKey = [
         'task-workspace',
@@ -109,29 +114,28 @@
 
     function updateWorkspaceProgress() {
         const total = Math.max(1, Number(ws.task_count || 1));
-        const currentCompleted = isCurrentTaskCompleted();
+        const hasCurrentResponse = isCurrentTaskCompleted();
         const base = Math.max(0, Number(ws.completed_task_count || 0) - (initialTaskCompleted ? 1 : 0));
-        const completed = Math.min(total, base + (currentCompleted ? 1 : 0));
-        const percent = Math.round((completed / total) * 100);
+        const filledCount = Math.min(total, base + (hasCurrentResponse ? 1 : 0));
+        const percent = Math.round((filledCount / total) * 100);
         const orb = document.getElementById('tw-progress-orb');
         const status = document.getElementById('tw-progress-status');
         const percentNode = document.getElementById('tw-progress-percent');
         if (orb) {
             orb.style.setProperty('--task-progress', String(percent));
-            orb.setAttribute('aria-label', `Выполнено ${percent} процентов`);
+            orb.setAttribute('aria-label', `Заполнено ${percent} процентов`);
         }
-        if (status) status.textContent = `Выполнено ${completed} из ${total}`;
+        if (status) status.textContent = `Заполнено ${filledCount} из ${total}`;
         if (percentNode) percentNode.textContent = `${percent}%`;
 
         // Динамическое обновление иконки и цвета в степпере для текущей задачи
         if (!ws.is_reviewed) {
             const currentNavBtn = (ws.assignment_task_id ? document.querySelector(`.tw-stepper-btn[data-nav-task-id="${ws.assignment_task_id}"]`) : null) || document.querySelector('.tw-stepper-btn.is-active');
             if (currentNavBtn) {
-                const isManual = Boolean(ws.is_manual || ws.submission_meta?.is_pending_review || ws.answer_spec?.type === 'code' || ws.answer_spec?.type === 'long_answer');
                 let iconEl = currentNavBtn.querySelector('i');
-                if (currentCompleted) {
-                    if (isManual) {
-                        currentNavBtn.classList.remove('status-completed', 'status-unanswered');
+                if (hasCurrentResponse) {
+                    if (ws.nav_status === 'pending_review') {
+                        currentNavBtn.classList.remove('status-draft', 'status-completed', 'status-unanswered');
                         currentNavBtn.classList.add('status-pending_review');
                         if (!iconEl) {
                             currentNavBtn.insertAdjacentHTML('afterbegin', '<i class="ph-bold ph-clock"></i>');
@@ -139,16 +143,16 @@
                             iconEl.className = 'ph-bold ph-clock';
                         }
                     } else {
-                        currentNavBtn.classList.remove('status-pending_review', 'status-unanswered');
-                        currentNavBtn.classList.add('status-completed');
+                        currentNavBtn.classList.remove('status-pending_review', 'status-completed', 'status-unanswered');
+                        currentNavBtn.classList.add('status-draft');
                         if (!iconEl) {
                             currentNavBtn.insertAdjacentHTML('afterbegin', '<i class="ph-bold ph-check"></i>');
                         } else {
                             iconEl.className = 'ph-bold ph-check';
                         }
                     }
-                } else if (!initialTaskCompleted) {
-                    currentNavBtn.classList.remove('status-pending_review', 'status-completed');
+                } else if (ws.nav_status !== 'pending_review') {
+                    currentNavBtn.classList.remove('status-pending_review', 'status-completed', 'status-draft');
                     if (iconEl) iconEl.remove();
                 }
             }
@@ -157,14 +161,96 @@
 
     function supportedWorkspaceModes() {
         const raw = Array.isArray(ws.answer_spec?.workspace_modes) ? ws.answer_spec.workspace_modes : [];
-        const modes = raw.filter((mode) => mode === 'answer' || mode === 'code');
-        return modes.length > 0 ? modes : ['answer', 'code'];
+        const modes = raw.filter((mode) => ['answer', 'code', 'canvas'].includes(mode));
+        return modes.length > 0 ? modes : ['answer', 'code', 'canvas'];
     }
 
-    function applyWorkspaceMode(mode, { persist = true } = {}) {
-        const next = (mode === 'code') ? 'code' : 'answer';
-        if (codeWorkspace) codeWorkspace.classList.toggle('is-workspace-hidden', next !== 'code');
-        if (answerWorkspace) answerWorkspace.classList.toggle('is-workspace-hidden', next !== 'answer');
+    let canvasToolbarOutsideHandler = null;
+    function arrangeCanvasToolbar() {
+        const toolbar = canvasHost?.querySelector('.boo-canvas-toolbar.is-embedded');
+        if (!toolbar || toolbar.classList.contains('tw-canvas-toolbar-polished')) return;
+        const original = Array.from(toolbar.children);
+        const used = new Set();
+        const byTitle = (prefix) => original.find(item => item.tagName === 'BUTTON' && item.title?.startsWith(prefix));
+        const take = (group, item) => {
+            if (item) { group.appendChild(item); used.add(item); }
+        };
+        const history = document.createElement('div');
+        history.className = 'tw-canvas-history';
+        take(history, byTitle('Отменить'));
+        take(history, byTitle('Вернуть'));
+        const tools = document.createElement('div');
+        tools.className = 'tw-canvas-primary-tools';
+        ['Карандаш', 'Ластик', 'Нарисовать прямоугольник', 'Текст:'].forEach(title => take(tools, byTitle(title)));
+        const colors = document.createElement('div');
+        colors.className = 'tw-canvas-colors';
+        take(colors, original.find(item => item.classList.contains('tb-color-presets')));
+        take(colors, original.find(item => item.classList.contains('tb-color-picker')));
+        const actions = document.createElement('div');
+        actions.className = 'tw-canvas-toolbar-actions';
+        const fullscreen = document.createElement('button');
+        fullscreen.type = 'button';
+        fullscreen.className = 'tb-btn tw-canvas-fullscreen';
+        fullscreen.title = 'Во весь экран';
+        fullscreen.setAttribute('aria-label', fullscreen.title);
+        fullscreen.innerHTML = '<i class="ph-bold ph-arrows-out"></i>';
+        fullscreen.addEventListener('click', () => {
+            if (document.fullscreenElement === canvasWorkspace) document.exitFullscreen();
+            else canvasWorkspace?.requestFullscreen?.();
+        });
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'tb-btn tw-canvas-more';
+        more.title = 'Другие инструменты';
+        more.setAttribute('aria-label', more.title);
+        more.setAttribute('aria-expanded', 'false');
+        more.innerHTML = '<i class="ph-bold ph-dots-three"></i>';
+        actions.append(fullscreen, more);
+        const extra = document.createElement('div');
+        extra.className = 'tw-canvas-extra-tools';
+        extra.hidden = true;
+        original.forEach(item => {
+            if (!used.has(item) && !item.classList.contains('tb-separator')) extra.appendChild(item);
+        });
+        more.addEventListener('click', () => {
+            extra.hidden = !extra.hidden;
+            more.setAttribute('aria-expanded', String(!extra.hidden));
+        });
+        if (canvasToolbarOutsideHandler) document.removeEventListener('click', canvasToolbarOutsideHandler);
+        canvasToolbarOutsideHandler = (event) => {
+            if (!toolbar.contains(event.target)) {
+                extra.hidden = true;
+                more.setAttribute('aria-expanded', 'false');
+            }
+        };
+        document.addEventListener('click', canvasToolbarOutsideHandler);
+        toolbar.replaceChildren(history, tools, colors, actions, extra);
+        toolbar.classList.add('tw-canvas-toolbar-polished');
+    }
+
+    function applyWorkspaceMode(mode, { persist = true, closeCanvas = true } = {}) {
+        let next = ['answer', 'code', 'canvas'].includes(mode) ? mode : 'answer';
+        if (next === 'canvas') {
+            const canvasApi = window.BooCanvasOverlay;
+            if (!canvasWorkspace || !canvasHost || typeof canvasApi?.openIn !== 'function') {
+                next = previousWorkspaceMode || 'answer';
+            } else if (activeWorkspaceMode !== 'canvas') {
+                previousWorkspaceMode = activeWorkspaceMode || (ws.presentation_mode === 'code' ? 'code' : 'answer');
+                canvasWorkspace.hidden = false;
+                const opened = canvasApi.openIn(canvasHost);
+                if (opened === false) next = previousWorkspaceMode;
+                else arrangeCanvasToolbar();
+            }
+        } else if (closeCanvas && activeWorkspaceMode === 'canvas') {
+            activeWorkspaceMode = next;
+            window.BooCanvasOverlay?.close?.();
+        }
+
+        activeWorkspaceMode = next;
+        if (codeWorkspace) codeWorkspace.hidden = next !== 'code';
+        if (codeOutputWorkspace) codeOutputWorkspace.hidden = next !== 'code';
+        if (answerWorkspace) answerWorkspace.hidden = next !== 'answer';
+        if (canvasWorkspace) canvasWorkspace.hidden = next !== 'canvas';
         document.querySelectorAll('button[data-workspace-mode]').forEach((button) => {
             const active = button.dataset.workspaceMode === next;
             if (button.closest('[data-workspace-mode-switch]')) {
@@ -173,7 +259,7 @@
             }
         });
         if (commentsCard) {
-            const slot = next === 'answer' ? commentsAnswerSlot : commentsCodeSlot;
+            const slot = next === 'code' ? commentsCodeSlot : commentsAnswerSlot;
             if (slot && commentsCard.parentElement !== slot) slot.appendChild(commentsCard);
         }
         if (root) root.dataset.workspaceMode = next;
@@ -191,9 +277,21 @@
         let selected = ws.presentation_mode === 'code' ? 'code' : (ws.answer_spec?.default_workspace_mode || 'answer');
         try {
             const saved = sessionStorage.getItem(modeStorageKey);
-            if (saved === 'code' || saved === 'answer') selected = saved;
+            if (supportedWorkspaceModes().includes(saved)) selected = saved;
         } catch (err) {}
         applyWorkspaceMode(selected, { persist: false });
+        const canvasButton = modeSwitch?.querySelector('button[data-workspace-mode="canvas"]');
+        if (!ws.task_id || typeof window.BooCanvasOverlay?.openIn !== 'function') {
+            if (canvasButton) {
+                canvasButton.disabled = true;
+                canvasButton.title = 'Холст сейчас недоступен';
+            }
+        }
+        window.addEventListener('boo-canvas:statechange', (event) => {
+            if (event.detail?.open === false && activeWorkspaceMode === 'canvas') {
+                applyWorkspaceMode(previousWorkspaceMode, { persist: true, closeCanvas: false });
+            }
+        });
         document.querySelectorAll('button[data-workspace-mode]').forEach((button) => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -956,8 +1054,52 @@
         }
     }
 
+    function updateCurrentTaskNavStatus(status, data = {}) {
+        const navButton = (ws.assignment_task_id ? document.querySelector(`.tw-stepper-btn[data-nav-task-id="${ws.assignment_task_id}"]`) : null) || document.querySelector('.tw-stepper-btn.is-active');
+        if (!navButton) return;
+        const statusClass = `status-${status}`;
+        const iconByStatus = {
+            correct: 'ph-check',
+            wrong: 'ph-x',
+            partial: 'ph-circle-half',
+            pending_review: 'ph-clock',
+            draft: 'ph-check',
+            unanswered: null,
+        };
+        const statusClasses = ['status-correct', 'status-wrong', 'status-partial', 'status-pending_review', 'status-draft', 'status-completed', 'status-unanswered'];
+        navButton.classList.remove(...statusClasses);
+        if (statusClasses.includes(statusClass)) navButton.classList.add(statusClass);
+        const iconName = iconByStatus[status];
+        let icon = navButton.querySelector('i');
+        if (iconName) {
+            if (!icon) {
+                icon = document.createElement('i');
+                navButton.prepend(icon);
+            }
+            icon.className = `ph-bold ${iconName}`;
+        } else if (icon) {
+            icon.remove();
+        }
+        const position = Number(ws.task_position || 1);
+        const score = data.score;
+        const maxScore = data.max_score;
+        const descriptions = {
+            correct: Number.isFinite(Number(score)) && Number.isFinite(Number(maxScore)) ? ` (${score}/${maxScore} б. — Полный балл)` : ' (Ответ принят)',
+            wrong: Number.isFinite(Number(score)) && Number.isFinite(Number(maxScore)) ? ` (${score}/${maxScore} б.)` : ' (Нужна ещё попытка)',
+            partial: Number.isFinite(Number(score)) && Number.isFinite(Number(maxScore)) ? ` (${score}/${maxScore} б. — Частичный балл)` : ' (Частичный балл)',
+            pending_review: ' (На проверке)',
+            draft: ' (Черновик ответа)',
+            unanswered: '',
+        };
+        navButton.title = `Задание ${position}${descriptions[status] || ''}`;
+    }
+
     function scheduleAutosave() {
         dirtySinceAutosave = true;
+        // Demo answers are verified by the isolated Demo API.  Once it grades
+        // an answer, the ordinary Workspace autosave would correctly reject a
+        // later write to that immutable submission with 403.
+        if (ws.is_demo) return;
         if (!ws.context_type) return;
         if (autosaveTimer) clearTimeout(autosaveTimer);
         autosaveTimer = setTimeout(() => {
@@ -971,10 +1113,50 @@
     function bindStandardAnswerRenderer() {
         if (!answer) return;
 
+        const multipleChoiceRenderers = document.querySelectorAll('[data-answer-renderer="multiple_choice"]');
+        if (multipleChoiceRenderers.length) {
+            const parseValues = (raw) => {
+                try {
+                    const parsed = JSON.parse(raw || '[]');
+                    return Array.isArray(parsed) ? parsed.map(String) : [];
+                } catch (err) {
+                    return [];
+                }
+            };
+            const syncMultipleChoiceViews = (values) => {
+                const selected = new Set(values);
+                multipleChoiceRenderers.forEach((renderer) => {
+                    renderer.querySelectorAll('input[type="checkbox"][name="task-choice-multiple"]').forEach((control) => {
+                        control.checked = selected.has(String(control.value));
+                    });
+                });
+            };
+            syncMultipleChoiceViews(parseValues(answer.value || codeAnswerInput?.value));
+            multipleChoiceRenderers.forEach((renderer) => {
+                renderer.querySelectorAll('input[type="checkbox"][name="task-choice-multiple"]').forEach((control) => {
+                    control.addEventListener('change', () => {
+                        const values = Array.from(renderer.querySelectorAll('input[type="checkbox"][name="task-choice-multiple"]:checked'))
+                            .map((item) => String(item.value));
+                        const serialized = JSON.stringify(Array.from(new Set(values)).sort((a, b) => a.localeCompare(b)));
+                        answer.value = serialized;
+                        if (codeAnswerInput) codeAnswerInput.value = serialized;
+                        syncMultipleChoiceViews(values);
+                        updateWorkspaceProgress();
+                        saveLocal();
+                        scheduleAutosave();
+                        emitWorkspaceDraft(false);
+                    });
+                });
+            });
+        }
+
         // Check if single_choice renderers exist
         const choiceRenderers = document.querySelectorAll('[data-answer-renderer="single_choice"]');
         if (choiceRenderers.length) {
             const allRadios = document.querySelectorAll('input[type="radio"][name="task-choice"]');
+            allRadios.forEach((radio) => {
+                radio.checked = String(radio.value) === String(answer.value || '');
+            });
             allRadios.forEach((control) => {
                 control.addEventListener('change', () => {
                     if (!control.checked) return;
@@ -997,6 +1179,38 @@
         if (matchingRenderers.length) {
             let saved = {};
             try { saved = JSON.parse(answer.value || '{}'); } catch (err) { saved = {}; }
+
+            const matchingStage = document.querySelector('.tw-matching-stage');
+            const matchingLines = matchingStage?.querySelector('.tw-matching-lines');
+            function renderMatchingConnections() {
+                if (!matchingStage || !matchingLines) return;
+                const stageRect = matchingStage.getBoundingClientRect();
+                matchingLines.setAttribute('viewBox', `0 0 ${stageRect.width} ${stageRect.height}`);
+                matchingLines.replaceChildren();
+                let choices = {};
+                try { choices = JSON.parse(answer.value || '{}'); } catch (err) { choices = {}; }
+                matchingStage.querySelectorAll('.tw-matching-option').forEach(option => {
+                    option.classList.toggle('is-linked', Object.values(choices).some(value => String(value) === option.dataset.matchOption));
+                });
+                matchingStage.querySelectorAll('.tw-match-row').forEach(row => {
+                    const trigger = row.querySelector('.tw-custom-select-trigger');
+                    const key = row.querySelector('.tw-custom-select')?.dataset.matchKey;
+                    const target = Array.from(matchingStage.querySelectorAll('.tw-matching-option'))
+                        .find(option => option.dataset.matchOption === String(choices[key] ?? ''));
+                    row.classList.toggle('is-linked', Boolean(target));
+                    if (!trigger || !target || getComputedStyle(matchingStage).gridTemplateColumns.split(' ').length < 2) return;
+                    const start = trigger.getBoundingClientRect();
+                    const end = target.getBoundingClientRect();
+                    const x1 = start.left + start.width / 2 - stageRect.left;
+                    const y1 = start.top + start.height / 2 - stageRect.top;
+                    const x2 = end.left - 2 - stageRect.left;
+                    const y2 = end.top + end.height / 2 - stageRect.top;
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', `M ${x1} ${y1} C ${x1 + 28} ${y1}, ${x2 - 28} ${y2}, ${x2} ${y2}`);
+                    matchingLines.appendChild(path);
+                });
+            }
+            window.addEventListener('resize', renderMatchingConnections);
 
             function updateAllMatchingViews(key, val) {
                 document.querySelectorAll('.tw-custom-select').forEach((customSelect) => {
@@ -1101,11 +1315,12 @@
                         } else {
                             delete current[key];
                         }
-                        const jsonStr = JSON.stringify(current);
+                        const jsonStr = Object.keys(current).length ? JSON.stringify(current) : '';
                         answer.value = jsonStr;
                         if (codeAnswerInput) codeAnswerInput.value = jsonStr;
 
                         updateAllMatchingViews(key, val);
+                        requestAnimationFrame(renderMatchingConnections);
                         updateWorkspaceProgress();
                         saveLocal();
                         scheduleAutosave();
@@ -1126,17 +1341,19 @@
                     } else {
                         delete current[key];
                     }
-                    const jsonStr = JSON.stringify(current);
+                    const jsonStr = Object.keys(current).length ? JSON.stringify(current) : '';
                     answer.value = jsonStr;
                     if (codeAnswerInput) codeAnswerInput.value = jsonStr;
 
                     updateAllMatchingViews(key, val);
+                    requestAnimationFrame(renderMatchingConnections);
                     updateWorkspaceProgress();
                     saveLocal();
                     scheduleAutosave();
                     emitWorkspaceDraft(false);
                 });
             });
+            requestAnimationFrame(renderMatchingConnections);
         }
     }
 
@@ -1305,7 +1522,7 @@
 
     async function saveServer(isAutosave = false) {
         saveLocal();
-        if (!ws.context_type) return;
+        if (!ws.context_type) return false;
         setStatus(isAutosave ? 'Автосохранение...' : 'Сохранение...', 'run');
         try {
             const resp = await fetch('/task-workspace/api/save', {
@@ -1326,13 +1543,18 @@
             }
             setStatus(isAutosave ? 'Автосохранено' : 'Сохранено на сервере', 'ok');
             updateWorkspaceProgress();
+            return true;
         } catch (err) {
             setStatus(String(err.message || err), 'error');
+            return false;
         }
     }
 
     function flushWorkspaceBeforeExit() {
         saveLocal();
+        // See scheduleAutosave(): a demo answer has its own authoritative
+        // verification endpoint and may already be immutable on navigation.
+        if (ws.is_demo) return;
         if (!ws.context_type) return;
         try {
             if (workspaceSocketReady && workspaceSocket) {
@@ -2299,6 +2521,13 @@
             toggleSuggestions();
         });
     }
+    document.querySelectorAll('.tw-hints-card, details.tw-answer-hint').forEach((hintEl) => {
+        hintEl.addEventListener('toggle', () => {
+            if (hintEl.open && typeof window.triggerAchievement === 'function') {
+                window.triggerAchievement('task_hints_view');
+            }
+        });
+    });
     if (importsToggle) {
         importsToggle.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -2475,6 +2704,72 @@
 
     if (runBtn) runBtn.addEventListener('click', runCode);
     if (saveBtn) saveBtn.addEventListener('click', saveServer);
+    const submitCurrentTaskBtn = document.getElementById('tw-submit-current-task');
+    if (submitCurrentTaskBtn) {
+        const submitButtonHtml = submitCurrentTaskBtn.innerHTML;
+        submitCurrentTaskBtn.addEventListener('click', async () => {
+            if (submitCurrentTaskBtn.disabled) return;
+            const submissionPayload = payload();
+            const answerValue = String(submissionPayload.answer || '');
+            const hasCanvasDrawing = Boolean(window.BooCanvasOverlay?.hasContent?.());
+            if (!answerValue.trim() && !hasCanvasDrawing) {
+                setStatus('Сначала подготовьте ответ или решение на холсте', 'error');
+                return;
+            }
+
+            submitCurrentTaskBtn.disabled = true;
+            submitCurrentTaskBtn.innerHTML = '<i class="ph-bold ph-spinner-gap"></i> Отправляем…';
+            try {
+                const saved = await saveServer(false);
+                if (!saved) throw new Error('Не удалось сохранить ответ перед отправкой');
+                const canvasSaved = await window.BooCanvasOverlay?.save?.();
+                if (canvasSaved === false) throw new Error('Не удалось сохранить решение на холсте');
+
+                const response = await fetch(`/submissions/${ws.context_id}/submit-task`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                    body: JSON.stringify({
+                        assignment_task_id: ws.assignment_task_id,
+                        value: answerValue,
+                    }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось отправить ответ');
+
+                const status = data.status || (data.is_manual ? 'pending_review' : (data.is_correct ? 'correct' : 'wrong'));
+                ws.nav_status = status;
+                ws.is_reviewed = ['correct', 'wrong', 'partial'].includes(status);
+                ws.task_meta = ws.task_meta || {};
+                ws.task_meta.attempts_used = Number(data.attempts_used || 0);
+                ws.task_meta.max_attempts = Number(data.max_attempts || ws.task_meta.max_attempts || 1);
+                ws.task_meta.score = data.score;
+                updateCurrentTaskNavStatus(status, data);
+
+                const attemptsRemain = ws.task_meta.attempts_used < ws.task_meta.max_attempts;
+                ws.task_meta.can_submit_separately = attemptsRemain;
+                submitCurrentTaskBtn.disabled = !attemptsRemain;
+                submitCurrentTaskBtn.innerHTML = attemptsRemain
+                    ? submitButtonHtml
+                    : '<i class="ph-bold ph-check"></i> Попытки исчерпаны';
+
+                const message = status === 'pending_review'
+                    ? 'Ответ отправлен на проверку'
+                    : status === 'correct'
+                        ? `Ответ принят: ${data.score}/${data.max_score} баллов`
+                        : `Ответ проверен. Использовано попыток: ${data.attempts_used}/${data.max_attempts}`;
+                setStatus(message, 'ok');
+                updateWorkspaceProgress();
+            } catch (error) {
+                submitCurrentTaskBtn.disabled = false;
+                submitCurrentTaskBtn.innerHTML = submitButtonHtml;
+                setStatus(String(error.message || error), 'error');
+            }
+        });
+    }
+    window.BooTaskWorkspace = {
+        save: () => saveServer(false),
+        getSubmissionPayload: payload,
+    };
     if (fileUpload) fileUpload.addEventListener('change', uploadWorkspaceFile);
     if (fileCreate) fileCreate.addEventListener('click', createWorkspaceFile);
     if (fileSave) fileSave.addEventListener('click', saveWorkspaceFile);
@@ -2485,8 +2780,6 @@
     });
     
     // Инициализация оконного менеджера
-    bindStandardAnswerRenderer();
-    initializeWorkspaceMode();
     answer?.addEventListener('input', updateWorkspaceProgress);
     codeAnswerInput?.addEventListener('input', updateWorkspaceProgress);
     if (codeAnswerInput && answer) {
@@ -2502,6 +2795,7 @@
     });
     updateWorkspaceProgress();
     restoreLocal();
+    bindStandardAnswerRenderer();
     syncCodeAnswerState();
     joinWorkspaceSocket();
     // The visual V2 uses a stable Bento grid instead of draggable legacy windows.
@@ -2599,6 +2893,9 @@
         });
         moreMenu.querySelectorAll('[data-import-snippet]').forEach((btn) => {
             btn.addEventListener('click', () => {
+                if (typeof window.triggerAchievement === 'function') {
+                    window.triggerAchievement('ide_quick_import');
+                }
                 insertImportSnippet(btn.dataset.importSnippet || '');
                 moreMenu.hidden = true;
             });
@@ -2620,7 +2917,7 @@
     });
 
     // Отслеживание скачивания материалов к заданию
-    document.querySelectorAll('.tw-task-content a, .tw-task-material a, [data-download-material]').forEach((link) => {
+    document.querySelectorAll('.tw-task-content a, .tw-task-material a, .tw-material-item, .tw-material-list a, [data-download-material]').forEach((link) => {
         link.addEventListener('click', () => {
             if (typeof window.triggerAchievement === 'function') {
                 window.triggerAchievement('material_download');
@@ -2646,4 +2943,5 @@
     if (window.BooCanvasOverlay && ws.task_id) {
         window.BooCanvasOverlay.setContext(ws.task_id, ws.context_type, ws.context_id);
     }
+    initializeWorkspaceMode();
 })();

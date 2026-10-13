@@ -16,11 +16,11 @@ from app.utils.achievement_service import (
 )
 
 def test_achievements_registry_structure():
-    """Verify registry has 53 achievements, with exactly 10 secret achievements."""
-    assert len(ACHIEVEMENTS_REGISTRY) == 53, f"Expected 53 achievements, found {len(ACHIEVEMENTS_REGISTRY)}"
+    """Verify registry has 58 achievements, with exactly 11 secret achievements."""
+    assert len(ACHIEVEMENTS_REGISTRY) == 58, f"Expected 58 achievements, found {len(ACHIEVEMENTS_REGISTRY)}"
 
     secrets = [k for k, v in ACHIEVEMENTS_REGISTRY.items() if v.get('is_secret')]
-    assert len(secrets) == 10, f"Expected exactly 10 secret achievements, got {len(secrets)}: {secrets}"
+    assert len(secrets) == 11, f"Expected exactly 11 secret achievements, got {len(secrets)}: {secrets}"
 
     expected_categories = {'workspace', 'tasks', 'theory', 'lessons', 'milestone', 'secret'}
     found_categories = set(v.get('category') for v in ACHIEVEMENTS_REGISTRY.values())
@@ -71,7 +71,7 @@ def test_build_student_achievement_catalog_masking():
 
         # 1. Check catalog with 0 achievements
         catalog = build_student_achievement_catalog(student)
-        assert len(catalog) == 53
+        assert len(catalog) == 58
 
         # Check an unearned secret achievement
         secret_locked = next((a for a in catalog if a['key'] == 'secret_ghost_friend'), None)

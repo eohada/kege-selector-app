@@ -87,14 +87,14 @@
             <div @click="goal = 'oge'; step = 2"
                  :class="goal === 'oge' ? 'ring-2 ring-accent shadow-accent' : ''"
                  class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
-                <div class="text-2xl mb-3">📝</div>
+                <div class="text-3xl mb-3 text-amber-500"><i class="ph-bold ph-pencil-simple"></i></div>
                 <div class="text-xl font-bold">ОГЭ</div>
                 <div class="text-text-muted text-sm mt-2">Основной государственный экзамен · 9 класс</div>
             </div>
             <div @click="goal = 'ege'; step = 2"
                  :class="goal === 'ege' ? 'ring-2 ring-accent shadow-accent' : ''"
                  class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
-                <div class="text-2xl mb-3">🎓</div>
+                <div class="text-3xl mb-3 text-indigo-500"><i class="ph-bold ph-student"></i></div>
                 <div class="text-xl font-bold">ЕГЭ</div>
                 <div class="text-text-muted text-sm mt-2">Единый государственный экзамен · 11 класс</div>
             </div>
@@ -108,7 +108,7 @@
             <div @click="format = 'solo'; step = 3"
                  :class="format === 'solo' ? 'ring-2 ring-accent shadow-accent' : ''"
                  class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
-                <div class="text-3xl mb-3">🧑‍💻</div>
+                <div class="text-3xl mb-3 text-indigo-500"><i class="ph-bold ph-laptop"></i></div>
                 <div class="text-lg font-bold">Solo</div>
                 <div class="text-text-muted text-sm mt-2">Самостоятельная подготовка с доступом к тренажёру и материалам</div>
                 <div class="text-accent font-bold mt-3">от 2 490 ₽</div>
@@ -116,7 +116,7 @@
             <div @click="format = 'mentor'; step = 3"
                  :class="format === 'mentor' ? 'ring-2 ring-accent shadow-accent' : ''"
                  class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
-                <div class="text-3xl mb-3">👨‍🏫</div>
+                <div class="text-3xl mb-3 text-indigo-500"><i class="ph-bold ph-chalkboard-teacher"></i></div>
                 <div class="text-lg font-bold">Mentor</div>
                 <div class="text-text-muted text-sm mt-2">Занятия с преподавателем + тренажёр + разбор заданий</div>
                 <div class="text-accent font-bold mt-3">от 4 990 ₽</div>
@@ -124,7 +124,7 @@
             <div @click="format = 'godmode'; step = 3"
                  :class="format === 'godmode' ? 'ring-2 ring-accent shadow-accent' : ''"
                  class="rounded-2xl shadow-card p-6 cursor-pointer transition-all hover-scale-102 bg-bg-surface text-center">
-                <div class="text-3xl mb-3">⚡</div>
+                <div class="text-3xl mb-3 text-amber-500"><i class="ph-bold ph-lightning"></i></div>
                 <div class="text-lg font-bold">God Mode</div>
                 <div class="text-text-muted text-sm mt-2">Полный доступ: наставник + тренажёр + приоритетная проверка</div>
                 <div class="text-accent font-bold mt-3">от 9 990 ₽</div>
@@ -176,23 +176,23 @@
             <h3 class="text-xl font-bold mb-3 text-center">Ваш выбор</h3>
             <div class="space-y-3 mb-3">
                 <div class="flex items-center gap-2">
-                    <span class="text-accent">✓</span>
+                    <i class="ph-bold ph-check text-accent"></i>
                     <span>Экзамен: <strong x-text="goalLabel()"></strong></span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-accent">✓</span>
+                    <i class="ph-bold ph-check text-accent"></i>
                     <span>Формат: <strong x-text="formatLabel()"></strong></span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-accent">✓</span>
+                    <i class="ph-bold ph-check text-accent"></i>
                     <span>Пакет: <strong x-text="planLabel()"></strong></span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-accent">✓</span>
+                    <i class="ph-bold ph-check text-accent"></i>
                     <span>Доступ к тренажёру и материалам</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-accent">✓</span>
+                    <i class="ph-bold ph-check text-accent"></i>
                     <span>Персональная статистика</span>
                 </div>
             </div>
@@ -307,10 +307,9 @@
                                 <div style="font-weight: 900;">{{ g.title }}</div>
                                 <div style="color: var(--text-muted); font-size:.9rem;">порядок: {{ g.order_index }}</div>
                             </div>
-                            <form method="POST" action="{{ url_for('billing.billing_group_toggle', group_id=g.group_id) }}">
-                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                                <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
-                            </form>
+                            <div>
+                                <button class="neo-button outline sm" type="button" onclick="toggleBillingGroup({{ g.group_id }}, this)">Вкл/выкл</button>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -322,21 +321,19 @@
         </div>
 
         {% macro plan_card(p) -%}
-        <div class="glass-panel" style="padding:.9rem 1rem; display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
+        <div id="plan-card-{{ p.plan_id }}" class="glass-panel" style="padding:.9rem 1rem; display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
             <div style="min-width:0;">
                 <div style="font-weight: 900; display:flex; gap:.5rem; align-items: center; flex-wrap: wrap;">
                     <span>{{ p.title }}</span>
                     <span class="status-badge status-info" style="font-weight:800;">#{{ p.order_index or 0 }}</span>
-                    {% if not p.is_active %}
-                    <span class="status-badge" style="background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); color: var(--text-muted);">inactive</span>
-                    {% endif %}
+                    <span id="plan-inactive-badge-{{ p.plan_id }}" class="status-badge" style="background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); color: var(--text-muted); {% if p.is_active %}display:none;{% endif %}">inactive</span>
                 </div>
                 <div style="color: var(--text-muted); font-size:.92rem; margin-top:.25rem;">
                     {% if p.price_rub is not none %}{{ p.price_rub }} ₽{% endif %}
                     {% if p.lessons_count is not none %}{% if p.price_rub is not none %} · {% endif %}<strong>{{ p.lessons_count }} уроков</strong>{% endif %}
                     {% if p.price_per_lesson_rub is not none %}{% if p.price_rub is not none or p.lessons_count is not none %} · {% endif %}{{ p.price_per_lesson_rub }} ₽/урок{% endif %}
                     {% if p.period_days is not none %} · {{ p.period_days }} дней{% endif %}
-                    · статус: <strong>{{ 'active' if p.is_active else 'inactive' }}</strong>
+                    · статус: <strong id="plan-status-{{ p.plan_id }}">{{ 'active' if p.is_active else 'inactive' }}</strong>
                 </div>
                 {% if p.description %}
                 <div style="color: var(--text-muted); margin-top:.4rem; white-space: pre-line;">{{ p.description }}</div>
@@ -344,10 +341,7 @@
             </div>
             <div style="display:flex; gap:.5rem; flex-wrap: wrap;">
                 <a class="neo-button ghost sm" href="{{ url_for('billing.billing_subscriptions', plan_id=p.plan_id) }}" style="text-decoration:none;">Назначить</a>
-                <form method="POST" action="{{ url_for('billing.billing_plan_toggle', plan_id=p.plan_id) }}">
-                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
-                </form>
+                <button class="neo-button outline sm" type="button" onclick="toggleBillingPlan({{ p.plan_id }}, this)">Вкл/выкл</button>
             </div>
         </div>
         <details style="margin-top: -0.25rem;">
@@ -455,4 +449,62 @@
 </div>
 </div>
 </main>
+
+<script>
+async function toggleBillingPlan(planId, btn) {
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/billing/plans/${planId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': (typeof getCsrfToken === 'function') ? getCsrfToken() : ''
+            }
+        });
+        const data = await res.json();
+        if (data.success) {
+            const stEl = document.getElementById(`plan-status-${planId}`);
+            if (stEl) stEl.textContent = data.is_active ? 'active' : 'inactive';
+            const badgeEl = document.getElementById(`plan-inactive-badge-${planId}`);
+            if (badgeEl) badgeEl.style.display = data.is_active ? 'none' : 'inline-block';
+            if (typeof showToast === 'function') {
+                showToast(data.message || 'Статус тарифа обновлен', 'success');
+            }
+        } else {
+            if (typeof showToast === 'function') showToast(data.error || 'Ошибка обновления', 'danger');
+        }
+    } catch (e) {
+        console.error(e);
+        if (typeof showToast === 'function') showToast('Сетевая ошибка', 'danger');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function toggleBillingGroup(groupId, btn) {
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/billing/groups/${groupId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': (typeof getCsrfToken === 'function') ? getCsrfToken() : ''
+            }
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof showToast === 'function') {
+                showToast(data.message || 'Статус группы обновлен', 'success');
+            }
+        } else {
+            if (typeof showToast === 'function') showToast(data.error || 'Ошибка', 'danger');
+        }
+    } catch (e) {
+        console.error(e);
+        if (typeof showToast === 'function') showToast('Сетевая ошибка', 'danger');
+    } finally {
+        btn.disabled = false;
+    }
+}
+</script>
 {% endblock %}

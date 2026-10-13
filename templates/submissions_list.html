@@ -13,7 +13,7 @@
     {# --- Подготовка данных для табов и аналитики --- #}
     {% set in_work_statuses = ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}
     {% set on_review_statuses = ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] %}
-    {% set completed_statuses = ['GRADED'] %}
+    {% set completed_statuses = ['GRADED', 'RETURNED'] %}
 
     {% set total_subs_count = submissions|length if submissions else 0 %}
     {% set in_work_count = (submissions|selectattr('status', 'in', in_work_statuses)|list)|length if submissions else 0 %}
@@ -41,7 +41,7 @@
       {% endif %}
     {% endfor %}
 
-    {% set overall_pct = ((ns.solved_tasks * 100 / ns.total_tasks)|round|int) if ns.total_tasks > 0 else 68 %}
+    {% set overall_pct = ((ns.solved_tasks * 100 / ns.total_tasks)|round|int) if ns.total_tasks > 0 else 0 %}
     {% set ring_dash = ((overall_pct * 251.2) / 100)|round(1) %}
 
     <!-- 1. ВЕРХНИЙ БЛОК: ХЛЕБНЫЕ КРОШКИ, ЗАГОЛОВОК И БАННЕР С МАСКОТОМ BOO -->
@@ -54,38 +54,6 @@
         <p class="text-xs sm:text-sm font-bold text-slate-400 mt-1">Решай задания, получай баллы и повышай свой уровень</p>
       </div>
 
-      <!-- Приветственный баннер с маскотом (как на дизайне) -->
-      <div class="bg-gradient-to-r from-indigo-50/90 via-purple-50/80 to-blue-50/90 border-2 border-indigo-100 rounded-3xl p-4 sm:p-5 flex items-center justify-between sm:justify-start gap-4 shadow-xs shrink-0 relative overflow-hidden">
-        <div class="relative z-10">
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-white/80 backdrop-blur-xs rounded-full border border-indigo-100 text-indigo-700 text-xs font-black shadow-xs">
-            <i class="ph-fill ph-sparkle text-indigo-500"></i> Регулярная практика = большие результаты
-          </div>
-        </div>
-        <!-- Маскот Boo в академической шапочке (SVG) -->
-        <div class="w-16 h-16 shrink-0 flex items-center justify-center relative z-10">
-          <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
-            <!-- Тело привидения Boo -->
-            <path d="M 20,60 C 20,30 35,18 50,18 C 65,18 80,30 80,60 C 80,78 74,84 68,80 C 62,76 58,84 50,80 C 42,76 38,84 32,80 C 26,84 20,78 20,60 Z" fill="#EEF2FF" stroke="#4F46E5" stroke-width="3" stroke-linejoin="round"/>
-            <!-- Глаза -->
-            <ellipse cx="42" cy="46" rx="4" ry="5" fill="#1E1B4B" />
-            <ellipse cx="58" cy="46" rx="4" ry="5" fill="#1E1B4B" />
-            <!-- Блики в глазах -->
-            <circle cx="43.5" cy="44.5" r="1.5" fill="#FFFFFF" />
-            <circle cx="59.5" cy="44.5" r="1.5" fill="#FFFFFF" />
-            <!-- Румянец -->
-            <ellipse cx="36" cy="53" rx="4" ry="2.5" fill="#FDA4AF" opacity="0.7" />
-            <ellipse cx="64" cy="53" rx="4" ry="2.5" fill="#FDA4AF" opacity="0.7" />
-            <!-- Улыбка -->
-            <path d="M 46,52 Q 50,56 54,52" fill="none" stroke="#1E1B4B" stroke-width="2.5" stroke-linecap="round"/>
-            <!-- Шапочка выпускника -->
-            <polygon points="50,12 25,24 50,30 75,24" fill="#312E81" />
-            <rect x="42" y="27" width="16" height="7" fill="#1E1B4B" rx="2"/>
-            <!-- Кисточка -->
-            <path d="M 50,22 Q 68,24 72,34" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="72" cy="35" r="2.5" fill="#F59E0B" />
-          </svg>
-        </div>
-      </div>
     </div>
 
     <!-- 2. ПАНЕЛЬ ФИЛЬТРОВ И СОРТИРОВКИ (5 ТАБОВ + ВЫПАДАЮЩИЙ СПИСОК) -->
@@ -165,7 +133,8 @@
           <div id="deadlineGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5">
             {% for submission in submissions %}
               {% set status = submission.status %}
-              {% set atype = (submission.assignment.assignment_type if submission.assignment else 'homework') %}
+              {% set raw_atype = (submission.assignment.assignment_type if submission.assignment else 'homework')|lower %}
+              {% set atype = 'exam' if raw_atype in ['exam', 'mock'] else ('check' if raw_atype in ['test', 'manual_review', 'classwork', 'verification'] else 'homework') %}
               {% set filter_group = ('in_work' if status in in_work_statuses else ('on_review' if status in on_review_statuses else 'completed')) %}
               {% set display_status = (submission_display_status.get(submission.submission_id) if submission_display_status and submission_display_status.get(submission.submission_id) else None) %}
               {% set is_burning = (submission.is_late if submission.is_late is defined else False) or (display_status and 'сегодня' in display_status|lower) %}
@@ -183,6 +152,7 @@
               {% set deadline_dt = submission.assignment.deadline if submission.assignment else None %}
 
               <div class="assignment-card bg-white border-2 {% if is_burning %}border-rose-200 shadow-[0_4px_0_#FECDD3]{% else %}border-slate-200/90 shadow-[0_4px_0_#DAE1E9]{% endif %} p-6 rounded-[2rem] flex flex-col justify-between group hover:border-indigo-300 hover:shadow-[0_6px_0_#CBD5E1] transition-all relative overflow-hidden"
+                   {% if submission.assignment and submission.assignment.title == 'Разбор ошибки: след по алгоритму' %}data-demo-target="mistake-review"{% endif %}
                    data-filter-group="{{ filter_group }}"
                    data-type="{{ atype }}"
                    data-status="{{ status }}"
@@ -203,20 +173,20 @@
                   <!-- Верхняя строка: бейдж типа + дедлайн -->
                   <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
                     <!-- Тип работы -->
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-xs {% if atype == 'exam' %}bg-purple-100 text-purple-700 border-purple-200{% elif atype == 'classwork' %}bg-slate-100 text-slate-700 border-slate-200{% else %}bg-indigo-50 text-indigo-700 border-indigo-200{% endif %}">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-xs {% if atype == 'exam' %}bg-purple-100 text-purple-700 border-purple-200{% elif atype == 'check' %}bg-amber-50 text-amber-700 border-amber-200{% else %}bg-indigo-50 text-indigo-700 border-indigo-200{% endif %}">
                       {% if atype == 'exam' %}Пробник
-                      {% elif atype == 'classwork' %}Классная работа
+                      {% elif atype == 'check' %}Проверочная
                       {% else %}Домашнее задание{% endif %}
                     </span>
 
                     <!-- Дедлайн с часиками -->
                     {% if deadline_dt %}
-                    <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold {% if is_burning %}bg-rose-50 text-rose-600 border border-rose-200{% else %}bg-slate-50 text-slate-500 border border-slate-200{% endif %}">
+                    <div class="submission-deadline-pill flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold {% if is_burning %}bg-rose-50 text-rose-600 border border-rose-200{% else %}bg-slate-50 text-slate-500 border border-slate-200{% endif %}">
                       <i class="ph-bold {% if is_burning %}ph-fire text-rose-500 animate-pulse{% else %}ph-clock text-slate-400{% endif %}"></i>
                       до {{ deadline_dt|user_dt('%d %b 23:59') }}
                     </div>
                     {% elif display_status %}
-                    <div class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-50 text-slate-500 border border-slate-200">
+                    <div class="submission-deadline-pill flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-50 text-slate-500 border border-slate-200">
                       <i class="ph-bold ph-clock text-slate-400"></i> {{ display_status }}
                     </div>
                     {% endif %}
@@ -282,7 +252,7 @@
               <i class="ph-bold ph-files"></i>
             </div>
             <h3 class="text-sm font-black text-slate-800 mb-1">Нет заданий в этой категории</h3>
-            <p class="text-xs font-bold text-slate-400">Выберите другой таб выше или перейдите к классным работам</p>
+            <p class="text-xs font-bold text-slate-400">Выберите другую категорию выше или откройте нужный урок</p>
           </div>
           {% else %}
           <div class="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-10 flex flex-col items-center justify-center text-center">
@@ -327,11 +297,11 @@
           </div>
         </div>
 
-        <!-- СЕКЦИЯ: КЛАССНЫЕ РАБОТЫ (БЕЗ ДЕДЛАЙНА) -->
+        <!-- СЕКЦИЯ: ДОПОЛНИТЕЛЬНЫЕ ЗАДАНИЯ ПО УРОКАМ (БЕЗ ДЕДЛАЙНА) -->
         <div class="flex flex-col gap-4">
           <div>
             <h2 class="text-base font-display font-black text-slate-900 flex items-center gap-2">
-              <i class="ph-fill ph-student text-indigo-600"></i> Классные работы (без дедлайна)
+                <i class="ph-fill ph-student text-indigo-600"></i> Задания по урокам (без дедлайна)
             </h2>
             <p class="text-xs font-bold text-slate-400 mt-0.5">Дополнительные задания для подготовки и закрепления знаний</p>
           </div>
@@ -390,7 +360,7 @@
           </div>
           {% else %}
           <div class="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center text-xs font-bold text-slate-400">
-            Нет доступных классных работ
+             Нет дополнительных заданий
           </div>
           {% endif %}
         </div>
@@ -409,15 +379,24 @@
         </div>
 
         <!-- ВИДЖЕТ 1: «ВЫПОЛНЕНИЕ РАБОТ» (Круговой чарт сдачи заданий + точность задач) -->
-        {% set submitted_works_count = completed_count + on_review_count %}
-        {% set works_pct = ((submitted_works_count * 100 / total_subs_count)|round|int) if total_subs_count > 0 else 80 %}
+        {% set lesson_workspace_stats = namespace(completed=0, in_work=0) %}
+        {% for workspace in lesson_workspaces or [] %}
+          {% if workspace.total|int > 0 and workspace.done|int >= workspace.total|int %}
+            {% set lesson_workspace_stats.completed = lesson_workspace_stats.completed + 1 %}
+          {% else %}
+            {% set lesson_workspace_stats.in_work = lesson_workspace_stats.in_work + 1 %}
+          {% endif %}
+        {% endfor %}
+        {% set tracked_work_count = total_subs_count + (lesson_workspaces|length if lesson_workspaces else 0) %}
+        {% set submitted_works_count = completed_count + on_review_count + lesson_workspace_stats.completed %}
+        {% set works_pct = ((submitted_works_count * 100 / tracked_work_count)|round|int) if tracked_work_count > 0 else 0 %}
         {% set ring_dash_works = ((works_pct * 251.2) / 100)|round(1) %}
 
         <div class="bg-white rounded-[2rem] border-2 border-slate-200/90 shadow-[0_4px_0_#DAE1E9] p-6 flex flex-col gap-5">
           <div class="flex items-center justify-between">
             <h3 class="text-base font-display font-black text-slate-900">Выполнение работ</h3>
-            <span class="inline-flex items-center gap-1 text-[11px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full">
-              <i class="ph-bold ph-arrow-up-right"></i> +12% за месяц
+            <span class="inline-flex items-center gap-1 text-[11px] font-black text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-full">
+              <i class="ph-bold ph-check-circle text-emerald-500"></i> {{ completed_count }} проверено
             </span>
           </div>
 
@@ -427,7 +406,7 @@
               <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="40" stroke="#F1F5F9" stroke-width="10" fill="none" />
                 <circle cx="50" cy="50" r="40" stroke="#4F46E5" stroke-width="10" stroke-linecap="round" fill="none"
-                        stroke-dasharray="251.2" stroke-dashoffset="{{ 251.2 - (ring_dash_works if ring_dash_works else 200) }}" />
+                        stroke-dasharray="251.2" stroke-dashoffset="{{ 251.2 - ring_dash_works }}" />
               </svg>
               <div class="absolute inset-0 flex items-center justify-center">
                 <span class="text-base font-black text-slate-900">{{ works_pct }}%</span>
@@ -436,9 +415,9 @@
 
             <div>
               <p class="text-xs font-bold text-slate-400 mb-0.5">Сдано заданий</p>
-              <p class="text-lg font-display font-black text-slate-900">{{ submitted_works_count }} <span class="text-sm font-bold text-slate-400">из {{ total_subs_count }} работ</span></p>
+              <p class="text-lg font-display font-black text-slate-900">{{ submitted_works_count }} <span class="text-sm font-bold text-slate-400">из {{ tracked_work_count }} работ</span></p>
               <p class="text-[11px] font-bold text-emerald-600 mt-1 flex items-center gap-1">
-                <i class="ph-bold ph-check-circle"></i> 6 проверено, 2 на проверке
+                <i class="ph-bold ph-check-circle"></i> {{ completed_count }} проверено, {{ on_review_count }} на проверке
               </p>
             </div>
           </div>
@@ -446,7 +425,7 @@
           <!-- 3 мини-плитки: 6 + 2 + 2 = 10 -->
           <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center">
             <div class="bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
-              <p class="text-base font-black text-slate-800">{{ completed_count }}</p>
+              <p class="text-base font-black text-slate-800">{{ completed_count + lesson_workspace_stats.completed }}</p>
               <p class="text-[10px] font-extrabold text-slate-400 mt-0.5 uppercase tracking-tight">Завершено</p>
             </div>
             <div class="bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
@@ -454,7 +433,7 @@
               <p class="text-[10px] font-extrabold text-slate-400 mt-0.5 uppercase tracking-tight">На проверке</p>
             </div>
             <div class="bg-slate-50 rounded-2xl p-2.5 border border-slate-100">
-              <p class="text-base font-black text-slate-800">{{ in_work_count }}</p>
+              <p class="text-base font-black text-slate-800">{{ in_work_count + lesson_workspace_stats.in_work }}</p>
               <p class="text-[10px] font-extrabold text-slate-400 mt-0.5 uppercase tracking-tight">В работе</p>
             </div>
           </div>
@@ -484,35 +463,41 @@
           </div>
 
           <!-- Список таймлайна с точками -->
-          <div class="flex flex-col gap-4 relative pl-4 border-l-2 border-slate-100 ml-2 mt-1">
+          <div class="submission-deadline-timeline flex flex-col gap-4 relative pl-5 border-l-2 border-slate-100 ml-2 mt-1">
             <!-- Элемент 1 -->
-            <div class="relative">
-              <div class="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-indigo-600 ring-4 ring-indigo-50"></div>
-              <div class="flex justify-between items-baseline gap-2">
-                <span class="text-[11px] font-black text-indigo-600 uppercase tracking-wider">Сегодня 26 сент.</span>
-                <span class="text-[11px] font-black text-slate-400">23:59</span>
+            <div class="submission-deadline-item grid grid-cols-[12px_minmax(0,1fr)] items-start gap-3">
+              <div class="mt-1.5 w-3 h-3 rounded-full bg-indigo-600 ring-4 ring-indigo-50"></div>
+              <div class="min-w-0">
+                <div class="flex justify-between items-baseline gap-2">
+                  <span class="text-[11px] font-black text-indigo-600 uppercase tracking-wider">Сегодня 26 сент.</span>
+                  <span class="text-[11px] font-black text-slate-400 shrink-0">23:59</span>
+                </div>
+                <p class="text-xs font-black text-slate-800 mt-0.5">ДЗ №7: Динамическое программирование (№23, №27)</p>
               </div>
-              <p class="text-xs font-black text-slate-800 mt-0.5">ДЗ №7: Динамическое программирование (№23, №27)</p>
             </div>
 
             <!-- Элемент 2 -->
-            <div class="relative">
-              <div class="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-amber-500 ring-4 ring-amber-50"></div>
-              <div class="flex justify-between items-baseline gap-2">
-                <span class="text-[11px] font-black text-amber-600 uppercase tracking-wider">28 сент.</span>
-                <span class="text-[11px] font-black text-slate-400">23:59</span>
+            <div class="submission-deadline-item grid grid-cols-[12px_minmax(0,1fr)] items-start gap-3">
+              <div class="mt-1.5 w-3 h-3 rounded-full bg-amber-500 ring-4 ring-amber-50"></div>
+              <div class="min-w-0">
+                <div class="flex justify-between items-baseline gap-2">
+                  <span class="text-[11px] font-black text-amber-600 uppercase tracking-wider">28 сент.</span>
+                  <span class="text-[11px] font-black text-slate-400 shrink-0">23:59</span>
+                </div>
+                <p class="text-xs font-black text-slate-800 mt-0.5">ДЗ №6: Позиционные системы и маски (№14, №25)</p>
               </div>
-              <p class="text-xs font-black text-slate-800 mt-0.5">ДЗ №6: Позиционные системы и маски (№14, №25)</p>
             </div>
 
             <!-- Элемент 3 -->
-            <div class="relative">
-              <div class="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-purple-500 ring-4 ring-purple-50"></div>
-              <div class="flex justify-between items-baseline gap-2">
-                <span class="text-[11px] font-black text-purple-600 uppercase tracking-wider">2 окт.</span>
-                <span class="text-[11px] font-black text-slate-400">23:59</span>
+            <div class="submission-deadline-item grid grid-cols-[12px_minmax(0,1fr)] items-start gap-3">
+              <div class="mt-1.5 w-3 h-3 rounded-full bg-purple-500 ring-4 ring-purple-50"></div>
+              <div class="min-w-0">
+                <div class="flex justify-between items-baseline gap-2">
+                  <span class="text-[11px] font-black text-purple-600 uppercase tracking-wider">2 окт.</span>
+                  <span class="text-[11px] font-black text-slate-400 shrink-0">23:59</span>
+                </div>
+                <p class="text-xs font-black text-slate-800 mt-0.5">Пробный экзамен №2 (Срез знаний КЕГЭ)</p>
               </div>
-              <p class="text-xs font-black text-slate-800 mt-0.5">Пробный экзамен №2 (Срез знаний КЕГЭ)</p>
             </div>
           </div>
         </div>
@@ -547,14 +532,14 @@
             <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all text-sm"></i>
           </a>
 
-          <a href="/tasks" class="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 no-underline group">
+          <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 no-underline group">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-500 flex items-center justify-center text-lg">
                 <i class="ph-bold ph-archive"></i>
               </div>
               <div>
-                <p class="text-xs font-black text-slate-800 group-hover:text-indigo-600 transition-colors">Банк задач</p>
-                <p class="text-[11px] font-bold text-slate-400">Дополнительная практика</p>
+                <p class="text-xs font-black text-slate-800 group-hover:text-indigo-600 transition-colors">Мой прогресс</p>
+                <p class="text-[11px] font-bold text-slate-400">Темы, результаты и динамика</p>
               </div>
             </div>
             <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all text-sm"></i>
@@ -730,4 +715,3 @@
 })();
 </script>
 {% endblock %}
-

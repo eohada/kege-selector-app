@@ -42,6 +42,18 @@ class AnalyticsEngine:
         return float(weights.get("standard", 1500.0))
 
     @classmethod
+    def _get_task_rating(cls, task: Tasks, node: KnowledgeNode | None, difficulty_level: int | None) -> float:
+        """Рейтинг сложности задания для формул Elo / IRT."""
+        if hasattr(task, 'get_elo_rating') and getattr(task, 'knowledge_node', None):
+            return float(task.get_elo_rating())
+        base = float(getattr(node, 'base_rating', 1000.0)) if node else cls._difficulty_weight(difficulty_level)
+        if difficulty_level == 1:
+            return base - 100.0
+        if difficulty_level == 3:
+            return base + 150.0
+        return base
+
+    @classmethod
     def _get_task_t_ref_sec(cls, task_number: int | None) -> int:
         cfg = cls._cfg()
         ttl = cfg.get("task_time_limits", {})
@@ -258,6 +270,7 @@ class AnalyticsEngine:
         manual_mmr_delta: float | None = None,
         rating_comment: str | None = None,
         grader_user_id: int | None = None,
+        actual_score: float | None = None,
     ) -> float | None:
         task = Tasks.query.get(task_id)
         if not task:
@@ -289,6 +302,12 @@ class AnalyticsEngine:
         max_gain = float(cap.get("max_gain", 99999.0))
         max_loss = float(cap.get("max_loss", 99999.0))
 
+        old_rating = float((mastery.rating if mastery else mmr_row.mmr) or cls.INITIAL_RATING)
+        task_rating = cls._get_task_rating(task, node, difficulty_level)
+        scale_divisor = float(cfg.get("scale_divisor", 400.0))
+        exp = max(-7.0, min(7.0, (task_rating - old_rating) / scale_divisor))
+        expected_score = 1.0 / (1.0 + (10.0 ** exp))
+
         effective_manual: float | None = None
         if manual_mmr_delta is not None:
             try:
@@ -317,7 +336,6 @@ class AnalyticsEngine:
             if time_spent_sec is not None:
                 time_meta["effective_time_sec"] = time_spent_sec
         else:
-            d_value = cls._difficulty_weight(difficulty_level)
             if mode == cls.TEACHER_GRADE_MODE:
                 # Проверка ДЗ: доверяем вердикту учителя; интервал started_at→ответ часто секунды,
                 # иначе _time_coeff для верных даёт spiral_success (c_time=0) — MMR «не двигается».
@@ -327,14 +345,35 @@ class AnalyticsEngine:
                     time_meta["effective_time_sec"] = time_spent_sec
             else:
                 c_time, time_meta = cls._time_coeff(is_correct, time_spent_sec, task_type)
+
             c_attempt = cls._attempt_coeff(is_correct, attempt_no)
             calibration = cls._calibration_multiplier(int(mmr_row.solved_count or 0))
 
-            delta = d_value * c_time * c_attempt
-            if not is_correct:
-                delta *= -1.0
-            delta *= calibration
-            delta *= float(cfg.get("delta_scale", 1.0))
+            # Фактический результат S (с поддержкой частичного балла для 2-балльных задач)
+            if actual_score is not None:
+                s = max(0.0, min(1.0, float(actual_score)))
+            else:
+                s = 1.0 if is_correct else 0.0
+
+            k_base = float(cfg.get("k_factor", 36.0))
+            k_effective = k_base * calibration * c_attempt
+            raw_delta = k_effective * (s - expected_score)
+
+            # Модуляция штрафа при ошибках в зависимости от времени (если не проверка учителя)
+            if not is_correct and mode != cls.TEACHER_GRADE_MODE:
+                bands = cfg.get("time_bands", {})
+                spiral_ratio = float(bands.get("spiral_lt_ratio", 0.15))
+                t_ref = max(1, cls._get_task_t_ref_sec(task_type))
+                eff_time = time_meta.get("effective_time_sec", time_spent_sec)
+                if eff_time is not None and t_ref > 0:
+                    ratio = float(eff_time) / float(t_ref)
+                    if ratio < spiral_ratio:
+                        c_time = 1.5  # Blunder fast: увеличенный штраф за угадайку
+                    elif ratio > 1.5:
+                        c_time = 0.7  # Long effort: смягчение штрафа за старание
+
+            delta = raw_delta * c_time
+
             if delta > 0:
                 delta = min(delta, max_gain)
             else:
@@ -345,7 +384,6 @@ class AnalyticsEngine:
             elif manual_low_mmr_mode and is_correct:
                 delta = 0.0
 
-        old_rating = float((mastery.rating if mastery else mmr_row.mmr) or cls.INITIAL_RATING)
         new_rating = cls._clamp_mmr(old_rating + delta)
         if mastery:
             mastery.rating = new_rating
@@ -363,6 +401,8 @@ class AnalyticsEngine:
             "time_coeff": c_time,
             "attempt_coeff": c_attempt,
             "difficulty_label": cls._difficulty_label(difficulty_level),
+            "expected_score": round(expected_score, 4),
+            "task_elo": round(task_rating, 1),
             **time_meta,
         }
         if effective_manual is not None:
@@ -372,33 +412,25 @@ class AnalyticsEngine:
                 behavior["rating_comment"] = str(rating_comment)[:4000]
             if grader_user_id is not None:
                 behavior["grader_user_id"] = int(grader_user_id)
-        # node_id в БД nullable: без узла графа раньше событие не писалось — в истории пусто при проверке ДЗ.
-        if node is not None or mode == cls.TEACHER_GRADE_MODE:
-            event = AnalyticsEvent(
-                user_id=user_id,
-                node_id=node.id if node else None,
-                task_id=task.task_id,
-                submission_id=submission_id,
-                answer_id=answer_id,
-                is_correct=is_correct,
-                task_difficulty=difficulty_level,
-                old_rating=old_rating,
-                new_rating=new_rating,
-                mmr_delta=(new_rating - old_rating),
-                task_type=task_type,
-                attempt_no=attempt_no,
-                mode=mode,
-                time_spent_sec=time_meta.get("effective_time_sec", time_spent_sec),
-                behavior_flags=behavior,
-            )
-            db.session.add(event)
-        else:
-            logger.warning(
-                "AnalyticsEvent skipped: missing knowledge node for task_id=%s task_type=%s mode=%s",
-                task.task_id,
-                task_type,
-                mode,
-            )
+        # node_id в БД nullable: сохраняем событие аналитики даже если узел графа ещё не привязан к задаче
+        event = AnalyticsEvent(
+            user_id=user_id,
+            node_id=node.id if node else None,
+            task_id=task.task_id,
+            submission_id=submission_id,
+            answer_id=answer_id,
+            is_correct=is_correct,
+            task_difficulty=difficulty_level,
+            old_rating=old_rating,
+            new_rating=new_rating,
+            mmr_delta=(new_rating - old_rating),
+            task_type=task_type,
+            attempt_no=attempt_no,
+            mode=mode,
+            time_spent_sec=time_meta.get("effective_time_sec", time_spent_sec),
+            behavior_flags=behavior,
+        )
+        db.session.add(event)
         cls._create_or_update_rematch(
             user_id=user_id,
             task=task,
@@ -425,6 +457,7 @@ class AnalyticsEngine:
         manual_mmr_delta: float | None = None,
         rating_comment: str | None = None,
         grader_user_id: int | None = None,
+        actual_score: float | None = None,
     ) -> dict | None:
         new_rating = cls.process_submission(
             user_id=user_id,
@@ -440,6 +473,7 @@ class AnalyticsEngine:
             manual_mmr_delta=manual_mmr_delta,
             rating_comment=rating_comment,
             grader_user_id=grader_user_id,
+            actual_score=actual_score,
         )
         if new_rating is None:
             return None
@@ -468,6 +502,8 @@ class AnalyticsEngine:
             "time_coeff": float(flags.get("time_coeff") or 1.0),
             "attempt_coeff": float(flags.get("attempt_coeff") or 1.0),
             "calibration_multiplier": float(flags.get("calibration_multiplier") or 1.0),
+            "expected_score": float(flags.get("expected_score", 0.5)),
+            "task_elo": float(flags.get("task_elo", 1000.0)),
             "time_band": flags.get("time_band"),
             "task_type": ev.task_type,
             "effective_time_sec": flags.get("effective_time_sec", ev.time_spent_sec),
@@ -500,11 +536,14 @@ class AnalyticsEngine:
             return 0.0
         user_masteries = {m.node_id: m for m in UserMastery.query.filter_by(user_id=user_id).all()}
         total_expected = 0.0
+        scale_divisor = float(cls._cfg().get("scale_divisor", 400.0))
         for node in nodes:
             mastery = user_masteries.get(node.id)
             rating = float(mastery.rating if mastery else cls.INITIAL_RATING)
             base = float(getattr(node, 'base_rating', 1000))
-            p = max(0.0, min(1.0, rating / max(base, 1.0)))
+            # Логистическая вероятность сдачи узла знаний на экзамене (IRT / Rasch model)
+            exp = max(-7.0, min(7.0, (base - rating) / scale_divisor))
+            p = 1.0 / (1.0 + (10.0 ** exp))
             total_expected += p * float(node.exam_points or 1)
         return round(total_expected, 1)
 

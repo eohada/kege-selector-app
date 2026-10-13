@@ -6,15 +6,41 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260922-tactile-v5">
+<link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261013-workspace-v2">
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace-split.css') }}?v=20261013-visual-v3">
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os.css') }}?v=20261013-os-v1">
 {% endblock %}
 
 {% block sandbox_content %}
-<main class="tw-shell w-full min-h-screen max-w-[1400px] xl:max-w-[1600px] 2xl:max-w-[1720px] mx-auto px-4 py-6 lg:pl-[5.5rem] lg:pr-6" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
+<main class="tw-shell tw-split-focus w-full min-h-screen max-w-[1400px] xl:max-w-[1600px] 2xl:max-w-[1720px] mx-auto px-4 py-6 lg:pl-[5.5rem] lg:pr-6" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
     <div class="tw-back-row mb-3">
         {% if workspace.return_url %}
         <a class="tw-btn-tactile-back" href="{{ workspace.return_url }}"><i class="ph-bold ph-arrow-left"></i> <span>К списку работ</span></a>
         {% endif %}
     </div>
+
+    {% if workspace.context_type == 'submission_task' %}
+    <header class="hw-os-bar" aria-label="BooStudy OS для работы">
+        <div class="hw-os-brand"><span class="hw-os-mark"><i class="ph-bold ph-brain"></i></span><span><strong>BooStudy OS</strong><small>Домашняя работа</small></span></div>
+        <div class="hw-os-identity"><span class="hw-os-kicker">Работа #{{ workspace.submission_meta.assignment_id }}</span><h1>{{ workspace.assignment_title }}</h1><span class="hw-os-progress">{{ workspace.completed_task_count }} из {{ workspace.task_count }} заданий выполнено</span></div>
+        <div class="hw-os-actions">
+            {% if workspace.can_review %}<span class="hw-os-viewing"><i class="ph-bold ph-eye"></i> Просмотр ученика</span>{% endif %}
+            {% if workspace.can_edit %}<button type="button" id="hw-os-transfer-open" class="hw-os-action"><i class="ph-bold ph-copy"></i><span>Копировать материалы</span></button>{% endif %}
+            <a id="hw-os-lesson-link" class="hw-os-action" href="#" hidden><i class="ph-bold ph-chalkboard-teacher"></i><span>OS урока</span></a>
+        </div>
+    </header>
+    <nav class="hw-os-tabs" aria-label="Пространства заданий">
+        <span class="hw-os-tabs-label"><i class="ph-bold ph-stack"></i> Пространства</span>
+        {% for item in workspace.tasks_nav %}<a class="hw-os-tab{% if item.is_current %} is-active{% endif %}" href="{{ item.url }}" {% if item.is_current %}aria-current="page"{% endif %}><span class="hw-os-tab-number">{{ item.position }}</span><span class="hw-os-tab-title">Задание {{ item.position }}</span>{% if item.is_completed %}<i class="ph-bold ph-check-circle"></i>{% endif %}</a>{% endfor %}
+    </nav>
+    {% if workspace.can_edit %}<dialog id="hw-os-transfer" class="hw-os-dialog" aria-labelledby="hw-os-transfer-title">
+        <form method="dialog" class="hw-os-dialog-body"><div class="hw-os-dialog-heading"><div><span class="hw-os-kicker">BooStudy OS</span><h2 id="hw-os-transfer-title">Копировать в задание {{ workspace.task_position }}</h2></div><button type="submit" class="hw-os-dialog-close" aria-label="Закрыть"><i class="ph-bold ph-x"></i></button></div>
+            <p>Выберите пространство, из которого нужно взять код, заметки, файлы и рисунок. Исходное пространство сохранится.</p>
+            <label for="hw-os-transfer-source">Источник</label><select id="hw-os-transfer-source" required><option value="">Загружаем пространства…</option></select>
+            <div class="hw-os-dialog-footer"><span id="hw-os-transfer-status" role="status"></span><button type="button" id="hw-os-transfer-confirm" class="hw-os-confirm">Копировать <i class="ph-bold ph-arrow-right"></i></button></div>
+        </form>
+    </dialog>{% endif %}
+    {% endif %}
 
     <!-- Bento Hero Card matching Golden Standard -->
     <header class="tw-hero-bento mb-4" aria-label="Панель работы">
@@ -28,6 +54,12 @@
             </div>
             <h1 class="tw-hero-title">{{ workspace.assignment_title }}</h1>
             <div class="tw-hero-meta-row">
+                {% if workspace.task_meta and workspace.task_meta.solution_language %}
+                <span class="tw-hero-subject">{{ workspace.task_meta.solution_language }}</span>
+                {% endif %}
+                {% if workspace.task_meta and workspace.task_meta.topics %}
+                <span class="tw-hero-meta-divider">·</span><span class="tw-hero-topic">{{ workspace.task_meta.topics|join(', ') }}</span>
+                {% endif %}
                 {% if workspace.submission_meta and workspace.submission_meta.student_name %}
                 <span class="tw-student-badge">
                     <span class="tw-student-avatar">
@@ -53,6 +85,9 @@
                 {% else %}
                 <span class="tw-status-pill tw-status-progress"><i class="ph-bold ph-pencil-simple"></i> В процессе</span>
                 {% endif %}
+                {% if workspace.submission_meta %}
+                <span class="tw-deadline-meta"><i class="ph-bold ph-calendar-blank"></i><span>Дедлайн: {{ workspace.submission_meta.deadline|user_dt('%d.%m.%Y %H:%M') if workspace.submission_meta.deadline else 'Без срока' }}</span></span>
+                {% endif %}
                 {% if workspace.submission_meta and workspace.submission_meta.is_late %}
                 <span class="tw-status-pill tw-status-late">С опозданием</span>
                 {% endif %}
@@ -65,11 +100,11 @@
         </div>
 
         <div class="tw-hero-metrics">
-            <div class="tw-metric-tile">
-                <span class="tw-metric-label">Сдано</span>
+            <div class="tw-metric-tile tw-metric-completed">
+                <span class="tw-metric-label">Выполнено</span>
                 <div class="tw-metric-val">
-                    <span class="tw-metric-icon"><i class="ph-bold ph-upload-simple"></i></span>
-                    <span>{{ workspace.submission_meta.submitted_at|user_dt('%d.%m.%Y %H:%M') if (workspace.submission_meta and workspace.submission_meta.submitted_at) else '—' }}</span>
+                    <span class="tw-metric-icon"><i class="ph-bold ph-arrows-clockwise"></i></span>
+                    <span>{{ workspace.completed_task_count or 0 }} из {{ workspace.task_count or 1 }}</span>
                 </div>
             </div>
             <div class="tw-metric-tile">
@@ -91,7 +126,7 @@
         {% set task_progress = ((workspace.completed_task_count or 0) * 100 / (workspace.task_count or 1))|round|int %}
         <div class="tw-hero-progress" aria-live="polite">
             <div class="tw-hero-progress-head">
-                <span>Выполнено {{ workspace.completed_task_count or 0 }} из {{ workspace.task_count or 1 }}</span>
+                <span>Заполнено {{ workspace.completed_task_count or 0 }} из {{ workspace.task_count or 1 }}</span>
                 <span class="tw-hero-progress-percent">{{ task_progress }}%</span>
             </div>
             <div class="tw-hero-progress-track">
@@ -109,7 +144,7 @@
     </header>
 
     <!-- Sticky Task Stepper Strip -->
-    <nav class="tw-task-stepper sticky top-4 z-40 mb-4" aria-label="Навигация по заданиям">
+    <nav class="tw-task-stepper sticky top-4 z-40 mb-4" id="tw-task-stepper" aria-label="Навигация по заданиям">
         <span class="tw-stepper-label">Задания:</span>
         <div class="tw-stepper-strip-outer">
             <div class="tw-stepper-strip">
@@ -117,9 +152,9 @@
                     {% for nav_item in workspace.tasks_nav %}
                     <a href="{{ nav_item.url }}" 
                        data-nav-task-id="{{ nav_item.assignment_task_id }}"
-                       class="tw-stepper-btn{% if nav_item.is_current %} is-active{% endif %}{% if nav_item.nav_status %} status-{{ nav_item.nav_status }}{% elif nav_item.is_completed %} is-completed{% endif %}" 
-                       title="Задание {{ nav_item.position }}{% if nav_item.nav_status == 'pending_review' %} (На ручной проверке){% elif nav_item.nav_status == 'correct' %} ({{ nav_item.score }}/{{ nav_item.max_score }} б. — Полный балл){% elif nav_item.nav_status == 'wrong' %} (0/{{ nav_item.max_score }} б. — 0 баллов){% elif nav_item.nav_status == 'partial' %} ({{ nav_item.score }}/{{ nav_item.max_score }} б. — Частичный балл){% endif %}">
-                        {% if nav_item.nav_status == 'correct' or nav_item.nav_status == 'completed' or (not nav_item.nav_status and nav_item.is_completed) %}
+                       class="tw-stepper-btn{% if nav_item.is_current %} is-active{% endif %}{% if nav_item.nav_status %} status-{{ nav_item.nav_status }}{% endif %}"
+                       title="Задание {{ nav_item.position }}{% if nav_item.nav_status == 'draft' %} (Черновик ответа){% elif nav_item.nav_status == 'pending_review' %} (На проверке){% elif nav_item.nav_status == 'correct' %} ({{ nav_item.score }}/{{ nav_item.max_score }} б. — Полный балл){% elif nav_item.nav_status == 'wrong' %} (0/{{ nav_item.max_score }} б. — 0 баллов){% elif nav_item.nav_status == 'partial' %} ({{ nav_item.score }}/{{ nav_item.max_score }} б. — Частичный балл){% endif %}">
+                        {% if nav_item.nav_status == 'correct' %}
                             <i class="ph-bold ph-check"></i>
                         {% elif nav_item.nav_status == 'wrong' %}
                             <i class="ph-bold ph-x"></i>
@@ -127,6 +162,8 @@
                             <i class="ph-bold ph-circle-half"></i>
                         {% elif nav_item.nav_status == 'pending_review' %}
                             <i class="ph-bold ph-clock"></i>
+                        {% elif nav_item.nav_status == 'draft' %}
+                            <i class="ph-bold ph-check"></i>
                         {% endif %}
                         <span class="tw-stepper-num">{{ nav_item.position }}</span>
                     </a>
@@ -144,41 +181,54 @@
         </div>
     </nav>
 
-    <!-- Task Heading Row: Title, Score Badge & Mode Switch -->
-    <div class="tw-task-heading mb-4">
-        <div class="tw-task-heading-left">
-            <h2 class="tw-task-title">Задание {{ workspace.task_position or 1 }}</h2>
-        </div>
-        <div class="tw-task-heading-actions">
-            <div class="tw-mode-switch" role="group" aria-label="Представление задачи" data-workspace-mode-switch>
-                <button type="button" class="tw-mode-switch-button{% if workspace.presentation_mode != 'code' %} is-active{% endif %}" data-workspace-mode="answer"><i class="ph-bold ph-check"></i> Ответ</button>
-                <button type="button" class="tw-mode-switch-button{% if workspace.presentation_mode == 'code' %} is-active{% endif %}" data-workspace-mode="code"><i class="ph-bold ph-code"></i> Код</button>
+    <section class="tw-split-workspace" id="tw-workspace-grid" aria-label="Рабочая область задания">
+        <article class="tw-panel tw-task-panel" id="tw-task-panel" data-demo-target="task-card">
+            <div class="tw-panel-head">
+                <div class="tw-task-heading-left"><span class="tw-panel-icon"><i class="ph-bold ph-file-text"></i></span><h2 class="tw-task-title">Задание {{ workspace.task_position or 1 }}</h2>{% if workspace.answer_max_score is not none %}<span class="tw-task-score"><i class="ph-bold ph-medal"></i> {{ workspace.answer_max_score }} балл{{ 'а' if workspace.answer_max_score in [2, 3, 4] else ('ов' if workspace.answer_max_score != 1 else '') }}</span>{% endif %}</div>
+                <div class="tw-task-panel-decoration">
+                    <button type="button" class="tw-icon-button" title="Сохранить черновик" aria-label="Сохранить черновик" onclick="window.BooTaskWorkspace?.save?.()"><i class="ph-bold ph-bookmark-simple"></i></button>
+                    <details class="tw-task-more">
+                        <summary class="tw-icon-button" title="Действия с работой" aria-label="Действия с работой"><i class="ph-bold ph-dots-three"></i></summary>
+                        <div class="tw-task-more-menu">
+                            {% if workspace.context_type == 'submission_task' and workspace.can_edit %}<button type="button" onclick="document.getElementById('tw-submit-work')?.click()"><i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу</button>{% endif %}
+                            {% if workspace.return_url %}<a href="{{ workspace.return_url }}"><i class="ph-bold ph-arrow-left"></i> К списку работ</a>{% endif %}
+                        </div>
+                    </details>
+                </div>
             </div>
-            <button type="button" class="tw-icon-button tw-fullscreen-toggle" id="tw-workspace-fullscreen-toggle" title="На весь экран" onclick="if (!document.fullscreenElement) { document.documentElement.requestFullscreen?.(); } else { document.exitFullscreen?.(); }"><i class="ph-bold ph-corners-out"></i></button>
+            <div class="tw-info-note"><i class="ph-bold ph-info"></i><span>Внимательно прочитай условие. При необходимости используй подсказки или теорию.</span></div>
+            {% if workspace.task_title %}<h3 class="tw-task-name">{{ workspace.task_title }}</h3>{% endif %}
+            <div class="tw-task-content">{{ workspace.content_html|safe }}</div>
+            {% if workspace.hints %}
+            <div class="tw-inline-hints">
+                {% for hint in workspace.hints %}
+                <details class="tw-inline-hint{% if 'замечан' in hint.title|lower %} is-note{% endif %}">
+                    <summary><span class="tw-inline-hint-icon"><i class="ph-bold {% if 'замечан' in hint.title|lower %}ph-info{% else %}ph-lightbulb{% endif %}"></i></span><span class="tw-inline-hint-label"><strong>{{ hint.title }}</strong><small>{{ hint.text }}</small></span><i class="ph-bold ph-caret-down"></i></summary>
+                    <div class="tw-inline-hint-content">{{ hint.text }}</div>
+                </details>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if workspace.answer_hint and workspace.can_review %}
+            <details class="tw-answer-hint">
+                <summary>Эталонный ответ</summary>
+                <pre>{{ workspace.answer_hint }}</pre>
+            </details>
+            {% endif %}
+        </article>
+
+    <div class="tw-task-heading-actions">
+        <div class="tw-mode-switch" role="group" aria-label="Инструмент решения" data-workspace-mode-switch>
+            <button type="button" class="tw-mode-switch-button{% if workspace.presentation_mode != 'code' %} is-active{% endif %}" data-workspace-mode="answer"><i class="ph-bold ph-check"></i> Ответ</button>
+            <button type="button" class="tw-mode-switch-button{% if workspace.presentation_mode == 'code' %} is-active{% endif %}" data-workspace-mode="code"><i class="ph-bold ph-code"></i> Код</button>
+            <button type="button" class="tw-mode-switch-button" id="tw-workspace-mode-canvas" data-workspace-mode="canvas" aria-pressed="false"><i class="ph-bold ph-pencil-line"></i> Холст</button>
         </div>
+        <button type="button" class="tw-icon-button tw-fullscreen-toggle" id="tw-workspace-fullscreen-toggle" title="На весь экран" onclick="if (!document.fullscreenElement) { document.documentElement.requestFullscreen?.(); } else { document.exitFullscreen?.(); }"><i class="ph-bold ph-corners-out"></i></button>
     </div>
 
-    <section class="tw-grid tw-code-grid{% if workspace.presentation_mode != 'code' %} is-workspace-hidden{% endif %}" id="tw-code-workspace-grid" data-workspace-view="code">
+    <div class="tw-workspace-tool-source tw-code-grid" id="tw-code-workspace-grid" data-workspace-view="code">
         <div class="tw-code-main">
-            <article class="tw-panel tw-task-panel" id="tw-task-panel">
-                <div class="tw-panel-head">
-                    <div>
-                        <span class="tw-panel-icon"><i class="ph-bold ph-file-text"></i></span><span>Условие</span>
-                    </div>
-                </div>
-                <div class="tw-info-note"><i class="ph-bold ph-info"></i><span>Внимательно прочитай условие. При необходимости используй подсказки или теорию.</span></div>
-                <div class="tw-task-content">
-                    {{ workspace.content_html|safe }}
-                </div>
-                {% if workspace.answer_hint and workspace.can_review %}
-                <details class="tw-answer-hint">
-                    <summary>Эталонный ответ</summary>
-                    <pre>{{ workspace.answer_hint }}</pre>
-                </details>
-                {% endif %}
-            </article>
-
-            <section class="tw-panel tw-editor-panel" id="tw-editor-panel">
+            <section class="tw-panel tw-editor-panel" id="tw-editor-panel" data-workspace-tool="code" {% if workspace.presentation_mode != 'code' %}hidden{% endif %}>
                 <div class="tw-panel-head">
                     <div class="tw-editor-title-wrap">
                         <span class="tw-panel-icon tw-panel-icon-dark"><i class="ph-bold ph-terminal-window"></i></span>
@@ -195,7 +245,7 @@
                                 <i class="ph-bold ph-dots-three-vertical"></i> Инструменты <i class="ph-bold ph-caret-down"></i>
                             </button>
                             <div id="tw-editor-more-menu" class="tw-editor-more-menu" hidden>
-                                <button id="tw-toggle-canvas" class="tw-more-menu-item" type="button" onclick="if(window.BooCanvasOverlay) window.BooCanvasOverlay.toggle();">
+                                <button id="tw-toggle-canvas" class="tw-more-menu-item" type="button" onclick="document.getElementById('tw-workspace-mode-canvas')?.click();">
                                     <i class="ph-bold ph-pencil-line"></i> Холст для заметок
                                 </button>
                                 <button data-action="format" class="tw-more-menu-item" type="button">
@@ -286,7 +336,7 @@
                 </div>
             </section>
 
-            <aside class="tw-panel tw-output-panel" id="tw-output-panel">
+            <aside class="tw-panel tw-output-panel" id="tw-output-panel" data-workspace-tool="code" {% if workspace.presentation_mode != 'code' %}hidden{% endif %}>
                 <div class="tw-panel-head">
                     <div>
                         <span class="tw-panel-icon"><i class="ph-bold ph-terminal-window"></i></span><span>Консоль и результат</span>
@@ -377,6 +427,24 @@
                                 <span class="tw-choice-result-badge is-target"><i class="ph-bold ph-check"></i> Правильный вариант</span>
                                 {% endif %}
                             {% endif %}
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% elif workspace.answer_spec.type == 'multiple_choice' %}
+                    {% set selected_values = workspace.parsed_answer if workspace.parsed_answer is sequence and workspace.parsed_answer is not string and workspace.parsed_answer is not mapping else [] %}
+                    {% set selected_text = selected_values|map('string')|list %}
+                    {% set correct_values = workspace.parsed_correct_answer if workspace.parsed_correct_answer is sequence and workspace.parsed_correct_answer is not string and workspace.parsed_correct_answer is not mapping else [] %}
+                    {% set correct_text = correct_values|map('string')|list %}
+                    <input id="tw-code-answer-input" type="hidden" value="{{ workspace.plain_answer }}">
+                    <div class="tw-multiple-choice-grid" data-answer-renderer="multiple_choice">
+                        {% for option in workspace.answer_spec.options %}
+                        {% set option_value = option.value|string %}
+                        {% set is_selected = option_value in selected_text %}
+                        {% set is_correct_choice = option_value in correct_text %}
+                        <label class="tw-multiple-choice-card{% if workspace.is_reviewed and is_correct_choice %} is-correct{% elif workspace.is_reviewed and is_selected %} is-wrong{% endif %}">
+                            <input type="checkbox" name="task-choice-multiple" value="{{ option.value }}" {% if is_selected %}checked{% endif %} {% if not workspace.can_edit %}disabled{% endif %}>
+                            <span>{{ option.label }}</span>
+                            {% if workspace.is_reviewed and is_correct_choice %}<span class="tw-choice-result-badge is-target"><i class="ph-bold ph-check"></i> Верный вариант</span>{% endif %}
                         </label>
                         {% endfor %}
                     </div>
@@ -533,8 +601,9 @@
                     {% endif %}
                     <button class="tw-tab" type="button" data-tab="notes">Заметки</button>
                 </div>
+                <button class="tw-output-clear" type="button" onclick="document.getElementById('tw-output').textContent = ''"><i class="ph-bold ph-trash"></i> Очистить</button>
                 <div class="tw-tab-pane is-active" data-pane="output">
-                    <pre id="tw-output" class="tw-output">Запусти код, и результат появится здесь.</pre>
+                    <pre id="tw-output" class="tw-output"><span class="tw-output-initial-icon" aria-hidden="true"><i class="ph-bold ph-terminal"></i></span><span class="tw-output-initial-text">Здесь появится результат выполнения кода<br>после нажатия на «Запустить».</span></pre>
                 </div>
                 <div class="tw-tab-pane" data-pane="canvas">
                     <div id="tw-turtle-empty" class="tw-empty">
@@ -574,7 +643,7 @@
                 </div>
                 {% endif %}
                 <div class="tw-tab-pane" data-pane="notes">
-                    <textarea id="tw-notes" class="tw-notes" placeholder="Личные заметки к задаче. Пока сохраняются локально."></textarea>
+                    <textarea id="tw-notes" class="tw-notes" placeholder="Заметки к этому заданию сохраняются в BooStudy OS."></textarea>
                 </div>
                 <div class="tw-tab-pane" data-pane="versions">
                     <div class="tw-versions-head">
@@ -605,40 +674,12 @@
                 {% endif %}
             </aside>
 
-            {% if workspace.attachments %}
-            {% set attachment_count = workspace.attachments|length %}
-            <section class="tw-panel tw-materials-card">
-                <div class="tw-panel-head">
-                    <div>
-                        <span class="tw-panel-icon"><i class="ph-bold ph-paperclip"></i></span>
-                        <span>Материалы</span>
-                    </div>
-                    <span class="tw-score-pill">{{ attachment_count }} {{ 'файл' if attachment_count % 10 == 1 and attachment_count % 100 != 11 else ('файла' if attachment_count % 10 in [2, 3, 4] and attachment_count % 100 not in [12, 13, 14] else 'файлов') }}</span>
-                </div>
-                <div class="tw-material-list">
-                    {% for file in workspace.attachments %}
-                    <a href="{{ file.download_url }}" class="tw-material-item" target="_blank" rel="noopener">
-                        <i class="ph-bold {{ 'ph-image' if file.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')) else 'ph-file' }}"></i>
-                        <span>
-                            <strong>{{ file.name }}</strong>
-                            <small>{{ file.name.rsplit('.', 1)[-1]|upper if '.' in file.name else 'Файл' }}</small>
-                        </span>
-                        <i class="ph-bold ph-download-simple"></i>
-                    </a>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
         </aside>
-    </section>
-    <section class="tw-standard-grid{% if workspace.presentation_mode == 'code' %} is-workspace-hidden{% endif %}" id="tw-standard-workspace-grid" data-workspace-view="answer">
+    </div>
+    <div class="tw-workspace-tool-source tw-standard-grid" id="tw-standard-workspace-grid" data-workspace-view="answer">
         <div class="tw-standard-main">
-            <article class="tw-panel tw-standard-condition">
-                <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-file-text"></i></span><span>Условие</span></div></div>
-                <div class="tw-task-content">{{ workspace.content_html|safe }}</div>
-            </article>
-            <article class="tw-panel tw-answer-workspace">
-                <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-check-circle"></i></span><span>Ваш ответ</span></div></div>
+            <article class="tw-panel tw-answer-workspace" id="tw-answer-workspace" data-workspace-tool="answer" {% if workspace.presentation_mode == 'code' %}hidden{% endif %}>
+                <div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-check-square-offset"></i></span><span>{% if workspace.answer_spec.type == 'single_choice' %}Выберите один вариант{% elif workspace.answer_spec.type == 'matching' %}Соедини все пары{% else %}Ваш ответ на задачу{% endif %}</span></div>{% if workspace.answer_spec.type == 'short_answer' %}<span class="tw-answer-type-badge">Короткий ответ</span>{% elif workspace.answer_spec.type == 'long_answer' %}<span class="tw-answer-type-badge">Развёрнутый ответ</span>{% elif workspace.answer_spec.type == 'single_choice' %}<span class="tw-answer-type-badge">Можно выбрать только один вариант.</span>{% elif workspace.answer_spec.type == 'multiple_choice' %}<span class="tw-answer-type-badge">Несколько вариантов</span>{% endif %}</div>
                 
                 {% if workspace.is_reviewed and workspace.answer_score is not none %}
                 <div class="tw-verdict-banner {% if workspace.answer_score == workspace.answer_max_score and workspace.answer_max_score > 0 %}is-correct{% elif workspace.answer_score > 0 %}is-partial{% else %}is-wrong{% endif %}">
@@ -692,7 +733,25 @@
                 {% endif %}
 
                 {% if workspace.answer_spec.prompt %}<p class="tw-answer-description">{{ workspace.answer_spec.prompt }}</p>{% endif %}
-                {% if workspace.answer_spec.type == 'single_choice' %}
+                {% if workspace.answer_spec.type == 'multiple_choice' %}
+                {% set selected_values = workspace.parsed_answer if workspace.parsed_answer is sequence and workspace.parsed_answer is not string and workspace.parsed_answer is not mapping else [] %}
+                {% set selected_text = selected_values|map('string')|list %}
+                {% set correct_values = workspace.parsed_correct_answer if workspace.parsed_correct_answer is sequence and workspace.parsed_correct_answer is not string and workspace.parsed_correct_answer is not mapping else [] %}
+                {% set correct_text = correct_values|map('string')|list %}
+                <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
+                <div class="tw-multiple-choice-grid" data-answer-renderer="multiple_choice">
+                    {% for option in workspace.answer_spec.options %}
+                    {% set option_value = option.value|string %}
+                    {% set is_selected = option_value in selected_text %}
+                    {% set is_correct_choice = option_value in correct_text %}
+                    <label class="tw-multiple-choice-card{% if workspace.is_reviewed and is_correct_choice %} is-correct{% elif workspace.is_reviewed and is_selected %} is-wrong{% endif %}">
+                        <input type="checkbox" name="task-choice-multiple" value="{{ option.value }}" {% if is_selected %}checked{% endif %} {% if not workspace.can_edit %}disabled{% endif %}>
+                        <span>{{ option.label }}</span>
+                        {% if workspace.is_reviewed and is_correct_choice %}<span class="tw-choice-result-badge is-target"><i class="ph-bold ph-check"></i> Верный вариант</span>{% endif %}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% elif workspace.answer_spec.type == 'single_choice' %}
                 <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
                 <div class="tw-choice-grid" data-answer-renderer="single_choice">
                     {% for option in workspace.answer_spec.options %}
@@ -703,7 +762,7 @@
                     {% set is_correct_choice = (corr_val and (corr_val == opt_val or corr_val == option.label|string|trim)) %}
                     <label class="tw-choice-card {% if workspace.is_reviewed %}{% if is_selected and is_correct_choice %}is-correct{% elif is_selected and not is_correct_choice %}is-wrong{% elif not is_selected and is_correct_choice %}is-target-answer{% else %}is-dimmed{% endif %}{% endif %}">
                         <input type="radio" name="task-choice" value="{{ option.value }}" {% if is_selected %}checked{% endif %} {% if not workspace.can_edit %}disabled{% endif %}>
-                        <span class="tw-choice-radio"></span>
+                        <span class="tw-choice-radio">{{ option.value }}</span>
                         <span>{{ option.label }}</span>
                         {% if workspace.is_reviewed %}
                             {% if is_selected and is_correct_choice %}
@@ -719,6 +778,10 @@
                 </div>
                 {% elif workspace.answer_spec.type == 'matching' %}
                 <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
+                <div class="tw-matching-instruction"><i class="ph-bold ph-info"></i><span>Соедини все пары.</span></div>
+                <div class="tw-matching-stage">
+                <svg class="tw-matching-lines" aria-hidden="true"></svg>
+                <div class="tw-matching-left-column"><strong>Слева</strong>
                 <div class="tw-matching-list" data-answer-renderer="matching">
                     {% for pair in workspace.answer_spec.pairs %}
                     {% set pair_key = pair.key|string %}
@@ -735,7 +798,7 @@
                                 <option value="{{ option.value }}" {% if user_choice is not none and user_choice|string == option.value|string %}selected{% endif %}>{{ option.label }}</option>
                                 {% endfor %}
                             </select>
-                            <button type="button" class="tw-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false" {% if not workspace.can_edit %}disabled{% endif %}>
+                            <button type="button" class="tw-custom-select-trigger" aria-label="Выбрать результат для {{ pair.left }}" aria-haspopup="listbox" aria-expanded="false" {% if not workspace.can_edit %}disabled{% endif %}>
                                 <span class="tw-custom-select-label">
                                     {% set chosen_opt = (workspace.answer_spec.options|selectattr('value', 'equalto', user_choice)|first) if user_choice is not none else None %}
                                     {{ chosen_opt.label if chosen_opt else 'Выберите вариант' }}
@@ -749,7 +812,7 @@
                                 </div>
                                 {% for option in workspace.answer_spec.options %}
                                 <div class="tw-custom-select-option {% if user_choice is not none and user_choice|string == option.value|string %}is-selected{% endif %}" data-value="{{ option.value }}">
-                                    <span>{{ option.label }}</span>
+                                    <span>{{ option.value }} — {{ option.label }}</span>
                                     <i class="ph-bold ph-check tw-check-icon"></i>
                                 </div>
                                 {% endfor %}
@@ -765,6 +828,9 @@
                         {% endif %}
                     </div>
                     {% endfor %}
+                </div>
+                </div>
+                <div class="tw-matching-right-column" aria-hidden="true"><strong>Справа</strong><div class="tw-matching-options">{% for option in workspace.answer_spec.options %}<div class="tw-matching-option" data-match-option="{{ option.value }}"><span>{{ option.value }}</span>{{ option.label }}</div>{% endfor %}</div></div>
                 </div>
                 {% elif workspace.answer_spec.type == 'code' %}
                 <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
@@ -848,7 +914,7 @@
                         <i class="ph-bold ph-brackets-curly"></i> Вставить код из IDE
                     </button>
                 </div>
-                <textarea id="tw-answer" class="tw-long-answer" placeholder="{{ workspace.answer_spec.placeholder or 'Напишите решение или объяснение…' }}">{{ workspace.plain_answer }}</textarea>
+                <textarea id="tw-answer" data-demo-target="task-input" class="tw-long-answer" placeholder="{{ workspace.answer_spec.placeholder or 'Напишите решение или объяснение…' }}">{{ workspace.plain_answer }}</textarea>
                 {% else %}
                 <textarea id="tw-answer" class="tw-long-answer is-readonly" readonly>{{ workspace.plain_answer }}</textarea>
                 {% endif %}
@@ -871,7 +937,8 @@
                         <i class="ph-bold ph-arrow-down-left"></i> Вставить вывод из IDE
                     </button>
                 </div>
-                <input id="tw-answer" class="tw-answer-input tw-standard-answer-input" value="{{ workspace.plain_answer }}" placeholder="{{ workspace.answer_spec.placeholder or 'Ваш ответ…' }}">
+                <input id="tw-answer" data-demo-target="task-input" class="tw-answer-input tw-standard-answer-input" value="{{ workspace.plain_answer }}" placeholder="{{ workspace.answer_spec.placeholder or 'Ваш ответ…' }}">
+                {% if workspace.answer_spec.type == 'short_answer' %}<div class="tw-answer-guidance"><i class="ph-bold ph-info"></i><span><strong>Проверьте свой ответ</strong><small>{% if 'число' in (workspace.answer_spec.prompt or '')|lower %}Убедитесь, что в ответе только число, без дополнительных символов.{% else %}Сверьте формат ответа с условием и уберите лишние символы.{% endif %}</small></span></div>{% endif %}
                 {% else %}
                 <input id="tw-answer" type="hidden" value="{{ workspace.plain_answer }}">
                 {% endif %}
@@ -987,35 +1054,25 @@
                     </div>
                 </div>
             </section>
-            {% if workspace.hints %}
-            <details class="tw-panel tw-hints-card">
-                <summary>
-                    <div class="tw-hint-banner-title">
-                        <span class="tw-hint-banner-icon"><i class="ph-bold ph-lightbulb"></i></span>
-                        <span>Подсказки к задаче</span>
-                    </div>
-                    <i class="ph-bold ph-caret-down"></i>
-                </summary>
-                <div class="tw-hints-body">
-                    {% for hint in workspace.hints %}
-                    <article>
-                        <strong>{{ hint.title }}</strong>
-                        <p>{{ hint.text }}</p>
-                    </article>
-                    {% endfor %}
-                </div>
-            </details>
-            {% endif %}
             {% if workspace.attachments %}{% set attachment_count = workspace.attachments|length %}<section class="tw-panel tw-materials-card"><div class="tw-panel-head"><div><span class="tw-panel-icon"><i class="ph-bold ph-paperclip"></i></span><span>Материалы</span></div><span class="tw-score-pill">{{ attachment_count }} {{ 'файл' if attachment_count % 10 == 1 and attachment_count % 100 != 11 else ('файла' if attachment_count % 10 in [2, 3, 4] and attachment_count % 100 not in [12, 13, 14] else 'файлов') }}</span></div><div class="tw-material-list">{% for file in workspace.attachments %}<a href="{{ file.download_url }}" class="tw-material-item" target="_blank" rel="noopener"><i class="ph-bold {{ 'ph-image' if file.name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')) else 'ph-file' }}"></i><span><strong>{{ file.name }}</strong><small>{{ file.name.rsplit('.', 1)[-1]|upper if '.' in file.name else 'Файл' }}</small></span><i class="ph-bold ph-download-simple"></i></a>{% endfor %}</div></section>{% endif %}
         </aside>
+    </div>
+
+        <section class="tw-panel tw-canvas-workspace" id="tw-canvas-workspace" data-workspace-tool="canvas" hidden aria-label="Холст для решения">
+            <div class="tw-panel-head">
+                <div><span class="tw-panel-icon"><i class="ph-bold ph-pencil-line"></i></span><span>Холст для решения</span></div>
+            </div>
+            <p class="tw-canvas-help">Рисуйте и делайте заметки к решению. Изменения сохраняются автоматически.</p>
+            <div class="tw-canvas-host" id="tw-canvas-host" aria-label="Область рисования"></div>
+        </section>
     </section>
 
     <footer class="tw-bottom-bar" aria-label="Действия с работой">
         {% set task_progress = ((workspace.completed_task_count or 0) * 100 / (workspace.task_count or 1))|round|int %}
         <div class="tw-bottom-progress">
-            <span class="tw-progress-orb" id="tw-progress-orb" style="--task-progress: {{ task_progress }}" aria-label="Выполнено {{ task_progress }} процентов"><i class="ph-bold {{ 'ph-code' if workspace.presentation_mode == 'code' else 'ph-check-circle' }}"></i></span>
+            <span class="tw-progress-orb" id="tw-progress-orb" style="--task-progress: {{ task_progress }}" aria-label="Заполнено {{ task_progress }} процентов"><i class="ph-bold {{ 'ph-code' if workspace.presentation_mode == 'code' else 'ph-check-circle' }}"></i></span>
             <div class="tw-bottom-progress-text">
-                <strong id="tw-progress-label">Задача {{ workspace.task_position or 1 }} из {{ workspace.task_count or 1 }}</strong>
+                <strong id="tw-progress-label">Задание {{ workspace.task_position or 1 }} из {{ workspace.task_count or 1 }}</strong>
                 <span id="tw-progress-status">Выполнено {{ workspace.completed_task_count or 0 }} из {{ workspace.task_count or 1 }}</span>
             </div>
             <span class="tw-progress-badge" id="tw-progress-percent">{{ task_progress }}%</span>
@@ -1024,8 +1081,11 @@
             {% if not workspace.can_edit %}
             {% if workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary"><i class="ph-bold ph-arrow-left"></i> Вернуться к списку заданий</a>{% endif %}
             {% else %}
-            <button type="button" class="tw-btn-tactile-save" onclick="document.getElementById('tw-save').click()"><i class="ph-bold ph-bookmark-simple"></i> <span>Сохранить черновик</span></button>
-            {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Отправить ответ</button>{% elif workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
+            <button type="button" class="tw-btn-tactile-save" onclick="window.BooTaskWorkspace?.save?.()"><i class="ph-bold ph-bookmark-simple"></i> <span>Сохранить черновик</span></button>
+            {% if workspace.context_type == 'submission_task' and workspace.task_meta and workspace.task_meta.can_submit_separately %}
+            <button id="tw-submit-current-task" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Отправить ответ</button>
+            {% endif %}
+            {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" data-demo-target="task-submit" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу</button>{% elif workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
             {% endif %}
         </div>
     </footer>
@@ -1038,11 +1098,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const submit = document.getElementById('tw-submit-work');
     if (!submit || !window.TASK_WORKSPACE?.context_id) return;
     submit.addEventListener('click', async () => {
+        // The cinematic demo verifies answers through its own endpoint and
+        // keeps the learner inside the guided scene.  Do not let the ordinary
+        // submission handler disable the controls or redirect it away first.
+        if (window.TASK_WORKSPACE?.is_demo) return;
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
         submit.disabled = true;
         submit.innerHTML = '<i class="ph-bold ph-spinner-gap"></i> Сдаём…';
         try {
-            document.getElementById('tw-save')?.click();
+            const saved = await window.BooTaskWorkspace?.save?.();
+            const canvasSaved = await window.BooCanvasOverlay?.save?.();
+            if (saved === false || canvasSaved === false) throw new Error('Не удалось сохранить черновик перед сдачей работы');
             const response = await fetch(`/submissions/${window.TASK_WORKSPACE.context_id}/submit`, {
                 method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf}, body: JSON.stringify({})
             });
@@ -1051,15 +1117,99 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = window.TASK_WORKSPACE.return_url || '/submissions';
         } catch (error) {
             submit.disabled = false;
-            submit.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Завершить и сдать работу';
+            submit.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу';
             window.BooNotify?.error?.(error.message || 'Не удалось сдать работу');
         }
     });
 });
 </script>
 
+{% if current_user.is_authenticated and current_user.is_demo_user %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.TASK_WORKSPACE) window.TASK_WORKSPACE.is_demo = true;
+  const submitBtn = document.getElementById('tw-submit-work');
+  const answerInput = document.getElementById('tw-answer');
+  if (!submitBtn || !answerInput) return;
+
+  function handleDemoSubmit(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    }
+    const answerVal = (answerInput.value || '').trim();
+    if (!answerVal) {
+      if (window.BooCompanion) {
+        window.BooCompanion.say('Введи число в поле ответа, чтобы проверить его!', 'curious');
+      }
+      return;
+    }
+
+    const subId = window.TASK_WORKSPACE?.context_id;
+    fetch('/demo/api/verify-answer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
+      },
+      body: JSON.stringify({
+        submission_id: subId,
+        answer: answerVal,
+      })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res && res.success) {
+        if (res.is_correct) {
+          if (window.BooDemoEngine) {
+            if (res.state) window.BooDemoEngine.applyServerState(res.state);
+            else window.BooDemoEngine.goToStep(res.next_step || 'victory', res.chapter_id || 'chapter_3');
+            if (res.state?.chapter_id === 'chapter_5' && res.state?.flags?.mistakes_fixed) {
+              window.setTimeout(function () {
+                window.BooCompanion?.showProductSceneDialogue?.();
+              }, 0);
+            }
+            // The next chapter card is the only message surface here.  A
+            // compact companion line on top of it used to create two
+            // competing dialogues immediately after a correct answer.
+          } else if (window.BooCompanion) {
+            window.BooCompanion.say('Первое испытание пройдено на максимум (1 из 1 балла)! Ты почувствовал, как удобно сдавать задания в BooStudy.', 'celebrating', {
+              buttons: [
+                { label: 'Вернуться в кабинет', action: 'goto_dashboard' },
+                { label: 'Смотреть решение', action: 'view_solution' },
+                { label: 'Посмотреть тарифы', action: 'goto_plans', secondary: true }
+              ]
+            });
+          }
+          answerInput.disabled = true;
+          submitBtn.disabled = true;
+        } else {
+          if (window.BooDemoEngine && res.state) window.BooDemoEngine.applyServerState(res.state);
+          if (window.BooCompanion && typeof window.BooCompanion.handleWrongTrialAnswer === 'function') window.BooCompanion.handleWrongTrialAnswer(res);
+          else if (window.BooCompanion) window.BooCompanion.say((res.feedback || 'Ответ не совсем верный.') + ' ' + (res.hint || ''), 'thinking');
+        }
+      }
+    })
+    .catch(function(err) {
+      console.error('Demo verification error:', err);
+    });
+  }
+
+  submitBtn.addEventListener('click', handleDemoSubmit, true);
+  answerInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      handleDemoSubmit(e);
+    }
+  });
+});
+</script>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20260922-tactile-v5"></script>
+<script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261013-workspace-v2"></script>
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20261013-split-workspace-v2"></script>
+<script src="{{ url_for('static', filename='task-workspace/homework-os.js') }}?v=20261013-os-v1"></script>
 {% endblock %}

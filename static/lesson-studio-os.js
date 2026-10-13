@@ -428,6 +428,12 @@
       }
       if(resultOutput)resultOutput.textContent=fullOut;
       if(resultStatus)resultStatus.textContent=r.stderr?'Ошибка в коде':'Выполнено';
+      if(typeof window.triggerAchievement==='function'){
+        window.triggerAchievement('lesson_code_live');
+      }
+      if(r.achievement_unlocked && typeof window.showAchievementToast==='function'){
+        window.showAchievementToast(r.achievement_unlocked);
+      }
     }finally{
       if(button){
         button.disabled=false;
@@ -1808,6 +1814,10 @@
 
   function handleLessonFinished(payload) {
     if (teacher) return;
+    // A completed lesson is intentionally used as a read-only exhibit in the
+    // guided demo.  Its live socket event must not eject the visitor from the
+    // scene before Boo has shown the lesson route and offered the return.
+    if (root && root.dataset && root.dataset.demoPreview === 'true') return;
     let overlay = $('#room-finished-overlay');
     if (!overlay) {
       overlay = document.createElement('div');

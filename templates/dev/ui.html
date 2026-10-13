@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BooStudy UI Showcase</title>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-design-system.css') }}">
+</head>
+<body class="bs-system-preview">
+  <main class="bs-page-container" style="padding-block:32px 64px;">
+    <header style="display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:24px;">
+      <div>
+        <span class="bs-badge bs-status-new">DEV ONLY</span>
+        <h1 style="font-size:32px;line-height:1.15;margin:12px 0 6px;">BooStudy UI Showcase</h1>
+        <p style="margin:0;color:var(--bs-text-secondary);">Живой каталог canonical tokens и primitives. Здесь нет production data.</p>
+      </div>
+      <a class="bs-button bs-button-secondary" href="{{ url_for('main.dashboard') }}">К dashboard</a>
+    </header>
+
+    <section class="bs-card bs-showcase-section" aria-labelledby="colors-title">
+      <h2 id="colors-title" style="margin:0;font-size:20px;">Colors</h2>
+      <div class="bs-showcase-grid">
+        <div class="bs-color-swatch" style="background:var(--bs-primary);color:#fff;">Primary</div>
+        <div class="bs-color-swatch" style="background:var(--bs-info);color:#fff;">Info</div>
+        <div class="bs-color-swatch" style="background:var(--bs-success);color:#fff;">Success</div>
+        <div class="bs-color-swatch" style="background:var(--bs-warning);color:#231500;">Warning</div>
+        <div class="bs-color-swatch" style="background:var(--bs-danger);color:#fff;">Danger</div>
+        <div class="bs-color-swatch" style="background:var(--bs-bg-surface-soft);border:1px solid var(--bs-border);">Surface soft</div>
+      </div>
+    </section>
+
+    <section class="bs-card bs-showcase-section" aria-labelledby="type-title" style="margin-top:16px;">
+      <h2 id="type-title" style="margin:0;font-size:20px;">Typography</h2>
+      <div style="display:grid;gap:12px;">
+        <div style="font-size:40px;font-weight:800;line-height:1.08;">Display / BooStudy</div>
+        <div style="font-size:32px;font-weight:800;">Page title</div>
+        <div style="font-size:20px;font-weight:750;">Section title · Card title</div>
+        <div style="font-size:15px;">Body copy with a calm, readable rhythm for learning.</div>
+        <div style="font-size:13px;color:var(--bs-text-secondary);">Secondary copy and supporting context</div>
+        <div style="font-size:32px;font-weight:800;">186 <small style="font-size:13px;font-weight:600;color:var(--bs-text-secondary);">metric</small></div>
+      </div>
+    </section>
+
+    <section class="bs-card bs-showcase-section" aria-labelledby="controls-title" style="margin-top:16px;">
+      <h2 id="controls-title" style="margin:0;font-size:20px;">Buttons, inputs and status</h2>
+      <div class="bs-showcase-grid" style="align-items:center;">
+        <button class="bs-button bs-button-primary" type="button">Primary action</button>
+        <button class="bs-button bs-button-secondary" type="button">Secondary</button>
+        <button class="bs-button bs-button-soft" type="button">Soft action</button>
+        <button class="bs-button bs-button-ghost" type="button">Ghost action</button>
+        <button class="bs-icon-button" type="button" aria-label="Настройки"><i class="ph ph-gear"></i></button>
+        <label><span class="sr-only">Search</span><input class="bs-input" placeholder="Search lessons"></label>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <span class="bs-badge bs-status-new">NEW</span><span class="bs-badge bs-status-in-progress">IN PROGRESS</span><span class="bs-badge bs-status-review">REVIEW</span><span class="bs-badge bs-status-completed">COMPLETED</span><span class="bs-badge bs-status-warning">WARNING</span><span class="bs-badge bs-status-overdue">OVERDUE</span><span class="bs-badge bs-status-locked">LOCKED</span>
+      </div>
+      <div class="bs-progress" aria-label="Progress 68 percent"><span style="width:68%"></span></div>
+    </section>
+
+    <section class="bs-card bs-showcase-section" aria-labelledby="cards-title" style="margin-top:16px;">
+      <h2 id="cards-title" style="margin:0;font-size:20px;">Cards and metrics</h2>
+      <div class="bs-bento-grid">
+        <article class="bs-card bs-hover-lift" style="grid-column:span 8;padding:24px;background:var(--bs-primary-soft);">
+          <span class="bs-badge bs-status-new">Твой учебный путь</span><h3 style="font-size:24px;margin:16px 0 8px;">Добрый вечер, creator</h3><p style="color:var(--bs-text-secondary);max-width:480px;">Hero card uses a calm surface, clear hierarchy and one meaningful action.</p><button class="bs-button bs-button-primary" type="button">Продолжить обучение</button>
+        </article>
+        <article class="bs-card" style="grid-column:span 4;padding:24px;"><span style="color:var(--bs-text-secondary);font-size:13px;">Твоя цель</span><div style="font-size:28px;font-weight:800;margin:16px 0;">ЕГЭ 90+</div><div class="bs-progress"><span style="width:32%"></span></div></article>
+        <article class="bs-card" style="grid-column:span 3;padding:20px;"><span style="color:var(--bs-text-secondary);font-size:13px;">Решено заданий</span><div style="font-size:32px;font-weight:800;margin-top:20px;">186</div></article>
+        <article class="bs-card" style="grid-column:span 3;padding:20px;"><span style="color:var(--bs-text-secondary);font-size:13px;">Средний результат</span><div style="font-size:32px;font-weight:800;margin-top:20px;">81%</div></article>
+        <article class="bs-card" style="grid-column:span 3;padding:20px;"><span style="color:var(--bs-text-secondary);font-size:13px;">Текущая серия</span><div style="font-size:32px;font-weight:800;margin-top:20px;">12 дней</div></article>
+        <article class="bs-card" style="grid-column:span 3;padding:20px;"><span style="color:var(--bs-text-secondary);font-size:13px;">Пройдено уроков</span><div style="font-size:32px;font-weight:800;margin-top:20px;">24</div></article>
+      </div>
+    </section>
+
+    <section class="bs-card bs-showcase-section" aria-labelledby="navigation-title" style="margin-top:16px;">
+      <h2 id="navigation-title" style="margin:0;font-size:20px;">Navigation</h2>
+      <div style="display:grid;grid-template-columns:minmax(180px,224px) 1fr;gap:16px;align-items:start;">
+        <nav class="bs-sidebar-preview" aria-label="Preview navigation"><strong style="font-size:18px;padding:8px 12px 16px;">BooStudy</strong><a href="#" aria-current="page"><i class="ph ph-house"></i> Главная</a><a href="#"><i class="ph ph-book-open"></i> Мои уроки</a><a href="#"><i class="ph ph-check-square"></i> Задания</a><a href="#"><i class="ph ph-chart-line-up"></i> Аналитика</a></nav>
+        <div class="bs-topbar-preview"><div class="bs-search"><input class="bs-input" aria-label="Поиск" placeholder="Поиск уроков, заданий, теории..."></div><button class="bs-icon-button" type="button" aria-label="Уведомления"><i class="ph ph-bell"></i></button><button class="bs-icon-button" type="button" aria-label="Профиль"><i class="ph ph-user"></i></button></div>
+      </div>
+    </section>
+
+    <section class="bs-card bs-showcase-section" aria-labelledby="mascot-title" style="margin-top:16px;">
+      <h2 id="mascot-title" style="margin:0;font-size:20px;">Boo assets</h2>
+      <div class="bs-showcase-grid">
+        <figure class="bs-surface" style="margin:0;padding:16px;text-align:center;"><img src="{{ url_for('static', filename='images/dashboard/hero_student.png') }}" alt="Boo в hero-сцене" style="max-width:100%;height:150px;object-fit:contain;"><figcaption style="font-size:12px;color:var(--bs-text-secondary);">Hero Boo</figcaption></figure>
+        <figure class="bs-surface" style="margin:0;padding:16px;text-align:center;"><img src="{{ url_for('static', filename='images/theory/ghost_study.png') }}" alt="Boo для учебного состояния" style="max-width:100%;height:150px;object-fit:contain;"><figcaption style="font-size:12px;color:var(--bs-text-secondary);">Learning Boo</figcaption></figure>
+        <figure class="bs-surface" style="margin:0;padding:16px;text-align:center;"><img src="{{ url_for('static', filename='images/dashboard/trophy_cup.png') }}" alt="Boo-сцена достижения" style="max-width:100%;height:150px;object-fit:contain;"><figcaption style="font-size:12px;color:var(--bs-text-secondary);">Success context</figcaption></figure>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

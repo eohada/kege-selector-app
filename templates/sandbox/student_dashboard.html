@@ -1,410 +1,742 @@
-{% extends "sandbox/layout_student.html" %}
+{% extends "sandbox/layout_dashboard.html" %}
+
+{% block title %}Главная · BooStudy{% endblock %}
+
+{% block extra_head %}
+<script>
+  if (sessionStorage.getItem('boo-cinematic-boot') === 'chapter2') {
+    document.documentElement.classList.add('boo-cinematic-boot');
+    sessionStorage.removeItem('boo-cinematic-boot');
+    window.setTimeout(function () { document.documentElement.classList.remove('boo-cinematic-boot'); }, 1200);
+  }
+</script>
+<style>html.boo-cinematic-boot .bs-dashboard-content { visibility: hidden; }</style>
+{% endblock %}
 
 {% block sandbox_content %}
-<main class="min-h-screen flex-1 overflow-x-hidden bg-[#F8FAFC] p-3 pb-20 sm:p-5 lg:pl-28 lg:pr-6 lg:pb-12 pt-4 sm:pt-6">
-  <div class="mx-auto flex flex-col max-w-[1600px] w-full gap-4 sm:gap-5">
-
-    <!-- 1. Верхний баннер-хедер -->
-    <header class="relative overflow-hidden rounded-[2rem] border-2 border-slate-200 bg-gradient-to-r from-[#F0F3FA] via-[#F5F3FF] to-[#FAF5FF] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9]">
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
-        <div class="min-w-0">
-          <div class="flex items-center gap-1.5 mb-1">
-            <span class="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-indigo-600">
-              <i class="ph-bold ph-circle-fill text-[7px]"></i> Личный кабинет
-            </span>
-          </div>
-          <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">{{ student.name if student and student.name else user.username }}</h1>
-          <p class="mt-1 text-xs sm:text-sm font-bold text-slate-500">Продолжай учиться — у тебя всё получится!</p>
-        </div>
-
-        <!-- Центральный персонаж с ноутбуком и слоганом -->
-        <div class="flex items-center justify-center gap-2 self-center lg:self-auto my-1 lg:my-0">
-          <img src="{{ url_for('static', filename='images/dashboard/hero_student.png') }}" alt="Маленькие шаги — большие результаты!" class="h-20 sm:h-24 lg:h-28 max-w-full object-contain select-none pointer-events-none drop-shadow-sm">
-        </div>
-
-        <!-- Кнопки действий справа -->
-        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
-          {% if student %}
-          <a href="{{ url_for('courses.student_courses', student_id=student.student_id) }}" class="inline-flex items-center gap-2 rounded-2xl border-2 border-emerald-300 border-b-4 bg-[#E8F8F0] px-4 py-2.5 text-xs font-black text-emerald-800 shadow-[0_3px_0_#A7F3D0] transition hover:bg-[#DCF4E8] active:translate-y-1 active:shadow-none no-underline">
-            <i class="ph-bold ph-book-open text-base text-emerald-600"></i> Программа обучения
-          </a>
-          <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-200 border-b-4 bg-white px-4 py-2.5 text-xs font-black text-slate-700 shadow-[0_3px_0_#DAE1E9] transition hover:bg-slate-50 active:translate-y-1 active:shadow-none no-underline">
-            <i class="ph-bold ph-chart-bar text-base text-indigo-600"></i> Аналитика
-          </a>
+{% set recent_fallback_lesson = recent_lessons[1] if recent_lessons|length > 1 else (recent_lessons[0] if recent_lessons else none) %}
+{% set next_lesson = active_lesson or upcoming_lesson or recent_fallback_lesson %}
+{% set primary_course_id = selected_course.course_id if selected_course else (enrollments[0].course_id if enrollments else none) %}
+{% set has_program = selected_course or enrollments %}
+{% set next_assignment = pending_submissions[0] if pending_submissions else none %}
+{% set next_topic = current_learning_item.title if current_learning_item else (selected_course.subject if selected_course and selected_course.subject else (next_lesson.topic if next_lesson else none)) %}
+{% set display_next_topic = 'Условия' if dashboard_showcase else next_topic %}
+{% set display_assignment_title = 'ДЗ №2 (Условия)' if dashboard_showcase else (next_assignment.assignment.title if next_assignment and next_assignment.assignment else 'Нет активных работ') %}
+{% set display_theory_title = 'Условные конструкции' if dashboard_showcase else ('Материалы программы' if has_program else 'База знаний') %}
+{% set display_name = student.name if student and student.name else user.username %}
+{% set display_score = goal_current_score if goal_current_score is not none else goal_progress|default(0) %}
+{% set display_target = goal_target_score if goal_target_score else '~100' %}
+<div class="bs-dashboard-page bs-student-dashboard-v2" data-dashboard-role="student">
+  <section class="student-dashboard-hero-grid" aria-label="Приветствие и цель">
+    <article class="student-dashboard-hero">
+      <div class="student-dashboard-hero-copy">
+        <span class="student-dashboard-greeting"><i class="ph ph-sun" aria-hidden="true"></i> {{ dashboard_greeting|default('Добрый день') }},</span>
+        <h1>{{ display_name }}!</h1>
+        <p>Продолжай подготовку — ты на правильном пути. Сегодня можно сделать ещё один шаг к цели! 💜</p>
+        <div class="student-dashboard-actions">
+          {% if active_lesson %}
+            <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=active_lesson.lesson_id) }}">Войти на урок <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          {% else %}
+            <button type="button" class="bs-button bs-button-primary is-disabled bs-soon-target" disabled aria-disabled="true" title="Раздел курсов обновляется">Продолжить обучение <span class="bs-badge-soon">Скоро...</span></button>
           {% endif %}
+          <a class="bs-button bs-button-secondary" href="{{ url_for('theory.theory_index') }}">Открыть теорию <i class="ph ph-book-open" aria-hidden="true"></i></a>
         </div>
       </div>
-    </header>
+      {% if dashboard_showcase %}
+      <img class="student-dashboard-hero-art is-showcase" src="{{ url_for('static', filename='images/dashboard/showcase-hero-art.png') }}" alt="Бу помогает учиться" loading="eager" decoding="async">
+      <span class="student-dashboard-hero-sticker" aria-hidden="true">Знания<br>сегодня —<br>больше<br>возможностей<br>завтра!</span>
+      {% else %}
+      <img class="student-dashboard-hero-art" src="{{ url_for('static', filename='images/dashboard/hero_student.png') }}" alt="Бу помогает учиться" loading="eager" decoding="async">
+      {% endif %}
+    </article>
 
-    <!-- 2. Верхний ряд метрик (3 карточки) -->
-    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-      <!-- Карточка 1: Пройдено уроков -->
-      <article class="relative flex items-center gap-4 rounded-[1.75rem] border-2 border-slate-200 bg-white p-4 sm:p-5 shadow-[0_4px_0_#DAE1E9]">
-        <div class="relative w-14 h-14 shrink-0 flex items-center justify-center">
-          <svg class="w-14 h-14 -rotate-90" viewBox="0 0 44 44">
-            <circle cx="22" cy="22" r="18" fill="none" stroke="#E2E8F0" stroke-width="4"></circle>
-            <circle cx="22" cy="22" r="18" fill="none" stroke="#4F46E5" stroke-width="4" stroke-linecap="round"
-                    stroke-dasharray="113.097"
-                    stroke-dashoffset="{{ 113.097 * (1 - ([completion_pct|default(0), 100]|min / 100)) }}"></circle>
-          </svg>
-          <span class="absolute inset-0 flex items-center justify-center text-indigo-600">
-            <i class="ph-bold ph-book-open text-xl"></i>
-          </span>
+    <article class="student-dashboard-goal bs-dashboard-card" data-demo-target="goal-card">
+      <div class="student-dashboard-card-heading">
+        <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-pink"><i class="ph-bold ph-target" aria-hidden="true"></i></span><h2>Твоя цель</h2></div>
+        <a href="{{ url_for('main.workspace_profile') }}">Изменить <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+      </div>
+      {% if goal_title %}
+        <div class="student-dashboard-goal-body">
+          <div class="student-dashboard-goal-ring" style="--goal-progress: {{ goal_progress|default(0) }}%;"><strong>{{ goal_progress|default(0) }}%</strong></div>
+          <div class="student-dashboard-goal-copy">
+            <h3>{{ goal_title }}</h3>
+            <p>{{ display_score }} из {{ display_target }} баллов</p>
+            <div class="student-dashboard-progress"><span style="width: {{ goal_progress|default(0) }}%;"></span></div>
+          </div>
         </div>
+        <div class="student-dashboard-goal-extra is-soon" title="Раздел курсов обновляется">
+          <span class="student-dashboard-goal-extra-icon"><i class="ph-bold ph-sparkle" aria-hidden="true"></i></span>
+          <span class="student-dashboard-goal-extra-copy"><small>Фокус сейчас</small><strong>{% if dashboard_showcase %}Условия и циклы{% elif next_topic %}{{ next_topic }}{% else %}Повторить теорию{% endif %}</strong></span>
+          <span class="bs-badge-soon">Скоро...</span>
+        </div>
+      {% else %}
+        <div class="student-dashboard-empty student-dashboard-empty-compact">
+          <i class="ph ph-target" aria-hidden="true"></i>
+          <strong>Цель пока не выбрана</strong>
+          <span>Открой программу или обсуди цель с преподавателем.</span>
+        </div>
+      {% endif %}
+    </article>
+  </section>
+
+  <section class="student-dashboard-middle-grid" aria-label="Продолжить обучение, расписание и учебный путь">
+    <article class="student-dashboard-continue bs-dashboard-card">
+      <div class="student-dashboard-card-heading">
+        <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-purple"><i class="ph-bold ph-play" aria-hidden="true"></i></span><h2>Продолжить обучение</h2></div>
+        <span class="student-dashboard-soon-link" title="Раздел курсов обновляется">Вся программа <span class="bs-badge-soon">Скоро...</span></span>
+      </div>
+      <div class="student-dashboard-continue-layout">
+        <article class="student-dashboard-next-lesson">
+          {% if next_lesson %}
+            <div class="student-dashboard-card-kicker"><i class="{% if dashboard_showcase %}ph-bold ph-backpack{% else %}ph ph-calendar-blank{% endif %}" aria-hidden="true"></i><span class="student-dashboard-kicker-label">{% if dashboard_showcase %}Ближайший урок{% elif active_lesson %}Сейчас идёт урок{% elif upcoming_lesson %}Ближайший урок{% else %}Последнее занятие{% endif %}</span></div>
+            <h3>{{ next_lesson.topic or 'Занятие без темы' }}</h3>
+            <div class="student-dashboard-meta-row">
+              {% if next_lesson.lesson_date %}<span><i class="ph ph-calendar-blank" aria-hidden="true"></i>{% if dashboard_showcase %}23.09 в 21:00{% else %}{{ next_lesson.lesson_date|user_dt('%d.%m в %H:%M') }}{% endif %}</span>{% endif %}
+              {% if dashboard_showcase %}
+                {% if next_lesson.lesson_format or dashboard_showcase %}<span><i class="ph ph-briefcase" aria-hidden="true"></i>Онлайн</span>{% endif %}
+                {% if next_lesson.duration %}<span><i class="ph ph-clock" aria-hidden="true"></i>{{ next_lesson.duration }} мин</span>{% endif %}
+              {% else %}
+                {% if next_lesson.duration %}<span><i class="ph ph-hourglass" aria-hidden="true"></i>{{ next_lesson.duration }} мин</span>{% endif %}
+                {% if next_lesson.lesson_format %}<span><i class="ph ph-video-camera" aria-hidden="true"></i>{{ next_lesson.lesson_format }}</span>{% endif %}
+              {% endif %}
+            </div>
+            <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=next_lesson.lesson_id) }}">{% if active_lesson %}Войти на урок{% else %}Открыть урок{% endif %} <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+            <span class="student-dashboard-next-note"><i class="ph ph-sparkle" aria-hidden="true"></i>Следующий шаг в твоём плане</span>
+            <img class="student-dashboard-next-art{% if dashboard_showcase %} is-python{% endif %}" src="{{ url_for('static', filename='images/dashboard/showcase-next-art.png' if dashboard_showcase else 'images/lesson/lesson_task_mascot.png') }}" alt="" aria-hidden="true" loading="lazy">
+          {% else %}
+            <div class="student-dashboard-empty student-dashboard-empty-on-color"><i class="ph ph-calendar-x" aria-hidden="true"></i><strong>Ближайших занятий нет</strong><span>Когда преподаватель добавит урок, он появится здесь.</span><a class="bs-button bs-button-secondary" href="{{ url_for('schedule.schedule') }}">Открыть расписание</a></div>
+          {% endif %}
+        </article>
+        <div class="student-dashboard-learning-tiles">
+          <article class="student-dashboard-learning-tile is-soon" title="Раздел курсов обновляется">
+            <span class="student-dashboard-tile-icon is-blue"><i class="ph {% if dashboard_showcase %}ph-calendar-blank{% else %}ph-book-open{% endif %}" aria-hidden="true"></i></span>
+            <div><span class="student-dashboard-tile-label">Текущая тема</span><strong>{% if display_next_topic %}{{ display_next_topic }}{% else %}Тема ещё не выбрана{% endif %}</strong></div>
+            <span class="bs-badge-soon">Скоро...</span>
+          </article>
+          <article class="student-dashboard-learning-tile{% if dashboard_showcase %} is-showcase{% endif %}">
+            <span class="student-dashboard-tile-icon {% if dashboard_showcase %}is-purple{% else %}is-pink{% endif %}"><i class="ph {% if dashboard_showcase %}ph-file-text{% else %}ph-notebook{% endif %}" aria-hidden="true"></i></span>
+            <div><span class="student-dashboard-tile-label">Домашнее задание</span><strong>{% if dashboard_showcase %}ДЗ №2<br>(Условия){% else %}{{ display_assignment_title }}{% endif %}</strong></div>
+            {% if dashboard_showcase %}
+              <span class="student-dashboard-tile-deadline">до 25.09</span>
+              <a class="student-dashboard-tile-action" href="{{ url_for('assignments.submission_view', submission_id=next_assignment.submission_id) if next_assignment else url_for('assignments.assignments_list') }}">Открыть</a>
+            {% elif next_assignment %}<a href="{{ url_for('assignments.submission_view', submission_id=next_assignment.submission_id) }}" aria-label="Открыть домашнее задание"><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>
+            {% else %}<a href="{{ url_for('assignments.assignments_list') }}" aria-label="Открыть задания"><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>{% endif %}
+          </article>
+          <article class="student-dashboard-learning-tile{% if dashboard_showcase %} is-showcase{% endif %}">
+            <span class="student-dashboard-tile-icon {% if dashboard_showcase %}is-blue{% else %}is-green{% endif %}"><i class="ph {% if dashboard_showcase %}ph-file-text{% else %}ph-graduation-cap{% endif %}" aria-hidden="true"></i></span>
+            <div><span class="student-dashboard-tile-label">Теория</span><strong>{% if dashboard_showcase %}Условные<br>конструкции{% else %}{{ display_theory_title }}{% endif %}</strong></div>
+            {% if dashboard_showcase %}
+              <div class="student-dashboard-tile-progress"><span><i style="width: 66%;"></i></span><b>2 / 3</b></div>
+              <a class="student-dashboard-tile-action" href="{{ url_for('theory.theory_index') }}">Читать</a>
+            {% else %}<a href="{{ url_for('theory.theory_index') }}" aria-label="Открыть теорию"><i class="ph ph-arrow-up-right" aria-hidden="true"></i></a>{% endif %}
+          </article>
+        </div>
+      </div>
+    </article>
+
+    <aside class="student-dashboard-schedule bs-dashboard-card">
+      <div class="student-dashboard-card-heading">
+        <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-green"><i class="ph-bold ph-calendar-blank" aria-hidden="true"></i></span><h2>Расписание</h2></div>
+        <a href="{{ url_for('schedule.schedule') }}">Все занятия <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+      </div>
+      <div class="student-dashboard-week" aria-label="Дни текущей недели">
+        {% for day in schedule_days|default([]) %}<span class="{% if day.is_today %}is-today{% endif %}"><small>{{ day.weekday }}</small><strong>{{ day.number }}</strong></span>{% endfor %}
+      </div>
+      <div class="student-dashboard-schedule-date">{{ today_display_date|default('Сегодня') }}</div>
+      {% if today_lessons %}
+        <div class="student-dashboard-schedule-list">
+          {% for item in today_lessons[:3] %}
+            <a class="student-dashboard-schedule-item {% if item.status == 'in_progress' %}is-now{% endif %}" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=item.lesson_id) }}">
+              <span class="student-dashboard-schedule-time">{% if item.display_time %}{{ item.display_time }}{% else %}{{ item.lesson_date|user_dt('%H:%M') }}{% endif %}</span>
+              <span class="student-dashboard-schedule-dot" aria-hidden="true"></span>
+              <span class="student-dashboard-schedule-copy"><strong>{{ item.display_title or item.topic or 'Занятие без темы' }}</strong><small>{{ item.display_topic or item.lesson_format or 'Урок' }}</small></span>
+              <i class="ph ph-arrow-up-right" aria-hidden="true"></i>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="student-dashboard-empty">
+          <i class="ph ph-calendar-blank" aria-hidden="true"></i>
+          <strong>Сегодня занятий нет</strong>
+          {% if upcoming_lesson and upcoming_lesson.lesson_date %}
+            <span>Ближайший урок: <b>{{ upcoming_lesson.lesson_date|user_dt('%d.%m в %H:%M') }}</b></span>
+          {% else %}
+            <span>Запланированные занятия будут отображаться здесь.</span>
+          {% endif %}
+          <a href="{{ url_for('schedule.schedule') }}">Перейти к расписанию <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        </div>
+      {% endif %}
+    </aside>
+    <section class="student-dashboard-path bs-dashboard-card{% if dashboard_showcase %} is-showcase{% endif %}" aria-label="Твой учебный путь">
+    <div class="student-dashboard-card-heading">
+      <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-purple"><i class="ph-bold ph-map-trifold" aria-hidden="true"></i></span><h2>Твой учебный путь</h2></div>
+      <span class="student-dashboard-soon-link" title="Раздел курсов обновляется">Карта курса <span class="bs-badge-soon">Скоро...</span></span>
+    </div>
+    {% if learning_path %}
+      <div class="student-dashboard-path-list">
+        {% for module in learning_path[:5] %}
+          <div class="student-dashboard-path-item is-soon is-{{ module.status }}{% if module.placeholder %} is-placeholder{% endif %}" title="Раздел курсов обновляется">
+            <span class="student-dashboard-path-number">{{ loop.index }}</span>
+            <span class="student-dashboard-path-copy"><strong>{{ module.title }}</strong><small>{{ module.done }}{% if module.total %}/{{ module.total }}{% endif %}{% if not dashboard_showcase %} элементов{% endif %}</small><span class="student-dashboard-mini-progress"><i style="width: {{ module.progress_pct }}%;"></i></span></span>
+            <span class="bs-badge-soon">Скоро...</span>
+          </div>
+        {% endfor %}
+      </div>
+      {% if dashboard_showcase %}
+      <div class="student-dashboard-path-decoration" aria-hidden="true">
+        <span>Маленькие<br>шаги =<br>больше<br>результаты!</span>
+        <img src="{{ url_for('static', filename='images/demo/boo-onboarding-hero-v2.png') }}" alt="">
+      </div>
+      {% endif %}
+    {% else %}
+      <div class="student-dashboard-empty student-dashboard-empty-wide"><i class="ph ph-map-trifold" aria-hidden="true"></i><strong>Учебный путь ещё не сформирован</strong><span>После назначения программы её этапы появятся здесь.</span><a href="{{ url_for('theory.theory_index') }}">Открыть теорию <i class="ph ph-arrow-right" aria-hidden="true"></i></a></div>
+    {% endif %}
+    </section>
+  </section>
+
+  <section class="student-dashboard-bottom-grid" aria-label="Прогресс и полезные действия">
+    <article class="student-dashboard-performance bs-dashboard-card">
+        <div class="student-dashboard-card-heading"><div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-blue"><i class="ph ph-chart-line" aria-hidden="true"></i></span><h2>Успеваемость и прогресс</h2></div><a href="{% if student %}{{ url_for('students.student_analytics', student_id=student.student_id) }}{% else %}{{ url_for('theory.theory_index') }}{% endif %}">Подробнее <i class="ph ph-arrow-right" aria-hidden="true"></i></a></div>
+      <div class="student-dashboard-performance-grid">
+        <div class="student-dashboard-performance-card is-green"><span>Выполнение ДЗ</span><strong>{% if dashboard_showcase %}85.7%{% elif dashboard_metrics.homework_progress is not none %}{{ dashboard_metrics.homework_progress }}%{% else %}—{% endif %}</strong><small>{% if dashboard_showcase %}↑ +12%{% elif dashboard_metrics.pending_tasks %}{{ dashboard_metrics.pending_tasks }} активных{% else %}Нет данных{% endif %}</small>{% if dashboard_showcase %}<svg class="student-dashboard-sparkline is-green" viewBox="0 0 180 44" aria-hidden="true"><path class="student-dashboard-sparkline-area" d="M2 36 C18 34, 25 38, 39 31 S62 34, 76 27 S102 31, 118 20 S144 21, 178 8 L178 44 L2 44 Z"></path><path class="student-dashboard-sparkline-line" d="M2 36 C18 34, 25 38, 39 31 S62 34, 76 27 S102 31, 118 20 S144 21, 178 8"></path></svg>{% else %}<div class="student-dashboard-bars" aria-hidden="true">{% for point in dashboard_metrics.grade_points[-7:] %}<i style="height: {{ [point, 8]|max }}%;"></i>{% endfor %}</div>{% endif %}</div>
+        <div class="student-dashboard-performance-card is-orange"><span>Средняя оценка</span><strong>{% if dashboard_showcase %}53.3%{% elif dashboard_metrics.average_score != '—' %}{{ dashboard_metrics.average_score }}%{% else %}—{% endif %}</strong><small>{% if dashboard_showcase %}↑ +8%{% elif dashboard_metrics.grade_points %}По проверенным работам{% else %}Проверок пока нет{% endif %}</small>{% if dashboard_showcase %}<svg class="student-dashboard-sparkline is-orange" viewBox="0 0 180 44" aria-hidden="true"><path class="student-dashboard-sparkline-area" d="M2 38 C20 34, 24 36, 40 30 S64 35, 80 22 S105 23, 122 18 S149 23, 178 10 L178 44 L2 44 Z"></path><path class="student-dashboard-sparkline-line" d="M2 38 C20 34, 24 36, 40 30 S64 35, 80 22 S105 23, 122 18 S149 23, 178 10"></path></svg>{% else %}<div class="student-dashboard-bars" aria-hidden="true">{% for point in dashboard_metrics.grade_points[-7:] %}<i style="height: {{ [point, 8]|max }}%;"></i>{% endfor %}</div>{% endif %}</div>
+        <div class="student-dashboard-performance-card is-lilac"><span>{% if dashboard_showcase %}Решено пробников{% else %}Решено работ{% endif %}</span><strong>{% if dashboard_showcase %}0{% else %}{{ dashboard_metrics.completed_tasks }}{% endif %}</strong>{% if dashboard_showcase %}<div class="student-dashboard-empty-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><small>Пока нет данных</small>{% else %}<small>{% if dashboard_metrics.completed_tasks %}Проверенные работы{% else %}Пока нет данных{% endif %}</small><div class="student-dashboard-empty-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>{% endif %}</div>
+      </div>
+    </article>
+
+    <article class="student-dashboard-materials bs-dashboard-card">
+      <div class="student-dashboard-card-heading">
+        <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-orange"><i class="ph-bold ph-folder-simple" aria-hidden="true"></i></span><h2>Полезные материалы</h2></div>
+        <a href="{{ url_for('theory.theory_index') }}">Библиотека <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+      </div>
+      <div class="student-dashboard-resource-list">
+        <a href="{{ url_for('theory.theory_index') }}"><span class="student-dashboard-resource-icon is-blue"><i class="ph ph-file-text" aria-hidden="true"></i></span><span><strong>Конспекты и теория</strong><small>Короткие материалы и шпаргалки по темам</small></span><i class="ph ph-caret-right" aria-hidden="true"></i></a>
+        <div class="student-dashboard-resource-item is-soon" title="Раздел курсов обновляется">
+          <span class="student-dashboard-resource-icon is-green"><i class="ph ph-book-bookmark" aria-hidden="true"></i></span>
+          <span><strong>Материалы программы</strong><small>Учебные материалы курса</small></span>
+          <span class="bs-badge-soon">Скоро...</span>
+        </div>
+        <button type="button" class="student-dashboard-resource-action" onclick="openPrepChecklistModal()"><span class="student-dashboard-resource-icon is-orange"><i class="ph ph-list-checks" aria-hidden="true"></i></span><span><strong>Чек-лист подготовки к уроку</strong><small>5 быстрых шагов перед занятием</small></span><i class="ph ph-caret-right" aria-hidden="true"></i></button>
+      </div>
+    </article>
+
+    <article class="student-dashboard-quick bs-dashboard-card">
+      <div class="student-dashboard-card-heading"><div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-orange"><i class="ph-bold ph-lightning" aria-hidden="true"></i></span><h2>Быстрые действия</h2></div></div>
+      <div class="student-dashboard-quick-list">
+        <a href="{% if next_assignment %}{{ url_for('assignments.submission_view', submission_id=next_assignment.submission_id) }}{% else %}{{ url_for('assignments.assignments_list') }}{% endif %}"><i class="ph ph-pencil-line" aria-hidden="true"></i><span>{% if next_assignment %}Сдать ДЗ: {{ next_assignment.assignment.title[:20] if next_assignment.assignment else 'Активное ДЗ' }}{% else %}Все задания и ДЗ{% endif %}</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        <a href="{{ url_for('theory.theory_index') }}"><i class="ph ph-book-open" aria-hidden="true"></i><span>Повторить теорию</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        <a href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Посмотреть расписание</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        <a href="{% if student %}{{ url_for('students.student_analytics', student_id=student.student_id) }}{% else %}{{ url_for('theory.theory_index') }}{% endif %}"><i class="ph ph-chart-line-up" aria-hidden="true"></i><span>Мой прогресс и оценки</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+      </div>
+    </article>
+  </section>
+
+</div>
+
+<!-- Interactive Preparation Checklist Modal -->
+<div id="prepChecklistModal" class="bs-modal-overlay" style="display: none;" onclick="if(event.target === this) closePrepChecklistModal()">
+  <div class="bs-modal-card bs-prep-checklist-modal" role="dialog" aria-modal="true" aria-labelledby="prepModalTitle">
+    <div class="bs-modal-header">
+      <div class="bs-modal-title-row">
+        <span class="bs-modal-icon is-orange"><i class="ph-bold ph-list-checks"></i></span>
         <div>
-          <p class="text-[11px] font-bold text-slate-500">Пройдено уроков</p>
-          <p class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ completed_lessons|default(0) }} / {{ total_lessons|default(0) }}</p>
-          <p class="text-xs font-bold text-slate-400">{% if total_lessons == 0 %}Занятия ещё не назначены{% else %}{{ completion_pct }}% от программы{% endif %}</p>
+          <h3 id="prepModalTitle">Чек-лист подготовки к уроку</h3>
+          <p>Выполни эти шаги за 10–15 минут до начала занятия</p>
         </div>
-      </article>
-
-      <!-- Карточка 2: Нужно сделать -->
-      <article class="relative flex items-center justify-between rounded-[1.75rem] border-2 border-amber-200 bg-[#FFFBEB] p-4 sm:p-5 shadow-[0_4px_0_#FDE68A]">
-        <div class="flex items-center gap-3.5">
-          <div class="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-600 text-2xl shrink-0 shadow-xs">
-            <i class="ph-bold ph-clipboard-text"></i>
-          </div>
-          <div>
-            <p class="text-[11px] font-bold text-amber-900/70">Нужно сделать</p>
-            <p class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ pending_submissions|length }}</p>
-            <p class="text-xs font-bold text-amber-800/60">{{ 'активная работа' if pending_submissions|length == 1 else ('активные работы' if pending_submissions|length in [2,3,4] else 'активных работ') }}</p>
-          </div>
-        </div>
-        <a href="{{ url_for('assignments.submissions_list') }}" class="w-8 h-8 rounded-xl bg-white border border-amber-200 flex items-center justify-center text-amber-700 shadow-xs hover:bg-amber-50 active:translate-y-0.5 transition no-underline" title="Перейти к работам">
-          <i class="ph-bold ph-caret-right text-base"></i>
-        </a>
-      </article>
-
-      <!-- Карточка 3: Средний результат -->
-      <article class="relative flex items-center justify-between rounded-[1.75rem] border-2 border-emerald-200 bg-[#F0FDF4] p-4 sm:p-5 shadow-[0_4px_0_#BBF7D0]">
-        <div class="flex items-center gap-3.5">
-          <div class="w-12 h-12 rounded-2xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-600 text-2xl shrink-0 shadow-xs">
-            <i class="ph-bold ph-chart-bar"></i>
-          </div>
-          <div>
-            <p class="text-[11px] font-bold text-emerald-900/70">Средний результат</p>
-            <p class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{{ avg_score }}{% if avg_score != '—' %}%{% endif %}</p>
-            <p class="text-xs font-bold text-emerald-800/60">по последним проверкам</p>
-          </div>
-        </div>
-        {% if student %}
-        <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="w-8 h-8 rounded-xl bg-white border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-xs hover:bg-emerald-50 active:translate-y-0.5 transition no-underline" title="Подробная аналитика">
-          <i class="ph-bold ph-caret-right text-base"></i>
-        </a>
-        {% else %}
-        <span class="w-8 h-8 rounded-xl bg-white border border-emerald-200 flex items-center justify-center text-emerald-400 opacity-50"><i class="ph-bold ph-caret-right text-base"></i></span>
-        {% endif %}
-      </article>
-    </section>
-
-    <!-- 3. Основная двухколоночная сетка -->
-    <section class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-
-      <!-- ЛЕВАЯ КОЛОНКА (8 колонок) -->
-      <div class="lg:col-span-8 flex flex-col gap-5">
-
-        <!-- Блок 1: Свободное время / Ближайший урок -->
-        <section class="relative overflow-hidden rounded-[2rem] border-2 border-slate-200 bg-white p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9]">
-          {% set lesson = active_lesson or upcoming_lesson %}
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="min-w-0 max-w-md">
-              <span class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600 mb-1 block">
-                {% if active_lesson %}Урок идёт сейчас{% elif upcoming_lesson %}Следующий урок{% else %}Свободное время{% endif %}
-              </span>
-              {% if lesson %}
-                <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{{ lesson.topic or 'Занятие без темы' }}</h2>
-                <p class="mt-1 text-xs sm:text-sm font-semibold text-slate-500">{{ lesson.lesson_date|user_dt('%d.%m в %H:%M') if lesson.lesson_date else 'Время будет уточнено преподавателем' }}</p>
-                <div class="mt-4">
-                  {% if active_lesson %}
-                    <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id) }}" class="inline-flex items-center gap-2 rounded-2xl border-2 border-emerald-700 border-b-4 bg-emerald-600 px-5 py-3 text-xs font-black text-white shadow-[0_4px_0_#065F46] transition hover:bg-emerald-500 active:translate-y-1 active:shadow-none no-underline">
-                      <span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
-                      Войти на урок (в эфире) <i class="ph-bold ph-arrow-right"></i>
-                    </a>
-                  {% else %}
-                    <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=lesson.lesson_id) }}" class="inline-flex items-center gap-2 rounded-2xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-5 py-3 text-xs font-black text-white shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none no-underline">
-                      <i class="ph-bold ph-hourglass-medium"></i>
-                      Комната ожидания <i class="ph-bold ph-arrow-right"></i>
-                    </a>
-                  {% endif %}
-                </div>
-              {% else %}
-                <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Продолжай изучение теории</h2>
-                <p class="mt-1 text-xs sm:text-sm font-semibold text-slate-500">Ближайших занятий пока нет. Открой материалы и подготовься к следующей теме.</p>
-                <div class="mt-4">
-                  <a href="{{ url_for('theory.theory_index') }}" class="inline-flex items-center gap-2 rounded-2xl border-2 border-indigo-700 border-b-4 bg-indigo-600 px-5 py-3 text-xs font-black text-white shadow-[0_4px_0_#3730A3] transition hover:bg-indigo-500 active:translate-y-1 active:shadow-none no-underline">
-                    Открыть теорию <i class="ph-bold ph-arrow-right"></i>
-                  </a>
-                </div>
-              {% endif %}
-            </div>
-
-            <!-- Иллюстрация книг с лампочкой -->
-            <div class="shrink-0 self-center sm:self-auto">
-              <img src="{{ url_for('static', filename='images/dashboard/theory_books.png') }}" alt="" class="h-28 sm:h-32 object-contain select-none pointer-events-none drop-shadow-xs">
-            </div>
-          </div>
-        </section>
-
-        <!-- Блок 2: ОЧЕРЕДЬ / Текущие работы -->
-        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9]">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <span class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 block mb-0.5">ОЧЕРЕДЬ</span>
-              <h2 class="text-xl font-black text-slate-900 tracking-tight">Текущие работы</h2>
-            </div>
-            <span class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center font-black text-xs text-slate-700">
-              {{ pending_submissions|length }}
-            </span>
-          </div>
-
-          {% if pending_submissions %}
-          <div class="flex flex-col gap-2.5">
-            {% for submission in pending_submissions[:5] %}
-            {% set sub_pct = submission.progress_pct|default(0) %}
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] p-3.5 sm:p-4 hover:border-indigo-200 transition">
-              <div class="flex items-center gap-3 min-w-0">
-                <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 text-xl shrink-0">
-                  <i class="ph-bold ph-file-text"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-black text-slate-800">{{ submission.assignment.title if submission.assignment else ('Работа #' ~ submission.submission_id) }}</p>
-                </div>
-                <span class="shrink-0 rounded-lg bg-indigo-100/70 text-indigo-700 px-2 py-0.5 text-[11px] font-black uppercase tracking-wide">
-                  {% if submission.status == 'ASSIGNED' %}Назначено{% elif submission.status == 'IN_PROGRESS' %}В процессе{% elif submission.status == 'RETURNED' %}На доработку{% else %}В процессе{% endif %}
-                </span>
-              </div>
-
-              <div class="flex items-center gap-3 self-end sm:self-center shrink-0">
-                <!-- Полоса прогресса -->
-                <div class="w-32 sm:w-44 h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                  <div class="h-full bg-indigo-600 rounded-full transition-all duration-300" style="width: {{ sub_pct }}%"></div>
-                </div>
-                <span class="text-xs font-black text-slate-600 w-9 text-right shrink-0">{{ sub_pct }}%</span>
-
-                <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition no-underline shrink-0" title="Открыть работу">
-                  <i class="ph-bold ph-caret-right text-base"></i>
-                </a>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-          {% else %}
-          <div class="rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center text-sm font-bold text-slate-500">
-            Активных работ нет — можно повторить материалы теории.
-          </div>
-          {% endif %}
-        </section>
-
-        <!-- Блок 3: Полезные материалы -->
-        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9]">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h2 class="text-xl font-black text-slate-900 tracking-tight">Полезные материалы</h2>
-              <p class="mt-0.5 text-xs font-bold text-slate-400">Повтори теорию, реши дополнительные задания и прокачай навыки</p>
-            </div>
-            <a href="{{ url_for('theory.theory_index') }}" class="text-xs font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-1 no-underline">
-              Все материалы <i class="ph-bold ph-arrow-right"></i>
-            </a>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            <!-- 1. Конспекты -->
-            <a href="{{ url_for('theory.theory_index') }}" class="flex items-center justify-between p-3.5 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] hover:border-indigo-200 hover:bg-indigo-50/50 transition no-underline group">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 text-lg shrink-0">
-                  <i class="ph-bold ph-book-open"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="text-xs font-black text-slate-800 group-hover:text-indigo-600 transition">Конспекты</p>
-                  <p class="text-[10px] font-bold text-slate-400 truncate">Теория по темам</p>
-                </div>
-              </div>
-              <i class="ph-bold ph-caret-right text-slate-400 group-hover:text-indigo-600 transition shrink-0"></i>
-            </a>
-
-            <!-- 2. Примеры решений (В разработке) -->
-            <div class="flex items-center justify-between p-3.5 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] opacity-90 relative">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-9 h-9 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 text-lg shrink-0">
-                  <i class="ph-bold ph-code"></i>
-                </div>
-                <div class="min-w-0">
-                  <div class="flex items-center gap-1.5">
-                    <p class="text-xs font-black text-slate-800">Примеры решений</p>
-                  </div>
-                  <p class="text-[10px] font-bold text-slate-400 truncate">Разбор задач</p>
-                </div>
-              </div>
-              <span class="rounded-md bg-amber-100 border border-amber-200 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-700 shrink-0">Скоро</span>
-            </div>
-
-            <!-- 3. Доп. задания -->
-            {% if trainer_available %}
-            <a href="{{ url_for('trainer.trainer_v2') }}" class="flex items-center justify-between p-3.5 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] hover:border-emerald-200 hover:bg-emerald-50/50 transition no-underline group">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 text-lg shrink-0">
-                  <i class="ph-bold ph-check-circle"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="text-xs font-black text-slate-800 group-hover:text-emerald-600 transition">Доп. задания</p>
-                  <p class="text-[10px] font-bold text-slate-400 truncate">Потренируйся</p>
-                </div>
-              </div>
-              <i class="ph-bold ph-caret-right text-slate-400 group-hover:text-emerald-600 transition shrink-0"></i>
-            </a>
-            {% else %}
-            <div class="flex items-center justify-between p-3.5 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] opacity-90 relative">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 text-lg shrink-0">
-                  <i class="ph-bold ph-check-circle"></i>
-                </div>
-                <div class="min-w-0">
-                  <p class="text-xs font-black text-slate-800">Доп. задания</p>
-                  <p class="text-[10px] font-bold text-slate-400 truncate">Потренируйся</p>
-                </div>
-              </div>
-              <span class="rounded-md bg-amber-100 border border-amber-200 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-700 shrink-0">Скоро</span>
-            </div>
-            {% endif %}
-
-            <!-- 4. Видеоуроки (В разработке) -->
-            <div class="flex items-center justify-between p-3.5 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] opacity-90 relative">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <div class="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 text-lg shrink-0">
-                  <i class="ph-bold ph-play-circle"></i>
-                </div>
-                <div class="min-w-0">
-                  <div class="flex items-center gap-1.5">
-                    <p class="text-xs font-black text-slate-800">Видеоуроки</p>
-                  </div>
-                  <p class="text-[10px] font-bold text-slate-400 truncate">Объяснения</p>
-                </div>
-              </div>
-              <span class="rounded-md bg-amber-100 border border-amber-200 px-1.5 py-0.5 text-[9px] font-black uppercase text-amber-700 shrink-0">Скоро</span>
-            </div>
-          </div>
-        </section>
-
       </div>
-
-      <!-- ПРАВАЯ КОЛОНКА / САЙДБАР (4 колонки) -->
-      <aside class="lg:col-span-4 flex flex-col gap-4 sm:gap-5">
-
-        <!-- 1. Траектория / Слабые темы -->
-        <section class="relative overflow-hidden rounded-[2rem] border-2 border-slate-200 bg-[#F8FAFC] p-5 shadow-[0_4px_0_#DAE1E9]">
-          <div class="flex items-center justify-between">
-            <div>
-              <span class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-500 block mb-0.5">ТРАЕКТОРИЯ</span>
-              <h3 class="text-lg font-black text-slate-900 tracking-tight">Слабые темы</h3>
-            </div>
-            {% if student %}
-            <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition no-underline" title="Подробнее">
-              <i class="ph-bold ph-caret-right text-sm"></i>
-            </a>
-            {% endif %}
-          </div>
-
-          <div class="flex items-center justify-between mt-3 gap-2">
-            <div class="min-w-0 max-w-[200px]">
-              {% if problem_topics %}
-              <div class="flex flex-col gap-1.5">
-                {% for topic in problem_topics[:2] %}
-                <div class="text-xs font-bold text-slate-700 truncate">• {{ topic.name }}</div>
-                {% endfor %}
-              </div>
-              {% else %}
-              <p class="text-xs font-bold text-slate-400 leading-relaxed">Недостаточно проверенных работ для оценки тем.</p>
-              {% endif %}
-            </div>
-
-            <!-- Иллюстрация мишени -->
-            <div class="shrink-0">
-              <img src="{{ url_for('static', filename='images/dashboard/target_darts.png') }}" alt="Слабые темы" class="h-14 w-14 object-contain select-none pointer-events-none drop-shadow-xs" loading="eager" decoding="async">
-            </div>
-          </div>
-        </section>
-
-        <!-- 2. Ваш наставник -->
-        <section class="rounded-[1.75rem] border-2 border-slate-200 bg-white p-4 shadow-[0_4px_0_#DAE1E9] flex items-center justify-between">
-          <div class="flex items-center gap-3 min-w-0">
-            {% if mentor and mentor.avatar_url %}
-            <img class="h-10 w-10 rounded-xl border border-slate-200 object-cover shrink-0" src="{{ mentor.avatar_url }}" alt="">
-            {% else %}
-            <span class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 text-xl shrink-0">
-              <i class="ph-bold ph-user"></i>
-            </span>
-            {% endif %}
-            <div class="min-w-0">
-              <p class="text-[11px] font-bold text-slate-400">Ваш наставник</p>
-              <p class="text-sm font-black {% if mentor %}text-slate-900{% else %}text-slate-500{% endif %} truncate">{{ mentor.full_name or mentor.username if mentor else 'Не назначен' }}</p>
-            </div>
-          </div>
-          {% if mentor and mentor.telegram_link %}
-          <a href="{{ mentor.telegram_link }}" target="_blank" rel="noopener" class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition no-underline shrink-0" title="Написать наставнику">
-            <i class="ph-bold ph-paper-plane-tilt text-base"></i>
-          </a>
-          {% endif %}
-        </section>
-
-        <!-- 3. Telegram-уведомления -->
-        <section class="rounded-[1.75rem] border-2 border-slate-200 bg-white p-4 shadow-[0_4px_0_#DAE1E9] flex items-center justify-between">
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="w-10 h-10 rounded-xl bg-[#E8F8F0] border border-emerald-200 flex items-center justify-center text-emerald-500 text-2xl shrink-0">
-              <i class="ph-fill ph-paper-plane-tilt"></i>
-            </span>
-            <div class="min-w-0">
-              <p class="text-xs font-black text-slate-900">Telegram-уведомления</p>
-              <p class="text-[11px] font-bold {% if tg_connected %}text-emerald-600{% else %}text-emerald-700/80{% endif %}">
-                {% if tg_connected %}Подключены{% else %}Не подключены{% endif %}
-              </p>
-            </div>
-          </div>
-          <a href="/workspace/profile" class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition no-underline shrink-0" title="Настройки уведомлений">
-            <i class="ph-bold ph-caret-right text-base"></i>
-          </a>
-        </section>
-
-        <!-- 4. ИСТОРИЯ / Недавние уроки -->
-        <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#DAE1E9]">
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <span class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400 block mb-0.5">ИСТОРИЯ</span>
-              <h3 class="text-lg font-black text-slate-900 tracking-tight">Недавние уроки</h3>
-            </div>
-            <a href="{{ url_for('schedule.schedule') }}" class="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition no-underline" title="Расписание">
-              <i class="ph-bold ph-caret-right text-sm"></i>
-            </a>
-          </div>
-
-          {% if recent_lessons %}
-          <div class="flex flex-col gap-2">
-            {% for item in recent_lessons[:4] %}
-            <a href="{{ url_for('lessons.lesson_interactive_room', lesson_id=item.lesson_id) }}" class="flex items-center justify-between gap-2.5 rounded-xl bg-[#F8FAFC] border border-slate-100 p-2.5 hover:border-indigo-200 hover:bg-indigo-50/50 transition no-underline">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <span class="w-7 h-7 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-xs shrink-0 shadow-xs">
-                  <i class="ph-fill ph-play"></i>
-                </span>
-                <span class="text-xs font-black text-slate-800 truncate">{{ item.topic or 'Занятие без темы' }}</span>
-              </div>
-              <span class="text-[11px] font-bold text-slate-400 shrink-0">{{ item.lesson_date|user_dt('%d.%m') if item.lesson_date else '' }}</span>
-            </a>
-            {% endfor %}
-          </div>
-          {% else %}
-          <p class="text-xs font-bold text-slate-400">Здесь появится история занятий.</p>
-          {% endif %}
-        </section>
-
-        <!-- 5. Ты можешь больше! (Мотивационная карточка) -->
-        <section class="relative overflow-hidden rounded-[2rem] border-2 border-indigo-100 bg-gradient-to-br from-[#F5F3FF] via-[#EEF2FF] to-[#FAF5FF] p-4 sm:p-5 shadow-[0_4px_0_#C7D2FE]">
-          <div class="relative z-10 flex flex-col items-center justify-center">
-            <img src="{{ url_for('static', filename='images/dashboard/trophy_cup.png') }}" alt="Ты можешь больше!" class="w-full h-auto max-h-40 object-contain select-none pointer-events-none drop-shadow-sm">
-          </div>
-        </section>
-
-      </aside>
-    </section>
-
+      <button type="button" class="bs-modal-close" onclick="closePrepChecklistModal()" aria-label="Закрыть"><i class="ph ph-x"></i></button>
+    </div>
+    <div class="bs-modal-body">
+      <div class="bs-checklist-progress-wrap">
+        <div class="bs-checklist-progress-bar"><span id="prepChecklistBar" style="width: 0%;"></span></div>
+        <div class="bs-checklist-progress-info">
+          <span id="prepChecklistCount">0 из 5 выполнено</span>
+          <span id="prepChecklistBadge">Готовься к старту</span>
+        </div>
+      </div>
+      <div class="bs-checklist-items" id="prepChecklistItems">
+        <label class="bs-checklist-item">
+          <input type="checkbox" data-index="0" onchange="updateChecklistProgress()">
+          <span class="bs-check-box"><i class="ph-bold ph-check"></i></span>
+          <span class="bs-check-text">
+            <strong>Проверить микрофон, наушники и интернет</strong>
+            <small>Убедись, что звук чистый и соединение стабильно</small>
+          </span>
+        </label>
+        <label class="bs-checklist-item">
+          <input type="checkbox" data-index="1" onchange="updateChecklistProgress()">
+          <span class="bs-check-box"><i class="ph-bold ph-check"></i></span>
+          <span class="bs-check-text">
+            <strong>Повторить конспект и формулы прошлого урока</strong>
+            <small>Освежи в памяти ключевые тезисы перед новым материалом</small>
+          </span>
+        </label>
+        <label class="bs-checklist-item">
+          <input type="checkbox" data-index="2" onchange="updateChecklistProgress()">
+          <span class="bs-check-box"><i class="ph-bold ph-check"></i></span>
+          <span class="bs-check-text">
+            <strong>Открыть рабочее окружение (IDE / тетрадь)</strong>
+            <small>Запусти PyCharm / IDLE или приготовь черновик для решений</small>
+          </span>
+        </label>
+        <label class="bs-checklist-item">
+          <input type="checkbox" data-index="3" onchange="updateChecklistProgress()">
+          <span class="bs-check-box"><i class="ph-bold ph-check"></i></span>
+          <span class="bs-check-text">
+            <strong>Выписать сложные вопросы преподавателю</strong>
+            <small>Зафиксируй задачи, в которых возникли трудности</small>
+          </span>
+        </label>
+        <label class="bs-checklist-item">
+          <input type="checkbox" data-index="4" onchange="updateChecklistProgress()">
+          <span class="bs-check-box"><i class="ph-bold ph-check"></i></span>
+          <span class="bs-check-text">
+            <strong>Проверить статус домашнего задания</strong>
+            <small>Убедись, что ответы отправлены на проверку</small>
+          </span>
+        </label>
+      </div>
+    </div>
+    <div class="bs-modal-footer">
+      <button type="button" class="bs-button bs-button-ghost" onclick="resetPrepChecklist()">Сбросить</button>
+      {% if active_lesson %}
+        <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=active_lesson.lesson_id) }}">Войти на урок <i class="ph ph-arrow-right"></i></a>
+      {% elif next_lesson %}
+        <a class="bs-button bs-button-primary" href="{{ url_for('lessons.lesson_interactive_room', lesson_id=next_lesson.lesson_id) }}">К материалам урока <i class="ph ph-arrow-right"></i></a>
+      {% else %}
+        <button type="button" class="bs-button bs-button-primary" onclick="closePrepChecklistModal()">Готово к уроку! <i class="ph ph-check"></i></button>
+      {% endif %}
+    </div>
   </div>
-</main>
+</div>
+
+<style>
+.student-dashboard-resource-action {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  width: 100%;
+  transition: background .15s ease, transform .1s ease;
+}
+.student-dashboard-resource-action:hover {
+  background: rgba(255, 122, 0, 0.08);
+}
+.student-dashboard-resource-action > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.student-dashboard-resource-action strong {
+  overflow: hidden;
+  color: var(--bs-text-primary);
+  font: 800 13px/1.2 'Golos Text', var(--bs-font-family);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.student-dashboard-resource-action small {
+  overflow: hidden;
+  color: var(--bs-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.student-dashboard-resource-action > i {
+  color: var(--bs-text-muted);
+  font-size: 16px;
+}
+
+.bs-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: bsFadeIn 0.2s ease-out;
+}
+@keyframes bsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.bs-prep-checklist-modal {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+  max-width: 520px;
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: bsSlideUp 0.25s ease-out;
+}
+@keyframes bsSlideUp {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.bs-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bs-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bs-modal-icon.is-orange {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #ea580c;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.bs-modal-title-row h3 {
+  margin: 0;
+  font: 800 18px/1.25 'Golos Text', var(--bs-font-family);
+  color: #0f172a;
+}
+.bs-modal-title-row p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+.bs-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  line-height: 1;
+}
+.bs-modal-close:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+.bs-checklist-progress-wrap {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bs-checklist-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bs-checklist-progress-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ea580c, #f97316);
+  border-radius: 999px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.bs-checklist-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+#prepChecklistCount { color: #334155; }
+#prepChecklistBadge {
+  color: #ea580c;
+  background: #fff7ed;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+.bs-checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bs-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.bs-checklist-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.bs-checklist-item.is-checked {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.bs-checklist-item input[type="checkbox"] {
+  display: none;
+}
+.bs-check-box {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid #cbd5e1;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #ffffff;
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+.bs-checklist-item.is-checked .bs-check-box {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+.bs-check-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bs-check-text strong {
+  font-size: 13px;
+  color: #1e293b;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.bs-checklist-item.is-checked .bs-check-text strong {
+  text-decoration: line-through;
+  color: #64748b;
+}
+.bs-check-text small {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.25;
+}
+.bs-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+.bs-button-ghost {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.bs-button-ghost:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Soon / Coming Soon Styles */
+.bs-badge-soon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font: 800 11px/1 'Golos Text', var(--bs-font-family);
+  color: #7c3aed;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(124, 58, 237, 0.06);
+}
+.student-dashboard-soon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bs-text-muted);
+  cursor: not-allowed;
+  user-select: none;
+}
+.student-dashboard-learning-tile.is-soon,
+.student-dashboard-path-item.is-soon,
+.student-dashboard-resource-item.is-soon,
+.student-dashboard-goal-extra.is-soon {
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  position: relative;
+  user-select: none;
+}
+.student-dashboard-resource-item.is-soon {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fafafc;
+  border: 1px dashed #e2e8f0;
+}
+.student-dashboard-resource-item.is-soon > span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.student-dashboard-resource-item.is-soon strong {
+  overflow: hidden;
+  color: var(--bs-text-primary);
+  font: 800 13px/1.2 'Golos Text', var(--bs-font-family);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.student-dashboard-resource-item.is-soon small {
+  overflow: hidden;
+  color: var(--bs-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.student-dashboard-learning-tile.is-soon {
+  border: 1px dashed #e2e8f0;
+  background: #fafafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.student-dashboard-path-item.is-soon {
+  border: 1px dashed #e2e8f0;
+  background: #fafafc;
+}
+.bs-button.is-disabled.bs-soon-target {
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  opacity: 0.85;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.bs-button.is-disabled.bs-soon-target .bs-badge-soon {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+</style>
+
+<script>
+function openPrepChecklistModal() {
+  var modal = document.getElementById('prepChecklistModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    initChecklistFromStorage();
+  }
+}
+function closePrepChecklistModal() {
+  var modal = document.getElementById('prepChecklistModal');
+  if (modal) modal.style.display = 'none';
+}
+function initChecklistFromStorage() {
+  try {
+    var saved = JSON.parse(localStorage.getItem('boostudy_prep_checklist') || '{}');
+    var items = document.querySelectorAll('#prepChecklistItems .bs-checklist-item');
+    items.forEach(function(item, idx) {
+      var cb = item.querySelector('input[type="checkbox"]');
+      if (cb) {
+        cb.checked = !!saved[idx];
+        if (cb.checked) {
+          item.classList.add('is-checked');
+        } else {
+          item.classList.remove('is-checked');
+        }
+      }
+    });
+    updateChecklistProgress(false);
+  } catch(e) {}
+}
+function updateChecklistProgress(save) {
+  if (save === undefined) save = true;
+  var items = document.querySelectorAll('#prepChecklistItems .bs-checklist-item');
+  var total = items.length;
+  var checked = 0;
+  var state = {};
+  items.forEach(function(item, idx) {
+    var cb = item.querySelector('input[type="checkbox"]');
+    if (cb && cb.checked) {
+      checked++;
+      state[idx] = true;
+      item.classList.add('is-checked');
+    } else {
+      item.classList.remove('is-checked');
+    }
+  });
+  if (save) {
+    try {
+      localStorage.setItem('boostudy_prep_checklist', JSON.stringify(state));
+    } catch(e) {}
+  }
+  var pct = total ? Math.round((checked / total) * 100) : 0;
+  var bar = document.getElementById('prepChecklistBar');
+  var count = document.getElementById('prepChecklistCount');
+  var badge = document.getElementById('prepChecklistBadge');
+  if (bar) bar.style.width = pct + '%';
+  if (count) count.textContent = checked + ' из ' + total + ' выполнено';
+  if (badge) {
+    if (checked === total) {
+      badge.textContent = 'Отличная готовность! 🚀';
+      badge.style.color = '#16a34a';
+      badge.style.background = '#f0fdf4';
+    } else if (checked > 0) {
+      badge.textContent = 'В процессе подготовки';
+      badge.style.color = '#ea580c';
+      badge.style.background = '#fff7ed';
+    } else {
+      badge.textContent = 'Готовься к старту';
+      badge.style.color = '#ea580c';
+      badge.style.background = '#fff7ed';
+    }
+  }
+}
+function resetPrepChecklist() {
+  try {
+    localStorage.removeItem('boostudy_prep_checklist');
+  } catch(e) {}
+  var items = document.querySelectorAll('#prepChecklistItems .bs-checklist-item');
+  items.forEach(function(item) {
+    var cb = item.querySelector('input[type="checkbox"]');
+    if (cb) cb.checked = false;
+    item.classList.remove('is-checked');
+  });
+  updateChecklistProgress(false);
+}
+</script>
 {% endblock %}

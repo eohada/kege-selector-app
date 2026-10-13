@@ -1,485 +1,56 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="user-timezone-effective" content="{{ user_timezone_effective or 'Europe/Moscow' }}">
-    <meta name="user-timezone-mode" content="{{ user_timezone_mode or 'auto' }}">
-    <script src="{{ url_for('static', filename='js/timezone-contract.js') }}?v=20260925-v1"></script>
-    <title>BooStudy | Ученик (Student Workspace)</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              boo: {
-                primary: '#4f46e5',
-                accent: '#F97316',
-                bgCanvas: '#F8FAFC',
-                bgPlate: '#FFFFFF',
-                bgCard: '#F4F7FA',
-              }
-            },
-            fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
-                display: ['Golos Text', 'system-ui', 'sans-serif'], 
-            }
-          }
+{% extends "sandbox/layout_dashboard.html" %}
+
+{% block title %}BooStudy · Ученический кабинет{% endblock %}
+
+{#
+  Student pages use the same BooStudy application shell as the dashboard and
+  teacher workspace. Existing page content keeps its sandbox_content and
+  extra_head blocks; this bridge centralizes navigation, topbar, profile
+  placement and the shared modal contract.
+#}
+
+{% block extra_scripts %}
+  <script>
+    (function () {
+      let scrollLockCount = 0;
+      let savedScrollY = 0;
+
+      function lockScroll() {
+        if (scrollLockCount === 0) {
+          savedScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+          document.body.dataset.savedScrollY = String(savedScrollY);
+          document.body.style.top = '-' + savedScrollY + 'px';
+          document.body.classList.add('modal-scroll-locked');
+          document.documentElement.classList.add('modal-scroll-locked');
         }
+        scrollLockCount += 1;
       }
-    </script>
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <style>
-        html {
-            overflow-x: clip;
-            scroll-behavior: smooth;
-        }
-        body {
-            background-color: #F8FAFC;
-            color: #0f172a;
-            font-family: 'Inter', system-ui, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            overflow-x: clip;
-        }
 
-        #desktop-sidebar,
-        #mobile-bottom-nav {
-            transform: translateZ(0);
-            will-change: transform;
-            backface-visibility: hidden;
-        }
+      function unlockScroll() {
+        scrollLockCount = Math.max(0, scrollLockCount - 1);
+        if (scrollLockCount !== 0) return;
+        const scrollY = parseInt(document.body.dataset.savedScrollY || '0', 10);
+        document.body.classList.remove('modal-scroll-locked');
+        document.documentElement.classList.remove('modal-scroll-locked');
+        document.body.style.top = '';
+        window.scrollTo(0, scrollY);
+      }
 
-        h1, h2, h3, h4, .font-display {
-            font-family: 'Golos Text', 'Inter', system-ui, sans-serif;
-        }
+      window.setModalScrollLock = function (locked) {
+        if (locked) lockScroll();
+        else unlockScroll();
+      };
+      window.lockBodyScroll = lockScroll;
+      window.unlockBodyScroll = unlockScroll;
 
-        .btn-3d {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .btn-3d:active {
-            transform: translateY(4px);
-        }
-
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;  
-            scrollbar-width: none;  
-        }
-
-        /* Custom styled scrollbars */
-        .custom-scrollbar::-webkit-scrollbar,
-        .styled-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track,
-        .styled-scrollbar::-webkit-scrollbar-track {
-            background: #F1F5F9;
-            border-radius: 9999px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb,
-        .styled-scrollbar::-webkit-scrollbar-thumb {
-            background: #CBD5E1;
-            border-radius: 9999px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover,
-        .styled-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94A3B8;
-        }
-        .custom-scrollbar,
-        .styled-scrollbar {
-            scrollbar-width: thin;
-            scrollbar-color: #CBD5E1 #F1F5F9;
-        }
-
-        /* Modal background lock & prevent scroll chaining */
-        html.modal-scroll-locked,
-        body.modal-scroll-locked,
-        html.overflow-hidden,
-        body.overflow-hidden {
-            overflow: hidden !important;
-            height: 100% !important;
-        }
-        body.modal-scroll-locked {
-            position: fixed !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 100% !important;
-        }
-        [id$="-modal"], .modal-scroll-lock, .modal-backdrop-contain, [role="dialog"], .boo-confirm-overlay {
-            overscroll-behavior: contain !important;
-            -webkit-overflow-scrolling: touch;
-        }
-        [id$="-modal"] .overflow-y-auto,
-        [id$="-modal"] .overflow-auto,
-        .custom-scrollbar,
-        .styled-scrollbar {
-            overscroll-behavior: contain !important;
-            -webkit-overflow-scrolling: touch;
-        }
-    </style>
-    {% block extra_head %}{% endblock %}
-</head>
-<body class="min-h-screen bg-[#F8FAFC]">
-    {% block sandbox_sidebar %}
-    <!-- Mobile Top Header Bar (Visible on screens < lg) -->
-    <header class="lg:hidden sticky top-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-2.5 flex items-center justify-between shadow-xs">
-        <a href="/dashboard" class="flex items-center gap-2.5 no-underline">
-            <div class="w-9 h-9 rounded-xl bg-indigo-600 shadow-[0_3px_0_#3730A3] flex items-center justify-center text-white font-bold">
-                <i class="ph-bold ph-graduation-cap text-lg"></i>
-            </div>
-            <span class="font-display font-black text-slate-800 text-base tracking-tight">BooStudy</span>
-        </a>
-
-        <div class="flex items-center gap-2">
-            <a href="/workspace/profile" class="w-9 h-9 rounded-xl border-2 border-indigo-500 overflow-hidden shrink-0 shadow-xs" title="Мой профиль">
-                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}/static/images/default-avatar.svg{% endif %}" onerror="this.onerror=null;this.src='/static/images/default-avatar.svg';" class="w-full h-full object-cover" alt="Профиль">
-            </a>
-            <a href="{{ url_for('auth.logout') }}" class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0 shadow-xs hover:bg-rose-100 transition-colors" title="Выйти из аккаунта">
-                <i class="ph-bold ph-sign-out text-lg"></i>
-            </a>
-        </div>
-    </header>
-
-    <!-- Student Centralized Vertical Sidebar Dock (Desktop only) -->
-    <nav id="desktop-sidebar" class="hidden lg:flex fixed left-4 top-4 bottom-4 w-20 bg-white border border-slate-200/80 shadow-[0_8px_25px_rgba(15,23,42,0.06)] rounded-[2rem] flex-col items-center py-6 shrink-0 z-50">
-        <!-- Logo -->
-        <a href="/dashboard" class="w-12 h-12 rounded-[1rem] bg-indigo-600 shadow-[0_4px_0_#3730A3,inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center text-white mb-8 cursor-pointer hover:-translate-y-1 active:translate-y-[3px] active:shadow-none transition-all" title="Дашборд ученика">
-            <i class="ph-bold ph-graduation-cap text-2xl"></i>
-        </a>
-
-        <!-- Dock Items for Student -->
-        <div class="flex flex-col gap-3 flex-1 w-full px-3">
-            
-            <!-- 1. Главная -->
-            <a href="/dashboard" class="w-full aspect-square rounded-[1rem] {% if request.path == '/dashboard' %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Главная">
-                <i class="ph-bold ph-house text-xl"></i>
-                {% if request.path == '/dashboard' %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            <!-- 2. Мои задания -->
-            <a href="/submissions" class="w-full aspect-square rounded-[1rem] {% if request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Мои задания">
-                <i class="ph-bold ph-books text-xl"></i>
-                {% if request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            <!-- 3. Теория & База знаний -->
-            <a href="{{ url_for('theory.theory_index') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/theory') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Теория">
-                <i class="ph-bold ph-book-open text-xl"></i>
-                {% if request.path.startswith('/theory') %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            {% if trainer_available %}
-            <!-- 4. Тренажёр -->
-            <a href="{{ url_for('trainer.trainer_v2') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/trainer') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Тренажёр">
-                <i class="ph-bold ph-lightning text-xl"></i>
-                {% if request.path.startswith('/trainer') %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            <!-- Гайдбук -->
-            <a href="{{ url_for('main.guidebook') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/guidebook') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Гайдбук">
-                <i class="ph-bold ph-question text-xl"></i>
-                {% if request.path.startswith('/guidebook') %}<div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>{% endif %}
-            </a>
-            {% endif %}
-
-            <!-- 4. Расписание -->
-            <a href="{{ url_for('schedule.schedule') }}" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/schedule') %}bg-indigo-50 text-indigo-600 border border-indigo-200/60 shadow-sm relative{% else %}bg-transparent hover:bg-slate-100 text-slate-400 hover:text-slate-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Расписание">
-                <i class="ph-bold ph-calendar-blank text-xl"></i>
-                {% if request.path.startswith('/schedule') %}
-                <div class="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-
-            {% if current_user is defined and current_user and current_user.is_authenticated and (current_user.role|upper in ['CREATOR', 'ADMIN'] or current_user.is_admin() or current_user.is_creator()) %}
-            <!-- Панель управления (Админка) -->
-            <a href="/admin/users" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/admin') %}bg-rose-50 text-rose-600 border border-rose-200/80 shadow-sm relative{% else %}bg-transparent hover:bg-rose-50/80 text-rose-500 hover:text-rose-700{% endif %} flex flex-col justify-center items-center gap-1 transition-all group" title="Панель управления (Админка)">
-                <i class="ph-bold ph-shield-check text-xl"></i>
-                {% if request.path.startswith('/admin') %}
-                <div class="absolute left-0 w-1.5 h-6 bg-rose-600 rounded-r-md -ml-[calc(0.75rem+1px)]"></div>
-                {% endif %}
-            </a>
-            {% endif %}
-
-        </div>
-
-        <!-- Student Profile & Logout Links -->
-        <div class="mt-auto w-full px-3 flex flex-col items-center gap-2">
-            <a href="/workspace/profile" class="w-full aspect-square rounded-[1rem] {% if request.path.startswith('/workspace/profile') %}border-2 border-indigo-600 shadow-md ring-2 ring-indigo-500/20{% else %}border-2 border-slate-200 hover:border-indigo-300{% endif %} overflow-hidden cursor-pointer transition-all relative block" title="Профиль: {{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Ученик' }}">
-                <img src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}/static/images/default-avatar.svg{% endif %}" onerror="this.onerror=null;this.src='/static/images/default-avatar.svg';" class="w-full h-full object-cover" alt="Профиль">
-                <div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></div>
-            </a>
-            <a href="{{ url_for('auth.logout') }}" class="w-full aspect-square rounded-[1rem] bg-rose-50/70 hover:bg-rose-100 text-rose-500 hover:text-rose-700 border border-rose-200/70 flex items-center justify-center transition-all cursor-pointer no-underline active:scale-95" title="Выйти из аккаунта">
-                <i class="ph-bold ph-sign-out text-xl"></i>
-            </a>
-        </div>
-
-    </nav>
-
-    <!-- Mobile Bottom Navigation Tab Bar (Visible on screens < lg) -->
-    <nav id="mobile-bottom-nav" class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 py-1 flex items-center justify-around shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-        {% set is_dash = request.path == '/dashboard' %}
-        <a href="/dashboard" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_dash %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
-            {% if is_dash %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
-            <i class="ph-bold ph-house text-xl"></i>
-            <span class="text-[10px]">Главная</span>
-        </a>
-
-        {% set is_sub = request.path in ['/submissions'] or request.path.startswith('/lesson/') or request.path.startswith('/submissions/') %}
-        <a href="/submissions" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_sub %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
-            {% if is_sub %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
-            <i class="ph-bold ph-books text-xl"></i>
-            <span class="text-[10px]">Задания</span>
-        </a>
-
-        {% set is_th = request.path.startswith('/theory') %}
-        <a href="{{ url_for('theory.theory_index') }}" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_th %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
-            {% if is_th %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
-            <i class="ph-bold ph-book-open text-xl"></i>
-            <span class="text-[10px]">Теория</span>
-        </a>
-
-        {% if trainer_available %}
-        {% set is_tr = request.path.startswith('/trainer') %}
-        <a href="{{ url_for('trainer.trainer_v2') }}" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_tr %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
-            {% if is_tr %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
-            <i class="ph-bold ph-lightning text-xl"></i>
-            <span class="text-[10px]">Тренажёр</span>
-        </a>
-        {% endif %}
-
-        {% set is_sch = request.path.startswith('/schedule') %}
-        <a href="{{ url_for('schedule.schedule') }}" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_sch %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
-            {% if is_sch %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
-            <i class="ph-bold ph-calendar-blank text-xl"></i>
-            <span class="text-[10px]">Расписание</span>
-        </a>
-
-        {% set is_prof = request.path.startswith('/workspace/profile') %}
-        <a href="/workspace/profile" class="relative flex flex-col items-center gap-0.5 py-1 px-3 no-underline transition-all {% if is_prof %}text-indigo-600 font-extrabold{% else %}text-slate-400 font-bold hover:text-slate-600{% endif %}">
-            {% if is_prof %}<div class="absolute -top-1 left-1/2 -translate-x-1/2 w-7 h-1 bg-indigo-600 rounded-b-md shadow-[0_2px_6px_rgba(79,70,229,0.5)]"></div>{% endif %}
-            <i class="ph-bold ph-user text-xl"></i>
-            <span class="text-[10px]">Профиль</span>
-        </a>
-    </nav>
-    {% endblock %}
-
-    {% block sandbox_content %}{% endblock %}
-
-    {% include 'sandbox/components/_qa_widget.html' ignore missing %}
-
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const currentPath = window.location.pathname;
-        const navLinks = document.querySelectorAll("#desktop-sidebar a[href]");
-        navLinks.forEach(link => {
-          const href = link.getAttribute("href");
-          if (!href || href === "#") return;
-          const linkPath = href.split('?')[0];
-
-          if (linkPath === currentPath) {
-            link.classList.remove("text-slate-400", "hover:bg-slate-100", "bg-transparent");
-            link.classList.add("bg-indigo-50", "text-indigo-600", "border", "border-indigo-200/60", "shadow-sm", "relative");
-            if (!link.querySelector('.bg-indigo-500')) {
-              const indicator = document.createElement('div');
-              indicator.className = 'absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-md -ml-[calc(0.75rem+1px)]';
-              link.appendChild(indicator);
-            }
-          }
-        });
+      document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape' || scrollLockCount === 0) return;
+        const modal = document.querySelector('[id$="-modal"]:not(.hidden), [role="dialog"]:not(.hidden)');
+        const close = modal && modal.querySelector('[onclick*="close"], [data-modal-close], button[title="Закрыть"]');
+        if (close) close.click();
+        else if (modal) { modal.classList.add('hidden'); unlockScroll(); }
       });
-    </script>
-
-    <script src="{{ url_for('static', filename='csrf-helper.js') }}?v=20260822-course-actions"></script>
-    <script src="{{ url_for('static', filename='timezone-sync.js') }}?v=20260919-tz-v1"></script>
-    {% include 'sandbox/components/_feedback_system.html' %}
-    {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
-    <!-- Universal Modal Scroll Lock & Global Student Study Heartbeat (High-Performance, Zero Lag) -->
-    <script>
-      (function() {
-        // 1. Universal Modal Scroll Lock Manager (Zero CPU overhead, no MutationObserver, no passive:false listeners)
-        let scrollLockCount = 0;
-        let savedScrollY = 0;
-
-        function lockScroll() {
-          if (scrollLockCount === 0) {
-            savedScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
-            document.body.dataset.savedScrollY = savedScrollY;
-            document.body.style.top = `-${savedScrollY}px`;
-            document.body.classList.add('modal-scroll-locked');
-            document.documentElement.classList.add('modal-scroll-locked');
-          }
-          scrollLockCount++;
-        }
-
-        function unlockScroll() {
-          scrollLockCount = Math.max(0, scrollLockCount - 1);
-          if (scrollLockCount === 0) {
-            const scrollY = parseInt(document.body.dataset.savedScrollY || '0', 10);
-            document.body.classList.remove('modal-scroll-locked');
-            document.documentElement.classList.remove('modal-scroll-locked');
-            document.body.style.top = '';
-            window.scrollTo(0, scrollY);
-          }
-        }
-
-        window.setModalScrollLock = function(locked) {
-          if (locked) {
-            lockScroll();
-          } else {
-            unlockScroll();
-          }
-        };
-        window.lockBodyScroll = lockScroll;
-        window.unlockBodyScroll = unlockScroll;
-
-        // Keyboard accessibility: ESC closes any open modal
-        document.addEventListener('keydown', function(e) {
-          if (e.key === 'Escape' && scrollLockCount > 0) {
-            const openModal = document.querySelector('[id$="-modal"]:not(.hidden), [role="dialog"]:not(.hidden)');
-            if (openModal) {
-              const closeBtn = openModal.querySelector('[onclick*="close"], [data-modal-close], button[title="Закрыть"]');
-              if (closeBtn) {
-                closeBtn.click();
-              } else {
-                openModal.classList.add('hidden');
-                unlockScroll();
-              }
-            }
-          }
-        });
-
-        // Safe delegated click on modal backdrops to close & unlock
-        document.addEventListener('click', function(e) {
-          if (e.target && e.target.matches && e.target.matches('[id$="-modal"]:not(.hidden)')) {
-            const closeBtn = e.target.querySelector('[onclick*="close"], [data-modal-close], button[title="Закрыть"]');
-            if (closeBtn) closeBtn.click();
-          }
-        });
-
-        // 2. Global Student Study Heartbeat (Active Engagement Tracking: zero scroll interference)
-        let lastInteractionTime = 0;
-        let lastTickTime = Date.now();
-        let activeSecondsAccumulated = 0;
-        let activityGate = 0;
-
-        function markUserActivity() {
-          const now = Date.now();
-          if (document.hidden) return;
-          if (lastInteractionTime > 0) {
-            const gap = (now - lastInteractionTime) / 1000;
-            if (gap <= 45) {
-              activeSecondsAccumulated += Math.min(gap, 45);
-            } else {
-              activeSecondsAccumulated += 3;
-            }
-          } else {
-            activeSecondsAccumulated += 3;
-          }
-          lastInteractionTime = now;
-        }
-
-        function onThrottledActivity() {
-          const now = Date.now();
-          if (now - activityGate < 3000) return;
-          activityGate = now;
-          markUserActivity();
-        }
-
-        // Never attach unthrottled listeners to scroll or input!
-        ['mousedown', 'keydown', 'touchstart'].forEach(function(evt) {
-          window.addEventListener(evt, onThrottledActivity, { passive: true });
-        });
-
-        function sendStudyHeartbeatGlobal(isSyncBeforeUnload) {
-          if (document.hidden && !isSyncBeforeUnload) return;
-
-          const now = Date.now();
-          const wallElapsed = Math.max(0, (now - lastTickTime) / 1000);
-          lastTickTime = now;
-
-          const toSend = Math.min(Math.round(activeSecondsAccumulated), Math.round(wallElapsed), 120);
-          activeSecondsAccumulated = 0;
-
-          if (toSend < 5) return;
-
-          const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-          const bodyData = 'duration_seconds=' + toSend;
-
-          if (isSyncBeforeUnload && navigator.sendBeacon) {
-            try {
-              const blob = new Blob([bodyData], { type: 'application/x-www-form-urlencoded' });
-              navigator.sendBeacon('/api/study/heartbeat', blob);
-            } catch (e) {}
-            return;
-          }
-
-          fetch('/api/study/heartbeat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-CSRFToken': token,
-              'Accept': 'application/json'
-            },
-            body: bodyData,
-            keepalive: isSyncBeforeUnload === true
-          })
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
-            if (data && data.status === 'ok' && data.study_time_display) {
-              const el = document.getElementById('study-time-val');
-              if (el) el.textContent = data.study_time_display;
-              if (window.updateCurrentStudySeconds && data.total_seconds) {
-                window.updateCurrentStudySeconds(data.total_seconds);
-              }
-            }
-          })
-          .catch(function() {});
-        }
-
-        // Check and send heartbeat every 60 seconds if user was active
-        setInterval(function() {
-          sendStudyHeartbeatGlobal(false);
-        }, 60000);
-
-        // Sync remaining active seconds on tab leave
-        window.addEventListener('visibilitychange', function() {
-          if (document.hidden) {
-            sendStudyHeartbeatGlobal(true);
-            lastInteractionTime = 0;
-          } else {
-            lastTickTime = Date.now();
-            lastInteractionTime = 0;
-          }
-        });
-        window.addEventListener('pagehide', function() {
-          sendStudyHeartbeatGlobal(true);
-        });
-      })();
-    </script>
-    {% block extra_scripts %}{% endblock %}
-</body>
-</html>
-
-
+    }());
+  </script>
+  {{ super() }}
+{% endblock %}

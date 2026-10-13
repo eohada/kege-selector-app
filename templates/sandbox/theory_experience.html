@@ -1,0 +1,295 @@
+{% extends 'sandbox/layout_teacher.html' if can_manage else 'sandbox/layout_student.html' %}
+{% set active_page = 'theory' %}
+{% block title %}{{ selected_course.title if selected_course else 'Библиотека теории' }} · BooStudy{% endblock %}
+{% macro topic_link(topic) %}{{ url_for('theory.theory_view_block', block_id=topic.id, course_id=topic.course_id) }}{% endmacro %}
+{% macro meter(value) %}<progress max="100" value="{{ value }}" aria-label="Изучено {{ value }}%">{{ value }}%</progress>{% endmacro %}
+{% macro continue_card(topic, course=none, large=false) %}
+<section class="tx-continue {{ 'tx-continue-large' if large else '' }}">
+  <div class="tx-continue-copy"><span class="tx-eyebrow"><i class="ph-bold ph-book-open"></i> Продолжить изучение</span>
+  {% if topic %}<h2>{{ topic.title }}</h2><p>{{ topic.course_title }} · {{ topic.group_name }}</p>
+  {% else %}<h2>Твоя следующая тема — впереди</h2><p>Выбери курс и открой доступную тему, чтобы начать изучение.</p>{% endif %}</div>
+  {% if topic %}
+    {% set p_val = course.progress if course else (topic.progress if topic.progress > 0 else experience.progress) %}
+    {% set p_label = (course.progress ~ '% курса · ' ~ course.completed ~ ' из ' ~ course.total ~ ' тем') if course else ((topic.progress ~ '% темы') if topic.progress > 0 else (experience.progress ~ '% теории · ' ~ experience.completed ~ ' из ' ~ experience.total ~ ' тем')) %}
+    <div class="tx-continue-progress"><small>{{ p_label }}</small>{{ meter(p_val) }}</div><a class="tx-button" href="{{ topic_link(topic) }}">Продолжить <i class="ph-bold ph-arrow-right"></i></a>
+  {% endif %}
+  <img src="{{ url_for('static', filename='images/dashboard/python-banner-3d.png') }}" alt="Python 3D Banner" class="tx-continue-art">
+</section>
+{% endmacro %}
+{% block sandbox_content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theory-experience.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<main class="tx-page" data-theory-experience>
+  <div class="tx-main">
+    {% if can_manage %}
+    <div class="rounded-2xl border-2 border-indigo-300 bg-gradient-to-r from-indigo-50 via-white to-indigo-50/50 p-4 shadow-sm mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+          <i class="ph-bold ph-sliders"></i>
+        </div>
+        <div>
+          <div class="text-xs font-black text-indigo-950 flex items-center gap-2">
+            Режим предпросмотра: Витрина ученика
+            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200">Преподаватель</span>
+          </div>
+          <div class="text-[11px] font-semibold text-slate-500 mt-0.5">Вы просматриваете теорию глазами ученика. Нажмите кнопку справа для перехода в пульт управления.</div>
+        </div>
+      </div>
+      <a href="{{ url_for('theory.manage_list', course_id=selected_course.id if selected_course else none) }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md border-b-[3px] border-indigo-900 transition active:translate-y-0.5 no-underline whitespace-nowrap">
+        <i class="ph-bold ph-gear-six text-base"></i>
+        <span>Пульт управления теорией</span>
+        <i class="ph-bold ph-arrow-right text-xs"></i>
+      </a>
+    </div>
+    {% endif %}
+    <header class="tx-hero {{ 'tx-course-hero' if selected_course else '' }}">
+      <div class="tx-hero-copy">
+        {% if selected_course %}<nav aria-label="Хлебные крошки"><a href="{{ url_for('theory.theory_index') }}">Теория</a><i class="ph-bold ph-caret-right"></i><span>{{ selected_course.title }}</span></nav>
+        <h1>{{ selected_course.title }}</h1><p>Изучай теорию по темам, решай задачи и двигайся к своей цели шаг за шагом.</p>
+        {% else %}<span class="tx-hero-label"><i class="ph-fill ph-sun"></i> Твоя библиотека теории</span><h1>Учись в удобном формате</h1><p>Конспекты, примеры решений и дополнительные материалы<br>по всем твоим направлениям подготовки.</p>{% endif %}
+      </div>
+      <img class="tx-hero-art" src="{{ url_for('static', filename='images/theory/library-hero-v2.png') }}" alt="">
+    </header>
+
+    {% if not selected_course %}
+      {{ continue_card(experience.continue_topic) }}
+      <form class="tx-filters" role="search">
+        <div class="tx-tabs" aria-label="Фильтр курсов"><button type="button" data-filter="all" aria-pressed="true">Все курсы ({{ experience.courses|length }})</button><button type="button" data-filter="mine" aria-pressed="false">Мои курсы ({{ experience.courses|selectattr('enrolled')|list|length }})</button></div>
+        <label class="tx-search"><i class="ph-bold ph-magnifying-glass"></i><input type="search" name="q" placeholder="Поиск по курсам…" aria-label="Поиск по курсам"></label>
+      </form>
+      <h2 class="tx-section-title">Доступные курсы теории</h2>
+      <div class="tx-course-grid">
+        {% for course in experience.courses %}
+        {% set is_uninit = (course.enrollment_status == 'assigned' and not can_manage) %}
+        <article class="tx-course tx-{{ course.palette }} {% if is_uninit %}tx-course-uninitialized{% endif %}" data-course data-title="{{ course.title|lower }}" data-mine="{{ 'true' if course.enrolled else 'false' }}">
+          <div class="relative z-10 flex flex-wrap items-center gap-2 mb-2 max-w-[58%]">
+            <i class="tx-course-icon ph-bold ph-book-open !mb-0"></i>
+            {% if is_uninit %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 shadow-xs" title="Курс назначен преподавателем, но ожидает активации">
+                <i class="ph-bold ph-lock-key text-xs"></i> Не инициализирован
+              </span>
+            {% endif %}
+          </div>
+          <img src="{{ url_for('static', filename='images/dashboard/theory_books.png') }}" alt="" class="tx-course-art pointer-events-none">
+          <h3>{{ course.title }}</h3>
+          <p>{% if is_uninit %}Курс назначен преподавателем и ожидает активации.{% else %}{{ course.groups|length }} разделов для последовательного изучения{% endif %}</p>
+          <div class="tx-course-meter">{{ meter(course.progress) }}<b>{{ course.progress }}%</b></div>
+          <footer><span><i class="ph-bold ph-notebook"></i> {{ course.total }} тем</span><span><i class="ph-bold ph-files"></i> {{ course.material_count }} материалов</span></footer>
+          {% if is_uninit %}
+            <span class="tx-course-open !opacity-50 !cursor-not-allowed !bg-slate-100 !text-slate-400 !border-slate-200" title="Курс назначен преподавателем, но ожидает активации">
+              <i class="ph-bold ph-lock-key"></i>
+            </span>
+          {% else %}
+            <a class="tx-course-open" href="{{ url_for('theory.theory_course', course_id=course.id) }}" aria-label="Открыть курс {{ course.title }}"><i class="ph-bold ph-arrow-right"></i></a>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      <p class="tx-empty" data-no-results {% if experience.courses %}hidden{% endif %}>Подходящих курсов пока нет.</p>
+    {% else %}
+      <form class="tx-filters tx-course-filters" role="search"><div class="tx-tabs"><button type="button" data-filter="all" aria-pressed="true">Все темы</button><button type="button" data-filter="bookmarked" aria-pressed="false">Закладки</button><button type="button" data-filter="pdf" aria-pressed="false">PDF-материалы</button></div><label class="tx-search"><i class="ph-bold ph-magnifying-glass"></i><input type="search" name="q" placeholder="Поиск по разделу…" aria-label="Поиск по темам"></label></form>
+      <div class="tx-course-layout">
+        <nav class="tx-groups tx-card" aria-label="Разделы курса"><header><h2>Разделы курса</h2><small>{{ selected_course.total }} тем</small></header>
+          {% for group in selected_course.groups %}<a href="{{ url_for('theory.theory_course', course_id=selected_course.id, group=group.id or 'ungrouped') }}" class="tx-group {{ 'is-active' if not is_final_test and selected_group and group.id == selected_group.id else '' }}" {% if not is_final_test and selected_group and group.id == selected_group.id %}aria-current="true"{% endif %}><i class="ph-bold {{ 'ph-check-circle' if group.total and group.completed == group.total else 'ph-books' }}"></i><span><b>{{ group.name }}</b><small>{{ group.completed }}/{{ group.total }} тем</small></span><i class="ph-bold ph-caret-right"></i></a>{% endfor %}
+          {% if selected_course.has_final_test %}
+            <a href="{{ url_for('theory.theory_course', course_id=selected_course.id, group='final_test') }}" class="tx-group tx-group-milestone {{ 'is-active' if is_final_test else '' }} {{ 'is-locked' if not selected_course.final_test_unlocked else '' }}" {% if is_final_test %}aria-current="true"{% endif %}>
+              <i class="ph-bold {{ 'ph-seal-check tx-icon-success' if selected_course.final_test_passed else ('ph-exam' if selected_course.final_test_unlocked else 'ph-lock-key') }}"></i>
+              <span><b>Итоговый тест</b><small>{{ 'Пройден (' ~ selected_course.final_test_score ~ '/20)' if selected_course.final_test_passed else ('Доступен' if selected_course.final_test_unlocked else 'После 30 тем') }}</small></span>
+              <i class="ph-bold ph-caret-right"></i>
+            </a>
+          {% endif %}
+        </nav>
+        <section class="tx-topics tx-card">
+          {% if not is_final_test %}
+            {{ continue_card(selected_course.continue_topic, course=selected_course, large=true) }}
+            <h2 class="tx-section-title">{{ selected_group.name if selected_group else 'Темы курса' }}</h2>
+            <div class="tx-topic-list">{% for topic in selected_group.topics if selected_group %}
+              <article class="tx-topic {{ 'is-current' if topic.status == 'in_progress' else '' }}" data-topic data-title="{{ topic.title|lower }}" data-bookmarked="{{ 'true' if topic.bookmarked else 'false' }}" data-pdf="{{ 'true' if topic.pdf_path else 'false' }}">
+                <span class="tx-topic-number">{{ '%02d'|format(loop.index) }}</span><span class="tx-topic-state {{ topic.status }}"><i class="ph-bold {{ 'ph-lock-key' if topic.locked else ('ph-check' if topic.completed else 'ph-book-open') }}"></i></span>
+                <div class="tx-topic-copy"><h3>{{ topic.title }}</h3>{% if topic.locked %}<p>{{ topic.lock_reason }}</p>{% else %}<div class="tx-topic-meta"><span><i class="ph-bold ph-file-text"></i> Конспект</span>{% if topic.pdf_path %}<span>PDF</span>{% endif %}{% if topic.read_minutes %}<span><i class="ph-bold ph-clock"></i> ~ {{ topic.read_minutes }} мин</span>{% endif %}<span>{{ 'Изучено' if topic.completed else ('Изучается' if topic.status == 'in_progress' else 'Не начато') }}</span></div>{% endif %}</div>
+                {% if not topic.locked %}
+                  <div style="display:inline-flex;align-items:center;gap:8px;flex-shrink:0;">
+                    <button type="button" class="tx-bookmark-btn {{ 'is-bookmarked' if topic.bookmarked else '' }}" data-topic-id="{{ topic.id }}" title="{{ 'Удалить из закладок' if topic.bookmarked else 'Добавить в закладки' }}">
+                      <i class="ph-{{ 'fill text-amber-500' if topic.bookmarked else 'bold' }} ph-bookmark-simple"></i>
+                    </button>
+                    <a class="{{ 'tx-button' if topic.status == 'in_progress' else 'tx-soft-button' }}" href="{{ topic_link(topic) }}">{{ 'Продолжить' if topic.status == 'in_progress' else 'Открыть' }} <i class="ph-bold ph-arrow-right"></i></a>
+                  </div>
+                {% endif %}
+              </article>
+            {% endfor %}</div><p class="tx-empty" data-no-results {% if selected_group and selected_group.topics %}hidden{% endif %}>В этом разделе пока нет доступных материалов.</p>
+          {% endif %}
+
+          {% set is_last_group = (selected_group and selected_course.groups and selected_group.id == selected_course.groups[-1].id) %}
+          {% if selected_course.has_final_test and (is_final_test or is_last_group) %}
+            <div class="tx-final-section {{ 'is-standalone' if is_final_test else '' }}">
+              {% if not selected_course.final_test_unlocked %}
+                <div class="tx-final-card tx-final-locked">
+                  <div class="tx-final-badge"><i class="ph-bold ph-terminal-window"></i> ФИНИШНАЯ ПРОВЕРКА КУРСА</div>
+                  <div class="tx-final-locked-body">
+                    <div class="tx-final-lock-icon"><i class="ph-bold ph-lock-key"></i></div>
+                    <div class="tx-final-lock-info">
+                      <h3>Итоговый тест пока закрыт</h3>
+                      <p>Комплексный вариант из 20 заданий откроется автоматически после изучения всех {{ selected_course.total }} тем курса.</p>
+                      <div class="tx-final-meter-wrap">
+                        <small>Прогресс курса: {{ selected_course.completed }} из {{ selected_course.total }} тем ({{ selected_course.progress }}%)</small>
+                        {{ meter(selected_course.progress) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {% else %}
+                <div class="tx-final-hero-card {{ 'final-test-passed' if selected_course.final_test_passed else '' }}" id="python-final-test">
+                  <!-- Hero Pre-Start Card (Visible before starting) -->
+                  <div class="tx-final-prestart" id="python-final-test-prestart">
+                    <div class="flex items-center justify-between gap-3 mb-4">
+                      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <i class="ph-bold ph-seal-check text-sm"></i> ФИНАЛЬНАЯ АТТЕСТАЦИЯ КУРСА
+                      </span>
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600">
+                        <i class="ph-bold ph-check-circle text-emerald-500"></i> Все {{ selected_course.total }} тем изучены
+                      </span>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+                      <div class="tx-hero-icon-3d">
+                        <i class="ph-bold ph-terminal-window"></i>
+                      </div>
+                      <div>
+                        <h3 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Итоговый тест по программированию</h3>
+                        <p class="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed max-w-xl">
+                          Комплексная проверка всех ключевых тем Python: синтаксис, логика, циклы, строки, списки и функции. Сбалансированный вариант из банка 200 заданий.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-4">
+                      <div class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700">
+                        <i class="ph-bold ph-list-numbers text-indigo-600 text-base"></i>
+                        <span>20 заданий (4 блока)</span>
+                      </div>
+                      <div class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700">
+                        <i class="ph-bold ph-seal-check text-emerald-600 text-base"></i>
+                        <span>Порог сдачи: 90% (18/20)</span>
+                      </div>
+                      <div class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700">
+                        <i class="ph-bold ph-hourglass-simple text-purple-600 text-base"></i>
+                        <span>Без ограничения времени</span>
+                      </div>
+                    </div>
+
+                    <div class="tx-final-actions pt-2">
+                      {% if not selected_course.final_test_passed %}
+                        <button type="button" class="tx-button tx-button-3d" id="python-final-test-start">
+                          <i class="ph-bold ph-play-circle text-lg"></i> Собрать мой вариант <i class="ph-bold ph-arrow-right"></i>
+                        </button>
+                      {% endif %}
+                      <a href="{{ url_for('theory.theory_bank_preview', course_id=selected_course.id) }}" class="tx-soft-button" target="_blank">
+                        <i class="ph-bold ph-database text-base"></i> Банк заданий (200) <i class="ph-bold ph-arrow-square-out"></i>
+                      </a>
+                    </div>
+                  </div>
+
+                  <div id="python-final-test-status" class="tx-final-status {{ '' if selected_course.final_test_passed else 'hidden' }}" role="status" aria-live="polite">
+                    {% if selected_course.final_test_passed %}<i class="ph-fill ph-seal-check tx-icon-success mr-1"></i> Итоговый тест пройден (результат: {{ selected_course.final_test_score }} из 20).{% endif %}
+                  </div>
+
+                  <!-- Interactive Test Runner Container -->
+                  <div id="python-final-test-results" class="tx-final-results {{ '' if selected_course.final_test_passed else 'hidden' }}">
+                    <!-- Stepper & Active Card injected dynamically by theory-final-test.js -->
+                    <div id="python-final-test-stepper-wrap" class="hidden">
+                      <div class="tx-stepper-header flex items-center justify-between gap-3 mb-3">
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs font-black uppercase tracking-wider text-slate-500">Навигация:</span>
+                          <span id="python-stepper-answered-count" class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">Отвечено: 0 / 20</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 font-medium">Стрелки ← / → на клавиатуре</div>
+                      </div>
+                      <div id="python-stepper-pills" class="tx-stepper-pills flex flex-wrap gap-1.5 mb-5" role="tablist"></div>
+
+                      <!-- Active Single Card -->
+                      <div id="python-active-card-container"></div>
+
+                      <!-- Stepper Prev/Next Controls -->
+                      <div class="tx-stepper-controls flex items-center justify-between gap-3 mt-5 pt-4 border-t border-slate-200">
+                        <button type="button" id="python-stepper-prev" class="tx-nav-btn">
+                          <i class="ph-bold ph-arrow-left"></i> Предыдущее
+                        </button>
+                        <div id="python-stepper-counter" class="tx-nav-counter">
+                          Задание 1 из 20
+                        </div>
+                        <button type="button" id="python-stepper-next" class="tx-nav-btn">
+                          Следующее <i class="ph-bold ph-arrow-right"></i>
+                        </button>
+                      </div>
+
+                      <!-- Submit Bar -->
+                      <div class="tx-final-submit-bar mt-6 flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                        <div>
+                          <div class="text-xs font-bold text-slate-800">Готовы проверить решения?</div>
+                          <div class="text-[11px] text-slate-500">Ответы сохраняются автоматически при переключении номеров.</div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                          <button type="button" class="tx-button tx-button-3d" id="python-final-test-submit">
+                            <i class="ph-bold ph-check-circle"></i> Завершить и проверить
+                          </button>
+                          <div id="python-final-test-score" class="tx-final-score-pill hidden" role="status" aria-live="polite"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Review Screen (rendered dynamically as a tactile 3D result card) -->
+                    <div id="python-final-test-review" class="tx-final-review {{ 'final-test-review-success' if selected_course.final_test_passed else 'hidden' }}">
+                      {% if selected_course.final_test_passed %}
+                        <div class="tx-result-hero is-passed">
+                          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div class="flex items-center gap-4">
+                              <div class="tx-result-icon is-passed">
+                                <i class="ph-bold ph-seal-check"></i>
+                              </div>
+                              <div>
+                                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  <i class="ph-fill ph-check-circle"></i> Зачёт получен
+                                </div>
+                                <h2 class="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+                                  Блок программирования успешно завершён!
+                                </h2>
+                                <p class="text-xs sm:text-sm font-semibold text-slate-500 mt-0.5">
+                                  Итоговый тест сдан (результат: {{ selected_course.final_test_score }} из 20, порог 90% выполнен).
+                                </p>
+                              </div>
+                            </div>
+                            <div class="tx-result-score-badge is-passed text-center self-start sm:self-auto">
+                              <div class="text-[10px] font-black uppercase tracking-wider text-slate-400">Итог</div>
+                              <div class="text-3xl font-black text-slate-900 tracking-tight">{{ selected_course.final_test_score }} <span class="text-lg font-bold text-slate-400">/ 20</span></div>
+                              <div class="text-xs font-black text-emerald-700">Зачёт</div>
+                            </div>
+                          </div>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+        </section>
+      </div>
+    {% endif %}
+  </div>
+  <aside class="tx-aside">
+    {% set stats = selected_course or experience %}
+    <section class="tx-card tx-progress"><h2><i class="ph-bold ph-chart-line-up"></i> {{ 'Твой прогресс в курсе' if selected_course else 'Общий прогресс теории' }}</h2><div class="tx-progress-body"><svg viewBox="0 0 120 120" class="tx-ring" role="img" aria-label="Изучено {{ stats.progress }}%"><circle cx="60" cy="60" r="48" class="tx-ring-track"/><circle cx="60" cy="60" r="48" class="tx-ring-value" pathLength="100" stroke-dasharray="{{ stats.progress }} 100"/><text x="60" y="67" text-anchor="middle">{{ stats.progress }}%</text></svg><div><small>Изучено тем</small><strong>{{ stats.completed }} из {{ stats.total }}</strong><small>Время в теории</small><span>{{ stats.study_time_display }}</span></div></div></section>
+    <section class="tx-card tx-actions"><h2><i class="ph-bold ph-lightning"></i> Быстрые действия</h2><a href="{{ url_for('theory.theory_index', view='student') }}"><i class="ph-bold ph-books"></i> Все курсы теории <i class="ph-bold ph-caret-right"></i></a>{% if selected_course %}<a href="{{ url_for('theory.theory_course', course_id=selected_course.id, filter='bookmarked') }}"><i class="ph-bold ph-bookmark-simple"></i> Мои закладки <i class="ph-bold ph-caret-right"></i></a>{% endif %}{% if can_manage %}<a href="{{ url_for('theory.manage_list', course_id=selected_course.id if selected_course else none) }}" style="background: #EEF2FF; color: #4338CA; border: 1.5px solid #C7D2FE; font-weight: 800; border-radius: 12px; margin-top: 4px;"><i class="ph-bold ph-sliders text-indigo-600"></i> Пульт управления теорией <i class="ph-bold ph-arrow-square-out"></i></a>{% endif %}</section>
+    <section class="tx-card tx-tip" style="min-height: auto;"><h2 style="display:flex;align-items:center;gap:8px;"><i class="ph-bold ph-lightbulb text-amber-500"></i> Совет от Бу</h2><p style="max-width: 100%; margin-top: 10px;">Попробуй сначала изучить теорию, а затем сразу решить несколько задач — так знания закрепятся гораздо лучше!</p></section>
+  </aside>
+</main>
+<script src="{{ url_for('static', filename='js/theory-experience.js') }}" defer></script>
+{% if selected_course and selected_course.has_final_test and selected_course.final_test_unlocked %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script>
+window.PYTHON_FINAL_TEST_COURSE_ID = {{ selected_course.id }};
+</script>
+<script src="{{ url_for('static', filename='js/theory-final-test.js') }}" defer></script>
+{% endif %}
+{% endblock %}

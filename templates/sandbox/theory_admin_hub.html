@@ -1,0 +1,1829 @@
+{% extends "sandbox/layout_teacher.html" %}
+
+{% block title %}Пульт управления теорией · BooStudy{% endblock %}
+
+{% block sandbox_content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+<style>
+  .admin-hub-tab-btn {
+    transition: all 0.15s ease-in-out;
+  }
+  .admin-hub-tab-btn.is-active {
+    background-color: #4F46E5 !important;
+    color: #ffffff !important;
+    border-color: #3730A3 !important;
+    box-shadow: 0 3px 0 #312E81, 0 6px 12px rgba(79, 70, 229, 0.25) !important;
+  }
+  .theory-editor-pre {
+    tab-size: 4;
+  }
+  .modal-backdrop {
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+  }
+</style>
+
+<main class="flex-1 min-h-screen bg-[#FAF9FC] p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6 relative" id="theory-admin-hub">
+  <!-- Subtle Ambient Glow Auras -->
+  <div class="absolute top-8 right-12 w-96 h-96 bg-gradient-to-br from-indigo-200/20 via-purple-200/15 to-transparent rounded-full blur-3xl pointer-events-none -z-10"></div>
+  <div class="absolute top-96 left-8 w-96 h-96 bg-gradient-to-tr from-amber-200/20 via-pink-200/15 to-transparent rounded-full blur-3xl pointer-events-none -z-10"></div>
+
+  <div class="max-w-[1400px] mx-auto w-full space-y-6 relative z-10">
+    
+    <!-- GOLDEN HERO HEADER -->
+    <header class="rounded-3xl border border-[#EADFE0] bg-gradient-to-r from-[#FFF5EC] via-[#FFFDFB] to-[#F5EEFF] p-4 sm:p-6 shadow-[0_7px_0_rgba(231,218,220,0.48),0_12px_28px_rgba(96,75,91,0.07)] relative overflow-hidden">
+      <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-black uppercase tracking-wider font-mono">
+              <i class="ph-bold ph-sliders"></i> Control Center
+            </span>
+            <span class="text-xs font-bold text-slate-400">•</span>
+            <span class="text-xs font-bold text-slate-600">Администрирование базы знаний</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black font-display tracking-tight text-slate-900">
+            Пульт управления теорией
+          </h1>
+          <p class="mt-1 text-xs sm:text-sm font-semibold text-slate-600">
+            Курсы, модули, интерактивные конспекты, доступы учеников и детальная аналитика прохождения.
+          </p>
+        </div>
+
+        <!-- Course Switcher & Quick Action -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-2 bg-white/90 backdrop-blur-xs border-2 border-slate-200 rounded-2xl p-1.5 shadow-xs">
+            <label for="hub-course-select" class="text-xs font-bold text-slate-500 pl-2">Курс:</label>
+            <select id="hub-course-select" class="bg-transparent text-xs font-black text-slate-800 outline-none pr-3 cursor-pointer">
+              {% for c in courses %}
+              <option value="{{ c.id }}" {% if selected_course and c.id == selected_course.id %}selected{% endif %}>{{ c.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <a href="{{ url_for('theory.theory_course', course_id=selected_course.id, view='student') if selected_course else url_for('theory.theory_index', view='student') }}" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 border-b-[3px] border-b-slate-300 bg-white hover:bg-slate-50 text-xs font-black text-slate-700 shadow-xs transition active:translate-y-0.5 no-underline">
+            <i class="ph-bold ph-arrow-square-out text-sm"></i>
+            <span>Вид ученика</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- TACTILE NAVIGATION PILL TABS -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
+      <button type="button" class="admin-hub-tab-btn is-active inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 border-slate-200 bg-white text-xs font-black text-slate-700 shadow-xs cursor-pointer" data-tab="courses">
+        <i class="ph-bold ph-books text-sm"></i>
+        <span>Курсы и модули</span>
+        <span class="ml-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] font-mono font-bold text-slate-600">{{ groups|length }}</span>
+      </button>
+
+      <button type="button" class="admin-hub-tab-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 border-slate-200 bg-white text-xs font-black text-slate-700 shadow-xs cursor-pointer" data-tab="articles">
+        <i class="ph-bold ph-article text-sm"></i>
+        <span>Материалы и статьи</span>
+        <span class="ml-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] font-mono font-bold text-slate-600">{{ blocks|length }}</span>
+      </button>
+
+      <button type="button" class="admin-hub-tab-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 border-slate-200 bg-white text-xs font-black text-slate-700 shadow-xs cursor-pointer" data-tab="students">
+        <i class="ph-bold ph-users-three text-sm"></i>
+        <span>Ученики и доступы</span>
+        <span class="ml-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] font-mono font-bold text-slate-600">{{ students|length }}</span>
+      </button>
+
+      <button type="button" class="admin-hub-tab-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 border-slate-200 bg-white text-xs font-black text-slate-700 shadow-xs cursor-pointer" data-tab="analytics">
+        <i class="ph-bold ph-chart-line-up text-sm"></i>
+        <span>Прогресс и отзывы</span>
+        <span class="ml-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] font-mono font-bold text-slate-600">{{ feedbacks|length }}</span>
+      </button>
+
+      <button type="button" class="admin-hub-tab-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 border-slate-200 bg-white text-xs font-black text-slate-700 shadow-xs cursor-pointer" data-tab="tests">
+        <i class="ph-bold ph-exam text-sm"></i>
+        <span>Итоговые тесты</span>
+        <span class="ml-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-[10px] font-mono font-bold text-slate-600">{{ final_test_attempts|length }}</span>
+      </button>
+    </div>
+
+    <!-- ========================================================================================= -->
+    <!-- TAB 1: КУРСЫ И МОДУЛИ -->
+    <!-- ========================================================================================= -->
+    <div class="admin-hub-tab-content space-y-6" id="tab-content-courses">
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 class="text-lg font-black text-slate-800">Структура курсов и учебных модулей</h2>
+          <p class="text-xs text-slate-500 font-semibold">Управление курсами, порядком модулей и тематическими блоками</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-create-course" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 border-b-[3px] border-b-slate-300 bg-white hover:bg-slate-50 text-xs font-black text-slate-700 shadow-xs transition active:translate-y-0.5 cursor-pointer">
+            <i class="ph-bold ph-folder-plus text-indigo-600"></i>
+            <span>+ Новый курс</span>
+          </button>
+          <button type="button" id="btn-create-group" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 text-xs font-black text-white shadow-xs transition active:translate-y-0.5 cursor-pointer">
+            <i class="ph-bold ph-plus"></i>
+            <span>+ Добавить модуль</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modules Grid for Selected Course -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for g in groups %}
+        {% set g_blocks = blocks_by_group.get(g.id, []) %}
+        <div class="rounded-3xl border-2 border-slate-200 bg-white p-5 shadow-[0_4px_0_#CBD5E1] flex flex-col justify-between hover:border-indigo-300 transition group">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <span class="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-indigo-100 text-indigo-700 font-mono font-black text-xs">
+                №{{ g.position or loop.index }}
+              </span>
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                  {{ g_blocks|length }} тем
+                </span>
+                <button type="button" class="btn-edit-group p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition" data-group-id="{{ g.id }}" data-group-name="{{ g.name }}" data-group-desc="{{ g.description or '' }}" data-group-pos="{{ g.position or loop.index }}" title="Редактировать модуль">
+                  <i class="ph-bold ph-pencil-simple text-sm"></i>
+                </button>
+                <button type="button" class="btn-delete-group p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" data-group-id="{{ g.id }}" data-group-name="{{ g.name }}" title="Удалить модуль">
+                  <i class="ph-bold ph-trash text-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            <h3 class="text-base font-black text-slate-900 group-hover:text-indigo-600 transition">{{ g.name }}</h3>
+            {% if g.description %}
+            <p class="mt-1 text-xs font-semibold text-slate-500 line-clamp-2 leading-relaxed">{{ g.description }}</p>
+            {% endif %}
+
+            <!-- Mini topic pills in module -->
+            <div class="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
+              {% for b in g_blocks[:4] %}
+              <div class="flex items-center justify-between text-xs py-0.5 text-slate-600">
+                <span class="truncate font-semibold flex items-center gap-1.5">
+                  <span class="font-mono text-[11px] text-indigo-600 font-bold">№{{ b.task_number }}</span>
+                  <span class="truncate">{{ b.title }}</span>
+                </span>
+                <span class="text-[10px] font-bold {{ 'text-emerald-600' if b.status == 'published' else 'text-amber-600' }}">
+                  {{ 'Опубликовано' if b.status == 'published' else 'Черновик' }}
+                </span>
+              </div>
+              {% endfor %}
+              {% if g_blocks|length > 4 %}
+              <div class="text-[11px] font-bold text-slate-400 pt-1">
+                + ещё {{ g_blocks|length - 4 }} тем в модуле
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+            <button type="button" class="btn-add-topic-to-group inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer" data-group-id="{{ g.id }}">
+              <i class="ph-bold ph-plus-circle"></i> Добавить тему
+            </button>
+            <a href="?course_id={{ selected_course.id }}&tab=articles&group_id={{ g.id }}" class="text-xs font-bold text-slate-500 hover:text-slate-800 no-underline">
+              Все темы <i class="ph-bold ph-arrow-right text-[10px]"></i>
+            </a>
+          </div>
+        </div>
+        {% else %}
+        <div class="col-span-full rounded-3xl border-2 border-dashed border-slate-300 p-12 text-center bg-white/60">
+          <i class="ph-bold ph-books text-4xl text-slate-400 mb-2"></i>
+          <h3 class="text-base font-black text-slate-700">В этом курсе пока нет модулей</h3>
+          <p class="text-xs text-slate-500 mt-1 mb-4">Создайте первый модуль, чтобы структурировать конспекты и темы подготовки.</p>
+          <button type="button" onclick="document.getElementById('btn-create-group').click()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black shadow-xs cursor-pointer">
+            + Создать модуль
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ========================================================================================= -->
+    <!-- TAB 2: МАТЕРИАЛЫ И СТАТЬИ -->
+    <!-- ========================================================================================= -->
+    <div class="admin-hub-tab-content space-y-6 hidden" id="tab-content-articles">
+      <!-- Search, Module & Status filters -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="relative">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
+            <input type="search" id="article-filter-search" placeholder="Поиск по названию или номеру…" class="pl-9 pr-3 py-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-semibold text-slate-800 outline-none focus:border-indigo-400 w-64 shadow-xs">
+          </div>
+
+          <select id="article-filter-group" class="py-2 px-3 rounded-xl border-2 border-slate-200 bg-white text-xs font-black text-slate-700 outline-none cursor-pointer shadow-xs">
+            <option value="">Все модули</option>
+            {% for g in groups %}
+            <option value="{{ g.id }}">{{ g.name }}</option>
+            {% endfor %}
+          </select>
+
+          <select id="article-filter-status" class="py-2 px-3 rounded-xl border-2 border-slate-200 bg-white text-xs font-black text-slate-700 outline-none cursor-pointer shadow-xs">
+            <option value="">Все статусы</option>
+            <option value="published">Только опубликованные</option>
+            <option value="draft">Только черновики</option>
+          </select>
+        </div>
+
+        <button type="button" id="btn-create-article" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 text-xs font-black text-white shadow-xs transition active:translate-y-0.5 cursor-pointer">
+          <i class="ph-bold ph-plus"></i>
+          <span>+ Создать тему</span>
+        </button>
+      </div>
+
+      <!-- Topics Table Card -->
+      <div class="rounded-3xl border-2 border-slate-200 bg-white shadow-[0_4px_0_#CBD5E1] overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse" id="articles-table">
+            <thead>
+              <tr class="bg-slate-50 border-b-2 border-slate-100 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                <th class="py-3 px-4 w-16">№</th>
+                <th class="py-3 px-4">Тема и конспект</th>
+                <th class="py-3 px-4">Модуль</th>
+                <th class="py-3 px-4 w-28">Статус</th>
+                <th class="py-3 px-4 w-28">Время</th>
+                <th class="py-3 px-4 w-28">Отзывы</th>
+                <th class="py-3 px-4 w-48 text-right">Действия</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+              {% for b in blocks %}
+              <tr class="hover:bg-indigo-50/40 transition article-row" data-block-id="{{ b.id }}" data-group-id="{{ b.group_id }}" data-status="{{ b.status }}" data-title="{{ b.title|lower }}" data-task-number="{{ b.task_number }}">
+                <td class="py-3 px-4 font-mono font-black text-indigo-700">№{{ b.task_number }}</td>
+                <td class="py-3 px-4">
+                  <div class="font-bold text-slate-900">{{ b.title }}</div>
+                  {% if b.description %}
+                  <div class="text-[11px] text-slate-400 truncate max-w-md">{{ b.description }}</div>
+                  {% endif %}
+                </td>
+                <td class="py-3 px-4 font-semibold text-slate-600">
+                  {{ b.group_name or 'Без модуля' }}
+                </td>
+                <td class="py-3 px-4">
+                  <button type="button" class="btn-toggle-status inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black cursor-pointer border transition {{ 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' if b.status == 'published' else 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' }}" data-block-id="{{ b.id }}" data-current-status="{{ b.status }}">
+                    <i class="ph-bold {{ 'ph-check' if b.status == 'published' else 'ph-clock' }}"></i>
+                    <span>{{ 'Опубликовано' if b.status == 'published' else 'Черновик' }}</span>
+                  </button>
+                </td>
+                <td class="py-3 px-4 font-semibold text-slate-500">
+                  <i class="ph-bold ph-clock text-slate-400"></i> ~{{ b.read_minutes or 15 }} мин
+                </td>
+                <td class="py-3 px-4 font-bold text-slate-600">
+                  {% if b.feedback_count %}
+                  <span class="inline-flex items-center gap-1 text-amber-600">
+                    <i class="ph-fill ph-star"></i> {{ b.avg_rating }} ({{ b.feedback_count }})
+                  </span>
+                  {% else %}
+                  <span class="text-slate-300">—</span>
+                  {% endif %}
+                </td>
+                <td class="py-3 px-4 text-right space-x-1">
+                  <button type="button" class="btn-edit-article px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-700 font-bold text-slate-700 transition cursor-pointer" data-block-id="{{ b.id }}">
+                    <i class="ph-bold ph-pencil-simple"></i> Редактор
+                  </button>
+                  <a href="{{ url_for('theory.theory_view_block', block_id=b.id, course_id=selected_course.id) }}" target="_blank" class="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-bold text-slate-600 transition no-underline inline-block">
+                    <i class="ph-bold ph-eye"></i>
+                  </a>
+                  <button type="button" class="btn-delete-article px-2 py-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer" data-block-id="{{ b.id }}" data-title="{{ b.title }}">
+                    <i class="ph-bold ph-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================================= -->
+    <!-- TAB 3: УЧЕНИКИ И ДОСТУПЫ (МАТРИЦА НАЗНАЧЕНИЙ) -->
+    <!-- ========================================================================================= -->
+    <div class="admin-hub-tab-content space-y-6 hidden" id="tab-content-students">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-black text-slate-800">Мини-профили и доступы к теории</h2>
+          <p class="text-xs text-slate-500 font-semibold">Назначение курса, активация и индивидуальная настройка тем для каждого ученика</p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+          <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 cursor-pointer text-xs font-bold text-slate-700 transition select-none border border-slate-200 shadow-xs">
+            <input type="checkbox" id="toggle-hide-test-accounts" class="rounded text-indigo-600 focus:ring-0">
+            <span>Скрыть QA-ботов</span>
+          </label>
+          <div class="relative">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+            <input type="search" id="student-filter-search" placeholder="Поиск по имени, логину, ID…" class="pl-8 pr-3 py-2 rounded-xl border-2 border-slate-200 bg-white text-xs font-semibold text-slate-800 outline-none focus:border-indigo-400 w-64 shadow-xs">
+          </div>
+          <span id="students-count-badge" class="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-black text-xs border border-indigo-200">
+            Показано: {{ students|length }}
+          </span>
+        </div>
+      </div>
+
+      <div class="space-y-3" id="students-access-container">
+        {% for st in students %}
+        <div class="rounded-2xl sm:rounded-3xl border-2 border-slate-200 bg-white p-4 sm:p-5 shadow-[0_4px_0_#CBD5E1] transition-all hover:border-indigo-300 student-access-card cursor-pointer group" 
+             data-student-id="{{ st.student_id }}" 
+             data-student-name="{{ st.name|lower }}" 
+             data-username="{{ st.username|lower }}"
+             data-is-test="{{ 'true' if st.is_test else 'false' }}">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <!-- Student Info -->
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm uppercase shrink-0 student-avatar bg-gradient-to-br from-indigo-500 to-purple-600 text-white ring-2 ring-indigo-200 shadow-sm group-hover:scale-105 transition-transform">
+                {{ st.initials }}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-sm sm:text-base font-black text-slate-900 truncate">{{ st.name }}</h3>
+                  <span class="text-xs font-bold text-slate-400">@{{ st.username }}</span>
+                  <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">ID: {{ st.student_id }}</span>
+                  {% if st.is_test %}
+                    <span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">Тест</span>
+                  {% endif %}
+                </div>
+                <!-- Courses summary badges -->
+                <div class="flex items-center gap-1.5 flex-wrap mt-1.5 student-courses-summary" data-student-id="{{ st.student_id }}">
+                  {% if st.courses_summary %}
+                    {% for c in st.courses_summary %}
+                      {% if c.status == 'active' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+                          <i class="ph-fill ph-check-circle text-emerald-600 text-xs"></i> {{ c.title }}
+                        </span>
+                      {% elif c.status == 'assigned' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs">
+                          <i class="ph-bold ph-lock-key text-amber-600 text-xs"></i> {{ c.title }} (не инициализирован)
+                        </span>
+                      {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200 shadow-xs">
+                      <i class="ph-bold ph-minus-circle text-xs"></i> Курсы не назначены
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Side: Mini-Profile Button -->
+            <div class="flex items-center gap-2 shrink-0 justify-end">
+              <button type="button" class="btn-open-student-theory-profile inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition shadow-[0_3px_0_#3730A3] active:translate-y-0.5 active:shadow-none cursor-pointer"
+                      data-student-id="{{ st.student_id }}" 
+                      data-student-name="{{ st.name }}">
+                <i class="ph-bold ph-sliders-horizontal text-sm"></i>
+                <span>Мини-профиль теории</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="rounded-3xl border-2 border-dashed border-slate-300 p-8 text-center bg-white">
+          <p class="text-sm font-bold text-slate-500">Нет закрепленных учеников для управления доступом.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- ========================================================================================= -->
+    <!-- TAB 4: ПРОГРЕСС И АНАЛИТИКА (ОТЗЫВЫ И СТАТИСТИКА) -->
+    <!-- ========================================================================================= -->
+    <div class="admin-hub-tab-content space-y-6 hidden" id="tab-content-analytics">
+      <!-- 4 Stat Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-[0_4px_0_#CBD5E1]">
+          <div class="text-[11px] font-black uppercase text-slate-400">Учеников на курсе</div>
+          <div class="text-2xl font-black text-slate-900 mt-1">{{ students|length }}</div>
+        </div>
+
+        <div class="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-[0_4px_0_#CBD5E1]">
+          <div class="text-[11px] font-black uppercase text-slate-400">Опубликовано тем</div>
+          <div class="text-2xl font-black text-indigo-600 mt-1">{{ blocks|selectattr('status', 'equalto', 'published')|list|length }} / {{ blocks|length }}</div>
+        </div>
+
+        <div class="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-[0_4px_0_#CBD5E1]">
+          <div class="text-[11px] font-black uppercase text-slate-400">Средняя оценка тем</div>
+          <div class="text-2xl font-black text-amber-500 mt-1 flex items-center gap-1">
+            <i class="ph-fill ph-star"></i> {{ avg_course_rating or '5.0' }}
+          </div>
+        </div>
+
+        <div class="rounded-3xl border-2 border-slate-200 bg-white p-4 shadow-[0_4px_0_#CBD5E1]">
+          <div class="text-[11px] font-black uppercase text-slate-400">Отзывов получено</div>
+          <div class="text-2xl font-black text-emerald-600 mt-1">{{ feedbacks|length }}</div>
+        </div>
+      </div>
+
+      <!-- Feedbacks Table -->
+      <div class="rounded-3xl border-2 border-slate-200 bg-white shadow-[0_4px_0_#CBD5E1] p-5 space-y-4">
+        <div class="flex items-center justify-between gap-4">
+          <h3 class="text-base font-black text-slate-900">Отзывы и оценки учеников по темам</h3>
+          <span class="text-xs font-bold text-slate-400">{{ feedbacks|length }} записей</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                <th class="py-2.5 px-3">Ученик</th>
+                <th class="py-2.5 px-3">Тема</th>
+                <th class="py-2.5 px-3">Оценка</th>
+                <th class="py-2.5 px-3">Комментарий</th>
+                <th class="py-2.5 px-3 text-right">Дата</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+              {% for f in feedbacks %}
+              <tr class="hover:bg-slate-50/70 transition">
+                <td class="py-3 px-3 font-bold text-slate-900">{{ f.student_name }}</td>
+                <td class="py-3 px-3">
+                  <span class="font-mono text-indigo-600 font-black">№{{ f.task_number }}</span>
+                  <span class="text-slate-600 ml-1">{{ f.topic_title }}</span>
+                </td>
+                <td class="py-3 px-3">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 font-bold">
+                    <i class="ph-fill ph-star text-amber-500"></i> {{ f.rating }}/5
+                  </span>
+                </td>
+                <td class="py-3 px-3 font-normal text-slate-600 max-w-md">
+                  {{ f.comment or 'Без текста комментария' }}
+                </td>
+                <td class="py-3 px-3 text-right text-slate-400 font-mono text-[11px]">
+                  {{ f.created_at }}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="py-8 text-center text-slate-400 font-bold">
+                  Пока нет оставленных оценок и отзывов по этому курсу.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================================================= -->
+    <!-- TAB 5: ИТОГОВЫЕ ТЕСТЫ -->
+    <!-- ========================================================================================= -->
+    <div class="admin-hub-tab-content space-y-6 hidden" id="tab-content-tests">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-black text-slate-800">Результаты и попытки итогового теста</h2>
+          <p class="text-xs text-slate-500 font-semibold">Все попытки сдачи, баллы, фиксация правильных и ошибочных ответов</p>
+        </div>
+      </div>
+
+      <div class="rounded-3xl border-2 border-slate-200 bg-white shadow-[0_4px_0_#CBD5E1] p-5">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                <th class="py-3 px-3">Ученик</th>
+                <th class="py-3 px-3">Попытка</th>
+                <th class="py-3 px-3">Результат</th>
+                <th class="py-3 px-3">Процент</th>
+                <th class="py-3 px-3">Статус</th>
+                <th class="py-3 px-3">Дата</th>
+                <th class="py-3 px-3 text-right">Детали</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+              {% for a in final_test_attempts %}
+              <tr class="hover:bg-slate-50/70 transition">
+                <td class="py-3 px-3 font-bold text-slate-900">{{ a.student_name }}</td>
+                <td class="py-3 px-3 font-mono font-bold text-slate-600">Попытка #{{ a.attempt_number }}</td>
+                <td class="py-3 px-3 font-mono font-black text-indigo-700">{{ a.score }} / {{ a.total }}</td>
+                <td class="py-3 px-3 font-bold">{{ a.percent }}%</td>
+                <td class="py-3 px-3">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border {{ 'bg-emerald-50 text-emerald-700 border-emerald-200' if a.passed else 'bg-rose-50 text-rose-700 border-rose-200' }}">
+                    <i class="ph-bold {{ 'ph-check' if a.passed else 'ph-x' }}"></i>
+                    {{ 'Сдано' if a.passed else 'Не сдано' }}
+                  </span>
+                </td>
+                <td class="py-3 px-3 text-slate-400 font-mono text-[11px]">{{ a.created_at }}</td>
+                <td class="py-3 px-3 text-right">
+                  <button type="button" class="btn-inspect-test-attempt px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:text-indigo-700 font-bold text-xs text-slate-700 transition cursor-pointer" data-attempt-id="{{ a.id }}" data-details='{{ a.details|tojson }}'>
+                    Разбор ответов
+                  </button>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="py-8 text-center text-slate-400 font-bold">
+                  Пока нет завершенных попыток сдачи итогового теста.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- ========================================================================================= -->
+<!-- MODAL 1: СОЗДАНИЕ / РЕДАКТИРОВАНИЕ КУРСА -->
+<!-- ========================================================================================= -->
+<div id="modal-course" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+  <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <h3 class="text-base font-black text-slate-900" id="modal-course-title">Новый курс теории</h3>
+      <button type="button" class="btn-close-modal p-1.5 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+    <form id="form-course" class="space-y-3.5">
+      <input type="hidden" name="id" id="course-id">
+      <div>
+        <label for="course-title" class="block text-xs font-bold text-slate-700 mb-1">Название курса</label>
+        <input type="text" id="course-title" name="title" required placeholder="Например: Python для ЕГЭ с нуля" class="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-400">
+      </div>
+      <div>
+        <label for="course-slug" class="block text-xs font-bold text-slate-700 mb-1">Слаг / URL код</label>
+        <input type="text" id="course-slug" name="slug" placeholder="python-foundations" class="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-mono font-semibold text-slate-800 outline-none focus:border-indigo-400">
+      </div>
+      <div>
+        <label for="course-desc" class="block text-xs font-bold text-slate-700 mb-1">Описание курса</label>
+        <textarea id="course-desc" name="description" rows="2" placeholder="Краткое описание для учеников…" class="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-indigo-400"></textarea>
+      </div>
+      <div class="flex items-center gap-2 pt-2">
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+          <input type="checkbox" id="course-active" name="is_active" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-400">
+          <span>Курс активен и доступен в платформе</span>
+        </label>
+      </div>
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+        <button type="button" class="btn-close-modal px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 cursor-pointer">Отмена</button>
+        <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-xs cursor-pointer">Сохранить курс</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================================= -->
+<!-- MODAL 2: СОЗДАНИЕ / РЕДАКТИРОВАНИЕ МОДУЛЯ -->
+<!-- ========================================================================================= -->
+<div id="modal-group" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+  <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <h3 class="text-base font-black text-slate-900" id="modal-group-title">Учебный модуль</h3>
+      <button type="button" class="btn-close-modal p-1.5 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+    <form id="form-group" class="space-y-3.5">
+      <input type="hidden" name="id" id="group-id">
+      <input type="hidden" name="course_id" value="{{ selected_course.id }}">
+      <div>
+        <label for="group-name" class="block text-xs font-bold text-slate-700 mb-1">Название модуля</label>
+        <input type="text" id="group-name" name="name" required placeholder="Например: Модуль 1. Основы синтаксиса и переменные" class="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-400">
+      </div>
+      <div>
+        <label for="group-pos" class="block text-xs font-bold text-slate-700 mb-1">Порядковый номер / позиция</label>
+        <input type="number" id="group-pos" name="position" value="1" min="1" class="w-28 px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-mono font-semibold text-slate-800 outline-none focus:border-indigo-400">
+      </div>
+      <div>
+        <label for="group-desc" class="block text-xs font-bold text-slate-700 mb-1">Описание модуля</label>
+        <textarea id="group-desc" name="description" rows="2" placeholder="Чему научится ученик в этом модуле…" class="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-indigo-400"></textarea>
+      </div>
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+        <button type="button" class="btn-close-modal px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 cursor-pointer">Отмена</button>
+        <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-xs cursor-pointer">Сохранить модуль</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================================================================= -->
+<!-- MODAL 3: ПОЛНОРАЗМЕРНЫЙ V2 РЕДАКТОР СТАТЬИ И ПРЕДПРОСМОТР -->
+<!-- ========================================================================================= -->
+<div id="modal-article-editor" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 modal-backdrop hidden">
+  <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl w-full max-w-6xl max-h-[96vh] flex flex-col overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/70">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="w-7 h-7 rounded-xl bg-indigo-600 text-white font-mono font-black text-xs flex items-center justify-center" id="editor-badge-num">№</span>
+        <h3 class="text-base font-black text-slate-900" id="editor-modal-title">Редактирование темы</h3>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" class="btn-close-modal p-1.5 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Body: Form + Editor Tabs -->
+    <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+      <form id="form-article" class="space-y-4">
+        <input type="hidden" name="id" id="art-id">
+        <input type="hidden" name="course_id" value="{{ selected_course.id }}">
+
+        <!-- Top metadata grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+          <div>
+            <label for="art-task-num" class="block text-[11px] font-bold text-slate-600 mb-1">Номер темы (1..30)</label>
+            <input type="number" id="art-task-num" name="task_number" required min="1" max="99" class="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-mono font-bold text-slate-800 outline-none">
+          </div>
+
+          <div>
+            <label for="art-group" class="block text-[11px] font-bold text-slate-600 mb-1">Модуль курса</label>
+            <select id="art-group" name="group_id" class="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-800 outline-none cursor-pointer">
+              {% for g in groups %}
+              <option value="{{ g.id }}">{{ g.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label for="art-minutes" class="block text-[11px] font-bold text-slate-600 mb-1">Время чтения (мин)</label>
+            <input type="number" id="art-minutes" name="read_minutes" value="15" min="1" max="180" class="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-mono font-bold text-slate-800 outline-none">
+          </div>
+
+          <div>
+            <label for="art-status" class="block text-[11px] font-bold text-slate-600 mb-1">Статус публикации</label>
+            <select id="art-status" name="status" class="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 outline-none cursor-pointer">
+              <option value="published">Опубликовано (доступно)</option>
+              <option value="draft">Черновик (скрыто)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="art-title" class="block text-xs font-bold text-slate-700 mb-1">Название темы</label>
+          <input type="text" id="art-title" name="title" required placeholder="Например: Списки (list), срезы и методы списков" class="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-bold text-slate-900 outline-none focus:border-indigo-400">
+        </div>
+
+        <div>
+          <label for="art-desc" class="block text-xs font-bold text-slate-700 mb-1">Краткая аннотация (карточка темы)</label>
+          <input type="text" id="art-desc" name="description" placeholder="В этом конспекте разберем индексацию, методы append, pop, sort…" class="w-full px-3 py-2 rounded-xl border-2 border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-400">
+        </div>
+
+        <!-- Snippets Toolbar -->
+        <div class="flex items-center gap-1.5 flex-wrap bg-slate-100 p-2 rounded-xl border border-slate-200">
+          <span class="text-[10px] font-black uppercase text-slate-500 mr-1">Быстрые блоки:</span>
+          <button type="button" class="btn-snippet px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer" data-snippet="section">Секция</button>
+          <button type="button" class="btn-snippet px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer" data-snippet="code">Код / Run</button>
+          <button type="button" class="btn-snippet px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer" data-snippet="choice">Квиз с выбором</button>
+          <button type="button" class="btn-snippet px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer" data-snippet="match">Сопоставление</button>
+          <button type="button" class="btn-snippet px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer" data-snippet="steps">Шаги алгоритма</button>
+          <button type="button" class="btn-snippet px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer" data-snippet="tip">Совет</button>
+        </div>
+
+        <!-- Editor Tabs: Markdown Code vs Live Preview -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <button type="button" id="tab-editor-code" class="px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-black cursor-pointer">Текст конспекта</button>
+              <button type="button" id="tab-editor-preview" class="px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-black hover:bg-slate-200 cursor-pointer">Предпросмотр</button>
+            </div>
+          </div>
+
+          <div id="editor-code-pane">
+            <textarea id="art-content" name="content" rows="18" placeholder="Введите разметку статьи, секции [section:...] и интерактивные блоки..." class="w-full p-4 rounded-2xl border-2 border-slate-200 font-mono text-xs text-slate-800 outline-none focus:border-indigo-400 bg-white leading-relaxed"></textarea>
+          </div>
+
+          <div id="editor-preview-pane" class="hidden rounded-2xl border-2 border-slate-200 p-6 bg-white min-h-[300px] overflow-x-auto text-slate-800 text-sm">
+            <div id="editor-preview-html">Загрузка предпросмотра…</div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+          <div class="text-[11px] text-slate-400 font-semibold">
+            Изменения сохраняются в базу данных немедленно.
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" class="btn-close-modal px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 cursor-pointer">Закрыть</button>
+            <button type="submit" class="px-6 py-2.5 rounded-xl border-b-[3px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-xs cursor-pointer active:translate-y-0.5">
+              Сохранить конспект
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================================= -->
+<!-- MODAL 4: РАЗБОР ПОПЫТКИ ИТОГОВОГО ТЕСТА -->
+<!-- ========================================================================================= -->
+<div id="modal-test-inspector" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+  <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col p-6 space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <h3 class="text-base font-black text-slate-900">Детальный разбор попытки теста</h3>
+      <button type="button" class="btn-close-modal p-1.5 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+    <div class="flex-1 overflow-y-auto space-y-3" id="test-inspector-body">
+      <!-- Injected via JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================================= -->
+<!-- MODAL 5: УПРАВЛЕНИЕ ДОСТУПОМ К ТЕМАМ УЧЕНИКА -->
+<!-- ========================================================================================= -->
+<div id="modal-student-topics" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop hidden">
+  <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col p-5 sm:p-6 space-y-4">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div>
+        <h3 class="text-base font-black text-slate-900" id="modal-student-topics-title">Доступ к темам курса</h3>
+        <p class="text-xs text-slate-500 font-semibold" id="modal-student-topics-subtitle">Настройка видимости конспектов для выбранного ученика</p>
+      </div>
+      <button type="button" class="btn-close-modal p-1.5 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+
+    <!-- Quick batch controls -->
+    <div class="flex items-center justify-between gap-2 p-3 rounded-2xl bg-slate-50 border border-slate-200 flex-wrap">
+      <span class="text-xs font-bold text-slate-600">Быстрые действия:</span>
+      <div class="flex items-center gap-2">
+        <button type="button" id="modal-btn-unlock-all" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-emerald-700 hover:bg-emerald-50 transition cursor-pointer">
+          <i class="ph-bold ph-lock-open text-emerald-600"></i> Открыть все
+        </button>
+        <button type="button" id="modal-btn-lock-all" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-rose-700 hover:bg-rose-50 transition cursor-pointer">
+          <i class="ph-bold ph-lock-key text-rose-600"></i> Заблокировать все
+        </button>
+      </div>
+    </div>
+
+    <!-- Topic Badges Grid -->
+    <div class="flex-1 overflow-y-auto pr-1">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1" id="modal-student-topics-grid">
+        {% for b in blocks %}
+        <label class="modal-topic-lock-pill flex items-center justify-between gap-1.5 p-2 rounded-xl border text-xs font-semibold cursor-pointer transition select-none bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100" data-task-number="{{ b.task_number }}">
+          <div class="truncate flex items-center gap-1">
+            <span class="font-mono font-bold text-indigo-700">№{{ b.task_number }}</span>
+            <span class="truncate text-[11px] text-slate-600">{{ b.title[:14] }}</span>
+          </div>
+          <input type="checkbox" class="modal-toggle-topic-lock sr-only" data-task-number="{{ b.task_number }}" checked>
+          <i class="ph-bold ph-lock-open text-emerald-600 text-sm"></i>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="pt-3 border-t border-slate-100 flex items-center justify-end">
+      <button type="button" class="btn-close-modal px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 cursor-pointer">Готово</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================================= -->
+<!-- MODAL: МИНИ-ПРОФИЛЬ ТЕОРИИ УЧЕНИКА (УПРАВЛЕНИЕ КУРСАМИ И ДОСТУПАМИ) -->
+<!-- ========================================================================================= -->
+<div id="modal-student-theory-profile" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 modal-backdrop hidden">
+  <div class="bg-white rounded-3xl border-2 border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <!-- Header -->
+    <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/80">
+      <div class="flex items-center gap-3.5 min-w-0">
+        <div id="stp-header-avatar" class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm uppercase shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 text-white ring-2 ring-indigo-200 shadow-sm">
+          ST
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h3 id="stp-header-name" class="text-base sm:text-lg font-black text-slate-900 truncate">Имя ученика</h3>
+            <span id="stp-header-username" class="text-xs font-bold text-slate-400">@username</span>
+            <span id="stp-header-id" class="px-2 py-0.5 rounded-lg bg-slate-200 text-slate-700 text-[10px] font-bold">ID: 0</span>
+          </div>
+          <p class="text-xs text-slate-500 font-semibold mt-0.5">Мини-профиль теории: назначение курсов платформы и персональные доступы к темам</p>
+        </div>
+      </div>
+      <button type="button" class="btn-close-modal p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition cursor-pointer shrink-0" title="Закрыть окно">
+        <i class="ph-bold ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Body: Courses List Container -->
+    <div id="stp-courses-container" class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+      <div class="p-8 text-center text-slate-400">
+        <i class="ph-bold ph-spinner animate-spin text-3xl mb-2 inline-block"></i>
+        <p class="text-xs font-bold">Загрузка мини-профиля теории...</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4 flex-wrap">
+      <div class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+        <i class="ph-bold ph-check-circle text-emerald-500 text-sm"></i>
+        <span>Настройки сохраняются автоматически в реальном времени</span>
+      </div>
+      <button type="button" class="btn-close-modal px-6 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-black text-xs transition cursor-pointer">
+        Готово
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const hub = document.getElementById('theory-admin-hub');
+  if (!hub) return;
+  const courseSelect = document.getElementById('hub-course-select');
+
+  // 1. Course Switcher
+  courseSelect?.addEventListener('change', () => {
+    const url = new URL(location.href);
+    url.searchParams.set('course_id', courseSelect.value);
+    location.href = url.toString();
+  });
+
+  // 2. Tab Switcher
+  const tabButtons = [...document.querySelectorAll('.admin-hub-tab-btn')];
+  const tabContents = [...document.querySelectorAll('.admin-hub-tab-content')];
+
+  const activateTab = (tabName) => {
+    tabButtons.forEach(btn => {
+      const match = btn.dataset.tab === tabName;
+      btn.classList.toggle('is-active', match);
+    });
+    tabContents.forEach(content => {
+      content.classList.toggle('hidden', content.id !== `tab-content-${tabName}`);
+    });
+    const url = new URL(location.href);
+    url.searchParams.set('tab', tabName);
+    history.replaceState(null, '', url);
+  };
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+  });
+
+  const urlParams = new URLSearchParams(location.search);
+  const initialTab = urlParams.get('tab') || 'courses';
+  if (['courses', 'articles', 'students', 'analytics', 'tests'].includes(initialTab)) {
+    activateTab(initialTab);
+  }
+
+  // 3. Modals Close Handler
+  const modals = [
+    document.getElementById('modal-course'),
+    document.getElementById('modal-group'),
+    document.getElementById('modal-article-editor'),
+    document.getElementById('modal-test-inspector'),
+    document.getElementById('modal-student-topics'),
+    document.getElementById('modal-student-theory-profile')
+  ];
+  const closeModal = (modal) => modal?.classList.add('hidden');
+  document.querySelectorAll('.btn-close-modal').forEach(btn => {
+    btn.addEventListener('click', () => modals.forEach(closeModal));
+  });
+  modals.forEach(m => {
+    m?.addEventListener('click', (e) => {
+      if (e.target === m) closeModal(m);
+    });
+  });
+
+  // 4. Course Modal
+  const modalCourse = document.getElementById('modal-course');
+  const formCourse = document.getElementById('form-course');
+  document.getElementById('btn-create-course')?.addEventListener('click', () => {
+    formCourse.reset();
+    document.getElementById('course-id').value = '';
+    document.getElementById('modal-course-title').textContent = 'Новый курс теории';
+    modalCourse.classList.remove('hidden');
+  });
+
+  formCourse?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+      id: document.getElementById('course-id').value || null,
+      title: document.getElementById('course-title').value.trim(),
+      slug: document.getElementById('course-slug').value.trim(),
+      description: document.getElementById('course-desc').value.trim(),
+      is_active: document.getElementById('course-active').checked
+    };
+    try {
+      const resp = await fetch('{{ url_for("theory.api_manage_course_save") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify(data)
+      });
+      const res = await resp.json();
+      if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка');
+      window.BooNotify?.success('Курс успешно сохранен');
+      closeModal(modalCourse);
+      setTimeout(() => location.reload(), 500);
+    } catch (err) {
+      window.BooNotify?.error(err.message || 'Не удалось сохранить курс');
+    }
+  });
+
+  // 5. Group Modal
+  const modalGroup = document.getElementById('modal-group');
+  const formGroup = document.getElementById('form-group');
+  document.getElementById('btn-create-group')?.addEventListener('click', () => {
+    formGroup.reset();
+    document.getElementById('group-id').value = '';
+    document.getElementById('modal-group-title').textContent = 'Новый учебный модуль';
+    modalGroup.classList.remove('hidden');
+  });
+
+  document.querySelectorAll('.btn-edit-group').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('group-id').value = btn.dataset.groupId;
+      document.getElementById('group-name').value = btn.dataset.groupName;
+      document.getElementById('group-desc').value = btn.dataset.groupDesc;
+      document.getElementById('group-pos').value = btn.dataset.groupPos;
+      document.getElementById('modal-group-title').textContent = 'Редактирование модуля';
+      modalGroup.classList.remove('hidden');
+    });
+  });
+
+  document.querySelectorAll('.btn-delete-group').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Удалить модуль «${btn.dataset.groupName}»? Темы в этом модуле должны быть предварительно перемещены.`)) return;
+      try {
+        const resp = await fetch('{{ url_for("theory.api_manage_group_delete") }}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+          body: JSON.stringify({id: Number(btn.dataset.groupId)})
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка');
+        window.BooNotify?.success('Модуль удален');
+        setTimeout(() => location.reload(), 500);
+      } catch (err) {
+        window.BooNotify?.error(err.message || 'Не удалось удалить модуль');
+      }
+    });
+  });
+
+  formGroup?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+      id: document.getElementById('group-id').value || null,
+      course_id: Number('{{ selected_course.id }}'),
+      name: document.getElementById('group-name').value.trim(),
+      position: Number(document.getElementById('group-pos').value || 1),
+      description: document.getElementById('group-desc').value.trim()
+    };
+    try {
+      const resp = await fetch('{{ url_for("theory.api_manage_group_save") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify(data)
+      });
+      const res = await resp.json();
+      if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка');
+      window.BooNotify?.success('Модуль успешно сохранен');
+      closeModal(modalGroup);
+      setTimeout(() => location.reload(), 500);
+    } catch (err) {
+      window.BooNotify?.error(err.message || 'Не удалось сохранить модуль');
+    }
+  });
+
+  // 6. Article Status Quick Toggle
+  document.querySelectorAll('.btn-toggle-status').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const blockId = Number(btn.dataset.blockId);
+      const curr = btn.dataset.currentStatus;
+      const next = curr === 'published' ? 'draft' : 'published';
+      try {
+        const resp = await fetch('{{ url_for("theory.api_manage_block_toggle_status") }}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+          body: JSON.stringify({id: blockId, status: next})
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка');
+        btn.dataset.currentStatus = res.status;
+        const row = btn.closest('tr');
+        if (row) row.dataset.status = res.status;
+        btn.className = `btn-toggle-status inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black cursor-pointer border transition ${res.status === 'published' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`;
+        btn.innerHTML = `<i class="ph-bold ${res.status === 'published' ? 'ph-check' : 'ph-clock'}"></i><span>${res.status === 'published' ? 'Опубликовано' : 'Черновик'}</span>`;
+        window.BooNotify?.success(`Тема переведена в статус: ${res.status === 'published' ? 'Опубликовано' : 'Черновик'}`);
+      } catch (err) {
+        window.BooNotify?.error(err.message || 'Не удалось изменить статус');
+      }
+    });
+  });
+
+  // 7. Full Article Editor Modal
+  const modalEditor = document.getElementById('modal-article-editor');
+  const formArticle = document.getElementById('form-article');
+  const openEditor = async (blockId = null, prefillGroupId = null) => {
+    formArticle.reset();
+    document.getElementById('art-id').value = blockId || '';
+    if (blockId) {
+      document.getElementById('editor-modal-title').textContent = 'Редактирование темы';
+      try {
+        const resp = await fetch(`{{ url_for('theory.api_manage_block_get', block_id=0) }}`.replace('/0', `/${blockId}`));
+        const res = await resp.json();
+        if (!res.success) throw new Error(res.error);
+        const b = res.block;
+        document.getElementById('art-task-num').value = b.task_number;
+        document.getElementById('editor-badge-num').textContent = `№${b.task_number}`;
+        document.getElementById('art-group').value = b.group_id;
+        document.getElementById('art-minutes').value = b.read_minutes || 15;
+        document.getElementById('art-status').value = b.status || 'draft';
+        document.getElementById('art-title').value = b.title || '';
+        document.getElementById('art-desc').value = b.description || '';
+        document.getElementById('art-content').value = b.content || '';
+      } catch (err) {
+        window.BooNotify?.error('Не удалось загрузить тему');
+        return;
+      }
+    } else {
+      document.getElementById('editor-modal-title').textContent = 'Новая тема курса';
+      document.getElementById('editor-badge-num').textContent = '+';
+      if (prefillGroupId) document.getElementById('art-group').value = prefillGroupId;
+      document.getElementById('art-status').value = 'published';
+    }
+    modalEditor.classList.remove('hidden');
+  };
+
+  document.getElementById('btn-create-article')?.addEventListener('click', () => openEditor());
+  document.querySelectorAll('.btn-add-topic-to-group').forEach(b => {
+    b.addEventListener('click', () => openEditor(null, b.dataset.groupId));
+  });
+  document.querySelectorAll('.btn-edit-article').forEach(b => {
+    b.addEventListener('click', () => openEditor(Number(b.dataset.blockId)));
+  });
+
+  // Editor Preview Switching
+  const btnCode = document.getElementById('tab-editor-code');
+  const btnPreview = document.getElementById('tab-editor-preview');
+  const paneCode = document.getElementById('editor-code-pane');
+  const panePreview = document.getElementById('editor-preview-pane');
+
+  btnCode?.addEventListener('click', () => {
+    btnCode.className = 'px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-black cursor-pointer';
+    btnPreview.className = 'px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-black hover:bg-slate-200 cursor-pointer';
+    paneCode.classList.remove('hidden');
+    panePreview.classList.add('hidden');
+  });
+
+  btnPreview?.addEventListener('click', async () => {
+    btnPreview.className = 'px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-black cursor-pointer';
+    btnCode.className = 'px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-black hover:bg-slate-200 cursor-pointer';
+    paneCode.classList.add('hidden');
+    panePreview.classList.remove('hidden');
+
+    const previewContainer = document.getElementById('editor-preview-html');
+    previewContainer.innerHTML = '<div class="text-slate-400 font-bold p-4">Формирование предпросмотра…</div>';
+    try {
+      const resp = await fetch('{{ url_for("theory.theory_manage_preview") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify({ content: document.getElementById('art-content').value })
+      });
+      const res = await resp.json();
+      previewContainer.innerHTML = res.html || '<p class="text-slate-400">Пустой конспект</p>';
+      if (window.Prism) window.Prism.highlightAllUnder(previewContainer);
+    } catch (e) {
+      previewContainer.innerHTML = '<p class="text-rose-600">Ошибка формирования предпросмотра</p>';
+    }
+  });
+
+  // Snippets Toolbar
+  const snippets = {
+    section: '\n[section:Название раздела]\nТекст и объяснение темы здесь...\n[/section]\n',
+    code: '\n```python\ndef solution():\n    return 42\n\nprint(solution())\n```\n',
+    choice: '\n[interactive:choice key="check_1" options="Вариант А|Вариант Б|Вариант В" answer="Вариант А"]\nКакое из утверждений является верным?\n[/interactive]\n',
+    match: '\n[interactive:match key="match_1" pairs="Тип int=Целое число|Тип float=Вещественное число|Тип str=Строка"]\nСопоставьте тип данных и его описание\n[/interactive]\n',
+    steps: '\n<ol class="theory-steps">\n  <li>Первый шаг алгоритма</li>\n  <li>Второй шаг алгоритма</li>\n</ol>\n',
+    tip: '\n[tip:Совет от преподавателя]\nВсегда проверяйте граничные значения и тип возвращаемых данных!\n[/tip]\n'
+  };
+
+  document.querySelectorAll('.btn-snippet').forEach(b => {
+    b.addEventListener('click', () => {
+      const ta = document.getElementById('art-content');
+      const snippet = snippets[b.dataset.snippet] || '';
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      ta.value = ta.value.substring(0, start) + snippet + ta.value.substring(end);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = start + snippet.length;
+    });
+  });
+
+  formArticle?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+      id: document.getElementById('art-id').value || null,
+      course_id: Number('{{ selected_course.id }}'),
+      group_id: Number(document.getElementById('art-group').value),
+      task_number: Number(document.getElementById('art-task-num').value),
+      title: document.getElementById('art-title').value.trim(),
+      description: document.getElementById('art-desc').value.trim(),
+      read_minutes: Number(document.getElementById('art-minutes').value || 15),
+      status: document.getElementById('art-status').value,
+      content: document.getElementById('art-content').value
+    };
+    try {
+      const resp = await fetch('{{ url_for("theory.api_manage_block_save") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+        body: JSON.stringify(data)
+      });
+      const res = await resp.json();
+      if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка сохранения');
+      window.BooNotify?.success('Конспект успешно сохранен');
+      closeModal(modalEditor);
+      setTimeout(() => location.reload(), 500);
+    } catch (err) {
+      window.BooNotify?.error(err.message || 'Не удалось сохранить конспект');
+    }
+  });
+
+  // Delete Article
+  document.querySelectorAll('.btn-delete-article').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm(`Вы действительно хотите удалить тему «${b.dataset.title}»?`)) return;
+      try {
+        const resp = await fetch('{{ url_for("theory.api_manage_block_delete") }}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+          body: JSON.stringify({id: Number(b.dataset.blockId)})
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка');
+        window.BooNotify?.success('Тема удалена');
+        setTimeout(() => location.reload(), 500);
+      } catch (err) {
+        window.BooNotify?.error(err.message || 'Не удалось удалить тему');
+      }
+    });
+  });
+
+  // 8. Filters in Articles tab
+  const filterInput = document.getElementById('article-filter-search');
+  const filterGroup = document.getElementById('article-filter-group');
+  const filterStatus = document.getElementById('article-filter-status');
+  const articleRows = [...document.querySelectorAll('.article-row')];
+
+  const applyArticleFilters = () => {
+    const q = (filterInput?.value || '').trim().toLowerCase();
+    const g = filterGroup?.value || '';
+    const s = filterStatus?.value || '';
+    articleRows.forEach(row => {
+      const matchesQ = !q || row.dataset.title.includes(q) || row.dataset.taskNumber.includes(q);
+      const matchesG = !g || row.dataset.groupId === g;
+      const matchesS = !s || row.dataset.status === s;
+      row.style.display = (matchesQ && matchesG && matchesS) ? '' : 'none';
+    });
+  };
+
+  filterInput?.addEventListener('input', applyArticleFilters);
+  filterGroup?.addEventListener('change', applyArticleFilters);
+  filterStatus?.addEventListener('change', applyArticleFilters);
+
+  // 9. Students Access Management (Mini-profiles, All Courses Assignment & Topic locks)
+  const studentsContainer = document.getElementById('students-access-container');
+  const studentSearchInput = document.getElementById('student-filter-search');
+  const toggleHideTest = document.getElementById('toggle-hide-test-accounts');
+  const studentsCountBadge = document.getElementById('students-count-badge');
+  const modalStudentProfile = document.getElementById('modal-student-theory-profile');
+  const stpCoursesContainer = document.getElementById('stp-courses-container');
+  let currentProfileStudentId = null;
+  let currentStudentProfileData = null;
+  let searchDebounceTimer = null;
+
+  const renderStudentCardHTML = (st) => {
+    const isTest = Boolean(st.is_test);
+    const testBadge = isTest ? '<span class="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">Тест</span>' : '';
+    
+    let coursesSummaryHTML = '';
+    if (st.courses_summary && st.courses_summary.length > 0) {
+      coursesSummaryHTML = st.courses_summary.map(c => {
+        if (c.status === 'active') {
+          return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs"><i class="ph-fill ph-check-circle text-emerald-600 text-xs"></i> ${c.title}</span>`;
+        } else if (c.status === 'assigned') {
+          return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs"><i class="ph-bold ph-lock-key text-amber-600 text-xs"></i> ${c.title} (не инициализирован)</span>`;
+        }
+        return '';
+      }).join(' ');
+    } else {
+      coursesSummaryHTML = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200 shadow-xs"><i class="ph-bold ph-minus-circle text-xs"></i> Курсы не назначены</span>';
+    }
+
+    return `
+      <div class="rounded-2xl sm:rounded-3xl border-2 border-slate-200 bg-white p-4 sm:p-5 shadow-[0_4px_0_#CBD5E1] transition-all hover:border-indigo-300 student-access-card cursor-pointer group" 
+           data-student-id="${st.student_id}" 
+           data-student-name="${(st.name || '').toLowerCase()}" 
+           data-username="${(st.username || '').toLowerCase()}"
+           data-is-test="${isTest ? 'true' : 'false'}">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <!-- Student Info -->
+          <div class="flex items-center gap-3.5 min-w-0">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm uppercase shrink-0 student-avatar bg-gradient-to-br from-indigo-500 to-purple-600 text-white ring-2 ring-indigo-200 shadow-sm group-hover:scale-105 transition-transform">
+              ${st.initials || 'ST'}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-sm sm:text-base font-black text-slate-900 truncate">${st.name}</h3>
+                <span class="text-xs font-bold text-slate-400">@${st.username}</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">ID: ${st.student_id}</span>
+                ${testBadge}
+              </div>
+              <!-- Courses summary badges -->
+              <div class="flex items-center gap-1.5 flex-wrap mt-1.5 student-courses-summary" data-student-id="${st.student_id}">
+                ${coursesSummaryHTML}
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Side: Mini-Profile Button -->
+          <div class="flex items-center gap-2 shrink-0 justify-end">
+            <button type="button" class="btn-open-student-theory-profile inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition shadow-[0_3px_0_#3730A3] active:translate-y-0.5 active:shadow-none cursor-pointer"
+                    data-student-id="${st.student_id}" 
+                    data-student-name="${st.name}">
+              <i class="ph-bold ph-sliders-horizontal text-sm"></i>
+              <span>Мини-профиль теории</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  const renderCourseProfileCard = (c, studentId) => {
+    const isAssigned = c.status === 'assigned';
+    const isActive = c.status === 'active';
+    const isNone = c.status === 'none';
+
+    let cardBorder = 'border-slate-200 bg-white';
+    if (isActive) cardBorder = 'border-emerald-200 bg-emerald-50/20';
+    else if (isAssigned) cardBorder = 'border-amber-200 bg-amber-50/20';
+
+    let statusBadge = '';
+    if (isActive) {
+      statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs"><i class="ph-fill ph-check-circle text-emerald-600"></i> Активен</span>';
+    } else if (isAssigned) {
+      statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-xs"><i class="ph-bold ph-lock-key text-amber-600"></i> Не инициализирован</span>';
+    } else {
+      statusBadge = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200"><i class="ph-bold ph-minus-circle"></i> Не назначен</span>';
+    }
+
+    const noneBtnClass = isNone ? 'bg-white text-slate-800 shadow-xs font-black' : 'text-slate-500 hover:text-slate-800';
+    const assignedBtnClass = isAssigned ? 'bg-amber-500 text-white shadow-xs font-black' : 'text-slate-500 hover:text-slate-800';
+    const activeBtnClass = isActive ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-slate-500 hover:text-slate-800';
+
+    // Status description
+    let explainerHTML = '';
+    if (isNone) {
+      explainerHTML = `
+        <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-500 flex items-center gap-2">
+          <i class="ph-bold ph-info text-slate-400 text-sm"></i>
+          <span>Курс не назначен ученику. Выберите «Не инициализирован» или «Активен», чтобы открыть доступ к теории.</span>
+        </div>`;
+    } else if (isAssigned) {
+      explainerHTML = `
+        <div class="p-3 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs font-bold text-amber-900 flex items-center gap-2">
+          <i class="ph-bold ph-lock-key text-amber-600 text-sm shrink-0"></i>
+          <span>Курс назначен, но ожидает инициализации: отображается в каталоге у ученика со статусом «Не инициализирован», доступ к конспектам и тестам закрыт.</span>
+        </div>`;
+    } else {
+      explainerHTML = `
+        <div class="p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs font-bold text-emerald-900 flex items-center gap-2">
+          <i class="ph-fill ph-check-circle text-emerald-600 text-sm shrink-0"></i>
+          <span>Курс активирован: ученик может изучать все открытые темы и сдавать практические тесты.</span>
+        </div>`;
+    }
+
+    // Detail section (progress, test, topics accordion)
+    let detailsHTML = '';
+    if (!isNone) {
+      let finalTestHTML = '';
+      if (c.has_final_test) {
+        let bannerHTML = '';
+        if (c.final_test_passed) {
+          bannerHTML = `
+            <div class="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
+              <div class="flex items-center gap-2">
+                <i class="ph-fill ph-trophy text-amber-500 text-base shrink-0"></i>
+                <span>Итоговый тест: <b>СДАН</b> (${c.final_test_score}/${c.final_test_total} баллов)</span>
+              </div>
+              <span class="text-[11px] text-emerald-600">Попыток: ${c.final_test_attempts_count}</span>
+            </div>`;
+        } else if (c.final_test_attempts_count > 0) {
+          bannerHTML = `
+            <div class="flex items-center justify-between p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-bold text-rose-800">
+              <div class="flex items-center gap-2">
+                <i class="ph-bold ph-warning-circle text-rose-500 text-base shrink-0"></i>
+                <span>Итоговый тест: <b>Не сдан</b> (лучший результат ${c.final_test_score}/${c.final_test_total})</span>
+              </div>
+              <span class="text-[11px] text-rose-600">Попыток: ${c.final_test_attempts_count}</span>
+            </div>`;
+        } else {
+          bannerHTML = `
+            <div class="flex items-center gap-2 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-500">
+              <i class="ph-bold ph-exam text-slate-400 text-base shrink-0"></i>
+              <span>Итоговый тест: пока не сдавался</span>
+            </div>`;
+        }
+
+        let attemptsHistoryHTML = '';
+        if (c.final_test_attempts && c.final_test_attempts.length > 0) {
+          const attemptsItems = c.final_test_attempts.map(att => {
+            const isAttPassed = Boolean(att.passed);
+            const statusBadge = isAttPassed
+              ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200"><i class="ph-bold ph-check"></i> Зачёт</span>'
+              : '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200"><i class="ph-bold ph-x"></i> Не сдан</span>';
+            const attScoreBadge = `<span class="font-mono font-black text-xs ${isAttPassed ? 'text-emerald-700' : 'text-slate-800'}">${att.score} / ${att.total} (${att.percent}%)</span>`;
+
+            return `
+              <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 transition text-xs">
+                <div class="flex items-center gap-2 min-w-0 flex-wrap">
+                  <span class="font-bold text-slate-800">Попытка #${att.attempt_number}</span>
+                  ${statusBadge}
+                  ${attScoreBadge}
+                  <span class="text-[11px] text-slate-400 font-medium">${att.created_at}</span>
+                </div>
+                <button type="button" class="btn-inspect-test-attempt inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[11px] font-black transition cursor-pointer shrink-0"
+                        data-attempt-id="${att.id}">
+                  <i class="ph-bold ph-magnifying-glass"></i>
+                  <span>Посмотреть ответы</span>
+                </button>
+              </div>
+            `;
+          }).join('');
+
+          attemptsHistoryHTML = `
+            <div class="mt-2.5 pt-2 border-t border-slate-200/70 space-y-1.5">
+              <div class="text-[11px] font-bold text-slate-600 flex items-center justify-between">
+                <span class="flex items-center gap-1"><i class="ph-bold ph-clock-counter-clockwise text-indigo-600"></i> История попыток сдачи:</span>
+                <span class="text-[10px] text-slate-400">Всего попыток: ${c.final_test_attempts.length}</span>
+              </div>
+              <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                ${attemptsItems}
+              </div>
+            </div>
+          `;
+        }
+
+        finalTestHTML = `
+          <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            ${bannerHTML}
+            ${attemptsHistoryHTML}
+          </div>
+        `;
+      }
+
+      const topicsList = (c.topics || []).map(t => {
+        const isLocked = Boolean(t.is_locked);
+        const lockBtnClass = isLocked 
+          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200' 
+          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200';
+        const lockIcon = isLocked ? 'ph-bold ph-lock-key text-rose-500' : 'ph-bold ph-lock-open text-emerald-600';
+        const lockText = isLocked ? 'Закрыто' : 'Открыто';
+        const readBadge = t.is_read ? '<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-black"><i class="ph-bold ph-check"></i></span>' : '';
+
+        return `
+          <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 transition text-xs">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="font-mono font-black text-indigo-700 text-xs shrink-0">№${t.task_number}</span>
+              <span class="font-bold text-slate-700 truncate text-[11px]">${t.title}</span>
+              ${readBadge}
+            </div>
+            <button type="button" class="stp-topic-lock-btn inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer shrink-0 ${lockBtnClass}"
+                    data-student-id="${studentId}"
+                    data-course-id="${c.course_id}"
+                    data-task-number="${t.task_number}"
+                    data-is-locked="${isLocked ? 'true' : 'false'}">
+              <i class="${lockIcon} text-xs"></i>
+              <span>${lockText}</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      detailsHTML = `
+        <div class="space-y-3 pt-1 border-t border-slate-200/60">
+          <!-- Progress Bar -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between text-xs font-bold">
+              <span class="text-slate-600">Прогресс изучения:</span>
+              <span class="text-indigo-600 font-black">${c.completed_topics} / ${c.total_topics} тем (${c.progress_percent}%)</span>
+            </div>
+            <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden border border-slate-200/80">
+              <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-300" style="width: ${c.progress_percent}%"></div>
+            </div>
+          </div>
+
+          ${finalTestHTML}
+
+          <!-- Accordion for Topics -->
+          <div class="rounded-2xl border border-slate-200 bg-slate-50/60 overflow-hidden">
+            <button type="button" class="stp-btn-toggle-topics w-full p-3 flex items-center justify-between text-xs font-black text-slate-800 hover:bg-slate-100/70 transition cursor-pointer"
+                    data-course-id="${c.course_id}">
+              <div class="flex items-center gap-2">
+                <i class="ph-bold ph-sliders-horizontal text-indigo-600"></i>
+                <span>Индивидуальная настройка тем (<span class="stp-course-locked-count">${c.locked_count}</span> закрыто)</span>
+              </div>
+              <i class="ph-bold ph-caret-down text-slate-400 transition-transform stp-accordion-arrow"></i>
+            </button>
+            <div class="stp-topics-container p-3 pt-0 space-y-2.5 hidden" data-course-id="${c.course_id}">
+              <!-- Quick Batch Controls -->
+              <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-200 flex-wrap">
+                <span class="text-[11px] font-bold text-slate-500">Быстрые действия:</span>
+                <div class="flex items-center gap-1.5">
+                  <button type="button" class="stp-btn-batch px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-bold transition cursor-pointer border border-emerald-200 flex items-center gap-1"
+                          data-action="unlock_all" data-course-id="${c.course_id}" data-student-id="${studentId}">
+                    <i class="ph-bold ph-lock-open"></i> Открыть все
+                  </button>
+                  <button type="button" class="stp-btn-batch px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold transition cursor-pointer border border-rose-200 flex items-center gap-1"
+                          data-action="lock_all" data-course-id="${c.course_id}" data-student-id="${studentId}">
+                    <i class="ph-bold ph-lock-key"></i> Закрыть все
+                  </button>
+                </div>
+              </div>
+              <!-- Grid of Topics -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+                ${topicsList}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="rounded-3xl border-2 p-4 sm:p-5 shadow-[0_4px_0_#CBD5E1] transition-all space-y-3.5 stp-course-card ${cardBorder}" 
+           data-course-id="${c.course_id}">
+        <!-- Top bar: Course Info & 3-Button Toggle -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0 font-black text-sm">
+              <i class="ph-bold ph-book-open text-base"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h4 class="text-sm sm:text-base font-black text-slate-900 truncate">${c.title}</h4>
+                <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">${c.total_topics} тем</span>
+                <span class="stp-course-status-badge">${statusBadge}</span>
+              </div>
+              <p class="text-[11px] font-semibold text-slate-400">Слаг курса: /${c.slug}</p>
+            </div>
+          </div>
+
+          <!-- 3-Button Controller -->
+          <div class="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200 gap-1 stp-status-segmented shrink-0" 
+               data-student-id="${studentId}" 
+               data-course-id="${c.course_id}">
+            <button type="button" class="stp-btn-status px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${noneBtnClass}" 
+                    data-status="none" title="Отключить курс для ученика">
+              Не назначен
+            </button>
+            <button type="button" class="stp-btn-status px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${assignedBtnClass}" 
+                    data-status="assigned" title="Ученик видит курс в каталоге со статусом «Не инициализирован», конспекты закрыты">
+              <i class="ph-bold ph-lock-key text-xs"></i> Не инициализирован
+            </button>
+            <button type="button" class="stp-btn-status px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeBtnClass}" 
+                    data-status="active" title="Курс активирован и полностью открыт для прохождения">
+              <i class="ph-bold ph-lightning text-xs"></i> Активен
+            </button>
+          </div>
+        </div>
+
+        ${explainerHTML}
+        ${detailsHTML}
+      </div>
+    `;
+  };
+
+  const syncBackgroundStudentBadges = (studentId, courses) => {
+    const card = document.querySelector(`.student-access-card[data-student-id="${studentId}"]`);
+    if (!card) return;
+    const summaryContainer = card.querySelector('.student-courses-summary');
+    if (!summaryContainer) return;
+
+    const assignedCourses = courses.filter(c => c.status === 'active' || c.status === 'assigned');
+    if (!assignedCourses.length) {
+      summaryContainer.innerHTML = '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500 border border-slate-200 shadow-xs"><i class="ph-bold ph-minus-circle text-xs"></i> Курсы не назначены</span>';
+      return;
+    }
+
+    summaryContainer.innerHTML = assignedCourses.map(c => {
+      if (c.status === 'active') {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs"><i class="ph-fill ph-check-circle text-emerald-600 text-xs"></i> ${c.title}</span>`;
+      } else {
+        return `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-xs"><i class="ph-bold ph-lock-key text-amber-600 text-xs"></i> ${c.title} (не инициализирован)</span>`;
+      }
+    }).join(' ');
+  };
+
+  const renderAllCoursesInProfile = () => {
+    if (!currentStudentProfileData || !stpCoursesContainer) return;
+    const courses = currentStudentProfileData.courses || [];
+    if (!courses.length) {
+      stpCoursesContainer.innerHTML = `
+        <div class="p-8 text-center text-slate-400">
+          <p class="text-xs font-bold">На платформе пока нет доступных курсов теории.</p>
+        </div>
+      `;
+      return;
+    }
+    stpCoursesContainer.innerHTML = courses.map(c => renderCourseProfileCard(c, currentProfileStudentId)).join('');
+  };
+
+  const openStudentTheoryProfile = async (studentId, studentName) => {
+    currentProfileStudentId = Number(studentId);
+    if (!modalStudentProfile) return;
+
+    // Set temp header
+    document.getElementById('stp-header-name').textContent = studentName || `Ученик #${studentId}`;
+    document.getElementById('stp-header-username').textContent = `@student_${studentId}`;
+    document.getElementById('stp-header-id').textContent = `ID: ${studentId}`;
+    stpCoursesContainer.innerHTML = `
+      <div class="p-8 text-center text-slate-400">
+        <i class="ph-bold ph-spinner animate-spin text-3xl mb-2 inline-block"></i>
+        <p class="text-xs font-bold">Загрузка мини-профиля теории...</p>
+      </div>
+    `;
+    modalStudentProfile.classList.remove('hidden');
+
+    try {
+      const resp = await fetch(`/theory/api/manage/student/${studentId}/theory-profile`);
+      const data = await resp.json();
+      if (!resp.ok || !data.success) throw new Error(data.error || 'Ошибка загрузки профиля');
+
+      currentStudentProfileData = data;
+      const st = data.student;
+      document.getElementById('stp-header-name').textContent = st.name;
+      document.getElementById('stp-header-username').textContent = `@${st.username}`;
+      document.getElementById('stp-header-id').textContent = `ID: ${st.student_id}`;
+      document.getElementById('stp-header-avatar').textContent = st.initials;
+
+      renderAllCoursesInProfile();
+    } catch (err) {
+      stpCoursesContainer.innerHTML = `
+        <div class="p-6 text-center text-rose-500 font-bold text-xs space-y-2">
+          <i class="ph-bold ph-warning-circle text-2xl block mx-auto"></i>
+          <p>${err.message || 'Не удалось загрузить мини-профиль ученика'}</p>
+        </div>
+      `;
+    }
+  };
+
+  // Event Delegation in Modal for Course Status, Topic Locks, Batch Actions, and Accordion
+  stpCoursesContainer?.addEventListener('click', async (e) => {
+    // 1. Course Status Button
+    const statusBtn = e.target.closest('.stp-btn-status');
+    if (statusBtn && currentProfileStudentId) {
+      const segmented = statusBtn.closest('.stp-status-segmented');
+      const courseId = Number(segmented.dataset.courseId);
+      const targetStatus = statusBtn.dataset.status;
+
+      statusBtn.disabled = true;
+      try {
+        const resp = await fetch('{{ url_for("theory.api_manage_student_course_status") }}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+          body: JSON.stringify({student_id: currentProfileStudentId, course_id: courseId, status: targetStatus})
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка');
+
+        // Update local memory data
+        const course = currentStudentProfileData.courses.find(c => c.course_id === courseId);
+        if (course) {
+          course.status = targetStatus;
+        }
+        renderAllCoursesInProfile();
+        syncBackgroundStudentBadges(currentProfileStudentId, currentStudentProfileData.courses);
+        window.BooNotify?.success(res.message || 'Статус курса обновлен');
+      } catch (err) {
+        window.BooNotify?.error(err.message || 'Ошибка обновления статуса курса');
+      } finally {
+        statusBtn.disabled = false;
+      }
+      return;
+    }
+
+    // 2. Single Topic Lock Toggle Button
+    const lockBtn = e.target.closest('.stp-topic-lock-btn');
+    if (lockBtn && currentProfileStudentId) {
+      const studentId = Number(lockBtn.dataset.studentId);
+      const courseId = Number(lockBtn.dataset.courseId);
+      const taskNumber = Number(lockBtn.dataset.taskNumber);
+      const isLocked = lockBtn.dataset.isLocked === 'true';
+      const targetCanView = isLocked; // If currently locked, clicking opens it
+
+      lockBtn.disabled = true;
+      try {
+        const resp = await fetch('{{ url_for("theory.api_manage_student_access_toggle") }}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+          body: JSON.stringify({
+            student_id: studentId,
+            course_id: courseId,
+            task_number: taskNumber,
+            can_view: targetCanView
+          })
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка');
+
+        // Update topic in local state
+        const course = currentStudentProfileData.courses.find(c => c.course_id === courseId);
+        if (course && course.topics) {
+          const topic = course.topics.find(t => t.task_number === taskNumber);
+          if (topic) topic.is_locked = !targetCanView;
+          course.locked_count = course.topics.filter(t => t.is_locked).length;
+        }
+
+        renderAllCoursesInProfile();
+        window.BooNotify?.success(targetCanView ? `Тема №${taskNumber} открыта` : `Тема №${taskNumber} закрыта`);
+      } catch (err) {
+        window.BooNotify?.error(err.message || 'Ошибка изменения доступа к теме');
+      } finally {
+        lockBtn.disabled = false;
+      }
+      return;
+    }
+
+    // 3. Batch Action Button (unlock_all / lock_all)
+    const batchBtn = e.target.closest('.stp-btn-batch');
+    if (batchBtn && currentProfileStudentId) {
+      const studentId = Number(batchBtn.dataset.studentId);
+      const courseId = Number(batchBtn.dataset.courseId);
+      const action = batchBtn.dataset.action;
+
+      batchBtn.disabled = true;
+      try {
+        const resp = await fetch('{{ url_for("theory.api_manage_student_access_batch") }}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}'},
+          body: JSON.stringify({
+            student_id: studentId,
+            course_id: courseId,
+            action: action
+          })
+        });
+        const res = await resp.json();
+        if (!resp.ok || !res.success) throw new Error(res.error || 'Ошибка');
+
+        const isUnlock = action === 'unlock_all';
+        const course = currentStudentProfileData.courses.find(c => c.course_id === courseId);
+        if (course && course.topics) {
+          course.topics.forEach(t => t.is_locked = !isUnlock);
+          course.locked_count = isUnlock ? 0 : course.topics.length;
+        }
+
+        renderAllCoursesInProfile();
+        window.BooNotify?.success(isUnlock ? 'Все темы курса открыты' : 'Все темы курса закрыты');
+      } catch (err) {
+        window.BooNotify?.error(err.message || 'Ошибка пакетного обновления');
+      } finally {
+        batchBtn.disabled = false;
+      }
+      return;
+    }
+
+    // 4. Accordion Toggle
+    const toggleAccordionBtn = e.target.closest('.stp-btn-toggle-topics');
+    if (toggleAccordionBtn) {
+      const courseId = toggleAccordionBtn.dataset.courseId;
+      const card = toggleAccordionBtn.closest('.stp-course-card');
+      const container = card.querySelector(`.stp-topics-container[data-course-id="${courseId}"]`);
+      const arrow = toggleAccordionBtn.querySelector('.stp-accordion-arrow');
+      if (container) {
+        container.classList.toggle('hidden');
+        if (arrow) arrow.classList.toggle('rotate-180');
+      }
+      return;
+    }
+  });
+
+  // Event delegation on studentsContainer in Main List
+  studentsContainer?.addEventListener('click', (e) => {
+    const card = e.target.closest('.student-access-card');
+    if (card) {
+      const studentId = card.dataset.studentId;
+      const studentName = card.dataset.studentName;
+      openStudentTheoryProfile(studentId, studentName);
+    }
+  });
+
+  // Live Debounced Search & Filter
+  const performStudentSearch = async () => {
+    const q = (studentSearchInput?.value || '').trim();
+    const hideTest = toggleHideTest?.checked ? '1' : '0';
+
+    try {
+      const params = new URLSearchParams({
+        q: q,
+        hide_test: hideTest
+      });
+      const resp = await fetch(`{{ url_for("theory.api_manage_students_search") }}?${params.toString()}`);
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.error || 'Ошибка поиска');
+
+      if (studentsContainer) {
+        if (!data.students || data.students.length === 0) {
+          studentsContainer.innerHTML = `
+            <div class="rounded-3xl border-2 border-dashed border-slate-300 p-8 text-center bg-white">
+              <i class="ph-bold ph-user-circle-dashed text-3xl text-slate-400 mb-2 block"></i>
+              <p class="text-sm font-bold text-slate-500">Ученики по заданным критериям не найдены.</p>
+            </div>
+          `;
+        } else {
+          studentsContainer.innerHTML = data.students.map(st => renderStudentCardHTML(st)).join('');
+        }
+      }
+      if (studentsCountBadge) {
+        studentsCountBadge.textContent = `Показано: ${data.students ? data.students.length : 0}`;
+      }
+    } catch (err) {
+      console.error('Error fetching students:', err);
+    }
+  };
+
+  studentSearchInput?.addEventListener('input', () => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(performStudentSearch, 300);
+  });
+
+  toggleHideTest?.addEventListener('change', () => {
+    performStudentSearch();
+  });
+
+  // 10. Test Inspector Modal
+  const modalTest = document.getElementById('modal-test-inspector');
+  const testBody = document.getElementById('test-inspector-body');
+
+  const showTestAttemptInspection = (attempt) => {
+    if (!modalTest || !testBody) return;
+    const details = attempt?.details || [];
+    if (!details.length) {
+      testBody.innerHTML = '<div class="p-6 text-center text-slate-400 font-bold text-xs"><i class="ph-bold ph-file-dashed text-2xl mb-1 block"></i>Нет сохранённых подробных ответов по этой попытке.</div>';
+    } else {
+      const isPassed = Boolean(attempt.passed);
+      const headerHTML = `
+        <div class="p-4 rounded-2xl border-2 ${isPassed ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-900'} flex items-center justify-between gap-3 mb-3">
+          <div>
+            <div class="text-[11px] font-black uppercase tracking-wider text-slate-500">Попытка #${attempt.attempt_number || 1} ${attempt.created_at ? '· ' + attempt.created_at : ''}</div>
+            <div class="text-base font-black flex items-center gap-2 mt-0.5">
+              <span>Результат: ${attempt.score} из ${attempt.total || 20} баллов (${attempt.percent || 0}%)</span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-black ${isPassed ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'}">
+                ${isPassed ? 'Зачёт (тест сдан)' : 'Не сдан'}
+              </span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const listHTML = details.map((d, i) => {
+        const isCorr = Boolean(d.correct || d.is_correct);
+        const taskTypeBadge = d.task_type === 'matching' ? 'Сопоставление' : (d.task_type === 'single_choice' ? 'Один выбор' : 'Краткий ответ');
+        return `
+          <div class="p-3.5 rounded-2xl border ${isCorr ? 'bg-emerald-50/50 border-emerald-200' : 'bg-rose-50/50 border-rose-200'} space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-bold text-xs ${isCorr ? 'text-emerald-800' : 'text-rose-800'}">Задание #${i + 1} (${d.task_id || ''})</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-semibold">${taskTypeBadge}</span>
+              </div>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black ${isCorr ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                ${isCorr ? 'Верно (+1)' : 'Неверно (0)'}
+              </span>
+            </div>
+            <div class="text-xs font-medium text-slate-800 leading-relaxed">${d.title || d.content_html || d.question || ''}</div>
+            <div class="text-xs flex flex-col gap-1 pt-1.5 border-t border-slate-200/50">
+              <div class="${isCorr ? 'text-emerald-700' : 'text-rose-700'} font-bold">
+                Ответ ученика: <span class="font-mono">${d.user_answer_text || d.user_answer || d.student_answer || '—'}</span>
+              </div>
+              ${!isCorr ? `<div class="text-slate-600 font-bold">Верный ответ: <span class="font-mono text-emerald-700">${d.correct_answer_text || d.correct_answer || d.expected_answer || '—'}</span></div>` : ''}
+              ${d.explanation ? `<div class="text-[11px] text-slate-600 bg-white/80 p-2.5 rounded-xl border border-slate-200 mt-1"><b>Пояснение:</b> ${d.explanation}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      testBody.innerHTML = headerHTML + listHTML;
+    }
+    modalTest.classList.remove('hidden');
+  };
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-inspect-test-attempt');
+    if (!btn) return;
+    if (btn.dataset.attemptId) {
+      const attemptId = Number(btn.dataset.attemptId);
+      const attempt = currentStudentProfileData?.courses
+        ?.flatMap(c => c.final_test_attempts || [])
+        ?.find(a => a.id === attemptId);
+      if (attempt) {
+        showTestAttemptInspection(attempt);
+        return;
+      }
+    }
+    if (btn.dataset.details) {
+      let details = [];
+      try { details = JSON.parse(btn.dataset.details || '[]'); } catch (err) { details = []; }
+      showTestAttemptInspection({
+        attempt_number: 1,
+        score: details.filter(d => d.correct || d.is_correct).length,
+        total: details.length,
+        percent: details.length ? Math.round(details.filter(d => d.correct || d.is_correct).length * 100 / details.length) : 0,
+        passed: details.filter(d => d.correct || d.is_correct).length >= 18,
+        created_at: '',
+        details: details
+      });
+    }
+  });
+
+})();
+</script>
+{% endblock %}

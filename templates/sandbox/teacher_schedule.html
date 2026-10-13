@@ -84,6 +84,15 @@
 
   .schedule-scroll::-webkit-scrollbar { width: 6px; }
   .schedule-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+  /* The page now lives inside the canonical dashboard shell. Keep the
+     calendar below the topbar and remove the old dock compensation. */
+  .schedule-page { height: calc(100vh - 72px); min-height: 0; }
+  .schedule-main { min-height: 0; padding: 1rem 0 0; }
+  #days-header { grid-template-columns: 80px repeat(7, minmax(0, 1fr)); }
+  @media (max-width: 900px) {
+    .schedule-main { padding-inline: 0; }
+  }
 </style>
 
 <div class="schedule-page max-w-[1600px] mx-auto px-4 w-full">

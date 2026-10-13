@@ -179,3 +179,58 @@
   text-align: center;
   color: var(--text-muted, #94a3b8);
 }
+
+.boo-canvas-embedded-host {
+  position: relative !important;
+  overflow: hidden;
+}
+.boo-canvas-overlay.is-embedded {
+  position: absolute;
+  inset: 0;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+.boo-canvas-toolbar.is-embedded {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: auto;
+  bottom: auto;
+  transform: none;
+  z-index: 2;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.boo-canvas-toolbar .tb-zoom-label {
+  min-width: 40px;
+  color: var(--text-muted, #64748b);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+}
+.boo-canvas-toolbar .tb-btn:focus-visible,
+.boo-canvas-toolbar .tb-color-swatch:focus-visible,
+.boo-canvas-toolbar input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent-1, #6366f1) 35%, transparent);
+  outline-offset: 2px;
+}
+.boo-canvas-text-editor {
+  position: fixed;
+  z-index: 2147483647;
+  width: min(260px, calc(100vw - 16px));
+  min-height: 38px;
+  padding: 8px 10px;
+  color: var(--text-primary, #18233a);
+  background: var(--bg-surface, #fff);
+  border: 2px solid var(--accent-1, #6750d8);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(24, 35, 58, 0.2);
+  font: 600 14px/1.3 system-ui, sans-serif;
+}
+.boo-canvas-text-editor:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent-1, #6750d8) 32%, transparent);
+  outline-offset: 2px;
+}

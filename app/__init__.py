@@ -129,10 +129,22 @@ def create_app(config_name=None):
     app.config['SECRET_KEY'] = secret_key
     app.config['WTF_CSRF_ENABLED'] = True
     app.config['WTF_CSRF_TIME_LIMIT'] = None
+    cookie_secure = (
+        runtime_environment in {'production', 'staging', 'sandbox'}
+        or os.environ.get('COOKIE_SECURE', '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    )
+    app.config.update(
+        SESSION_COOKIE_SECURE=cookie_secure,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
+        REMEMBER_COOKIE_SECURE=cookie_secure,
+        REMEMBER_COOKIE_HTTPONLY=True,
+        REMEMBER_COOKIE_SAMESITE='Lax',
+    )
     app.config['TRAINER_URL'] = (os.environ.get('TRAINER_URL') or '').strip() or None
     app.config['TRAINER_SHARED_SECRET'] = (os.environ.get('TRAINER_SHARED_SECRET') or '').strip() or None
     # The module stays deployed but is closed until the subscription rollout is ready.
-    app.config['TRAINER_ENABLED'] = (os.environ.get('TRAINER_ENABLED') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+    app.config['TRAINER_ENABLED'] = (os.environ.get('TRAINER_ENABLED', 'true') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
     app.config['REDIS_URL'] = (
         os.environ.get('REDIS_URL')
         or os.environ.get('CELERY_BROKER_URL')
@@ -204,6 +216,17 @@ def create_app(config_name=None):
 
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        if runtime_environment in {'production', 'staging'} and request.is_secure:
+            response.headers.setdefault(
+                'Strict-Transport-Security',
+                'max-age=31536000; includeSubDomains',
+            )
+        return response
 
     csrf.init_app(app)
     db.init_app(app)
@@ -548,7 +571,9 @@ def create_app(config_name=None):
     from app.workspace import workspace_bp
     from app.task_workspace import task_workspace_bp
     from app.guest import guest_bp
+    from app.demo import demo_bp
 
+    app.register_blueprint(demo_bp, url_prefix='/demo')
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(webhooks_bp)
@@ -932,6 +957,24 @@ def create_app(config_name=None):
         except Exception:
             available_tz_grouped = []
 
+        is_trainer_sys_enabled = bool(app.config.get('TRAINER_ENABLED', True))
+        trainer_available = False
+        if is_trainer_sys_enabled and template_user and getattr(template_user, 'is_authenticated', False):
+            if (
+                getattr(template_user, 'is_admin', lambda: False)()
+                or getattr(template_user, 'is_creator', lambda: False)()
+                or getattr(template_user, 'is_tutor', lambda: False)()
+                or getattr(template_user, 'role', '') in ('admin', 'creator', 'tutor')
+            ):
+                trainer_available = True
+            else:
+                try:
+                    from app.utils.subscription_access import get_effective_access_for_user
+                    eff = get_effective_access_for_user(template_user.id)
+                    trainer_available = bool(eff.status == 'active' and eff.allow_trainer)
+                except Exception:
+                    trainer_available = False
+
         return dict(
             current_user=template_user,
             current_student=student_data,
@@ -945,7 +988,8 @@ def create_app(config_name=None):
             release_notes=build_release_notes_text(),
             release_version=RELEASE_VERSION,
             qa_widget_areas=qa_widget_areas,
-            trainer_available=bool(app.config.get('TRAINER_ENABLED', False)),
+            trainer_available=trainer_available,
+            is_demo_user=bool(template_user and getattr(template_user, 'is_demo_user', False)),
         )
     
     from app.admin.routes import (

@@ -166,7 +166,7 @@
         <div id="task-card-{{ t.order_index }}" class="task-card-container {% if not loop.first %}hidden{% endif %} space-y-6">
           
           <!-- Карточка Условия Задачи (Tactile 3D Card) -->
-          <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-6">
+          <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 space-y-6" data-demo-target="task-card">
             
             <!-- Бейджи и ID задачи -->
             <div class="flex items-center justify-between flex-wrap gap-3 pb-4 border-b-2 border-slate-200/80">
@@ -212,6 +212,7 @@
             <div class="flex flex-col sm:flex-row gap-3">
               <input type="text" 
                      id="answer-input-{{ t.order_index }}"
+                     data-demo-target="task-input"
                      placeholder="Введите ответ..." 
                      value="{{ t.user_answer }}"
                      {% if t.is_locked or is_assignment_submitted %}readonly disabled{% endif %}
@@ -219,6 +220,7 @@
               
               {% if (allow_separate_submission or (assignment_meta is defined and assignment_meta.allow_separate_submission)) and assignment and assignment.attempts_per_task %}
               <button id="submit-btn-{{ t.order_index }}"
+                      data-demo-target="task-submit"
                       data-order-index="{{ t.order_index }}"
                       data-ass-task-id="{{ t.assignment_task_id }}"
                       onclick="submitSingleTask(this)"
@@ -228,6 +230,8 @@
               </button>
               {% else %}
               <button type="button"
+                      id="submit-btn-{{ t.order_index }}"
+                      data-demo-target="task-submit"
                       data-order-index="{{ t.order_index }}"
                       onclick="saveTaskAnswer(this)"
                       {% if t.is_locked or is_assignment_submitted %}disabled{% endif %}
@@ -1008,4 +1012,89 @@ document.addEventListener('DOMContentLoaded', () => {
   switchTask(1);
 });
 </script>
+
+{% if is_demo_user %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var input = document.getElementById('answer-input-1');
+  var btn = document.getElementById('submit-btn-1') || document.querySelector('.single-task-submit-btn');
+
+  function handleDemoSubmit(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!input) return;
+    var ans = (input.value || '').trim();
+    if (!ans) {
+      if (window.BooCompanion) window.BooCompanion.say('Сначала введи ответ в поле!', 'curious');
+      return;
+    }
+
+    var subId = '{{ submission.submission_id if submission else "" }}';
+    fetch('/demo/api/verify-answer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ submission_id: subId, answer: ans })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res && res.success) {
+        if (res.is_correct) {
+          var fbBox = document.getElementById('feedback-box-0');
+          if (fbBox) {
+            fbBox.innerHTML = '<div class="p-3.5 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-black flex items-center justify-between gap-2 shadow-sm">' +
+              '<div class="flex items-center gap-2"><i class="ph-bold ph-check-circle text-emerald-600 text-lg"></i><span>Первое испытание пройдено! Ответ верный</span></div>' +
+              '<span class="px-2.5 py-1 bg-emerald-200 text-emerald-900 rounded-lg text-xs font-black">1/1 балл</span>' +
+              '</div>';
+          }
+          if (window.BooDemoEngine) {
+            if (res.state) window.BooDemoEngine.applyServerState(res.state);
+            else window.BooDemoEngine.goToStep('victory', 'chapter_3');
+          } else if (window.BooCompanion) {
+            window.BooCompanion.say('Первое испытание пройдено на максимум (1 из 1 балла)! Ты почувствовал, как удобно сдавать задания в BooStudy.', 'celebrating', {
+              buttons: [
+                { label: 'Вернуться в кабинет', action: 'goto_dashboard' },
+                { label: 'Смотреть решение', action: 'view_solution' },
+                { label: 'Посмотреть тарифы', action: 'goto_plans', secondary: true }
+              ]
+            });
+          }
+          input.disabled = true;
+          if (btn) btn.disabled = true;
+        } else {
+          var fbBox = document.getElementById('feedback-box-0');
+          if (fbBox) {
+            fbBox.innerHTML = '<div class="p-3.5 bg-rose-100 border border-rose-300 text-rose-900 rounded-xl text-xs font-black flex items-center justify-between gap-2 shadow-sm">' +
+              '<div class="flex items-center gap-2"><i class="ph-bold ph-x-circle text-rose-600 text-lg"></i><span>' + (res.feedback || 'Ответ не совсем верный') + '</span></div>' +
+              '<span class="px-2.5 py-1 bg-rose-200 text-rose-900 rounded-lg text-xs font-black">0/1 балл</span>' +
+              '</div>';
+          }
+          if (window.BooDemoEngine && res.state) window.BooDemoEngine.applyServerState(res.state);
+          if (window.BooCompanion && typeof window.BooCompanion.handleWrongTrialAnswer === 'function') window.BooCompanion.handleWrongTrialAnswer(res);
+          else if (window.BooCompanion) window.BooCompanion.say((res.feedback || 'Ответ не совсем верный.') + ' ' + (res.hint || ''), 'thinking');
+        }
+      }
+    })
+    .catch(function(err) {
+      console.error('Demo verification error:', err);
+    });
+  }
+
+  if (btn) {
+    btn.addEventListener('click', handleDemoSubmit, true);
+  }
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        handleDemoSubmit(e);
+      }
+    });
+  }
+});
+</script>
+{% endif %}
 {% endblock %}

@@ -28,16 +28,37 @@ def reward_submission(student, correct_answers: int = 0, submission=None) -> int
     try:
         add_xp_to_student(student, awarded_xp, commit=False)
         update_student_streak(student, commit=False)
-        grant_achievement(student, "first_step", award_xp=False, commit=False)
+        grant_achievement(student, "first_step", award_xp=True, commit=False)
 
         if submission:
-            if getattr(submission, 'score_percent', 0) == 100:
+            pct = getattr(submission, 'percentage', None)
+            if pct is None:
+                pct = getattr(submission, 'score_percent', None)
+            max_s = getattr(submission, 'max_score', None)
+            tot_s = getattr(submission, 'total_score', None)
+            is_perfect = (pct is not None and pct >= 100) or (max_s and tot_s is not None and tot_s >= max_s and max_s > 0)
+            attempts_cnt = len(getattr(submission, 'attempts', []) or [])
+            if is_perfect and attempts_cnt <= 1:
                 grant_achievement(student, "perfect_homework", award_xp=True, commit=False)
+
             if getattr(submission, 'assignment', None) and getattr(submission.assignment, 'deadline', None):
-                from datetime import datetime
-                sub_time = getattr(submission, 'submitted_at', None) or datetime.utcnow()
-                if (submission.assignment.deadline - sub_time).total_seconds() > 86400:
-                    grant_achievement(student, "early_bird_submission", award_xp=True, commit=False)
+                from datetime import datetime, timezone
+                deadline = submission.assignment.deadline
+                sub_time = getattr(submission, 'submitted_at', None) or datetime.now(timezone.utc)
+                try:
+                    if hasattr(deadline, 'tzinfo') and deadline.tzinfo is not None:
+                        if hasattr(sub_time, 'tzinfo') and sub_time.tzinfo is None:
+                            sub_time = sub_time.replace(tzinfo=timezone.utc)
+                        else:
+                            sub_time = sub_time.astimezone(timezone.utc)
+                        deadline = deadline.astimezone(timezone.utc)
+                    else:
+                        if hasattr(sub_time, 'tzinfo') and sub_time.tzinfo is not None:
+                            sub_time = sub_time.astimezone(timezone.utc).replace(tzinfo=None)
+                    if (deadline - sub_time).total_seconds() > 86400:
+                        grant_achievement(student, "early_bird_submission", award_xp=True, commit=False)
+                except Exception as dt_err:
+                    logger.debug("Deadline comparison skipped: %s", dt_err)
 
         from datetime import datetime, timezone, timedelta
         hour_msk = datetime.now(timezone(timedelta(hours=3))).hour
@@ -99,7 +120,7 @@ def reward_single_task_correct(student) -> int:
     try:
         add_xp_to_student(student, awarded_xp, commit=False)
         update_student_streak(student, commit=False)
-        grant_achievement(student, "first_step", award_xp=False, commit=False)
+        grant_achievement(student, "first_step", award_xp=True, commit=False)
         check_and_grant_dynamic_achievements(student, commit=False)
         db.session.commit()
         return awarded_xp

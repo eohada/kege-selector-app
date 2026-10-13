@@ -5,13 +5,22 @@ from app.services.daily_service import DailyService
 import logging
 import os
 import json
+import re
 import uuid
+import base64
+import binascii
+import mimetypes
+import math
+import textwrap
+from io import BytesIO
+from html import escape as html_escape, unescape as html_unescape
 from datetime import timezone as dt_timezone
 from math import ceil
+from urllib.parse import urlparse
 from werkzeug.utils import secure_filename
 from app.uploads.service import save_uploaded_file
 from flask import abort
-from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
+from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app, send_from_directory, send_file  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required, current_user  # comment
 from sqlalchemy import text, or_  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -21,7 +30,7 @@ from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, TheoryBlock, LessonOutcome, LearningItem, StudentSkill, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, TaskSolution, LessonTaskTeacherComment, User, GradebookEntry, Assignment, Submission, LessonWhiteboard, LessonWhiteboardOperation, MiroUserToken, Course, TheoryBlock, StudentTheoryAccess, LessonOutcome, LearningItem, StudentSkill, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
@@ -30,8 +39,75 @@ from app.utils.relationship_scope import can_user_access_student
 from app.utils.course_tasks import get_task_numbers
 from app.utils.datetime_utc import effective_timezone_name
 from app.utils.lesson_time import parse_local_lesson_datetime, lesson_storage_to_local
+from app.utils.jinja_filters import prepare_task_content_html, sanitize_html
+from app.lessons.whiteboard_service import (
+    WhiteboardConflict,
+    WhiteboardOperationError,
+    board_payload,
+    can_student_edit_page,
+    boostudy_export,
+    excalidraw_export,
+    get_or_create_board,
+    import_boostudy_payload,
+    import_excalidraw_payload,
+    normalize_import_pages,
+    persist_operations,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _task_display_title(task, fallback: str) -> str:
+    """Возвращает совместимое название задания, включая ручные задания без поля title."""
+    explicit_title = getattr(task, 'title', None) if task is not None else None
+    if explicit_title:
+        return str(explicit_title).strip()[:180]
+
+    content_html = str(getattr(task, 'content_html', '') or '') if task is not None else ''
+    match = re.search(
+        r'<h4\b[^>]*class=["\'][^"\']*\btask-title\b[^"\']*["\'][^>]*>(.*?)</h4>',
+        content_html,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if match:
+        title = re.sub(r'<[^>]+>', ' ', match.group(1))
+        title = ' '.join(html_unescape(title).split())
+        if title:
+            return title[:180]
+    return fallback
+
+
+def _task_room_description(task) -> str:
+    """Убирает служебный заголовок ручного задания из тела, оставляя его для восстановления."""
+    content_html = str(getattr(task, 'content_html', '') or '') if task is not None else ''
+    return re.sub(
+        r'^\s*<h4\b[^>]*class=["\'][^"\']*\btask-title\b[^"\']*["\'][^>]*>.*?</h4>\s*',
+        '',
+        content_html,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+
+def _lesson_room_task_payload(lesson_task: LessonTask) -> dict:
+    """Сериализует задание для комнаты, включая состояние показа ученику."""
+    task = lesson_task.task
+    fallback_title = f'Задание №{task.task_number}' if task and task.task_number else 'Задание'
+    return {
+        'lesson_task_id': lesson_task.lesson_task_id,
+        'task_id': lesson_task.task_id,
+        'title': _task_display_title(task, fallback_title),
+        'description': _task_room_description(task) if task else 'Условие задачи...',
+        'answer': lesson_task.student_answer or (task.answer if task else ''),
+        'answer_visible_to_student': bool(getattr(lesson_task, 'is_answer_visible_to_student', False)),
+        'student_submission': lesson_task.student_submission or '',
+        'starter_code': (task.starter_code if task and task.starter_code else '') or '',
+        'hints': (task.hints if task and task.hints else []) or [],
+        'teacher_comment': lesson_task.teacher_comment or '',
+        'submission_correct': lesson_task.submission_correct,
+        'status': lesson_task.status or 'pending',
+        'visible_to_student': bool(getattr(lesson_task, 'is_visible_to_student', True)),
+    }
 
 
 def _lesson_material_root(lesson_id: int) -> str:
@@ -605,6 +681,11 @@ def _default_lesson_studio_state(lesson: Lesson) -> dict:
     reflection_minutes = max(5, round(duration_minutes * 0.15))
     practice_minutes = max(5, duration_minutes - preparation_minutes - reflection_minutes)
     return {
+        'info': {
+            'goals': [],
+            'teacher_intro': '',
+            'updated_at': None,
+        },
         'phase': 'preparation', 'active_task_id': None, 'active_pane': 'work', 'follow_student': False,
         'timer': {'mode': 'phase', 'seconds': preparation_minutes * 60, 'running': False, 'updated_at': None},
         'phase_timers': {
@@ -649,6 +730,13 @@ def _lesson_studio_state(lesson: Lesson) -> dict:
                 'running': False,
                 'updated_at': None,
             }
+    info = state.get('info') if isinstance(state.get('info'), dict) else {}
+    raw_goals = info.get('goals') if isinstance(info.get('goals'), list) else []
+    state['info'] = {
+        'goals': [str(goal).strip()[:500] for goal in raw_goals if str(goal).strip()][:20],
+        'teacher_intro': str(info.get('teacher_intro') or '').strip()[:10_000],
+        'updated_at': info.get('updated_at'),
+    }
     return state
 
 
@@ -678,8 +766,16 @@ def _save_lesson_studio_state(lesson: Lesson, state: dict) -> None:
     lesson.review_summaries = summaries
     flag_modified(lesson, 'review_summaries')
     db.session.commit()
-    from app.lessons.lesson_socket import emit_lesson_studio_updated
-    emit_lesson_studio_updated(lesson.lesson_id, _lesson_studio_state_for_viewer(state, is_teacher=False))
+    from app.lessons.lesson_socket import (
+        emit_lesson_private_note_updated,
+        emit_lesson_studio_updated,
+    )
+    emit_lesson_studio_updated(
+        lesson.lesson_id,
+        _lesson_studio_state_for_viewer(state, is_teacher=False),
+        status=getattr(lesson, 'status', None),
+    )
+    emit_lesson_private_note_updated(lesson.lesson_id, state.get('teacher_private_note') or '')
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/studio/state')
@@ -700,7 +796,7 @@ def lesson_studio_state_save(lesson_id: int):
         return jsonify({'success': False, 'error': 'Управлять сценарием урока может только преподаватель'}), 403
     payload = request.get_json(silent=True) or {}
     state = _lesson_studio_state(lesson)
-    for key in ('phase', 'active_task_id', 'active_theory_block_id', 'active_pane', 'follow_student', 'timer', 'phase_timers', 'phase_durations', 'agenda', 'teacher_private_note', 'guidance', 'outcome', 'video_provider', 'backup_call_url'):
+    for key in ('info', 'phase', 'active_task_id', 'active_theory_block_id', 'active_pane', 'follow_student', 'timer', 'phase_timers', 'phase_durations', 'agenda', 'teacher_private_note', 'guidance', 'outcome', 'video_provider', 'backup_call_url'):
         if key in payload:
             state[key] = payload[key]
     if state.get('video_provider') not in {'daily', 'jitsi', 'external'}:
@@ -709,6 +805,17 @@ def lesson_studio_state_save(lesson_id: int):
         state['backup_call_url'] = ''
     else:
         state['backup_call_url'] = state['backup_call_url'][:500].strip()
+    info = state.get('info')
+    if not isinstance(info, dict):
+        return jsonify({'success': False, 'error': 'Некорректная информация об уроке'}), 400
+    goals = info.get('goals') if isinstance(info.get('goals'), list) else []
+    if len(goals) > 20 or any(len(str(goal).strip()) > 500 for goal in goals):
+        return jsonify({'success': False, 'error': 'Слишком много или слишком длинные цели урока'}), 400
+    state['info'] = {
+        'goals': [str(goal).strip() for goal in goals if str(goal).strip()][:20],
+        'teacher_intro': str(info.get('teacher_intro') or '').strip()[:10_000],
+        'updated_at': moscow_now().isoformat(),
+    }
     guidance = state.get('guidance')
     phase_timers = state.get('phase_timers')
     phase_durations = state.get('phase_durations')
@@ -1109,18 +1216,24 @@ def lesson_studio_finish(lesson_id: int):
     return jsonify({'success': True, 'state': _lesson_studio_state_for_viewer(state, is_teacher=True), 'status': lesson.status})
 
 
-@lessons_bp.route('/lesson/<int:lesson_id>/studio/student-notes', methods=['POST'])
+@lessons_bp.route('/lesson/<int:lesson_id>/studio/student-notes', methods=['GET', 'POST'])
 @login_required
 def lesson_studio_student_notes_save(lesson_id: int):
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
     _lesson_studio_access(lesson)
-    if not current_user.is_student() or not _get_current_lesson_student(lesson):
+    is_teacher = _lesson_studio_is_teacher()
+    is_lesson_student = current_user.is_student() and bool(_get_current_lesson_student(lesson))
+    if not is_teacher and not is_lesson_student:
         return jsonify({'success': False, 'error': 'Личные заметки доступны только ученику урока'}), 403
+    if request.method == 'GET':
+        return jsonify({'success': True, 'notes': lesson.student_notes or ''})
     notes = ((request.get_json(silent=True) or {}).get('notes') or '').strip()
     if len(notes) > 20000:
         return jsonify({'success': False, 'error': 'Заметка слишком длинная'}), 400
     lesson.student_notes = notes
     db.session.commit()
+    from app.lessons.lesson_socket import emit_lesson_student_notes_updated
+    emit_lesson_student_notes_updated(lesson.lesson_id, notes, current_user.id)
     return jsonify({'success': True, 'notes': notes})
 
 
@@ -1181,7 +1294,10 @@ def lesson_interactive_room(lesson_id: int):
 
     # Если заходит ученик (не преподаватель), и урок ещё только "запланирован" —
     # отправляем в комнату ожидания: ученик не может зайти на урок, пока преподаватель его не начнет.
-    if not is_studio_teacher and current_user.is_student() and lesson.status == 'planned':
+    # The guided product tour must show the real Studio layout, not a dead-end
+    # waiting room. This flag is emitted only by the local demo dashboard.
+    demo_preview = request.args.get('demo_preview') == '1'
+    if not demo_preview and not is_studio_teacher and current_user.is_student() and lesson.status == 'planned':
         tutor_user = User.query.get(student.tutor_id) if (student and getattr(student, 'tutor_id', None)) else None
         teacher_name = tutor_user.username if tutor_user else 'Преподаватель КЕГЭ'
         return render_template(
@@ -1193,20 +1309,30 @@ def lesson_interactive_room(lesson_id: int):
         )
 
     classwork_tasks = get_sorted_assignments(lesson, 'classwork')
+    if not is_studio_teacher:
+        classwork_tasks = [
+            item for item in classwork_tasks
+            if bool(getattr(item, 'is_visible_to_student', True))
+        ]
     studio_state = _lesson_studio_state_for_viewer(_lesson_studio_state(lesson), is_teacher=is_studio_teacher)
     tasks_json = json.dumps([
         {
             'lesson_task_id': t.lesson_task_id,
             'task_id': t.task_id,
-            'title': getattr(t.task, 'title', None) or (f'Задание №{t.task.task_number} (№{idx + 1})' if t.task and t.task.task_number else f'Задание #{idx + 1}'),
-            'description': t.task.content_html if t.task else 'Условие задачи...',
-            'answer': t.student_answer or (t.task.answer if t.task else ''),
+            'title': _task_display_title(
+                t.task,
+                f'Задание №{t.task.task_number} (№{idx + 1})' if t.task and t.task.task_number else f'Задание #{idx + 1}',
+            ),
+            'description': _task_room_description(t.task) if t.task else 'Условие задачи...',
+            'answer': (t.student_answer or (t.task.answer if t.task else '')) if (is_studio_teacher or bool(getattr(t, 'is_answer_visible_to_student', False))) else '',
+            'answer_visible_to_student': bool(getattr(t, 'is_answer_visible_to_student', False)),
             'student_submission': t.student_submission or '',
             'starter_code': (t.task.starter_code if t.task and t.task.starter_code else '') or '',
             'hints': (t.task.hints if t.task and t.task.hints else []) or [],
             'teacher_comment': t.teacher_comment or '',
             'submission_correct': t.submission_correct,
             'status': t.status or 'pending',
+            'visible_to_student': bool(getattr(t, 'is_visible_to_student', True)),
             'order': idx + 1
         } for idx, t in enumerate(classwork_tasks or [])
     ], ensure_ascii=False) if classwork_tasks else '[]'
@@ -1238,6 +1364,15 @@ def lesson_interactive_room(lesson_id: int):
         .all()
         if lesson_course_id else []
     )
+    denied_theory_numbers = set()
+    if not is_studio_teacher and current_user.is_student() and student and lesson_course_id:
+        denied_theory_numbers = {
+            row.task_number for row in StudentTheoryAccess.query.filter_by(
+                student_id=student.student_id,
+                course_id=lesson_course_id,
+                can_view=False,
+            ).all()
+        }
     from app.theory.routes import _render_theory_content_html
     theory_items = [
         {
@@ -1248,11 +1383,22 @@ def lesson_interactive_room(lesson_id: int):
             'content_html': _render_theory_content_html(item.content),
             'url': url_for('theory.theory_view_block', block_id=item.id, course_id=lesson_course_id),
         }
-        for item in theory_blocks if (item.content or '').strip() and not (item.content or '').lstrip().startswith('<!--status:draft-->')
+        for item in theory_blocks
+        if item.task_number not in denied_theory_numbers
+        and (item.content or '').strip()
+        and not (item.content or '').lstrip().startswith('<!--status:draft-->')
     ]
+    room_materials = lesson.materials or []
+    if isinstance(room_materials, str):
+        try:
+            room_materials = json.loads(room_materials)
+        except (TypeError, ValueError):
+            room_materials = []
+    if not isinstance(room_materials, list):
+        room_materials = []
 
     return render_template(
-        'sandbox/lesson_room.html',
+        'sandbox/trainer.html',
         lesson=lesson,
         lesson_id=lesson.lesson_id,
         student=student,
@@ -1268,8 +1414,565 @@ def lesson_interactive_room(lesson_id: int):
         is_studio_teacher=is_studio_teacher,
         can_open_task_generator=can_open_task_generator,
         theory_items=theory_items,
+        room_materials=room_materials,
+        is_demo_preview=demo_preview,
+        room_mode=True,
+        room_student_notes=lesson.student_notes or '',
+        trainer_token=None,
+        config_error=None,
+        zen_mode=False,
+        passthrough={},
+        task_numbers=[],
         active_page='lesson_room'
     )
+
+
+def _whiteboard_access(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    student = lesson.student
+    if not student:
+        abort(403)
+    if current_user.is_student():
+        if not _get_current_lesson_student(lesson):
+            abort(403)
+        role = 'student'
+    elif current_user.is_parent():
+        if not can_user_access_student(current_user, student_user_id=student.user_id):
+            abort(403)
+        role = 'parent'
+    else:
+        scope = get_user_scope(current_user)
+        if not scope.get('can_see_all'):
+            allowed = _resolve_accessible_student_ids(scope)
+            if lesson.student_id not in allowed:
+                abort(403)
+        role = 'teacher'
+    return lesson, role
+
+
+def _whiteboard_export_document(document: dict, scope: str, page_id: str | None, frame_id: str | None) -> dict:
+    """Выбирает переносимый срез доски, не включая состояние проведения."""
+    portable = boostudy_export(document)["document"]
+    if scope == 'all':
+        return portable
+    pages = portable.get('pages') or []
+    page = next((item for item in pages if item.get('id') == page_id), None) if page_id else next((item for item in pages if item.get('id') == portable.get('active_page_id')), None)
+    if not page:
+        raise WhiteboardOperationError('Страница для экспорта не найдена')
+    if scope != 'frame':
+        portable['pages'] = [page]
+        portable['active_page_id'] = page['id']
+        return portable
+    frame = next((item for item in page.get('objects', []) if item.get('id') == frame_id and item.get('type') == 'frame'), None)
+    if not frame:
+        raise WhiteboardOperationError('Фрейм для экспорта не найден')
+    selected_ids = {frame['id']}
+    selected_ids.update(item['id'] for item in page.get('objects', []) if (item.get('data') or {}).get('frame_id') == frame['id'])
+    page = {**page, 'objects': [item for item in page.get('objects', []) if item.get('id') in selected_ids]}
+    portable['pages'] = [page]
+    portable['active_page_id'] = page['id']
+    return portable
+
+
+def _lesson_asset_path(lesson_id: int, asset_url: str | None) -> str | None:
+    if not asset_url:
+        return None
+    filename = os.path.basename(urlparse(str(asset_url)).path)
+    if not filename or filename in {'.', '..'}:
+        return None
+    root = os.path.abspath(_lesson_material_root(lesson_id))
+    path = os.path.abspath(os.path.join(root, filename))
+    if os.path.commonpath([root, path]) != root or not os.path.isfile(path):
+        return None
+    return path
+
+
+def _embed_board_assets(lesson_id: int, document: dict) -> None:
+    """Встраивает локальные assets в portable-копию, чтобы файл был самодостаточным."""
+    for page in document.get('pages', []):
+        for item in page.get('objects', []):
+            data = item.get('data') if isinstance(item.get('data'), dict) else {}
+            if item.get('type') not in {'image', 'file'} or data.get('data_url'):
+                continue
+            path = _lesson_asset_path(lesson_id, data.get('url'))
+            if not path:
+                continue
+            try:
+                with open(path, 'rb') as source:
+                    raw = source.read()
+                mime = data.get('mime_type') or mimetypes.guess_type(path)[0] or 'application/octet-stream'
+                data['data_url'] = f'data:{mime};base64,{base64.b64encode(raw).decode("ascii")}'
+                item['data'] = data
+            except OSError:
+                continue
+
+
+def _svg_escape(value: object) -> str:
+    return html_escape(str(value or ''), quote=True)
+
+
+def _whiteboard_svg(document: dict) -> str:
+    pages = document.get('pages') or []
+    page = pages[0] if pages else {'title': 'Холст', 'objects': []}
+    objects = page.get('objects') or []
+    if objects:
+        bounds = []
+        for item in objects:
+            x, y = float(item.get('x') or 0), float(item.get('y') or 0)
+            width, height = max(1, float(item.get('width') or 1)), max(1, float(item.get('height') or 1))
+            bounds.append((x, y, width, height))
+        left = min(value[0] for value in bounds) - 48
+        top = min(value[1] for value in bounds) - 48
+        right = max(value[0] + value[2] for value in bounds) + 48
+        bottom = max(value[1] + value[3] for value in bounds) + 48
+    else:
+        left, top, right, bottom = 0, 0, 1200, 800
+    width, height = max(120, right - left), max(80, bottom - top)
+    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:g}" height="{height:g}" viewBox="{left:g} {top:g} {width:g} {height:g}">', '<rect width="100%" height="100%" fill="#ffffff"/>']
+    for item in objects:
+        data = item.get('data') if isinstance(item.get('data'), dict) else {}
+        x, y = float(item.get('x') or 0), float(item.get('y') or 0)
+        item_width, item_height = max(1, float(item.get('width') or 1)), max(1, float(item.get('height') or 1))
+        rotation = float(item.get('rotation') or 0)
+        transform = f' transform="rotate({rotation:g} {x + item_width / 2:g} {y + item_height / 2:g})"' if rotation else ''
+        object_type = item.get('type')
+        if object_type == 'shape':
+            fill, stroke = '#eef2ff', '#4f46e5'
+            shape = data.get('shape')
+            if shape == 'ellipse':
+                parts.append(f'<ellipse cx="{x + item_width / 2:g}" cy="{y + item_height / 2:g}" rx="{item_width / 2:g}" ry="{item_height / 2:g}" fill="{fill}" stroke="{stroke}" stroke-width="3"{transform}/>')
+            elif shape == 'diamond':
+                points = f'{x + item_width / 2:g},{y:g} {x + item_width:g},{y + item_height / 2:g} {x + item_width / 2:g},{y + item_height:g} {x:g},{y + item_height / 2:g}'
+                parts.append(f'<polygon points="{points}" fill="{fill}" stroke="{stroke}" stroke-width="3"{transform}/>')
+            elif shape == 'triangle':
+                points = f'{x + item_width / 2:g},{y:g} {x + item_width:g},{y + item_height:g} {x:g},{y + item_height:g}'
+                parts.append(f'<polygon points="{points}" fill="{fill}" stroke="{stroke}" stroke-width="3"{transform}/>')
+            else:
+                radius = 14 if shape == 'rounded' else 5
+                parts.append(f'<rect x="{x:g}" y="{y:g}" width="{item_width:g}" height="{item_height:g}" rx="{radius}" fill="{fill}" stroke="{stroke}" stroke-width="3"{transform}/>')
+        elif object_type == 'arrow':
+            start, end = data.get('start') or {'x': 0, 'y': item_height / 2}, data.get('end') or {'x': item_width, 'y': item_height / 2}
+            sx, sy, ex, ey = float(start.get('x') or 0) + x, float(start.get('y') or 0) + y, float(end.get('x') or item_width) + x, float(end.get('y') or item_height / 2) + y
+            angle = math.atan2(ey - sy, ex - sx)
+            head = 10
+            left_point = (ex - head * math.cos(angle - math.pi / 6), ey - head * math.sin(angle - math.pi / 6))
+            right_point = (ex - head * math.cos(angle + math.pi / 6), ey - head * math.sin(angle + math.pi / 6))
+            parts.append(f'<line x1="{sx:g}" y1="{sy:g}" x2="{ex:g}" y2="{ey:g}" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"{transform}/>')
+            parts.append(f'<polygon points="{ex:g},{ey:g} {left_point[0]:g},{left_point[1]:g} {right_point[0]:g},{right_point[1]:g}" fill="#4f46e5"{transform}/>')
+        elif object_type == 'stroke':
+            points = ' '.join(f'{float(point.get("x") or 0):g},{float(point.get("y") or 0):g}' for point in (data.get('points') or []) if isinstance(point, dict))
+            if points:
+                parts.append(f'<polyline points="{_svg_escape(points)}" fill="none" stroke="{_svg_escape(data.get("color") or "#4f46e5")}" stroke-width="{float(data.get("size") or 4):g}" stroke-linecap="round" stroke-linejoin="round" opacity="{float(data.get("opacity") or 1):g}"/>')
+        elif object_type in {'text', 'sticky', 'comment'}:
+            fill = '#fff7cc' if object_type == 'sticky' else '#eff6ff' if object_type == 'comment' else 'transparent'
+            if fill != 'transparent':
+                parts.append(f'<rect x="{x:g}" y="{y:g}" width="{item_width:g}" height="{item_height:g}" rx="10" fill="{fill}" stroke="#cbd5e1"{transform}/>')
+            text = _svg_escape(data.get('text') or data.get('label') or '')
+            parts.append(f'<text x="{x + 12:g}" y="{y + 24:g}" fill="#1e293b" font-family="Arial, sans-serif" font-size="14"{transform}>{text}</text>')
+        elif object_type == 'frame':
+            parts.append(f'<rect x="{x:g}" y="{y:g}" width="{item_width:g}" height="{item_height:g}" rx="14" fill="#eef2ff" fill-opacity=".35" stroke="{_svg_escape(data.get("color") or "#818cf8")}" stroke-width="2" stroke-dasharray="8 6"{transform}/>')
+            parts.append(f'<text x="{x + 16:g}" y="{y + 26:g}" fill="#4338ca" font-family="Arial, sans-serif" font-size="16" font-weight="700"{transform}>{_svg_escape(data.get("label") or "Фрейм")}</text>')
+        elif object_type in {'image', 'file'}:
+            label = _svg_escape(data.get('name') or 'Материал')
+            parts.append(f'<rect x="{x:g}" y="{y:g}" width="{item_width:g}" height="{item_height:g}" rx="10" fill="#f8fafc" stroke="#94a3b8"{transform}/><text x="{x + 12:g}" y="{y + 24:g}" fill="#334155" font-family="Arial, sans-serif" font-size="14"{transform}>{label}</text>')
+    parts.append('</svg>')
+    return ''.join(parts)
+
+
+def _whiteboard_pdf(lesson_id: int, document: dict) -> bytes:
+    try:
+        from reportlab.lib.colors import HexColor, white
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.utils import ImageReader
+    except ImportError as error:
+        raise RuntimeError('Для PDF-экспорта не установлен компонент reportlab') from error
+
+    font_name = 'Helvetica'
+    for candidate in (
+        os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'Fonts', 'arial.ttf'),
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    ):
+        if os.path.isfile(candidate):
+            try:
+                pdfmetrics.registerFont(TTFont('BooStudySans', candidate))
+                font_name = 'BooStudySans'
+                break
+            except Exception:
+                continue
+
+    page_width, page_height = landscape(A4)
+    output = BytesIO()
+    pdf = canvas.Canvas(output, pagesize=(page_width, page_height), pageCompression=1)
+    for page in document.get('pages') or []:
+        objects = page.get('objects') or []
+        raw_bounds = [(float(item.get('x') or 0), float(item.get('y') or 0), max(1, float(item.get('width') or 1)), max(1, float(item.get('height') or 1))) for item in objects]
+        if raw_bounds:
+            left = min(item[0] for item in raw_bounds) - 32
+            top = min(item[1] for item in raw_bounds) - 32
+            right = max(item[0] + item[2] for item in raw_bounds) + 32
+            bottom = max(item[1] + item[3] for item in raw_bounds) + 32
+        else:
+            left, top, right, bottom = 0, 0, 1200, 800
+        scale = min((page_width - 72) / max(1, right - left), (page_height - 86) / max(1, bottom - top))
+        origin_x, origin_y = 36 - left * scale, page_height - 48 + top * scale
+
+        def tx(value: float) -> float:
+            return origin_x + value * scale
+
+        def ty(value: float) -> float:
+            return origin_y - value * scale
+
+        pdf.setFillColor(HexColor('#0f172a'))
+        pdf.setFont(font_name, 16)
+        pdf.drawString(36, page_height - 28, str(page.get('title') or 'Памятка')[:120])
+        for item in objects:
+            data = item.get('data') if isinstance(item.get('data'), dict) else {}
+            x, y = float(item.get('x') or 0), float(item.get('y') or 0)
+            width, height = max(1, float(item.get('width') or 1)), max(1, float(item.get('height') or 1))
+            object_type = item.get('type')
+            if object_type == 'shape':
+                pdf.setStrokeColor(HexColor('#4f46e5'))
+                pdf.setFillColor(HexColor('#eef2ff'))
+                if data.get('shape') == 'ellipse':
+                    pdf.ellipse(tx(x), ty(y + height), width * scale, height * scale, stroke=1, fill=1)
+                else:
+                    pdf.roundRect(tx(x), ty(y + height), width * scale, height * scale, 8 * scale if data.get('shape') == 'rounded' else 2 * scale, stroke=1, fill=1)
+            elif object_type == 'arrow':
+                start, end = data.get('start') or {'x': 0, 'y': height / 2}, data.get('end') or {'x': width, 'y': height / 2}
+                sx, sy, ex, ey = tx(x + float(start.get('x') or 0)), ty(y + float(start.get('y') or height / 2)), tx(x + float(end.get('x') or width)), ty(y + float(end.get('y') or height / 2))
+                pdf.setStrokeColor(HexColor('#4f46e5'))
+                pdf.setLineWidth(2)
+                pdf.line(sx, sy, ex, ey)
+                angle = math.atan2(ey - sy, ex - sx)
+                head = 8
+                pdf.setFillColor(HexColor('#4f46e5'))
+                pdf.wedge(ex - head, ey - head, ex + head, ey + head, math.degrees(angle) - 25, 50, stroke=0, fill=1)
+            elif object_type == 'stroke':
+                points = [point for point in data.get('points') or [] if isinstance(point, dict)]
+                if len(points) > 1:
+                    pdf.setStrokeColor(HexColor(str(data.get('color') or '#4f46e5')))
+                    pdf.setLineWidth(max(.5, float(data.get('size') or 4) * scale))
+                    path = pdf.beginPath()
+                    path.moveTo(tx(float(points[0].get('x') or 0)), ty(float(points[0].get('y') or 0)))
+                    for point in points[1:]:
+                        path.lineTo(tx(float(point.get('x') or 0)), ty(float(point.get('y') or 0)))
+                    pdf.drawPath(path, stroke=1, fill=0)
+            elif object_type in {'text', 'sticky', 'comment'}:
+                if object_type == 'sticky':
+                    pdf.setFillColor(HexColor('#fff7cc'))
+                    pdf.setStrokeColor(HexColor('#eab308'))
+                    pdf.roundRect(tx(x), ty(y + height), width * scale, height * scale, 7, stroke=1, fill=1)
+                elif object_type == 'comment':
+                    pdf.setFillColor(HexColor('#eff6ff'))
+                    pdf.setStrokeColor(HexColor('#93c5fd'))
+                    pdf.roundRect(tx(x), ty(y + height), width * scale, height * scale, 7, stroke=1, fill=1)
+                pdf.setFillColor(HexColor('#1e293b'))
+                pdf.setFont(font_name, max(7, min(15, 11 * scale)))
+                text = str(data.get('text') or data.get('label') or '')
+                for line_index, line in enumerate(textwrap.wrap(text, width=max(12, int(width / 8)))[:12]):
+                    pdf.drawString(tx(x + 10), ty(y + 22 + line_index * 16), line)
+            elif object_type == 'frame':
+                pdf.setFillColor(HexColor('#4338ca'))
+                pdf.setStrokeColor(HexColor(str(data.get('color') or '#818cf8')))
+                pdf.setDash(6, 4)
+                pdf.rect(tx(x), ty(y + height), width * scale, height * scale, stroke=1, fill=0)
+                pdf.setDash()
+                pdf.setFont(font_name, 12)
+                pdf.drawString(tx(x + 10), ty(y + 22), str(data.get('label') or 'Фрейм')[:80])
+            elif object_type in {'image', 'file'}:
+                asset_path = _lesson_asset_path(lesson_id, data.get('url'))
+                rendered = False
+                if object_type == 'image' and asset_path:
+                    try:
+                        pdf.drawImage(ImageReader(asset_path), tx(x), ty(y + height), width * scale, height * scale, preserveAspectRatio=True, anchor='c', mask='auto')
+                        rendered = True
+                    except Exception:
+                        rendered = False
+                if not rendered:
+                    pdf.setFillColor(HexColor('#f8fafc'))
+                    pdf.setStrokeColor(HexColor('#94a3b8'))
+                    pdf.roundRect(tx(x), ty(y + height), width * scale, height * scale, 7, stroke=1, fill=1)
+                    pdf.setFillColor(HexColor('#334155'))
+                    pdf.setFont(font_name, 10)
+                    pdf.drawString(tx(x + 10), ty(y + 24), str(data.get('name') or 'Материал')[:70])
+        pdf.showPage()
+    pdf.save()
+    return output.getvalue()
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard', methods=['GET'])
+@login_required
+def lesson_whiteboard_get(lesson_id: int):
+    """Возвращает внутренний документ доски урока и права текущего участника."""
+    _lesson, role = _whiteboard_access(lesson_id)
+    board = get_or_create_board(lesson_id)
+    payload = board_payload(board)
+    document = payload['document']
+    active_page_id = document.get('active_page_id')
+    payload['permissions'] = {
+        'role': role,
+        'can_edit': role == 'teacher' or (role == 'student' and can_student_edit_page(document, active_page_id)),
+        'can_present': role == 'teacher',
+        'can_lock': role == 'teacher',
+        'control': document.get('presentation', {}).get('control', {}),
+    }
+    return jsonify(payload)
+
+
+def _save_whiteboard_asset_bytes(lesson_id: int, raw: bytes, filename: str, mime_type: str) -> dict:
+    safe_name = secure_filename(filename) or 'material'
+    extension = os.path.splitext(safe_name)[1].lower()[:12]
+    stored_name = f'board-{uuid.uuid4().hex}{extension}'
+    root = _lesson_material_root(lesson_id)
+    os.makedirs(root, exist_ok=True)
+    with open(os.path.join(root, stored_name), 'wb') as target:
+        target.write(raw)
+    return {
+        'name': safe_name,
+        'url': url_for('lessons.lesson_whiteboard_asset', lesson_id=lesson_id, filename=stored_name),
+        'mime_type': mime_type,
+        'size': len(raw),
+    }
+
+
+def _materialize_import_assets(lesson_id: int, pages: list[dict]) -> None:
+    for page in pages:
+        for item in page.get('objects', []):
+            data = item.get('data') if isinstance(item.get('data'), dict) else {}
+            data_url = data.get('data_url')
+            if not isinstance(data_url, str) or not data_url.startswith('data:'):
+                continue
+            header, encoded = data_url.split(',', 1) if ',' in data_url else ('', '')
+            match = re.match(r'data:([^;]+);base64$', header, re.IGNORECASE)
+            if not match:
+                data.pop('data_url', None)
+                continue
+            try:
+                raw = base64.b64decode(encoded, validate=True)
+            except (ValueError, binascii.Error):
+                data.pop('data_url', None)
+                continue
+            if len(raw) > 20 * 1024 * 1024:
+                raise WhiteboardOperationError('Встроенный материал превышает лимит 20 МБ')
+            mime_type = match.group(1).lower()
+            if not (mime_type.startswith('image/') or mime_type == 'application/pdf'):
+                data.pop('data_url', None)
+                continue
+            extension = mimetypes.guess_extension(mime_type) or '.bin'
+            asset = _save_whiteboard_asset_bytes(lesson_id, raw, f'imported{extension}', mime_type)
+            data.update(asset)
+            data.pop('data_url', None)
+            item['data'] = data
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/export', methods=['GET'])
+@login_required
+def lesson_whiteboard_export(lesson_id: int):
+    _lesson, _role = _whiteboard_access(lesson_id)
+    board = get_or_create_board(lesson_id)
+    export_format = (request.args.get('format') or 'boostudy').lower()
+    scope = (request.args.get('scope') or 'all').lower()
+    if export_format not in {'boostudy', 'excalidraw', 'svg', 'pdf'}:
+        return jsonify({'error': 'Неподдерживаемый формат экспорта'}), 400
+    if scope not in {'all', 'page', 'frame'}:
+        return jsonify({'error': 'Неподдерживаемая область экспорта'}), 400
+    try:
+        document = _whiteboard_export_document(board_payload(board)['document'], scope, request.args.get('page_id'), request.args.get('frame_id'))
+        page_name = (document.get('pages') or [{}])[0].get('title') or 'boostudy-board'
+        stem = re.sub(r'[^\w\-а-яА-ЯёЁ]+', '-', str(page_name), flags=re.UNICODE).strip('-') or 'boostudy-board'
+        if export_format == 'boostudy':
+            _embed_board_assets(lesson_id, document)
+            raw = json.dumps({'format': 'boostudy.board', 'format_version': 1, 'exported_at': moscow_now().isoformat(), 'document': document}, ensure_ascii=False, indent=2).encode('utf-8')
+            return send_file(BytesIO(raw), mimetype='application/json', as_attachment=True, download_name=f'{stem}.boostudy.json')
+        if export_format == 'excalidraw':
+            payload = excalidraw_export(document)
+            for element in payload.get('elements', []):
+                if element.get('type') != 'image':
+                    continue
+                custom = element.get('customData') if isinstance(element.get('customData'), dict) else {}
+                path = _lesson_asset_path(lesson_id, custom.get('url'))
+                if not path:
+                    continue
+                try:
+                    with open(path, 'rb') as source:
+                        raw_asset = source.read()
+                    mime_type = custom.get('mime_type') or mimetypes.guess_type(path)[0] or 'application/octet-stream'
+                    payload['files'][element.get('fileId')] = {'mimeType': mime_type, 'id': element.get('fileId'), 'dataURL': f'data:{mime_type};base64,{base64.b64encode(raw_asset).decode("ascii")}', 'created': int(moscow_now().timestamp() * 1000)}
+                except OSError:
+                    continue
+            raw = json.dumps(payload, ensure_ascii=False, indent=2).encode('utf-8')
+            return send_file(BytesIO(raw), mimetype='application/json', as_attachment=True, download_name=f'{stem}.excalidraw')
+        if export_format == 'svg':
+            raw = _whiteboard_svg(document).encode('utf-8')
+            return send_file(BytesIO(raw), mimetype='image/svg+xml', as_attachment=True, download_name=f'{stem}.svg')
+        try:
+            raw = _whiteboard_pdf(lesson_id, document)
+        except RuntimeError as error:
+            return jsonify({'error': str(error)}), 503
+        return send_file(BytesIO(raw), mimetype='application/pdf', as_attachment=True, download_name=f'{stem}.pdf')
+    except WhiteboardOperationError as error:
+        return jsonify({'error': str(error)}), 400
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/import', methods=['POST'])
+@login_required
+def lesson_whiteboard_import(lesson_id: int):
+    _lesson, role = _whiteboard_access(lesson_id)
+    if role != 'teacher':
+        return jsonify({'error': 'Импорт памяток доступен только преподавателю'}), 403
+    uploaded = request.files.get('file')
+    if not uploaded or not uploaded.filename:
+        return jsonify({'error': 'Файл не выбран'}), 400
+    raw = uploaded.read()
+    if len(raw) > 20 * 1024 * 1024:
+        return jsonify({'error': 'Максимальный размер файла — 20 МБ'}), 413
+    filename = secure_filename(uploaded.filename) or 'boostudy-import'
+    extension = os.path.splitext(filename)[1].lower()
+    warnings: list[str] = []
+    converted_count = 0
+    try:
+        if extension in {'.boostudy', '.json'} or uploaded.mimetype in {'application/json', 'application/vnd.boostudy.board+json'}:
+            payload = json.loads(raw.decode('utf-8-sig'))
+            pages, warnings, converted_count = import_boostudy_payload(payload)
+        elif extension == '.excalidraw':
+            payload = json.loads(raw.decode('utf-8-sig'))
+            pages, warnings, converted_count = import_excalidraw_payload(payload, filename)
+        elif extension == '.pdf' or uploaded.mimetype == 'application/pdf':
+            asset = _save_whiteboard_asset_bytes(lesson_id, raw, filename, 'application/pdf')
+            pages, warnings, converted_count = normalize_import_pages([{'id': 'pdf-page', 'title': os.path.splitext(filename)[0], 'objects': [{'id': 'pdf-material', 'type': 'file', 'x': 120, 'y': 120, 'width': 720, 'height': 480, 'locked': True, 'data': asset}]}])
+        elif extension == '.svg' or uploaded.mimetype == 'image/svg+xml':
+            lowered = raw.lower()
+            if b'<script' in lowered or re.search(rb'\bon\w+\s*=|javascript:', lowered):
+                raise WhiteboardOperationError('SVG содержит запрещённый скрипт или обработчик события')
+            asset = _save_whiteboard_asset_bytes(lesson_id, raw, filename, 'image/svg+xml')
+            pages, warnings, converted_count = normalize_import_pages([{'id': 'svg-page', 'title': os.path.splitext(filename)[0], 'objects': [{'id': 'svg-material', 'type': 'image', 'x': 120, 'y': 120, 'width': 720, 'height': 480, 'locked': True, 'data': asset}]}])
+        else:
+            raise WhiteboardOperationError('Поддерживаются .boostudy.json, .excalidraw, .pdf и .svg')
+        _materialize_import_assets(lesson_id, pages)
+        board = get_or_create_board(lesson_id)
+        operation = {'operation_id': uuid.uuid4().hex, 'type': 'page.import', 'pages': pages, 'warnings': warnings, 'converted_count': converted_count}
+        result, accepted = persist_operations(board, [operation], current_user.id, request.headers.get('X-Client-ID'), board.document_version, role)
+        socketio = getattr(current_app, 'socketio', None)
+        if socketio:
+            socketio.emit('whiteboard_operations', {'lesson_id': lesson_id, 'client_id': request.headers.get('X-Client-ID'), 'version': result['version'], 'operations': [operation]}, room=f'lesson:{lesson_id}', namespace='/lesson')
+        return jsonify({'success': True, 'imported_page_ids': [page['id'] for page in pages], 'warnings': warnings, 'converted_count': converted_count, 'document': result['document'], 'version': result['version'], 'accepted': accepted})
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return jsonify({'error': 'Файл содержит некорректный JSON'}), 400
+    except WhiteboardOperationError as error:
+        return jsonify({'error': str(error)}), 400
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/operations', methods=['POST'])
+@login_required
+def lesson_whiteboard_operations(lesson_id: int):
+    """Принимает типизированные операции и рассылает их участникам комнаты."""
+    _lesson, role = _whiteboard_access(lesson_id)
+    board = get_or_create_board(lesson_id)
+    payload = request.get_json(silent=True) or {}
+    operations = payload.get('operations') if isinstance(payload.get('operations'), list) else [payload]
+    normalized = []
+    for operation in operations:
+        if not isinstance(operation, dict):
+            return jsonify({'error': 'Операция должна быть объектом'}), 400
+        item = dict(operation)
+        item.setdefault('operation_id', uuid.uuid4().hex)
+        normalized.append(item)
+    if role == 'parent':
+        return jsonify({'error': 'Родитель может просматривать доску, но не изменять её'}), 403
+    try:
+        result, accepted = persist_operations(
+            board,
+            normalized,
+            current_user.id,
+            payload.get('client_id'),
+            payload.get('base_version'),
+            role,
+        )
+    except WhiteboardConflict as conflict:
+        return jsonify({'error': 'conflict', 'version': conflict.version, 'document': conflict.document}), 409
+    except WhiteboardOperationError as error:
+        return jsonify({'error': str(error)}), 400
+    accepted_set = set(accepted)
+    accepted_operations = [item for item in normalized if item['operation_id'] in accepted_set]
+    socketio = getattr(current_app, 'socketio', None)
+    if socketio:
+        socketio.emit(
+            'whiteboard_operations',
+            {
+                'lesson_id': lesson_id,
+                'client_id': payload.get('client_id'),
+                'version': result['version'],
+                'operations': accepted_operations,
+            },
+            room=f'lesson:{lesson_id}',
+            namespace='/lesson',
+        )
+    return jsonify({'accepted': accepted, **result})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/history', methods=['GET'])
+@login_required
+def lesson_whiteboard_history(lesson_id: int):
+    _lesson, _role = _whiteboard_access(lesson_id)
+    board = get_or_create_board(lesson_id)
+    rows = LessonWhiteboardOperation.query.filter_by(whiteboard_id=board.id).order_by(LessonWhiteboardOperation.version.desc()).limit(100).all()
+    return jsonify({'version': board.document_version or 0, 'operations': [
+        {
+            'operation_id': row.operation_id,
+            'version': row.version,
+            'type': row.operation_type,
+            'payload': row.payload,
+            'user_id': row.user_id,
+            'created_at': row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in reversed(rows)
+    ]})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/assets', methods=['POST'])
+@login_required
+def lesson_whiteboard_asset_upload(lesson_id: int):
+    _lesson, role = _whiteboard_access(lesson_id)
+    if role == 'parent':
+        return jsonify({'error': 'Недостаточно прав'}), 403
+    uploaded = request.files.get('file')
+    if not uploaded or not uploaded.filename:
+        return jsonify({'error': 'Файл не выбран'}), 400
+    content_type = (uploaded.mimetype or '').lower()
+    if not (content_type.startswith('image/') or content_type == 'application/pdf'):
+        return jsonify({'error': 'Поддерживаются изображения, SVG и PDF'}), 415
+    raw = uploaded.read()
+    if len(raw) > 20 * 1024 * 1024:
+        return jsonify({'error': 'Максимальный размер файла — 20 МБ'}), 413
+    if content_type == 'image/svg+xml':
+        svg_text = raw.decode('utf-8', errors='ignore')
+        if re.search(r'<\s*script\b|\bon[a-z]+\s*=|javascript\s*:', svg_text, flags=re.IGNORECASE):
+            return jsonify({'error': 'SVG содержит запрещённый HTML или JavaScript'}), 400
+    filename = secure_filename(uploaded.filename) or 'material'
+    extension = os.path.splitext(filename)[1].lower()[:12]
+    stored_name = f'board-{uuid.uuid4().hex}{extension}'
+    root = _lesson_material_root(lesson_id)
+    os.makedirs(root, exist_ok=True)
+    with open(os.path.join(root, stored_name), 'wb') as target:
+        target.write(raw)
+    return jsonify({
+        'asset': {
+            'name': filename,
+            'url': url_for('lessons.lesson_whiteboard_asset', lesson_id=lesson_id, filename=stored_name),
+            'mime_type': content_type,
+            'size': len(raw),
+        }
+    }), 201
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/assets/<path:filename>', methods=['GET'])
+@login_required
+def lesson_whiteboard_asset(lesson_id: int, filename: str):
+    _whiteboard_access(lesson_id)
+    return send_from_directory(_lesson_material_root(lesson_id), filename, as_attachment=False)
 
 
 @lessons_bp.route('/sandbox/lesson_room/<int:lesson_id>')
@@ -2747,8 +3450,9 @@ def lesson_messages_list(lesson_id: int):
 
     msgs = (
         LessonMessage.query
+        .options(db.joinedload(LessonMessage.author))
         .filter_by(lesson_id=lesson.lesson_id)
-        .order_by(LessonMessage.created_at.asc(), LessonMessage.message_id.asc())
+        .order_by(LessonMessage.created_at.desc(), LessonMessage.message_id.desc())
         .limit(300)
         .all()
     )
@@ -2758,10 +3462,11 @@ def lesson_messages_list(lesson_id: int):
             {
                 'id': m.message_id,
                 'author_user_id': m.author_user_id,
+                'author_name': m.author.username if m.author else 'Участник',
                 'body': m.body,
                 'created_at': m.created_at.isoformat() if m.created_at else None,
             }
-            for m in msgs
+            for m in reversed(msgs)
         ]
     })
 
@@ -2829,12 +3534,20 @@ def lesson_messages_send(lesson_id: int):
 
     db.session.commit()
 
+    if current_user.is_student() and lesson.student:
+        try:
+            from app.utils.achievement_service import grant_achievement
+            grant_achievement(lesson.student, 'lesson_chat_active', commit=True)
+        except Exception:
+            pass
+
     try:
         from app.lessons.lesson_socket import emit_lesson_message_new
         created_at = getattr(msg, 'created_at', None)
         emit_lesson_message_new(lesson.lesson_id, {
             'id': msg.message_id,
             'author_user_id': current_user.id,
+            'author_name': current_user.username or 'Участник',
             'body': body,
             'created_at': created_at.isoformat() if created_at else None,
         })
@@ -3384,7 +4097,6 @@ def lesson_room_search_tasks(lesson_id: int):
     if not _lesson_studio_is_teacher():
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
-    import re
     query_text = (request.args.get('q') or '').strip()
     raw_num = request.args.get('number')
     q = Tasks.query.filter(getattr(Tasks, 'is_active', True) == True)
@@ -3405,6 +4117,10 @@ def lesson_room_search_tasks(lesson_id: int):
         results.append({
             'task_id': t.task_id,
             'task_number': t.task_number,
+            'title': _task_display_title(
+                t,
+                f'Задание №{t.task_number}' if t.task_number else f'Задание #{t.task_id}',
+            ),
             'site_task_id': t.site_task_id or f'№{t.task_id}',
             'snippet': clean_text or 'Без описания',
             'answer': t.answer or '',
@@ -3423,6 +4139,7 @@ def lesson_room_quick_add_task(lesson_id: int):
 
     payload = request.get_json(silent=True) or {}
     task_id = payload.get('task_id')
+    manual_title = ''
 
     if not task_id:
         # Ручное создание нового задания на лету
@@ -3435,11 +4152,16 @@ def lesson_room_quick_add_task(lesson_id: int):
             task_number = 1
         answer = str(payload.get('answer') or '').strip()
         starter_code = str(payload.get('starter_code') or '').strip()
+        manual_title = str(payload.get('title') or '').strip()[:180]
+        prepared_content = prepare_task_content_html(content)
+        if manual_title:
+            prepared_content = f'<h4 class="task-title">{html_escape(manual_title)}</h4>{prepared_content}'
+        content_html = str(sanitize_html(prepared_content))
 
         new_task = Tasks(
             course_id=lesson.exam_course_id,
             task_number=task_number,
-            content_html=f'<div class="task-text">{content}</div>',
+            content_html=content_html,
             answer=answer or None,
             starter_code=starter_code or None,
             created_by_id=current_user.id,
@@ -3462,6 +4184,8 @@ def lesson_room_quick_add_task(lesson_id: int):
             lesson_id=lesson.lesson_id,
             task_id=task_id,
             assignment_type='classwork',
+            is_visible_to_student=False,
+            is_answer_visible_to_student=False,
             status='pending'
         )
         db.session.add(lt)
@@ -3471,25 +4195,67 @@ def lesson_room_quick_add_task(lesson_id: int):
 
     # Оповещаем комнату через сокеты
     from app.lessons.lesson_socket import emit_lesson_tasks_updated
-    emit_lesson_tasks_updated(lesson.lesson_id, 'classwork')
+    task_payload = _lesson_room_task_payload(lt)
+    if manual_title:
+        task_payload['title'] = manual_title
+    emit_lesson_tasks_updated(lesson.lesson_id, 'classwork', task_payload)
 
-    task_obj = lt.task
     return jsonify({
         'success': True,
-        'task': {
-            'lesson_task_id': lt.lesson_task_id,
-            'task_id': lt.task_id,
-            'title': getattr(task_obj, 'title', None) or (f'Задание №{task_obj.task_number}' if task_obj and task_obj.task_number else 'Задание'),
-            'description': task_obj.content_html if task_obj else 'Условие задачи...',
-            'answer': lt.student_answer or (task_obj.answer if task_obj else ''),
-            'student_submission': lt.student_submission or '',
-            'starter_code': (task_obj.starter_code if task_obj else '') or '',
-            'hints': (task_obj.hints if task_obj else []) or [],
-            'teacher_comment': lt.teacher_comment or '',
-            'submission_correct': lt.submission_correct,
-            'status': lt.status or 'pending',
-        }
+        'task': task_payload
     })
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/task/<int:lesson_task_id>/visibility', methods=['POST'])
+@login_required
+def lesson_room_task_visibility(lesson_id: int, lesson_task_id: int):
+    """Показывает или скрывает конкретное задание для ученика в комнате."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Управлять показом может только преподаватель'}), 403
+
+    lesson_task = LessonTask.query.filter_by(
+        lesson_id=lesson_id,
+        lesson_task_id=lesson_task_id,
+        assignment_type='classwork',
+    ).first_or_404()
+    payload = request.get_json(silent=True) or {}
+    if 'visible' not in payload:
+        return jsonify({'success': False, 'error': 'Не указано состояние показа'}), 400
+
+    lesson_task.is_visible_to_student = bool(payload.get('visible'))
+    db.session.commit()
+    task_payload = _lesson_room_task_payload(lesson_task)
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson_id, 'classwork', task_payload)
+    return jsonify({'success': True, 'task': task_payload})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/task/<int:lesson_task_id>/answer-visibility', methods=['POST'])
+@login_required
+def lesson_room_task_answer_visibility(lesson_id: int, lesson_task_id: int):
+    """Раскрывает или скрывает эталонный ответ конкретного задания ученику."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Управлять ответом может только преподаватель'}), 403
+
+    lesson_task = LessonTask.query.filter_by(
+        lesson_id=lesson_id,
+        lesson_task_id=lesson_task_id,
+        assignment_type='classwork',
+    ).first_or_404()
+    payload = request.get_json(silent=True) or {}
+    if 'visible' not in payload:
+        return jsonify({'success': False, 'error': 'Не указано состояние показа ответа'}), 400
+
+    lesson_task.is_answer_visible_to_student = bool(payload.get('visible'))
+    db.session.commit()
+    task_payload = _lesson_room_task_payload(lesson_task)
+    from app.lessons.lesson_socket import emit_lesson_tasks_updated
+    emit_lesson_tasks_updated(lesson_id, 'classwork', task_payload)
+    return jsonify({'success': True, 'task': task_payload})
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/content/save', methods=['POST'])

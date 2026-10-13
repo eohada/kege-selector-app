@@ -13,7 +13,7 @@
 {% set mentor_online = (mentor.is_online_now() if mentor else false) %}
 {% set upcoming = (upcoming_lessons[0] if upcoming_lessons and upcoming_lessons|length > 0 else None) %}
 {% set active_cnt = (active_submissions|length if active_submissions is defined and active_submissions else 0) %}
-{% set sub_allow_trainer = (student_subscription.allow_trainer if student_subscription and student_subscription.allow_trainer is not none else True) %}
+{% set sub_allow_trainer = (student_subscription.allow_trainer if student_subscription and student_subscription.allow_trainer is not none else False) %}
 {% set trainer_is_available = (sub_allow_trainer and has_permission(current_user, 'trainer.use')) %}
 
 <div class="w-full max-w-[1600px] mx-auto flex flex-col gap-6">

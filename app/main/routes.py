@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from flask import abort, render_template, request, send_from_directory, flash, redirect, url_for, make_response, current_app, jsonify, session
 from flask_login import login_required, login_user, logout_user
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from app.main import main_bp
 from app.models import Student, Lesson, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, db, moscow_now
@@ -17,7 +17,6 @@ from app.students.forms import normalize_school_class
 from app.auth.rbac_utils import get_user_scope, apply_data_scope
 from app.utils.release_notes import build_release_notes_text, RELEASE_VERSION
 from sqlalchemy import func, or_
-from datetime import timedelta
 from core.audit_logger import audit_logger
 from flask_login import current_user
 from app import csrf
@@ -73,13 +72,13 @@ def track_student_section_visits():
             return
         path = request.path
         sec = None
-        if path.startswith('/workspace/profile') or path.startswith('/profile'):
+        if path.startswith('/workspace/profile') or path.startswith('/profile') or path.startswith('/user/profile'):
             sec = 'profile'
-        elif path.startswith('/assignments') or path.startswith('/task-workspace'):
+        elif path.startswith('/assignments') or path.startswith('/task-workspace') or path.startswith('/trainer'):
             sec = 'tasks'
         elif path.startswith('/theory'):
             sec = 'theory'
-        elif path.startswith('/lessons'):
+        elif path.startswith('/lesson') or path.startswith('/schedule'):
             sec = 'lessons'
         elif path in ['/workspace', '/', '/dashboard']:
             sec = 'dashboard'
@@ -509,13 +508,28 @@ def preparation_mode_page():
     )
 
 
+@main_bp.route('/dev/ui')
+def ui_showcase():
+    """Development-only visual catalog for BooStudy design primitives."""
+    if not (
+        current_app.config.get('DEBUG')
+        or current_app.config.get('TESTING')
+        or os.getenv('BOOSTUDY_UI_DEV') == '1'
+    ):
+        abort(404)
+    return render_template('dev/ui.html')
+
+
 @main_bp.route('/students', endpoint='students')
-@main_bp.route('/teacher/students')
-@main_bp.route('/dashboard')
-@main_bp.route('/teacher/dashboard')
+@main_bp.route('/teacher/students', endpoint='teacher_students')
+@main_bp.route('/teacher/dashboard', endpoint='teacher_dashboard')
+@main_bp.route('/dashboard', endpoint='dashboard')
 @login_required
 def dashboard():
     """Главная страница (dashboard) со списком студентов или дашбордом преподавателя"""
+    if request.path == '/teacher/dashboard' and current_user.is_student():
+        return redirect(url_for('main.dashboard'))
+
     active_role = get_active_role()
     if active_role == 'parent' or (current_user.is_parent() and active_role not in ['tutor', 'admin', 'creator']):
         return parents_dashboard()
@@ -1080,12 +1094,38 @@ def student_dashboard():
             student = candidate
 
     from app.students.stats_service import StatsService
-    from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry, Assignment, Lesson, StudentCourseEnrollment, LearningTrajectory, LearningItem
+    from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry, Assignment, Lesson, StudentCourseEnrollment, LearningTrajectory, LearningItem, TrajectoryModule
 
     # Empty states are rendered explicitly; dashboard metrics never use demo data.
-    now_utc = moscow_now() if callable(moscow_now) else datetime.now(timezone.utc)
+    from app.utils.datetime_utc import effective_timezone_name, get_timezone
+    user_tz_name = effective_timezone_name(current_user)
+    user_tz = get_timezone(user_tz_name)
+    now_local = datetime.now(timezone.utc).astimezone(user_tz)
+    now_utc = datetime.now(timezone.utc)
+    dashboard_hour = now_local.hour
+    dashboard_greeting = 'Доброе утро' if 5 <= dashboard_hour < 12 else ('Добрый день' if 12 <= dashboard_hour < 18 else ('Добрый вечер' if 18 <= dashboard_hour < 23 else 'Доброй ночи'))
+    dashboard_showcase = bool(request.args.get('demo') == '1')
+    weekday_names = ('Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс')
+    week_start = now_local.date() - timedelta(days=now_local.weekday())
+    schedule_days = [
+        {'weekday': weekday_names[index], 'number': (week_start + timedelta(days=index)).day, 'is_today': index == now_local.weekday()}
+        for index in range(7)
+    ]
+    ru_months = (
+        'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    )
+    today_display_date = f"Сегодня, {now_local.day} {ru_months[now_local.month - 1]}"
+    def _to_user_local(dt):
+        if not dt:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(user_tz)
+
     active_lesson = None
     upcoming_lesson = None
+    lesson_candidates = []
     recent_lessons = []
     total_lessons = 0
     completed_lessons = 0
@@ -1097,20 +1137,32 @@ def student_dashboard():
 
     if student:
         try:
-            active_lesson = Lesson.query.filter(
+            active_candidate = Lesson.query.filter(
                 Lesson.student_id == student.student_id,
                 Lesson.status == 'in_progress'
-            ).first()
+            ).order_by(Lesson.lesson_date.desc()).first()
+            if active_candidate and active_candidate.lesson_date:
+                cand_local = _to_user_local(active_candidate.lesson_date)
+                if cand_local and (cand_local.date() == now_local.date() or abs((now_local - cand_local).total_seconds()) < 6 * 3600):
+                    active_lesson = active_candidate
+                else:
+                    active_lesson = None
+            else:
+                active_lesson = active_candidate
         except Exception:
             active_lesson = None
 
         try:
-            upcoming_lesson = Lesson.query.filter(
+            lesson_candidates = Lesson.query.filter(
                 Lesson.student_id == student.student_id,
-                Lesson.status == 'planned'
-            ).order_by(Lesson.lesson_date.asc()).first()
+                Lesson.status.in_(['planned', 'scheduled', 'in_progress']),
+                Lesson.lesson_date.isnot(None),
+            ).order_by(Lesson.lesson_date.asc()).all()
+            future_lessons = [item for item in lesson_candidates if item.lesson_date and _to_user_local(item.lesson_date) >= now_local]
+            upcoming_lesson = future_lessons[0] if future_lessons else None
         except Exception:
             upcoming_lesson = None
+            lesson_candidates = []
 
         try:
             recent_lessons = Lesson.query.filter_by(
@@ -1174,20 +1226,92 @@ def student_dashboard():
             pass
 
     selected_course_id = request.args.get('course_id', type=int)
-    if not selected_course_id and enrollments:
-        selected_course_id = enrollments[0].course_id
-
     course_weekly_items = []
     selected_course = None
-    if student and selected_course_id:
+    course_items_all = []
+    course_modules = []
+    if student:
         try:
-            selected_course = LearningTrajectory.query.filter_by(course_id=selected_course_id, student_id=student.student_id).first()
+            if selected_course_id:
+                selected_course = LearningTrajectory.query.filter_by(course_id=selected_course_id, student_id=student.student_id).first()
+            if not selected_course:
+                selected_course = LearningTrajectory.query.filter_by(student_id=student.student_id).order_by(
+                    LearningTrajectory.updated_at.desc().nullslast(),
+                    LearningTrajectory.course_id.asc()
+                ).first()
+            if not selected_course and enrollments:
+                selected_course_id = enrollments[0].course_id
+                selected_course = LearningTrajectory.query.filter_by(course_id=selected_course_id, student_id=student.student_id).first()
             if selected_course:
+                selected_course_id = selected_course.course_id
+                course_items_all = LearningItem.query.filter_by(course_id=selected_course.course_id).order_by(
+                    LearningItem.order_index.asc(), LearningItem.item_id.asc()
+                ).all()
+                course_modules = TrajectoryModule.query.filter_by(course_id=selected_course.course_id).order_by(
+                    TrajectoryModule.order_index.asc(), TrajectoryModule.module_id.asc()
+                ).all()
                 course_weekly_items = LearningItem.query.filter_by(course_id=selected_course.course_id).filter(
                     LearningItem.status.in_(['planned', 'in_progress', 'overdue'])
                 ).order_by(LearningItem.due_at.asc().nullslast(), LearningItem.order_index.asc()).limit(5).all()
         except Exception:
             course_weekly_items = []
+            course_items_all = []
+            course_modules = []
+
+    current_learning_item = next(
+        (item for item in course_items_all if item.status == 'in_progress'),
+        next((item for item in course_items_all if item.status in {'planned', 'overdue'}), None),
+    )
+    learning_path = []
+    for module in course_modules:
+        module_items = [item for item in course_items_all if item.module_id == module.module_id]
+        done_items = [item for item in module_items if item.status in {'done', 'completed'}]
+        module_progress = int(round((len(done_items) / len(module_items)) * 100)) if module_items else 0
+        learning_path.append({
+            'module_id': module.module_id,
+            'title': module.title,
+            'description': module.description,
+            'done': len(done_items),
+            'total': len(module_items),
+            'progress_pct': module_progress,
+            'status': 'done' if module_items and len(done_items) == len(module_items) else ('current' if any(item.status == 'in_progress' for item in module_items) else 'planned'),
+        })
+
+    today_lessons = []
+    schedule_lessons = []
+    if student:
+        today_lessons = [
+            l for l in lesson_candidates
+            if l.lesson_date and _to_user_local(l.lesson_date).date() == now_local.date()
+        ]
+        future_lessons = [
+            item for item in lesson_candidates
+            if item.lesson_date and _to_user_local(item.lesson_date) >= now_local
+        ]
+        schedule_lessons = future_lessons[:6] if future_lessons else list(reversed(lesson_candidates[-6:]))
+
+    goal_title = None
+    goal_target_score = None
+    goal_current_score = None
+    if selected_course:
+        goal_title = (selected_course.exam_course.title if selected_course.exam_course else None) or selected_course.title
+        goal_target_score = selected_course.target_score
+        goal_current_score = selected_course.current_forecast
+    elif enrollments:
+        enrolled_course = enrollments[0].course
+        goal_title = enrolled_course.title if enrolled_course else None
+
+    if not goal_target_score and student:
+        goal_target_score = getattr(student, 'target_score', None)
+    if goal_current_score is None and student:
+        goal_current_score = getattr(student, 'current_score', None)
+
+    goal_progress = completion_pct
+    if goal_target_score and goal_current_score is not None:
+        try:
+            goal_progress = max(0, min(100, int(round((float(goal_current_score) / float(goal_target_score)) * 100))))
+        except (ValueError, ZeroDivisionError):
+            goal_progress = completion_pct
 
     plan_items = []
     if student:
@@ -1199,6 +1323,74 @@ def student_dashboard():
             ).limit(12).all()
         except Exception:
             plan_items = []
+
+    if not learning_path:
+        for item in plan_items[:5]:
+            learning_path.append({
+                'module_id': item.course_module_id,
+                'title': item.title,
+                'description': item.notes,
+                'done': 1 if item.status == 'done' else 0,
+                'total': 1,
+                'progress_pct': 100 if item.status == 'done' else 0,
+                'status': 'done' if item.status == 'done' else ('current' if item.status == 'in_progress' else 'planned'),
+            })
+
+    # Keep the path visually complete without inventing stages: when a course
+    # has fewer module records, use distinct real learning-plan/course items
+    # as the remaining steps.
+    existing_path_titles = {
+        str(step.get('title') or '').strip().casefold()
+        for step in learning_path
+    }
+    for item in [*course_items_all, *plan_items]:
+        if len(learning_path) >= 5:
+            break
+        item_title = str(getattr(item, 'title', None) or '').strip()
+        if not item_title or item_title.casefold() in existing_path_titles:
+            continue
+        item_status = getattr(item, 'status', None)
+        learning_path.append({
+            'module_id': getattr(item, 'module_id', None) or getattr(item, 'course_module_id', None),
+            'title': item_title,
+            'description': getattr(item, 'description', None) or getattr(item, 'notes', None),
+            'done': 1 if item_status in {'done', 'completed'} else 0,
+            'total': 1,
+            'progress_pct': 100 if item_status in {'done', 'completed'} else 0,
+            'status': 'done' if item_status in {'done', 'completed'} else ('current' if item_status == 'in_progress' else 'planned'),
+        })
+        existing_path_titles.add(item_title.casefold())
+
+    if learning_path and len(learning_path) < 5:
+        learning_path.append({
+            'module_id': None,
+            'title': 'Следующий этап',
+            'description': 'Следующий этап программы появится после назначения темы.',
+            'done': 0,
+            'total': 0,
+            'progress_pct': 0,
+            'status': 'planned',
+            'placeholder': True,
+        })
+
+    if dashboard_showcase:
+        showcase_lesson_id = next(
+            (item.lesson_id for item in [*recent_lessons, *lesson_candidates] if getattr(item, 'lesson_id', None)),
+            0,
+        )
+        learning_path = [
+            {'module_id': None, 'title': 'Введение', 'description': '', 'done': 3, 'total': 3, 'progress_pct': 100, 'status': 'done'},
+            {'module_id': None, 'title': 'Переменные', 'description': '', 'done': 2, 'total': 4, 'progress_pct': 50, 'status': 'current'},
+            {'module_id': None, 'title': 'Условия', 'description': '', 'done': 1, 'total': 5, 'progress_pct': 20, 'status': 'planned'},
+            {'module_id': None, 'title': 'Циклы', 'description': '', 'done': 0, 'total': 6, 'progress_pct': 0, 'status': 'planned'},
+            {'module_id': None, 'title': 'Функции', 'description': '', 'done': 0, 'total': 5, 'progress_pct': 0, 'status': 'planned'},
+        ]
+        schedule_lessons = [
+            {'lesson_id': showcase_lesson_id, 'display_time': '16:00', 'display_title': 'Самостоятельная работа', 'display_topic': 'Python • Функции'},
+            {'lesson_id': showcase_lesson_id, 'display_time': '18:00', 'display_title': 'Открыть теорию', 'display_topic': 'Циклы и range'},
+            {'lesson_id': showcase_lesson_id, 'display_time': '21:00', 'display_title': 'Урок с преподавателем', 'display_topic': 'Python • Условия'},
+        ]
+        goal_title = 'Подготовка к ЕГЭ по информатике'
 
     pending_submissions = []
     if student:
@@ -1298,8 +1490,39 @@ def student_dashboard():
                 pct_vals = [(float(r.score) / float(r.max_score)) * 100.0 for r in rows if r.score is not None and r.max_score]
                 if pct_vals:
                     avg_score = str(int(round(sum(pct_vals) / len(pct_vals))))
+            elif student:
+                # Fallback to graded submissions directly
+                graded_subs = Submission.query.filter(
+                    Submission.student_id == student.student_id,
+                    Submission.status == 'GRADED',
+                    Submission.score.isnot(None),
+                    Submission.max_score.isnot(None),
+                    Submission.max_score > 0
+                ).all()
+                if graded_subs:
+                    pct_vals = [(float(s.score) / float(s.max_score)) * 100.0 for s in graded_subs]
+                    if pct_vals:
+                        avg_score = str(int(round(sum(pct_vals) / len(pct_vals))))
         except Exception:
             avg_score = '—'
+
+    grade_points = []
+    for grade in reversed(recent_grades):
+        try:
+            if grade.score is not None and grade.max_score:
+                grade_points.append(max(0, min(100, int(round((float(grade.score) / float(grade.max_score)) * 100)))))
+        except (TypeError, ValueError, ZeroDivisionError):
+            continue
+
+    homework_total = completed_tasks + len(pending_submissions)
+    homework_progress = int(round((completed_tasks / homework_total) * 100)) if homework_total else None
+    dashboard_metrics = {
+        'homework_progress': homework_progress,
+        'average_score': avg_score,
+        'completed_tasks': completed_tasks,
+        'pending_tasks': len(pending_submissions),
+        'grade_points': grade_points,
+    }
 
     return render_template(
         'sandbox/student_dashboard.html',
@@ -1328,6 +1551,20 @@ def student_dashboard():
         avg_score=avg_score,
         selected_course=selected_course,
         course_weekly_items=course_weekly_items,
+        course_items_all=course_items_all,
+        learning_path=learning_path,
+        current_learning_item=current_learning_item,
+        schedule_lessons=schedule_lessons,
+        today_lessons=today_lessons,
+        today_display_date=today_display_date,
+        goal_title=goal_title,
+        goal_target_score=goal_target_score,
+        goal_current_score=goal_current_score,
+        goal_progress=goal_progress,
+        dashboard_greeting=dashboard_greeting,
+        dashboard_showcase=dashboard_showcase,
+        schedule_days=schedule_days,
+        dashboard_metrics=dashboard_metrics,
     )
 
 @main_bp.route('/font/<path:filename>')
@@ -3210,6 +3447,18 @@ def universal_profile_view(user_id=None):
 
     role = (target_user.role or 'student').lower()
 
+    is_staff_viewer = bool(
+        viewer and (
+            viewer_role in ['creator', 'chief_admin', 'admin', 'teacher', 'tutor']
+            or (hasattr(viewer, 'is_admin') and viewer.is_admin())
+            or (hasattr(viewer, 'is_creator') and viewer.is_creator())
+            or (hasattr(viewer, 'is_tutor') and viewer.is_tutor())
+        )
+    )
+    can_manage_student = bool(
+        not is_owner and role == 'student' and is_staff_viewer
+    )
+
     # Проверка права оставлять отзыв: авторизован, не владелец профиля, у зрителя роль STUDENT, а цель — преподаватель
     can_leave_review = bool(
         viewer and viewer.is_authenticated and viewer.id != target_user.id and viewer_role == 'student' and role in ['tutor', 'teacher']
@@ -3232,6 +3481,11 @@ def universal_profile_view(user_id=None):
         'teacher': target_user,
         'is_owner': is_owner,
         'viewer': viewer_obj,
+        'can_manage_student': can_manage_student,
+        'viewer_role': viewer_role,
+        'viewer_is_admin': bool(viewer and (viewer_role in ['creator', 'chief_admin', 'admin'] or (hasattr(viewer, 'is_admin') and viewer.is_admin()) or (hasattr(viewer, 'is_creator') and viewer.is_creator()))),
+        'viewer_is_creator': bool(viewer and (viewer_role == 'creator' or (hasattr(viewer, 'is_creator') and viewer.is_creator()))),
+        'viewer_is_teacher': bool(viewer and (viewer_role in ['teacher', 'tutor'] or (hasattr(viewer, 'is_tutor') and viewer.is_tutor()))),
         'layout_template': layout,
         'can_leave_review': can_leave_review,
         'target_role': role,
@@ -3359,7 +3613,7 @@ def universal_profile_view(user_id=None):
         tracked_study_sec = getattr(student_obj, 'study_time_seconds', 0) or 0
         completed_lessons = Lesson.query.filter_by(student_id=student_obj.student_id, status='completed').all() if student_obj else []
         lessons_study_sec = sum((l.duration or 60) * 60 for l in completed_lessons)
-        total_study_sec = max(tracked_study_sec, lessons_study_sec)
+        total_study_sec = lessons_study_sec + tracked_study_sec
 
         # Module-specific lesson count
         from core.db_models import TrajectoryModule
@@ -3570,6 +3824,7 @@ def universal_profile_view(user_id=None):
         else:
             school_class_display = None
 
+        from app.utils.streak_service import pluralize_days, pluralize_weeks
         context.update({
             'profile_display_name': getattr(student_obj, 'name', None) or getattr(target_user, "full_name", "") or target_user.username,
             'profile_avatar_url': getattr(target_user, 'avatar_url', None) or (getattr(target_user.profile, 'avatar_url', None) if getattr(target_user, 'profile', None) else None),
@@ -3583,7 +3838,9 @@ def universal_profile_view(user_id=None):
             'xp_needed': current_level_info['xp_to_next'],
             'xp_pct': current_level_info['progress_pct'],
             'user_streak': int(getattr(student_obj, 'streak_days', 0) or 0) if student_obj else 0,
-            'days_word': 'дня' if int(getattr(student_obj, 'streak_days', 0) or 0) in [2, 3, 4] else 'дней',
+            'days_word': pluralize_days(int(getattr(student_obj, 'streak_days', 0) or 0)).split()[-1] if student_obj else 'дней',
+            'user_streak_weeks': int(getattr(student_obj, 'streak_weeks', 0) or 0) if student_obj else 0,
+            'weeks_word': pluralize_weeks(int(getattr(student_obj, 'streak_weeks', 0) or 0)).split()[-1] if student_obj else 'недель',
             'rank_title': current_level_info['title'],
             'completed_cnt': lesson_completed,
             'total_cnt': lesson_total,
@@ -4429,9 +4686,25 @@ def api_profile_edit():
     """API сохранения изменений в профиле пользователя (BooStudy V2)"""
     data = request.form if request.form else (request.get_json(silent=True) or {})
     
+    target_user_id = data.get('target_user_id') or data.get('user_id')
+    user_to_update = current_user
+    is_staff = (
+        current_user.is_admin()
+        or current_user.is_creator()
+        or current_user.is_tutor()
+        or current_user.role in ('admin', 'creator', 'teacher', 'tutor')
+    )
+    if is_staff and target_user_id:
+        try:
+            u = User.query.get(int(target_user_id))
+            if u:
+                user_to_update = u
+        except (ValueError, TypeError):
+            pass
+
     full_name = data.get('full_name') or data.get('display_name') or data.get('username')
     if full_name and full_name.strip():
-        current_user.full_name = full_name.strip()
+        user_to_update.full_name = full_name.strip()
 
     from werkzeug.utils import secure_filename
     import time
@@ -4447,16 +4720,16 @@ def api_profile_edit():
         app_root = os.path.dirname(current_app.root_path)
         upload_folder = current_app.config.get('AVATAR_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'avatars')
         os.makedirs(upload_folder, exist_ok=True)
-        unique_filename = f"avatar_{current_user.id}_{time.time_ns()}{ext}"
+        unique_filename = f"avatar_{user_to_update.id}_{time.time_ns()}{ext}"
         avatar_path = os.path.join(upload_folder, unique_filename)
         avatar_file.save(avatar_path)
-        current_user.avatar_url = f"/avatars/{unique_filename}"
-        if current_user.profile:
-            current_user.profile.avatar_url = current_user.avatar_url
+        user_to_update.avatar_url = f"/avatars/{unique_filename}"
+        if user_to_update.profile:
+            user_to_update.profile.avatar_url = user_to_update.avatar_url
     else:
         avatar_url = (data.get('avatar_url') or '').strip()
         if avatar_url and avatar_url != url_for('static', filename='images/default-avatar.svg'):
-            current_user.avatar_url = avatar_url
+            user_to_update.avatar_url = avatar_url
 
     cover_file = request.files.get('cover_file')
     if cover_file and cover_file.filename:
@@ -4467,20 +4740,20 @@ def api_profile_edit():
         app_root = os.path.dirname(current_app.root_path)
         upload_folder = current_app.config.get('COVER_UPLOAD_ROOT') or os.path.join(app_root, 'uploads', 'covers')
         os.makedirs(upload_folder, exist_ok=True)
-        unique_filename = f"cover_{current_user.id}_{time.time_ns()}{ext}"
+        unique_filename = f"cover_{user_to_update.id}_{time.time_ns()}{ext}"
         cover_path = os.path.join(upload_folder, unique_filename)
         cover_file.save(cover_path)
-        current_user.cover_url = f"/covers/{unique_filename}"
-        if current_user.profile:
-            current_user.profile.cover_url = current_user.cover_url
+        user_to_update.cover_url = f"/covers/{unique_filename}"
+        if user_to_update.profile:
+            user_to_update.profile.cover_url = user_to_update.cover_url
     else:
         cover_url = data.get('cover_url')
         if cover_url is not None and cover_url.strip():
-            current_user.cover_url = cover_url.strip()
+            user_to_update.cover_url = cover_url.strip()
 
     about_me = data.get('about_me') or data.get('bio')
     if about_me is not None:
-        current_user.about_me = about_me.strip()
+        user_to_update.about_me = about_me.strip()
 
     timezone_mode = (data.get('timezone_mode') or '').strip().lower()
     timezone_iana = (data.get('timezone_iana') or data.get('timezone') or '').strip()
@@ -4489,25 +4762,25 @@ def api_profile_edit():
         if not is_valid_timezone(timezone_iana):
             return jsonify({'status': 'error', 'success': False, 'message': 'Укажите корректный часовой пояс IANA.', 'error': 'Некорректный часовой пояс'}), 400
         norm_tz = canonical_timezone_name(timezone_iana)
-        current_user.timezone_iana = norm_tz[:64]
-        current_user.timezone_mode = 'manual' if timezone_mode != 'auto' else 'auto'
-        if current_user.profile:
-            current_user.profile.timezone = norm_tz[:50]
+        user_to_update.timezone_iana = norm_tz[:64]
+        user_to_update.timezone_mode = 'manual' if timezone_mode != 'auto' else 'auto'
+        if user_to_update.profile:
+            user_to_update.profile.timezone = norm_tz[:50]
     elif timezone_mode == 'auto':
-        current_user.timezone_mode = 'auto'
+        user_to_update.timezone_mode = 'auto'
 
     telegram_link = data.get('telegram_link') or data.get('telegram_username')
     if telegram_link is not None:
         clean_tg = telegram_link.strip().lstrip('@')
-        current_user.telegram_link = telegram_link.strip()
+        user_to_update.telegram_link = telegram_link.strip()
 
     password = data.get('password')
     if password and len(password.strip()) >= 4:
         from werkzeug.security import generate_password_hash
-        current_user.password_hash = generate_password_hash(password.strip())
+        user_to_update.password_hash = generate_password_hash(password.strip())
 
     from core.db_models import Student
-    student_obj = Student.query.filter_by(user_id=current_user.id).first()
+    student_obj = Student.query.filter_by(user_id=user_to_update.id).first()
     if student_obj:
         if full_name and full_name.strip():
             student_obj.name = full_name.strip()
@@ -4518,6 +4791,12 @@ def api_profile_edit():
         goal_text = data.get('goal_text') or data.get('goal')
         if goal_text is not None:
             student_obj.goal_text = goal_text.strip()
+        target_score_raw = data.get('target_score')
+        if target_score_raw is not None:
+            try:
+                student_obj.target_score = max(0, min(100, int(target_score_raw)))
+            except (ValueError, TypeError):
+                pass
         school_class_raw = data.get('school_class') or data.get('grade')
         if school_class_raw is not None:
             val = str(school_class_raw).strip().lower()
@@ -4549,17 +4828,32 @@ def api_profile_edit():
     return jsonify({
         'status': 'ok',
         'success': True,
-        'effective': effective_timezone_name(current_user),
-        'timezone': current_user.timezone_iana or (current_user.profile.timezone if current_user.profile else 'Europe/Moscow'),
-        'timezone_iana': current_user.timezone_iana or (current_user.profile.timezone if current_user.profile else 'Europe/Moscow'),
-        'avatar_url': current_user.avatar_url,
-        'cover_url': current_user.cover_url,
+        'effective': effective_timezone_name(user_to_update),
+        'timezone': user_to_update.timezone_iana or (user_to_update.profile.timezone if user_to_update.profile else 'Europe/Moscow'),
+        'timezone_iana': user_to_update.timezone_iana or (user_to_update.profile.timezone if user_to_update.profile else 'Europe/Moscow'),
+        'avatar_url': user_to_update.avatar_url,
+        'cover_url': user_to_update.cover_url,
         'message': 'Профиль успешно обновлен!'
     }), 200
 
 
-def _current_student_profile_or_404():
+def _current_student_profile_or_404(explicit_student_id=None, explicit_user_id=None):
     from core.db_models import Student
+    is_staff = (
+        current_user.is_admin()
+        or current_user.is_creator()
+        or current_user.is_tutor()
+        or current_user.role in ('admin', 'creator', 'teacher', 'tutor')
+    )
+    if is_staff:
+        if explicit_student_id:
+            student = Student.query.get(int(explicit_student_id))
+            if student:
+                return student
+        if explicit_user_id:
+            student = Student.query.filter_by(user_id=int(explicit_user_id)).first()
+            if student:
+                return student
     student = Student.query.filter_by(user_id=current_user.id).first()
     if not student:
         abort(404)
@@ -4570,10 +4864,13 @@ def _current_student_profile_or_404():
 @login_required
 def api_profile_goal_add():
     from core.db_models import StudentLearningPlanItem
-    title = (request.form.get('title') or (request.get_json(silent=True) or {}).get('title') or '').strip()
+    data = request.form if request.form else (request.get_json(silent=True) or {})
+    title = (data.get('title') or '').strip()
     if not title or len(title) > 300:
         return jsonify({'status': 'error', 'message': 'Введите цель длиной до 300 символов.'}), 400
-    student = _current_student_profile_or_404()
+    target_sid = data.get('student_id')
+    target_uid = data.get('user_id')
+    student = _current_student_profile_or_404(explicit_student_id=target_sid, explicit_user_id=target_uid)
     item = StudentLearningPlanItem(student_id=student.student_id, title=title, status='planned', created_by_user_id=current_user.id)
     db.session.add(item)
     db.session.commit()
@@ -4584,7 +4881,9 @@ def api_profile_goal_add():
 @login_required
 def api_profile_goal_toggle(item_id):
     from core.db_models import StudentLearningPlanItem
-    student = _current_student_profile_or_404()
+    data = request.form if request.form else (request.get_json(silent=True) or {})
+    target_sid = data.get('student_id')
+    student = _current_student_profile_or_404(explicit_student_id=target_sid)
     item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
     item.status = 'planned' if item.status == 'done' else 'done'
     db.session.commit()
@@ -4596,9 +4895,11 @@ def api_profile_goal_toggle(item_id):
 @login_required
 def api_profile_goal_result(item_id):
     from core.db_models import StudentLearningPlanItem
-    student = _current_student_profile_or_404()
+    data = request.form if request.form else (request.get_json(silent=True) or {})
+    target_sid = data.get('student_id')
+    student = _current_student_profile_or_404(explicit_student_id=target_sid)
     item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
-    note = (request.form.get('result_note') or '').strip()
+    note = (data.get('result_note') or '').strip()
     if len(note) > 2000:
         return jsonify({'status': 'error', 'message': 'Комментарий слишком длинный.'}), 400
     item.notes = note or None
@@ -4611,9 +4912,10 @@ def api_profile_goal_result(item_id):
 def api_profile_goal_edit(item_id):
     import json
     from core.db_models import StudentLearningPlanItem
-    student = _current_student_profile_or_404()
-    item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
     data = request.form if request.form else (request.get_json(silent=True) or {})
+    target_sid = data.get('student_id')
+    student = _current_student_profile_or_404(explicit_student_id=target_sid)
+    item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
     title = (data.get('title') or '').strip()
     if title:
         item.title = title[:300]
@@ -4640,7 +4942,9 @@ def api_profile_goal_edit(item_id):
 @login_required
 def api_profile_goal_delete(item_id):
     from core.db_models import StudentLearningPlanItem
-    student = _current_student_profile_or_404()
+    data = request.form if request.form else (request.get_json(silent=True) or {})
+    target_sid = data.get('student_id')
+    student = _current_student_profile_or_404(explicit_student_id=target_sid)
     item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
     db.session.delete(item)
     db.session.commit()
@@ -4674,20 +4978,17 @@ def api_study_heartbeat():
         return jsonify({'status': 'ignored', 'message': 'Non-positive duration'}), 200
 
     sec = min(180, sec)
-
-    # Initialize base time if first time tracking
-    if not student.study_time_seconds or student.study_time_seconds == 0:
-        lesson_completed = Lesson.query.filter_by(student_id=student.student_id, status='completed').count()
-        student.study_time_seconds = lesson_completed * 3600
-
     student.study_time_seconds = (student.study_time_seconds or 0) + sec
     db.session.commit()
 
-    if (student.study_time_seconds or 0) >= 3600:
+    completed_lessons = Lesson.query.filter_by(student_id=student.student_id, status='completed').all()
+    lessons_study_sec = sum((l.duration or 60) * 60 for l in completed_lessons)
+    total_study_sec = lessons_study_sec + (student.study_time_seconds or 0)
+
+    if total_study_sec >= 3600:
         from app.utils.achievement_service import process_achievement_event
         process_achievement_event(student, 'secret_marathon_hour', commit=True)
 
-    total_study_sec = (student.study_time_seconds or 0)
     hours = total_study_sec // 3600
     mins = (total_study_sec % 3600) // 60
     if hours > 0:

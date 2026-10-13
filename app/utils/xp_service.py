@@ -470,22 +470,20 @@ BOOSTUDY_50_LEVELS_MAP = {item['level']: item for item in BOOSTUDY_50_LEVELS}
 
 def get_xp_for_level(lvl):
     """Возвращает кумулятивный XP, необходимый для достижения уровня lvl (1-50).
-    Сбалансированная квадратичная шкала:
-    Уровень 1: 0 XP
-    Уровень 2: 200 XP
-    Уровень 3: 520 XP
-    Уровень 4: 960 XP
-    Уровень 5: 1520 XP
-    Уровень 6: 2200 XP
-    Уровень 7 («Индексатор строк»): 3000 XP
-    Уровень 10: 6120 XP
-    Уровень 15 (Основы Python): 13720 XP
-    Уровень 50 (Легенда КЕГЭ / 100 баллов): ~151000 XP
+    Сбалансированная шкала BooStudy v2:
+    - Уровень 1: 0 XP
+    - Уровень 2: 28 XP (быстрый старт за 1 урок/ДЗ)
+    - Уровень 5: 183 XP (веха первых недель)
+    - Уровень 10: 810 XP
+    - Уровень 20: 3 991 XP (максимум для пассивного ученика/лентяя)
+    - Уровень 30: 10 427 XP (планка для регулярного середнячка)
+    - Уровень 42: 23 299 XP (высокобалльник 85-95+)
+    - Уровень 50: 35 390 XP (реальный труженик / 100 баллов — Легенда BooStudy)
     """
     if lvl <= 1:
         return 0
     n = lvl - 1
-    return int(60 * (n ** 2) + 140 * n)
+    return int(3.0 * (n ** 2.4) + 25 * n)
 
 def calculate_level_from_xp(xp):
     """Вычисляет уровень на основе накопленного XP (1-50)."""
@@ -632,13 +630,61 @@ def recalculate_student_xp(student, *, commit=True):
 
     submission_xp = (subs_count * 15) + (correct_count * 5)
 
-    # 3. Бонус за стрик
-    streak_bonus = min(int(student.streak_days or 0), 30) * 5
+    # 3. Опыт за завершённые онлайн-уроки (30 XP за урок)
+    from core.db_models import Lesson
+    lessons_count = (
+        Lesson.query.filter(
+            Lesson.student_id == student.student_id,
+            Lesson.status == 'completed'
+        ).count()
+    )
+    lesson_xp = lessons_count * 30
 
-    # Промежуточный подсчёт
-    total_xp = ach_xp + submission_xp + streak_bonus
+    # 4. Опыт за изученную теорию (10 XP за прочитанный блок)
+    from app.models import StudentTheoryState
+    theory_count = (
+        StudentTheoryState.query.filter(
+            StudentTheoryState.student_id == student.student_id,
+            StudentTheoryState.is_read.is_(True)
+        ).count()
+    )
+    theory_xp = theory_count * 10
 
-    # 4. Проверка milestone-ачивок
+    # 5. Опыт за самостоятельное решение задач в тренажёре (10 XP за уникальную задачу)
+    trainer_xp = 0
+    if student.user_id:
+        from core.db_models import AnalyticsEvent
+        trainer_count = (
+            db.session.query(AnalyticsEvent.task_id)
+            .filter(
+                AnalyticsEvent.user_id == student.user_id,
+                AnalyticsEvent.is_correct.is_(True),
+                AnalyticsEvent.submission_id.is_(None)
+            )
+            .distinct()
+            .count()
+        )
+        trainer_xp = trainer_count * 10
+
+    # 6. Реферальный опыт (+50 XP приглашённому, +100 XP за приглашённого)
+    referral_xp = 0
+    if student.user_id:
+        from app.models import ReferralCode, ReferralUsage
+        if ReferralUsage.query.filter_by(user_id=student.user_id).first():
+            referral_xp += 50
+        my_codes = [c.id for c in ReferralCode.query.filter_by(creator_id=student.user_id).all()]
+        if my_codes:
+            usages_count = ReferralUsage.query.filter(ReferralUsage.referral_code_id.in_(my_codes)).count()
+            referral_xp += usages_count * 100
+
+    # 7. Бонус за стрик (учитывает только живой или защищённый заморозкой стрик)
+    from app.utils.streak_service import get_effective_streak
+    streak_bonus = min(get_effective_streak(student), 30) * 5
+
+    # Промежуточный подсчёт со всеми активностями
+    total_xp = ach_xp + submission_xp + lesson_xp + theory_xp + trainer_xp + referral_xp + streak_bonus
+
+    # 8. Проверка milestone-ачивок
     lvl_5_reward = ACHIEVEMENTS_REGISTRY.get('lvl_5', {}).get('xp_reward', 30)
     xp_1000_reward = ACHIEVEMENTS_REGISTRY.get('xp_1000', {}).get('xp_reward', 30)
 

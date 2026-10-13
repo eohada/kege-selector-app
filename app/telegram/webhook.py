@@ -109,7 +109,7 @@ def _ensure_event_loop() -> asyncio.AbstractEventLoop:
 def _register_handlers(app: Application) -> None:
     from app.telegram.handlers import (
         # Commands
-        cmd_start, cmd_link, cmd_linkforce, cmd_menu, cmd_help, cmd_status, cmd_random, cmd_settings, cmd_findstudent, cmd_whatsnew, cmd_lessonnotes,
+        cmd_start, cmd_link, cmd_linkforce, cmd_menu, cmd_help, cmd_status, cmd_random, cmd_blitz, cmd_settings, cmd_findstudent, cmd_whatsnew, cmd_lessonnotes,
         cmd_claim_creator, cmd_testnotify, cmd_broadcast,
         # FSM
         bug_report_start, bug_report_receive, bug_report_cancel,
@@ -214,6 +214,7 @@ def _register_handlers(app: Application) -> None:
     app.add_handler(CommandHandler('help', cmd_help))
     app.add_handler(CommandHandler('status', cmd_status))
     app.add_handler(CommandHandler('random', cmd_random))
+    app.add_handler(CommandHandler('blitz', cmd_blitz))
     app.add_handler(CommandHandler('settings', cmd_settings))
     app.add_handler(CommandHandler('lessonnotes', cmd_lessonnotes))
     app.add_handler(CommandHandler('findstudent', cmd_findstudent))

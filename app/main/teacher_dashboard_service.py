@@ -163,6 +163,7 @@ def build_chart_dataset(data_points: List[Dict[str, Any]], width: float = 600.0,
     peak_pt = pts[peak_idx] if pts else (width / 2, height / 2)
     peak_val = int(round(vals[peak_idx])) if vals else 0
     peak_label = data_points[peak_idx]["date"] if data_points else ""
+    observed_count = sum(1 for point in data_points if point.get("is_actual", True))
 
     return {
         "points": data_points,
@@ -172,6 +173,8 @@ def build_chart_dataset(data_points: List[Dict[str, Any]], width: float = 600.0,
         "peak_y": peak_pt[1],
         "peak_val": peak_val,
         "peak_label": peak_label,
+        "has_data": observed_count > 0,
+        "observed_count": observed_count,
     }
 
 
@@ -563,23 +566,26 @@ def get_teacher_dashboard_data(teacher_user: User) -> Dict[str, Any]:
     for offset in range(6, -1, -1):
         d_day = (now - timedelta(days=offset)).date()
         day_subs = [s for s in graded_subs if s.graded_at and to_naive(s.graded_at).date() == d_day]
-        val = int(round(sum(float(s.percentage or 0) for s in day_subs) / len(day_subs))) if day_subs else (average_score if average_score > 0 else 75)
-        days_7_points.append({"date": d_day.strftime("%d.%m"), "val": val})
+        has_data = bool(day_subs)
+        val = int(round(sum(float(s.percentage or 0) for s in day_subs) / len(day_subs))) if has_data else average_score
+        days_7_points.append({"date": d_day.strftime("%d.%m"), "val": val, "is_actual": has_data})
 
     days_30_points = []
     for step in range(4, -1, -1):
         d_target = (now - timedelta(days=step * 7)).date()
         w_subs = [s for s in graded_subs if s.graded_at and abs((to_naive(s.graded_at).date() - d_target).days) <= 3]
-        val = int(round(sum(float(s.percentage or 0) for s in w_subs) / len(w_subs))) if w_subs else (average_score if average_score > 0 else 72)
-        days_30_points.append({"date": d_target.strftime("%d.%m"), "val": val})
+        has_data = bool(w_subs)
+        val = int(round(sum(float(s.percentage or 0) for s in w_subs) / len(w_subs))) if has_data else average_score
+        days_30_points.append({"date": d_target.strftime("%d.%m"), "val": val, "is_actual": has_data})
 
     all_points = []
     for m_offset in range(3, -1, -1):
         m_date = (now - timedelta(days=m_offset * 30)).date()
         m_label = RU_MONTHS[m_date.month].capitalize() if RU_MONTHS[m_date.month] else "Месяц"
         m_subs = [s for s in graded_subs if s.graded_at and to_naive(s.graded_at).year == m_date.year and to_naive(s.graded_at).month == m_date.month]
-        val = int(round(sum(float(s.percentage or 0) for s in m_subs) / len(m_subs))) if m_subs else (average_score if average_score > 0 else 70)
-        all_points.append({"date": m_label, "val": val})
+        has_data = bool(m_subs)
+        val = int(round(sum(float(s.percentage or 0) for s in m_subs) / len(m_subs))) if has_data else average_score
+        all_points.append({"date": m_label, "val": val, "is_actual": has_data})
 
     chart_data_7d = build_chart_dataset(days_7_points)
     chart_data_30d = build_chart_dataset(days_30_points)

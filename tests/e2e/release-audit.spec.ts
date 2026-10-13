@@ -87,7 +87,7 @@ const journeys: Record<string, { username: string; pages: { name: string; url: s
     pages: [
       { name: 'Дашборд администратора', url: '/dashboard' },
       { name: 'Пользователи', url: '/admin/users' },
-      { name: 'QA-пул', url: '/qa/pool' },
+      { name: 'QA-панель', url: '/admin/qa' },
       { name: 'Тарифы', url: '/billing/plans' },
       { name: 'Подписки', url: '/billing/subscriptions' },
       { name: 'Maintenance', url: '/maintenance' },

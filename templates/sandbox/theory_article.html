@@ -45,6 +45,7 @@
     white-space: pre !important;
     word-wrap: normal !important;
     tab-size: 4 !important;
+    caret-color: #4F46E5 !important;
   }
   .theory-line-numbers > div {
     height: 1.5rem !important;
@@ -86,389 +87,809 @@
   }
   #article-content code:not(pre code) {
     white-space: nowrap !important;
-    display: inline;
-    box-decoration-break: clone;
-    -webkit-box-decoration-break: clone;
+    display: inline-block;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-    font-size: 0.88em !important;
-    padding: 0.12rem 0.35rem !important;
-    margin: 0 !important;
-    border-radius: 0.375rem !important;
+    font-size: 0.86em !important;
+    padding: 0.12rem 0.45rem !important;
+    margin: 0 0.15rem !important;
+    border-radius: 0.45rem !important;
     background-color: #EEF2F6 !important;
     border: 1px solid #CBD5E1 !important;
-    color: #312E81 !important;
-    font-weight: 800 !important;
+    color: #4338CA !important;
+    font-weight: 700 !important;
   }
   .theory-inline-math { white-space: nowrap !important; }
-  #article-content blockquote { max-width: 100% !important; margin: 1.35rem 0 !important; padding: 1rem 1.25rem !important; border-left: 4px solid #6366f1; border-radius: 1rem; background: #eef2ff !important; color: #3730a3 !important; }
-  #article-content table { width: 100%; margin: 1.35rem 0 !important; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 2px solid #dbe4ef; border-radius: 1rem; }
-  #article-content th, #article-content td { padding: .7rem .85rem !important; border-bottom: 1px solid #e2e8f0; text-align: left; }
-  #article-content th { background: #eef2ff !important; color: #312e81 !important; font-weight: 900 !important; }
+  #article-content blockquote {
+    max-width: 100% !important;
+    margin: 1.35rem 0 !important;
+    padding: 1rem 1.25rem !important;
+    border-left: 4px solid #6366f1;
+    border-radius: 1rem;
+    background: #eef2ff !important;
+    color: #3730a3 !important;
+  }
+  #article-content table {
+    width: 100%;
+    margin: 1.5rem 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    overflow: hidden !important;
+    border: 2px solid #E2E8F0 !important;
+    border-radius: 1.25rem !important;
+    box-shadow: 0 3px 0 #DAE1E9 !important;
+    background: #FFFFFF !important;
+  }
+  #article-content th, #article-content td {
+    padding: 0.85rem 1rem !important;
+    border-bottom: 1px solid #F1F5F9 !important;
+    text-align: left;
+  }
+  #article-content th {
+    background: #F8FAFC !important;
+    color: #334155 !important;
+    font-weight: 800 !important;
+    font-size: 0.8rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    border-bottom: 2px solid #E2E8F0 !important;
+  }
+  #article-content td {
+    color: #334155 !important;
+    font-size: 0.92rem !important;
+    line-height: 1.55 !important;
+  }
+  #article-content tbody tr:nth-child(even) { background: rgba(248, 250, 252, 0.6) !important; }
+  #article-content tbody tr:hover { background: rgba(238, 242, 255, 0.45) !important; }
   #article-content > p:empty { display: none; }
-  #article-content strong { color: #1e1b4b !important; font-weight: 900 !important; }
+  #article-content strong { color: #1E293B !important; font-weight: 800 !important; }
   #article-content hr { margin: 2rem 0 !important; border: 0; border-top: 2px solid #e2e8f0; }
-  #article-content .theory-section { position:relative; width: 100%; max-width: 100% !important; margin: 1.6rem 0; padding: 1.45rem 1.55rem 1.55rem; border: 2px solid #e2e8f0; border-radius: 1.5rem; background: #fff; box-shadow: 0 4px 0 #dae1e9; }
-  #article-content .theory-section--goal { background: linear-gradient(135deg, #eef2ff, #fff); border-color:#c7d2fe; }
-  #article-content .theory-section--method { background: linear-gradient(135deg, #f8faff, #fff); border-color:#bfdbfe; }
-  #article-content .theory-section--practice { background: linear-gradient(135deg, #ecfdf5, #fff); border-color:#a7f3d0; }
-  #article-content .theory-section--warning { background: linear-gradient(135deg, #fff7ed, #fff); border-color:#fed7aa; }
-  #article-content .theory-section--summary { background: linear-gradient(135deg, #f5f3ff, #fff); border-color:#ddd6fe; }
-  #article-content .theory-section-marker { display:inline-flex; align-items:center; justify-content:center; width:1.8rem; height:1.8rem; flex:0 0 auto; border-radius:.7rem; border:2px solid #c7d2fe; background:#eef2ff; color:#4f46e5; font-size:.7rem; font-weight:900; letter-spacing:.04em; }
-  #article-content .theory-section-lead { font-size:1.08rem !important; font-weight:650; line-height:1.8 !important; color:#334155 !important; }
+
+  #article-content .theory-section {
+    position: relative;
+    width: 100%;
+    max-width: 100% !important;
+    margin: 2rem 0 !important;
+    padding: 2rem 2.25rem !important;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 2rem;
+    background: #FFFFFF;
+    box-shadow: 0 6px 0 #E2E8F0, 0 12px 28px rgba(96, 75, 91, 0.05);
+    scroll-margin-top: 2rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  #article-content .theory-section > h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: 0 !important;
+    margin-bottom: 1.25rem !important;
+    font-size: 1.35rem !important;
+    font-weight: 900 !important;
+    color: #0F172A !important;
+    letter-spacing: -0.02em;
+  }
+  #article-content .theory-section--goal {
+    background: linear-gradient(150deg, #F0F9FF 0%, #FFFFFF 65%) !important;
+    border-color: #BAE6FD !important;
+    box-shadow: 0 6px 0 #BAE6FD, 0 12px 28px rgba(2, 132, 199, 0.07) !important;
+  }
+  #article-content .theory-section--goal .theory-section-marker {
+    background: linear-gradient(135deg, #0284C7, #0369A1) !important;
+    box-shadow: 0 3px 0 #075985 !important;
+  }
+  #article-content .theory-section--concept {
+    background: linear-gradient(150deg, #FAF5FF 0%, #FFFFFF 65%) !important;
+    border-color: #E9D5FF !important;
+    box-shadow: 0 6px 0 #D8B4FE, 0 12px 28px rgba(139, 92, 246, 0.07) !important;
+  }
+  #article-content .theory-section--concept .theory-section-marker {
+    background: linear-gradient(135deg, #8B5CF6, #7C3AED) !important;
+    box-shadow: 0 3px 0 #6D28D9 !important;
+  }
+  #article-content .theory-section--method {
+    background: linear-gradient(150deg, #F5F3FF 0%, #FFFFFF 65%) !important;
+    border-color: #DDD6FE !important;
+    box-shadow: 0 6px 0 #C4B5FD, 0 12px 28px rgba(99, 102, 241, 0.07) !important;
+  }
+  #article-content .theory-section--method .theory-section-marker {
+    background: linear-gradient(135deg, #6366F1, #4F46E5) !important;
+    box-shadow: 0 3px 0 #3730A3 !important;
+  }
+  #article-content .theory-section--practice {
+    background: linear-gradient(150deg, #F0FDF4 0%, #FFFFFF 65%) !important;
+    border-color: #BBF7D0 !important;
+    box-shadow: 0 6px 0 #86EFAC, 0 12px 28px rgba(16, 185, 129, 0.07) !important;
+  }
+  #article-content .theory-section--practice .theory-section-marker {
+    background: linear-gradient(135deg, #10B981, #059669) !important;
+    box-shadow: 0 3px 0 #047857 !important;
+  }
+  #article-content .theory-section--warning {
+    background: linear-gradient(150deg, #FFFBEB 0%, #FFF7ED 55%, #FFFFFF 100%) !important;
+    border-color: #FED7AA !important;
+    box-shadow: 0 6px 0 #FDBA74, 0 12px 28px rgba(234, 88, 12, 0.07) !important;
+  }
+  #article-content .theory-section--warning .theory-section-marker {
+    background: linear-gradient(135deg, #F59E0B, #EA580C) !important;
+    box-shadow: 0 3px 0 #C2410C !important;
+  }
+  #article-content .theory-section--check {
+    background: linear-gradient(150deg, #EEF2FF 0%, #FAF5FF 65%, #FFFFFF 100%) !important;
+    border-color: #C7D2FE !important;
+    box-shadow: 0 6px 0 #A5B4FC, 0 12px 28px rgba(99, 102, 241, 0.07) !important;
+  }
+  #article-content .theory-section--check .theory-section-marker {
+    background: linear-gradient(135deg, #6366F1, #4F46E5) !important;
+    box-shadow: 0 3px 0 #3730A3 !important;
+  }
+  #article-content .theory-section-marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    flex: 0 0 auto;
+    border-radius: 0.85rem;
+    background: linear-gradient(135deg, #6366F1, #4F46E5);
+    color: #FFFFFF;
+    font-size: 0.95rem;
+    font-weight: 900;
+    letter-spacing: .02em;
+    box-shadow: 0 3px 0 #3730A3;
+  }
+  #article-content .theory-section-lead { font-size:1.02rem !important; font-weight:600; line-height:1.75 !important; color:#334155 !important; }
   #article-content .theory-section > .theory-interactive { margin:1.25rem 0 0 !important; }
-  #article-content .theory-section > h3 { display:flex; align-items:center; gap:.55rem; padding-top:.35rem; }
-  #article-content .theory-section > h3::before { content:'•'; color:#4f46e5; font-size:1.5rem; line-height:1; }
-  #article-content .theory-steps { display:grid; gap:.65rem; list-style:none !important; padding-left:0 !important; counter-reset:theory-step; }
-  #article-content .theory-steps li { display:flex; gap:.7rem; align-items:flex-start; padding:.8rem .9rem; border:1px solid #dbe4ef; border-radius:1rem; background:#f8fafc; }
-  #article-content .theory-steps li::before { counter-increment:theory-step; content:counter(theory-step); display:inline-flex; align-items:center; justify-content:center; width:1.45rem; height:1.45rem; flex:0 0 auto; border-radius:50%; background:#4f46e5; color:#fff; font-size:.72rem; font-weight:900; }
-  #article-content .theory-checklist li::marker { color:#f97316; }
-  #article-content .theory-interactive { box-shadow:0 3px 0 #a7f3d0; }
+  
+  /* Subheadings inside sections with gradient indicator bar */
+  #article-content .theory-section > h3 {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    margin-top: 1.65rem !important;
+    margin-bottom: 0.85rem !important;
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
+    color: #1E293B !important;
+  }
+  #article-content .theory-section > h3:not(:empty)::before {
+    content: '' !important;
+    display: inline-block !important;
+    width: 0.35rem !important;
+    height: 1.15rem !important;
+    border-radius: 0.25rem !important;
+    background: linear-gradient(to bottom, #6366F1, #8B5CF6) !important;
+    flex-shrink: 0 !important;
+  }
+  #article-content .theory-section--warning > h3:not(:empty)::before {
+    background: linear-gradient(to bottom, #F59E0B, #EA580C) !important;
+  }
+  #article-content .theory-section--practice > h3:not(:empty)::before {
+    background: linear-gradient(to bottom, #10B981, #059669) !important;
+  }
+  #article-content .theory-section--goal > h3:not(:empty)::before {
+    background: linear-gradient(to bottom, #0284C7, #0369A1) !important;
+  }
+  #article-content .theory-section > h3:empty { display: none !important; }
+
+  /* Soft, Unified, Non-Bento Ordered Lists */
+  #article-content ol:not(.theory-steps) {
+    list-style: none !important;
+    counter-reset: custom-ol;
+    padding: 0.5rem 0.65rem !important;
+    margin: 1.25rem 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+    background: rgba(248, 250, 252, 0.85) !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 1.25rem !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+  }
+  #article-content ol:not(.theory-steps) > li {
+    position: relative !important;
+    display: flex !important;
+    gap: 0.85rem !important;
+    align-items: flex-start !important;
+    padding: 0.75rem 1rem !important;
+    border-radius: 0.85rem !important;
+    background: #FFFFFF !important;
+    border: 1px solid rgba(226, 232, 240, 0.7) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+    color: #334155 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+    transition: all 0.15s ease !important;
+  }
+  #article-content ol:not(.theory-steps) > li:hover {
+    background: #FFFFFF !important;
+    border-color: #C7D2FE !important;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.08) !important;
+    transform: translateY(-1px) !important;
+  }
+  #article-content ol:not(.theory-steps) > li > p {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.6 !important;
+  }
+  #article-content ol:not(.theory-steps) > li::before {
+    counter-increment: custom-ol;
+    content: counter(custom-ol);
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 1.6rem !important;
+    height: 1.6rem !important;
+    flex: 0 0 auto !important;
+    border-radius: 0.55rem !important;
+    background: linear-gradient(135deg, #6366F1, #4F46E5) !important;
+    color: #FFFFFF !important;
+    font-size: 0.78rem !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 0 #3730A3 !important;
+    margin-top: 0.15rem !important;
+  }
+  #article-content .theory-steps {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+    gap: 1rem !important;
+    list-style: none !important;
+    padding-left: 0 !important;
+    counter-reset: theory-step;
+    margin: 1.35rem 0 !important;
+  }
+  #article-content .theory-steps li {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: flex-start !important;
+    padding: 1.15rem 1.25rem !important;
+    border: 2px solid #E2E8F0 !important;
+    border-radius: 1.25rem !important;
+    background: #FFFFFF !important;
+    box-shadow: 0 3px 0 #DAE1E9 !important;
+    color: #1E293B !important;
+    font-size: 0.92rem !important;
+    line-height: 1.55 !important;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  #article-content .theory-steps li:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 #CBD5E1 !important;
+  }
+  #article-content .theory-steps li::before {
+    counter-increment: theory-step;
+    content: counter(theory-step);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: 0 0 auto;
+    border-radius: 0.65rem;
+    background: #4F46E5;
+    color: #FFFFFF;
+    font-size: 0.82rem;
+    font-weight: 900;
+    box-shadow: 0 2px 0 #3730A3;
+    margin-bottom: 0.25rem;
+  }
+  /* Soft Unified Checklist & Unordered Lists (eliminating chunky bento boxes) */
+  #article-content .theory-checklist,
+  #article-content ul:not(.theory-steps) {
+    list-style: none !important;
+    padding: 0.5rem 0.65rem !important;
+    margin: 1.25rem 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+    background: rgba(248, 250, 252, 0.85) !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 1.25rem !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+  }
+  #article-content .theory-checklist li,
+  #article-content ul:not(.theory-steps) > li {
+    position: relative !important;
+    display: flex !important;
+    gap: 0.85rem !important;
+    align-items: flex-start !important;
+    padding: 0.75rem 1rem !important;
+    border-radius: 0.85rem !important;
+    background: #FFFFFF !important;
+    border: 1px solid rgba(226, 232, 240, 0.7) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03) !important;
+    color: #334155 !important;
+    font-size: 0.95rem !important;
+    line-height: 1.6 !important;
+    transition: all 0.15s ease !important;
+  }
+  #article-content .theory-checklist li:hover,
+  #article-content ul:not(.theory-steps) > li:hover {
+    background: #FFFFFF !important;
+    border-color: #A7F3D0 !important;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.08) !important;
+    transform: translateY(-1px) !important;
+  }
+  #article-content .theory-checklist li > p,
+  #article-content ul:not(.theory-steps) > li > p {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.6 !important;
+  }
+  #article-content .theory-checklist li::before,
+  #article-content ul:not(.theory-steps) > li::before {
+    content: '✓' !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    flex: 0 0 auto !important;
+    border-radius: 0.5rem !important;
+    background: linear-gradient(135deg, #10B981, #059669) !important;
+    color: #FFFFFF !important;
+    font-size: 0.75rem !important;
+    font-weight: 900 !important;
+    box-shadow: 0 2px 0 #047857 !important;
+    margin-top: 0.15rem !important;
+  }
+  /* Warning section checklists use amber warning indicator */
+  #article-content .theory-section--warning .theory-checklist li::before,
+  #article-content .theory-section--warning ul:not(.theory-steps) > li::before {
+    content: '!' !important;
+    background: linear-gradient(135deg, #F59E0B, #D97706) !important;
+    box-shadow: 0 2px 0 #B45309 !important;
+  }
+  #article-content .theory-section--warning .theory-checklist li:hover,
+  #article-content .theory-section--warning ul:not(.theory-steps) > li:hover {
+    border-color: #FDE68A !important;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.08) !important;
+  }
+
+  /* Checkpoints 3D Option Buttons & Feedback */
+  .checkpoint-option-btn.is-correct {
+    border-color: #34D399 !important;
+    border-bottom-color: #059669 !important;
+    background: #ECFDF5 !important;
+  }
+  .checkpoint-option-btn.is-correct .checkpoint-letter-badge {
+    background: #10B981 !important;
+    color: #FFFFFF !important;
+    border-color: #059669 !important;
+  }
+  .checkpoint-option-btn.is-correct .checkpoint-radio-indicator {
+    border-color: #10B981 !important;
+    background: #10B981 !important;
+  }
+  .checkpoint-option-btn.is-wrong {
+    border-color: #FB7185 !important;
+    border-bottom-color: #E11D48 !important;
+    background: #FFF1F2 !important;
+  }
+  .checkpoint-option-btn.is-wrong .checkpoint-letter-badge {
+    background: #F43F5E !important;
+    color: #FFFFFF !important;
+    border-color: #E11D48 !important;
+  }
+  .checkpoint-option-btn.is-wrong .checkpoint-radio-indicator {
+    border-color: #F43F5E !important;
+    background: #FFE4E6 !important;
+  }
+  .checkpoint-option-btn.is-pending {
+    border-color: #818CF8 !important;
+    border-bottom-color: #4F46E5 !important;
+    background: #EEF2FF !important;
+  }
+  .checkpoint-code-pill {
+    display: inline-block;
+    padding: 0.12rem 0.45rem;
+    border-radius: 0.45rem;
+    background: #EEF2FF;
+    border: 1px solid #C7D2FE;
+    color: #4338CA;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-weight: 700;
+    font-size: 0.9em;
+  }
+  #article-content .theory-interactive { box-shadow: 0 4px 0 #a7f3d0, 0 10px 24px rgba(16, 185, 129, 0.05); }
   #article-content .theory-interactive-option[aria-pressed="true"] { border-color:#059669 !important; background:#d1fae5 !important; color:#065f46 !important; }
   .theory-level-pane.hidden { display: none !important; }
   .theory-level-pane.is-active { display: block !important; }
-  #article-content .theory-code-runner { box-shadow: 0 4px 0 #dae1e9; }
+  #article-content .theory-code-runner { box-shadow: 0 5px 0 #cbd5e1, 0 12px 28px rgba(96, 75, 91, 0.06); }
   #article-content .theory-code-input { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; tab-size: 4; }
   #article-content .theory-code-input:focus { outline: none; }
-  #article-content .theory-callout-remember { box-shadow: 0 3px 0 #c7d2fe; }
-  #article-content .theory-callout-info { box-shadow: 0 3px 0 #bae6fd; }
-  #article-content .theory-callout-try { box-shadow: 0 3px 0 #e9d5ff; }
-  #article-content .theory-callout-important { box-shadow: 0 3px 0 #fde68a; }
-  #article-content .theory-callout-note { box-shadow: 0 3px 0 #c7d2fe; }
-  #article-content .theory-callout-warning { box-shadow: 0 3px 0 #fecaca; }
-  #article-content .theory-callout-tip { box-shadow: 0 3px 0 #a7f3d0; }
-  #article-content .theory-interactive-editor { box-shadow: 0 3px 0 #dae1e9; }
-  #article-content .theory-how-it-works { box-shadow: 0 4px 0 #c7d2fe; }
+  #article-content .theory-callout-remember { box-shadow: 0 4px 0 #c7d2fe, 0 10px 24px rgba(99, 102, 241, 0.06); }
+  #article-content .theory-callout-info { box-shadow: 0 4px 0 #bae6fd, 0 10px 24px rgba(2, 132, 199, 0.06); }
+  #article-content .theory-callout-try { box-shadow: 0 4px 0 #e9d5ff, 0 10px 24px rgba(139, 92, 246, 0.06); }
+  #article-content .theory-callout-important { box-shadow: 0 4px 0 #fde68a, 0 10px 24px rgba(245, 158, 11, 0.06); }
+  #article-content .theory-callout-note { box-shadow: 0 4px 0 #c7d2fe, 0 10px 24px rgba(99, 102, 241, 0.06); }
+  #article-content .theory-callout-warning { box-shadow: 0 4px 0 #fecaca, 0 10px 24px rgba(239, 68, 68, 0.06); }
+  #article-content .theory-callout-tip { box-shadow: 0 4px 0 #a7f3d0, 0 10px 24px rgba(16, 185, 129, 0.06); }
+  #article-content .theory-interactive-editor { box-shadow: 0 4px 0 #cbd5e1, 0 10px 24px rgba(96, 75, 91, 0.05); }
+  #article-content .theory-how-it-works { box-shadow: 0 6px 0 #c7d2fe, 0 12px 28px rgba(99, 102, 241, 0.07); }
+  #article-content .theory-code-snippet { box-shadow: 0 5px 0 #cbd5e1, 0 10px 24px rgba(96, 75, 91, 0.06); }
   @media (max-width:640px) { #article-content .theory-section { padding:1.1rem; border-radius:1.25rem; } #article-content h2 { font-size:1.3rem !important; } }
+  /* Sticky right-sidebar pinned widgets (Notes & Boo Advice) */
+  @media (min-width: 1024px) {
+    .theory-pinned-sidebar {
+      position: -webkit-sticky !important;
+      position: sticky !important;
+      top: 96px !important;
+      z-index: 20 !important;
+    }
+  }
+  @media print {
+    .bs-dashboard-sidebar, .bs-dashboard-topbar, .theory-pinned-sidebar, #theory-toc, .theory-toc-card,
+    #save-feedback, #finish-topic, #bookmark-button { display: none !important; }
+    main { padding: 0 !important; }
+  /* Personal Note Tactile 3D Button */
+  #save-note {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.375rem !important;
+    width: 100% !important;
+    background-color: #d97706 !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-bottom: 3px solid #b45309 !important;
+    box-shadow: 0 4px 10px rgba(217, 119, 6, 0.25) !important;
+    font-weight: 900 !important;
+    font-size: 0.75rem !important;
+    padding: 0.55rem 1rem !important;
+    border-radius: 0.75rem !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease-in-out !important;
+    text-decoration: none !important;
+  }
+  #save-note:hover {
+    background-color: #f59e0b !important;
+    border-bottom-color: #d97706 !important;
+    color: #ffffff !important;
+  }
+  #save-note:active {
+    transform: translateY(2px) !important;
+    border-bottom-width: 1px !important;
+  }
+  #save-note.is-saved {
+    background-color: #059669 !important;
+    border-bottom-color: #047857 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25) !important;
+  }
 </style>
-<main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
-  <div class="max-w-[1600px] mx-auto w-full space-y-6" id="theory-article" data-block-id="{{ block.id }}" data-progress="{{ state.reading_progress if state else 0 }}" data-last-position="{{ state.last_position if state else 0 }}">
+<main class="flex-1 min-h-screen bg-[#FAF9FC] overflow-x-clip p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6 relative">
+  <!-- Subtle Ambient Glow Auras -->
+  <div class="absolute top-8 right-12 w-96 h-96 bg-gradient-to-br from-amber-200/20 via-pink-200/15 to-transparent rounded-full blur-3xl pointer-events-none -z-10"></div>
+  <div class="absolute top-96 left-8 w-96 h-96 bg-gradient-to-tr from-indigo-200/20 via-purple-200/15 to-transparent rounded-full blur-3xl pointer-events-none -z-10"></div>
+
+  <div class="max-w-[1400px] mx-auto w-full space-y-6 relative z-10" id="theory-article" data-demo-target="theory-material" data-block-id="{{ block.id }}" data-progress="{{ state.reading_progress if state else 0 }}" data-last-position="{{ state.last_position if state else 0 }}">
     <script id="theory-checkpoint-attempts-data" type="application/json">{{ (checkpoint_attempts_data or {}) | tojson | safe }}</script>
     
-    <!-- Top Back Link -->
-    <a href="{{ back_to_url }}" class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600 shadow-[0_3px_0_#DAE1E9] hover:bg-slate-50 transition no-underline">
-      <i class="ph-bold ph-arrow-left"></i>Ко всем темам
-    </a>
-
-    <!-- Header Card -->
-    <section class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-[0_4px_0_#DAE1E9]">
-      <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div class="flex-1 min-w-0">
-          <!-- Badges and Level Switcher -->
-          <div class="flex flex-wrap items-center gap-2.5">
-            <span class="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-black text-indigo-700">№{{ block.task_number }}</span>
-            {% if block.group %}
-            <span class="rounded-xl border border-slate-200 bg-[#F4F7FA] px-3 py-1 text-[11px] font-black text-slate-600">{{ block.group.name }}</span>
-            {% endif %}
-            <span class="rounded-xl border border-slate-200 bg-[#F4F7FA] px-3 py-1 text-[11px] font-black text-slate-500">{{ block.read_minutes }} мин</span>
-            
-            <!-- Level Switcher Tabs -->
-            <div id="theory-level-switcher" class="hidden sm:inline-flex items-center p-1 rounded-2xl bg-slate-100 border border-slate-200/80 shadow-inner ml-2">
-              <button type="button" data-level-tab="beginner" class="theory-level-tab inline-flex items-center gap-1.5 px-3.5 py-1 rounded-xl text-xs font-black transition cursor-pointer bg-white text-indigo-700 shadow-sm border border-slate-200/50">
-                <i class="ph-bold ph-graduation-cap"></i><span>С нуля</span>
-              </button>
-              <button type="button" data-level-tab="advanced" class="theory-level-tab inline-flex items-center gap-1.5 px-3.5 py-1 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 transition cursor-pointer">
-                <i class="ph-bold ph-lightning"></i><span>С опытом</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Title and Description -->
-          <h1 class="mt-4 text-3xl sm:text-4xl font-black font-display tracking-tight text-slate-900 leading-tight">
-            {{ block.title or ('Тема №' ~ block.task_number) }}
-          </h1>
-          {% if block.description %}
-          <p class="mt-2.5 max-w-2xl text-sm sm:text-base font-semibold text-slate-500 leading-relaxed">
-            {{ block.description }}
-          </p>
-          {% endif %}
-
-          <!-- Useful Materials Strip in Header -->
-          <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
-            <span class="text-[11px] font-black uppercase tracking-wider text-slate-400 mr-1">Полезные материалы:</span>
-            <a href="javascript:void(0)" onclick="if(window.BooNotify){window.BooNotify.info('Шпаргалка готовится к скачиванию');}else{alert('Шпаргалка готовится к скачиванию');}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:bg-indigo-50/70 hover:border-indigo-300 text-xs font-bold text-slate-700 shadow-xs transition no-underline group">
-              <div class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
-                <i class="ph-bold ph-file-pdf text-xs"></i>
-              </div>
-              <span class="font-bold text-slate-800">Шпаргалка по типам (PDF)</span>
-              <i class="ph-bold ph-download-simple text-slate-400 group-hover:text-indigo-600 text-xs"></i>
-            </a>
-            <a href="javascript:void(0)" onclick="if(window.BooNotify){window.BooNotify.info('Коды решений доступны в тренажёре');}else{alert('Коды решений доступны в тренажёре');}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:bg-emerald-50/70 hover:border-emerald-300 text-xs font-bold text-slate-700 shadow-xs transition no-underline group">
-              <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                <i class="ph-bold ph-code text-xs"></i>
-              </div>
-              <span class="font-bold text-slate-800">Примеры решений ЕГЭ</span>
-              <i class="ph-bold ph-arrow-up-right text-slate-400 group-hover:text-emerald-600 text-xs"></i>
-            </a>
-          </div>
-        </div>
-
-        <!-- Right Side: Speech Bubble, Boo Mascot, Bookmark Button -->
-        <div class="flex items-center gap-4 shrink-0 self-start lg:self-auto">
-          <!-- Mascot with Speech Bubble -->
-          <div class="hidden md:flex items-center gap-3">
-            <div class="relative bg-indigo-50/90 border border-indigo-200 rounded-2xl px-4 py-2.5 text-xs font-bold text-indigo-900 shadow-sm max-w-[200px] leading-snug">
-              <span>Сегодня ты узнаешь, как хранить данные!</span>
-              <div class="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-indigo-50 border-t border-r border-indigo-200 rotate-45"></div>
-            </div>
-            <img src="/static/images/theory/ghost_laptop.png" alt="Boo Mascot" class="w-20 h-20 object-contain drop-shadow-md">
-          </div>
-
-          {% if current_user.is_student() %}
-          <button id="bookmark-button" type="button" class="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border-2 {{ 'border-amber-300 bg-amber-50 text-amber-700' if state and state.bookmarked else 'border-slate-200 bg-[#F4F7FA] text-slate-600' }} px-4 py-3 text-xs font-black shadow-[0_3px_0_#DAE1E9] cursor-pointer hover:bg-slate-100 transition">
-            <i class="ph-{{ 'fill' if state and state.bookmarked else 'bold' }} ph-bookmark-simple"></i>
-            <span>{{ 'Сохранено' if state and state.bookmarked else 'Сохранить' }}</span>
-          </button>
-          {% endif %}
-        </div>
-      </div>
-
-      <!-- Mobile Level Switcher -->
-      <div class="mt-4 sm:hidden">
-        <div id="theory-level-switcher-mobile" class="inline-flex w-full items-center p-1 rounded-2xl bg-slate-100 border border-slate-200/80 shadow-inner">
-          <button type="button" data-level-tab="beginner" class="theory-level-tab inline-flex items-center justify-center gap-1.5 flex-1 py-1.5 rounded-xl text-xs font-black text-center transition cursor-pointer bg-white text-indigo-700 shadow-sm">
-            <i class="ph-bold ph-graduation-cap"></i><span>С нуля</span>
-          </button>
-          <button type="button" data-level-tab="advanced" class="theory-level-tab inline-flex items-center justify-center gap-1.5 flex-1 py-1.5 rounded-xl text-xs font-bold text-center text-slate-500 hover:text-slate-800 transition cursor-pointer">
-            <i class="ph-bold ph-lightning"></i><span>С опытом</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Reading Progress -->
-      {% if current_user.is_student() %}
-      <div class="mt-6 rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-4">
-        <div class="flex justify-between text-xs font-black text-indigo-700">
-          <span>Прогресс изучения</span>
-          <span id="progress-label">{{ state.reading_progress if state else 0 }}%</span>
-        </div>
-        <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-indigo-100">
-          <div id="progress-bar" class="h-full rounded-full bg-indigo-600 transition-all duration-300" style="width:{{ state.reading_progress if state else 0 }}%"></div>
-        </div>
-      </div>
-      {% endif %}
-    </section>
-
-    <!-- Module Navigation Bar -->
-    <nav class="rounded-2xl border-2 border-slate-200 bg-white p-3.5 sm:p-4 shadow-[0_3px_0_#DAE1E9]">
-      <div class="flex items-center justify-between gap-2 mb-2 px-1">
-        <div class="flex items-center gap-2 text-xs font-black text-slate-700">
-          <i class="ph-bold ph-list-numbers text-indigo-600"></i>
-          <span>Навигация по модулю</span>
-          {% if block.group %}
-          <span class="text-slate-400 font-bold">({{ block.group.name }})</span>
-          {% endif %}
-        </div>
-        <span class="text-[11px] font-bold text-slate-400">Темы модуля</span>
-      </div>
-      <div class="flex items-center gap-2 overflow-x-auto pb-1">
-        {% for pack in visible_groups %}
-          {% if pack.group.id == block.group_id %}
-            {% for item in pack.blocks %}
-            <a href="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}" class="inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-black no-underline transition {{ 'border-b-2 border-indigo-800 bg-indigo-600 text-white shadow-sm' if item.id == block.id else 'border border-slate-200 bg-[#F8FAFC] text-slate-700 hover:border-indigo-300 hover:bg-indigo-50/50' }}">
-              <span class="font-mono text-[11px] opacity-80">№{{ item.task_number }}</span>
-              <span class="truncate max-w-[220px]">{{ item.title or ('Тема №' ~ item.task_number) }}</span>
-            </a>
-            {% endfor %}
-          {% endif %}
-        {% endfor %}
-      </div>
-    </nav>
-
-    <!-- Main Article for full-width utilization -->
-    <div class="w-full">
-      <article id="article-content" class="w-full rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-9 shadow-[0_4px_0_#DAE1E9] prose prose-slate max-w-none prose-headings:font-display prose-headings:font-black prose-a:text-indigo-600 prose-pre:rounded-2xl overflow-hidden">
-        {% if rendered_content_html %}
-          {{ rendered_content_html|safe }}
-        {% else %}
-          <div class="rounded-2xl border-2 border-dashed border-slate-300 bg-[#F8FAFC] p-8 text-center not-prose">
-            <i class="ph-bold ph-note-blank text-3xl text-slate-300"></i>
-            <p class="mt-3 font-bold text-slate-500">Преподаватель ещё не добавил содержание этой темы.</p>
-          </div>
-        {% endif %}
-      </article>
-    </div>
-
-    <!-- Self-check, Notes and Feedback (Student Only) -->
-    {% if current_user.is_student() %}
-    <section class="grid gap-6 lg:grid-cols-12 items-start">
+    <!-- 2-COLUMN LAYOUT -->
+    <div class="flex flex-col lg:flex-row gap-6 items-start">
       
-      <!-- Left: Mascot, Progress & Practice Hub (lg:col-span-7) -->
-      <div class="lg:col-span-7 space-y-6">
-        <!-- Creative Mascot & Progress Hub -->
-        <div class="rounded-[2rem] border-2 border-indigo-100 bg-white p-6 sm:p-8 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between relative overflow-hidden">
-          <div>
-            <!-- Header and mascot speech -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
-              <div>
-                <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-black">
-                  <i class="ph-fill ph-trophy"></i><span>Прогресс и победы темы</span><span class="text-indigo-300">·</span><span>Автопроверка внутри темы</span>
-                </div>
-                <h2 class="mt-2 text-xl sm:text-2xl font-black text-slate-900 leading-tight">Твой результат в этой теме</h2>
-              </div>
-              <div class="flex items-center gap-3 shrink-0">
-                <div class="relative bg-indigo-50/80 border border-indigo-200/80 rounded-2xl p-3 text-xs font-bold text-indigo-900 shadow-sm max-w-xs">
-                  <span id="checkpoint-mascot-speech">Реши все проверки темы, чтобы закрепить материал на 100%!</span>
-                  <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-indigo-50/80 border-b border-r border-indigo-200/80 rotate-45"></div>
-                </div>
-                <img src="/static/images/theory/ghost_study.png" alt="Boo" class="w-14 h-14 object-contain drop-shadow-sm">
-              </div>
-            </div>
+      <!-- LEFT / MAIN READING COLUMN -->
+      <div class="flex-1 min-w-0 w-full space-y-6">
 
-            <!-- Progress Bar & Count -->
-            <div class="mt-6 rounded-2xl border-2 border-slate-100 bg-[#F8FAFC] p-4 sm:p-5">
-              <div class="flex items-center justify-between gap-2 mb-2.5">
-                <span id="checkpoint-summary" class="text-xs sm:text-sm font-black text-slate-800">Пройдено проверок: 0 из 3</span>
-                <span id="checkpoint-percent-badge" class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 font-mono text-xs font-black">0%</span>
-              </div>
-              <div class="w-full h-3 rounded-full bg-slate-200 overflow-hidden">
-                <div id="checkpoint-progress-bar" class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500" style="width: 0%;"></div>
-              </div>
-            </div>
+        <!-- Golden Dashboard Aesthetic Hero Header -->
+        <header class="rounded-3xl border border-[#EADFE0] bg-gradient-to-r from-[#FFF5EC] via-[#FFFDFB] to-[#F5EEFF] p-4 sm:p-6 shadow-[0_7px_0_rgba(231,218,220,0.48),0_12px_28px_rgba(96,75,91,0.07)] relative overflow-hidden">
+          <!-- Ambient glowing orb in header -->
+          <div class="absolute -right-10 -bottom-10 w-48 h-48 rounded-full bg-gradient-to-tr from-purple-200/30 to-amber-200/30 blur-2xl pointer-events-none"></div>
 
-            <!-- Checklist of Checkpoints -->
-            <div class="mt-5">
-              <div class="text-[11px] font-black uppercase tracking-wider text-slate-400 mb-2.5">Контрольные точки темы</div>
-              <div id="checkpoint-checklist" class="space-y-2">
-                <!-- Dynamically populated via updateCheckpointSummary() -->
-              </div>
+          <!-- Top Row: Navigation bar + Time & Cheatsheet -->
+          <div class="relative z-10 flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-indigo-100/60">
+            <div class="flex items-center gap-2 flex-wrap">
+              <a href="{{ back_to_url }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 border-b-[3px] border-b-slate-300 bg-white hover:bg-slate-50 text-xs font-black text-slate-700 shadow-xs transition active:translate-y-0.5 no-underline">
+                <i class="ph-bold ph-arrow-left"></i><span>Все темы</span>
+              </a>
+              <span class="text-slate-300 font-bold">/</span>
+              <span class="text-xs font-bold text-slate-500">{{ block.group.name if block.group else 'Курс' }}</span>
+              <span class="text-slate-300 font-bold">/</span>
+              <span class="text-xs font-black text-indigo-700 font-mono">№{{ block.task_number }}</span>
             </div>
-          </div>
-
-          <!-- Navigation Buttons -->
-          <div class="mt-8 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-            {% if prev_block %}
-            <a href="{{ url_for('theory.theory_view_block', block_id=prev_block.id, course_id=course_id) }}" class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-[#F8FAFC] hover:bg-white px-4 py-2.5 text-xs font-bold text-slate-600 shadow-[0_2px_0_#DAE1E9] transition no-underline">
-              <i class="ph-bold ph-arrow-left"></i><span>№{{ prev_block.task_number }}: {{ prev_block.title or 'Предыдущая' }}</span>
-            </a>
-            {% else %}
-            <div></div>
-            {% endif %}
 
             <div class="flex items-center gap-2">
-              <a href="/trainer" class="inline-flex items-center gap-2 rounded-xl border-2 border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 px-4 py-2.5 text-xs font-black text-indigo-700 shadow-sm transition no-underline">
-                <i class="ph-bold ph-target"></i><span>В тренажёр ЕГЭ</span>
+              <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/85 border border-indigo-100 text-slate-700 text-xs font-black shadow-xs">
+                <i class="ph-bold ph-clock text-indigo-600"></i>
+                <span>{{ block.read_minutes or 15 }} мин</span>
+              </div>
+              <a href="{{ url_for('theory.theory_block_pdf', block_id=block.id, course_id=course_id) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-indigo-200 border-b-[3px] border-b-indigo-300 bg-indigo-50/90 hover:bg-indigo-100 text-xs font-black text-indigo-700 shadow-xs transition active:translate-y-0.5 no-underline" title="Скачать или открыть PDF-шпаргалку">
+                <i class="ph-bold ph-file-pdf text-indigo-600"></i>
+                <span>Шпаргалка (PDF)</span>
               </a>
-              {% if next_block %}
-              <a href="{{ url_for('theory.theory_view_block', block_id=next_block.id, course_id=course_id) }}" class="inline-flex items-center gap-2 rounded-xl border-b-[3px] border-emerald-800 bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 no-underline">
-                <span>№{{ next_block.task_number }}: {{ next_block.title or 'Следующая' }}</span><i class="ph-bold ph-arrow-right"></i>
-              </a>
+            </div>
+          </div>
+
+          <!-- Main Row: Left = Topic Title & Description, Right = Compact Module Switcher -->
+          <div class="relative z-10 mt-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="rounded-lg border border-indigo-200 bg-indigo-100/70 px-2.5 py-0.5 text-xs font-black text-indigo-700 font-mono shadow-xs">№{{ block.task_number }}</span>
+                {% if block.group %}
+                <span class="text-xs font-bold text-slate-500">{{ block.group.name }}</span>
+                {% endif %}
+              </div>
+              <h1 class="text-xl sm:text-2xl font-black font-display tracking-tight text-slate-900 leading-snug">
+                {{ block.title or ('Тема №' ~ block.task_number) }}
+              </h1>
+              {% if block.description %}
+              <p class="mt-1 text-xs sm:text-sm font-semibold text-slate-600 leading-relaxed max-w-2xl">
+                {{ block.description }}
+              </p>
               {% endif %}
             </div>
-          </div>
-        </div>
 
-        <!-- Practice Banner with ghost_rocket.png -->
-        <div class="rounded-[2rem] border-2 border-indigo-300 bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-800 p-6 text-white shadow-[0_4px_0_#3730A3] relative overflow-hidden">
-          <div class="relative z-10 max-w-md">
-            <div class="flex items-center gap-1.5 text-indigo-200 text-[11px] font-black uppercase tracking-wider">
-              <i class="ph-fill ph-rocket-launch"></i><span>Тренировка</span>
-            </div>
-            <h3 class="mt-2 text-lg sm:text-xl font-black leading-snug">Практика делает мастера!</h3>
-            <p class="mt-1 text-xs sm:text-sm text-indigo-100 font-medium leading-relaxed">Закрепите тему на реальных задачах ЕГЭ в умном тренажёре.</p>
-            {% if trainer_available %}
-            <a href="{{ url_for('trainer.trainer_v2', course_id=course_id, task_type=block.task_number) }}" class="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-white hover:bg-indigo-50 text-indigo-900 px-5 py-2.5 text-xs font-black shadow-md transition no-underline">
-              <span>Перейти к практике</span>
-              <i class="ph-bold ph-arrow-right"></i>
-            </a>
-            {% endif %}
-          </div>
-          <img src="/static/images/theory/ghost_rocket.png" alt="Boo on Rocket" class="absolute -bottom-2 right-2 w-28 h-28 sm:w-36 sm:h-36 object-contain opacity-95 pointer-events-none drop-shadow-md">
-        </div>
-      </div>
-
-      <!-- Right: Personal Note & Feedback (lg:col-span-5) -->
-      <div class="lg:col-span-5 space-y-6">
-        <!-- Personal Note Card -->
-        <div class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-7 shadow-[0_4px_0_#DAE1E9]">
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <div class="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-700">
-              <i class="ph-bold ph-note-pencil text-indigo-600 text-sm"></i>
-              <label for="theory-note">Личная заметка</label>
-            </div>
-            <span class="text-[11px] font-bold text-slate-400">Только для тебя</span>
-          </div>
-          <textarea id="theory-note" class="mt-2 min-h-28 w-full rounded-xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="Запиши главное своими словами…">{{ note.content if note else '' }}</textarea>
-          <button id="save-note" type="button" class="mt-3 w-full rounded-xl border-b-[3px] border-slate-700 bg-slate-800 hover:bg-slate-700 px-4 py-2.5 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Сохранить заметку</button>
-        </div>
-
-        <!-- Feedback Card -->
-        <div class="rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-7 shadow-[0_4px_0_#DAE1E9]">
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-600 text-xs font-black">
-            <i class="ph-fill ph-chat-circle-dots"></i><span>Обратная связь</span>
-          </div>
-          <h2 class="mt-2 text-lg sm:text-xl font-black text-slate-900 leading-tight">Как прошла тема?</h2>
-          <p class="mt-1 text-xs sm:text-sm font-semibold text-slate-500">Поставь оценку и напиши вопрос или замечание — преподаватель сразу увидит его.</p>
-          
-          <label class="mt-5 block text-xs font-black uppercase tracking-wider text-slate-500" for="theory-rating-trigger">Оценка материала</label>
-          <div class="relative mt-2" id="theory-rating-dropdown">
-            <input type="hidden" id="theory-rating" value="{{ feedback.rating if feedback and feedback.rating else '' }}">
-            <button type="button" id="theory-rating-trigger" class="w-full flex items-center justify-between gap-2 rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] hover:bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-[0_3px_0_#DAE1E9] transition active:translate-y-0.5 cursor-pointer">
-              <span id="theory-rating-label" class="{{ 'text-slate-900 font-bold' if feedback and feedback.rating else 'text-slate-500 font-medium' }}">
-                {% if feedback and feedback.rating %}
-                  {% if feedback.rating == 5 %}5 — Всё понятно
-                  {% elif feedback.rating == 4 %}4 — Почти понятно
-                  {% elif feedback.rating == 3 %}3 — Нужны примеры
-                  {% elif feedback.rating == 2 %}2 — Сложно
-                  {% elif feedback.rating == 1 %}1 — Нужна помощь
-                  {% else %}{{ feedback.rating }}
-                  {% endif %}
-                {% else %}
-                  Выберите оценку
+            <!-- Compact Module Switcher (Tactile Track) -->
+            <div class="shrink-0 flex items-center gap-1.5 bg-white/85 backdrop-blur-xs border border-indigo-100 p-1.5 rounded-2xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.03)] overflow-x-auto max-w-full">
+              <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1.5 shrink-0">Модуль:</span>
+              {% for pack in visible_groups %}
+                {% if pack.group.id == block.group_id %}
+                  {% for item in pack.blocks %}
+                  <a href="{{ url_for('theory.theory_view_block', block_id=item.id, course_id=course_id) }}" 
+                     title="{{ item.title or ('Тема №' ~ item.task_number) }}"
+                     class="inline-flex shrink-0 items-center gap-1 rounded-xl px-2.5 py-1 text-xs font-black no-underline transition {{ 'border-b-[3px] border-indigo-800 bg-indigo-600 text-white shadow-xs' if item.id == block.id else 'border border-transparent text-slate-600 hover:bg-white hover:border-slate-200 hover:text-slate-900' }}">
+                    <span class="font-mono text-[11px]">№{{ item.task_number }}</span>
+                    <span class="hidden 2xl:inline text-[11px] font-bold truncate max-w-[120px]">{{ item.title }}</span>
+                  </a>
+                  {% endfor %}
                 {% endif %}
-              </span>
-              <i class="ph-bold ph-caret-down text-sm text-slate-400 transition-transform duration-200" id="theory-rating-chevron"></i>
-            </button>
-            <div id="theory-rating-menu" class="hidden absolute left-0 right-0 top-full mt-2 z-30 rounded-2xl border-2 border-slate-200 bg-white p-1.5 shadow-xl space-y-1">
-              <button type="button" data-rating-val="5" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
-                <span class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs">5</span>
-                  <span class="rating-text">Всё понятно</span>
-                </span>
-                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i></span>
-              </button>
-              <button type="button" data-rating-val="4" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
-                <span class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">4</span>
-                  <span class="rating-text">Почти понятно</span>
-                </span>
-                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-bold ph-star text-slate-300"></i></span>
-              </button>
-              <button type="button" data-rating-val="3" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
-                <span class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center font-black text-xs">3</span>
-                  <span class="rating-text">Нужны примеры</span>
-                </span>
-                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i></span>
-              </button>
-              <button type="button" data-rating-val="2" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
-                <span class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-lg bg-orange-100 text-orange-700 flex items-center justify-center font-black text-xs">2</span>
-                  <span class="rating-text">Сложно</span>
-                </span>
-                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i></span>
-              </button>
-              <button type="button" data-rating-val="1" class="theory-rating-item w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
-                <span class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-black text-xs">1</span>
-                  <span class="rating-text">Нужна помощь</span>
-                </span>
-                <span class="text-amber-400 text-xs flex items-center gap-0.5"><i class="ph-fill ph-star"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i><i class="ph-bold ph-star text-slate-300"></i></span>
-              </button>
+              {% endfor %}
             </div>
           </div>
-          
-          <label class="mt-4 block text-xs font-black uppercase tracking-wider text-slate-500" for="theory-feedback">Вопрос или комментарий</label>
-          <textarea id="theory-feedback" class="mt-2 min-h-24 w-full rounded-2xl border-2 border-slate-200 bg-[#F8FAFC] p-3 text-sm font-medium text-slate-700 outline-none focus:border-indigo-400 focus:bg-white transition" placeholder="Что разобрать подробнее на уроке?">{{ feedback.comment if feedback and feedback.comment else '' }}</textarea>
-          <button id="save-feedback" type="button" class="mt-5 w-full rounded-2xl border-b-[4px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 px-4 py-3 text-xs font-black text-white shadow-sm transition active:translate-y-0.5 cursor-pointer">Отправить преподавателю</button>
+        </header>
+
+        <!-- Main Article Reading Sections (Unboxed: each section is a standalone card) -->
+        <div id="article-content" class="w-full space-y-6 prose prose-slate max-w-none prose-headings:font-display prose-headings:font-black prose-a:text-indigo-600 prose-pre:rounded-2xl">
+          {% if rendered_content_html %}
+            {{ rendered_content_html|safe }}
+          {% else %}
+            <div class="rounded-3xl border-2 border-dashed border-slate-300 bg-white p-8 text-center not-prose shadow-[0_5px_0_#E2E8F0,0_10px_24px_rgba(96,75,91,0.05)]">
+              <i class="ph-bold ph-note-blank text-3xl text-slate-300"></i>
+              <p class="mt-3 font-bold text-slate-500">Преподаватель ещё не добавил содержание этой темы.</p>
+            </div>
+          {% endif %}
+
+          <!-- Bottom Topic Navigation Inside Article -->
+          <nav class="not-prose rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50/50 to-white p-3.5 sm:p-4 shadow-[0_5px_0_#E2E8F0,0_10px_24px_rgba(96,75,91,0.06)] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 overflow-hidden">
+            <div class="flex-1 min-w-0 flex items-center justify-start">
+              {% if prev_block %}
+              <a href="{{ url_for('theory.theory_view_block', block_id=prev_block.id, course_id=course_id) }}" class="inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 border-b-[3px] border-b-slate-300 bg-white hover:bg-slate-50 hover:border-indigo-300 px-3.5 py-2 text-xs font-black text-slate-700 shadow-xs transition active:translate-y-0.5 no-underline group w-full md:w-auto justify-center md:justify-start max-w-full">
+                <i class="ph-bold ph-arrow-left text-slate-400 group-hover:text-indigo-600 shrink-0"></i>
+                <span class="inline-block truncate max-w-[180px] sm:max-w-[220px]">№{{ prev_block.task_number }}: {{ prev_block.title or 'Предыдущая' }}</span>
+              </a>
+              {% else %}
+              <span class="text-xs font-bold text-slate-400 px-2 hidden sm:inline">Начало курса</span>
+              {% endif %}
+            </div>
+
+            <!-- Center Course Milestone -->
+            <div class="shrink-0 flex items-center justify-center gap-2 py-1.5 px-3.5 rounded-xl bg-white border border-indigo-100 text-xs font-black text-slate-700 shadow-xs">
+              <i class="ph-bold ph-book-open-text text-indigo-600 shrink-0"></i>
+              <span class="inline-block truncate max-w-[140px] sm:max-w-[180px]">{{ block.group.name if block.group else 'Курс' }}</span>
+              <span class="text-slate-300 shrink-0">•</span>
+              <span class="text-indigo-600 font-mono shrink-0">№{{ block.task_number }}</span>
+            </div>
+
+            <div class="flex-1 min-w-0 flex items-center justify-end">
+              {% if next_block %}
+              <a href="{{ url_for('theory.theory_view_block', block_id=next_block.id, course_id=course_id) }}" class="inline-flex items-center justify-center gap-2 rounded-xl border-b-[4px] border-emerald-800 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-black text-white shadow-[0_4px_12px_rgba(16,185,129,0.25)] transition active:translate-y-0.5 active:border-b-[2px] no-underline w-full md:w-auto max-w-full">
+                <span class="inline-block truncate max-w-[180px] sm:max-w-[220px]">№{{ next_block.task_number }}: {{ next_block.title or 'Следующая' }}</span>
+                <i class="ph-bold ph-arrow-right shrink-0"></i>
+              </a>
+              {% else %}
+              <span class="text-xs font-bold text-emerald-600 px-2 flex items-center gap-1">
+                <i class="ph-bold ph-check-circle"></i> Завершение модуля
+              </span>
+              {% endif %}
+            </div>
+          </nav>
         </div>
+
+        <!-- Student Feedback Card (Compact Inline Layout) -->
+        {% if current_user.is_authenticated %}
+        <div class="rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-indigo-50/20 to-white p-4 sm:p-5 shadow-[0_5px_0_#E2E8F0,0_10px_24px_rgba(96,75,91,0.06)]">
+          <!-- Top row: Header + Rating Dropdown in one line -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                <i class="ph-bold ph-chat-circle-dots text-base"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-black text-slate-800 leading-tight">Как прошла тема?</h3>
+                <p class="text-[11px] font-semibold text-slate-400">Оцени понятность и оставь комментарий преподавателю</p>
+              </div>
+            </div>
+
+            <!-- Compact Rating Dropdown Trigger -->
+            <div class="relative shrink-0 sm:w-56" id="theory-rating-dropdown">
+              <input type="hidden" id="theory-rating" value="{{ feedback.rating if feedback and feedback.rating else '' }}">
+              <button type="button" id="theory-rating-trigger" class="w-full flex items-center justify-between gap-2 rounded-xl border-2 border-slate-200 border-b-[3px] border-b-slate-300 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 shadow-xs transition active:translate-y-0.5 cursor-pointer">
+                <span id="theory-rating-label" class="{{ 'text-slate-900 font-black' if feedback and feedback.rating else 'text-slate-500 font-medium' }}">
+                  {% if feedback and feedback.rating %}
+                    {% if feedback.rating == 5 %}5 — Всё понятно
+                    {% elif feedback.rating == 4 %}4 — Почти понятно
+                    {% elif feedback.rating == 3 %}3 — Нужны примеры
+                    {% elif feedback.rating == 2 %}2 — Сложно
+                    {% elif feedback.rating == 1 %}1 — Нужна помощь
+                    {% else %}{{ feedback.rating }}
+                    {% endif %}
+                  {% else %}
+                    Поставить оценку
+                  {% endif %}
+                </span>
+                <i class="ph-bold ph-caret-down text-xs text-slate-400 transition-transform duration-200" id="theory-rating-chevron"></i>
+              </button>
+              <div id="theory-rating-menu" class="hidden absolute right-0 top-full mt-1.5 z-30 w-56 rounded-xl border-2 border-slate-200 bg-white p-1.5 shadow-xl space-y-1">
+                <button type="button" data-rating-val="5" class="theory-rating-item w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                  <span class="flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-[11px]">5</span>
+                    <span class="rating-text">Всё понятно</span>
+                  </span>
+                  <span class="text-amber-400 text-[11px] flex items-center"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i></span>
+                </button>
+                <button type="button" data-rating-val="4" class="theory-rating-item w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                  <span class="flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-[11px]">4</span>
+                    <span class="rating-text">Почти понятно</span>
+                  </span>
+                  <span class="text-amber-400 text-[11px] flex items-center"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i></span>
+                </button>
+                <button type="button" data-rating-val="3" class="theory-rating-item w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                  <span class="flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center font-black text-[11px]">3</span>
+                    <span class="rating-text">Нужны примеры</span>
+                  </span>
+                  <span class="text-amber-400 text-[11px] flex items-center"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i></span>
+                </button>
+                <button type="button" data-rating-val="2" class="theory-rating-item w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                  <span class="flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-md bg-orange-100 text-orange-700 flex items-center justify-center font-black text-[11px]">2</span>
+                    <span class="rating-text">Сложно</span>
+                  </span>
+                  <span class="text-amber-400 text-[11px] flex items-center"><i class="ph-fill ph-star"></i><i class="ph-fill ph-star"></i></span>
+                </button>
+                <button type="button" data-rating-val="1" class="theory-rating-item w-full flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition cursor-pointer">
+                  <span class="flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-md bg-rose-100 text-rose-700 flex items-center justify-center font-black text-[11px]">1</span>
+                    <span class="rating-text">Нужна помощь</span>
+                  </span>
+                  <span class="text-amber-400 text-[11px] flex items-center"><i class="ph-fill ph-star"></i></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom row: Single compact input + Submit button inline -->
+          <div class="mt-3 flex items-center gap-2">
+            <div class="relative flex-1">
+              <i class="ph-bold ph-pencil-simple text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 text-xs"></i>
+              <input type="text" id="theory-feedback" class="w-full rounded-xl border-2 border-slate-200 bg-[#FAF9FC] pl-10 pr-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-indigo-400 focus:bg-white transition" placeholder="Что разобрать подробнее на уроке? (необязательно)" value="{{ feedback.comment if feedback and feedback.comment else '' }}">
+            </div>
+            <button id="save-feedback" type="button" class="shrink-0 inline-flex items-center gap-1.5 rounded-xl border-b-[4px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-black text-white shadow-[0_4px_12px_rgba(99,102,241,0.25)] transition active:translate-y-0.5 active:border-b-[2px] cursor-pointer">
+              <i class="ph-bold ph-paper-plane-tilt"></i>
+              <span>Отправить</span>
+            </button>
+          </div>
+        </div>
+        {% endif %}
+
       </div>
 
-    </section>
-    {% endif %}
+      <!-- RIGHT SIDEBAR (Stretches full height; Notes & Mascot Advice stick on scroll) -->
+      <aside class="w-full lg:w-80 xl:w-88 shrink-0 space-y-5 self-stretch">
+        
+        <!-- CARD 1: Sticky Table of Contents (01-05) -->
+        <div class="theory-toc-card rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_6px_0_#E2E8F0,0_10px_24px_rgba(96,75,91,0.06)]">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+            <div class="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-700">
+              <i class="ph-bold ph-list-bullets text-indigo-600 text-sm"></i>
+              <span>Содержание темы</span>
+            </div>
+            <span class="text-[11px] font-bold text-slate-400" id="toc-count">5 разделов</span>
+          </div>
+          <nav id="theory-toc" class="space-y-1.5">
+            <!-- Dynamically populated with active scroll spy -->
+          </nav>
+        </div>
+
+        <!-- CARD 2: Progress & Checkpoints Hub -->
+        {% if current_user.is_authenticated %}
+        <div class="rounded-[2rem] border border-indigo-200 bg-gradient-to-b from-[#FBF9FF] via-white to-[#F5F3FF] p-5 shadow-[0_6px_0_#C7D2FE,0_12px_28px_rgba(99,102,241,0.07)] space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-50 to-purple-50 border border-indigo-200 flex items-center justify-center text-indigo-600 shadow-xs">
+                <i class="ph-bold ph-chart-donut text-lg"></i>
+              </div>
+              <div>
+                <div class="text-xs font-black text-slate-900 leading-tight">Твой прогресс</div>
+                <div class="text-[11px] font-bold text-slate-500" id="checkpoint-summary">0 из 0 проверок</div>
+              </div>
+            </div>
+            <span id="checkpoint-percent-badge" class="px-2.5 py-1 rounded-xl bg-indigo-100 text-indigo-700 font-mono text-xs font-black shadow-xs border border-indigo-200/60">
+              0%
+            </span>
+          </div>
+
+          <!-- Checkpoints Progress Bar with concave track -->
+          <div class="w-full h-3 rounded-full bg-slate-100 border border-slate-200/60 p-0.5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] overflow-hidden">
+            <div id="checkpoint-progress-bar" class="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300 shadow-xs" style="width: 0%"></div>
+          </div>
+          
+          <!-- Reading progress indicator -->
+          <div class="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-1 border-t border-indigo-100/60">
+            <span>Прочитано материала:</span>
+            <span id="progress-label" class="font-black text-indigo-700">{{ state.reading_progress if state else 0 }}%</span>
+          </div>
+          <div class="w-full h-2 rounded-full bg-slate-100 border border-slate-200/40 p-0.5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden">
+            <div id="progress-bar" class="h-full rounded-full bg-indigo-500 transition-all duration-300 shadow-xs" style="width:{{ state.reading_progress if state else 0 }}%"></div>
+          </div>
+
+          <!-- Dynamic Checkpoint Checklist -->
+          <div id="checkpoint-checklist" class="space-y-1.5 text-xs pt-1">
+            <!-- Dynamically populated via updateCheckpointSummary() -->
+          </div>
+
+          <!-- Mascot speech inside progress -->
+          <div class="p-3 rounded-2xl bg-white border border-indigo-100 text-[11px] font-bold text-indigo-950 leading-snug shadow-xs" id="checkpoint-mascot-speech">
+            Реши все проверки темы, чтобы закрепить материал на 100%!
+          </div>
+
+          <!-- Actions: Bookmark & Mark Read -->
+          <div class="pt-2 flex flex-col gap-2">
+            <button id="bookmark-button" type="button" class="w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 {{ 'border-amber-300 bg-amber-50 text-amber-700' if state and state.bookmarked else 'border-slate-200 border-b-[3px] border-b-slate-300 bg-white text-slate-700 hover:bg-slate-50' }} py-2.5 text-xs font-black shadow-xs cursor-pointer transition active:translate-y-0.5">
+              <i class="ph-{{ 'fill' if state and state.bookmarked else 'bold' }} ph-bookmark-simple"></i>
+              <span>{{ 'Сохранено в закладки' if state and state.bookmarked else 'Сохранить в закладки' }}</span>
+            </button>
+            <button id="finish-topic" type="button" class="w-full inline-flex items-center justify-center gap-2 rounded-xl border-b-[4px] border-indigo-800 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 text-xs font-black shadow-[0_4px_12px_rgba(99,102,241,0.25)] transition active:translate-y-0.5 active:border-b-[2px] cursor-pointer">
+              <i class="ph-bold ph-check"></i>
+              <span>Отметить изученным</span>
+            </button>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- PINNED CONTAINER: Personal Note & Boo Advice stick during scrolling -->
+        <div class="theory-pinned-sidebar space-y-5">
+          <!-- CARD 3: Personal Note (Stationery/Notepad styling) -->
+          {% if current_user.is_authenticated %}
+          <div class="rounded-[2rem] border border-amber-200/90 bg-gradient-to-b from-[#FFFDF8] to-[#FFF9ED] p-5 shadow-[0_6px_0_#FDE68A,0_10px_24px_rgba(245,158,11,0.06)]">
+            <div class="flex items-center justify-between pb-2 mb-2">
+              <div class="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-900">
+                <i class="ph-bold ph-note-pencil text-amber-600 text-sm"></i>
+                <label for="theory-note">Личная заметка</label>
+              </div>
+              <span class="text-[10px] font-bold text-amber-600/70">Только для тебя</span>
+            </div>
+            <textarea id="theory-note" class="w-full min-h-24 rounded-xl border-2 border-amber-200/70 bg-white/95 p-3 text-xs font-medium text-slate-800 outline-none focus:border-amber-400 focus:bg-white transition shadow-[inset_0_1px_3px_rgba(0,0,0,0.03)]" placeholder="Запиши формулу или мысль своими словами…">{{ note.content if note else '' }}</textarea>
+            <button id="save-note" type="button" class="mt-2.5 w-full">
+              <i class="ph-bold ph-floppy-disk text-sm mr-1"></i>
+              <span>Сохранить заметку</span>
+            </button>
+          </div>
+          {% endif %}
+
+          <!-- CARD 4: Совет от Бу (Vibrant Peach/Amber Gradient card with companion speech) -->
+          <div class="rounded-[2rem] border border-[#FED7AA] bg-gradient-to-br from-[#FFF4E8] via-[#FFFDF7] to-[#F4EAFF] p-5 shadow-[0_6px_0_#FDBA74,0_12px_28px_rgba(234,88,12,0.08)] relative overflow-hidden">
+            <!-- Decorative ambient orb -->
+            <div class="absolute -right-4 -bottom-4 w-28 h-28 rounded-full bg-orange-300/25 blur-xl pointer-events-none"></div>
+
+            <div class="flex items-center gap-2 text-amber-800 text-xs font-black uppercase tracking-wider mb-2.5 relative z-10">
+              <i class="ph-fill ph-lightbulb text-amber-500 text-base"></i>
+              <span>Совет от Бу</span>
+            </div>
+            <div class="relative z-10 bg-white/90 backdrop-blur-xs border border-amber-200/70 rounded-2xl p-3 text-xs font-bold text-slate-800 leading-relaxed shadow-xs">
+              Пробуй запускать код в примерах и менять числа. Так логика работы Python запоминается в 3 раза быстрее!
+            </div>
+          </div>
+        </div>
+
+      </aside>
+    </div>
 
   </div>
 </main>
-{% if current_user.is_student() %}
+{% if current_user.is_authenticated %}
 <script type="text/plain" data-retired-theory-handler></script>
 <script>
 (() => {
@@ -623,36 +1044,58 @@
       const choices = [...card.querySelectorAll('[data-action="checkpoint-choice"]')];
       choices.forEach(choice => {
         choice.disabled = true;
-        choice.classList.remove('border-emerald-500', 'bg-emerald-50', 'border-rose-400', 'bg-rose-50');
+        choice.classList.remove('is-pending', 'is-correct', 'is-wrong');
         choice.setAttribute('aria-pressed', choice === selected ? 'true' : 'false');
+        const badge = choice.querySelector('.checkpoint-letter-badge');
+        if (badge && badge.dataset.letter) badge.textContent = badge.dataset.letter;
       });
-      selected.classList.add('border-indigo-500', 'bg-indigo-50');
+      selected.classList.add('is-pending');
       result.classList.remove('hidden');
-      result.className = 'mt-3 mb-0 text-sm font-bold text-indigo-700';
-      result.textContent = 'Проверяем ответ…';
+      result.className = 'mt-4 p-4 rounded-2xl bg-indigo-50 border-2 border-indigo-200 text-xs sm:text-sm font-bold text-indigo-700 flex items-center gap-3 transition';
+      result.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i><span>Проверяем ответ…</span>';
       try {
         const data = await post({checkpoint_key: selected.dataset.checkpointKey, answer: selected.dataset.answer});
-        selected.classList.remove('border-indigo-500', 'bg-indigo-50');
+        selected.classList.remove('is-pending');
         if (data.correct) {
-          selected.classList.add('border-emerald-500', 'bg-emerald-50');
-          result.className = 'mt-3 mb-0 text-sm font-bold text-emerald-700';
-          result.textContent = `Верно. ${data.explanation || 'Проверка засчитана.'}`;
+          selected.classList.add('is-correct');
+          const badge = selected.querySelector('.checkpoint-letter-badge');
+          if (badge) badge.textContent = '✓';
+          result.className = 'mt-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 shadow-[0_3px_0_#A7F3D0] text-emerald-950 text-xs sm:text-sm transition';
+          result.innerHTML = `
+            <div class="flex items-start gap-3">
+              <span class="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">✓</span>
+              <div>
+                <div class="text-[11px] uppercase tracking-wider font-extrabold text-emerald-700 mb-0.5">Отлично! Проверка пройдена</div>
+                <div class="font-bold leading-relaxed">${data.explanation || 'Проверка засчитана.'}</div>
+              </div>
+            </div>
+          `;
           card.dataset.passed = 'true';
           window.updateCheckpointSummary?.();
           if (typeof window.triggerAchievement === 'function') {
             window.triggerAchievement('theory_quiz_pass');
           }
         } else {
-          selected.classList.add('border-rose-400', 'bg-rose-50');
-          result.className = 'mt-3 mb-0 text-sm font-bold text-rose-700';
-          result.textContent = `Пока нет. ${data.explanation || 'Выберите другой вариант и попробуйте ещё раз.'}`;
+          selected.classList.add('is-wrong');
+          const badge = selected.querySelector('.checkpoint-letter-badge');
+          if (badge) badge.textContent = '✕';
+          result.className = 'mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 shadow-[0_3px_0_#FDE68A] text-slate-800 text-xs sm:text-sm transition';
+          result.innerHTML = `
+            <div class="flex items-start gap-3">
+              <span class="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">💡</span>
+              <div>
+                <div class="text-[11px] uppercase tracking-wider font-extrabold text-amber-800 mb-0.5">Пока не совсем так · Подсказка</div>
+                <div class="font-bold leading-relaxed text-slate-700">${data.hint || 'Подумайте ещё раз и выберите другой вариант ответа.'}</div>
+              </div>
+            </div>
+          `;
           choices.forEach(choice => { choice.disabled = false; });
         }
       } catch (error) {
-        selected.classList.remove('border-indigo-500', 'bg-indigo-50');
-        selected.classList.add('border-rose-400', 'bg-rose-50');
-        result.className = 'mt-3 mb-0 text-sm font-bold text-rose-700';
-        result.textContent = error.message || 'Не удалось сохранить ответ. Попробуйте ещё раз.';
+        selected.classList.remove('is-pending');
+        selected.classList.add('is-wrong');
+        result.className = 'mt-4 p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-900 text-xs sm:text-sm font-bold flex items-center gap-3 transition';
+        result.innerHTML = `<span>${error.message || 'Не удалось сохранить ответ. Попробуйте ещё раз.'}</span>`;
         choices.forEach(choice => { choice.disabled = false; });
       }
     });
@@ -760,21 +1203,40 @@
         const matchedBtn = choiceBtns.find(b => (b.dataset.answer || '').trim() === answerVal.trim());
         if (matchedBtn) {
           matchedBtn.setAttribute('aria-pressed', 'true');
+          const badge = matchedBtn.querySelector('.checkpoint-letter-badge');
           if (isCorrect) {
-            matchedBtn.classList.add('border-emerald-500', 'bg-emerald-50');
+            matchedBtn.classList.add('is-correct');
+            if (badge) badge.textContent = '✓';
           } else {
-            matchedBtn.classList.add('border-rose-400', 'bg-rose-50');
+            matchedBtn.classList.add('is-wrong');
+            if (badge) badge.textContent = '✕';
           }
         }
         const result = checkpointCard.querySelector('[data-checkpoint-result]');
         if (result) {
           result.classList.remove('hidden');
           if (isCorrect) {
-            result.className = 'mt-3 mb-0 text-sm font-bold text-emerald-700';
-            result.textContent = 'Верно. Проверка пройдена.';
+            result.className = 'mt-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200 shadow-[0_3px_0_#A7F3D0] text-emerald-950 text-xs sm:text-sm transition';
+            result.innerHTML = `
+              <div class="flex items-start gap-3">
+                <span class="w-7 h-7 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">✓</span>
+                <div>
+                  <div class="text-[11px] uppercase tracking-wider font-extrabold text-emerald-700 mb-0.5">Отлично! Проверка пройдена</div>
+                  <div class="font-bold leading-relaxed">Проверка была успешно завершена.</div>
+                </div>
+              </div>
+            `;
           } else {
-            result.className = 'mt-3 mb-0 text-sm font-bold text-rose-700';
-            result.textContent = 'Пока нет. Попробуйте ещё раз.';
+            result.className = 'mt-4 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 shadow-[0_3px_0_#FDE68A] text-slate-800 text-xs sm:text-sm transition';
+            result.innerHTML = `
+              <div class="flex items-start gap-3">
+                <span class="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">💡</span>
+                <div>
+                  <div class="text-[11px] uppercase tracking-wider font-extrabold text-amber-800 mb-0.5">Пока не совпало · Попробуйте ещё раз</div>
+                  <div class="font-bold leading-relaxed text-slate-700">Выберите другой вариант ответа и проверьте своё решение.</div>
+                </div>
+              </div>
+            `;
           }
         }
       }
@@ -891,14 +1353,27 @@
   });
   document.getElementById('save-note')?.addEventListener('click', async event => {
     const button = event.currentTarget;
+    const originalHtml = button.innerHTML;
     try {
+      button.disabled = true;
+      button.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-sm mr-1"></i><span>Сохраняем…</span>';
       const noteInput = document.getElementById('theory-note');
       await request('{{ url_for("theory.theory_api_note") }}', {content: noteInput ? noteInput.value : ''});
-      if (button) {
-        button.textContent = 'Сохранено';
-        window.setTimeout(() => { button.textContent = 'Сохранить заметку'; }, 1300);
+      button.classList.add('is-saved');
+      button.innerHTML = '<i class="ph-bold ph-check text-sm mr-1"></i><span>Сохранено!</span>';
+      if (window.BooNotify?.success) {
+        window.BooNotify.success('Личная заметка сохранена');
       }
-    } catch (error) { reportError(error); }
+      window.setTimeout(() => {
+        button.classList.remove('is-saved');
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+      }, 1500);
+    } catch (error) {
+      button.disabled = false;
+      button.innerHTML = originalHtml;
+      reportError(error);
+    }
   });
     // Rating Dropdown
     const ratingTrigger = document.getElementById('theory-rating-trigger');
@@ -1102,20 +1577,25 @@
   initTheoryCodeEditors();
 
   window.theoryCopyCode = (btn) => {
-    const runner = btn.closest('.theory-code-runner') || btn.closest('.theory-smart-code') || btn.closest('.theory-interactive-card');
+    const runner = btn.closest('.theory-code-runner') || btn.closest('.theory-smart-code') || btn.closest('.theory-interactive-card') || btn.closest('.theory-code-snippet');
     const textarea = runner?.querySelector('.theory-code-input') || runner?.querySelector('.theory-code-raw') || runner?.querySelector('textarea');
-    if (!textarea) return;
-    const textToCopy = textarea.value || textarea.textContent;
+    let textToCopy = textarea ? (textarea.value || textarea.textContent) : '';
+    if (!textToCopy && runner) {
+      const codeTag = runner.querySelector('code') || runner.querySelector('pre');
+      textToCopy = codeTag ? codeTag.textContent : '';
+    }
+    if (!textToCopy) return;
     navigator.clipboard.writeText(textToCopy).then(() => {
       const origHtml = btn.innerHTML;
       btn.innerHTML = '<i class="ph-bold ph-check text-emerald-600"></i><span class="text-emerald-600">Скопировано!</span>';
       setTimeout(() => { btn.innerHTML = origHtml; }, 1500);
     }).catch(() => {
-      if (textarea.select) textarea.select();
+      if (textarea && textarea.select) textarea.select();
       document.execCommand('copy');
     });
   };
   window.copyCodeFromSnippet = window.theoryCopyCode;
+  window.theoryCopySnippet = window.theoryCopyCode;
 
   window.theoryRunCode = async (btn) => {
     const runner = btn.closest('.theory-code-runner');
@@ -1173,6 +1653,94 @@
       btn.innerHTML = origBtnHtml;
     }
   };
+
+  // 3. Dynamic Table of Contents & Scroll-Spy
+  const initTheoryTOC = () => {
+    const tocContainer = document.getElementById('theory-toc');
+    const sections = [...document.querySelectorAll('#article-content .theory-section')];
+    if (!tocContainer) return;
+    if (!sections.length) {
+      const parentCard = tocContainer.closest('.theory-toc-card');
+      if (parentCard) parentCard.style.display = 'none';
+      return;
+    }
+
+    const tocCount = document.getElementById('toc-count');
+    if (tocCount) tocCount.textContent = `${sections.length} ${sections.length === 1 ? 'раздел' : (sections.length < 5 ? 'раздела' : 'разделов')}`;
+
+    tocContainer.innerHTML = '';
+    const tocItems = [];
+
+    sections.forEach((sec, idx) => {
+      const secId = sec.id || `theory-section-${idx + 1}`;
+      sec.id = secId;
+      const h2 = sec.querySelector('h2');
+      const markerText = h2?.querySelector('.theory-section-marker')?.textContent?.trim() || String(idx + 1).padStart(2, '0');
+      let titleText = 'Раздел ' + (idx + 1);
+      if (h2) {
+        const clone = h2.cloneNode(true);
+        clone.querySelectorAll('.theory-section-marker').forEach(m => m.remove());
+        titleText = clone.textContent.trim() || titleText;
+      }
+
+      const link = document.createElement('a');
+      link.href = `#${secId}`;
+      link.className = 'theory-toc-item flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/70 transition no-underline group';
+      link.dataset.targetId = secId;
+      link.innerHTML = `
+        <span class="toc-badge w-6 h-6 rounded-lg bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-700 flex items-center justify-center text-[10px] font-black shrink-0 transition">${markerText}</span>
+        <span class="toc-text truncate font-bold text-slate-700 group-hover:text-indigo-900 transition">${titleText}</span>
+      `;
+
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = document.getElementById(secId);
+        if (target) {
+          const topOffset = target.getBoundingClientRect().top + window.pageYOffset - 24;
+          window.scrollTo({ top: topOffset, behavior: 'smooth' });
+        }
+      });
+
+      tocContainer.appendChild(link);
+      tocItems.push({ link, section: sec });
+    });
+
+    // Scroll-Spy
+    const updateActiveTOC = () => {
+      const scrollPos = window.scrollY + 140;
+      let currentActiveId = null;
+
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const sec = sections[i];
+        if (sec.offsetTop <= scrollPos) {
+          currentActiveId = sec.id;
+          break;
+        }
+      }
+      if (!currentActiveId && sections.length) {
+        currentActiveId = sections[0].id;
+      }
+
+      tocItems.forEach(({ link, section }) => {
+        const isActive = section.id === currentActiveId;
+        const badge = link.querySelector('.toc-badge');
+        const text = link.querySelector('.toc-text');
+        if (isActive) {
+          link.className = 'theory-toc-item flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200/80 shadow-xs transition no-underline';
+          if (badge) badge.className = 'toc-badge w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-xs';
+          if (text) text.className = 'toc-text truncate font-black text-indigo-950';
+        } else {
+          link.className = 'theory-toc-item flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50/70 transition no-underline group';
+          if (badge) badge.className = 'toc-badge w-6 h-6 rounded-lg bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-700 flex items-center justify-center text-[10px] font-black shrink-0 transition';
+          if (text) text.className = 'toc-text truncate font-bold text-slate-700 group-hover:text-indigo-900 transition';
+        }
+      });
+    };
+
+    window.addEventListener('scroll', updateActiveTOC, { passive: true });
+    updateActiveTOC();
+  };
+  initTheoryTOC();
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>

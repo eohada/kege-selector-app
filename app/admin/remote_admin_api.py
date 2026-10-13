@@ -1997,13 +1997,9 @@ def remote_admin_api_bot_broadcast():
         )
         count = 0
         for (user_id,) in users:
-            db.session.add(UserNotification(
-                user_id=user_id,
-                kind='platform_news',
-                title=title,
-                body=body,
-                link_url=link_url,
-            ))
+            # Use the canonical notification service so the in-app row and
+            # Telegram outbox row share the same transaction boundary.
+            notify_user(user_id, kind='news', title=title, body=body, link_url=link_url)
             count += 1
         db.session.commit()
 

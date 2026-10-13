@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
-from flask import g, has_request_context
+from flask import g, has_request_context, request
 from sqlalchemy.orm import joinedload
 
 from app.models import TariffPlan, UserSubscription, db
@@ -65,13 +65,13 @@ def _load_effective_access_for_user(user_id: int) -> EffectiveAccess:
         return EffectiveAccess(
             subscription=None,
             plan=None,
-            allow_lessons=None,
-            allow_trainer=None,
+            allow_lessons=False,
+            allow_trainer=False,
             status="none",
             ends_at_utc=None,
             seconds_left=None,
             lessons_remaining=None,
-            label=_compute_label(None, None),
+            label=_compute_label(False, False),
         )
 
     ends_at = sub.ends_at
@@ -84,8 +84,8 @@ def _load_effective_access_for_user(user_id: int) -> EffectiveAccess:
         return EffectiveAccess(
             subscription=sub,
             plan=sub.plan if sub.plan_id else None,
-            allow_lessons=None,
-            allow_trainer=None,
+            allow_lessons=False,
+            allow_trainer=False,
             status="expired",
             ends_at_utc=ends_at,
             seconds_left=0,
@@ -94,11 +94,11 @@ def _load_effective_access_for_user(user_id: int) -> EffectiveAccess:
         )
 
     plan = sub.plan if sub.plan_id else None
-    allow_lessons = None
-    allow_trainer = None
+    allow_lessons = False
+    allow_trainer = False
     if plan:
-        allow_lessons = None if plan.allow_lessons is None else bool(plan.allow_lessons)
-        allow_trainer = None if plan.allow_trainer is None else bool(plan.allow_trainer)
+        allow_lessons = bool(plan.allow_lessons) if plan.allow_lessons is not None else False
+        allow_trainer = bool(plan.allow_trainer) if plan.allow_trainer is not None else False
 
     seconds_left = None
     if ends_at:
@@ -123,10 +123,13 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
     Cached for the lifetime of the current HTTP request (hooks + context_processor).
     """
     if has_request_context():
-        cache = getattr(g, '_effective_access_by_user', None)
+        cache = getattr(request, '_effective_access_by_user', None)
         if cache is None:
             cache = {}
-            g._effective_access_by_user = cache
+            try:
+                request._effective_access_by_user = cache
+            except Exception:
+                pass
         cached = cache.get(user_id)
         if cached is not None:
             return cached

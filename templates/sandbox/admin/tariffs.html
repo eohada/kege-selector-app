@@ -1,0 +1,1328 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block title %}Управление Тарифами & Витриной | BooStudy Admin{% endblock %}
+
+{% block admin_content %}
+<div class="max-w-[1600px] mx-auto p-4 md:p-8 space-y-8">
+
+    <!-- 1. ШАПКА СТРАНИЦЫ И БЫСТРЫЕ ДЕЙСТВИЯ -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 md:p-8">
+        <div>
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-50 border-2 border-indigo-200 text-indigo-600 flex items-center justify-center text-2xl shadow-sm">
+                    <i class="ph-bold ph-storefront"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-3 mb-0">
+                        Тарифы &amp; Витрина BooStudy
+                    </h1>
+                    <p class="text-sm font-bold text-slate-500 mt-1 mb-0">
+                        Управление тарифными сетками, публикацией на публичной странице, ценами и подписками учеников
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <a href="{{ url_for('billing.billing_plans_public') }}" target="_blank"
+               class="py-3 px-5 bg-slate-100 hover:bg-slate-200 active:translate-y-0.5 text-slate-700 font-black text-xs rounded-xl border-b-4 border-slate-300 transition-all flex items-center gap-2 no-underline uppercase tracking-wider">
+                <i class="ph-bold ph-arrow-square-out text-base text-slate-500"></i> Открыть витрину
+            </a>
+            <button onclick="openAssignModal()"
+                    class="py-3 px-5 bg-amber-500 hover:bg-amber-600 active:translate-y-0.5 text-white font-black text-xs rounded-xl border-b-4 border-amber-700 shadow-md transition-all flex items-center gap-2 cursor-pointer uppercase tracking-wider">
+                <i class="ph-bold ph-user-plus text-base"></i> Назначить ученику
+            </button>
+            <button onclick="openCreateModal()"
+                    class="py-3 px-5 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white font-black text-xs rounded-xl border-b-4 border-indigo-800 shadow-md transition-all flex items-center gap-2 cursor-pointer uppercase tracking-wider">
+                <i class="ph-bold ph-plus-circle text-base"></i> Создать тариф
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. СТАТИСТИЧЕСКИЕ BENTO-КАРТЫ -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-2xl shrink-0">
+                <i class="ph-bold ph-cards"></i>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Всего тарифов</div>
+                <div class="text-2xl font-black text-slate-800">{{ total_plans }}</div>
+            </div>
+        </div>
+
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center text-2xl shrink-0">
+                <i class="ph-bold ph-eye"></i>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> На витрине</div>
+                <div id="stat-active-plans" class="text-2xl font-black text-emerald-600">{{ active_plans }}</div>
+            </div>
+        </div>
+
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center text-2xl shrink-0">
+                <i class="ph-bold ph-archive"></i>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span> В архиве (скрыты)</div>
+                <div id="stat-archived-plans" class="text-2xl font-black text-slate-600">{{ total_plans - active_plans }}</div>
+            </div>
+        </div>
+
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center text-2xl shrink-0">
+                <i class="ph-bold ph-users-three"></i>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Активных подписок</div>
+                <div class="text-2xl font-black text-blue-600">{{ active_subscriptions }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ТАБЫ: ТАРИФНЫЕ ПЛАНЫ / ПОДПИСКИ УЧЕНИКОВ -->
+    <div class="flex items-center gap-3 border-b-2 border-slate-200 pb-3">
+        <button id="tab-btn-plans" onclick="switchMainTab('plans')"
+                class="px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 cursor-pointer bg-slate-900 text-white shadow-sm">
+            <i class="ph-bold ph-squares-four text-lg"></i> Тарифные планы
+            <span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-xs font-bold">{{ plans|length }}</span>
+        </button>
+        <button id="tab-btn-subs" onclick="switchMainTab('subs')"
+                class="px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer bg-white text-slate-600 hover:bg-slate-100 border border-slate-200">
+            <i class="ph-bold ph-user-list text-lg"></i> Подписки учеников
+            <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">{{ subscriptions|length }}</span>
+        </button>
+    </div>
+
+    <!-- 4. ВКЛАДКА 1: ТАРИФНЫЕ ПЛАНЫ -->
+    <div id="tab-content-plans" class="space-y-6">
+
+        <!-- ФИЛЬТРЫ И ПОИСК ТАРИФОВ -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-2xl p-5 space-y-4">
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+                <!-- Поле поиска -->
+                <div class="relative w-full lg:w-96">
+                    <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                    <input type="text" id="filter-plan-search" oninput="applyPlanFilters()" placeholder="Поиск по названию или предмету..."
+                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                </div>
+
+                <!-- Главный фильтр статуса: Витрина / Архив -->
+                <div class="flex items-center gap-2 w-full lg:w-auto">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Статус:</span>
+                    <button type="button" onclick="setStatusFilter('all')" data-status-btn="all"
+                            class="plan-status-pill px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer bg-slate-900 text-white shadow-sm">
+                        Все (<span id="pill-count-all">{{ total_plans }}</span>)
+                    </button>
+                    <button type="button" onclick="setStatusFilter('active')" data-status-btn="active"
+                            class="plan-status-pill px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        На витрине (<span id="pill-count-active">{{ active_plans }}</span>)
+                    </button>
+                    <button type="button" onclick="setStatusFilter('archived')" data-status-btn="archived"
+                            class="plan-status-pill px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                        В архиве / Скрыты (<span id="pill-count-archived">{{ total_plans - active_plans }}</span>)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Дополнительные быстрые фильтры (Формат и Экзамен) -->
+            <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Формат:</span>
+                    <button type="button" onclick="setFormatFilter('all')" data-format-btn="all"
+                            class="plan-format-pill px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200">Все</button>
+                    <button type="button" onclick="setFormatFilter('solo')" data-format-btn="solo"
+                            class="plan-format-pill px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200">Solo (Тренажер)</button>
+                    <button type="button" onclick="setFormatFilter('mentor')" data-format-btn="mentor"
+                            class="plan-format-pill px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200">Mentor (Уроки)</button>
+                    <button type="button" onclick="setFormatFilter('godmode')" data-format-btn="godmode"
+                            class="plan-format-pill px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200">God Mode (Всё)</button>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Экзамен:</span>
+                    <button type="button" onclick="setExamFilter('all')" data-exam-btn="all"
+                            class="plan-exam-pill px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200">Все</button>
+                    <button type="button" onclick="setExamFilter('ege')" data-exam-btn="ege"
+                            class="plan-exam-pill px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200">ЕГЭ</button>
+                    <button type="button" onclick="setExamFilter('oge')" data-exam-btn="oge"
+                            class="plan-exam-pill px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200">ОГЭ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- СЕТКА КАРТОЧЕК ТАРИФОВ -->
+        <div id="plans-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {% for plan in plans %}
+            <div id="plan-card-{{ plan.plan_id }}"
+                 class="plan-card {% if plan.is_active %}bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9]{% else %}bg-slate-50/80 border-2 border-dashed border-slate-300 opacity-90{% endif %} rounded-[2rem] p-6 flex flex-col justify-between transition-all hover:border-slate-400 relative group"
+                 data-plan-id="{{ plan.plan_id }}"
+                 data-format="{{ plan.format or '' }}"
+                 data-exam="{{ plan.exam or '' }}"
+                 data-subject="{{ plan.subject or '' }}"
+                 data-status="{{ 'active' if plan.is_active else 'archived' }}"
+                 data-search="{{ (plan.title ~ ' ' ~ (plan.description or '') ~ ' ' ~ (plan.badge or '') ~ ' ' ~ (plan.subject or '') ~ ' ' ~ (plan.exam or ''))|lower }}">
+
+                <div>
+                    <!-- Верхняя плашка: экзамен, предмет, формат и ПЕРЕКЛЮЧАТЕЛЬ ВИТРИНЫ -->
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            {% if plan.exam == 'ege' %}
+                                <span class="px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-black uppercase">ЕГЭ</span>
+                            {% elif plan.exam == 'oge' %}
+                                <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black uppercase">ОГЭ</span>
+                            {% endif %}
+
+                            {% if plan.subject == 'inf' %}
+                                <span class="px-2.5 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-[11px] font-bold">Информатика</span>
+                            {% elif plan.subject == 'math' %}
+                                <span class="px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold">Математика{% if plan.level == 'prof' %} (Профиль){% elif plan.level == 'base' %} (База){% endif %}</span>
+                            {% endif %}
+
+                            {% if plan.format == 'solo' %}
+                                <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-black uppercase tracking-wider">Solo</span>
+                            {% elif plan.format == 'mentor' %}
+                                <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-black uppercase tracking-wider">Mentor</span>
+                            {% elif plan.format == 'godmode' %}
+                                <span class="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm">God Mode</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- ПЕРЕКЛЮЧАТЕЛЬ НА ВИТРИНЕ / В АРХИВЕ (SEAMLESS AJAX) -->
+                        <div id="plan-toggle-container-{{ plan.plan_id }}" class="shrink-0">
+                            {% if plan.is_active %}
+                            <button type="button" onclick="toggleTariffShowcase('{{ plan.plan_id }}', this)" class="px-3 py-1 rounded-xl bg-emerald-50 hover:bg-rose-50 text-emerald-700 hover:text-rose-700 border border-emerald-200 hover:border-rose-200 font-black text-[11px] flex items-center gap-1.5 transition cursor-pointer group/btn shadow-sm" title="Тариф виден на публичной витрине. Нажмите, чтобы снять и скрыть в архив">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 group-hover/btn:bg-rose-500"></span>
+                                <span class="group-hover/btn:hidden">На витрине</span>
+                                <span class="hidden group-hover/btn:inline">Снять с витрины</span>
+                            </button>
+                            {% else %}
+                            <button type="button" onclick="toggleTariffShowcase('{{ plan.plan_id }}', this)" class="px-3 py-1 rounded-xl bg-amber-50 hover:bg-emerald-50 text-amber-900 hover:text-emerald-700 border-2 border-amber-300 hover:border-emerald-300 font-black text-[11px] flex items-center gap-1.5 transition cursor-pointer shadow-sm" title="Тариф скрыт с витрины. Нажмите, чтобы вернуть на публичную витрину">
+                                <i class="ph-bold ph-eye-slash text-amber-600"></i>
+                                <span>В архиве · <u class="text-emerald-700 font-black">Опубликовать</u></span>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Название и бейдж -->
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                        <h3 class="text-lg font-black text-slate-900 leading-snug mb-0">
+                            {{ plan.title }}
+                        </h3>
+                        {% if plan.badge %}
+                        <span class="px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-sm">{{ plan.badge }}</span>
+                        {% endif %}
+                    </div>
+
+                    {% if plan.description %}
+                    <p class="text-xs font-medium text-slate-500 line-clamp-2 mb-4">
+                        {{ plan.description }}
+                    </p>
+                    {% endif %}
+
+                    <!-- Блок цены и параметров -->
+                    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 mb-4">
+                        <div class="flex items-baseline justify-between mb-2">
+                            <div>
+                                <span class="text-2xl font-black text-slate-900 tracking-tight">{{ "{:,}".format(plan.price_rub or 0).replace(',', ' ') }} ₽</span>
+                                <span class="text-xs font-bold text-slate-400 ml-1">/ {{ plan.period_days or 30 }} дн.</span>
+                            </div>
+                            {% if plan.lessons_count and plan.lessons_count > 0 %}
+                            <div class="text-right">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 text-xs font-black">
+                                    <i class="ph-bold ph-graduation-cap"></i> {{ plan.lessons_count }} ур.
+                                </span>
+                                {% if plan.price_per_lesson_rub %}
+                                <div class="text-[10px] font-bold text-slate-400 mt-0.5">~{{ plan.price_per_lesson_rub }} ₽ / урок</div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Флаги доступа тарифа -->
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 text-xs font-bold">
+                            <div class="flex items-center gap-1.5 {% if plan.allow_trainer %}text-emerald-700{% else %}text-slate-400{% endif %}">
+                                <i class="ph-bold {% if plan.allow_trainer %}ph-check-circle text-emerald-500 text-base{% else %}ph-x-circle text-slate-300 text-base{% endif %}"></i>
+                                <span>Тренажёр КЕГЭ</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 {% if plan.allow_lessons %}text-emerald-700{% else %}text-slate-400{% endif %}">
+                                <i class="ph-bold {% if plan.allow_lessons %}ph-check-circle text-emerald-500 text-base{% else %}ph-x-circle text-slate-300 text-base{% endif %}"></i>
+                                <span>Уроки ментора</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 {% if plan.allow_promocode %}text-emerald-700{% else %}text-slate-400{% endif %}">
+                                <i class="ph-bold {% if plan.allow_promocode %}ph-check-circle text-emerald-500 text-base{% else %}ph-x-circle text-slate-300 text-base{% endif %}"></i>
+                                <span>Промокоды</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 {% if plan.allow_referral %}text-emerald-700{% else %}text-slate-400{% endif %}">
+                                <i class="ph-bold {% if plan.allow_referral %}ph-check-circle text-emerald-500 text-base{% else %}ph-x-circle text-slate-300 text-base{% endif %}"></i>
+                                <span>Рефералка</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Фичи / Особенности -->
+                    {% if plan.features and plan.features is iterable %}
+                    <div class="space-y-1.5 mb-5">
+                        {% for f in plan.features[:2] %}
+                        <div class="flex items-start gap-2 text-xs font-medium text-slate-600">
+                            <i class="ph-bold ph-check text-emerald-500 text-sm mt-0.5 shrink-0"></i>
+                            <span class="line-clamp-1">{{ f }}</span>
+                        </div>
+                        {% endfor %}
+                        {% if plan.features|length > 2 %}
+                        <div class="text-[11px] font-bold text-slate-400 pl-5">+ еще {{ plan.features|length - 2 }} условий</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Подвал карточки: Действия -->
+                <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button type="button" onclick="openAssignModal({{ plan.plan_id }})"
+                            class="py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                            title="Выдать этот тариф ученику">
+                        <i class="ph-bold ph-user-plus text-sm"></i> Назначить
+                    </button>
+
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="openEditModal({{ plan.plan_id }}, '{{ plan.title|e }}', '{{ (plan.description or '')|e }}', '{{ plan.exam or 'ege' }}', '{{ plan.subject or 'inf' }}', '{{ plan.format or 'solo' }}', '{{ plan.level or '' }}', {{ plan.price_rub or 0 }}, {{ plan.period_days or 30 }}, {{ plan.lessons_count or 0 }}, '{{ plan.badge or '' }}', {{ plan.order_index or 0 }}, '{{ plan.price_per_lesson_rub or '' }}', {{ 'true' if plan.allow_trainer else 'false' }}, {{ 'true' if plan.allow_lessons else 'false' }}, {{ 'true' if plan.allow_promocode else 'false' }}, {{ 'true' if plan.allow_referral else 'false' }}, {{ 'true' if plan.is_active else 'false' }}, {{ (plan.features or [])|tojson|forceescape }})"
+                                class="py-2 px-3 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 font-bold text-xs rounded-xl transition cursor-pointer border border-transparent hover:border-indigo-200 flex items-center gap-1">
+                            <i class="ph-bold ph-pencil-simple text-sm"></i> Изменить
+                        </button>
+
+                        <button type="button"
+                                onclick="openConfirmModal('Удаление тарифа', 'Удалить тариф «{{ plan.title|e }}»? Если по нему уже есть подписки учеников, он будет автоматически перемещен в архив.', '{{ url_for('admin.admin_tariffs_delete', plan_id=plan.plan_id) }}')"
+                                class="p-2 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition cursor-pointer"
+                                title="Удалить тариф">
+                            <i class="ph-bold ph-trash text-base"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 5. ВКЛАДКА 2: ПОДПИСКИ УЧЕНИКОВ -->
+    <div id="tab-content-subs" class="space-y-6 hidden">
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="relative w-full md:w-96">
+                <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                <input type="text" id="filter-sub-search" oninput="applySubFilters()" placeholder="Поиск по ученику или тарифу..."
+                       class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Статус:</span>
+                <button type="button" onclick="setSubStatusFilter('all')" data-sub-btn="all"
+                        class="sub-status-pill px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200">Все</button>
+                <button type="button" onclick="setSubStatusFilter('active')" data-sub-btn="active"
+                        class="sub-status-pill px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200">Активные</button>
+                <button type="button" onclick="setSubStatusFilter('expired')" data-sub-btn="expired"
+                        class="sub-status-pill px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200">Истекшие</button>
+                <button type="button" onclick="setSubStatusFilter('cancelled')" data-sub-btn="cancelled"
+                        class="sub-status-pill px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200">Отмененные</button>
+            </div>
+        </div>
+
+        <!-- Таблица подписок -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 overflow-hidden">
+            {% if not subscriptions %}
+            <div class="text-center py-16">
+                <div class="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center text-3xl mx-auto mb-3">
+                    <i class="ph-bold ph-ticket"></i>
+                </div>
+                <h3 class="text-lg font-black text-slate-800 mb-1">Подписок пока нет</h3>
+                <p class="text-xs font-medium text-slate-500 mb-4">Назначьте тариф ученику вручную или дождитесь покупок.</p>
+                <button onclick="openAssignModal()" class="py-2.5 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl border-b-2 border-indigo-800 transition cursor-pointer">
+                    Назначить первый тариф
+                </button>
+            </div>
+            {% else %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b-2 border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400">
+                            <th class="pb-3.5 pl-2">Ученик</th>
+                            <th class="pb-3.5">Тарифный план</th>
+                            <th class="pb-3.5">Статус</th>
+                            <th class="pb-3.5">Баланс уроков</th>
+                            <th class="pb-3.5">Срок действия</th>
+                            <th class="pb-3.5">Примечание</th>
+                            <th class="pb-3.5 text-right pr-2">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subs-table-body" class="divide-y divide-slate-100 text-sm">
+                        {% for sub in subscriptions %}
+                        <tr class="sub-row hover:bg-slate-50/80 transition"
+                            data-search="{{ ((sub.user.username if sub.user else '') ~ ' ' ~ (sub.user.email if sub.user else '') ~ ' ' ~ (sub.plan.title if sub.plan else 'Индивидуальный'))|lower }}"
+                            data-status="{{ sub.status }}">
+
+                            <td class="py-4 pl-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-black text-xs shrink-0">
+                                        {{ (sub.user.username[0]|upper) if sub.user and sub.user.username else '?' }}
+                                    </div>
+                                    <div>
+                                        <div class="font-black text-slate-800 leading-tight">
+                                            {{ sub.user.username if sub.user else 'Удален (' ~ sub.user_id ~ ')' }}
+                                        </div>
+                                        <div class="text-[11px] font-medium text-slate-400">
+                                            ID #{{ sub.user_id }} · {{ sub.user.role if sub.user else '' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="py-4">
+                                {% if sub.plan %}
+                                    <div class="font-bold text-slate-800">{{ sub.plan.title }}</div>
+                                    <div class="text-[11px] font-medium text-slate-400">
+                                        {{ sub.plan.format|upper if sub.plan.format else '' }} · {{ sub.plan.price_rub or 0 }} ₽
+                                    </div>
+                                {% else %}
+                                    <span class="font-bold text-slate-500 italic">Индивидуальный доступ</span>
+                                {% endif %}
+                            </td>
+
+                            <td class="py-4">
+                                {% if sub.status == 'active' %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-black">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Активна
+                                    </span>
+                                {% elif sub.status == 'expired' %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+                                        Истекла
+                                    </span>
+                                {% elif sub.status == 'cancelled' %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                                        Отменена
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold">
+                                        {{ sub.status }}
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td class="py-4">
+                                <span class="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 font-black text-xs inline-flex items-center gap-1">
+                                    <i class="ph-bold ph-graduation-cap"></i> {{ sub.lessons_remaining or 0 }} ур.
+                                </span>
+                            </td>
+
+                            <td class="py-4 text-xs font-medium text-slate-600">
+                                <div><b class="text-slate-700">С:</b> {{ sub.started_at.strftime('%d.%m.%Y') if sub.started_at else '—' }}</div>
+                                <div><b class="text-slate-700">По:</b> {{ sub.ends_at.strftime('%d.%m.%Y') if sub.ends_at else 'Бессрочно' }}</div>
+                            </td>
+
+                            <td class="py-4 text-xs font-medium text-slate-500 max-w-xs truncate" title="{{ sub.note or '' }}">
+                                {{ sub.note or '—' }}
+                            </td>
+
+                            <td class="py-4 text-right pr-2">
+                                <div class="flex items-center justify-end gap-1.5">
+                                    <button type="button" onclick="openEditSubModal({{ sub.subscription_id }}, {{ sub.lessons_remaining or 0 }}, '{{ sub.status }}', '{{ sub.note or '' }}')"
+                                            class="py-1.5 px-3 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 rounded-xl text-xs font-bold transition cursor-pointer">
+                                        Управление
+                                    </button>
+
+                                    {% if sub.status == 'active' %}
+                                    <button type="button"
+                                            onclick="openConfirmModal('Отмена подписки', 'Вы уверены, что хотите отменить активную подписку ученика @{{ (sub.user.username if sub.user else '')|e }}?', '{{ url_for('admin.admin_tariffs_subscription_cancel', subscription_id=sub.subscription_id) }}')"
+                                            class="p-1.5 bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition cursor-pointer"
+                                            title="Отменить подписку">
+                                        <i class="ph-bold ph-x text-sm"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================================== -->
+<!-- МОДАЛЬНОЕ ОКНО: СОЗДАНИЕ ТАРИФА (КОМПАКТНЫЙ, КРАСИВЫЙ V2 ДИЗАЙН) -->
+<!-- ============================================================================== -->
+<div id="create-tariff-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-[2rem] max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        
+        <!-- Фиксированная шапка модалки -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-xl">
+                    <i class="ph-bold ph-plus-circle"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-slate-900 mb-0">Новый тарифный план</h2>
+                    <p class="text-xs font-medium text-slate-400 mb-0">Параметры, права доступа и видимость на витрине</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeCreateModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-lg flex items-center justify-center transition cursor-pointer">&times;</button>
+        </div>
+
+        <!-- Прокручиваемое тело модалки -->
+        <form action="{{ url_for('admin.admin_tariffs_create') }}" method="POST" class="flex-1 overflow-y-auto p-6 space-y-5">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- 1. Название и описание -->
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Название тарифа *</label>
+                    <input type="text" name="title" required placeholder="например ЕГЭ Информатика: Mentor Middle"
+                           class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Краткое описание</label>
+                    <input type="text" name="description" placeholder="например 16 уроков с репетитором + неограниченный тренажер"
+                           class="w-full px-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                </div>
+            </div>
+
+            <!-- 2. Направление (Экзамен, Предмет, Формат) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Экзамен</label>
+                    <select name="exam" class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        <option value="ege">ЕГЭ</option>
+                        <option value="oge">ОГЭ</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Предмет</label>
+                    <select name="subject" class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        <option value="inf">Информатика</option>
+                        <option value="math">Математика</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Формат</label>
+                    <select name="format" class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        <option value="solo">Solo (Тренажер)</option>
+                        <option value="mentor">Mentor (Уроки)</option>
+                        <option value="godmode">God Mode (Всё)</option>
+                        <option value="custom">Индивидуальный</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 3. Цена, Срок и Уроки -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Цена (₽) *</label>
+                    <input type="number" name="price_rub" required min="0" value="4000"
+                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-black text-slate-900 text-sm focus:border-indigo-500 focus:outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Срок (дней)</label>
+                    <input type="number" name="period_days" min="1" value="30"
+                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:border-indigo-500 focus:outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Уроков (шт)</label>
+                    <input type="number" name="lessons_count" min="0" value="0"
+                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:border-indigo-500 focus:outline-none transition">
+                </div>
+            </div>
+
+            <!-- 4. Витрина и права доступа (Tactile Cards) -->
+            <div class="space-y-2">
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Публикация и права доступа</div>
+
+                <!-- Главный тумблер: На витрине -->
+                <label class="p-3.5 rounded-2xl border-2 border-slate-200 bg-slate-50 flex items-center justify-between cursor-pointer transition-all has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/60 has-[:checked]:shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg shrink-0">
+                            <i class="ph-bold ph-storefront"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">Опубликовать на витрине</div>
+                            <div class="text-[11px] font-medium text-slate-500">Тариф сразу появится в каталоге на /billing/plans/public</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" name="is_active" checked class="w-5 h-5 rounded-md text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                </label>
+
+                <!-- Сетка разрешений -->
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <label class="p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-all has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50/50">
+                        <input type="checkbox" name="allow_trainer" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">ИИ-тренажёр</div>
+                            <div class="text-[10px] text-slate-400">Безлимит КЕГЭ</div>
+                        </div>
+                    </label>
+
+                    <label class="p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-all has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50/50">
+                        <input type="checkbox" name="allow_lessons" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Уроки ментора</div>
+                            <div class="text-[10px] text-slate-400">Индивидуально</div>
+                        </div>
+                    </label>
+
+                    <label class="p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-all has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50/50">
+                        <input type="checkbox" name="allow_promocode" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Промокоды</div>
+                            <div class="text-[10px] text-slate-400">Скидки & бонусы</div>
+                        </div>
+                    </label>
+
+                    <label class="p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-all has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50/50">
+                        <input type="checkbox" name="allow_referral" checked class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Рефералка</div>
+                            <div class="text-[10px] text-slate-400">Приглашения</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 5. Дополнительно (аккордеон) -->
+            <details class="group border-2 border-slate-200 rounded-2xl overflow-hidden bg-slate-50/40">
+                <summary class="px-4 py-3 text-xs font-black text-slate-700 cursor-pointer flex items-center justify-between select-none">
+                    <span>Дополнительные параметры (бейдж, уровень, фичи)</span>
+                    <i class="ph-bold ph-caret-down group-open:rotate-180 transition"></i>
+                </summary>
+                <div class="p-4 pt-2 space-y-3 border-t border-slate-200 bg-white">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Бейдж (на карточке)</label>
+                            <input type="text" name="badge" placeholder="ХИТ / ВЫГОДНО / ТОП"
+                                   class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Уровень / Сложность</label>
+                            <input type="text" name="level" placeholder="prof / base"
+                                   class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Список преимуществ (каждый с новой строки)</label>
+                        <textarea name="features" rows="2" placeholder="Неограниченный ИИ-тренажёр&#10;Персональная проверка домашних заданий"
+                                  class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-indigo-500 focus:outline-none transition"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Фиксированный подвал формы -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
+                <button type="button" onclick="closeCreateModal()" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer">
+                    Отмена
+                </button>
+                <button type="submit" class="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white font-black text-xs rounded-xl border-b-4 border-indigo-800 shadow-md transition cursor-pointer uppercase tracking-wider">
+                    Создать тариф
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================================== -->
+<!-- МОДАЛЬНОЕ ОКНО: РЕДАКТИРОВАНИЕ ТАРИФА (КОМПАКТНЫЙ, КРАСИВЫЙ V2 ДИЗАЙН) -->
+<!-- ============================================================================== -->
+<div id="edit-tariff-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-[2rem] max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        
+        <!-- Фиксированная шапка модалки -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-xl">
+                    <i class="ph-bold ph-pencil-simple"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-slate-900 mb-0">Редактирование тарифа</h2>
+                    <p class="text-xs font-medium text-slate-400 mb-0">Изменение цены, условий, прав и статуса витрины</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeEditModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-lg flex items-center justify-center transition cursor-pointer">&times;</button>
+        </div>
+
+        <!-- Прокручиваемое тело модалки -->
+        <form id="edit-tariff-form" method="POST" class="flex-1 overflow-y-auto p-6 space-y-5">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- 1. Название и описание -->
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Название тарифа *</label>
+                    <input type="text" id="edit-title" name="title" required
+                           class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Краткое описание</label>
+                    <input type="text" id="edit-description" name="description"
+                           class="w-full px-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                </div>
+            </div>
+
+            <!-- 2. Направление (Экзамен, Предмет, Формат) -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Экзамен</label>
+                    <select id="edit-exam" name="exam" class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        <option value="ege">ЕГЭ</option>
+                        <option value="oge">ОГЭ</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Предмет</label>
+                    <select id="edit-subject" name="subject" class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        <option value="inf">Информатика</option>
+                        <option value="math">Математика</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Формат</label>
+                    <select id="edit-format" name="format" class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        <option value="solo">Solo (Тренажер)</option>
+                        <option value="mentor">Mentor (Уроки)</option>
+                        <option value="godmode">God Mode (Всё)</option>
+                        <option value="custom">Индивидуальный</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 3. Цена, Срок и Уроки -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Цена (₽) *</label>
+                    <input type="number" id="edit-price" name="price_rub" required min="0"
+                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-black text-slate-900 text-sm focus:border-indigo-500 focus:outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Срок (дней)</label>
+                    <input type="number" id="edit-period" name="period_days" min="1"
+                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:border-indigo-500 focus:outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Уроков (шт)</label>
+                    <input type="number" id="edit-lessons" name="lessons_count" min="0"
+                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:border-indigo-500 focus:outline-none transition">
+                </div>
+            </div>
+
+            <!-- 4. Витрина и права доступа (Tactile Cards) -->
+            <div class="space-y-2">
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Публикация и права доступа</div>
+
+                <!-- Главный тумблер: На витрине -->
+                <label class="p-3.5 rounded-2xl border-2 border-slate-200 bg-slate-50 flex items-center justify-between cursor-pointer transition-all has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/60 has-[:checked]:shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg shrink-0">
+                            <i class="ph-bold ph-storefront"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">Опубликовать на витрине</div>
+                            <div class="text-[11px] font-medium text-slate-500">Тариф отображается в публичном каталоге (/billing/plans/public)</div>
+                        </div>
+                    </div>
+                    <input type="checkbox" id="edit-active" name="is_active" class="w-5 h-5 rounded-md text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                </label>
+
+                <!-- Сетка разрешений -->
+                <div class="grid grid-cols-2 gap-2.5 pt-1">
+                    <label class="p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-all has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50/50">
+                        <input type="checkbox" id="edit-trainer" name="allow_trainer" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">ИИ-тренажёр</div>
+                            <div class="text-[10px] text-slate-400">Безлимит КЕГЭ</div>
+                        </div>
+                    </label>
+
+                    <label class="p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-all has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50/50">
+                        <input type="checkbox" id="edit-lessons-flag" name="allow_lessons" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Уроки ментора</div>
+                            <div class="text-[10px] text-slate-400">Индивидуально</div>
+                        </div>
+                    </label>
+
+                    <label class="p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-all has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50/50">
+                        <input type="checkbox" id="edit-promocode" name="allow_promocode" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Промокоды</div>
+                            <div class="text-[10px] text-slate-400">Скидки & бонусы</div>
+                        </div>
+                    </label>
+
+                    <label class="p-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-all has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50/50">
+                        <input type="checkbox" id="edit-referral" name="allow_referral" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Рефералка</div>
+                            <div class="text-[10px] text-slate-400">Приглашения</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 5. Дополнительно (аккордеон) -->
+            <details class="group border-2 border-slate-200 rounded-2xl overflow-hidden bg-slate-50/40">
+                <summary class="px-4 py-3 text-xs font-black text-slate-700 cursor-pointer flex items-center justify-between select-none">
+                    <span>Дополнительные параметры (бейдж, уровень, фичи)</span>
+                    <i class="ph-bold ph-caret-down group-open:rotate-180 transition"></i>
+                </summary>
+                <div class="p-4 pt-2 space-y-3 border-t border-slate-200 bg-white">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Бейдж (на карточке)</label>
+                            <input type="text" id="edit-badge" name="badge" placeholder="ХИТ / ВЫГОДНО / ТОП"
+                                   class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Уровень / Сложность</label>
+                            <input type="text" id="edit-level" name="level" placeholder="prof / base"
+                                   class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Список преимуществ (каждый с новой строки)</label>
+                        <textarea id="edit-features" name="features" rows="2"
+                                  class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-indigo-500 focus:outline-none transition"></textarea>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Фиксированный подвал формы -->
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
+                <button type="button" onclick="closeEditModal()" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer">
+                    Отмена
+                </button>
+                <button type="submit" class="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white font-black text-xs rounded-xl border-b-4 border-indigo-800 shadow-md transition cursor-pointer uppercase tracking-wider">
+                    Сохранить изменения
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================================== -->
+<!-- МОДАЛЬНОЕ ОКНО: НАЗНАЧЕНИЕ ТАРИФА УЧЕНИКУ -->
+<!-- ============================================================================== -->
+<div id="assign-tariff-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-[2rem] max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center text-xl">
+                    <i class="ph-bold ph-user-plus"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-slate-900 mb-0">Назначить тариф ученику</h2>
+                    <p class="text-xs font-medium text-slate-400 mb-0">Выдача доступа, баланс уроков и срок</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeAssignModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-lg flex items-center justify-center transition cursor-pointer">&times;</button>
+        </div>
+
+        <form action="{{ url_for('admin.admin_tariffs_assign_student') }}" method="POST" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Выберите ученика *</label>
+                <select name="user_id" required class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-amber-500 focus:outline-none transition">
+                    <option value="">-- Выберите пользователя --</option>
+                    {% for st in students %}
+                    <option value="{{ st.id }}">{{ st.username }} ({{ st.role }}, ID: {{ st.id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Тарифный план</label>
+                <select id="assign-plan-select" name="plan_id" onchange="onAssignPlanChange()" class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-amber-500 focus:outline-none transition">
+                    <option value="" data-lessons="0" data-period="30">-- Без тарифа (Индивидуальный) --</option>
+                    {% for p in plans %}
+                    <option value="{{ p.plan_id }}" data-lessons="{{ p.lessons_count or 0 }}" data-period="{{ p.period_days or 30 }}">{{ p.title }} ({{ p.price_rub or 0 }} ₽)</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Количество уроков</label>
+                    <input type="number" id="assign-lessons" name="lessons_count" min="0" value="0"
+                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold focus:border-amber-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Срок (дней)</label>
+                    <input type="number" id="assign-period" name="period_days" min="1" value="30"
+                           class="w-full px-3 py-2 bg-white border-2 border-slate-200 rounded-xl font-bold focus:border-amber-500 focus:outline-none transition">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Примечание / Комментарий</label>
+                <input type="text" name="note" placeholder="например Выдан бонус за победу в турнире"
+                       class="w-full px-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-amber-500 focus:outline-none transition">
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
+                <button type="button" onclick="closeAssignModal()" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer">
+                    Отмена
+                </button>
+                <button type="submit" class="py-2.5 px-6 bg-amber-500 hover:bg-amber-600 active:translate-y-0.5 text-white font-black text-xs rounded-xl border-b-4 border-amber-700 shadow-md transition cursor-pointer uppercase tracking-wider">
+                    Выдать доступ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================================== -->
+<!-- МОДАЛЬНОЕ ОКНО: УПРАВЛЕНИЕ ПОДПИСКОЙ -->
+<!-- ============================================================================== -->
+<div id="edit-sub-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-[2rem] max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center text-xl">
+                    <i class="ph-bold ph-sliders"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-slate-900 mb-0">Управление подпиской</h2>
+                    <p class="text-xs font-medium text-slate-400 mb-0">Баланс занятий, продление и статус</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeEditSubModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-lg flex items-center justify-center transition cursor-pointer">&times;</button>
+        </div>
+
+        <form id="edit-sub-form" method="POST" class="flex-1 overflow-y-auto p-6 space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Остаток уроков (баланс)</label>
+                <input type="number" id="sub-edit-lessons" name="lessons_remaining" min="0" required
+                       class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl font-black text-slate-800 focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Добавить дней к сроку</label>
+                <input type="number" id="sub-edit-add-days" name="add_days" min="0" placeholder="0"
+                       class="w-full px-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold text-slate-800 focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                <p class="text-[11px] text-slate-400 mt-1 mb-0">Оставьте пустым, чтобы не изменять текущую дату окончания.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Статус подписки</label>
+                <select id="sub-edit-status" name="status" class="w-full px-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+                    <option value="active">Активна (active)</option>
+                    <option value="expired">Истекла (expired)</option>
+                    <option value="paused">Приостановлена (paused)</option>
+                    <option value="cancelled">Отменена (cancelled)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Примечание</label>
+                <input type="text" id="sub-edit-note" name="note"
+                       class="w-full px-4 py-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:border-indigo-500 focus:outline-none transition">
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
+                <button type="button" onclick="closeEditSubModal()" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer">
+                    Отмена
+                </button>
+                <button type="submit" class="py-2.5 px-6 bg-indigo-600 hover:bg-indigo-700 active:translate-y-0.5 text-white font-black text-xs rounded-xl border-b-4 border-indigo-800 shadow-md transition cursor-pointer uppercase tracking-wider">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 5. МОДАЛКА ПОДТВЕРЖДЕНИЯ ДЕЙСТВИЯ (Bento Confirm Modal без native confirm) -->
+<div id="confirm-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white border-2 border-slate-200 shadow-[0_8px_0_#DAE1E9] rounded-[2rem] max-w-md w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-2xl shrink-0">
+                <i class="ph-bold ph-warning"></i>
+            </div>
+            <div>
+                <h3 id="confirm-modal-title" class="text-base font-black text-slate-900 mb-0.5">Подтверждение действия</h3>
+                <p id="confirm-modal-desc" class="text-xs font-semibold text-slate-500 mb-0">Вы уверены?</p>
+            </div>
+        </div>
+        <form id="confirm-modal-form" method="POST" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeConfirmModal()" class="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition">
+                    Отмена
+                </button>
+                <button type="submit" class="py-2.5 px-6 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs rounded-xl border-b-2 border-rose-800 shadow-sm transition cursor-pointer">
+                    Подтвердить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================================== -->
+<!-- JS ДЛЯ ФИЛЬТРАЦИИ И УПРАВЛЕНИЯ МОДАЛКАМИ -->
+<!-- ============================================================================== -->
+<script>
+let currentStatusFilter = 'all';
+let currentFormatFilter = 'all';
+let currentExamFilter = 'all';
+
+function switchMainTab(tab) {
+    const btnPlans = document.getElementById('tab-btn-plans');
+    const btnSubs = document.getElementById('tab-btn-subs');
+    const contentPlans = document.getElementById('tab-content-plans');
+    const contentSubs = document.getElementById('tab-content-subs');
+
+    if (tab === 'plans') {
+        btnPlans.className = 'px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 cursor-pointer bg-slate-900 text-white shadow-sm';
+        btnSubs.className = 'px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer bg-white text-slate-600 hover:bg-slate-100 border border-slate-200';
+        contentPlans.classList.remove('hidden');
+        contentSubs.classList.add('hidden');
+    } else {
+        btnSubs.className = 'px-6 py-2.5 rounded-xl font-black text-sm transition-all flex items-center gap-2 cursor-pointer bg-slate-900 text-white shadow-sm';
+        btnPlans.className = 'px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer bg-white text-slate-600 hover:bg-slate-100 border border-slate-200';
+        contentSubs.classList.remove('hidden');
+        contentPlans.classList.add('hidden');
+    }
+}
+
+function setStatusFilter(st) {
+    currentStatusFilter = st;
+    document.querySelectorAll('.plan-status-pill').forEach(btn => {
+        if (btn.getAttribute('data-status-btn') === st) {
+            btn.className = 'plan-status-pill px-3.5 py-1.5 rounded-xl text-xs font-black transition cursor-pointer bg-slate-900 text-white shadow-sm flex items-center gap-1.5';
+        } else {
+            btn.className = 'plan-status-pill px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1.5';
+        }
+    });
+    applyPlanFilters();
+}
+
+function setFormatFilter(fmt) {
+    currentFormatFilter = fmt;
+    document.querySelectorAll('.plan-format-pill').forEach(btn => {
+        if (btn.getAttribute('data-format-btn') === fmt) {
+            btn.className = 'plan-format-pill px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200';
+        } else {
+            btn.className = 'plan-format-pill px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200';
+        }
+    });
+    applyPlanFilters();
+}
+
+function setExamFilter(exam) {
+    currentExamFilter = exam;
+    document.querySelectorAll('.plan-exam-pill').forEach(btn => {
+        if (btn.getAttribute('data-exam-btn') === exam) {
+            btn.className = 'plan-exam-pill px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200';
+        } else {
+            btn.className = 'plan-exam-pill px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200';
+        }
+    });
+    applyPlanFilters();
+}
+
+function applyPlanFilters() {
+    const q = (document.getElementById('filter-plan-search').value || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('.plan-card');
+
+    cards.forEach(card => {
+        const cardFmt = card.getAttribute('data-format') || '';
+        const cardExam = card.getAttribute('data-exam') || '';
+        const cardStatus = card.getAttribute('data-status') || '';
+        const cardSearch = card.getAttribute('data-search') || '';
+
+        const matchStatus = (currentStatusFilter === 'all') || (cardStatus === currentStatusFilter);
+        const matchFmt = (currentFormatFilter === 'all') || (cardFmt === currentFormatFilter);
+        const matchExam = (currentExamFilter === 'all') || (cardExam === currentExamFilter);
+        const matchSearch = (!q) || cardSearch.includes(q);
+
+        if (matchStatus && matchFmt && matchExam && matchSearch) {
+            card.classList.remove('hidden');
+        } else {
+            card.classList.add('hidden');
+        }
+    });
+}
+
+// Поиск и фильтрация по подпискам
+let currentSubStatusFilter = 'all';
+
+function setSubStatusFilter(st) {
+    currentSubStatusFilter = st;
+    document.querySelectorAll('.sub-status-pill').forEach(btn => {
+        if (btn.getAttribute('data-sub-btn') === st) {
+            btn.className = 'sub-status-pill px-3 py-1.5 rounded-lg text-xs font-black transition cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200';
+        } else {
+            btn.className = 'sub-status-pill px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200';
+        }
+    });
+    applySubFilters();
+}
+
+function applySubFilters() {
+    const q = (document.getElementById('filter-sub-search').value || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('.sub-row');
+
+    rows.forEach(row => {
+        const rowSearch = row.getAttribute('data-search') || '';
+        const rowStatus = row.getAttribute('data-status') || '';
+
+        const matchStatus = (currentSubStatusFilter === 'all') || (rowStatus === currentSubStatusFilter);
+        const matchSearch = (!q) || rowSearch.includes(q);
+
+        if (matchStatus && matchSearch) {
+            row.classList.remove('hidden');
+        } else {
+            row.classList.add('hidden');
+        }
+    });
+}
+
+// Модалки
+function openCreateModal() {
+    document.getElementById('create-tariff-modal').classList.remove('hidden');
+}
+function closeCreateModal() {
+    document.getElementById('create-tariff-modal').classList.add('hidden');
+}
+
+function openEditModal(planId, title, desc, exam, subject, format, level, price, period, lessons, badge, order, pricePerLesson, trainer, lessonsFlag, promo, referral, active, features) {
+    const form = document.getElementById('edit-tariff-form');
+    form.action = `/admin/tariffs/${planId}/edit`;
+
+    document.getElementById('edit-title').value = title || '';
+    document.getElementById('edit-description').value = desc || '';
+    document.getElementById('edit-exam').value = exam || 'ege';
+    document.getElementById('edit-subject').value = subject || 'inf';
+    document.getElementById('edit-format').value = format || 'solo';
+    document.getElementById('edit-level').value = level || '';
+    document.getElementById('edit-price').value = price || 0;
+    document.getElementById('edit-period').value = period || 30;
+    document.getElementById('edit-lessons').value = lessons || 0;
+    document.getElementById('edit-badge').value = badge || '';
+
+    const feats = Array.isArray(features) ? features.join('\n') : '';
+    document.getElementById('edit-features').value = feats;
+
+    document.getElementById('edit-trainer').checked = !!trainer;
+    document.getElementById('edit-lessons-flag').checked = !!lessonsFlag;
+    document.getElementById('edit-promocode').checked = !!promo;
+    document.getElementById('edit-referral').checked = !!referral;
+    document.getElementById('edit-active').checked = !!active;
+
+    document.getElementById('edit-tariff-modal').classList.remove('hidden');
+}
+function closeEditModal() {
+    document.getElementById('edit-tariff-modal').classList.add('hidden');
+}
+
+function openAssignModal(planId = null) {
+    const modal = document.getElementById('assign-tariff-modal');
+    const select = document.getElementById('assign-plan-select');
+    if (planId) {
+        select.value = planId;
+        onAssignPlanChange();
+    }
+    modal.classList.remove('hidden');
+}
+function closeAssignModal() {
+    document.getElementById('assign-tariff-modal').classList.add('hidden');
+}
+
+function onAssignPlanChange() {
+    const select = document.getElementById('assign-plan-select');
+    const opt = select.options[select.selectedIndex];
+    if (opt) {
+        const lessons = opt.getAttribute('data-lessons') || 0;
+        const period = opt.getAttribute('data-period') || 30;
+        document.getElementById('assign-lessons').value = lessons;
+        document.getElementById('assign-period').value = period;
+    }
+}
+
+function openEditSubModal(subId, lessons, status, note) {
+    const form = document.getElementById('edit-sub-form');
+    form.action = `/admin/tariffs/subscription/${subId}/update`;
+
+    document.getElementById('sub-edit-lessons').value = lessons;
+    document.getElementById('sub-edit-add-days').value = '';
+    document.getElementById('sub-edit-status').value = status;
+    document.getElementById('sub-edit-note').value = note;
+
+    document.getElementById('edit-sub-modal').classList.remove('hidden');
+}
+function closeEditSubModal() {
+    document.getElementById('edit-sub-modal').classList.add('hidden');
+}
+
+// Управление подтверждением действий (Bento Confirm Modal)
+function openConfirmModal(title, desc, actionUrl) {
+    document.getElementById('confirm-modal-title').textContent = title;
+    document.getElementById('confirm-modal-desc').textContent = desc;
+    document.getElementById('confirm-modal-form').action = actionUrl;
+    document.getElementById('confirm-modal').classList.remove('hidden');
+}
+function closeConfirmModal() {
+    document.getElementById('confirm-modal').classList.add('hidden');
+}
+
+// Бесшовное переключение тарифа (Витрина / Архив) без дерганий и перезагрузки
+async function toggleTariffShowcase(planId, btn) {
+    if (!btn) return;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+
+    try {
+        const res = await fetch(`/admin/tariffs/${planId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+                'X-CSRFToken': (typeof getCsrfToken === 'function') ? getCsrfToken() : ''
+            }
+        });
+
+        if (!res.ok) throw new Error('Ошибка сервера');
+        const data = await res.json();
+
+        if (data.success) {
+            const card = document.getElementById('plan-card-' + planId);
+            const container = document.getElementById('plan-toggle-container-' + planId);
+            const isActive = !!data.is_active;
+
+            if (card) {
+                card.setAttribute('data-status', isActive ? 'active' : 'archived');
+                if (isActive) {
+                    card.className = "plan-card bg-white border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 flex flex-col justify-between transition-all hover:border-slate-400 relative group";
+                } else {
+                    card.className = "plan-card bg-slate-50/80 border-2 border-dashed border-slate-300 opacity-90 rounded-[2rem] p-6 flex flex-col justify-between transition-all hover:border-slate-400 relative group";
+                }
+            }
+
+            if (container) {
+                if (isActive) {
+                    container.innerHTML = `
+                        <button type="button" onclick="toggleTariffShowcase('${planId}', this)" class="px-3 py-1 rounded-xl bg-emerald-50 hover:bg-rose-50 text-emerald-700 hover:text-rose-700 border border-emerald-200 hover:border-rose-200 font-black text-[11px] flex items-center gap-1.5 transition cursor-pointer group/btn shadow-sm" title="Тариф виден на публичной витрине. Нажмите, чтобы снять и скрыть в архив">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 group-hover/btn:bg-rose-500"></span>
+                            <span class="group-hover/btn:hidden">На витрине</span>
+                            <span class="hidden group-hover/btn:inline">Снять с витрины</span>
+                        </button>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <button type="button" onclick="toggleTariffShowcase('${planId}', this)" class="px-3 py-1 rounded-xl bg-amber-50 hover:bg-emerald-50 text-amber-900 hover:text-emerald-700 border-2 border-amber-300 hover:border-emerald-300 font-black text-[11px] flex items-center gap-1.5 transition cursor-pointer shadow-sm" title="Тариф скрыт с витрины. Нажмите, чтобы вернуть на публичную витрину">
+                            <i class="ph-bold ph-eye-slash text-amber-600"></i>
+                            <span>В архиве · <u class="text-emerald-700 font-black">Опубликовать</u></span>
+                        </button>
+                    `;
+                }
+            }
+
+            updateTariffCounters();
+
+            // Если включен фильтр конкретного статуса, карточка плавно растворяется и перемещается
+            if (card) {
+                if (currentStatusFilter === 'active' && !isActive) {
+                    card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.92)';
+                    setTimeout(() => {
+                        card.classList.add('hidden');
+                        card.style.opacity = '';
+                        card.style.transform = '';
+                        card.style.transition = '';
+                    }, 300);
+                } else if (currentStatusFilter === 'archived' && isActive) {
+                    card.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.92)';
+                    setTimeout(() => {
+                        card.classList.add('hidden');
+                        card.style.opacity = '';
+                        card.style.transform = '';
+                        card.style.transition = '';
+                    }, 300);
+                }
+            }
+
+            if (typeof showToast === 'function') {
+                showToast(data.message, 'success');
+            }
+        } else {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            btn.style.opacity = '';
+            if (typeof showToast === 'function') {
+                showToast(data.error || 'Ошибка обновления статуса', 'danger');
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        btn.style.opacity = '';
+        if (typeof showToast === 'function') {
+            showToast('Сетевая ошибка при переключении', 'danger');
+        }
+    }
+}
+
+function updateTariffCounters() {
+    const cards = document.querySelectorAll('.plan-card');
+    let total = cards.length;
+    let active = 0;
+    let archived = 0;
+
+    cards.forEach(c => {
+        if (c.getAttribute('data-status') === 'active') active++;
+        else archived++;
+    });
+
+    const statActive = document.getElementById('stat-active-plans');
+    const statArchived = document.getElementById('stat-archived-plans');
+    if (statActive) statActive.textContent = active;
+    if (statArchived) statArchived.textContent = archived;
+
+    const pillAll = document.getElementById('pill-count-all');
+    const pillActive = document.getElementById('pill-count-active');
+    const pillArchived = document.getElementById('pill-count-archived');
+    if (pillAll) pillAll.textContent = total;
+    if (pillActive) pillActive.textContent = active;
+    if (pillArchived) pillArchived.textContent = archived;
+}
+
+// Закрытие модалок по Escape
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeCreateModal();
+        closeEditModal();
+        closeAssignModal();
+        closeEditSubModal();
+        closeConfirmModal();
+    }
+});
+</script>
+{% endblock %}

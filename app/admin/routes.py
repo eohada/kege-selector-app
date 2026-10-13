@@ -31,7 +31,7 @@ from app.telegram.role_management import (
     set_single_role,
 )
 from app.models import Submission, Answer, UserSubscription, UserNotification, BotAdmin, SubmissionComment, Assignment
-from core.db_models import Tester, task_topics, TestCase, TestStep, BugReport, PromoCode, PromoCodeUsage, TariffPlan, SystemSetting
+from core.db_models import Tester, task_topics, TestCase, TestStep, BugReport, PromoCode, PromoCodeUsage, TariffPlan, TariffGroup, SystemSetting
 from core.audit_logger import audit_logger
 from app import csrf
 from app.auth.rbac_utils import require_admin, has_permission, check_access
@@ -3919,4 +3919,308 @@ def admin_promocodes_delete(promo_id: int):
         db.session.commit()
         flash('Промокод удалён.', 'success')
     return redirect(url_for('admin.admin_promocodes_list'))
+
+
+# ==============================================================================
+# УПРАВЛЕНИЕ ТАРИФАМИ И ПОДПИСКАМИ (V2)
+# ==============================================================================
+
+@admin_bp.route('/admin/tariffs', methods=['GET'])
+@login_required
+def admin_tariffs_list():
+    """Централизованное управление тарифами и подписками учеников."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    plans = TariffPlan.query.order_by(
+        TariffPlan.is_active.desc(),
+        TariffPlan.order_index.asc(),
+        TariffPlan.plan_id.asc()
+    ).all()
+    groups = TariffGroup.query.order_by(TariffGroup.order_index.asc()).all()
+
+    # Subscriptions with user and plan
+    subscriptions = (
+        UserSubscription.query
+        .order_by(UserSubscription.created_at.desc())
+        .limit(200)
+        .all()
+    )
+
+    # Active students for tariff assignment
+    students = (
+        User.query
+        .filter_by(is_active=True)
+        .order_by(User.role.asc(), User.username.asc())
+        .all()
+    )
+
+    # Stats
+    total_plans = len(plans)
+    active_plans = sum(1 for p in plans if p.is_active)
+    active_subscriptions = sum(1 for s in subscriptions if s.status == 'active')
+    total_lessons_balance = sum((s.lessons_remaining or 0) for s in subscriptions if s.status == 'active')
+
+    return render_template(
+        'sandbox/admin/tariffs.html',
+        plans=plans,
+        groups=groups,
+        subscriptions=subscriptions,
+        students=students,
+        total_plans=total_plans,
+        active_plans=active_plans,
+        active_subscriptions=active_subscriptions,
+        total_lessons_balance=total_lessons_balance,
+    )
+
+
+@admin_bp.route('/admin/tariffs/create', methods=['POST'])
+@login_required
+def admin_tariffs_create():
+    """Создание нового тарифа."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    title = (request.form.get('title') or '').strip()
+    if not title:
+        flash('Название тарифа обязательно.', 'danger')
+        return redirect(url_for('admin.admin_tariffs_list'))
+
+    try:
+        price_rub = int(request.form.get('price_rub') or 0)
+        period_days = int(request.form.get('period_days') or 30)
+        lessons_count = int(request.form.get('lessons_count') or 0)
+        order_index = int(request.form.get('order_index') or 0)
+        price_per_lesson_val = request.form.get('price_per_lesson_rub')
+        price_per_lesson = int(price_per_lesson_val) if price_per_lesson_val and price_per_lesson_val.strip() else (
+            int(price_rub / lessons_count) if lessons_count > 0 else None
+        )
+
+        features_raw = request.form.get('features') or ''
+        features = [f.strip() for f in features_raw.splitlines() if f.strip()]
+
+        plan = TariffPlan(
+            title=title,
+            description=(request.form.get('description') or '').strip() or None,
+            exam=(request.form.get('exam') or 'ege').strip() or None,
+            subject=(request.form.get('subject') or 'inf').strip() or None,
+            level=(request.form.get('level') or '').strip() or None,
+            format=(request.form.get('format') or 'solo').strip() or None,
+            badge=(request.form.get('badge') or '').strip() or None,
+            price_rub=price_rub,
+            price_per_lesson_rub=price_per_lesson,
+            period_days=period_days,
+            lessons_count=lessons_count,
+            allow_trainer=request.form.get('allow_trainer') in {'on', '1', 'true'},
+            allow_lessons=request.form.get('allow_lessons') in {'on', '1', 'true'},
+            allow_referral=request.form.get('allow_referral') in {'on', '1', 'true'},
+            allow_promocode=request.form.get('allow_promocode') in {'on', '1', 'true'},
+            order_index=order_index,
+            features=features,
+            is_active=request.form.get('is_active') in {'on', '1', 'true'},
+        )
+        db.session.add(plan)
+        db.session.commit()
+        flash(f'Тариф «{plan.title}» успешно создан.', 'success')
+    except (TypeError, ValueError) as e:
+        db.session.rollback()
+        flash(f'Ошибка в числовых полях формы: {e}', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Не удалось создать тариф: {e}', 'danger')
+
+    return redirect(url_for('admin.admin_tariffs_list'))
+
+
+@admin_bp.route('/admin/tariffs/<int:plan_id>/edit', methods=['POST'])
+@login_required
+def admin_tariffs_edit(plan_id: int):
+    """Редактирование тарифа."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    plan = TariffPlan.query.get_or_404(plan_id)
+    title = (request.form.get('title') or '').strip()
+    if not title:
+        flash('Название тарифа не может быть пустым.', 'danger')
+        return redirect(url_for('admin.admin_tariffs_list'))
+
+    try:
+        plan.title = title
+        plan.description = (request.form.get('description') or '').strip() or None
+        plan.exam = (request.form.get('exam') or 'ege').strip() or None
+        plan.subject = (request.form.get('subject') or 'inf').strip() or None
+        plan.level = (request.form.get('level') or '').strip() or None
+        plan.format = (request.form.get('format') or 'solo').strip() or None
+        plan.badge = (request.form.get('badge') or '').strip() or None
+
+        plan.price_rub = int(request.form.get('price_rub') or 0)
+        plan.period_days = int(request.form.get('period_days') or 30)
+        plan.lessons_count = int(request.form.get('lessons_count') or 0)
+        plan.order_index = int(request.form.get('order_index') or 0)
+
+        price_per_lesson_val = request.form.get('price_per_lesson_rub')
+        plan.price_per_lesson_rub = int(price_per_lesson_val) if price_per_lesson_val and price_per_lesson_val.strip() else (
+            int(plan.price_rub / plan.lessons_count) if plan.lessons_count > 0 else None
+        )
+
+        features_raw = request.form.get('features') or ''
+        plan.features = [f.strip() for f in features_raw.splitlines() if f.strip()]
+
+        plan.allow_trainer = request.form.get('allow_trainer') in {'on', '1', 'true'}
+        plan.allow_lessons = request.form.get('allow_lessons') in {'on', '1', 'true'}
+        plan.allow_referral = request.form.get('allow_referral') in {'on', '1', 'true'}
+        plan.allow_promocode = request.form.get('allow_promocode') in {'on', '1', 'true'}
+        plan.is_active = request.form.get('is_active') in {'on', '1', 'true'}
+
+        db.session.commit()
+        flash(f'Тариф «{plan.title}» успешно обновлен.', 'success')
+    except (TypeError, ValueError) as e:
+        db.session.rollback()
+        flash(f'Ошибка в числовых данных формы: {e}', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при обновлении: {e}', 'danger')
+
+    return redirect(url_for('admin.admin_tariffs_list'))
+
+
+@admin_bp.route('/admin/tariffs/<int:plan_id>/toggle', methods=['POST'])
+@login_required
+def admin_tariffs_toggle(plan_id: int):
+    """Быстрое переключение активности тарифа (активен / в архиве)."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    plan = TariffPlan.query.get_or_404(plan_id)
+    plan.is_active = not plan.is_active
+    db.session.commit()
+    status_str = 'опубликован на витрине' if plan.is_active else 'снят с витрины и скрыт в архив'
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return jsonify({
+            'success': True,
+            'plan_id': plan.plan_id,
+            'is_active': plan.is_active,
+            'message': f'Тариф «{plan.title}» {status_str}.'
+        })
+    flash(f'Тариф «{plan.title}» {status_str}.', 'success')
+    return redirect(url_for('admin.admin_tariffs_list'))
+
+
+@admin_bp.route('/admin/tariffs/<int:plan_id>/delete', methods=['POST'])
+@login_required
+def admin_tariffs_delete(plan_id: int):
+    """Удаление тарифа или архивация при наличии связанных подписок."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    plan = TariffPlan.query.get_or_404(plan_id)
+    has_subscriptions = UserSubscription.query.filter_by(plan_id=plan.plan_id).first()
+    if has_subscriptions:
+        plan.is_active = False
+        db.session.commit()
+        flash(f'Тариф «{plan.title}» используется в подписках учеников, поэтому он был деактивирован (перемещен в архив).', 'warning')
+    else:
+        db.session.delete(plan)
+        db.session.commit()
+        flash(f'Тариф «{plan.title}» безвозвратно удален.', 'success')
+
+    return redirect(url_for('admin.admin_tariffs_list'))
+
+
+@admin_bp.route('/admin/tariffs/assign-student', methods=['POST'])
+@login_required
+def admin_tariffs_assign_student():
+    """Назначение тарифа и баланса уроков конкретному ученику."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    user_id_val = request.form.get('user_id')
+    if not user_id_val or not user_id_val.isdigit():
+        flash('Не выбран ученик для назначения тарифа.', 'danger')
+        return redirect(url_for('admin.admin_tariffs_list'))
+
+    user = User.query.get_or_404(int(user_id_val))
+    plan_id_val = request.form.get('plan_id')
+    plan = TariffPlan.query.get(int(plan_id_val)) if plan_id_val and plan_id_val.isdigit() else None
+
+    try:
+        lessons_count = int(request.form.get('lessons_count') or (plan.lessons_count if plan else 0))
+        period_days = int(request.form.get('period_days') or (plan.period_days if plan else 30))
+        note = (request.form.get('note') or '').strip() or None
+
+        now = moscow_now().replace(tzinfo=None)
+        ends_at = now + timedelta(days=period_days) if period_days > 0 else None
+
+        sub = UserSubscription(
+            user_id=user.id,
+            plan_id=plan.plan_id if plan else None,
+            status='active',
+            started_at=now,
+            ends_at=ends_at,
+            lessons_remaining=lessons_count,
+            note=note,
+        )
+        db.session.add(sub)
+        db.session.commit()
+        plan_name = plan.title if plan else 'Индивидуальный'
+        flash(f'Тариф «{plan_name}» успешно назначен ученику {user.username} ({lessons_count} уроков до {ends_at.strftime("%d.%m.%Y") if ends_at else "бессрочно"}).', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при назначении тарифа: {e}', 'danger')
+
+    return redirect(url_for('admin.admin_tariffs_list'))
+
+
+@admin_bp.route('/admin/tariffs/subscription/<int:subscription_id>/update', methods=['POST'])
+@login_required
+def admin_tariffs_subscription_update(subscription_id: int):
+    """Обновление параметров подписки (уроки, статус, срок, примечание)."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    sub = UserSubscription.query.get_or_404(subscription_id)
+    try:
+        if 'lessons_remaining' in request.form:
+            sub.lessons_remaining = int(request.form.get('lessons_remaining') or 0)
+        if 'status' in request.form:
+            sub.status = request.form.get('status')
+        if 'note' in request.form:
+            sub.note = (request.form.get('note') or '').strip() or None
+
+        # Extend days if requested
+        add_days_val = request.form.get('add_days')
+        if add_days_val and add_days_val.strip():
+            add_days = int(add_days_val)
+            now_naive = moscow_now().replace(tzinfo=None)
+            sub_ends_at = sub.ends_at.replace(tzinfo=None) if sub.ends_at else None
+            base_date = sub_ends_at if (sub_ends_at and sub_ends_at > now_naive) else now_naive
+            sub.ends_at = base_date + timedelta(days=add_days)
+
+        db.session.commit()
+        flash(f'Подписка #{sub.subscription_id} успешно обновлена.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка при обновлении подписки: {e}', 'danger')
+
+    return redirect(url_for('admin.admin_tariffs_list'))
+
+
+@admin_bp.route('/admin/tariffs/subscription/<int:subscription_id>/cancel', methods=['POST'])
+@login_required
+def admin_tariffs_subscription_cancel(subscription_id: int):
+    """Отмена подписки ученика."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'error': 'Forbidden'}), 403
+
+    sub = UserSubscription.query.get_or_404(subscription_id)
+    sub.status = 'cancelled'
+    db.session.commit()
+    flash(f'Подписка #{sub.subscription_id} отменена.', 'info')
+    return redirect(url_for('admin.admin_tariffs_list'))
+
 

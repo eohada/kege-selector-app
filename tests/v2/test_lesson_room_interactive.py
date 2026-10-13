@@ -136,3 +136,73 @@ def test_unrelated_student_cannot_open_lesson_room(app, client, role_users):
 
     login_as(client, outsider_id, 'student')
     assert client.get(f'/lesson/{lesson_id}/room').status_code == 403
+
+
+def test_room_chat_uses_persisted_messages_and_author_names(app, client, role_users):
+    lesson_id, _lesson_task_id = _create_lesson_context(app, role_users)
+    login_as(client, role_users['student_user_id'], 'student')
+
+    sent = client.post(f'/lesson/{lesson_id}/messages/send', json={'body': 'Вопрос по условию'})
+    assert sent.status_code == 200, sent.get_json()
+    assert sent.get_json()['message_id']
+
+    history = client.get(f'/lesson/{lesson_id}/messages')
+    assert history.status_code == 200
+    message = history.get_json()['messages'][-1]
+    assert message['body'] == 'Вопрос по условию'
+    assert message['author_user_id'] == role_users['student_user_id']
+    assert message['author_name']
+
+    assert client.post(f'/lesson/{lesson_id}/messages/send', json={'body': ' '}).status_code == 400
+
+
+def test_board_sync_persists_across_student_reconnect(app, role_users):
+    lesson_id, _ = _create_lesson_context(app, role_users)
+    teacher_http, student_http = app.test_client(), app.test_client()
+    login_as(teacher_http, role_users['tutor_id'], 'tutor')
+    login_as(student_http, role_users['student_user_id'], 'student')
+    sockets = []
+
+    def connect(http):
+        connection = app.socketio.test_client(app, flask_test_client=http, namespace='/lesson')
+        sockets.append(connection)
+        assert connection.is_connected('/lesson')
+        connection.emit('join_lesson', {'lesson_id': lesson_id}, namespace='/lesson')
+        connection.emit('whiteboard_join', {'lesson_id': lesson_id}, namespace='/lesson')
+        return connection
+
+    def event(connection, name):
+        matches = [item for item in connection.get_received('/lesson') if item['name'] == name]
+        assert matches, f'Missing {name}'
+        return matches[-1]['args'][0]
+
+    try:
+        teacher, student = connect(teacher_http), connect(student_http)
+        snapshot = event(teacher, 'whiteboard_snapshot')
+        event(student, 'whiteboard_snapshot')
+        page_id = snapshot['document']['pages'][0]['id']
+        operation = {
+            'operation_id': 'release-sync-object', 'type': 'object.create', 'page_id': page_id,
+            'object': {'id': 'release-shape', 'type': 'shape', 'x': 100, 'y': 100,
+                       'width': 120, 'height': 80, 'data': {'shape': 'rect'}},
+        }
+        teacher.emit('whiteboard_operation', {'lesson_id': lesson_id, 'operation': operation,
+                                             'base_version': snapshot['version']}, namespace='/lesson')
+        ack = event(teacher, 'whiteboard_ack')
+        broadcast = event(student, 'whiteboard_operations')
+        assert broadcast['operations'][0]['object']['id'] == 'release-shape'
+        assert broadcast['version'] == ack['version']
+
+        student.disconnect(namespace='/lesson')
+        student = connect(student_http)
+        restored = event(student, 'whiteboard_snapshot')
+        assert restored['version'] == ack['version']
+        assert any(item['id'] == 'release-shape' for item in restored['document']['pages'][0]['objects'])
+
+        teacher.emit('whiteboard_operation', {'lesson_id': lesson_id, 'operation': operation,
+                                             'base_version': ack['version']}, namespace='/lesson')
+        assert event(teacher, 'whiteboard_ack')['version'] == ack['version']
+    finally:
+        for connection in sockets:
+            if connection.is_connected('/lesson'):
+                connection.disconnect(namespace='/lesson')

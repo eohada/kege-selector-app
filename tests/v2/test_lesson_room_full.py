@@ -40,12 +40,16 @@ def test_canonical_lesson_room_renders_all_real_workspaces(app, client, role_use
 
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert 'room-view-work' in html
-    assert 'room-view-theory' in html
-    assert 'room-view-board' in html
-    assert 'room-view-materials' in html
-    assert 'os-board-viewport' in html
-    assert 'os-material-dropzone' in html
-    assert 'room-task-toggle' in html
-    assert 'os-focus-toggle' in html
+    assert 'lesson-os-system-bar' in html
+    assert 'id="code-editor-textarea"' in html
+    assert 'id="whiteboard-canvas-viewport"' in html
+    assert 'id="dock-icon-code-window"' in html
+    assert 'id="dock-icon-task-window"' in html
+    assert 'id="dock-icon-theory-window"' in html
+    assert 'id="dock-icon-terminal-window"' in html
+    assert 'boostudy_lesson_os_windows_v7_' in html
+    assert "(!compact && ['task-window', 'terminal-window', 'theory-window', 'lesson-info-window'].includes(id))" in html
+    assert 'id="task-current-content"' in html
+    assert 'id="theory-window-body"' in html
+    assert 'id="room-work-mode-switcher"' not in html
     assert '/sandbox/lesson_room/' not in html

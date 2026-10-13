@@ -529,6 +529,58 @@ ACHIEVEMENTS_REGISTRY = {
         'target': 30,
         'unit': 'дней',
     },
+    'weekly_streak_2': {
+        'title': 'Первый ритм',
+        'desc': 'Удерживать учебный ритм 2 недели подряд без пропусков уроков и ДЗ',
+        'icon': 'ph-calendar-check',
+        'icon_style': 'emerald',
+        'category': 'milestone',
+        'rarity': 'common',
+        'rarity_label': 'ОБЫЧНАЯ',
+        'is_secret': False,
+        'xp_reward': 30,
+        'target': 2,
+        'unit': 'недели',
+    },
+    'weekly_streak_4': {
+        'title': 'Месяц марафона',
+        'desc': 'Удерживать учебный ритм 4 недели подряд',
+        'icon': 'ph-medal',
+        'icon_style': 'sky',
+        'category': 'milestone',
+        'rarity': 'rare',
+        'rarity_label': 'РЕДКАЯ',
+        'is_secret': False,
+        'xp_reward': 60,
+        'target': 4,
+        'unit': 'недели',
+    },
+    'weekly_streak_8': {
+        'title': 'Железная воля',
+        'desc': '8 недель продуктивной учёбы без единого срыва дедлайнов',
+        'icon': 'ph-crown',
+        'icon_style': 'purple',
+        'category': 'milestone',
+        'rarity': 'epic',
+        'rarity_label': 'ЭПИЧЕСКАЯ',
+        'is_secret': False,
+        'xp_reward': 120,
+        'target': 8,
+        'unit': 'недель',
+    },
+    'weekly_streak_12': {
+        'title': 'Мастер подготовки',
+        'desc': '12 недель безупречного учебного ритма подряд',
+        'icon': 'ph-trophy',
+        'icon_style': 'amber',
+        'category': 'milestone',
+        'rarity': 'legendary',
+        'rarity_label': 'ЛЕГЕНДАРНАЯ',
+        'is_secret': False,
+        'xp_reward': 200,
+        'target': 12,
+        'unit': 'недель',
+    },
     'tasks_10': {
         'title': 'Первый десяток',
         'desc': 'Решить правильно 10 задач',
@@ -728,6 +780,19 @@ ACHIEVEMENTS_REGISTRY = {
         'target': 1,
         'unit': 'раз',
     },
+    'secret_python_master': {
+        'title': 'Повелитель Питона',
+        'desc': 'Сдать итоговое тестирование по программированию на 90% и выше',
+        'icon': 'ph-crown',
+        'icon_style': 'amber',
+        'category': 'secret',
+        'rarity': 'secret',
+        'rarity_label': 'ТАЙНА',
+        'is_secret': True,
+        'xp_reward': 50,
+        'target': 1,
+        'unit': 'зачёт',
+    },
 }
 
 # Карта обратной совместимости старых ключей базы данных
@@ -735,6 +800,7 @@ LEGACY_KEY_MAP = {
     'night_owl': 'secret_night_owl',
     'early_bird': 'secret_early_bird',
     'speedrun': 'speedrun_task',
+    'task_speedrun': 'speedrun_task',
     'recursion_overflow': 'secret_recursion_depth',
     'ege_logic': 'ege_task_2',
     'ege_itertools': 'ege_task_8',
@@ -756,6 +822,12 @@ def build_student_achievement_catalog(student):
     """
     if not student:
         return []
+
+    # Dynamic sync before generating catalog
+    try:
+        check_and_grant_dynamic_achievements(student, commit=True)
+    except Exception:
+        pass
 
     unlocked_rows = UserAchievement.query.filter_by(student_id=student.student_id).all()
     unlocked_dates = {}
@@ -781,6 +853,16 @@ def build_student_achievement_catalog(student):
     streak_val = int(student.streak_days or 0)
     level_val = int(student.level or 1)
 
+    read_topics_cnt = 0
+    try:
+        from core.db_models import StudentTheoryState
+        read_topics_cnt = StudentTheoryState.query.filter(
+            StudentTheoryState.student_id == student.student_id,
+            (StudentTheoryState.is_read.is_(True)) | (StudentTheoryState.reading_progress >= 100)
+        ).count()
+    except Exception:
+        read_topics_cnt = 0
+
     # Значения прогресса для накопительных достижений
     progress_values = {
         'first_step': completed_submissions,
@@ -788,13 +870,17 @@ def build_student_achievement_catalog(student):
         'streak_3': streak_val,
         'streak_7': streak_val,
         'streak_30': streak_val,
+        'weekly_streak_2': int(getattr(student, 'streak_weeks', 0) or 0),
+        'weekly_streak_4': int(getattr(student, 'streak_weeks', 0) or 0),
+        'weekly_streak_8': int(getattr(student, 'streak_weeks', 0) or 0),
+        'weekly_streak_12': int(getattr(student, 'streak_weeks', 0) or 0),
         'tasks_10': correct_answers,
         'tasks_50': correct_answers,
         'tasks_150': correct_answers,
         'lvl_5': level_val,
         'xp_1000': int(getattr(student, 'xp', 0) or 0),
         'combo_5_correct': 5 if 'combo_5_correct' in unlocked_keys else 0,
-        'theory_5_topics': 5 if 'theory_5_topics' in unlocked_keys else 0,
+        'theory_5_topics': read_topics_cnt if 'theory_5_topics' not in unlocked_keys else 5,
     }
 
     catalog = []
@@ -1008,9 +1094,34 @@ def process_achievement_event(student, event_name, event_data=None, *, commit=Tr
         elif task_num == 26: key_to_grant = 'ege_task_26'
         elif task_num == 27: key_to_grant = 'ege_task_27'
 
-        combo = event_data.get('combo_correct', 0)
-        if combo >= 5:
+        combo = event_data.get('combo_correct')
+        if combo is None:
+            try:
+                recent_answers = (
+                    Answer.query.join(Submission, Answer.submission_id == Submission.submission_id)
+                    .filter(Submission.student_id == student.student_id, Answer.is_correct.isnot(None))
+                    .order_by(Answer.answer_id.desc())
+                    .limit(5)
+                    .all()
+                )
+                if len(recent_answers) == 5 and all(a.is_correct is True and (a.attempts_used or 0) <= 1 for a in recent_answers):
+                    combo = 5
+                else:
+                    combo = 0
+            except Exception:
+                combo = 0
+        if combo and combo >= 5:
             grant_achievement(student, 'combo_5_correct', commit=commit)
+
+        # Time-based easter eggs on task solve (night owl: 00-05 MSK, early bird: 05-07 MSK)
+        try:
+            hour_msk = datetime.now(MSK_TIMEZONE).hour
+            if 0 <= hour_msk < 5:
+                grant_achievement(student, 'secret_night_owl', commit=commit)
+            elif 5 <= hour_msk < 7:
+                grant_achievement(student, 'secret_early_bird', commit=commit)
+        except Exception:
+            pass
 
     # 5. Секретные пасхалки
     elif event_name == 'secret_ghost_friend':
@@ -1033,6 +1144,8 @@ def process_achievement_event(student, event_name, event_data=None, *, commit=Tr
         key_to_grant = 'secret_zen_python'
     elif event_name in ['syntax_recovery', 'secret_syntax_recovery']:
         key_to_grant = 'secret_syntax_recovery'
+    elif event_name in ['secret_python_master', 'python_final_test_master']:
+        key_to_grant = 'secret_python_master'
     elif event_name == 'time_based_submission':
         hour_msk = event_data.get('hour_msk')
         if hour_msk is not None:
@@ -1075,16 +1188,24 @@ def process_achievement_event(student, event_name, event_data=None, *, commit=Tr
 
 def check_and_grant_dynamic_achievements(student, *, commit=True):
     """
-    Проверяет и выдает накопительные ачивки на основе стрика, уровня и решенных задач.
+    Проверяет и выдает накопительные ачивки на основе стрика, уровня, решенных задач,
+    теории и профиля.
     """
     if not student:
         return
 
-    # 1. Стрики
+    # 1. Стрики (ежедневные)
     streak = student.streak_days or 0
     if streak >= 3: grant_achievement(student, 'streak_3', commit=commit)
     if streak >= 7: grant_achievement(student, 'streak_7', commit=commit)
     if streak >= 30: grant_achievement(student, 'streak_30', commit=commit)
+
+    # 1.1 Недельные стрики (учебный ритм)
+    w_streak = getattr(student, 'streak_weeks', 0) or 0
+    if w_streak >= 2: grant_achievement(student, 'weekly_streak_2', commit=commit)
+    if w_streak >= 4: grant_achievement(student, 'weekly_streak_4', commit=commit)
+    if w_streak >= 8: grant_achievement(student, 'weekly_streak_8', commit=commit)
+    if w_streak >= 12: grant_achievement(student, 'weekly_streak_12', commit=commit)
 
     # 2. Уровни и опыт
     level = student.level or 1
@@ -1109,3 +1230,53 @@ def check_and_grant_dynamic_achievements(student, *, commit=True):
     ).count()
     if submissions_cnt >= 1:
         grant_achievement(student, 'first_step', commit=commit)
+
+    # 5. Теория (5 тем и Python-модуль)
+    try:
+        from core.db_models import StudentTheoryState, TheoryGroup, TheoryBlock
+        read_topics_cnt = StudentTheoryState.query.filter(
+            StudentTheoryState.student_id == student.student_id,
+            (StudentTheoryState.is_read.is_(True)) | (StudentTheoryState.reading_progress >= 100)
+        ).count()
+        if read_topics_cnt >= 1:
+            grant_achievement(student, 'theory_first', commit=commit)
+        if read_topics_cnt >= 5:
+            grant_achievement(student, 'theory_5_topics', commit=commit)
+
+        # Проверка завершения всех тем блока Python
+        prog_groups = TheoryGroup.query.filter(
+            db.or_(
+                TheoryGroup.name.ilike('%программ%'),
+                TheoryGroup.name.ilike('%python%')
+            )
+        ).all()
+        if prog_groups:
+            prog_group_ids = [g.id for g in prog_groups]
+            py_blocks = TheoryBlock.query.filter(TheoryBlock.group_id.in_(prog_group_ids)).all()
+            if py_blocks:
+                py_block_task_numbers = [b.task_number for b in py_blocks]
+                read_py_count = StudentTheoryState.query.filter(
+                    StudentTheoryState.student_id == student.student_id,
+                    StudentTheoryState.task_number.in_(py_block_task_numbers),
+                    (StudentTheoryState.is_read.is_(True)) | (StudentTheoryState.reading_progress >= 100)
+                ).count()
+                if read_py_count >= len(py_blocks):
+                    grant_achievement(student, 'theory_python_module', commit=commit)
+    except Exception:
+        pass
+
+    # 6. Профиль: аватар и био
+    try:
+        u = getattr(student, 'user', None)
+        if u and getattr(u, 'avatar_url', None) and not str(u.avatar_url).endswith('default-avatar.svg'):
+            grant_achievement(student, 'profile_avatar_set', commit=commit)
+        prof = getattr(u, 'profile', None) if u else None
+        bio = (getattr(u, 'bio', None) or '') or (getattr(prof, 'about_me', None) or '') or (getattr(prof, 'custom_status', None) or '')
+        if bio.strip():
+            grant_achievement(student, 'profile_bio_set', commit=commit)
+    except Exception:
+        pass
+
+    # 7. Непрерывный учебный марафон (60+ минут = 3600 сек)
+    if (getattr(student, 'study_time_seconds', 0) or 0) >= 3600:
+        grant_achievement(student, 'secret_marathon_hour', commit=commit)

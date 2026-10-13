@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="user-timezone-effective" content="{{ user_timezone_effective or 'Europe/Moscow' }}">
+  <meta name="user-timezone-mode" content="{{ user_timezone_mode or 'auto' }}">
+  <script src="{{ url_for('static', filename='js/timezone-contract.js') }}?v=20260925-v1"></script>
+  <title>{% block title %}BooStudy Dashboard{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dist/boostudy.css') }}?v=20261005-release">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-design-system.css') }}?v=20261011-shell-v195">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+{% set dashboard_admin_shell = request.path.startswith('/admin') and current_user is defined and current_user and current_user.is_authenticated %}
+<body class="bs-dashboard-shell{% if current_user.is_student() %} bs-student-shell{% if dashboard_showcase|default(false) %} bs-showcase-shell{% endif %}{% elif not dashboard_admin_shell %} bs-teacher-shell{% endif %}{% if dashboard_admin_shell %} bs-admin-shell{% endif %}{% if room_mode|default(false) %} bs-lesson-room{% endif %}">
+  <aside id="dashboard-sidebar" class="bs-dashboard-sidebar" aria-label="Основная навигация">
+    <a class="bs-dashboard-brand" href="{{ '/admin/users' if dashboard_admin_shell else url_for('main.dashboard') }}" aria-label="BooStudy, главная">
+      <span class="bs-dashboard-brand-mark"><i class="ph-bold ph-graduation-cap"></i></span>
+      <span class="bs-dashboard-brand-name">BooStudy</span>
+    </a>
+
+    <p class="bs-dashboard-nav-label">{% if current_user.is_student() %}Учебное пространство{% elif dashboard_admin_shell %}Администрирование{% else %}Рабочее пространство{% endif %}</p>
+    <nav class="bs-dashboard-nav" aria-label="Разделы BooStudy">
+      {% if current_user.is_student() %}
+        {% set student_nav_profile = student if (student is defined and student) else current_user.student_profile %}
+        <a class="bs-dashboard-nav-link {% if request.path == '/dashboard' %}is-active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="ph ph-house"></i><span>Главная</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes') %}is-active{% endif %}" href="/submissions"><i class="ph ph-check-square"></i><span>Задания</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/theory') %}is-active{% endif %}" href="{{ url_for('theory.theory_index') }}"><i class="ph ph-notebook"></i><span>Теория</span></a>
+        <a class="bs-dashboard-nav-link {% if (request.path.startswith('/student/') and request.path.endswith('/courses')) or request.path.startswith('/courses/') %}is-active{% endif %}" href="{{ url_for('courses.student_courses', student_id=student_nav_profile.student_id) if student_nav_profile else url_for('main.dashboard') }}"><i class="ph ph-map-trifold"></i><span>Программа</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/student/') and request.path.endswith('/analytics') %}is-active{% endif %}" href="{{ url_for('students.student_analytics', student_id=student_nav_profile.student_id) if student_nav_profile else url_for('main.dashboard') }}"><i class="ph ph-chart-line-up"></i><span>Аналитика</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/schedule') %}is-active{% endif %}" href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank"></i><span>Расписание</span></a>
+      {% elif dashboard_admin_shell %}
+        <a class="bs-dashboard-nav-link {% if request.path == '/admin/users' or request.path == '/admin' %}is-active{% endif %}" href="/admin/users"><i class="ph ph-users-three"></i><span>Пользователи</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/permissions') %}is-active{% endif %}" href="/admin/permissions"><i class="ph ph-key"></i><span>Права доступа</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/audit') %}is-active{% endif %}" href="/admin/audit"><i class="ph ph-scroll"></i><span>Аудит</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/promocodes') %}is-active{% endif %}" href="/admin/promocodes"><i class="ph ph-ticket"></i><span>Промокоды</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/tariffs') %}is-active{% endif %}" href="/admin/tariffs"><i class="ph ph-credit-card"></i><span>Тарифы</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/testers') %}is-active{% endif %}" href="/admin/testers"><i class="ph ph-shield-check"></i><span>Тестировщики</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/tester-entities') %}is-active{% endif %}" href="/admin/tester-entities"><i class="ph ph-game-controller"></i><span>Тренажёры</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/topics') %}is-active{% endif %}" href="/admin/topics"><i class="ph ph-folder-star"></i><span>Темы задач</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/task-formator') %}is-active{% endif %}" href="/admin/task-formator"><i class="ph ph-pencil-line"></i><span>Формирователь</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/diagnostics') %}is-active{% endif %}" href="/admin/diagnostics"><i class="ph ph-wrench"></i><span>Диагностика</span></a>
+      {% else %}
+        <a class="bs-dashboard-nav-link {% if request.path in ['/dashboard', '/teacher/dashboard', '/students', '/teacher/students'] %}is-active{% endif %}" href="/teacher/students"><i class="ph ph-house"></i><span>Главная</span></a>
+        <div class="bs-dashboard-nav-link is-coming-soon" role="link" aria-disabled="true" aria-label="Мои уроки — раздел в разработке" title="Раздел «Мои уроки» в разработке">
+          <i class="ph ph-books"></i><span>Мои уроки</span><small class="bs-dashboard-nav-badge">Скоро</small>
+        </div>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/assignments') %}is-active{% endif %}" href="/assignments"><i class="ph ph-check-square"></i><span>Задания</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/task-generator/bank') or request.path.startswith('/task-generator') %}is-active{% endif %}" href="/task-generator/bank"><i class="ph ph-books"></i><span>Банк задач</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/theory') %}is-active{% endif %}" href="{{ url_for('theory.manage_list') if (current_user.is_creator() or current_user.is_tutor() or current_user.is_admin() or current_user.role in ['creator', 'teacher', 'tutor', 'admin', 'chief_admin']) else url_for('theory.theory_index') }}"><i class="ph ph-notebook"></i><span>Теория</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/courses') %}is-active{% endif %}" href="/courses"><i class="ph ph-grid-four"></i><span>Программа</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/analytics') or request.path.startswith('/teacher/analytics') %}is-active{% endif %}" href="{{ url_for('main.teacher_analytics_view') }}"><i class="ph ph-chart-line-up"></i><span>Аналитика</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/schedule') %}is-active{% endif %}" href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank"></i><span>Расписание</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/library') or request.path.startswith('/teacher/library') %}is-active{% endif %}" href="{{ url_for('main.library_hub_view') }}"><i class="ph ph-folder"></i><span>Файлы</span></a>
+        {% if current_user.is_admin() or current_user.is_creator() %}<a class="bs-dashboard-nav-link {% if request.path.startswith('/admin') %}is-active{% endif %}" href="/admin/users"><i class="ph ph-shield-check"></i><span>Админ-панель</span></a>{% endif %}
+      {% endif %}
+    </nav>
+
+    <div class="bs-dashboard-sidebar-footer">
+      <div class="bs-dashboard-help-card">
+        <div class="bs-dashboard-help-art" aria-hidden="true">
+          <img src="{{ url_for('static', filename='images/profile/hero_ghost.png' if current_user.is_student() else 'images/dashboard/hero_student.png') }}" alt="">
+        </div>
+        <strong>{% if dashboard_admin_shell %}Центр управления{% else %}Бу всегда рядом!{% endif %}</strong>
+        <span>{% if dashboard_admin_shell %}Системные разделы и контроль доступа в одном месте.{% else %}Подсказки и помощь для спокойного учебного дня.{% endif %}</span>
+        <a href="{% if dashboard_admin_shell %}/admin/diagnostics{% else %}/workspace/profile{% endif %}" class="bs-dashboard-help-action">{% if dashboard_admin_shell %}Открыть диагностику{% else %}Написать Бу{% endif %} <i class="ph ph-arrow-right"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <div id="dashboard-main" class="bs-dashboard-main">
+    {% set dashboard_student_profile = current_user.student_profile if current_user.is_student() else none %}
+    {% set dashboard_profile_name = dashboard_student_profile.name if dashboard_student_profile and dashboard_student_profile.name else current_user.username %}
+    {% set dashboard_profile_meta = (dashboard_student_profile.school_class ~ ' класс') if dashboard_student_profile and dashboard_student_profile.school_class else ('Ученик' if current_user.is_student() else ('Администратор' if dashboard_admin_shell else 'Преподаватель')) %}
+    <header class="bs-dashboard-topbar{% if current_user.is_student() %} bs-dashboard-topbar-student{% endif %}{% if request.path.startswith('/lesson/') %} bs-dashboard-topbar-room{% endif %}">
+      <div class="bs-dashboard-search" role="search" title="Глобальный поиск по доступным данным" data-search-shell>
+        <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+        <input type="search" aria-label="Глобальный поиск по BooStudy" placeholder="{% if current_user.is_student() %}Поиск по заданиям, темам и материалам...{% else %}Поиск по BooStudy: ученики, уроки, задания...{% endif %}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="dashboardSearchResults" data-ui-ready-search>
+        <button type="button" class="bs-dashboard-search-shortcut" aria-label="Открыть глобальный поиск" title="Открыть поиск" data-search-trigger>{% if not current_user.is_student() %}<span>Поиск</span>{% endif %}<kbd>{% if current_user.is_student() %}Ctrl K{% else %}⌘ K{% endif %}</kbd></button>
+        <div class="bs-dashboard-search-panel" id="dashboardSearchResults" role="listbox" hidden data-search-panel>
+          <p class="bs-dashboard-search-status" data-search-status>Введите запрос: поиск охватывает учеников, уроки, работы, теорию и материалы.</p>
+          <div class="bs-dashboard-search-results" data-search-results></div>
+        </div>
+      </div>
+      <div class="bs-dashboard-topbar-actions">
+        <a class="bs-dashboard-icon-button" href="{{ url_for('notifications.notifications_list') }}" aria-label="Открыть уведомления" title="Уведомления">
+          <i class="ph ph-bell" aria-hidden="true"></i>
+          {% if unread_notifications|default(0) %}<span class="bs-dashboard-notification-count{% if current_user.is_student() %} is-dot{% endif %}">{% if not current_user.is_student() %}{{ unread_notifications }}{% endif %}</span>{% endif %}
+        </a>
+        <div class="bs-dashboard-profile-wrap" data-profile-menu-wrap>
+          <button class="bs-dashboard-topbar-profile" type="button" aria-haspopup="menu" aria-expanded="false" data-profile-menu-trigger>
+            <img src="{% if current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" alt="">
+            <span><strong>{{ dashboard_profile_name }}</strong><small>{{ dashboard_profile_meta }}</small></span>
+            <i class="ph ph-caret-down" aria-hidden="true"></i>
+          </button>
+          <div class="bs-dashboard-profile-dropdown" role="menu" hidden data-profile-menu>
+            <a href="/workspace/profile" role="menuitem"><i class="ph ph-user-circle"></i><span>Профиль</span></a>
+            {% if dashboard_admin_shell %}<a href="/admin/mode/switch?mode=teacher" role="menuitem"><i class="ph ph-chalkboard-teacher"></i><span>Кабинет преподавателя</span></a>{% elif current_user.is_admin() or current_user.is_creator() %}<a href="/admin/users" role="menuitem"><i class="ph ph-shield-check"></i><span>Панель управления</span></a>{% endif %}
+            <a href="{{ url_for('auth.logout') }}" role="menuitem"><i class="ph ph-sign-out"></i><span>Выйти</span></a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="bs-dashboard-content">
+      {% block sandbox_content %}{% endblock %}
+    </div>
+  </div>
+
+  <nav id="dashboard-mobile-nav" class="bs-dashboard-mobile-nav" aria-label="Мобильная навигация">
+    {% if dashboard_admin_shell %}
+    <a href="/admin/users" class="{% if request.path.startswith('/admin/users') or request.path == '/admin' %}is-active{% endif %}"><i class="ph ph-users-three"></i><span>Пользователи</span></a>
+    <a href="/admin/audit" class="{% if request.path.startswith('/admin/audit') %}is-active{% endif %}"><i class="ph ph-scroll"></i><span>Аудит</span></a>
+    <a href="/admin/diagnostics" class="{% if request.path.startswith('/admin/diagnostics') %}is-active{% endif %}"><i class="ph ph-wrench"></i><span>Диагностика</span></a>
+    {% else %}
+    <a href="{{ url_for('main.dashboard') }}" class="{% if request.path == '/dashboard' %}is-active{% endif %}"><i class="ph ph-house"></i><span>Главная</span></a>
+    <a href="{% if current_user.is_student() %}/submissions{% else %}/assignments{% endif %}" class="{% if (current_user.is_student() and (request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes'))) or (not current_user.is_student() and request.path.startswith('/assignments')) %}is-active{% endif %}"><i class="ph ph-check-square"></i><span>Задания</span></a>
+    <a href="{{ url_for('schedule.schedule') }}" class="{% if request.path.startswith('/schedule') %}is-active{% endif %}"><i class="ph ph-calendar-blank"></i><span>Расписание</span></a>
+    {% endif %}
+    <a href="/workspace/profile" class="{% if request.path.startswith('/workspace/profile') %}is-active{% endif %}"><i class="ph ph-user-circle"></i><span>Профиль</span></a>
+  </nav>
+
+  <script src="{{ url_for('static', filename='csrf-helper.js') }}?v=20260822-course-actions"></script>
+  <script src="{{ url_for('static', filename='timezone-sync.js') }}?v=20260919-tz-v1"></script>
+  {% block shell_overlays %}{% endblock %}
+  {% include 'sandbox/components/_qa_widget.html' ignore missing %}
+  {% include 'sandbox/components/_feedback_system.html' %}
+  {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
+  {% if current_user.is_student() %}
+  <script>
+    (function () {
+      let activeSeconds = 0;
+      let lastActivity = Date.now();
+      let gate = 0;
+      const markActivity = function () {
+        const now = Date.now();
+        if (document.hidden) return;
+        activeSeconds += Math.min(Math.max(0, (now - lastActivity) / 1000), 45);
+        lastActivity = now;
+      };
+      const onActivity = function () { const now = Date.now(); if (now - gate >= 3000) { gate = now; markActivity(); } };
+      ['mousedown', 'keydown', 'touchstart', 'wheel', 'scroll'].forEach(function (eventName) { window.addEventListener(eventName, onActivity, { passive: true }); });
+      const syncStudyTime = function (sendBeacon) {
+        if (document.hidden && !sendBeacon) return;
+        const duration = Math.min(Math.round(activeSeconds), 120);
+        activeSeconds = 0;
+        if (duration < 5) return;
+        const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const body = 'duration_seconds=' + duration;
+        if (sendBeacon && navigator.sendBeacon) { navigator.sendBeacon('/api/study/heartbeat', new Blob([body], { type: 'application/x-www-form-urlencoded' })); return; }
+        fetch('/api/study/heartbeat', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': token, Accept: 'application/json' }, body: body, keepalive: sendBeacon === true }).catch(function () {});
+      };
+      window.setInterval(function () { syncStudyTime(false); }, 60000);
+      window.addEventListener('pagehide', function () { syncStudyTime(true); });
+      document.addEventListener('keydown', function (event) { if (event.key === 'Escape') { const modal = document.querySelector('[role="dialog"]:not(.hidden), [id$="-modal"]:not(.hidden)'); if (modal) { const close = modal.querySelector('[data-modal-close], button[title="Закрыть"]'); if (close) close.click(); } } });
+    }());
+  </script>
+  {% include 'sandbox/components/_boo_companion.html' %}
+  {% endif %}
+  <script>
+    (function () {
+      const searchShell = document.querySelector('[data-search-shell]');
+      const searchInput = document.querySelector('[data-ui-ready-search]');
+      const searchPanel = document.querySelector('[data-search-panel]');
+      const searchStatus = document.querySelector('[data-search-status]');
+      const searchResults = document.querySelector('[data-search-results]');
+      const searchTrigger = document.querySelector('[data-search-trigger]');
+      const profileWrap = document.querySelector('[data-profile-menu-wrap]');
+      const profileTrigger = document.querySelector('[data-profile-menu-trigger]');
+      const profileMenu = document.querySelector('[data-profile-menu]');
+      let searchTimer = 0;
+      let searchRequest = null;
+
+      const setSearchOpen = function (isOpen) {
+        if (!searchPanel || !searchInput) return;
+        searchPanel.hidden = !isOpen;
+        searchShell?.classList.toggle('is-open', isOpen);
+        searchInput.setAttribute('aria-expanded', String(isOpen));
+      };
+
+      const showSearchStatus = function (message) {
+        if (!searchStatus || !searchResults) return;
+        searchStatus.textContent = message;
+        searchStatus.hidden = false;
+        searchResults.replaceChildren();
+      };
+
+      const addSearchGroup = function (title, items, getTitle, getMeta, icon) {
+        if (!searchResults || !items.length) return 0;
+        const group = document.createElement('div');
+        group.className = 'bs-dashboard-search-group';
+        const heading = document.createElement('p');
+        heading.className = 'bs-dashboard-search-group-title';
+        heading.textContent = title;
+        group.appendChild(heading);
+        items.forEach(function (item) {
+          const link = document.createElement('a');
+          link.className = 'bs-dashboard-search-result';
+          link.href = item.url || '#';
+          link.setAttribute('role', 'option');
+          const resultIcon = document.createElement('i');
+          resultIcon.className = 'ph ' + icon;
+          const copy = document.createElement('span');
+          copy.className = 'bs-dashboard-search-result-copy';
+          const resultTitle = document.createElement('strong');
+          resultTitle.textContent = getTitle(item);
+          const resultMeta = document.createElement('small');
+          resultMeta.textContent = getMeta(item);
+          copy.append(resultTitle, resultMeta);
+          const arrow = document.createElement('i');
+          arrow.className = 'ph ph-arrow-up-right';
+          link.append(resultIcon, copy, arrow);
+          group.appendChild(link);
+        });
+        searchStatus.hidden = true;
+        searchResults.appendChild(group);
+        return items.length;
+      };
+
+      const runSearch = function (value) {
+        const query = value.trim();
+        if (searchRequest) searchRequest.abort();
+        if (query.length < 2) {
+          showSearchStatus(query ? 'Введите ещё хотя бы один символ.' : 'Введите запрос: поиск охватывает учеников, уроки, работы, теорию и материалы.');
+          return;
+        }
+        searchStatus.hidden = false;
+        searchStatus.textContent = 'Ищем…';
+        searchResults.replaceChildren();
+        searchRequest = new AbortController();
+        fetch('/api/global-search?q=' + encodeURIComponent(query), { headers: { Accept: 'application/json' }, signal: searchRequest.signal })
+          .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+          .then(function (payload) {
+            if (!payload.ok || !payload.data.success) throw new Error(payload.data.error || 'Search failed');
+            const groups = payload.data.results || {};
+            const total = addSearchGroup('Ученики', groups.students || [], function (item) { return item.name; }, function (item) { return item.category || 'Профиль ученика'; }, 'ph-users-three');
+            const lessonTotal = addSearchGroup('Уроки', groups.lessons || [], function (item) { return item.topic || 'Урок'; }, function (item) { return [item.student_name, item.date].filter(Boolean).join(' · '); }, 'ph-calendar-check');
+            const assignmentTotal = addSearchGroup('Работы', groups.assignments || [], function (item) { return item.title || 'Работа'; }, function (item) { return [item.assignment_type, item.deadline].filter(Boolean).join(' · '); }, 'ph-clipboard-text');
+            const taskTotal = addSearchGroup('Банк задач', groups.tasks || [], function (item) { return item.task_number ? 'Задание №' + item.task_number : 'Задание'; }, function (item) { return String(item.content_preview || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90); }, 'ph-files');
+            const courseTotal = addSearchGroup('Программы', groups.courses || [], function (item) { return item.title || 'Программа'; }, function (item) { return item.slug || 'Учебная программа'; }, 'ph-grid-four');
+            const theoryTotal = addSearchGroup('Теория', groups.theory || [], function (item) { return item.title || 'Теоретический блок'; }, function (item) { return item.task_number ? 'Задание №' + item.task_number : 'Материал по теории'; }, 'ph-notebook');
+            const materialTotal = addSearchGroup('Материалы', groups.materials || [], function (item) { return item.title || item.filename || 'Материал'; }, function (item) { return item.category || item.filename || 'Библиотека'; }, 'ph-folder-open');
+            const fileTotal = addSearchGroup('Файлы', groups.files || [], function (item) { return item.title || 'Файл'; }, function (item) { return item.context_type || 'Рабочие файлы'; }, 'ph-file');
+            if (total + lessonTotal + assignmentTotal + taskTotal + courseTotal + theoryTotal + materialTotal + fileTotal === 0) showSearchStatus('Ничего не нашли. Попробуйте имя, тему, номер или название материала.');
+          })
+          .catch(function (error) { if (error.name !== 'AbortError') showSearchStatus('Поиск временно недоступен. Попробуйте ещё раз.'); });
+      };
+
+      if (searchInput) {
+        searchInput.addEventListener('focus', function () { setSearchOpen(true); });
+        searchInput.addEventListener('input', function () {
+          setSearchOpen(true);
+          window.clearTimeout(searchTimer);
+          searchTimer = window.setTimeout(function () { runSearch(searchInput.value); }, 220);
+        });
+        searchInput.addEventListener('keydown', function (event) {
+          if (event.key === 'Escape') { setSearchOpen(false); searchInput.blur(); }
+          if (event.key === 'Enter') {
+            const firstResult = searchResults?.querySelector('a');
+            if (firstResult && searchInput.value.trim().length >= 2) firstResult.click();
+          }
+        });
+      }
+      searchTrigger?.addEventListener('click', function () {
+        setSearchOpen(true);
+        searchInput?.focus();
+      });
+      document.addEventListener('keydown', function (event) {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setSearchOpen(true); searchInput?.focus(); }
+        if (event.key === 'Escape' && profileMenu && !profileMenu.hidden) profileTrigger?.click();
+      });
+      document.addEventListener('click', function (event) {
+        if (searchShell && !searchShell.contains(event.target)) setSearchOpen(false);
+        if (profileWrap && !profileWrap.contains(event.target) && profileMenu && !profileMenu.hidden) profileTrigger?.click();
+      });
+
+      profileTrigger?.addEventListener('click', function () {
+        const isOpen = profileMenu.hidden;
+        profileMenu.hidden = !isOpen;
+        profileTrigger.setAttribute('aria-expanded', String(isOpen));
+        profileWrap.classList.toggle('is-open', isOpen);
+      });
+    }());
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

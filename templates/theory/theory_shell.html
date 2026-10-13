@@ -653,7 +653,12 @@
     applyFilters();
     try { localStorage.setItem('ui.theory.filter', btn.dataset.filter); } catch(e) {}
   }));
-  search?.addEventListener('input', applyFilters);
+  search?.addEventListener('input', () => {
+    applyFilters();
+    if (search.value && search.value.trim().length >= 2 && typeof window.triggerAchievement === 'function') {
+      window.triggerAchievement('theory_search_used');
+    }
+  });
 
   // Restore filter
   try {

@@ -91,6 +91,9 @@
       setStoredTheme(mode);
       applyTheme(mode);
       updateToggles(mode);
+      if (mode === 'dark' && typeof window.triggerAchievement === 'function') {
+        window.triggerAchievement('secret_theme_toggle');
+      }
     });
   }
 

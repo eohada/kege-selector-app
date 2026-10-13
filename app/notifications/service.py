@@ -85,6 +85,10 @@ def _get_parent_user_ids_for_student_user(student_user_id: int) -> list[int]:
 
 
 def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None, link_url: str | None = None, meta: dict | None = None) -> None:
+    u = User.query.get(user_id)
+    if u and getattr(u, 'is_demo_user', False):
+        return
+
     link_url = _absolute_link_url(link_url)
     if _recent_duplicate_notification(user_id, kind, title, body, link_url, meta):
         logger.info('Skipped duplicate notification user_id=%s kind=%s title=%s', user_id, kind, title)

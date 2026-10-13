@@ -34,7 +34,7 @@ def test_lesson_lifecycle_waiting_room_and_start(app, client, role_users):
     assert 'Комната ожидания урока' in html
     assert 'Ожидаем сигнал преподавателя' in html
     assert 'Запланирован' in html
-    assert 'lesson-studio-os' not in html
+    assert 'room-lesson-os' not in html
 
     # 2. Студент опрашивает статус урока -> status=planned, is_live=False
     status_resp = client.get(f'/lesson/{lesson_id}/status')
@@ -75,7 +75,7 @@ def test_lesson_lifecycle_waiting_room_and_start(app, client, role_users):
     assert live_room.status_code == 200
     live_html = live_room.get_data(as_text=True)
     assert 'Комната ожидания урока' not in live_html
-    assert 'lesson-studio-os' in live_html
+    assert 'room-lesson-os' in live_html
 
 
 def test_lesson_completion_deducts_balance_idempotently(app, client, role_users):

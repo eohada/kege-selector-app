@@ -452,3 +452,5 @@ QUICK REMINDER
 Если информации достаточно:
 
 STOP EXPLORING. EDIT.
+
+Для frontend/UI-задач использовать skill `boostudy-ui` и существующие BooStudy design tokens/primitives. UI changes необходимо визуально проверять в браузере. Для visual review использовать `boostudy-visual-qa`. Golden Dashboard reference задаёт canonical application shell и базовую визуальную грамматику.

@@ -58,6 +58,7 @@ from flask_login import current_user
 from app.utils.db_migrations import ensure_schema_columns
 from app.auth.rbac_utils import get_user_scope, has_permission
 from app.utils.subscription_access import get_effective_access_for_user
+from app.utils.achievement_service import build_student_achievement_catalog
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,9 @@ def _can_access_student(student: Student) -> bool:
         if student.student_id == current_user.id:
             return True
         return False
+
+    if getattr(student, 'mentor_id', None) == current_user.id:
+        return True
 
     st_user = _get_student_user_for_scope(student)
     if can_user_access_student(current_user, student_user_id=getattr(st_user, 'id', None), student_platform_id=student.student_id):
@@ -932,6 +936,354 @@ def student_update_balance(student_id: int):
         flash(f'Ошибка при обновлении баланса: {e}', 'error')
 
     return redirect(url_for('students.teacher_student_dashboard', student_id=student_id))
+
+
+@students_bp.route('/student/<int:student_id>/xp', methods=['POST'])
+@login_required
+def student_update_xp(student_id: int):
+    """
+    Редактирование опыта и начисление поощрительных очков ученику.
+    Доступно создателю, администраторам и преподавателям/тьюторам.
+    
+    Поддерживает:
+      - mode='set': явная установка нового значения опыта (например, 5000 XP)
+      - mode='bonus' / 'award': начисление поощрительных очков (+delta_xp)
+    """
+    is_staff = (
+        current_user.is_admin()
+        or current_user.is_creator()
+        or current_user.is_tutor()
+        or current_user.role in ('admin', 'creator', 'teacher', 'tutor')
+    )
+    if not is_staff:
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Доступ запрещён. Требуются права создателя или администратора.'}), 403
+        abort(403)
+
+    student = _guard_student_access(student_id)
+    payload = request.get_json(silent=True) if request.is_json else request.form
+
+    mode = str(payload.get('mode') or payload.get('action') or '').strip().lower()
+    reason = str(payload.get('reason') or '').strip()
+
+    # Извлечение численного значения
+    raw_val = payload.get('amount')
+    if raw_val is None:
+        raw_val = payload.get('bonus_xp')
+        if raw_val is not None and not mode:
+            mode = 'bonus'
+    if raw_val is None:
+        raw_val = payload.get('xp') or payload.get('set_xp') or payload.get('new_xp')
+        if raw_val is not None and not mode:
+            mode = 'set'
+
+    if not mode:
+        mode = 'bonus' if 'bonus' in payload else 'set'
+
+    try:
+        val = int(raw_val or 0)
+    except (ValueError, TypeError):
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Некорректное значение опыта'}), 400
+        flash('Некорректное числовое значение опыта', 'error')
+        return redirect(request.referrer or url_for('students.teacher_student_dashboard', student_id=student_id))
+
+    from app.utils.xp_service import calculate_level_from_xp
+    from app.utils.achievement_service import check_and_grant_dynamic_achievements
+
+    old_xp = int(student.xp or 0)
+    old_level = int(student.level or 1)
+
+    try:
+        if mode in ('set', 'replace', 'exact'):
+            new_xp = max(0, val)
+            student.xp = new_xp
+        else:
+            # Режим поощрительных очков (бонус)
+            new_xp = max(0, old_xp + val)
+            student.xp = new_xp
+
+        new_level = calculate_level_from_xp(student.xp)
+        student.level = new_level
+
+        check_and_grant_dynamic_achievements(student, commit=False)
+        db.session.commit()
+
+        # Аудит
+        audit_logger.log(
+            action='adjust_student_xp',
+            entity='Student',
+            entity_id=student.student_id,
+            status='success',
+            metadata={
+                'mode': mode,
+                'old_xp': old_xp,
+                'new_xp': student.xp,
+                'old_level': old_level,
+                'new_level': student.level,
+                'delta': student.xp - old_xp,
+                'reason': reason or None,
+                'actor_user_id': current_user.id
+            }
+        )
+
+        # Оповещение ученика через Telegram/уведомления при начислении поощрения
+        if student.user_id and (student.xp != old_xp):
+            try:
+                from app.telegram.notifications import notify_user
+                delta = student.xp - old_xp
+                if delta > 0:
+                    note_body = f"Вам начислено +{delta} XP поощрительных очков! Текущий уровень: {new_level} ({student.xp} XP)."
+                    if reason:
+                        note_body += f"\nПричина: {reason}"
+                    notify_user(student.user_id, kind='xp_awarded', title='🎉 Поощрительный опыт!', body=note_body)
+            except Exception as notif_err:
+                logger.debug("Failed to send XP notification: %s", notif_err)
+
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'status': 'ok',
+                'student_id': student.student_id,
+                'old_xp': old_xp,
+                'xp': student.xp,
+                'level': student.level,
+                'delta': student.xp - old_xp,
+                'mode': mode,
+                'reason': reason,
+                'message': f'Опыт ученика успешно обновлён: {student.xp} XP'
+            })
+
+        delta_str = f"+{student.xp - old_xp}" if (student.xp - old_xp) > 0 else str(student.xp - old_xp)
+        flash(f'Опыт ученика {student.name} успешно обновлён: {student.xp} XP ({delta_str} XP, Уровень {student.level})!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error updating student XP: %s", e, exc_info=True)
+        if request.is_json:
+            return jsonify({'success': False, 'error': str(e)}), 500
+        flash(f'Ошибка при обновлении опыта: {e}', 'error')
+
+    return redirect(request.referrer or url_for('students.teacher_student_dashboard', student_id=student_id))
+
+
+@students_bp.route('/student/<int:student_id>/streak', methods=['POST'])
+@login_required
+def student_update_streak_admin(student_id: int):
+    """
+    Редактирование серии активности (стрика) и переключение заморозки ученика.
+    Доступно создателю, администраторам и преподавателям/тьюторам.
+    """
+    is_staff = (
+        current_user.is_admin()
+        or current_user.is_creator()
+        or current_user.is_tutor()
+        or current_user.role in ('admin', 'creator', 'teacher', 'tutor')
+    )
+    if not is_staff:
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+        abort(403)
+
+    student = _guard_student_access(student_id)
+    payload = request.get_json(silent=True) if request.is_json else request.form
+
+    from app.utils.streak_service import pluralize_days
+
+    old_streak = int(student.streak_days or 0)
+    old_frozen = bool(getattr(student, 'streak_frozen', False))
+
+    action = payload.get('action')
+    streak_days_raw = payload.get('streak_days') if 'streak_days' in payload else payload.get('days')
+    frozen_raw = payload.get('streak_frozen') if 'streak_frozen' in payload else payload.get('frozen')
+    streak_weeks_raw = payload.get('streak_weeks') if 'streak_weeks' in payload else payload.get('weeks')
+    weeks_frozen_raw = payload.get('streak_weeks_frozen') if 'streak_weeks_frozen' in payload else payload.get('weeks_frozen')
+
+    old_weeks = int(student.streak_weeks or 0)
+    old_weeks_frozen = bool(getattr(student, 'streak_weeks_frozen', False))
+
+    from app.utils.streak_service import pluralize_days, pluralize_weeks
+
+    try:
+        if action == 'reset':
+            student.streak_days = 0
+            student.streak_frozen = False
+            student.last_activity_date = None
+            student.streak_weeks = 0
+            student.streak_weeks_frozen = False
+            student.last_completed_week = None
+        else:
+            if streak_days_raw is not None:
+                new_days = max(0, int(streak_days_raw))
+                student.streak_days = new_days
+                if new_days > 0:
+                    student.last_activity_date = moscow_now().date()
+
+            if frozen_raw is not None:
+                if isinstance(frozen_raw, str):
+                    student.streak_frozen = frozen_raw.lower() in ('1', 'true', 'yes', 'on')
+                else:
+                    student.streak_frozen = bool(frozen_raw)
+
+            if streak_weeks_raw is not None:
+                student.streak_weeks = max(0, int(streak_weeks_raw))
+
+            if weeks_frozen_raw is not None:
+                if isinstance(weeks_frozen_raw, str):
+                    student.streak_weeks_frozen = weeks_frozen_raw.lower() in ('1', 'true', 'yes', 'on')
+                else:
+                    student.streak_weeks_frozen = bool(weeks_frozen_raw)
+
+        from app.utils.achievement_service import check_and_grant_dynamic_achievements
+        check_and_grant_dynamic_achievements(student, commit=False)
+
+        db.session.commit()
+
+        audit_logger.log(
+            action='adjust_student_streak',
+            entity='Student',
+            entity_id=student.student_id,
+            status='success',
+            metadata={
+                'old_streak': old_streak,
+                'new_streak': student.streak_days,
+                'old_frozen': old_frozen,
+                'new_frozen': student.streak_frozen,
+                'old_weeks': old_weeks,
+                'new_weeks': student.streak_weeks,
+                'actor_user_id': current_user.id
+            }
+        )
+
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'status': 'ok',
+                'student_id': student.student_id,
+                'streak_days': student.streak_days,
+                'streak_frozen': student.streak_frozen,
+                'days_label': pluralize_days(student.streak_days),
+                'label': pluralize_days(student.streak_days),
+                'streak_weeks': student.streak_weeks,
+                'streak_weeks_frozen': getattr(student, 'streak_weeks_frozen', False),
+                'weeks_label': pluralize_weeks(student.streak_weeks),
+                'message': 'Стрик успешно сохранен'
+            })
+
+        flash(f'Серия ученика {student.name} обновлена: {pluralize_days(student.streak_days)} (Заморозка: {"ВКЛ" if student.streak_frozen else "ВЫКЛ"})!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error updating student streak: %s", e, exc_info=True)
+        if request.is_json:
+            return jsonify({'success': False, 'error': str(e)}), 500
+        flash(f'Ошибка при обновлении серии: {e}', 'error')
+
+    return redirect(request.referrer or url_for('students.teacher_student_dashboard', student_id=student_id))
+
+
+@students_bp.route('/student/<int:student_id>/study_time', methods=['POST'])
+@login_required
+def student_update_study_time_admin(student_id: int):
+    """
+    Редактирование учебного времени ученика со стороны преподавателя/администратора/создателя.
+    Поддерживает:
+      - mode='add': добавить минуты или часы к общему времени (например, +60 мин за очное занятие)
+      - mode='set': установить точное значение времени (в минутах или часах)
+    """
+    is_staff = (
+        current_user.is_admin()
+        or current_user.is_creator()
+        or current_user.is_tutor()
+        or current_user.role in ('admin', 'creator', 'teacher', 'tutor')
+    )
+    if not is_staff:
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+        abort(403)
+
+    student = _guard_student_access(student_id)
+    payload = request.get_json(silent=True) if request.is_json else request.form
+
+    mode = str(payload.get('mode') or 'add').strip().lower()
+    minutes = payload.get('minutes')
+    hours = payload.get('hours')
+    seconds = payload.get('seconds')
+
+    delta_sec = 0
+    if seconds is not None:
+        try:
+            delta_sec += int(seconds)
+        except (ValueError, TypeError):
+            pass
+    if minutes is not None:
+        try:
+            delta_sec += int(minutes) * 60
+        except (ValueError, TypeError):
+            pass
+    if hours is not None:
+        try:
+            delta_sec += int(hours) * 3600
+        except (ValueError, TypeError):
+            pass
+
+    old_sec = int(student.study_time_seconds or 0)
+    try:
+        if mode in ('set', 'exact', 'replace'):
+            new_sec = max(0, delta_sec)
+        else:
+            new_sec = max(0, old_sec + delta_sec)
+
+        student.study_time_seconds = new_sec
+
+        if new_sec >= 3600:
+            from app.utils.achievement_service import process_achievement_event
+            process_achievement_event(student, 'secret_marathon_hour', commit=False)
+
+        db.session.commit()
+
+        audit_logger.log(
+            action='adjust_student_study_time',
+            entity='Student',
+            entity_id=student.student_id,
+            status='success',
+            metadata={
+                'old_seconds': old_sec,
+                'new_seconds': new_sec,
+                'mode': mode,
+                'actor_user_id': current_user.id
+            }
+        )
+
+        h = new_sec // 3600
+        m = (new_sec % 3600) // 60
+        if h > 0:
+            display_str = f"{h} ч {m:02d} мин" if m > 0 else f"{h} ч"
+        elif m > 0:
+            display_str = f"{m} мин"
+        else:
+            display_str = "0 мин"
+
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'status': 'ok',
+                'student_id': student.student_id,
+                'study_time_seconds': new_sec,
+                'total_seconds': new_sec,
+                'display': display_str,
+                'study_time_display': display_str,
+                'message': f'Учебное время успешно обновлено: {display_str}'
+            })
+
+        flash(f'Учебное время ученика {student.name} обновлено: {display_str}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error updating student study time: %s", e, exc_info=True)
+        if request.is_json:
+            return jsonify({'success': False, 'error': str(e)}), 500
+        flash(f'Ошибка: {e}', 'error')
+
+    return redirect(request.referrer or url_for('students.teacher_student_dashboard', student_id=student_id))
+
 
 
 @students_bp.route('/student/<int:student_id>/chat')
@@ -2312,6 +2664,107 @@ def student_analytics(student_id):
     except Exception as e:
         logger.error(f"Error processing lessons for student {student_id}: {e}", exc_info=True)
 
+    # Учёт сданных и проверенных работ из раздела заданий (Assignments / Submissions)
+    try:
+        from app.assignments.submission_lifecycle_service import normalize_legacy_status
+        subs = stats._get_submissions() if stats else []
+        for sub in subs:
+            st = normalize_legacy_status(sub.status)
+            if st not in ('GRADED', 'SUBMITTED') and sub.total_score is None:
+                continue
+            atype = (sub.assignment.assignment_type if sub.assignment else None) or 'homework'
+            if source_filter == 'exam' and atype != 'exam':
+                continue
+            if source_filter == 'homework' and atype != 'homework':
+                continue
+
+            weight = 2 if atype == 'exam' else 1
+            for ans in (sub.answers or []):
+                t = ans.assignment_task.task if ans.assignment_task else None
+                if not t:
+                    continue
+                tn = getattr(t, 'task_number', None)
+                if not tn:
+                    continue
+                if not (1 <= tn <= 27):
+                    resolved_tn = None
+                    if getattr(t, 'knowledge_node', None):
+                        resolved_tn = resolve_task_number_from_node(t.knowledge_node.code, t.knowledge_node.name)
+                    if not resolved_tn and getattr(t, 'title', None):
+                        match = re.search(r'№\s*(\d+)', t.title)
+                        if match:
+                            resolved_tn = int(match.group(1))
+                    if resolved_tn and (1 <= resolved_tn <= 27):
+                        tn = resolved_tn
+                    else:
+                        continue
+
+                if tn not in task_stats:
+                    task_stats[tn] = {
+                        'auto_correct': 0,
+                        'auto_total': 0,
+                        'manual_correct': 0,
+                        'manual_incorrect': 0,
+                        'correct': 0,
+                        'total': 0
+                    }
+
+                if ans.is_correct is not None:
+                    task_stats[tn]['auto_total'] += weight
+                    if ans.is_correct:
+                        task_stats[tn]['auto_correct'] += weight
+                elif ans.score is not None and ans.max_score:
+                    mx = float(ans.max_score)
+                    sc = float(ans.score)
+                    task_stats[tn]['auto_total'] += weight
+                    if mx > 0 and sc >= mx:
+                        task_stats[tn]['auto_correct'] += weight
+                    elif mx > 0 and sc > 0:
+                        task_stats[tn]['auto_correct'] += (sc / mx) * weight
+
+                if getattr(ans, 'time_spent_sec', None):
+                    try:
+                        t_sec = int(ans.time_spent_sec)
+                        if 3 <= t_sec <= 900:
+                            task_times.setdefault(tn, []).append(t_sec)
+                    except (ValueError, TypeError):
+                        pass
+    except Exception as e:
+        logger.error(f"Error processing submissions for student {student_id}: {e}", exc_info=True)
+
+    # Учёт практики в онлайн-тренажёре (AnalyticsEvent) для среза «Все данные»
+    if source_filter == 'all':
+        analytics_user_id = getattr(student, 'user_id', None)
+        if analytics_user_id:
+            try:
+                from core.db_models import AnalyticsEvent
+                trainer_events = AnalyticsEvent.query.filter_by(user_id=analytics_user_id).filter(
+                    db.or_(AnalyticsEvent.submission_id.is_(None), AnalyticsEvent.mode.like('trainer%'))
+                ).all()
+                for ev in trainer_events:
+                    tn = ev.task_type
+                    if not tn and ev.task_id:
+                        t = getattr(ev, 'task', None)
+                        if t:
+                            tn = getattr(t, 'task_number', None)
+                    if tn and (1 <= tn <= 27):
+                        if tn not in task_stats:
+                            task_stats[tn] = {
+                                'auto_correct': 0,
+                                'auto_total': 0,
+                                'manual_correct': 0,
+                                'manual_incorrect': 0,
+                                'correct': 0,
+                                'total': 0
+                            }
+                        task_stats[tn]['auto_total'] += 1
+                        if ev.is_correct:
+                            task_stats[tn]['auto_correct'] += 1
+                        if ev.time_spent_sec and 3 <= ev.time_spent_sec <= 900:
+                            task_times.setdefault(tn, []).append(ev.time_spent_sec)
+            except Exception as e:
+                logger.error(f"Error loading trainer events for student {student_id}: {e}", exc_info=True)
+
     # Инициализация correct и total из авто-проверок
     for tn, st in task_stats.items():
         st['correct'] = st['auto_correct']
@@ -2474,43 +2927,46 @@ def student_analytics(student_id):
             'weight': sec['weight'],
             'tasks': sec_tasks,
             'percent': round(sec_pct),
+            'has_data': sec_tot > 0,
             'solved_count': sec_cor,
             'total_count': sec_tot,
             'color': sec['color'],
             'icon': sec['icon']
         })
 
-    # Прогноз и доверительный интервал (Edge case 2: ограничение диапазона и None при < 10)
+    # Прогноз и доверительный интервал (Математическое ожидание первичных баллов по 27 номерам КЕГЭ 2025)
     forecast = None
     if solved_total >= 10:
-        weighted = sum(float(item.get('percent') or 0) * int(item.get('total') or 0) for item in chart_data)
-        test_score = round(weighted / solved_total) if solved_total > 0 else 0
-        test_score = max(0, min(100, test_score))
+        FIPI_MAP = {entry['primary']: entry['test'] for entry in FIPI_SCALE_INFORMATICS_2025}
+        
+        expected_primary_float = 0.0
+        practiced_tasks_count = 0
+        for tn in range(1, 28):
+            max_pts = 2 if tn in (26, 27) else 1
+            st_item = chart_by_task.get(tn)
+            if st_item and int(st_item.get('total') or 0) > 0:
+                practiced_tasks_count += 1
+                pct = max(0.0, min(100.0, float(st_item.get('percent') or 0.0)))
+                expected_primary_float += max_pts * (pct / 100.0)
 
-        margin = 6 if solved_total < 30 else 4
-        test_min = max(0, test_score - margin)
-        test_max = min(100, test_score + margin)
+        primary_score = round(expected_primary_float)
+        primary_score = max(0, min(29, primary_score))
 
-        def get_primary(t):
-            best_p = 0
-            min_diff = 999
-            for entry in FIPI_SCALE_INFORMATICS_2025:
-                diff = abs(entry['test'] - t)
-                if diff < min_diff:
-                    min_diff = diff
-                    best_p = entry['primary']
-            return best_p
+        # Доверительный интервал в зависимости от объёма выборки
+        primary_margin = 2 if solved_total < 30 else 1
+        primary_min = max(0, primary_score - primary_margin)
+        primary_max = min(29, primary_score + primary_margin)
 
-        primary_score = get_primary(test_score)
-        primary_min = get_primary(test_min)
-        primary_max = get_primary(test_max)
+        test_score = FIPI_MAP.get(primary_score, 0)
+        test_min = FIPI_MAP.get(primary_min, 0)
+        test_max = FIPI_MAP.get(primary_max, 100)
 
         if source_filter == 'exam':
-            basis = f"Рассчитано по результатам {exam_count} проверочных работ и пробников"
+            basis = f"Рассчитано по результатам {exam_count} проверочных работ и пробников (практика по {practiced_tasks_count} из 27 заданий КЕГЭ)"
         elif source_filter == 'homework':
-            basis = f"Рассчитано по результатам {hw_tasks_count} задач домашних заданий"
+            basis = f"Рассчитано по результатам {hw_tasks_count} задач домашних заданий (практика по {practiced_tasks_count} из 27 заданий КЕГЭ)"
         else:
-            basis = f"Рассчитано по результатам {exam_count} проверочных работ и {hw_tasks_count} задач ДЗ"
+            basis = f"Рассчитано по результатам {exam_count} проверочных работ и {hw_tasks_count} задач ДЗ (практика по {practiced_tasks_count} из 27 заданий КЕГЭ)"
 
         forecast = {
             'test': test_score,
@@ -2519,6 +2975,7 @@ def student_analytics(student_id):
             'primary': primary_score,
             'primary_min': primary_min,
             'primary_max': primary_max,
+            'practiced_tasks': practiced_tasks_count,
             'basis': basis
         }
 
@@ -2590,6 +3047,24 @@ def student_analytics(student_id):
         can_edit = False
 
     try:
+        achievement_catalog = build_student_achievement_catalog(student)
+        is_demo_preview = bool(getattr(current_user, 'is_demo_user', False))
+        if is_demo_preview:
+            # The demo tells one honest story: this is a six-month preview, not
+            # a claim about the visitor's own learning history.
+            metrics = dict(metrics or {})
+            metrics.update({
+                'current_gpa': 74,
+                'delta': 26,
+                'completed_lessons': 36,
+                'total_lessons': 42,
+                'past_lessons': 39,
+                'planned_lessons': 3,
+                'missed_lessons': 3,
+                'attendance_pct': 92,
+            })
+            gpa_by_type = dict(gpa_by_type or {})
+            gpa_by_type.update({'homework': 78, 'exam': 71, 'has_homework': True, 'has_exam': True})
         return render_template('sandbox/analytics_canonical.html',
                              student=student,
                              charts=charts_context,
@@ -2608,7 +3083,9 @@ def student_analytics(student_id):
                              can_edit=can_edit,
                              mastery_rows=mastery_rows,
                              solved_total=solved_total,
-                             forecast=forecast)
+                             forecast=forecast,
+                             achievement_catalog=achievement_catalog,
+                             is_demo_preview=is_demo_preview)
     except Exception as e:
         logger.error(f"Error rendering template for student {student_id}: {e}", exc_info=True)
         flash('Ошибка при отображении статистики', 'danger')

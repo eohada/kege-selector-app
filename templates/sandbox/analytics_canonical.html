@@ -3,7 +3,7 @@
 
 {% block sandbox_content %}
 <!-- Единый холст без внутренних оберток со скроллом (Canvas) -->
-<main class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
+<main data-student-page="analytics" class="flex-1 min-h-screen bg-[#F8FAFC] overflow-x-hidden p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6">
   <div class="max-w-[1600px] mx-auto w-full bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-sm border border-slate-200/60 my-2 sm:my-4 relative min-h-[calc(100vh-4rem)] flex flex-col gap-8">
     
     <!-- 1. HERO BANNER & TABS (Шапка аналитического дашборда) -->
@@ -17,6 +17,8 @@
           <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display">
             Твоя аналитика & Прогноз КЕГЭ
           </h1>
+          {% if is_demo_preview %}<p class="mt-1 text-xs font-bold text-indigo-500">Вот каким может стать твой кабинет через полгода регулярной работы</p>{% endif %}
+          {% if is_demo_preview %}<div class="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-700" aria-label="Пример роста за полгода"><span class="rounded-xl bg-indigo-50 px-3 py-2">48% → 74% · стабильный рост</span><span class="rounded-xl bg-slate-50 px-3 py-2">36 уроков</span><span class="rounded-xl bg-slate-50 px-3 py-2">160 задач</span><span class="rounded-xl bg-slate-50 px-3 py-2">41 день серии</span><span class="rounded-xl bg-slate-50 px-3 py-2">7 освоенных тем</span></div>{% endif %}
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
@@ -51,18 +53,26 @@
     </div>
 
     <!-- 2. ВЕРХНИЙ РЯД МЕТРИК (4 Bento-плашки) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" data-demo-target="analytics-progress">
       
-      <!-- Метрика 1: Выполнение работ -->
+      <!-- Метрика 1: Общая успеваемость -->
       <div class="bg-[#F4F7FA] border-2 border-slate-200 p-5 rounded-[1.5rem] shadow-[0_4px_0_#DAE1E9] flex flex-col gap-3 relative overflow-hidden group hover:-translate-y-1 transition-transform">
          <div class="absolute -right-4 -top-4 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform"><i class="ph-fill ph-check-square-offset text-[100px]"></i></div>
          <div class="flex justify-between items-center z-10">
-             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Выполнение ДЗ</p>
+             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Общая успеваемость</p>
              <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200"><i class="ph-bold ph-check-square-offset text-lg"></i></div>
          </div>
          <div class="z-10">
              <h3 class="text-3xl font-display font-black text-slate-800">{{ metrics.current_gpa|default(0) }}%</h3>
-             <p class="text-[10px] font-bold text-emerald-500 mt-1 flex items-center gap-1 uppercase tracking-widest"><i class="ph-bold ph-caret-up"></i> {% if metrics.delta|default(0) > 0 %}+{{ metrics.delta }}% за период{% else %}по проверенным работам{% endif %}</p>
+             <p class="text-[10px] font-bold mt-1 flex items-center gap-1 uppercase tracking-widest">
+               {% if metrics.delta|default(0) > 0 %}
+                 <span class="text-emerald-500 flex items-center gap-1"><i class="ph-bold ph-caret-up"></i> +{{ metrics.delta }}% за период</span>
+               {% elif metrics.delta|default(0) < 0 %}
+                 <span class="text-rose-500 flex items-center gap-1"><i class="ph-bold ph-caret-down"></i> {{ metrics.delta }}% за период</span>
+               {% else %}
+                 <span class="text-emerald-600">по проверенным работам</span>
+               {% endif %}
+             </p>
          </div>
       </div>
 
@@ -74,8 +84,20 @@
              <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center border border-amber-200"><i class="ph-bold ph-star text-lg"></i></div>
          </div>
          <div class="z-10">
-             <h3 class="text-3xl font-display font-black text-slate-800">{{ gpa_by_type.homework|default(0) }}<span class="text-base text-slate-400">%</span></h3>
-             <p class="text-[10px] font-bold text-amber-500 mt-1 uppercase tracking-widest">По проверенным ДЗ</p>
+             <h3 class="text-3xl font-display font-black text-slate-800">
+               {% if gpa_by_type.has_homework|default(false) or (gpa_by_type.homework|default(0) > 0) %}
+                 {{ gpa_by_type.homework|default(0) }}<span class="text-base text-slate-400">%</span>
+               {% else %}
+                 <span class="text-slate-400 font-normal">—</span>
+               {% endif %}
+             </h3>
+             <p class="text-[10px] font-bold text-amber-500 mt-1 uppercase tracking-widest">
+               {% if gpa_by_type.has_homework|default(false) or (gpa_by_type.homework|default(0) > 0) %}
+                 По проверенным ДЗ
+               {% else %}
+                 ДЗ пока не проверены
+               {% endif %}
+             </p>
          </div>
       </div>
 
@@ -87,8 +109,20 @@
              <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center border border-indigo-200"><i class="ph-bold ph-trophy text-lg"></i></div>
          </div>
          <div class="z-10">
-             <h3 class="text-3xl font-display font-black text-slate-800">{{ gpa_by_type.exam|default(0) }}<span class="text-base text-slate-400">%</span></h3>
-             <p class="text-[10px] font-bold text-indigo-500 mt-1 uppercase tracking-widest">По проверенным пробникам</p>
+             <h3 class="text-3xl font-display font-black text-slate-800">
+               {% if gpa_by_type.has_exam|default(false) or (gpa_by_type.exam|default(0) > 0) %}
+                 {{ gpa_by_type.exam|default(0) }}<span class="text-base text-slate-400">%</span>
+               {% else %}
+                 <span class="text-slate-400 font-normal">—</span>
+               {% endif %}
+             </h3>
+             <p class="text-[10px] font-bold text-indigo-500 mt-1 uppercase tracking-widest">
+               {% if gpa_by_type.has_exam|default(false) or (gpa_by_type.exam|default(0) > 0) %}
+                 По проверенным пробникам
+               {% else %}
+                 Пробников пока нет
+               {% endif %}
+             </p>
          </div>
       </div>
 
@@ -100,8 +134,19 @@
              <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center border border-purple-200"><i class="ph-bold ph-video-camera text-lg"></i></div>
          </div>
          <div class="z-10">
-             <h3 class="text-3xl font-display font-black text-slate-800">{{ metrics.completed_lessons|default(0) }}<span class="text-base text-slate-400">/ {{ metrics.total_lessons|default(0) }}</span></h3>
-             <p class="text-[10px] font-bold text-purple-500 mt-1 uppercase tracking-widest">{{ metrics.missed_lessons|default(0) }} пропущено</p>
+             <h3 class="text-3xl font-display font-black text-slate-800">
+               {{ metrics.completed_lessons|default(0) }}<span class="text-base text-slate-400">/ {{ metrics.past_lessons if (metrics.past_lessons|default(0) > 0) else metrics.completed_lessons|default(0) }}</span>
+             </h3>
+             <p class="text-[10px] font-bold text-purple-500 mt-1 uppercase tracking-widest">
+               {% if metrics.missed_lessons|default(0) > 0 %}
+                 {{ metrics.missed_lessons }} пропущено
+               {% else %}
+                 0 пропущено
+               {% endif %}
+               {% if metrics.planned_lessons|default(0) > 0 %}
+                 <span class="text-slate-400 font-semibold normal-case">({{ metrics.planned_lessons }} в плане)</span>
+               {% endif %}
+             </p>
          </div>
       </div>
 
@@ -111,7 +156,7 @@
     <div id="tab-content-skills" class="grid grid-cols-12 gap-6 w-full">
       
       <!-- Col-span-7: Динамика успеваемости (График) -->
-      <div class="col-span-12 lg:col-span-7 bg-white border-2 border-slate-200/80 rounded-[2rem] p-6 shadow-sm space-y-6">
+      <div class="analytics-trend-card col-span-12 lg:col-span-7 bg-white border-2 border-slate-200/80 rounded-[2rem] p-6 shadow-sm space-y-6">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -120,7 +165,7 @@
             <p class="text-xs font-bold text-slate-700 mt-0.5">Результаты проверенных работ по датам</p>
           </div>
           <span class="text-xs font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200/60 uppercase">
-            {% if metrics.delta|default(0) > 0 %}+{{ metrics.delta }}% за период{% elif metrics.delta|default(0) < 0 %}{{ metrics.delta }}% за период{% elif metrics.current_gpa|default(0) >= 80 %}+12% за период{% else %}Нет сравнения за период{% endif %}
+            {% if metrics.delta|default(0) > 0 %}+{{ metrics.delta }}% за период{% elif metrics.delta|default(0) < 0 %}{{ metrics.delta }}% за период{% else %}Базовый период{% endif %}
           </span>
         </div>
 
@@ -129,7 +174,7 @@
       </div>
 
       <!-- Col-span-5: Уровень освоения по разделам (3 смысловых блока КЕГЭ) -->
-      <div class="col-span-12 lg:col-span-5 bg-white border-2 border-slate-200/80 rounded-[2rem] p-6 shadow-sm space-y-4">
+      <div class="analytics-mastery-card col-span-12 lg:col-span-5 bg-white border-2 border-slate-200/80 rounded-[2rem] p-6 shadow-sm space-y-4">
         <div class="flex items-center justify-between">
           <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
             <i class="ph-bold ph-brain text-lg text-indigo-500"></i> Освоение разделов
@@ -151,14 +196,18 @@
                 </div>
               </div>
               <div class="text-right shrink-0">
-                <span class="text-sm font-black" style="color: {{ sec.color }};">{{ sec.percent }}%</span>
+                {% if sec.has_data %}
+                  <span class="text-sm font-black" style="color: {{ sec.color }};">{{ sec.percent }}%</span>
+                {% else %}
+                  <span class="text-[10px] font-black text-slate-400 bg-slate-200/60 px-2 py-0.5 rounded-md uppercase tracking-wider">Не начато</span>
+                {% endif %}
                 <span class="block text-[9px] font-black text-slate-400 uppercase">вес {{ sec.weight }}%</span>
               </div>
             </div>
 
             <!-- Прогресс-бар -->
             <div class="w-full h-2.5 bg-slate-200/70 rounded-full overflow-hidden">
-              <div class="h-full rounded-full transition-all duration-500" style="width: {{ sec.percent }}%; background-color: {{ sec.color }};"></div>
+              <div class="h-full rounded-full transition-all duration-500" style="width: {{ sec.percent if sec.has_data else 0 }}%; background-color: {{ sec.color }};"></div>
             </div>
 
             <!-- Список заданий блока -->
@@ -197,6 +246,9 @@
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg">
             <span class="w-2 h-2 rounded-full bg-rose-500"></span> <50% В процессе
           </span>
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-500 rounded-lg">
+            <span class="w-2 h-2 rounded-full bg-slate-300"></span> Не начато
+          </span>
         </div>
       </div>
 
@@ -219,7 +271,7 @@
         </div>
         <!-- 4 -->
         <div class="bg-emerald-50 border border-emerald-200/80 p-3 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:scale-105 transition-transform group">
-          <span class="text-[10px] font-extrabold text-emerald-600 uppercase">№4 Фано</span>
+          <span class="text-[10px] font-extrabold text-emerald-600 uppercase">Алгоритмы</span>
           <span class="text-sm font-black text-emerald-800">90%</span>
         </div>
         <!-- 5 -->
@@ -341,7 +393,7 @@
     </div>
 
     <!-- 5. ДАРК-БЕНТО: «ПРОГНОЗ БАЛЛОВ & ELO-РЕЙТИНГ» -->
-    <div id="tab-content-elo" class="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 text-white relative overflow-hidden space-y-8 w-full">
+    <div id="tab-content-elo" class="hidden bg-white border-2 border-slate-200/80 rounded-[2.5rem] p-6 sm:p-8 text-slate-900 relative overflow-hidden space-y-8 w-full">
       <!-- Неоновые фоновые свечения -->
       <div class="absolute -right-20 -top-20 w-80 h-80 bg-indigo-500/20 blur-[80px] pointer-events-none mix-blend-screen"></div>
       <div class="absolute -left-10 -bottom-10 w-64 h-64 bg-purple-500/20 blur-[70px] pointer-events-none mix-blend-screen"></div>
@@ -372,7 +424,7 @@
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Первичный балл</p>
             <h3 class="text-3xl font-black text-indigo-400 font-display">
               {% if forecast %}
-                {{ forecast.primary_min }}–{{ forecast.primary_max }}
+                {% if forecast.primary_min == forecast.primary_max %}{{ forecast.primary }}{% else %}{{ forecast.primary_min }}–{{ forecast.primary_max }}{% endif %}
               {% else %}
                 —
               {% endif %}
@@ -384,7 +436,7 @@
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Тестовый балл</p>
             <h3 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-indigo-300 font-display">
               {% if forecast %}
-                {{ forecast.test_min }}–{{ forecast.test_max }}
+                {% if forecast.test_min == forecast.test_max %}{{ forecast.test }}{% else %}{{ forecast.test_min }}–{{ forecast.test_max }}{% endif %}
               {% else %}
                 —
               {% endif %}
@@ -513,6 +565,7 @@
       </div>
     </div>
 
+    {% if not is_demo_preview %}
     <!-- Боковая шторка Drill-down готовности задания КЕГЭ -->
     <div id="readiness-backdrop" onclick="closeReadinessDrawer()" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
@@ -577,6 +630,7 @@
       </div>
 
     </div>
+    {% endif %}
 
     <!-- Модальное окно «Шкала перевода баллов ФИПИ» -->
     <div id="fipi-scale-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
@@ -659,13 +713,15 @@
 
     if (tab === 'skills') {
       contentSkills.classList.remove('hidden');
-      contentElo.classList.remove('hidden');
+      contentElo.classList.add('hidden');
       btnSkills.classList.add('active', 'text-indigo-700');
       btnSkills.classList.remove('text-slate-500');
       btnElo.classList.remove('active', 'text-indigo-700');
       btnElo.classList.add('text-slate-500');
       window.scrollTo({ top: contentSkills.offsetTop - 80, behavior: 'smooth' });
     } else {
+      contentSkills.classList.add('hidden');
+      contentElo.classList.remove('hidden');
       btnElo.classList.add('active', 'text-indigo-700');
       btnElo.classList.remove('text-slate-500');
       btnSkills.classList.remove('active', 'text-indigo-700');
@@ -690,6 +746,7 @@
   }
 
   function openReadinessDrawer(taskNumber) {
+    if (!document.getElementById('readiness-drawer')) return;
     const data = getReadinessData()[String(taskNumber)];
     if (!data) return;
 
@@ -700,19 +757,28 @@
     document.getElementById('drawer-correct').textContent = `${data.correct} верно`;
     
     const pctElem = document.getElementById('drawer-percent');
-    pctElem.textContent = `${data.percent}%`;
     const statusElem = document.getElementById('drawer-status');
-    if (data.percent >= 80) {
+    const hasData = (data.total || 0) > 0;
+
+    if (!hasData) {
+      pctElem.textContent = '—';
+      pctElem.className = 'text-lg font-black text-slate-400 mt-0.5';
+      statusElem.textContent = 'Не начато';
+      statusElem.className = 'text-[9px] font-bold text-slate-400';
+    } else if (data.percent >= 80) {
+      pctElem.textContent = `${data.percent}%`;
       pctElem.className = 'text-lg font-black text-emerald-600 mt-0.5';
       statusElem.textContent = 'Высокая';
       statusElem.className = 'text-[9px] font-bold text-emerald-600';
     } else if (data.percent >= 50) {
+      pctElem.textContent = `${data.percent}%`;
       pctElem.className = 'text-lg font-black text-amber-600 mt-0.5';
       statusElem.textContent = 'Средняя';
       statusElem.className = 'text-[9px] font-bold text-amber-600';
     } else {
+      pctElem.textContent = `${data.percent}%`;
       pctElem.className = 'text-lg font-black text-rose-600 mt-0.5';
-      statusElem.textContent = data.total > 0 ? 'В процессе' : 'Не начато';
+      statusElem.textContent = 'В процессе';
       statusElem.className = 'text-[9px] font-bold text-rose-600';
     }
 
@@ -737,16 +803,16 @@
         nameSpan.textContent = sub.name;
 
         const pctSpan = document.createElement('span');
-        pctSpan.className = sub.percent >= 80 ? 'text-emerald-600 font-black' : sub.percent >= 50 ? 'text-amber-600 font-black' : 'text-slate-500 font-black';
-        pctSpan.textContent = `${sub.percent}%`;
+        pctSpan.className = !hasData ? 'text-slate-400 font-black' : (sub.percent >= 80 ? 'text-emerald-600 font-black' : sub.percent >= 50 ? 'text-amber-600 font-black' : 'text-slate-500 font-black');
+        pctSpan.textContent = !hasData ? '—' : `${sub.percent}%`;
 
         line.append(nameSpan, pctSpan);
 
         const barTrack = document.createElement('div');
         barTrack.className = 'w-full h-2 bg-slate-200/70 rounded-full overflow-hidden';
         const barFill = document.createElement('div');
-        barFill.className = `h-full rounded-full transition-all duration-300 ${sub.percent >= 80 ? 'bg-emerald-500' : sub.percent >= 50 ? 'bg-amber-500' : 'bg-slate-400'}`;
-        barFill.style.width = `${sub.percent}%`;
+        barFill.className = `h-full rounded-full transition-all duration-300 ${!hasData ? 'bg-slate-300' : (sub.percent >= 80 ? 'bg-emerald-500' : sub.percent >= 50 ? 'bg-amber-500' : 'bg-slate-400')}`;
+        barFill.style.width = !hasData ? '0%' : `${sub.percent}%`;
         barTrack.append(barFill);
 
         wrap.append(line, barTrack);
@@ -823,11 +889,11 @@
 
     rows.forEach(item => {
       const tr = document.createElement('tr');
-      tr.className = 'hover:bg-slate-800/50 transition-colors';
+      tr.className = 'hover:bg-indigo-50/50 transition-colors';
 
       // 1. Узел знаний
       const tdName = document.createElement('td');
-      tdName.className = 'p-4 text-slate-200 font-bold';
+      tdName.className = 'p-4 text-slate-800 font-bold';
       tdName.textContent = item.name;
 
       // 2. Номер ЕГЭ (Badge)
@@ -835,24 +901,24 @@
       tdTask.className = 'p-4 text-center';
       if (item.task_number) {
         const badge = document.createElement('button');
-        badge.className = 'px-2 py-0.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 rounded-lg text-[10px] font-black cursor-pointer transition-colors';
+        badge.className = 'px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-black cursor-pointer transition-colors';
         badge.textContent = `№${item.task_number}`;
         badge.title = 'Открыть аналитику по этому номеру';
         badge.onclick = () => openReadinessDrawer(item.task_number);
         tdTask.append(badge);
       } else {
         tdTask.textContent = '—';
-        tdTask.className = 'p-4 text-center text-slate-500';
+        tdTask.className = 'p-4 text-center text-slate-400';
       }
 
       // 3. Код темы
       const tdCode = document.createElement('td');
-      tdCode.className = 'p-4 text-slate-400 font-mono';
+      tdCode.className = 'p-4 text-slate-500 font-mono';
       tdCode.textContent = item.code;
 
       // 4. ELO MMR
       const tdMmr = document.createElement('td');
-      tdMmr.className = 'p-4 text-amber-400 font-black font-mono';
+      tdMmr.className = 'p-4 text-indigo-700 font-black font-mono';
       tdMmr.textContent = `${item.mmr} ELO`;
 
       // 5. Калибровка
@@ -860,17 +926,17 @@
       tdCalib.className = 'p-4';
       const calibBadge = document.createElement('span');
       if (item.calibrated) {
-        calibBadge.className = 'px-2 py-0.5 bg-emerald-900/40 border border-emerald-500/30 text-emerald-300 rounded text-[10px] font-bold';
+        calibBadge.className = 'px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded text-[10px] font-bold';
         calibBadge.textContent = 'Калибрована';
       } else {
-        calibBadge.className = 'px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 rounded text-[10px] font-bold';
+        calibBadge.className = 'px-2 py-0.5 bg-slate-50 border border-slate-200 text-slate-500 rounded text-[10px] font-bold';
         calibBadge.textContent = 'Нужны решения';
       }
       tdCalib.append(calibBadge);
 
       // 6. Дней практики
       const tdStreak = document.createElement('td');
-      tdStreak.className = 'p-4 text-slate-300 font-bold';
+      tdStreak.className = 'p-4 text-slate-600 font-bold';
       tdStreak.textContent = item.streak ? `🔥 ${item.streak} дн.` : '—';
 
       tr.append(tdName, tdTask, tdCode, tdMmr, tdCalib, tdStreak);
@@ -903,31 +969,74 @@
       return element;
     };
 
-    // Отрисовка кликабельной карты готовности КЕГЭ (№1–27)
+    // Отрисовка кликабельного списка готовности КЕГЭ (№1–27)
     const readinessGrid = document.getElementById('analytics-readiness-grid');
     if (readinessGrid) {
       readinessGrid.replaceChildren();
       if (!readiness.length) {
-        readinessGrid.append(create('p', 'col-span-full py-5 text-center text-sm font-bold text-slate-400', 'Карта появится после первых проверенных решений.'));
+        readinessGrid.append(create('p', 'analytics-readiness-empty', 'Карта появится после первых проверенных решений.'));
       }
-      readiness.forEach((item) => {
-        const percent = Number(item.percent || 0);
-        const tone = percent >= 80
-          ? ['bg-emerald-50', 'border-emerald-200/80', 'text-emerald-600', 'text-emerald-800', 'hover:border-emerald-400']
-          : percent >= 50
-            ? ['bg-amber-50', 'border-amber-200/80', 'text-amber-700', 'text-amber-800', 'hover:border-amber-400']
-            : ['bg-rose-50', 'border-rose-200/80', 'text-rose-700', 'text-rose-800', 'hover:border-rose-400'];
-        
-        const card = create('div', `${tone[0]} border ${tone[1]} ${tone[4]} p-3 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xs group`);
-        card.setAttribute('data-task-number', item.task_number);
-        card.setAttribute('title', `Задание №${item.task_number} (${item.title || ''}): точность ${Math.round(percent)}%. Кликните для деталей.`);
-        card.onclick = () => openReadinessDrawer(item.task_number);
-
-        card.append(
-          create('span', `text-[10px] font-extrabold ${tone[2]} uppercase group-hover:underline`, `№${item.task_number}`),
-          create('span', `text-sm font-black ${tone[3]} mt-0.5`, `${Math.round(percent)}%`),
+      const groups = [
+        { label: '№1–9', title: 'База экзамена', items: readiness.slice(0, 9) },
+        { label: '№10–18', title: 'Алгоритмы и исполнители', items: readiness.slice(9, 18) },
+        { label: '№19–27', title: 'Сложные задачи', items: readiness.slice(18, 27) },
+      ];
+      groups.forEach((group) => {
+        if (!group.items.length) return;
+        const groupSection = create('section', 'analytics-readiness-group');
+        const heading = create('div', 'analytics-readiness-group-heading');
+        heading.append(
+          create('span', 'analytics-readiness-group-range', group.label),
+          create('strong', '', group.title),
         );
-        readinessGrid.append(card);
+        const list = create('div', 'analytics-readiness-group-list');
+        group.items.forEach((item) => {
+          const percent = Number(item.percent || 0);
+          const total = Number(item.total || 0);
+          const correct = Number(item.correct || 0);
+          const hasData = total > 0;
+
+          let tone;
+          let scoreText;
+          let subText;
+          if (!hasData) {
+            tone = ['text-slate-400', 'bg-slate-200'];
+            scoreText = '—';
+            subText = 'Не начато';
+          } else if (percent >= 80) {
+            tone = ['text-emerald-700', 'bg-emerald-500'];
+            scoreText = `${Math.round(percent)}%`;
+            subText = `Решено ${correct} из ${total}`;
+          } else if (percent >= 50) {
+            tone = ['text-amber-700', 'bg-amber-500'];
+            scoreText = `${Math.round(percent)}%`;
+            subText = `Решено ${correct} из ${total}`;
+          } else {
+            tone = ['text-rose-700', 'bg-rose-500'];
+            scoreText = `${Math.round(percent)}%`;
+            subText = `Решено ${correct} из ${total}`;
+          }
+
+          const row = create('button', 'analytics-readiness-row');
+          row.type = 'button';
+          row.setAttribute('data-task-number', item.task_number);
+          row.setAttribute('title', hasData
+            ? `Задание №${item.task_number} (${item.title || ''}): ${subText}, точность ${Math.round(percent)}%. Кликните для деталей.`
+            : `Задание №${item.task_number} (${item.title || ''}): Не начато. Кликните для деталей.`);
+          row.onclick = () => openReadinessDrawer(item.task_number);
+          const number = create('span', 'analytics-readiness-number', `№${item.task_number}`);
+          const copy = create('span', 'analytics-readiness-copy');
+          copy.append(create('strong', '', item.title || 'Задание без названия'), create('small', '', subText));
+          const meter = create('span', 'analytics-readiness-meter');
+          const fill = create('span', tone[1]);
+          fill.style.width = hasData ? `${Math.max(4, Math.min(100, percent))}%` : '0%';
+          meter.append(fill);
+          const score = create('span', `analytics-readiness-score ${tone[0]}`, scoreText);
+          row.append(number, copy, meter, score);
+          list.append(row);
+        });
+        groupSection.append(heading, list);
+        readinessGrid.append(groupSection);
       });
       readinessGrid.style.visibility = 'visible';
     }

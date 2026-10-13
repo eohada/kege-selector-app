@@ -1,0 +1,402 @@
+{% extends "sandbox/layout_teacher.html" if current_user.is_tutor() or current_user.is_creator() or current_user.is_admin() else "sandbox/layout_student.html" %}
+
+{% block sandbox_content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 font-['Nunito',sans-serif]">
+
+  <!-- Верхняя панель навигации -->
+  <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <a href="{{ url_for('theory.theory_index', course_id=course_id) }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black text-slate-700 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition active:scale-95">
+      <i class="ph-bold ph-arrow-left"></i>
+      <span>Назад к теории</span>
+    </a>
+    <div class="flex items-center gap-2">
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-700 border border-amber-300">
+        <i class="ph-fill ph-wrench"></i> Режим отладки банка заданий
+      </span>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
+        <i class="ph-bold ph-stack"></i> 200 заданий
+      </span>
+    </div>
+  </div>
+
+  <!-- Главная шапка страницы -->
+  <div class="rounded-3xl border-2 border-indigo-100 bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/20 p-6 sm:p-8 shadow-sm mb-8">
+    <div class="max-w-3xl">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-600/10 text-indigo-700 text-xs font-extrabold uppercase tracking-wider mb-3">
+        <i class="ph-bold ph-terminal-window"></i> Python Programming Bank
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Полный банк заданий по программированию</h1>
+      <p class="mt-2 text-sm sm:text-base font-semibold text-slate-600 leading-relaxed">
+        Банк разделён на 4 ключевых блока по 50 заданий (всего 200). В каждом блоке строго соблюдается баланс механик: 20 заданий с выбором ответа, 15 заданий на сопоставление 4 пар и 15 заданий на расчёт значения/вывода без открытого кода.
+      </p>
+    </div>
+
+    <!-- Вкладки блоков (1..4) -->
+    <div class="mt-6 flex flex-wrap gap-2.5" role="tablist">
+      {% for meta in blocks_meta %}
+      <button type="button"
+              class="block-tab-btn inline-flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs sm:text-sm font-black transition border-2 {{ 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200' if loop.first else 'bg-white text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-900' }}"
+              data-block-target="block-{{ meta.num }}"
+              aria-selected="{{ 'true' if loop.first else 'false' }}">
+        <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg {{ 'bg-white/20 text-white' if loop.first else 'bg-slate-100 text-slate-800' }} text-xs font-black">{{ meta.num }}</span>
+        <span>{{ meta.title }}</span>
+        <span class="rounded-full px-2 py-0.5 text-[10px] font-black {{ 'bg-white/25 text-white' if loop.first else 'bg-slate-100 text-slate-600' }}">{{ meta.count }}</span>
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Контент каждого блока -->
+  {% for meta in blocks_meta %}
+  {% set b_num = meta.num %}
+  {% set tasks = tasks_by_block.get(b_num, []) %}
+  <section id="block-{{ b_num }}" class="block-section {{ '' if loop.first else 'hidden' }}">
+
+    <!-- Панель фильтров внутри текущего блока -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6 bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs font-black text-slate-500 mr-1">Тип механики:</span>
+        <button type="button" class="filter-type-btn active px-3 py-1.5 rounded-xl text-xs font-black bg-slate-900 text-white transition" data-block="{{ b_num }}" data-type="all">
+          Все ({{ tasks|length }})
+        </button>
+        <button type="button" class="filter-type-btn px-3 py-1.5 rounded-xl text-xs font-black bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-block="{{ b_num }}" data-type="single_choice">
+          Выбор варианта (20)
+        </button>
+        <button type="button" class="filter-type-btn px-3 py-1.5 rounded-xl text-xs font-black bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-block="{{ b_num }}" data-type="matching">
+          Сопоставление (15)
+        </button>
+        <button type="button" class="filter-type-btn px-3 py-1.5 rounded-xl text-xs font-black bg-slate-100 text-slate-700 hover:bg-slate-200 transition" data-block="{{ b_num }}" data-type="short_answer">
+          Короткий ответ (15)
+        </button>
+      </div>
+
+      <div class="text-xs font-bold text-slate-500">
+        Показано: <strong id="visible-count-{{ b_num }}" class="text-slate-800">{{ tasks|length }}</strong> из {{ tasks|length }}
+      </div>
+    </div>
+
+    <!-- Сетка карточек заданий -->
+    <div class="grid gap-5">
+      {% for task in tasks %}
+      <article class="task-preview-card rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm hover:shadow-md transition"
+               data-block="{{ b_num }}"
+               data-task-type="{{ task.task_type }}"
+               data-task-id="{{ task.task_id }}">
+
+        <!-- Заголовок карточки -->
+        <div class="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-lg bg-indigo-50 px-2.5 text-xs font-black text-indigo-700 border border-indigo-200">
+              {{ task.task_id }}
+            </span>
+            <span class="text-sm font-black text-slate-900">{{ task.title }}</span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-1.5">
+            {% if task.task_type == 'single_choice' %}
+            <span class="rounded-full bg-blue-50 border border-blue-200 px-2.5 py-1 text-[11px] font-black text-blue-700">
+              <i class="ph-bold ph-radio-button"></i> Выбор варианта
+            </span>
+            {% elif task.task_type == 'matching' %}
+            <span class="rounded-full bg-purple-50 border border-purple-200 px-2.5 py-1 text-[11px] font-black text-purple-700">
+              <i class="ph-bold ph-arrows-merge"></i> Сопоставление (4 пары)
+            </span>
+            {% else %}
+            <span class="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-black text-emerald-700">
+              <i class="ph-bold ph-textbox"></i> Точное значение
+            </span>
+            {% endif %}
+
+            <span class="rounded-full bg-slate-100 border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+              {{ task.topic }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Условие задания -->
+        <div class="mt-4 text-xs sm:text-sm font-medium leading-relaxed text-slate-800 task-content-area">
+          {{ task.content_html|safe }}
+        </div>
+
+        <!-- Механика: Варианты одиночного выбора -->
+        {% if task.task_type == 'single_choice' and task.options %}
+        <div class="mt-4 pt-3 border-t border-slate-100">
+          <div class="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2">Варианты ответов:</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {% for opt in task.options %}
+            {% set is_correct = (opt.id == task.answer) %}
+            <div class="rounded-xl border p-2.5 text-xs font-bold flex items-center justify-between {{ 'bg-emerald-50 border-emerald-300 text-emerald-900' if is_correct else 'bg-slate-50/70 border-slate-200 text-slate-700' }}">
+              <div class="flex items-center gap-2">
+                <span class="inline-flex h-5 w-5 items-center justify-center rounded-md {{ 'bg-emerald-600 text-white' if is_correct else 'bg-slate-200 text-slate-700' }} text-[10px] font-black">
+                  {{ opt.id }}
+                </span>
+                <span>{{ opt.text }}</span>
+              </div>
+              {% if is_correct %}
+              <span class="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                <i class="ph-bold ph-check"></i> Правильный
+              </span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Механика: Таблица сопоставления -->
+        {% if task.task_type == 'matching' and task.matching_left and task.matching_right %}
+        <div class="mt-4 pt-3 border-t border-slate-100">
+          <div class="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2.5 flex items-center gap-1.5">
+            <i class="ph-bold ph-arrows-merge text-indigo-600"></i> Таблица сопоставления (Код → Вывод):
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Левая колонка (Фрагменты кода) -->
+            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4">
+              <div class="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2.5 flex items-center justify-between">
+                <span>Элементы (1, 2, 3, 4)</span>
+                <span class="text-[10px] font-bold text-slate-400">Код программы</span>
+              </div>
+              <div class="space-y-2.5">
+                {% for left in task.matching_left %}
+                <div class="rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs flex items-start gap-2.5">
+                  <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white font-black text-xs shadow-xs mt-0.5">{{ left.id }}</span>
+                  <div class="flex-1 min-w-0">
+                    <pre class="matching-code-block"><code class="language-python">{{ left.text }}</code></pre>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Правая колонка (Варианты вывода) -->
+            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4">
+              <div class="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-2.5 flex items-center justify-between">
+                <span>Варианты соответствия (А, Б, В, Г)</span>
+                <span class="text-[10px] font-bold text-slate-400">Результат / вывод</span>
+              </div>
+              <div class="space-y-2.5">
+                {% for right in task.matching_right %}
+                <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-xs flex items-center gap-2.5 min-h-[46px]">
+                  <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-purple-600 text-white font-black text-xs shadow-xs">{{ right.id }}</span>
+                  <div class="flex-1 text-xs font-bold text-slate-800 leading-snug">
+                    {{ right.text }}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Эталонное соответствие пар -->
+          <div class="mt-3 rounded-xl bg-emerald-50 border border-emerald-300 p-3 flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-black text-emerald-900">
+              <i class="ph-bold ph-key mr-1"></i> Эталонное сопоставление:
+            </span>
+            <div class="flex flex-wrap gap-2">
+              {% for k, v in task.answer.items() %}
+              <span class="inline-flex items-center gap-1 bg-white border border-emerald-200 px-2 py-0.5 rounded-lg text-xs font-black text-emerald-800">
+                <strong>{{ k }}</strong> <i class="ph-bold ph-arrow-right text-[10px] text-emerald-600"></i> <span class="text-purple-700 font-black">{{ v }}</span>
+              </span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Механика: Короткий ответ -->
+        {% if task.task_type == 'short_answer' %}
+        <div class="mt-4 pt-3 border-t border-slate-100">
+          <div class="rounded-xl bg-emerald-50 border border-emerald-300 p-3 flex items-center justify-between gap-2">
+            <span class="text-xs font-black text-emerald-900">
+              <i class="ph-bold ph-check-circle mr-1 text-emerald-600"></i> Правильный ответ:
+            </span>
+            <code class="px-3 py-1 rounded-lg bg-white border border-emerald-200 text-xs font-black text-emerald-900 font-mono">{{ task.answer }}</code>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Пояснение решения -->
+        {% if task.explanation %}
+        <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-950">
+          <strong class="font-black text-amber-900"><i class="ph-bold ph-lightbulb mr-1"></i> Объяснение:</strong>
+          <span>{{ task.explanation }}</span>
+        </div>
+        {% endif %}
+
+      </article>
+      {% endfor %}
+    </div>
+
+  </section>
+  {% endfor %}
+
+</div>
+
+<style>
+.task-content-area pre,
+.matching-code-block {
+  background: #0b1021 !important;
+  color: #f8fafc !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 0.75rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 0.825rem !important;
+  line-height: 1.5 !important;
+  overflow-x: auto !important;
+  margin: 0.5rem 0 !important;
+  border: 1px solid #1e293b !important;
+  tab-size: 4 !important;
+}
+
+.matching-code-block {
+  margin: 0 !important;
+  padding: 0.6rem 0.85rem !important;
+  font-size: 0.8rem !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+.task-content-area code:not(pre code) {
+  background: #f1f5f9;
+  color: #312e81;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.825rem;
+  font-weight: 700;
+  border: 1px solid #e2e8f0;
+}
+
+/* Prism.js Tomorrow Dark Theme Colors */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #94a3b8 !important;
+  font-style: italic !important;
+}
+.token.punctuation {
+  color: #94a3b8 !important;
+}
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #f59e0b !important; /* Amber / Orange */
+  font-weight: 700 !important;
+}
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #34d399 !important; /* Emerald / Mint */
+}
+.token.operator,
+.token.entity,
+.token.url,
+.token.variable {
+  color: #38bdf8 !important; /* Sky Blue */
+}
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #c084fc !important; /* Purple */
+  font-weight: 800 !important;
+}
+.token.function,
+.token.class-name {
+  color: #60a5fa !important; /* Bright Blue */
+  font-weight: 700 !important;
+}
+.token.regex,
+.token.important {
+  color: #f43f5e !important;
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+
+<script>
+// Подсветка синтаксиса через Prism.js
+function highlightBankCode() {
+  document.querySelectorAll('.task-content-area pre code, .matching-code-block code').forEach(code => {
+    if (!code.classList.contains('language-python')) {
+      code.classList.add('language-python');
+    }
+  });
+  if (window.Prism && typeof window.Prism.highlightAll === 'function') {
+    try { window.Prism.highlightAll(); } catch (e) {}
+  }
+}
+
+// Переключение блоков 1..4
+document.querySelectorAll('.block-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.block-tab-btn').forEach(b => {
+      b.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600', 'shadow-md', 'shadow-indigo-200');
+      b.classList.add('bg-white', 'text-slate-700', 'border-slate-200', 'hover:border-indigo-300', 'hover:bg-indigo-50/50', 'hover:text-indigo-900');
+      b.setAttribute('aria-selected', 'false');
+      const badge = b.querySelector('span:first-child');
+      if (badge) { badge.className = 'inline-flex h-6 w-6 items-center justify-center rounded-lg bg-slate-100 text-slate-800 text-xs font-black'; }
+      const count = b.querySelector('span:last-child');
+      if (count) { count.className = 'rounded-full px-2 py-0.5 text-[10px] font-black bg-slate-100 text-slate-600'; }
+    });
+
+    btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600', 'shadow-md', 'shadow-indigo-200');
+    btn.classList.remove('bg-white', 'text-slate-700', 'border-slate-200', 'hover:border-indigo-300', 'hover:bg-indigo-50/50', 'hover:text-indigo-900');
+    btn.setAttribute('aria-selected', 'true');
+    const badge = btn.querySelector('span:first-child');
+    if (badge) { badge.className = 'inline-flex h-6 w-6 items-center justify-center rounded-lg bg-white/20 text-white text-xs font-black'; }
+    const count = btn.querySelector('span:last-child');
+    if (count) { count.className = 'rounded-full px-2 py-0.5 text-[10px] font-black bg-white/25 text-white'; }
+
+    const targetId = btn.dataset.blockTarget;
+    document.querySelectorAll('.block-section').forEach(sec => {
+      sec.classList.toggle('hidden', sec.id !== targetId);
+    });
+
+    setTimeout(highlightBankCode, 10);
+  });
+});
+
+// Фильтрация по типу механики внутри блока
+document.querySelectorAll('.filter-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const blockNum = btn.dataset.block;
+    const targetType = btn.dataset.type;
+
+    // Обновляем кнопки фильтра этого блока
+    document.querySelectorAll(`.filter-type-btn[data-block="${blockNum}"]`).forEach(b => {
+      b.classList.remove('bg-slate-900', 'text-white');
+      b.classList.add('bg-slate-100', 'text-slate-700');
+    });
+    btn.classList.remove('bg-slate-100', 'text-slate-700');
+    btn.classList.add('bg-slate-900', 'text-white');
+
+    // Фильтруем карточки
+    let visible = 0;
+    document.querySelectorAll(`.task-preview-card[data-block="${blockNum}"]`).forEach(card => {
+      const match = (targetType === 'all' || card.dataset.taskType === targetType);
+      card.classList.toggle('hidden', !match);
+      if (match) visible++;
+    });
+
+    const countElem = document.getElementById(`visible-count-${blockNum}`);
+    if (countElem) countElem.textContent = visible;
+
+    setTimeout(highlightBankCode, 10);
+  });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  highlightBankCode();
+});
+</script>
+{% endblock %}

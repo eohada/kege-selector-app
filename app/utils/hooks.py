@@ -3,8 +3,9 @@
 """
 import logging
 import base64
+import os
 import urllib.parse
-from datetime import timedelta
+from datetime import timedelta, timezone
 from flask import request, redirect, url_for, current_app, g, Response, render_template, jsonify
 from flask_login import current_user
 from sqlalchemy import text
@@ -193,7 +194,7 @@ def register_hooks(app):
             return
 
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             last = _last_subscription_check
             if last and (now - last) < _subscription_check_interval:
                 return
@@ -334,7 +335,7 @@ def register_hooks(app):
         else:
             # Для production и local проверяем локальную БД
             try:
-                now = datetime.utcnow()
+                now = datetime.now(timezone.utc)
                 should_refresh_local = (
                     _last_maintenance_fetch is None or
                     (now - _last_maintenance_fetch) >= _maintenance_fetch_interval
@@ -515,18 +516,21 @@ def register_hooks(app):
         if request.path.startswith('/remote-admin/'):
             logger.info(f"require_login hook: path={request.path}, endpoint={request.endpoint}, authenticated={current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False}")
         
-        # На демо-сайте маршруты /demo и /demo/start доступны без авторизации
-        # Учитываем и DEMO_SITE, и запросы на демо-хост (DEMO_HOST), если один деплой на два домена
-        is_demo = current_app.config.get('DEMO_SITE')
-        if not is_demo and current_app.config.get('DEMO_HOST'):
-            req_host = (request.host or '').split(':')[0].lower()
-            is_demo = req_host == current_app.config.get('DEMO_HOST')
-        if is_demo and request.path in ('/demo', '/demo/start'):
+        # Интерактивная демоверсия BooStudy доступна без предварительной авторизации
+        if request.path == '/demo' or request.path.startswith('/demo/'):
             return
 
         # Guest links authenticate by a signed, scoped session token and must be
         # reachable before Flask-Login redirects anonymous participants.
         if request.path.startswith('/guest/'):
+            return
+
+        # The component showcase is intentionally anonymous only in local/test environments.
+        if request.path == '/dev/ui' and (
+            current_app.config.get('DEBUG')
+            or current_app.config.get('TESTING')
+            or os.getenv('BOOSTUDY_UI_DEV') == '1'
+        ):
             return
 
         if request.path.startswith('/sandbox/') or request.path == '/sandbox' or request.path.startswith('/sandbox_reference/') or request.path == '/sandbox_reference' or request.path.startswith('/u/') or request.path.startswith('/profile') or request.path.startswith('/mentor/') or request.path.startswith('/teacher/'):
@@ -603,6 +607,12 @@ def register_hooks(app):
             if not (getattr(current_user, 'is_student', lambda: False)() or getattr(current_user, 'is_parent', lambda: False)()):
                 return None
 
+            if getattr(current_user, 'is_demo_user', False):
+                blocked_prefixes = ('/admin/', '/billing/', '/remote-admin/', '/internal/')
+                if any(request.path.startswith(pfx) for pfx in blocked_prefixes):
+                    return redirect(url_for('main.student_dashboard', demo_blocked=1))
+                return None
+
             if request.path.startswith('/internal/remote-admin/') or request.path.startswith('/internal/sandbox-admin/'):
                 return None
             if request.path.startswith('/static/') or request.path.startswith('/font/'):
@@ -615,6 +625,11 @@ def register_hooks(app):
             plan = eff.plan
 
             if not sub or not plan:
+                ep = (request.endpoint or '')
+                if request.path.startswith('/internal/trainer/') or ep.startswith('trainer.'):
+                    from flask import flash
+                    flash("Тренажёр доступен только по подписке с включённым тренажёром.", "warning")
+                    return redirect(url_for('billing.billing_plans_public'))
                 return None
 
             student_safe_endpoints = {
@@ -643,23 +658,25 @@ def register_hooks(app):
                 if request.path.startswith('/api/telegram/'):
                     return None
                 if request.path.startswith('/internal/trainer/') or (request.endpoint or '').startswith('trainer.'):
-                    return redirect(url_for('main.workspace_profile'))
+                    from flask import flash
+                    flash("Срок действия вашей подписки истёк.", "warning")
+                    return redirect(url_for('billing.billing_plans_public'))
                 return redirect(url_for('main.workspace_profile'))
 
             if plan.allow_lessons is None and plan.allow_trainer is None:
                 return None
 
-            allow_lessons = True if plan.allow_lessons is None else bool(plan.allow_lessons)
-            allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', False)) and (
-                True if plan.allow_trainer is None else bool(plan.allow_trainer)
-            )
+            allow_lessons = bool(plan.allow_lessons) if plan.allow_lessons is not None else False
+            allow_trainer = bool(current_app.config.get('TRAINER_ENABLED', True)) and bool(plan.allow_trainer)
 
             ep = (request.endpoint or '')
             if ep in student_safe_endpoints or any(ep.startswith(pfx) for pfx in student_safe_prefixes):
                 return None
             if request.path.startswith('/internal/trainer/') or ep.startswith('trainer.'):
                 if not allow_trainer:
-                    return redirect(url_for('main.dashboard'))
+                    from flask import flash
+                    flash("Тренажёр доступен только по подписке с включённым тренажёром.", "warning")
+                    return redirect(url_for('billing.billing_plans_public'))
                 return None
 
             if not allow_lessons and allow_trainer:

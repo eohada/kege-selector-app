@@ -7,7 +7,7 @@ from flask import Blueprint, abort, current_app, jsonify, render_template, reque
 from flask_login import login_required
 
 from app.models import db
-from core.db_models import User
+from core.db_models import User, Lesson, LessonTask, Submission, StudentWorkspaceFile, TaskCanvasDrawing
 
 from app.assignments.routes import _collect_sandbox_files
 from app.limiter import limiter
@@ -20,6 +20,9 @@ from .service import (
     load_workspace_versions_payload,
     load_workspace_state_payload,
     restore_workspace_version,
+    load_workspace_notes,
+    load_workspace_state_payload,
+    save_workspace_version,
 )
 from .socket import emit_workspace_snapshot
 
@@ -143,7 +146,7 @@ def workspace_save_api():
     # The editor sends playback frames only when there is a new trace chunk.
     # An ordinary code autosave must not erase the already persisted history.
     frames = data.get("playback_frames")
-    save_workspace_code(ctx, data.get("code") or "", data.get("answer") or "", frames=frames)
+    save_workspace_code(ctx, data.get("code") or "", data.get("answer") or "", frames=frames, notes=data.get("notes"))
     versions = load_workspace_versions_payload(ctx)
     try:
         emit_workspace_snapshot(
@@ -201,3 +204,118 @@ def workspace_state_api():
     assignment_task_id = request.args.get("assignment_task_id", type=int)
     ctx = resolve_workspace_context(_workspace_actor(), context_type, context_id, assignment_task_id)
     return jsonify({"success": True, "state": load_workspace_state_payload(ctx)})
+
+
+@task_workspace_bp.route("/api/notes", methods=["GET", "POST"])
+@login_required
+def workspace_notes_api():
+    data = request.get_json(silent=True) or {} if request.method == "POST" else request.args
+    ctx = resolve_workspace_context(
+        _workspace_actor(), data.get("context_type", ""), data.get("context_id"), data.get("assignment_task_id")
+    )
+    if request.method == "GET":
+        return jsonify({"success": True, "notes": load_workspace_notes(ctx)})
+    if not ctx.can_edit:
+        abort(403)
+    notes = str(data.get("notes") or "")
+    if len(notes) > 20_000:
+        return jsonify({"success": False, "error": "Заметка слишком длинная"}), 400
+    state = load_workspace_state_payload(ctx)
+    save_workspace_version(ctx, state["code"], state["answer"], source="notes", notes=notes)
+    db.session.commit()
+    return jsonify({"success": True, "notes": notes})
+
+
+@task_workspace_bp.route("/api/bridge", methods=["GET", "POST"])
+@login_required
+def workspace_bridge_api():
+    actor = _workspace_actor()
+    data = request.get_json(silent=True) or {} if request.method == "POST" else request.args
+    ctx = resolve_workspace_context(actor, data.get("context_type", ""), data.get("context_id"), data.get("assignment_task_id"))
+    if ctx.context_type != "submission_task":
+        abort(400)
+    submission = db.session.get(Submission, ctx.submission_id)
+    lesson_id = submission.assignment.lesson_id if submission and submission.assignment else None
+    lesson = db.session.get(Lesson, lesson_id) if lesson_id else None
+    lesson_tasks = []
+    if lesson and lesson.student_id == ctx.student_id:
+        lesson_tasks = LessonTask.query.filter_by(lesson_id=lesson.lesson_id).order_by(LessonTask.lesson_task_id).all()
+    if request.method == "GET":
+        return jsonify({
+            "success": True,
+            "lesson": {"id": lesson.lesson_id, "title": lesson.topic or "Урок", "url": f"/lesson/{lesson.lesson_id}/room"} if lesson else None,
+            "lesson_tasks": [{"id": item.lesson_task_id, "title": item.task.title or f"Задание {item.task_id}"} for item in lesson_tasks],
+            "assignment_tasks": [item for item in ctx.tasks_nav if item["assignment_task_id"] != ctx.assignment_task_id],
+        })
+    if not ctx.can_edit or actor.id != ctx.student_user_id:
+        abort(403)
+    source_type = str(data.get("source_type") or "")
+    source_id = data.get("source_id")
+    if source_type == "lesson_notes":
+        if not lesson:
+            abort(404)
+        source_notes = lesson.student_notes or ""
+        source_state = None
+    elif source_type == "lesson_task":
+        if not any(item.lesson_task_id == source_id for item in lesson_tasks):
+            abort(403)
+        source_ctx = resolve_workspace_context(actor, "lesson_task", source_id)
+        source_state = load_workspace_state_payload(source_ctx)
+        source_notes = source_state["notes"]
+    elif source_type == "assignment_task":
+        if not any(item["assignment_task_id"] == source_id for item in ctx.tasks_nav):
+            abort(403)
+        source_ctx = resolve_workspace_context(actor, "submission_task", ctx.submission_id, source_id)
+        source_state = load_workspace_state_payload(source_ctx)
+        source_notes = source_state["notes"]
+    else:
+        abort(400)
+    target_state = load_workspace_state_payload(ctx)
+    merged_notes = "\n\n".join(part for part in [target_state["notes"].strip(), source_notes.strip()] if part)[:20_000]
+    copied_code = source_state["code"] if source_state and data.get("include_code", True) else target_state["code"]
+    save_workspace_version(ctx, copied_code, target_state["answer"], source="transfer", notes=merged_notes)
+    if source_state:
+        source_kind = "lesson" if source_type == "lesson_task" else "submission"
+        source_files = StudentWorkspaceFile.query.filter_by(
+            user_id=ctx.student_user_id, task_id=source_ctx.task_id,
+            context_type=source_kind, context_id=source_ctx.context_id,
+        ).all()
+        target_files = StudentWorkspaceFile.query.filter_by(
+            user_id=ctx.student_user_id, task_id=ctx.task_id,
+            context_type="submission", context_id=ctx.submission_id,
+        ).all()
+        names = {item.current_filename for item in target_files}
+        for item in source_files:
+            name = item.current_filename
+            if name in names:
+                stem, dot, ext = name.rpartition(".")
+                stem = stem if dot else name
+                ext = "." + ext if dot else ""
+                name = f"{stem}-копия-{item.id}{ext}"
+            names.add(name)
+            db.session.add(StudentWorkspaceFile(
+                user_id=ctx.student_user_id, task_id=ctx.task_id,
+                context_type="submission", context_id=ctx.submission_id,
+                original_filename=item.original_filename, current_filename=name,
+                storage_path=item.storage_path, file_size=item.file_size,
+                mime_type=item.mime_type, is_from_task=False,
+            ))
+        drawing = TaskCanvasDrawing.query.filter_by(
+            user_id=ctx.student_user_id, task_id=source_ctx.task_id,
+            context_type=source_kind, context_id=source_ctx.context_id,
+        ).first()
+        if drawing and data.get("include_canvas", True):
+            target_drawing = TaskCanvasDrawing.query.filter_by(
+                user_id=ctx.student_user_id, task_id=ctx.task_id,
+                context_type="submission", context_id=ctx.submission_id,
+            ).first()
+            if not target_drawing:
+                target_drawing = TaskCanvasDrawing(
+                    user_id=ctx.student_user_id, task_id=ctx.task_id,
+                    context_type="submission", context_id=ctx.submission_id,
+                )
+                db.session.add(target_drawing)
+            target_drawing.strokes_json = drawing.strokes_json
+            target_drawing.thumbnail_url = drawing.thumbnail_url
+    db.session.commit()
+    return jsonify({"success": True, "message": "Материалы скопированы в пространство задания"})

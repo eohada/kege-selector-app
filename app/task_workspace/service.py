@@ -36,8 +36,8 @@ MMR_POLICY_LABELS = {
 
 WORKSPACE_AUTOSAVE_DEBOUNCE_SECONDS = 2.0
 WORKSPACE_CACHE_TTL_SECONDS = 24 * 60 * 60
-ANSWER_TYPES = {"code", "short_answer", "single_choice", "matching", "long_answer"}
-WORKSPACE_MODES = {"answer", "code"}
+ANSWER_TYPES = {"code", "short_answer", "single_choice", "multiple_choice", "matching", "long_answer"}
+WORKSPACE_MODES = {"answer", "code", "canvas"}
 
 
 def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
@@ -80,6 +80,8 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
 
     if answer_type == "single_choice" and not normalized_options:
         answer_type = "short_answer"
+    if answer_type == "multiple_choice" and not normalized_options:
+        answer_type = "short_answer"
     if answer_type == "matching" and (not normalized_pairs or not normalized_options):
         answer_type = "short_answer"
 
@@ -100,6 +102,9 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
             modes = ["answer", "code"]
         else:
             modes = ["code"] if answer_type == "code" else ["answer"]
+
+    if "canvas" not in modes:
+        modes.append("canvas")
 
     # Even if raw_modes was somehow limited to code only, if task has an expected answer,
     # student must not be deprived of entering their answer!
@@ -270,6 +275,12 @@ def _extract_task_correct_answer(task: Tasks | None, answer_override: str | None
 
     spec = getattr(task, "answer_spec", None)
     if isinstance(spec, dict):
+        correct_values = spec.get("correct_values")
+        if isinstance(correct_values, (list, tuple)):
+            values = sorted({str(value).strip() for value in correct_values if str(value).strip()})
+            if values:
+                import json
+                return json.dumps(values, ensure_ascii=False)
         if spec.get("correct_value") is not None and str(spec.get("correct_value")).strip():
             return str(spec.get("correct_value")).strip()
         if spec.get("correct_answer") is not None and str(spec.get("correct_answer")).strip():
@@ -368,6 +379,7 @@ class WorkspaceContext:
             "attachments": attachments,
             "max_score": int(self.task.max_score or 1) if self.task else 1,
             "task_number": self.task.task_number if self.task else None,
+            "task_title": str(getattr(self.task, "title", "") or "").strip() if self.task else "",
             "difficulty": getattr(self.task, "difficulty_label", "") if self.task else "",
             "content_html": normalize_task_content_assets(
                 prepare_task_content_html(self.task.content_html or ""),
@@ -543,7 +555,18 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     normalized_status = (submission.status or "").strip().upper()
     # Открытие Workspace — это начало работы. Нельзя показывать ученику редактор,
     # а затем бесконечно отвечать 403 на его автосохранения до отдельного клика «Старт».
-    can_edit = is_owner and normalized_status in {"ASSIGNED", "IN_PROGRESS", "RETURNED"} and not is_parent
+    # The demo has a dedicated editable retry submission. It may already be
+    # graded when a visitor refreshes an old browser tab, but the canonical
+    # route must still be recoverable from that tab without exposing a dead
+    # read-only workspace.
+    is_demo_retry = (
+        bool(getattr(user, "is_demo_user", False))
+        and getattr(getattr(submission, "assignment", None), "title", "") == "Исправление: след по алгоритму"
+    )
+    can_edit = (
+        is_owner and (normalized_status in {"ASSIGNED", "IN_PROGRESS", "RETURNED"} or is_demo_retry)
+        and not is_parent
+    )
     if can_edit and normalized_status == "RETURNED":
         revision_task_ids = {
             int(item.assignment_task_id)
@@ -611,9 +634,10 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         )
         t_score = getattr(t_ans, "score", None) if t_ans else None
         t_max_score = int(getattr(t_item, "max_score", 1) or 1)
+        submitted_separately = bool(t_ans and getattr(t_ans, "submitted_separately_at", None))
         is_reviewed = bool(t_ans and getattr(t_ans, "reviewed_at", None) is not None) or (
             normalized_status == "GRADED" and t_ans is not None and t_score is not None
-        )
+        ) or (submitted_separately and not is_manual and t_score is not None)
 
         if is_reviewed:
             if t_score is not None and t_score >= t_max_score and t_max_score > 0:
@@ -626,12 +650,14 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
                 item_nav_status = "correct"
             else:
                 item_nav_status = "wrong"
+        elif submitted_separately:
+            item_nav_status = "pending_review"
         else:
             if has_answer:
-                if is_manual or normalized_status in {"SUBMITTED", "NEEDS_MANUAL_REVIEW", "GRADED"}:
+                if normalized_status in {"SUBMITTED", "NEEDS_MANUAL_REVIEW", "GRADED"}:
                     item_nav_status = "pending_review"
                 else:
-                    item_nav_status = "completed"
+                    item_nav_status = "draft"
             else:
                 item_nav_status = "unanswered"
 
@@ -696,6 +722,23 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
     parsed_student_ans = _safe_parse_json(answer.value) if answer and answer.value else None
     parsed_correct_ans = _safe_parse_json(correct_ans) if correct_ans else None
 
+    task_attempts_used = int(getattr(answer, "attempts_used", 0) or 0) if answer else 0
+    attempts_per_task = bool(getattr(submission.assignment, "attempts_per_task", False))
+    allow_separate_submission = bool(getattr(submission.assignment, "allow_separate_submission", False))
+    try:
+        task_max_attempts = int(submission.assignment.get_effective_max_attempts_for_task(assignment_task))
+    except Exception:
+        task_max_attempts = 1
+    can_submit_separately = bool(
+        is_owner
+        and can_edit
+        and not is_demo_retry
+        and allow_separate_submission
+        and attempts_per_task
+        and normalized_status in {"ASSIGNED", "IN_PROGRESS", "RETURNED"}
+        and task_attempts_used < task_max_attempts
+    )
+
     task_meta = {
         "verification_type": "Ручная проверка" if current_is_manual else "Автопроверка",
         "max_score": current_max_score,
@@ -707,6 +750,9 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         "score": current_answer_score,
         "teacher_comment": teacher_comment,
         "correct_answer": correct_ans if current_is_reviewed else "",
+        "attempts_used": task_attempts_used,
+        "max_attempts": task_max_attempts,
+        "can_submit_separately": can_submit_separately,
     }
 
     return WorkspaceContext(
@@ -812,7 +858,7 @@ def resolve_workspace_context(user, context_type: str, context_id: int | None = 
     return ctx
 
 
-def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", frames: list[dict[str, Any]] | None = None) -> None:
+def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", frames: list[dict[str, Any]] | None = None, notes: str | None = None) -> None:
     code = (code or "")[:100_000]
     answer = (answer or "")[:20_000]
     try:
@@ -824,7 +870,7 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
             lesson_task.student_submission = code
             lesson_task.student_answer = answer
             save_workspace_trace(ctx, frames=frames, meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)})
-            save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
+            save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave", notes=notes)
             cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
             db.session.commit()
             return
@@ -856,7 +902,7 @@ def save_workspace_code(ctx: WorkspaceContext, code: str, answer: str = "", fram
                 frames=frames,
                 meta={"source": "server-save", "code_length": len(code), "answer_length": len(answer)},
             )
-            save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave")
+            save_workspace_version(ctx, code=code, answer=answer, source="manual" if frames else "autosave", notes=notes)
             cache_workspace_snapshot(ctx, code, answer, frames=frames, source="manual" if frames else "autosave")
             db.session.commit()
     except Exception:
@@ -1021,6 +1067,7 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
         "task_id": ctx.task_id,
         "code": code,
         "answer": answer,
+        "notes": load_workspace_notes(ctx),
         "updated_at": updated_at,
         "version_id": version_id,
         "source": source,
@@ -1031,7 +1078,15 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
     }
 
 
-def save_workspace_version(ctx: WorkspaceContext, code: str, answer: str = "", source: str = "autosave") -> CodeWorkspaceVersion:
+def load_workspace_notes(ctx: WorkspaceContext) -> str:
+    for version in _version_lookup(ctx).limit(100).all():
+        snapshot = version.snapshot if isinstance(version.snapshot, dict) else {}
+        if "notes" in snapshot:
+            return str(snapshot["notes"] or "")
+    return ""
+
+
+def save_workspace_version(ctx: WorkspaceContext, code: str, answer: str = "", source: str = "autosave", notes: str | None = None) -> CodeWorkspaceVersion:
     try:
         version = CodeWorkspaceVersion(
             context_type=ctx.context_type,
@@ -1047,6 +1102,7 @@ def save_workspace_version(ctx: WorkspaceContext, code: str, answer: str = "", s
                 "code_length": len(code or ""),
                 "answer_length": len(answer or ""),
                 "mmr_policy": ctx.mmr_policy,
+                "notes": str(notes)[:20_000] if notes is not None else load_workspace_notes(ctx),
             },
         )
         db.session.add(version)

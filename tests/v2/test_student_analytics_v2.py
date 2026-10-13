@@ -35,6 +35,9 @@ def test_student_analytics_renders_with_source_filters(client, role_users):
         # Growth zone section
         assert 'Зона роста: что подтянуть прямо сейчас' in html
 
+        # Readiness Legend 4th state
+        assert 'Не начато' in html
+
         # ELO table headers
         assert 'Номер ЕГЭ' in html
         assert 'Дней практики' in html
@@ -51,3 +54,36 @@ def test_student_analytics_zero_division_safety(client, role_users):
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
     assert 'Карта готовности к КЕГЭ' in html
+
+
+def test_student_analytics_bento_cards_metrics(client, role_users):
+    """Проверка корректности 4 Bento-карточек: Общая успеваемость, пустые состояния и посещаемость."""
+    tutor_id = role_users['tutor_id']
+    student_id = role_users['student_id']
+
+    login_as(client, tutor_id, 'tutor')
+
+    resp = client.get(f'/student/{student_id}/analytics')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+
+    # Карточка 1: правильный заголовок без ложной стрелки роста при 0 дельте
+    assert 'Общая успеваемость' in html
+    assert 'по проверенным работам' in html
+
+    # Карточка 2: ДЗ
+    assert 'Средняя оценка ДЗ' in html
+
+    # Карточка 3: Пробники
+    assert 'Балл за Пробники' in html
+    assert ('По проверенным пробникам' in html or 'Пробников пока нет' in html)
+
+    # Карточка 4: Посещаемость
+    assert 'Посещаемость' in html
+    assert 'пропущено' in html
+
+    # Смысловые разделы: Не начато для нерешенных блоков
+    assert 'Освоение разделов' in html
+    assert ('Не начато' in html or '%' in html)
+
+

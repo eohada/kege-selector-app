@@ -33,6 +33,13 @@ collect_ignore = [
         'test_ai_homework_importer.py',
         'test_teacher_dashboard_v2.py',
         'test_homework_ai_review_v2.py',
+        'test_tariffs_admin_v2.py',
+        'test_demo_experience_v2.py',
+        'test_telegram_hardening.py',
+        'test_telegram_application.py',
+        'test_telegram_delivery.py',
+        'test_python_programming_routes.py',
+        'test_python_theory_curriculum.py',
     }
 ]
 

@@ -477,6 +477,8 @@ def ensure_schema_columns(app):
     """
     try:
         with app.app_context():
+            from app.models import LessonWhiteboard, LessonWhiteboardOperation
+
             db.create_all()
             try:
                 db.session.commit()
@@ -489,6 +491,35 @@ def ensure_schema_columns(app):
             inspector = inspect(db.engine)
             
             table_names = inspector.get_table_names()
+
+            whiteboard_table = _resolve_table_name(table_names, 'LessonWhiteboards')
+            if whiteboard_table:
+                whiteboard_columns = {column['name'] for column in inspector.get_columns(whiteboard_table)}
+                whiteboard_additions = {
+                    'provider': "VARCHAR(32) DEFAULT 'miro'",
+                    'document_state': 'JSON',
+                    'document_version': 'INTEGER DEFAULT 0',
+                    'last_saved_by_user_id': 'INTEGER',
+                }
+                for column_name, column_type in whiteboard_additions.items():
+                    if column_name in whiteboard_columns:
+                        continue
+                    try:
+                        db.session.execute(text(f'ALTER TABLE "{whiteboard_table}" ADD COLUMN {column_name} {column_type}'))
+                        db.session.commit()
+                        logger.info('LessonWhiteboards.%s column added', column_name)
+                    except Exception as error:
+                        db.session.rollback()
+                        logger.warning('Could not add LessonWhiteboards.%s: %s', column_name, error)
+
+            operation_table = _resolve_table_name(table_names, 'LessonWhiteboardOperations')
+            if not operation_table:
+                try:
+                    LessonWhiteboardOperation.__table__.create(db.engine)
+                    logger.info('LessonWhiteboardOperations table created')
+                except Exception as error:
+                    db.session.rollback()
+                    logger.warning('Could not create LessonWhiteboardOperations: %s', error)
             guest_sessions_table = _resolve_table_name(table_names, 'GuestSessions')
             if guest_sessions_table:
                 guest_columns = {column['name'] for column in inspector.get_columns(guest_sessions_table)}
@@ -1011,6 +1042,62 @@ def ensure_schema_columns(app):
                             except Exception as e:
                                 logger.warning(f"Could not add lessons_count to {tp_table}: {e}")
                                 db.session.rollback()
+                        if 'allow_referral' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN allow_referral BOOLEAN DEFAULT 1'))
+                                logger.info(f"Added allow_referral to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add allow_referral to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'allow_promocode' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN allow_promocode BOOLEAN DEFAULT 1'))
+                                logger.info(f"Added allow_promocode to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add allow_promocode to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'exam' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN exam VARCHAR(50)'))
+                                logger.info(f"Added exam to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add exam to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'subject' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN subject VARCHAR(50)'))
+                                logger.info(f"Added subject to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add subject to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'format' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN format VARCHAR(50)'))
+                                logger.info(f"Added format to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add format to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'level' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN level VARCHAR(50)'))
+                                logger.info(f"Added level to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add level to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'badge' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN badge VARCHAR(100)'))
+                                logger.info(f"Added badge to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add badge to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'features' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN features JSON'))
+                                logger.info(f"Added features to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add features to {tp_table}: {e}")
+                                db.session.rollback()
                 except Exception:
                     pass
 
@@ -1118,6 +1205,14 @@ def ensure_schema_columns(app):
                     db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN student_submission TEXT'))
                 if 'submission_correct' not in lesson_task_columns:
                     db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN submission_correct INTEGER'))
+                safe_add_lesson_task_column(
+                    'is_visible_to_student',
+                    'BOOLEAN DEFAULT TRUE' if is_postgres else 'BOOLEAN DEFAULT 1',
+                )
+                safe_add_lesson_task_column(
+                    'is_answer_visible_to_student',
+                    'BOOLEAN DEFAULT FALSE' if is_postgres else 'BOOLEAN DEFAULT 0',
+                )
                 safe_add_lesson_task_column('status', 'TEXT DEFAULT \'pending\'')  # comment
                 safe_add_lesson_task_column('submission_files', 'JSON')  # comment
                 safe_add_lesson_task_column('teacher_comment', 'TEXT')  # comment
@@ -1195,6 +1290,36 @@ def ensure_schema_columns(app):
                         logger.info(f"Added streak_frozen to {students_table}")
                     except Exception as e:
                         logger.warning(f"Could not add streak_frozen: {e}")
+                        db.session.rollback()
+
+                if 'streak_weeks' not in student_columns:
+                    try:
+                        alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN streak_weeks INTEGER DEFAULT 0 NOT NULL'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added streak_weeks to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add streak_weeks: {e}")
+                        db.session.rollback()
+
+                if 'last_completed_week' not in student_columns:
+                    try:
+                        alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN last_completed_week VARCHAR(20)'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added last_completed_week to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add last_completed_week: {e}")
+                        db.session.rollback()
+
+                if 'streak_weeks_frozen' not in student_columns:
+                    try:
+                        if is_postgres:
+                            alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN streak_weeks_frozen BOOLEAN DEFAULT FALSE NOT NULL'
+                        else:
+                            alter_query = f'ALTER TABLE "{students_table}" ADD COLUMN streak_weeks_frozen INTEGER DEFAULT 0 NOT NULL'
+                        db.session.execute(text(alter_query))
+                        logger.info(f"Added streak_weeks_frozen to {students_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add streak_weeks_frozen: {e}")
                         db.session.rollback()
 
                 if 'xp' not in student_columns:
@@ -1437,19 +1562,19 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add user_id column: {e}")
                 
-                try:
-                    pg_cursor = db.session.connection().connection.cursor()
-                    pg_cursor.execute("""
-                        SELECT data_type, character_maximum_length 
-                        FROM information_schema.columns 
-                        WHERE table_name = %s AND column_name = 'session_id'
-                    """, (audit_log_table,))
-                    col_info = pg_cursor.fetchone()
-                    if col_info and col_info[0] == 'character varying' and col_info[1] == 100:
-                        db.session.execute(text(f'ALTER TABLE "{audit_log_table}" ALTER COLUMN session_id TYPE TEXT'))
-                        logger.info(f"Updated session_id column in {audit_log_table} to TEXT")
-                except Exception as e:
-                    logger.warning(f"Could not update session_id column: {e}")
+                if _is_postgres(app):
+                    try:
+                        result = db.session.execute(text("""
+                            SELECT data_type, character_maximum_length
+                            FROM information_schema.columns
+                            WHERE table_name = :table_name AND column_name = 'session_id'
+                        """), {'table_name': audit_log_table})
+                        col_info = result.fetchone()
+                        if col_info and col_info[0] == 'character varying' and col_info[1] == 100:
+                            db.session.execute(text(f'ALTER TABLE "{audit_log_table}" ALTER COLUMN session_id TYPE TEXT'))
+                            logger.info(f"Updated session_id column in {audit_log_table} to TEXT")
+                    except Exception as e:
+                        logger.warning(f"Could not update session_id column: {e}")
 
             reminders_table = 'Reminders' if 'Reminders' in table_names else ('reminders' if 'reminders' in table_names else None)
             if reminders_table:
@@ -1468,7 +1593,7 @@ def ensure_schema_columns(app):
                     except Exception as e:
                         logger.warning(f"Could not check/update reminder_time nullable: {e}")
                 else:
-                    logger.warning("SQLite does not support ALTER COLUMN, reminder_time will remain NOT NULL")
+                    logger.info("SQLite keeps the existing Reminders.reminder_time nullability")
             
             users_table = _resolve_table_name(table_names, 'Users')
             if users_table:
@@ -2476,6 +2601,19 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         _add_col('LessonOutcomes', 'identified_errors', 'JSON' if not is_postgres else 'JSONB')
         _add_col('LessonOutcomes', 'auto_replan_triggered', 'BOOLEAN DEFAULT FALSE' if is_postgres else 'INTEGER DEFAULT 0')
         _add_col('LessonOutcomes', 'adaptive_diff_summary', 'JSON' if not is_postgres else 'JSONB')
+        # Demo lead capture was added after older local databases were already
+        # in circulation. Keep the runtime compatibility path aligned with
+        # the Alembic migration so the final demo request cannot 500 on an
+        # otherwise valid legacy SQLite copy.
+        _add_col('CallRequests', 'is_demo', 'BOOLEAN DEFAULT FALSE' if is_postgres else 'INTEGER DEFAULT 0')
+        _add_col('CallRequests', 'consent_given_at', 'TIMESTAMP' if is_postgres else 'DATETIME')
+        _add_col('CallRequests', 'source', 'VARCHAR(50)')
+        try:
+            call_requests_table = _resolve_table_name(table_names, 'CallRequests') or 'CallRequests'
+            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_CallRequests_is_demo ON "{call_requests_table}" (is_demo)'))
+            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_CallRequests_source ON "{call_requests_table}" (source)'))
+        except Exception as e:
+            logger.warning(f"Could not ensure demo CallRequests indexes: {e}")
         db.session.commit()
 
         # --- Seed: ExamCourse «ЕГЭ Информатика» ---

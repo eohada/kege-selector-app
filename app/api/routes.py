@@ -5,17 +5,30 @@ import json
 import logging
 import os
 import secrets
-from flask import Blueprint, jsonify, request, flash, redirect, url_for, render_template, current_app
+from flask import Blueprint, jsonify, request, flash, redirect, url_for, render_template, current_app, session
 from flask_login import login_required, current_user
 import random
 import string
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import func, or_
-from app.models import db, Student, UserProfile
-
 from app.api import api_bp
 from app import csrf
-from app.models import Student, Lesson, Tasks, db, User, Enrollment, UserProfile, Course
+from app.models import (
+    db,
+    Student,
+    Lesson,
+    Tasks,
+    User,
+    Enrollment,
+    UserProfile,
+    Course,
+    Assignment,
+    TheoryBlock,
+    TheoryGroup,
+    StudentTheoryState,
+    LibraryMaterial,
+    StudentWorkspaceFile,
+)
 from app.notifications.service import notify_student_and_parents
 from app.students.forms import normalize_school_class
 from app.utils.student_id_manager import assign_platform_id_if_needed
@@ -32,6 +45,254 @@ def _absolute_app_url(path: str) -> str:
     if base:
         return f'{base}{path}'
     return path
+
+
+@api_bp.route('/api/python-programming/final-test', methods=['GET'])
+@login_required
+def api_python_programming_final_test():
+    """Выдать ученику случайный итоговый вариант по программированию."""
+    from app.utils.python_programming_bank import (
+        build_programming_final_test,
+        load_programming_bank,
+        validate_programming_bank,
+    )
+
+    course_id = request.args.get('course_id', type=int)
+    if not course_id:
+        return jsonify({'success': False, 'error': 'Не указан курс теории'}), 400
+    student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_student() else None
+    course = Course.query.get(course_id)
+    if course and any(m in (course.title or '').casefold() for m in ('программ', 'python')):
+        blocks = TheoryBlock.query.filter(TheoryBlock.course_id == course_id).all()
+    else:
+        blocks = (
+            TheoryBlock.query
+            .join(TheoryGroup, TheoryGroup.id == TheoryBlock.group_id)
+            .filter(
+                TheoryBlock.course_id == course_id,
+                or_(
+                    TheoryGroup.name.ilike('%программ%'),
+                    TheoryGroup.name.ilike('%python%'),
+                ),
+            )
+            .all()
+        )
+    states = {
+        row.task_number
+        for row in StudentTheoryState.query.filter_by(student_id=student.student_id, course_id=course_id).all()
+        if row.is_read or int(row.reading_progress or 0) >= 100
+    } if student else set()
+    progress = round(len(states) * 100 / len(blocks)) if blocks else 0
+    if student and progress < 100:
+        return jsonify({
+            'success': False,
+            'locked': True,
+            'progress': progress,
+            'error': f'Сначала изучи всю теорию: сейчас пройдено {progress}%.',
+        }), 403
+
+    seed_value = request.args.get('seed')
+    if seed_value is not None:
+        try:
+            seed = int(seed_value)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'seed должен быть целым числом'}), 400
+    else:
+        seed = None
+
+    try:
+        bank = load_programming_bank()
+        report = validate_programming_bank(bank)
+        user_id = current_user.id if current_user.is_authenticated else None
+        session_key = f'python_final_test_{user_id}_{course_id}' if (user_id and course_id) else (f'python_final_test_{course_id}' if course_id else 'python_final_test')
+        saved = session.get(session_key) or {}
+        by_id = {task.task_id: task for task in bank}
+        saved_ids = saved.get('task_ids', [])
+        tasks = [by_id[tid] for tid in saved_ids if tid in by_id]
+        prev_attempts = []
+        if user_id and course_id:
+            from app.models import TheoryFinalTestAttempt
+            prev_attempts = TheoryFinalTestAttempt.query.filter_by(
+                user_id=user_id, course_id=course_id
+            ).order_by(TheoryFinalTestAttempt.id.desc()).all()
+
+        last_task_ids = set()
+        all_history_ids = set()
+        for att in prev_attempts:
+            if not last_task_ids and att.task_ids:
+                last_task_ids = set(att.task_ids)
+            if att.task_ids:
+                all_history_ids.update(att.task_ids)
+
+        if not last_task_ids and saved.get('task_ids'):
+            last_task_ids = set(saved.get('task_ids', []))
+            all_history_ids.update(last_task_ids)
+
+        retry = request.args.get('retry') == '1'
+        already_passed = any(a.passed for a in prev_attempts) or bool(saved.get('passed'))
+        can_retry = retry and not already_passed
+        if len(tasks) != 20 or can_retry:
+            tasks = build_programming_final_test(
+                size=20,
+                seed=seed,
+                tasks=bank,
+                previous_task_ids=last_task_ids,
+                history_task_ids=all_history_ids,
+                max_overlap=4,
+            )
+            session[session_key] = {
+                'task_ids': [task.task_id for task in tasks],
+                'attempted': False,
+                'passed': already_passed,
+                'score': max([a.score for a in prev_attempts], default=int(saved.get('score', 0))),
+            }
+        return jsonify({
+            'success': True,
+            'size': len(tasks),
+            'bank': report,
+            'locked': False,
+            'progress': progress,
+            'passed': any(a.passed for a in prev_attempts) or bool(session.get(session_key, {}).get('passed')),
+            'score': max([a.score for a in prev_attempts], default=int(session.get(session_key, {}).get('score', 0))),
+            'attempts_count': len(prev_attempts),
+            'tasks': [
+                {
+                    'id': task.task_id,
+                    'source': task.source,
+                    'topic': task.topic,
+                    'level': task.level,
+                    'title': task.title,
+                    'content_html': task.content_html,
+                    'answer': task.answer,
+                    'type': getattr(task, 'task_type', 'short_answer'),
+                    'block': getattr(task, 'block', 1),
+                    'block_title': getattr(task, 'block_title', ''),
+                    'options': list(getattr(task, 'options', ())),
+                    'matching_left': list(getattr(task, 'matching_left', ())),
+                    'matching_right': list(getattr(task, 'matching_right', ())),
+                    'explanation': getattr(task, 'explanation', ''),
+                }
+                for task in tasks
+            ],
+        })
+    except ValueError as exc:
+        logger.error('Банк программирования не прошёл проверку: %s', exc)
+        return jsonify({'success': False, 'error': 'Банк заданий временно недоступен'}), 503
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.error('Не удалось прочитать банк программирования: %s', exc, exc_info=True)
+        return jsonify({'success': False, 'error': 'Не удалось загрузить банк заданий'}), 503
+
+
+@api_bp.route('/api/python-programming/final-test/grade', methods=['POST'])
+@csrf.exempt
+@login_required
+def api_python_programming_final_test_grade():
+    """Проверить введённые ответы итогового варианта на сервере и сохранить попытку."""
+    from app.utils.python_programming_bank import grade_answers, load_programming_bank
+    from core.db_models import moscow_now
+    from app.models import TheoryFinalTestAttempt, Student, db
+
+    payload = request.get_json(silent=True) or {}
+    answers = payload.get('answers')
+    course_id = payload.get('course_id')
+    try:
+        course_id = int(course_id)
+    except (TypeError, ValueError):
+        course_id = None
+    if not isinstance(answers, dict):
+        return jsonify({'success': False, 'error': 'answers должен быть объектом'}), 400
+    user_id = current_user.id if current_user.is_authenticated else None
+    session_key = f'python_final_test_{user_id}_{course_id}' if (user_id and course_id) else (f'python_final_test_{course_id}' if course_id else None)
+    saved = session.get(session_key, {}) if session_key else {}
+    allowed_ids = set(saved.get('task_ids', []))
+    if len(allowed_ids) != 20:
+        return jsonify({'success': False, 'error': 'Сначала открой свой итоговый вариант'}), 400
+    answers = {task_id: value for task_id, value in answers.items() if task_id in allowed_ids}
+    try:
+        bank_tasks = load_programming_bank()
+        result = grade_answers(answers, tasks=bank_tasks)
+        passed = result['correct'] >= 18
+
+        bank_by_id = {t.task_id: t for t in bank_tasks}
+        block_names = {
+            1: "Синтаксис, типы и арифметика",
+            2: "Логика и ветвления",
+            3: "Циклы for и while",
+            4: "Строки, списки и функции",
+        }
+        block_scores = {
+            str(b): {"correct": 0, "total": 0, "title": block_names.get(b, f"Блок {b}")}
+            for b in (1, 2, 3, 4)
+        }
+        for det in result['details']:
+            t_obj = bank_by_id.get(det['task_id'])
+            b_key = str(getattr(t_obj, 'block', 1) if t_obj else 1)
+            if b_key in block_scores:
+                block_scores[b_key]['total'] += 1
+                if det['is_correct']:
+                    block_scores[b_key]['correct'] += 1
+
+        student = Student.query.filter_by(user_id=current_user.id).first() if current_user.is_authenticated else None
+        attempt_number = 1
+        if current_user.is_authenticated and course_id:
+            prev_count = TheoryFinalTestAttempt.query.filter_by(
+                user_id=current_user.id, course_id=course_id
+            ).count()
+            attempt_number = prev_count + 1
+            attempt_row = TheoryFinalTestAttempt(
+                user_id=current_user.id,
+                student_id=student.student_id if student else None,
+                course_id=course_id,
+                attempt_number=attempt_number,
+                score=result['correct'],
+                total=20,
+                passed=passed,
+                task_ids=saved.get('task_ids', []),
+                answers=answers,
+                details=result['details'],
+                block_scores=block_scores,
+                created_at=moscow_now(),
+            )
+            db.session.add(attempt_row)
+            db.session.commit()
+
+        new_achievement = None
+        if passed and student:
+            try:
+                from app.utils.achievement_service import grant_achievement, ACHIEVEMENTS_REGISTRY
+                if grant_achievement(student, 'secret_python_master', commit=True):
+                    meta = ACHIEVEMENTS_REGISTRY.get('secret_python_master', {})
+                    new_achievement = {
+                        'key': 'secret_python_master',
+                        'title': meta.get('title', 'Повелитель Питона'),
+                        'desc': meta.get('desc', ''),
+                        'icon': meta.get('icon', 'ph-crown'),
+                        'xp_reward': meta.get('xp_reward', 50),
+                        'is_secret': True,
+                    }
+            except Exception as ach_err:
+                logger.warning('Не удалось выдать секретную ачивку secret_python_master: %s', ach_err)
+
+        session[session_key] = {
+            **saved,
+            'attempted': True,
+            'passed': passed or saved.get('passed', False),
+            'score': max(result['correct'], saved.get('score', 0)),
+        }
+        return jsonify({
+            'success': True,
+            **result,
+            'total': 20,
+            'threshold': 18,
+            'threshold_percent': 90,
+            'passed': passed,
+            'attempt_number': attempt_number,
+            'block_scores': block_scores,
+            'new_achievement': new_achievement,
+        })
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.error('Не удалось проверить ответы по программированию: %s', exc, exc_info=True)
+        return jsonify({'success': False, 'error': 'Не удалось проверить ответы'}), 503
 
 @api_bp.route('/api/audit-log', methods=['POST'])
 @login_required
@@ -296,7 +557,7 @@ def api_student_delete(student_id):
 @api_bp.route('/api/global-search', methods=['GET'])
 @login_required
 def api_global_search():
-    """Глобальный поиск по всем сущностям: ученики, уроки, задания"""
+    """Глобальный поиск по доступным пользователю сущностям платформы."""
     query = request.args.get('q', '').strip()
     if not query or len(query) < 2:
         return jsonify({
@@ -307,11 +568,38 @@ def api_global_search():
     results = {
         'students': [],
         'lessons': [],
-        'tasks': []
+        'assignments': [],
+        'tasks': [],
+        'courses': [],
+        'theory': [],
+        'materials': [],
+        'files': [],
     }
     
     try:
         search_pattern = f'%{query}%'
+        scope = get_user_scope(current_user)
+        can_see_all = bool(scope.get('can_see_all'))
+        scoped_student_ids = [int(value) for value in (scope.get('student_ids') or []) if str(value).isdigit()]
+
+        def apply_student_scope(query_obj):
+            if can_see_all:
+                return query_obj
+            scope_filters = [Student.mentor_id == current_user.id]
+            if scoped_student_ids:
+                scope_filters.extend([
+                    Student.student_id.in_(scoped_student_ids),
+                    Student.user_id.in_(scoped_student_ids),
+                ])
+            return query_obj.filter(or_(*scope_filters))
+
+        def apply_lesson_scope(query_obj):
+            if can_see_all:
+                return query_obj
+            scope_filters = [Lesson.student.has(Student.mentor_id == current_user.id)]
+            if scoped_student_ids:
+                scope_filters.append(Lesson.student_id.in_(scoped_student_ids))
+            return query_obj.filter(or_(*scope_filters))
         filters = [
             Student.name.ilike(search_pattern),
             Student.category.ilike(search_pattern)
@@ -330,7 +618,7 @@ def api_global_search():
             except ValueError:
                 pass
         
-        students = Student.query.filter(or_(*filters)).limit(10).all()
+        students = apply_student_scope(Student.query.filter(or_(*filters))).limit(10).all()
         
         for student in students:
             results['students'].append({
@@ -342,17 +630,19 @@ def api_global_search():
                 'url': url_for('students.student_profile', student_id=student.student_id)
             })
         
+        lesson_query = Lesson.query
         try:
             lesson_id = int(query)
-            lessons = Lesson.query.filter(Lesson.lesson_id == lesson_id).limit(5).all()
+            lesson_query = lesson_query.filter(Lesson.lesson_id == lesson_id)
         except ValueError:
-            lessons = Lesson.query.filter(
+            lesson_query = lesson_query.filter(
                 or_(
                     Lesson.topic.ilike(search_pattern),
                     Lesson.notes.ilike(search_pattern),
                     Lesson.homework.ilike(search_pattern)
                 )
-            ).limit(5).all()
+            )
+        lessons = apply_lesson_scope(lesson_query).limit(8).all()
         
         for lesson in lessons:
             results['lessons'].append({
@@ -364,19 +654,47 @@ def api_global_search():
                 'status': lesson.status,
                 'url': url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id)
             })
+
+        assignment_query = Assignment.query
+        try:
+            assignment_id = int(query)
+            assignment_query = assignment_query.filter(Assignment.assignment_id == assignment_id)
+        except ValueError:
+            assignment_query = assignment_query.filter(
+                or_(
+                    Assignment.title.ilike(search_pattern),
+                    Assignment.description.ilike(search_pattern),
+                    Assignment.assignment_type.ilike(search_pattern),
+                )
+            )
+        if not can_see_all:
+            assignment_scope = [Assignment.created_by_id == current_user.id]
+            if scoped_student_ids:
+                assignment_scope.append(Assignment.lesson.has(Lesson.student_id.in_(scoped_student_ids)))
+            assignment_query = assignment_query.filter(or_(*assignment_scope))
+        for assignment in assignment_query.order_by(Assignment.updated_at.desc()).limit(8).all():
+            results['assignments'].append({
+                'id': assignment.assignment_id,
+                'title': assignment.title,
+                'description': assignment.description or '',
+                'assignment_type': assignment.assignment_type,
+                'deadline': assignment.deadline.strftime('%d.%m.%Y') if assignment.deadline else None,
+                'url': url_for('assignments.assignment_view', assignment_id=assignment.assignment_id)
+            })
         
         try:
             task_id = int(query)
-            tasks = Tasks.query.filter(
+            task_query = Tasks.query.filter(
                 or_(
                     Tasks.task_id == task_id,
                     Tasks.site_task_id == task_id
                 )
-            ).limit(5).all()
+            )
         except ValueError:
-            tasks = Tasks.query.filter(
+            task_query = Tasks.query.filter(
                 Tasks.content_html.ilike(search_pattern)
-            ).limit(5).all()
+            )
+        tasks = task_query.limit(8).all()
         
         for task in tasks:
             results['tasks'].append({
@@ -386,11 +704,81 @@ def api_global_search():
                 'content_preview': task.content_html[:200] + '...' if task.content_html and len(task.content_html) > 200 else (task.content_html or ''),
                 'url': url_for('task_generator.generate_results', task_id=task.task_id)
             })
+
+        course_query = Course.query.filter(Course.is_active.is_(True))
+        try:
+            course_query = course_query.filter(Course.id == int(query))
+        except ValueError:
+            course_query = course_query.filter(or_(Course.title.ilike(search_pattern), Course.slug.ilike(search_pattern)))
+        for course in course_query.order_by(Course.title.asc()).limit(8).all():
+            results['courses'].append({
+                'id': course.id,
+                'title': course.title,
+                'slug': course.slug,
+                'url': '/courses'
+            })
+
+        theory_query = TheoryBlock.query.filter(
+            or_(
+                TheoryBlock.title.ilike(search_pattern),
+                TheoryBlock.description.ilike(search_pattern),
+                TheoryBlock.content.ilike(search_pattern),
+            )
+        )
+        try:
+            theory_query = TheoryBlock.query.filter(TheoryBlock.task_number == int(query))
+        except ValueError:
+            pass
+        for block in theory_query.order_by(TheoryBlock.position.asc()).limit(8).all():
+            results['theory'].append({
+                'id': block.id,
+                'title': block.title or f'Теория по заданию №{block.task_number}',
+                'task_number': block.task_number,
+                'url': url_for('theory.theory_view_block', block_id=block.id, course_id=block.course_id)
+            })
+
+        material_query = LibraryMaterial.query.filter(
+            or_(
+                LibraryMaterial.title.ilike(search_pattern),
+                LibraryMaterial.description.ilike(search_pattern),
+                LibraryMaterial.filename.ilike(search_pattern),
+                LibraryMaterial.tags.ilike(search_pattern),
+            )
+        )
+        if not can_see_all:
+            material_query = material_query.filter(LibraryMaterial.teacher_id == current_user.id)
+        for material in material_query.order_by(LibraryMaterial.created_at.desc()).limit(8).all():
+            results['materials'].append({
+                'id': material.id,
+                'title': material.title,
+                'filename': material.original_filename or material.filename,
+                'category': material.category,
+                'url': '/workspace/files'
+            })
+
+        file_query = StudentWorkspaceFile.query.filter(
+            or_(
+                StudentWorkspaceFile.original_filename.ilike(search_pattern),
+                StudentWorkspaceFile.current_filename.ilike(search_pattern),
+            )
+        )
+        if not can_see_all:
+            file_scope = [StudentWorkspaceFile.user_id == current_user.id]
+            if scoped_student_ids:
+                file_scope.append(StudentWorkspaceFile.user_id.in_(scoped_student_ids))
+            file_query = file_query.filter(or_(*file_scope))
+        for workspace_file in file_query.order_by(StudentWorkspaceFile.updated_at.desc()).limit(8).all():
+            results['files'].append({
+                'id': workspace_file.id,
+                'title': workspace_file.original_filename or workspace_file.current_filename,
+                'context_type': workspace_file.context_type,
+                'url': '/workspace/files'
+            })
         
         return jsonify({
             'success': True,
             'results': results,
-            'total': len(results['students']) + len(results['lessons']) + len(results['tasks'])
+            'total': sum(len(items) for items in results.values())
         })
     except Exception as e:
         logger.error(f"Ошибка при глобальном поиске: {e}", exc_info=True)

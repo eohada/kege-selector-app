@@ -38,21 +38,21 @@ def test_gamification_xp_streak_and_levels(app):
     db.session.add(student)
     db.session.commit()
 
-    # 1. Lesson completion (+30 XP + streak)
+    # 1. Lesson completion (+30 XP + streak + 25 XP lesson_first_done)
     awarded_lesson = reward_lesson_completion(student)
     assert awarded_lesson == 30
-    assert student.xp == 30
+    assert student.xp == 30 + 25
     assert student.streak_days == 1
 
-    # 2. Theory reading (+10 XP)
+    # 2. Theory reading (+10 XP + 20 XP theory_first)
     awarded_theory = reward_theory_reading(student)
     assert awarded_theory == 10
-    assert student.xp == 40
+    assert student.xp == 55 + 10 + 20
 
-    # 3. Single task solution (+10 XP)
+    # 3. Single task solution (+10 XP + 20 XP first_step)
     awarded_task = reward_single_task_correct(student)
     assert awarded_task == 10
-    assert student.xp == 50
+    assert student.xp == 85 + 10 + 20
 
     # 4. Level calculation
     level = calculate_level_from_xp(student.xp)

@@ -1384,7 +1384,17 @@ def _effective_correct_answer(assignment_task):
     if override:
         return override
     task = assignment_task.task
-    return (task.answer or '').strip()
+    stored_answer = (task.answer or '').strip()
+    if stored_answer:
+        return stored_answer
+    spec = getattr(task, 'answer_spec', None)
+    if isinstance(spec, dict) and str(spec.get('type') or '').strip().lower() == 'multiple_choice':
+        correct_values = spec.get('correct_values')
+        if isinstance(correct_values, (list, tuple)):
+            values = sorted({str(value).strip() for value in correct_values if str(value).strip()})
+            if values:
+                return json.dumps(values, ensure_ascii=False)
+    return ''
 
 
 def _get_task_template(task):
@@ -5023,7 +5033,8 @@ def submission_submit(submission_id):
         # once after the status transition has been committed; repeated POSTs
         # are rejected above and cannot duplicate XP or the streak.
         from app.utils.gamification_service import reward_submission
-        awarded_xp = reward_submission(student, correct_answers=0, submission=submission)
+        correct_answers_cnt = sum(1 for a in (submission.answers or []) if getattr(a, 'is_correct', False))
+        awarded_xp = reward_submission(student, correct_answers=correct_answers_cnt, submission=submission)
 
         try:
             from app.telegram.notifications import on_submission_status_changed
@@ -5164,6 +5175,18 @@ def submission_run_code(submission_id):
         user_id=current_user.id,
     )
     stdout, stderr, turtle_b64 = run_python_sandbox(code, task_files=task_files)
+    if student:
+        try:
+            from app.utils.achievement_service import process_achievement_event
+            if stderr:
+                if 'RecursionError' in stderr:
+                    process_achievement_event(student, 'python_error', event_data={'error_type': 'RecursionError'})
+                elif 'ZeroDivisionError' in stderr:
+                    process_achievement_event(student, 'python_error', event_data={'error_type': 'ZeroDivisionError'})
+            elif 'import this' in code or (stdout and 'The Zen of Python' in stdout):
+                process_achievement_event(student, 'zen_python')
+        except Exception:
+            pass
     payload: dict = {'success': True, 'stdout': stdout, 'stderr': stderr}
     if turtle_b64:
         payload['turtle_image_b64'] = turtle_b64

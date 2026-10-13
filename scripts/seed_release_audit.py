@@ -18,6 +18,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Keep the release-audit fixture contract local to the seed script.  The QA
+# routes expose the tester UI, not the credentials/fixture inventory.
+QA_POOL_USERNAMES = (
+    'qa_pool_student_1',
+    'qa_pool_tutor_1',
+    'qa_pool_parent_1',
+    'qa_pool_admin_1',
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Seed QA users for BooStudy release audit.')
@@ -43,8 +52,6 @@ def main() -> int:
 
     from app import create_app
     from app.models import db, Enrollment, FamilyTie, Student, User, UserSubscription, moscow_now
-    from app.qa.routes import QA_POOL_USERNAMES
-
     app = create_app()
     with app.app_context():
         password_hash = generate_password_hash(args.password)
