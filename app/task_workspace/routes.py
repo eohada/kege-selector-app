@@ -53,7 +53,27 @@ def workspace_page():
     context_id = request.args.get("context_id", type=int)
     assignment_task_id = request.args.get("assignment_task_id", type=int)
     ctx = resolve_workspace_context(_workspace_actor(), context_type, context_id, assignment_task_id)
-    return render_template("task_workspace.html", workspace=ctx.as_payload())
+    payload = ctx.as_payload()
+    if request.args.get("embedded") == "answer":
+        return render_template("task_workspace.html", workspace=payload, embedded_answer=True)
+    if context_type == "submission_task":
+        return render_template(
+            "sandbox/trainer.html",
+            room_mode=True,
+            homework_mode=True,
+            homework_workspace=payload,
+            room_os_code=payload.get("code") or payload.get("starter_code") or "",
+            room_student_notes="",
+            classwork_tasks=[],
+            tasks_json="[]",
+            lesson=None,
+            lesson_id=None,
+            student=None,
+            studio_state={},
+            is_studio_teacher=False,
+            linked_homework_url=None,
+        )
+    return render_template("task_workspace.html", workspace=payload)
 
 
 @task_workspace_bp.route("/api/context")
@@ -160,6 +180,22 @@ def workspace_save_api():
     except Exception:
         pass
     return jsonify({"success": True, "saved": "server", "versions": versions})
+
+
+@task_workspace_bp.route("/api/code", methods=["POST"])
+@login_required
+@limiter.limit("80/minute")
+def workspace_code_api():
+    data = request.get_json(silent=True) or {}
+    ctx = resolve_workspace_context(
+        _workspace_actor(), data.get("context_type", ""), data.get("context_id"), data.get("assignment_task_id")
+    )
+    if not ctx.can_edit:
+        abort(403)
+    # OS editor saves only code. The answer window owns the answer and its
+    # value must survive independent code autosaves.
+    save_workspace_code(ctx, str(data.get("code") or ""), ctx.plain_answer)
+    return jsonify({"success": True})
 
 
 @task_workspace_bp.route("/api/versions")

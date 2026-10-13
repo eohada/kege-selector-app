@@ -1,6 +1,6 @@
 """Add v2 features schema contract (Theory final tests, whiteboards, tariffs, student streak, lesson tasks)
 
-Revision ID: 20261013_v2_features_schema_contract
+Revision ID: v2_schema_contract_20261013
 Revises: merge_demo_heads_20261005
 Create Date: 2026-10-13 14:30:00.000000
 """
@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = '20261013_v2_features_schema_contract'
+revision = 'v2_schema_contract_20261013'
 down_revision = 'merge_demo_heads_20261005'
 branch_labels = None
 depends_on = None

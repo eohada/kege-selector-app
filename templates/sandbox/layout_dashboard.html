@@ -17,7 +17,7 @@
   {% block extra_head %}{% endblock %}
 </head>
 {% set dashboard_admin_shell = request.path.startswith('/admin') and current_user is defined and current_user and current_user.is_authenticated %}
-<body class="bs-dashboard-shell{% if current_user.is_student() %} bs-student-shell{% if dashboard_showcase|default(false) %} bs-showcase-shell{% endif %}{% elif not dashboard_admin_shell %} bs-teacher-shell{% endif %}{% if dashboard_admin_shell %} bs-admin-shell{% endif %}{% if room_mode|default(false) %} bs-lesson-room{% endif %}">
+<body class="bs-dashboard-shell{% if current_user.is_student() %} bs-student-shell{% if dashboard_showcase|default(false) %} bs-showcase-shell{% endif %}{% elif not dashboard_admin_shell %} bs-teacher-shell{% endif %}{% if dashboard_admin_shell %} bs-admin-shell{% endif %}{% if room_mode|default(false) %} bs-lesson-room{% endif %}{% if embedded_answer|default(false) %} tw-embedded-answer{% if workspace.presentation_mode == 'code' %} tw-embedded-code{% endif %}{% endif %}">
   <aside id="dashboard-sidebar" class="bs-dashboard-sidebar" aria-label="Основная навигация">
     <a class="bs-dashboard-brand" href="{{ '/admin/users' if dashboard_admin_shell else url_for('main.dashboard') }}" aria-label="BooStudy, главная">
       <span class="bs-dashboard-brand-mark"><i class="ph-bold ph-graduation-cap"></i></span>

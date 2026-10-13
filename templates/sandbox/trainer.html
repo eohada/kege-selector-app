@@ -1,12 +1,13 @@
 {% set room_mode = room_mode|default(false) %}
+{% set homework_mode = homework_mode|default(false) %}
 {% set room_lesson = lesson|default(none) %}
 {% set room_task = (classwork_tasks[0] if classwork_tasks else none) if room_mode else none %}
 {% set room_task_title = (room_task.task.title if room_task and room_task.task and room_task.task.title else 'Фокус урока') %}
 {% set room_starter_code = room_os_code|default('') or (room_task.task.starter_code if room_task and room_task.task and room_task.task.starter_code else '') %}
-{% extends "sandbox/layout_teacher.html" if (room_mode and is_studio_teacher|default(false)) else "sandbox/layout_student.html" %}
-{% set active_page = 'lesson_room' if room_mode else 'trainer' %}
+{% extends "sandbox/layout_teacher.html" if (room_mode and (is_studio_teacher|default(false) or (homework_mode and homework_workspace.can_review))) else "sandbox/layout_student.html" %}
+{% set active_page = 'assignments' if homework_mode else ('lesson_room' if room_mode else 'trainer') %}
 
-{% block title %}{{ (room_lesson.topic if room_mode and room_lesson else 'Тренажёр v2') }} · BooStudy{% endblock %}
+{% block title %}{{ (homework_workspace.assignment_title if homework_mode else (room_lesson.topic if room_mode and room_lesson else 'Тренажёр v2')) }} · BooStudy{% endblock %}
 
 {% block sandbox_content %}
 <!-- Skulpt Python Interpreter for KEGE Engine -->
@@ -16,6 +17,8 @@
 <script id="trainer-os-config" type="application/json">{{ {
   'trainer_token': trainer_token|default(none),
   'room_mode': room_mode,
+  'homework_mode': homework_mode,
+  'homework_workspace': homework_workspace|default(none),
   'lesson_id': lesson_id|default(none),
   'viewer_id': current_user.id if current_user.is_authenticated else none,
   'lesson_topic': room_lesson.topic|default('') if room_lesson else '',
@@ -2153,12 +2156,26 @@
       }
     </style>
     {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261013-50">{% endif %}
+    {% if homework_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261013-os"><link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261013-1">{% endif %}
 
     <!-- 3. РЕЖИМ 2: АРЕНА НАРЕШИВАНИЯ (REAL GLASS OS 8.0 ULTRA WORKSPACE) -->
     <div id="trainer-arena-view"
-      class="{% if not room_mode %}hidden {% endif %}w-full h-[calc(100vh-3rem)] overflow-hidden relative bg-[#F8FAFC] rounded-[2rem] border-2 border-slate-200/80 shadow-2xl font-mono text-slate-800{% if room_mode %} room-lesson-os{% endif %}">
+      class="{% if not room_mode %}hidden {% endif %}w-full h-[calc(100vh-3rem)] overflow-hidden relative bg-[#F8FAFC] rounded-[2rem] border-2 border-slate-200/80 shadow-2xl font-mono text-slate-800{% if room_mode %} room-lesson-os{% endif %}{% if homework_mode %} homework-os{% if not homework_workspace.can_edit %} homework-os-review{% endif %}{% endif %}">
 
-      {% if room_mode %}
+      {% if homework_mode %}
+      <header class="lesson-os-system-bar homework-os-system-bar" aria-label="Панель домашней работы">
+        <div class="lesson-os-system-left"><a class="lesson-os-system-action" href="{{ homework_workspace.return_url or url_for('submissions.list_submissions') }}"><i class="ph-bold ph-arrow-left" aria-hidden="true"></i><span>К списку работ</span></a></div>
+        <div class="lesson-os-system-center"><span class="lesson-os-brand-mark" aria-hidden="true"><i class="ph-bold ph-brain"></i></span><div class="lesson-os-system-title"><strong>{{ homework_workspace.assignment_title }}</strong><span>Домашняя OS · {{ homework_workspace.completed_task_count }} из {{ homework_workspace.task_count }} заданий</span></div></div>
+        <div class="lesson-os-system-right">
+          {% if homework_workspace.can_review %}<span class="lesson-os-system-action"><i class="ph-bold ph-eye"></i> Просмотр ученика</span>{% endif %}
+          {% if homework_workspace.can_edit %}<button id="hw-os-transfer-open" type="button" class="lesson-os-system-action"><i class="ph-bold ph-copy"></i><span>Клонировать пространство</span></button><button id="hw-os-send-lesson" type="button" class="lesson-os-system-action" hidden><i class="ph-bold ph-upload-simple"></i><span>В OS урока</span></button><button id="homework-submit" type="button" class="lesson-os-system-action"><i class="ph-bold ph-paper-plane-tilt"></i><span>Сдать работу</span></button>{% endif %}
+          <a id="hw-os-lesson-link" class="lesson-os-system-action" href="#" hidden><i class="ph-bold ph-chalkboard-teacher"></i><span>OS урока</span></a>
+        </div>
+      </header>
+      <nav class="homework-os-task-tabs" aria-label="Пространства заданий">
+        {% for item in homework_workspace.tasks_nav %}<a href="{{ item.url }}" class="homework-os-task-tab{% if item.assignment_task_id == homework_workspace.assignment_task_id %} is-active{% endif %}" aria-current="{{ 'page' if item.assignment_task_id == homework_workspace.assignment_task_id else 'false' }}">Задание {{ item.position }}</a>{% endfor %}
+      </nav>
+      {% elif room_mode %}
       <header class="lesson-os-system-bar" aria-label="Панель комнаты урока">
         <div class="lesson-os-system-left">
           <a class="lesson-os-system-action" href="{{ url_for('schedule.schedule') }}"><i class="ph-bold ph-arrow-left" aria-hidden="true"></i><span>Выйти из урока</span></a>
@@ -2423,7 +2440,7 @@
                 class="absolute inset-0 py-6 px-4 font-mono text-xs overflow-auto leading-relaxed pointer-events-none whitespace-pre-wrap break-words border-none font-medium text-slate-800 transition-colors duration-200 select-none m-0"></pre>
 
               <!-- Прозрачный ввод с видимой кареткой поверх подложки -->
-              <textarea id="code-editor-textarea" oninput="onCodeEditorInput(this.value)"
+              <textarea id="code-editor-textarea" oninput="onCodeEditorInput(this.value)" {% if homework_mode and not homework_workspace.can_edit %}readonly{% endif %}
                 onscroll="syncCodeEditorScroll()" spellcheck="false"
                 class="absolute inset-0 py-6 px-4 font-mono text-xs overflow-auto leading-relaxed bg-transparent text-transparent caret-indigo-600 outline-none w-full h-full resize-none border-none focus:ring-0 select-text transition-colors duration-200 m-0"></textarea>
             </div>
@@ -2517,7 +2534,7 @@
           </div>
         </div>
 
-        {% if room_mode and is_studio_teacher|default(false) %}
+        {% if room_mode and not homework_mode and is_studio_teacher|default(false) %}
         <div id="task-authoring-toolbar" class="task-authoring-toolbar px-3 py-2 space-y-2 shrink-0">
           <div class="flex items-center justify-between gap-2">
             <div class="min-w-0">
@@ -2575,11 +2592,14 @@
 
         <!-- Текст условия задачи -->
         <div class="p-6 space-y-5 overflow-y-auto flex-1 leading-relaxed">
-          {% if room_mode %}
+          {% if room_mode and not homework_mode %}
           <div id="task-attached-list" class="flex gap-1.5 overflow-x-auto pb-1" aria-label="Задания урока"></div>
           {% endif %}
           <div class="space-y-2">
-            {% if room_mode %}
+            {% if homework_mode %}
+            <h3 id="task-current-title" class="text-base font-black text-slate-900 font-display">Задание {{ homework_workspace.task_position }}{% if homework_workspace.task_title %} · {{ homework_workspace.task_title }}{% endif %}</h3>
+            <div id="task-current-content" class="text-xs text-slate-700 leading-relaxed font-medium">{{ homework_workspace.content_html|safe }}</div>
+            {% elif room_mode %}
             <h3 id="task-current-title" class="text-base font-black text-slate-900 font-display">{{ room_task_title if room_task else 'Свободная работа' }}</h3>
             {% if room_task %}
             <div id="task-current-content" class="text-xs text-slate-700 leading-relaxed font-medium">{{ room_task.task.content_html|safe if room_task.task and room_task.task.content_html else (room_task.task.content|safe if room_task.task and room_task.task.content else 'Условие урока будет доступно здесь.') }}</div>
@@ -2597,7 +2617,7 @@
             {% endif %}
           </div>
 
-          {% if room_mode %}
+          {% if room_mode and not homework_mode %}
           <div id="task-current-answer" class="hidden rounded-xl border border-emerald-200 bg-emerald-50/80 p-3">
             <div class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-emerald-700">
               <i class="ph-bold ph-key"></i><span>Ответ для проверки</span>
@@ -2621,7 +2641,9 @@
           {% endif %}
 
           <!-- Поле Ввода Ответа -->
-          {% if room_mode %}
+          {% if homework_mode %}
+          <div class="space-y-2 pt-3 border-t border-slate-200/60"><button type="button" class="lesson-os-system-action" onclick="openWindow('homework-answer-window')"><i class="ph-bold ph-check-square"></i> Открыть ответ</button></div>
+          {% elif room_mode %}
           <div class="space-y-2 pt-3 border-t border-slate-200/60">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Фокус урока</span>
             <p class="lesson-os-task-guidance text-xs text-slate-600 leading-relaxed">Работай в редакторе, открывай теорию и фиксируй вопросы в заметках. Все инструменты комнаты доступны из нижней панели.</p>
@@ -2722,7 +2744,7 @@
           title="Изменить размер">⇲</div>
       </div>
 
-      {% if room_mode %}
+      {% if room_mode and not homework_mode %}
       <!-- LESSON INFORMATION WINDOW -->
       <div id="lesson-info-window"
         class="lesson-studio-window glass-os-window hidden absolute top-14 left-16 w-[520px] h-[min(720px,calc(100%-5rem))] bg-slate-50 border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-45 text-slate-800 font-sans flex flex-col">
@@ -2881,7 +2903,7 @@
           </div>
         </div>
 
-        <textarea id="notes-textarea" oninput="onNotesInput(this.value)"
+        <textarea id="notes-textarea" oninput="onNotesInput(this.value)" {% if homework_mode and not homework_workspace.can_edit %}readonly{% endif %}
           class="w-full flex-1 bg-transparent border-none outline-none text-slate-800 p-4 font-sans text-xs leading-relaxed resize-none font-medium placeholder:text-amber-700/50"
           placeholder="Фиксируй вопросы, идеи и выводы урока здесь...">{% if room_mode %}{{ room_student_notes|default('') }}{% endif %}</textarea>
 
@@ -2949,7 +2971,7 @@
           title="Изменить размер">⇲</div>
       </div>
 
-      {% if room_mode %}
+      {% if room_mode and not homework_mode %}
       <div id="files-window" class="glass-os-window hidden absolute top-20 left-1/3 w-[440px] h-[380px] bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-40 text-slate-800 font-sans flex flex-col">
         <div id="files-window-header" class="h-10 bg-white border-b border-slate-200 flex items-center justify-between px-4 select-none cursor-grab shrink-0">
           <div class="flex items-center gap-2">
@@ -3009,7 +3031,7 @@
           </div>
           <div class="flex items-center gap-2 min-w-0">
             <i class="ph-bold ph-chalkboard-simple text-indigo-600"></i>
-            <span class="text-xs font-extrabold text-slate-800 truncate">Комната урока</span>
+            <span class="text-xs font-extrabold text-slate-800 truncate">{{ 'Домашняя работа · задание ' ~ homework_workspace.task_position if homework_mode else 'Комната урока' }}</span>
             <span id="board-save-state" class="board-save-state is-ready"><span class="board-save-dot"></span>Синхронизировано</span>
           </div>
           <div class="flex items-center gap-2">
@@ -3320,10 +3342,31 @@
           title="Изменить размер">⇲</div>
       </div>
 
+      {% if homework_mode %}
+      <div id="homework-answer-window" class="glass-os-window homework-answer-window absolute hidden bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden text-slate-800 font-sans flex flex-col" aria-label="Ответ на задание">
+        <div id="homework-answer-window-header" class="lesson-os-code-titlebar select-none cursor-grab">
+          <div class="lesson-os-window-controls"><button type="button" class="lesson-os-window-dot is-close" onclick="closeWindow('homework-answer-window')" aria-label="Закрыть ответ"></button><button type="button" class="lesson-os-window-dot is-minimize" onclick="minimizeWindow('homework-answer-window')" aria-label="Свернуть ответ"></button><button type="button" class="lesson-os-window-dot is-maximize" onclick="toggleMaximizeWindow('homework-answer-window')" aria-label="Развернуть ответ"></button></div>
+          <span><i class="ph-bold ph-check-square" aria-hidden="true"></i> Ответ · задание {{ homework_workspace.task_position }}</span><span class="lesson-os-titlebar-spacer"></span>
+        </div>
+        <iframe id="homework-answer-frame" title="Ответ на задание {{ homework_workspace.task_position }}" src="{{ url_for('task_workspace.workspace_page', context_type='submission_task', context_id=homework_workspace.context_id, assignment_task_id=homework_workspace.assignment_task_id, embedded='answer') }}"></iframe>
+        <div class="window-resize-handle" title="Изменить размер">⇲</div>
+      </div>
+      <dialog id="hw-os-transfer" class="homework-os-dialog" aria-label="Клонировать пространство">
+        <div class="homework-os-dialog-head"><strong>Клонировать пространство</strong><button type="button" class="hw-os-dialog-close" aria-label="Закрыть"><i class="ph-bold ph-x"></i></button></div>
+        <p>Выберите задание или урок, материалы которого нужно перенести в текущее пространство.</p>
+        <select id="hw-os-transfer-source" aria-label="Источник материалов"><option value="">Выберите пространство</option></select>
+        <div id="hw-os-transfer-status" role="status" aria-live="polite"></div>
+        <button id="hw-os-transfer-confirm" type="button" class="lesson-os-system-action"><i class="ph-bold ph-copy"></i> Клонировать</button>
+      </dialog>
+      {% endif %}
+
       <!-- 7. SYSTEM GLASS DOCK (Нижняя панель 6 приложений OS) -->
       <div id="board-dock"
         class="absolute bottom-4 left-1/2 -translate-x-1/2 h-16 bg-white/60 backdrop-blur-3xl border border-white/80 shadow-2xl rounded-2xl flex items-center px-4 gap-3 z-50 font-sans select-none">
 
+        {% if homework_mode %}
+        <div id="dock-icon-homework-answer-window" class="board-dock-item group relative" data-room-label="Ответ" role="button" tabindex="0" aria-label="Открыть ответ" title="Ответ" onclick="toggleDockWindow('homework-answer-window')"><i class="ph-bold ph-check-square text-lg"></i></div>
+        {% endif %}
         {% if room_mode %}
         <div id="dock-icon-code-window" class="board-dock-item group relative" data-room-label="Код" role="button" tabindex="0" aria-label="Открыть редактор кода" title="Код" onclick="toggleDockWindow('code-window')">
           <i class="ph-bold ph-code text-lg"></i><span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Код</span>
@@ -3348,7 +3391,7 @@
           </span>
         </div>
 
-        {% if room_mode %}
+        {% if room_mode and not homework_mode %}
         <!-- Lesson information -->
         <div id="dock-icon-lesson-info-window" class="board-dock-item group relative" role="button" tabindex="0" aria-label="Открыть информацию об уроке" title="Информация об уроке" onclick="toggleDockWindow('lesson-info-window')">
           <i class="ph-bold ph-calendar-check text-lg"></i>
@@ -3365,7 +3408,7 @@
         {% endif %}
 
         <!-- App 3: Notes App (Amber) -->
-        {% if not room_mode or is_studio_teacher|default(false) or current_user.is_student() %}
+        {% if not room_mode or homework_mode or is_studio_teacher|default(false) or current_user.is_student() %}
         <div id="dock-icon-notes-window" class="board-dock-item group relative" data-room-label="Заметки" role="button" tabindex="0" aria-label="{% if room_mode %}Открыть конспект ученика{% else %}Открыть заметки{% endif %}" title="{% if room_mode %}Конспект ученика{% else %}Открыть заметки{% endif %}" onclick="toggleDockWindow('notes-window')">
           <i class="ph-bold ph-note-pencil text-lg"></i>
           <span
@@ -3384,7 +3427,7 @@
           </span>
         </div>
 
-        {% if room_mode %}
+        {% if room_mode and not homework_mode %}
         <div id="dock-icon-files-window" class="board-dock-item group relative" data-room-label="Файлы" role="button" tabindex="0" aria-label="Открыть файлы урока" title="Файлы урока" onclick="toggleDockWindow('files-window')"><i class="ph-bold ph-folder text-lg" aria-hidden="true"></i></div>
         {% if linked_homework_url %}<a class="board-dock-item group relative" data-room-label="Домашняя OS" href="{{ linked_homework_url }}" aria-label="Открыть домашнюю OS" title="Открыть домашнюю OS"><i class="ph-bold ph-notebook text-lg" aria-hidden="true"></i></a>{% endif %}
         {% endif %}
@@ -3409,7 +3452,7 @@
           </span>
         </div>
 
-        {% if room_mode %}
+        {% if room_mode and not homework_mode %}
         <details id="lesson-os-add" class="lesson-os-add"><summary class="board-dock-item" aria-label="Дополнительные приложения" title="Дополнительные приложения"><i class="ph-bold ph-plus text-lg" aria-hidden="true"></i><span>Добавить</span></summary><div class="lesson-os-add-menu"><button type="button" onclick="openWindow('lesson-info-window')"><i class="ph-bold ph-info" aria-hidden="true"></i> Информация об уроке</button>{% if is_studio_teacher %}<button type="button" onclick="openWindow('teacher-notes-window')"><i class="ph-bold ph-note-pencil" aria-hidden="true"></i> Конспект преподавателя</button>{% endif %}<button type="button" onclick="openWindow('reference-window')"><i class="ph-bold ph-image" aria-hidden="true"></i> Шпаргалка</button></div></details>
         {% endif %}
 
@@ -3639,9 +3682,9 @@
   const configuredRoomStarterCode = (trainerOsConfig.room_mode && typeof trainerOsConfig.starter_code === 'string')
     ? trainerOsConfig.starter_code.trim()
     : '';
-  const roomStarterCode = configuredRoomStarterCode || (trainerOsConfig.room_mode
+  const roomStarterCode = trainerOsConfig.homework_mode ? configuredRoomStarterCode : (configuredRoomStarterCode || (trainerOsConfig.room_mode
     ? `# ${trainerOsConfig.lesson_topic || 'Комната урока'}\n\n# Начни решение здесь\n`
-    : '');
+    : ''));
 
   let virtualFS = {
     'main.py': roomStarterCode || `# ----------------------------------------------------------------------\n# BooStudy Glass OS: Решение задачи КЕГЭ №27B (Кольцевой буфер)\n# ----------------------------------------------------------------------\nfrom typing import List\n\ndef solve_27b(filename: str) -> int:\n    with open(filename) as f:\n        n = int(f.readline())\n        # Считываем первые 5 элементов в кольцевой буфер\n        buf = [int(f.readline()) for _ in range(5)]\n        # Массив максимальных значений для остатков деления на 43\n        rem_max = [0] * 43\n        max_sum = 0\n\n        for _ in range(n - 5):\n            val = int(f.readline())\n            leaving = buf.pop(0)\n            buf.append(val)\n            rem_max[leaving % 43] = max(rem_max[leaving % 43], leaving)\n\n            needed = (43 - (val % 43)) % 43\n            if rem_max[needed] > 0:\n                max_sum = max(max_sum, val + rem_max[needed])\n\n        return max_sum\n\n# Точка входа в программу\nans = solve_27b('27_B.txt')\nprint("Результат 27B:", ans)`,
@@ -3657,6 +3700,7 @@
   if (trainerOsConfig.room_mode) {
     delete virtualFS['27_A.txt'];
     delete virtualFS['27_B.txt'];
+    if (trainerOsConfig.homework_mode) virtualFS['main.py'] = roomStarterCode;
   }
 
   function renderExplorerFileList() {
@@ -4187,6 +4231,9 @@
     renderSourceControlList();
     handleAutoStopwatchActivity();
     window.boostudyLessonControl?.queueCodeSync?.(value, activeFileName);
+    if (trainerOsConfig.homework_mode && activeFileName === 'main.py') {
+      window.dispatchEvent(new CustomEvent('boostudy:homework-code-input', { detail: { code: value } }));
+    }
   }
 
   function switchEditorTab(element, filename) {
@@ -4359,7 +4406,9 @@
       this.globalZIndex = 50;
       this.registeredWindows = new Map();
       this.storageKey = trainerOsConfig.room_mode
-        ? `boostudy_lesson_os_windows_v7_${trainerOsConfig.lesson_id}_${trainerOsConfig.viewer_id}`
+        ? (trainerOsConfig.homework_mode
+          ? `boostudy_homework_os_windows_v1_${trainerOsConfig.homework_workspace.assignment_task_id}_${trainerOsConfig.viewer_id}`
+          : `boostudy_lesson_os_windows_v7_${trainerOsConfig.lesson_id}_${trainerOsConfig.viewer_id}`)
         : null;
     }
 
@@ -4402,8 +4451,10 @@
       const compact = window.innerWidth < 1200;
       for (const [id, { windowEl }] of this.registeredWindows) {
         const saved = layouts[id];
-        const defaultOpen = id === 'code-window' ||
-          (!compact && ['task-window', 'terminal-window', 'theory-window', 'lesson-info-window'].includes(id));
+        const defaultOpen = trainerOsConfig.homework_mode
+          ? (id === 'homework-answer-window' || (!compact && id === 'task-window'))
+          : (id === 'code-window' ||
+            (!compact && ['task-window', 'terminal-window', 'theory-window', 'lesson-info-window'].includes(id)));
         const savedOpen = compact ? saved?.open_compact : saved?.open;
         const open = typeof savedOpen === 'boolean' ? savedOpen : defaultOpen;
         windowEl.classList.toggle('hidden', !open);
@@ -4728,7 +4779,7 @@
     board.dataset.isMinimized = 'false';
     board.classList.add('lesson-os-desktop');
     arena.classList.add('lesson-os-ready');
-    const liveActions = document.getElementById('lesson-os-live-actions');
+    const liveActions = trainerOsConfig.homework_mode ? null : document.getElementById('lesson-os-live-actions');
     const presentationAction = document.getElementById(trainerOsConfig.is_studio_teacher ? 'board-present-btn' : 'board-follow-btn');
     if (liveActions && presentationAction) {
       presentationAction.classList.add('lesson-os-system-action');
@@ -4855,7 +4906,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    ['code-window', 'task-window', 'terminal-window', 'notes-window', 'lesson-info-window', 'teacher-notes-window', 'theory-window', 'files-window', 'chat-window', 'reference-window'].forEach(id => {
+    ['code-window', 'task-window', 'terminal-window', 'notes-window', 'lesson-info-window', 'teacher-notes-window', 'theory-window', 'files-window', 'chat-window', 'reference-window', 'homework-answer-window'].forEach(id => {
       windowManager.registerWindow(id);
     });
     if (trainerOsConfig.room_mode) {
@@ -5625,9 +5676,11 @@
   // ----------------------------------------------------------------------
   // 8. NOTES APP PERSISTENCE
   // ----------------------------------------------------------------------
-  const NOTES_STORAGE_KEY = trainerOsConfig.room_mode && trainerOsConfig.lesson_id
-    ? `boostudy_notes_draft_lesson_${trainerOsConfig.lesson_id}`
-    : 'boostudy_notes_draft';
+  const NOTES_STORAGE_KEY = trainerOsConfig.homework_mode
+    ? `boostudy_notes_draft_homework_${trainerOsConfig.homework_workspace.assignment_task_id}`
+    : (trainerOsConfig.room_mode && trainerOsConfig.lesson_id
+      ? `boostudy_notes_draft_lesson_${trainerOsConfig.lesson_id}`
+      : 'boostudy_notes_draft');
 
   function initNotesApp() {
     const notesTextarea = document.getElementById('notes-textarea');
@@ -10378,4 +10431,5 @@
   })();
 </script>
 {% endif %}
+{% if homework_mode %}<script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261013-os"></script><script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261013-1"></script>{% endif %}
 {% endblock %}
