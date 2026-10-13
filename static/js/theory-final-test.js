@@ -294,7 +294,6 @@
       }
     }
 
-    }
   }
 
   // Close custom dropdowns on click outside
