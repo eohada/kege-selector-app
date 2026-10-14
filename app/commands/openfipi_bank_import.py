@@ -21,7 +21,7 @@ from werkzeug.utils import secure_filename
 from app.commands.fipi_bank_import import _drive_asset_url, _resolve_course
 from app.commands.openfipi_bank_export import _difficulty_estimate, _fingerprint
 from app.storage.s3_service import storage
-from core.db_models import TaskReview, Tasks, db
+from core.db_models import TaskReview, TaskSolution, Tasks, db
 
 
 class BankSource:
@@ -83,7 +83,7 @@ def _rewrite_asset_urls(content_html: str, replacements: dict[str, str]) -> str:
     return str(soup)
 
 
-def _store_inline_images(content_html: str, asset_cache: dict, uploaded_this_task: list) -> str:
+def _store_inline_images(content_html: str, asset_cache: dict, uploaded_this_task: list, storage_folder: str) -> str:
     """Move images embedded in task HTML to Drive so the database stays small."""
     if 'data:image/' not in content_html:
         return content_html
@@ -109,7 +109,7 @@ def _store_inline_images(content_html: str, asset_cache: dict, uploaded_this_tas
         if stored is None:
             filename = f'inline_{digest[:20]}.{extensions[mime_type]}'
             upload = FileStorage(stream=BytesIO(image_bytes), filename=filename, content_type=mime_type)
-            storage_key = storage.upload_file(upload, folder='openfipi/ege-informatics')
+            storage_key = storage.upload_file(upload, folder=storage_folder)
             stored = {'storage_key': storage_key, 'download_url': _drive_asset_url(storage_key)}
             asset_cache[cache_key] = stored
             uploaded_this_task.append((cache_key, storage_key))
@@ -219,7 +219,11 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                 counts['failed'] += 1
                 click.echo(f'Пропущен файл без source_id: {name}', err=True)
                 continue
-            source_key = f'openfipi:ege-informatics:{source_id.lower()}'
+            source_key = str(task_data.get('source_key') or f'openfipi:ege-informatics:{source_id.lower()}').strip()
+            if not source_key or len(source_key) > 190:
+                counts['failed'] += 1
+                click.echo(f'Пропущен файл с некорректным source_key: {name}', err=True)
+                continue
             if Tasks.query.filter_by(source_key=source_key).first():
                 counts['already_present'] += 1
                 continue
@@ -231,6 +235,13 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
 
             uploaded_this_task: list[tuple[str, str]] = []
             try:
+                storage_folder = str(task_data.get('storage_folder') or 'openfipi/ege-informatics').strip().strip('/')
+                if (not storage_folder or len(storage_folder) > 120
+                        or not re.fullmatch(r'[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+){0,5}', storage_folder)):
+                    raise ValueError('У пакета указана некорректная папка Google Drive.')
+                source_name = str(task_data.get('source_name') or 'Открытый банк ФИПИ через OpenFIPI').strip()
+                if not source_name or len(source_name) > 160:
+                    raise ValueError('У пакета указано некорректное название источника.')
                 attachments_json = []
                 replacements = {}
                 has_missing_media = False
@@ -245,7 +256,7 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                         filename = secure_filename(attachment.get('name') or PurePosixPath(archive_path).name) or 'asset'
                         mime_type = attachment.get('mime_type') or 'application/octet-stream'
                         uploaded = FileStorage(stream=BytesIO(asset_bytes), filename=filename, content_type=mime_type)
-                        storage_key = storage.upload_file(uploaded, folder='openfipi/ege-informatics')
+                        storage_key = storage.upload_file(uploaded, folder=storage_folder)
                         download_url = _drive_asset_url(storage_key) if storage_key.startswith('gdrive://') else None
                         stored = {
                             'storage_key': storage_key,
@@ -285,7 +296,7 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                     })
 
                 rendered_html = _rewrite_asset_urls(task_data.get('content_html') or '', replacements)
-                rendered_html = _store_inline_images(rendered_html, asset_cache, uploaded_this_task)
+                rendered_html = _store_inline_images(rendered_html, asset_cache, uploaded_this_task, storage_folder)
                 if not rendered_html.strip():
                     raise ValueError('У задания пустое условие после импорта.')
                 try:
@@ -293,7 +304,13 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                 except (TypeError, ValueError):
                     source_number = 0
                 is_current = bool(task_data.get('is_current'))
-                platform_number = source_number if is_current and 1 <= source_number <= 27 else 0
+                try:
+                    requested_task_number = int(task_data.get('task_number') or 0)
+                except (TypeError, ValueError):
+                    requested_task_number = 0
+                platform_number = requested_task_number if 1 <= requested_task_number <= 99 else (
+                    source_number if is_current and 1 <= source_number <= 27 else 0
+                )
                 has_answer = bool(task_data.get('answer'))
                 has_single_value_answer = _has_single_value_answer(task_data.get('answer'))
                 # Historical cards remain unnumbered so they can be used as training, not misrepresented as a current prototype.
@@ -304,7 +321,7 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                     task_group_id=None,
                     site_task_id=source_id,
                     source_url=task_data.get('source_url'),
-                    source_name='Открытый банк ФИПИ через OpenFIPI',
+                    source_name=source_name,
                     source_year=task_data.get('source_year'),
                     source_task_number=source_number or None,
                     exam_year=task_data.get('exam_year'),
@@ -315,7 +332,7 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                     content_html=rendered_html,
                     answer=task_data.get('answer'),
                     attached_files=json.dumps(attachments_json, ensure_ascii=False) if attachments_json else '',
-                    difficulty_level=_difficulty_estimate(source_number),
+                    difficulty_level=task_data.get('difficulty_level') or _difficulty_estimate(source_number),
                     hints=task_data.get('hints'),
                     bank_origin='scraped',
                     answer_spec=task_data.get('answer_spec') or {'type': 'short_answer'},
@@ -323,15 +340,21 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                 )
                 db.session.add(task)
                 db.session.flush()
+                solution_text = str(task_data.get('solution') or '').strip()
+                if solution_text:
+                    db.session.add(TaskSolution(
+                        task_id=task.task_id,
+                        solution_text=solution_text,
+                        source=task_data.get('solution_source') or 'manual',
+                        needs_manual_review=bool(task_data.get('solution_needs_review', True)),
+                    ))
                 review = TaskReview(
                     task_id=task.task_id,
                     status='new',
-                    notes=(
-                        'Импортировано из зеркала открытого банка ФИПИ. Ответы не проверены; '
-                        'сложность оценена автоматически и доступна для редактирования. '
-                        'Решения и подсказки источник не предоставил. '
-                        'Год экзамена и статус прототипа для актуальных карточек требуют проверки.'
-                    ),
+                    notes=(task_data.get('review_notes') or (
+                        f'Импортировано из источника «{source_name}». Ответы не проверены; '
+                        'сложность и статус прототипа доступны для проверки и редактирования.'
+                    )),
                 )
                 db.session.add(review)
                 db.session.commit()
