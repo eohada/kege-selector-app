@@ -242,6 +242,9 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                 source_name = str(task_data.get('source_name') or 'Открытый банк ФИПИ через OpenFIPI').strip()
                 if not source_name or len(source_name) > 160:
                     raise ValueError('У пакета указано некорректное название источника.')
+                task_group_id = str(task_data.get('task_group_id') or '').strip() or None
+                if task_group_id and len(task_group_id) > 64:
+                    raise ValueError('Идентификатор группы заданий превышает 64 символа.')
                 attachments_json = []
                 replacements = {}
                 has_missing_media = False
@@ -318,7 +321,7 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                 task = Tasks(
                     course_id=course.id,
                     task_number=platform_number,
-                    task_group_id=None,
+                    task_group_id=task_group_id,
                     site_task_id=source_id,
                     source_url=task_data.get('source_url'),
                     source_name=source_name,
