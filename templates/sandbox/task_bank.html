@@ -49,7 +49,10 @@
       </div>
       <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
         <p id="bank-result-count" class="text-xs font-bold text-slate-500">Загружаем задания…</p>
-        <button id="bank-only-my" type="button" onclick="toggleOnlyMyBankTasks()" class="bg-white text-slate-600 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Мои задания</button>
+        <div class="flex flex-wrap gap-2">
+          <button id="bank-include-imported" type="button" onclick="toggleImportedBankTasks()" data-active="false" class="bg-white text-slate-600 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Импорт на проверку</button>
+          <button id="bank-only-my" type="button" onclick="toggleOnlyMyBankTasks()" class="bg-white text-slate-600 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Мои задания</button>
+        </div>
       </div>
     </section>
 
@@ -144,10 +147,22 @@ function returnToBuilder() {
 
 function taskCard(task) {
   const queued = queuedTasks.has(Number(task.task_id));
+  const exposure = task.student_exposure;
+  const reuseBlocked = Boolean(exposure?.blocked);
+  const readyForAssignment = Boolean(task.is_active) && task.ingest_status === 'ready' && !reuseBlocked;
+  const prototypeLabel = ({ real: 'Прототип экзамена', practice_only: 'Тренировка', unreviewed: 'Прототип не проверен' })[task.prototype_status] || 'Статус прототипа не указан';
+  const ingestLabel = ({ needs_classification: 'Нужно определить номер', needs_answer_review: 'Нужно проверить ответ', needs_review: 'Нужна проверка', ready: 'Готово к работе' })[task.ingest_status] || 'Статус импорта не указан';
+  const sourceYear = task.source_year ? `Источник ${task.source_year}` : 'Год источника не указан';
+  const examYear = task.exam_year ? `ЕГЭ/ОГЭ ${task.exam_year}` : '';
+  const useHistory = reuseBlocked
+    ? `Уже выдавалось · повтор после ${new Date(exposure.active_until).toLocaleDateString('ru-RU')}`
+    : exposure?.expired ? 'Ранее выдавалось · срок повтора вышел' : '';
+  const buttonLabel = reuseBlocked ? 'Уже выдавалось' : !readyForAssignment ? 'Пока недоступно' : queued ? 'Добавлено' : 'В работу';
   return `<article onclick="openTaskDetail(${task.task_id})" class="cursor-pointer bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] hover:border-indigo-300 rounded-2xl p-5 space-y-4 transition-all">
     <div class="flex items-start justify-between gap-3"><span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black leading-tight">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">${escapeHtml(task.difficulty_label_ru || 'Средний')}</span></div>
     <div class="space-y-2 min-w-0"><h2 class="text-base font-black text-slate-800 leading-snug break-words">${escapeHtml(task.title || 'Задание')}</h2><p class="text-xs leading-relaxed text-slate-600 break-words">${escapeHtml(conditionSummary(task.content_html).slice(0, 210) || 'Откройте задание, чтобы посмотреть условие и код.')}</p></div>
-    <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 min-w-0"><span class="text-[11px] font-bold text-slate-400 truncate">${escapeHtml(task.course_title || '')}</span><button type="button" onclick="event.stopPropagation(); toggleQueuedTask(${task.task_id})" class="shrink-0 ${queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-3 py-2 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">${queued ? 'Добавлено' : 'В работу'}</button></div>
+    <div class="flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-500"><span class="rounded-lg bg-slate-100 px-2 py-1">${escapeHtml(task.source_name || task.source || 'Источник не указан')}</span><span class="rounded-lg bg-slate-100 px-2 py-1">${escapeHtml([sourceYear, examYear].filter(Boolean).join(' · '))}</span><span class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1">${escapeHtml(prototypeLabel)}</span>${task.answer_needs_verification ? '<span class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1">Ответ источника не проверен</span>' : ''}${useHistory ? `<span class="rounded-lg ${reuseBlocked ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'} px-2 py-1">${escapeHtml(useHistory)}</span>` : ''}${!readyForAssignment && !reuseBlocked ? `<span class="rounded-lg bg-rose-50 text-rose-700 px-2 py-1">${escapeHtml(ingestLabel)}</span>` : ''}</div>
+    <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 min-w-0"><span class="text-[11px] font-bold text-slate-400 truncate">${escapeHtml(task.course_title || '')}</span><button type="button" ${readyForAssignment ? `onclick="event.stopPropagation(); toggleQueuedTask(${task.task_id})"` : 'disabled'} class="shrink-0 ${!readyForAssignment ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-3 py-2 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all text-xs">${buttonLabel}</button></div>
   </article>`;
 }
 
@@ -171,17 +186,29 @@ function renderBankTabs(data) {
   const onlyMine = mine.dataset.active === 'true';
   mine.className = tabClass(onlyMine);
   mine.textContent = onlyMine ? 'Показываю мои' : 'Мои задания';
+  const imported = document.getElementById('bank-include-imported');
+  const showingImported = imported.dataset.active === 'true';
+  imported.className = tabClass(showingImported);
+  imported.textContent = showingImported ? 'Скрыть импорт на проверку' : 'Импорт на проверку';
 }
 
 async function loadBankTasks({ append = false } = {}) {
   const list = document.getElementById('bank-tasks-list');
   if (!append) list.innerHTML = '<p class="md:col-span-2 py-12 text-center text-sm font-bold text-slate-500">Загружаем задания…</p>';
   const params = new URLSearchParams({ per_page: '24', page: String(bankPage) });
+  const returnParams = new URL(BANK_RETURN_TO, window.location.origin).searchParams;
+  ['lesson_id', 'assignment_id', 'assignment_type'].forEach(key => {
+    const value = returnParams.get(key);
+    if (value) params.set(key, value);
+  });
+  const targetStudents = returnParams.get('recipient_ids') || returnParams.get('student_ids');
+  if (targetStudents) params.set('recipient_ids', targetStudents);
   if (bankCourseId) params.set('exam_course_id', bankCourseId);
   if (bankModule) params.set('module', bankModule);
   const query = document.getElementById('bank-search').value.trim();
   if (query) params.set('q', query);
   if (document.getElementById('bank-only-my').dataset.active === 'true') params.set('only_my', 'true');
+  if (document.getElementById('bank-include-imported').dataset.active === 'true') params.set('include_imported', 'true');
   try {
     const response = await fetch(`/task-generator/bank/picker/list?${params.toString()}`);
     const data = await response.json();
@@ -207,6 +234,7 @@ function resetAndLoad() {
 function setBankCourse(courseId) { bankCourseId = String(courseId || ''); bankModule = ''; resetAndLoad(); }
 function setBankModule(module) { bankModule = module || ''; resetAndLoad(); }
 function toggleOnlyMyBankTasks() { const button = document.getElementById('bank-only-my'); button.dataset.active = button.dataset.active === 'true' ? 'false' : 'true'; resetAndLoad(); }
+function toggleImportedBankTasks() { const button = document.getElementById('bank-include-imported'); button.dataset.active = button.dataset.active === 'true' ? 'false' : 'true'; resetAndLoad(); }
 function scheduleBankSearch() { window.clearTimeout(bankSearchTimer); bankSearchTimer = window.setTimeout(resetAndLoad, 250); }
 function loadMoreBankTasks() { bankPage += 1; loadBankTasks({ append: true }); }
 

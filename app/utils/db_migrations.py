@@ -1219,6 +1219,10 @@ def ensure_schema_columns(app):
                 safe_add_lesson_task_column('difficulty_level', 'INTEGER')  # 1 лёгкий, 2 средний, 3 сложный
                 safe_add_lesson_task_column('time_spent_sec', 'INTEGER')  # время на задание (сек)
                 safe_add_lesson_task_column('max_attempts', 'INTEGER')  # лимит попыток на задание (override)
+                safe_add_lesson_task_column(
+                    'is_error_review',
+                    'BOOLEAN DEFAULT FALSE NOT NULL' if is_postgres else 'INTEGER DEFAULT 0 NOT NULL',
+                )
                 try:  # comment
                     if is_postgres:  # comment
                         db.session.execute(text(f'UPDATE "{lesson_tasks_table}" SET status = \'pending\' WHERE status = \'in_progress\''))  # comment
@@ -2167,6 +2171,16 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add answer_override to {assignment_tasks_table}: {e}")
                             db.session.rollback()
+                    if 'is_error_review' not in at_cols:
+                        try:
+                            if _is_postgres(app):
+                                db.session.execute(text(f'ALTER TABLE "{assignment_tasks_table}" ADD COLUMN is_error_review BOOLEAN DEFAULT FALSE NOT NULL'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE "{assignment_tasks_table}" ADD COLUMN is_error_review INTEGER DEFAULT 0 NOT NULL'))
+                            logger.info(f"Added is_error_review to {assignment_tasks_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add is_error_review to {assignment_tasks_table}: {e}")
+                            db.session.rollback()
                 if submissions_table:
                     cols = {c['name'] for c in inspector.get_columns(submissions_table)}
                     if 'rubric_template_id' not in cols:
@@ -2228,6 +2242,30 @@ def ensure_schema_columns(app):
                         db.session.rollback()
             except Exception as e:
                 logger.warning(f"Could not ensure rubric columns: {e}")
+
+            seen_table = _resolve_table_name(table_names, 'StudentTaskSeen')
+            if seen_table:
+                try:
+                    seen_cols = {c['name'] for c in inspector.get_columns(seen_table)}
+                    dt_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
+                    if 'last_seen_at' not in seen_cols:
+                        db.session.execute(text(f'ALTER TABLE "{seen_table}" ADD COLUMN last_seen_at {dt_type} DEFAULT CURRENT_TIMESTAMP'))
+                    if 'expires_at' not in seen_cols:
+                        db.session.execute(text(f'ALTER TABLE "{seen_table}" ADD COLUMN expires_at {dt_type}'))
+                    if 'normal_use_count' not in seen_cols:
+                        db.session.execute(text(f'ALTER TABLE "{seen_table}" ADD COLUMN normal_use_count INTEGER DEFAULT 1 NOT NULL'))
+                    if 'expired_reuse_count' not in seen_cols:
+                        db.session.execute(text(f'ALTER TABLE "{seen_table}" ADD COLUMN expired_reuse_count INTEGER DEFAULT 0 NOT NULL'))
+                    if 'error_review_count' not in seen_cols:
+                        db.session.execute(text(f'ALTER TABLE "{seen_table}" ADD COLUMN error_review_count INTEGER DEFAULT 0 NOT NULL'))
+                    if 'last_error_review_at' not in seen_cols:
+                        db.session.execute(text(f'ALTER TABLE "{seen_table}" ADD COLUMN last_error_review_at {dt_type}'))
+                    if 'context_id' not in seen_cols:
+                        db.session.execute(text(f'ALTER TABLE "{seen_table}" ADD COLUMN context_id VARCHAR(96)'))
+                    db.session.commit()
+                except Exception as e:
+                    logger.warning(f"Could not add StudentTaskSeen columns: {e}")
+                    db.session.rollback()
             
             comments_table = _resolve_table_name(table_names, 'SubmissionComments')
             if not comments_table:
@@ -2464,6 +2502,41 @@ def ensure_schema_columns(app):
                                     f'CREATE INDEX IF NOT EXISTS ix_tasks_kege_difficulty_tier ON "{tasks_table_resolved}"(kege_difficulty_tier)'
                                 )
                             )
+                        except Exception:
+                            pass
+                        # --- Provenance fields (source, prototype, ingest) ---
+                        if 'source_name' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN source_name VARCHAR(160)'))
+                            logger.info("Added source_name to Tasks")
+                        if 'source_year' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN source_year SMALLINT'))
+                            logger.info("Added source_year to Tasks")
+                        if 'source_task_number' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN source_task_number SMALLINT'))
+                            logger.info("Added source_task_number to Tasks")
+                        if 'exam_year' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN exam_year SMALLINT'))
+                            logger.info("Added exam_year to Tasks")
+                        if 'source_key' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN source_key VARCHAR(190)'))
+                            logger.info("Added source_key to Tasks")
+                        if 'content_fingerprint' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN content_fingerprint VARCHAR(64)'))
+                            logger.info("Added content_fingerprint to Tasks")
+                        if 'prototype_status' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN prototype_status VARCHAR(20) DEFAULT \'unreviewed\''))
+                            logger.info("Added prototype_status to Tasks")
+                        if 'ingest_status' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN ingest_status VARCHAR(20) DEFAULT \'ready\''))
+                            logger.info("Added ingest_status to Tasks")
+                        try:
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_source_year ON "{tasks_table_resolved}"(source_year)'))
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_source_task_number ON "{tasks_table_resolved}"(source_task_number)'))
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_exam_year ON "{tasks_table_resolved}"(exam_year)'))
+                            db.session.execute(text(f'CREATE UNIQUE INDEX IF NOT EXISTS ix_Tasks_source_key ON "{tasks_table_resolved}"(source_key)'))
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_content_fingerprint ON "{tasks_table_resolved}"(content_fingerprint)'))
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_prototype_status ON "{tasks_table_resolved}"(prototype_status)'))
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_ingest_status ON "{tasks_table_resolved}"(ingest_status)'))
                         except Exception:
                             pass
                         try:

@@ -6,7 +6,7 @@ import logging
 import os
 import re
 import uuid
-from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask import abort, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import or_, func, text, delete
 from sqlalchemy.orm import joinedload
@@ -789,6 +789,7 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         'difficulty_label_ru': _difficulty_label_ru(task),
         'student_task_mmr': _get_user_task_mmr(target_user_id, task.task_number),
         'answer_spec': task.answer_spec,
+        'answer_needs_verification': isinstance(task.answer_spec, dict) and task.answer_spec.get('source_answer_verified') is False,
         'hints': task.hints,
         'max_score': task.max_score or 1,
         'difficulty_level': task.difficulty_level,
@@ -831,11 +832,6 @@ def _attach_task_to_lesson(task_id: int, lesson: Lesson, assignment_type: str) -
     if existing:
         return False
     db.session.add(LessonTask(lesson_id=lesson.lesson_id, task_id=task_id, assignment_type=assignment_type))
-    try:
-        if lesson.student_id:
-            db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
-    except Exception:
-        pass
     if assignment_type == 'homework':
         lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
         lesson.homework_result_percent = None
@@ -916,11 +912,6 @@ def _stream_accept_tasks_bundle(
             existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=tid).first()
             if not existing:
                 db.session.add(LessonTask(lesson_id=lesson_id, task_id=tid, assignment_type=assignment_type))
-                try:
-                    if lesson.student_id:
-                        db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=tid, source=f'lesson:{assignment_type}'))
-                except Exception:
-                    pass
                 added_task_ids.append(tid)
         if assignment_type == 'homework':
             lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
@@ -982,6 +973,10 @@ def task_generator_bank_picker_list():
         template_id = int(data['template_id']) if data.get('template_id') not in (None, '', False) else None
     except (TypeError, ValueError, KeyError):
         template_id = None
+    try:
+        assignment_id = int(data['assignment_id']) if data.get('assignment_id') not in (None, '', False) else None
+    except (TypeError, ValueError, KeyError):
+        assignment_id = None
 
     try:
         exam_course_id = int(data['exam_course_id']) if data.get('exam_course_id') not in (None, '', False) else None
@@ -1007,10 +1002,36 @@ def task_generator_bank_picker_list():
 
     search_query = (data.get('search_query') or data.get('q') or '').strip()
     only_my = str(data.get('only_my') or '').lower() in ('true', '1', 'yes')
+    include_imported = str(data.get('include_imported') or '').lower() in ('true', '1', 'yes')
 
     page = max(1, int(data.get('page', 1) or 1))
     per_page = min(100, max(5, int(data.get('per_page', 12) or 12)))
-    recipient_ids = data.get('recipient_ids') if isinstance(data.get('recipient_ids'), list) else []
+    recipient_ids = data.get('recipient_ids') or []
+    if isinstance(recipient_ids, str):
+        recipient_ids = recipient_ids.split(',')
+    if not isinstance(recipient_ids, list):
+        recipient_ids = []
+    parsed_recipient_ids = set()
+    for recipient_id in recipient_ids:
+        try:
+            parsed_recipient_ids.add(int(recipient_id))
+        except (TypeError, ValueError):
+            continue
+    target_student_ids = parsed_recipient_ids
+    if lesson_id:
+        target_lesson = Lesson.query.get(lesson_id)
+        if target_lesson and target_lesson.student_id:
+            target_student_ids.add(int(target_lesson.student_id))
+    if assignment_id:
+        target_assignment = Assignment.query.get(assignment_id)
+        if target_assignment:
+            target_student_ids.update(
+                int(submission.student_id)
+                for submission in (target_assignment.submissions or [])
+                if submission.student_id is not None
+            )
+            if target_assignment.lesson and target_assignment.lesson.student_id:
+                target_student_ids.add(int(target_assignment.lesson.student_id))
     target_user_id = _resolve_target_user_id(lesson_id=lesson_id, recipient_ids=recipient_ids)
 
     lesson_ids, template_ids = _picker_target_sets(lesson_id, template_id, assignment_type)
@@ -1018,7 +1039,11 @@ def task_generator_bank_picker_list():
     from app.utils.python_bank_import import foundations_metadata
     from app.utils.python_ege_curriculum_import import curriculum_metadata
     thematic = {**foundations_metadata(), **curriculum_metadata()}
-    bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by)).filter(Tasks.is_active.is_(True))
+    bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by))
+    if include_imported:
+        bq = bq.filter(or_(Tasks.is_active.is_(True), Tasks.bank_origin == 'scraped'))
+    else:
+        bq = bq.filter(Tasks.is_active.is_(True))
     if selected_task_id is not None:
         bq = bq.filter(Tasks.task_id == selected_task_id)
     if exam_course_id:
@@ -1040,14 +1065,36 @@ def task_generator_bank_picker_list():
     total = bq.count()
     rows = bq.offset((page - 1) * per_page).limit(per_page).all()
 
+    exposures_by_pair = {}
+    if target_student_ids and rows:
+        exposures = StudentTaskSeen.query.filter(
+            StudentTaskSeen.student_id.in_(target_student_ids),
+            StudentTaskSeen.task_id.in_([row.task_id for row in rows]),
+        ).all()
+        exposures_by_pair = {(row.student_id, row.task_id): row for row in exposures}
+    from app.task_bank.exposure import exposure_state_for_row
+
     items = []
     for t in rows:
         tid = t.task_id
         fully = _picker_fully_added(tid, lesson_id, template_id, assignment_type, lesson_ids, template_ids)
+        recipient_states = [
+            exposure_state_for_row(exposures_by_pair.get((student_id, tid)))
+            for student_id in target_student_ids
+        ]
+        blocked_states = [state for state in recipient_states if state['blocked']]
+        active_until = max((state['active_until'] for state in blocked_states), default=None)
         items.append({
             'task_id': tid,
             'course_id': getattr(t, 'course_id', None),
             'task_number': getattr(t, 'task_number', 1),
+            'is_active': bool(getattr(t, 'is_active', True)),
+            'source_name': getattr(t, 'source_name', None),
+            'source_year': getattr(t, 'source_year', None),
+            'exam_year': getattr(t, 'exam_year', None),
+            'prototype_status': getattr(t, 'prototype_status', None),
+            'ingest_status': getattr(t, 'ingest_status', None),
+            'answer_needs_verification': isinstance(t.answer_spec, dict) and t.answer_spec.get('source_answer_verified') is False,
             'course_title': (t.course.title if getattr(t, 'course', None) else None),
             'bank_origin': getattr(t, 'bank_origin', None),
             'kege_source_tag': getattr(t, 'kege_source_tag', None),
@@ -1061,14 +1108,21 @@ def task_generator_bank_picker_list():
             'max_score': getattr(t, 'max_score', 1) or 1,
             'author_name': (getattr(getattr(t, 'created_by', None), 'full_name', None) or 'Автор'),
             'source': getattr(t, 'source_url', None) or getattr(t, 'kege_source_tag', None) or 'Банк задач',
-            'topic': thematic.get(t.source_prototype, {}).get('module') or f"Задание №{t.task_number}",
-            'title': thematic.get(t.source_prototype, {}).get('title') or f"Задание №{t.task_number}",
+            'topic': thematic.get(t.source_prototype, {}).get('module') or (f"Задание №{t.task_number}" if t.task_number else 'Без номера задания'),
+            'title': thematic.get(t.source_prototype, {}).get('title') or (f"Задание №{t.task_number}" if t.task_number else 'Номер не размечен'),
             'attached_files': getattr(t, 'attached_files', []) or [],
             'can_manage': bool(getattr(current_user, 'is_creator', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)()),
             'can_edit': bool((getattr(t, 'bank_origin', None) == 'manual' and getattr(t, 'created_by_id', None) == current_user.id) or getattr(current_user, 'is_admin', lambda: False)()),
             'student_task_mmr': _get_user_task_mmr(target_user_id, getattr(t, 'task_number', None)),
             'content_html': (normalize_task_content_assets(getattr(t, 'content_html', '') or '', getattr(t, 'attached_files', None), getattr(t, 'source_url', None)))[:12000],
             'already_added': fully,
+            'student_exposure': {
+                'blocked': bool(blocked_states),
+                'previously_used': any(state['seen_before'] for state in recipient_states),
+                'expired': any(state['expired'] for state in recipient_states),
+                'active_until': active_until.isoformat() if active_until else None,
+                'recipient_count': len(target_student_ids),
+            } if target_student_ids else None,
         })
 
     return jsonify({
@@ -1137,6 +1191,28 @@ def task_generator_bank_picker_add():
     ):
         return jsonify({'success': False, 'error': 'Задание (или вся тройка 19–21) уже добавлено по всем целям'}), 400
 
+    target_student_ids = set()
+    if lesson_id:
+        lesson = Lesson.query.get(lesson_id)
+        if lesson and lesson.student_id:
+            target_student_ids.add(int(lesson.student_id))
+    if assignment_id:
+        assignment = Assignment.query.get(assignment_id)
+        if assignment:
+            target_student_ids.update(
+                int(submission.student_id)
+                for submission in (assignment.submissions or [])
+                if submission.student_id is not None
+            )
+            if assignment.lesson and assignment.lesson.student_id:
+                target_student_ids.add(int(assignment.lesson.student_id))
+    if target_student_ids:
+        from app.task_bank.exposure import TaskExposureConflict, assert_tasks_available
+        try:
+            assert_tasks_available(db.session, target_student_ids, task_ids_for_action)
+        except TaskExposureConflict as exc:
+            return jsonify({'success': False, 'error': str(exc)}), 409
+
     try:
         if assignment_id:
             from core.db_models import AssignmentTask
@@ -1159,6 +1235,9 @@ def task_generator_bank_picker_add():
                 return err[1], err[0]
     except Exception as e:
         db.session.rollback()
+        from app.task_bank.exposure import TaskExposureConflict
+        if isinstance(e, TaskExposureConflict):
+            return jsonify({'success': False, 'error': str(e)}), 409
         logger.exception('task_generator_bank_picker_add failed')
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1370,11 +1449,6 @@ def generator_stream_act():
                     existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=tid).first()
                     if not existing:
                         db.session.add(LessonTask(lesson_id=lesson_id, task_id=tid, assignment_type=assignment_type))
-                        try:
-                            if lesson.student_id:
-                                db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=tid, source=f'lesson:{assignment_type}'))
-                        except Exception:
-                            pass
                         added_task_ids.append(tid)
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
@@ -2003,7 +2077,9 @@ def task_generator_bank():
 def task_generator_bank_detail(task_id: int):
     """Полноразмерный V2-просмотр одного задания из банка."""
     _require_manual_task_create_access()
-    task = Tasks.query.filter_by(task_id=task_id, is_active=True).first_or_404()
+    task = Tasks.query.filter_by(task_id=task_id).first_or_404()
+    if not task.is_active and task.bank_origin != 'scraped':
+        abort(404)
 
     return_to = (request.args.get('return_to') or '').strip()
     if not return_to.startswith('/') or return_to.startswith('//'):
@@ -2142,11 +2218,6 @@ def task_action():
                         db.session.add(lesson_task)
                         added_count += 1
                         added_task_ids.append(task_id)
-                        try:
-                            if lesson.student_id:
-                                db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
-                        except Exception:
-                            pass
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None

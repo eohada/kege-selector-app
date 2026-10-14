@@ -392,6 +392,15 @@ class Tasks(db.Model):
     task_group_id = db.Column(db.String(64), nullable=True, index=True)
     site_task_id = db.Column(db.Text, nullable=True)
     source_url = db.Column(db.Text, nullable=True)
+    # Provenance is stored independently from task_number because KIM numbering and themes vary by year.
+    source_name = db.Column(db.String(160), nullable=True)
+    source_year = db.Column(db.SmallInteger, nullable=True, index=True)
+    source_task_number = db.Column(db.SmallInteger, nullable=True, index=True)
+    exam_year = db.Column(db.SmallInteger, nullable=True, index=True)
+    source_key = db.Column(db.String(190), nullable=True, unique=True, index=True)
+    content_fingerprint = db.Column(db.String(64), nullable=True, index=True)
+    prototype_status = db.Column(db.String(20), nullable=False, default='unreviewed', server_default='unreviewed', index=True)
+    ingest_status = db.Column(db.String(20), nullable=False, default='ready', server_default='ready', index=True)
     content_html = db.Column(db.Text, nullable=False)
     answer = db.Column(db.Text, nullable=True)
     attached_files = db.Column(db.Text, nullable=True)
@@ -523,6 +532,7 @@ class UsageHistory(db.Model):
     session_tag = db.Column(db.Text, nullable=True)
 
     task = db.relationship('Tasks', back_populates='usage_history')
+
 
 class SkippedTasks(db.Model):
     __tablename__ = 'SkippedTasks'
@@ -1140,6 +1150,8 @@ class LessonTask(db.Model):
     notes = db.Column(db.Text, nullable=True)
     student_answer = db.Column(db.Text, nullable=True)
     assignment_type = db.Column(db.String(20), default='homework')
+    # Explicit opt-in for the only allowed repeat: correction work over mistakes.
+    is_error_review = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     # Преподаватель может подготовить задание заранее и отдельно показать его ученику.
     is_visible_to_student = db.Column(db.Boolean, default=True, nullable=False)
     # Эталонный ответ раскрывается ученику только отдельной командой преподавателя.
@@ -1230,9 +1242,8 @@ class LessonTask(db.Model):
 
 class StudentTaskSeen(db.Model):
     """
-    Глобальный анти-повтор для конкретного ученика (Students.student_id):
-    фиксируем факт того, что задача (Tasks.task_id) уже была выдана/прикреплена,
-    чтобы исключать её из других источников (уроки ↔ тренажёр).
+    Глобальный анти-повтор для конкретного ученика. Истёкшее ограничение не удаляется:
+    преподаватель по-прежнему видит, что задание уже выдавалось.
     """
     __tablename__ = 'StudentTaskSeen'
 
@@ -1241,6 +1252,13 @@ class StudentTaskSeen(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, index=True)
     source = db.Column(db.String(40), nullable=True)  # trainer|lesson:homework|lesson:classwork|...
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    last_seen_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=True, index=True)
+    normal_use_count = db.Column(db.Integer, nullable=False, default=1, server_default='1')
+    expired_reuse_count = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    error_review_count = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    last_error_review_at = db.Column(db.DateTime, nullable=True)
+    context_id = db.Column(db.String(96), nullable=True)
 
     student = db.relationship('Student', foreign_keys=[student_id])
     task = db.relationship('Tasks', foreign_keys=[task_id])
@@ -1248,6 +1266,17 @@ class StudentTaskSeen(db.Model):
     __table_args__ = (
         Index('ix_student_task_seen_unique', 'student_id', 'task_id', unique=True),
     )
+
+    @property
+    def is_currently_blocked(self) -> bool:
+        expiry = self.expires_at
+        if expiry is None and self.normal_use_count:
+            from app.task_bank.exposure import add_calendar_months
+            expiry = add_calendar_months(self.last_seen_at or self.created_at)
+        now = moscow_now().replace(tzinfo=None)
+        if expiry is not None and expiry.tzinfo is not None:
+            expiry = expiry.astimezone(MOSCOW_TZ).replace(tzinfo=None)
+        return bool(expiry and expiry > now)
 
 
 class LessonTaskTeacherComment(db.Model):  # comment
@@ -2664,6 +2693,7 @@ class AssignmentTask(db.Model):
     
     answer_override = db.Column(db.Text, nullable=True)  # Эталонный ответ для сравнения (если задан — используется вместо task.answer)
     requires_manual_grading = db.Column(db.Boolean, default=False, nullable=False)  # Требует ли ручной проверки
+    is_error_review = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     

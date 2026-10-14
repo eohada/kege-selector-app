@@ -1,5 +1,18 @@
-from .db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, moscow_now, Lesson, LessonTask, StudentTaskSeen
+from .db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, moscow_now
 from sqlalchemy import text
+
+
+def _active_seen_params():
+    now = moscow_now().replace(tzinfo=None)
+    month_index = now.month - 3
+    year = now.year + month_index // 12
+    month = month_index % 12 + 1
+    import calendar
+    cutoff_day = min(now.day, calendar.monthrange(year, month)[1])
+    return {'seen_now': now, 'legacy_seen_after': now.replace(year=year, month=month, day=cutoff_day)}
+
+
+ACTIVE_SEEN_SQL = "(STS.expires_at > :seen_now OR (STS.expires_at IS NULL AND STS.normal_use_count > 0 AND STS.last_seen_at >= :legacy_seen_after))"
 
 
 def _tasks_active_sql_fragment():
@@ -74,7 +87,8 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
             rids = [int(x) for x in recipient_ids if x is not None]
             if rids:
                 params_extra['recipient_ids'] = rids
-                assign_excl = ' AND T.task_id NOT IN (SELECT AT.task_id FROM "AssignmentTasks" AT JOIN "Submissions" S ON S.assignment_id = AT.assignment_id WHERE S.student_id = ANY(:recipient_ids))'
+                assign_excl = f' AND T.task_id NOT IN (SELECT STS.task_id FROM "StudentTaskSeen" STS WHERE STS.student_id = ANY(:recipient_ids) AND {ACTIVE_SEEN_SQL})'
+                params_extra.update(_active_seen_params())
         except (TypeError, ValueError):
             pass
     if course_id:
@@ -83,9 +97,10 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
 
     active_sql = _tasks_active_sql_fragment()
     if student_id:
+        params_extra.update(_active_seen_params())
         params = {'task_type': task_type, 'limit_count': limit_count, 'student_id': student_id, **params_extra}
         if use_skipped:
-            sql_query = text("""
+            sql_query = text(f"""
                 SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
@@ -95,20 +110,14 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                     AND T.task_id NOT IN (
                         SELECT STS.task_id
                         FROM "StudentTaskSeen" AS STS
-                        WHERE STS.student_id = :student_id
-                    )
-                    AND T.task_id NOT IN (
-                        SELECT LT.task_id 
-                        FROM "LessonTasks" AS LT
-                        JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
-                        WHERE L.student_id = :student_id
+                        WHERE STS.student_id = :student_id AND {ACTIVE_SEEN_SQL}
                     )
                     """ + assign_excl + course_filter + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
         else:
-            sql_query = text("""
+            sql_query = text(f"""
                 SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
@@ -119,13 +128,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                     AND T.task_id NOT IN (
                         SELECT STS.task_id
                         FROM "StudentTaskSeen" AS STS
-                        WHERE STS.student_id = :student_id
-                    )
-                    AND T.task_id NOT IN (
-                        SELECT LT.task_id 
-                        FROM "LessonTasks" AS LT
-                        JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
-                        WHERE L.student_id = :student_id
+                        WHERE STS.student_id = :student_id AND {ACTIVE_SEEN_SQL}
                     )
                     """ + assign_excl + course_filter + """
                 ORDER BY RANDOM()
@@ -192,7 +195,8 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
             rids = [int(x) for x in recipient_ids if x is not None]
             if rids:
                 params['recipient_ids'] = rids
-                assign_excl = ' AND T.task_id NOT IN (SELECT AT.task_id FROM "AssignmentTasks" AT JOIN "Submissions" S ON S.assignment_id = AT.assignment_id WHERE S.student_id = ANY(:recipient_ids))'
+                assign_excl = f' AND T.task_id NOT IN (SELECT STS.task_id FROM "StudentTaskSeen" STS WHERE STS.student_id = ANY(:recipient_ids) AND {ACTIVE_SEEN_SQL})'
+                params.update(_active_seen_params())
         except (TypeError, ValueError):
             pass
 
@@ -204,6 +208,7 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
     active_sql = _tasks_active_sql_fragment()
     if student_id:
         params['student_id'] = student_id
+        params.update(_active_seen_params())
         sql_query = text(f"""
             SELECT T.task_id
             FROM "Tasks" AS T
@@ -217,13 +222,7 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
                 AND T.task_id NOT IN (
                     SELECT STS.task_id
                     FROM "StudentTaskSeen" AS STS
-                    WHERE STS.student_id = :student_id
-                )
-                AND T.task_id NOT IN (
-                    SELECT LT.task_id
-                    FROM "LessonTasks" AS LT
-                    JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
-                    WHERE L.student_id = :student_id
+                    WHERE STS.student_id = :student_id AND {ACTIVE_SEEN_SQL}
                 )
             ORDER BY RANDOM()
             LIMIT 1

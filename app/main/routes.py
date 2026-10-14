@@ -2382,6 +2382,18 @@ def student_mistakes():
     
     mistakes = [ans for ans in mistakes_raw if ans.assignment_task and ans.assignment_task.task]
     mistakes.sort(key=lambda a: getattr(a.assignment_task.task, 'task_number', 0) or 0)
+    from app.task_bank.exposure import record_task_exposure
+    for answer in mistakes:
+        record_task_exposure(
+            db.session,
+            student.student_id,
+            answer.assignment_task.task_id,
+            context_type='error_review',
+            context_id=answer.answer_id,
+            error_review=True,
+        )
+    if mistakes:
+        db.session.commit()
     unique_topics = sorted({a.assignment_task.task.task_number for a in mistakes if a.assignment_task.task.task_number})
     
     return render_template(

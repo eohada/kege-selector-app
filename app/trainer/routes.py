@@ -5,6 +5,7 @@ from typing import Any
 
 import json as _json
 
+from sqlalchemy import and_, or_
 from flask import current_app, render_template, request, abort, jsonify, send_file, session, make_response, redirect, url_for
 from flask_login import login_required, current_user
 
@@ -22,6 +23,7 @@ from app.utils.trainer_tokens import issue_trainer_token, verify_trainer_token, 
 from app.utils.jinja_filters import normalize_task_content_assets, normalize_task_content_urls
 from app.utils.course_tasks import get_task_numbers
 from app.lessons.utils import normalize_answer_value
+from app.task_bank.exposure import TaskExposureConflict, add_calendar_months, record_task_exposure
 import re
 from core.audit_logger import audit_logger
 from app import csrf
@@ -158,21 +160,30 @@ def _map_user_to_student(user: User) -> Student | None:
 
 
 def _record_student_task_seen(*, student_id: int, task_id: int, source: str) -> None:
-    """Best-effort: record that a student has seen a task (dedup across trainer/lessons)."""
-    try:
-        student_id_int = int(student_id)
-        task_id_int = int(task_id)
-    except Exception:
-        return
-    try:
-        exists = StudentTaskSeen.query.filter_by(student_id=student_id_int, task_id=task_id_int).first()
-        if exists:
-            return
-        db.session.add(StudentTaskSeen(student_id=student_id_int, task_id=task_id_int, source=(source or '')[:40] or None))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        return
+    """Persist a student-facing trainer task through the shared cooldown ledger."""
+    record_task_exposure(
+        db.session,
+        int(student_id),
+        int(task_id),
+        context_type=(source or 'trainer')[:40],
+    )
+    db.session.commit()
+
+
+def _active_seen_task_ids_query(student_id: int):
+    now = moscow_now().replace(tzinfo=None)
+    legacy_cutoff = add_calendar_months(now, -2)
+    return db.session.query(StudentTaskSeen.task_id).filter(
+        StudentTaskSeen.student_id == student_id,
+        or_(
+            StudentTaskSeen.expires_at > now,
+            and_(
+                StudentTaskSeen.expires_at.is_(None),
+                StudentTaskSeen.normal_use_count > 0,
+                StudentTaskSeen.last_seen_at >= legacy_cutoff,
+            ),
+        ),
+    )
 
 
 def _audit_log_token_user(
@@ -664,17 +675,19 @@ def trainer_recommendations():
         .limit(3)
         .all()
     )
+    active_seen = _active_seen_task_ids_query(st.student_id) if st else None
     for rq in rematch_due:
-        t = Tasks.query.filter_by(task_id=rq.task_id, is_active=True).first()
+        task_query = Tasks.query.filter_by(task_id=rq.task_id, is_active=True)
+        if active_seen is not None:
+            task_query = task_query.filter(~Tasks.task_id.in_(active_seen))
+        t = task_query.first()
         if t:
             recommendations.append(_task_to_payload(t))
             
     # Добиваем новыми задачами
     exclude_ids = [r['task_id'] for r in recommendations if r]
     if st:
-        # Исключаем виденные
-        seen_q = db.session.query(StudentTaskSeen.task_id).filter(StudentTaskSeen.student_id == st.student_id)
-        q = Tasks.query.filter(~Tasks.task_id.in_(seen_q), Tasks.is_active.is_(True))
+        q = Tasks.query.filter(~Tasks.task_id.in_(active_seen), Tasks.is_active.is_(True))
         if exclude_ids:
             q = q.filter(~Tasks.task_id.in_(exclude_ids))
         
@@ -708,6 +721,8 @@ def trainer_recommendations():
     # Если всё еще мало, просто рандом
     if len(recommendations) < 5:
         q = Tasks.query.filter(Tasks.is_active.is_(True))
+        if active_seen is not None:
+            q = q.filter(~Tasks.task_id.in_(active_seen))
         exclude_ids = [r['task_id'] for r in recommendations if r]
         if exclude_ids:
             q = q.filter(~Tasks.task_id.in_(exclude_ids))
@@ -715,7 +730,19 @@ def trainer_recommendations():
         for t in rand_tasks:
             recommendations.append(_task_to_payload(t))
             
-    return jsonify({'success': True, 'recommendations': recommendations[:7]})
+    recommendations = recommendations[:7]
+    if st and recommendations:
+        try:
+            for recommendation in recommendations:
+                _record_student_task_seen(
+                    student_id=st.student_id,
+                    task_id=recommendation['task_id'],
+                    source='trainer',
+                )
+        except TaskExposureConflict as exc:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(exc)}), 409
+    return jsonify({'success': True, 'recommendations': recommendations})
 
 
 @trainer_bp.route('/internal/trainer/task_success_rates', methods=['GET'])
@@ -1009,14 +1036,9 @@ def trainer_stream_start():
         if exclude_ids:
             q = q.filter(~Tasks.task_id.in_(exclude_ids))
         if st:
-            q = q.filter(~Tasks.task_id.in_(
-                db.session.query(LessonTask.task_id).join(Lesson).filter(Lesson.student_id == st.student_id)
-            ))
-            q = q.filter(~Tasks.task_id.in_(
-                db.session.query(StudentTaskSeen.task_id).filter(StudentTaskSeen.student_id == st.student_id)
-            ))
+            q = q.filter(~Tasks.task_id.in_(_active_seen_task_ids_query(st.student_id)))
         if mode == 'trainer_auto':
-            rematch_task = (
+            rematch_query = (
                 db.session.query(Tasks)
                 .join(RematchQueue, RematchQueue.task_id == Tasks.task_id)
                 .filter(
@@ -1026,9 +1048,10 @@ def trainer_stream_start():
                     RematchQueue.due_at <= moscow_now(),
                     Tasks.is_active.is_(True),
                 )
-                .order_by(RematchQueue.due_at.asc())
-                .first()
             )
+            if st:
+                rematch_query = rematch_query.filter(~Tasks.task_id.in_(_active_seen_task_ids_query(st.student_id)))
+            rematch_task = rematch_query.order_by(RematchQueue.due_at.asc()).first()
             if rematch_task:
                 task = rematch_task
             else:
@@ -1056,7 +1079,11 @@ def trainer_stream_start():
             task = q.order_by(db.func.random()).first()
 
     if st and task:
-        _record_student_task_seen(student_id=st.student_id, task_id=task.task_id, source='trainer')
+        try:
+            _record_student_task_seen(student_id=st.student_id, task_id=task.task_id, source='trainer')
+        except TaskExposureConflict as exc:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(exc)}), 409
 
     try:
         audit_logger.log(action='trainer_stream_start', entity='Trainer', entity_id=user.id, status='success', metadata={'task_type': task_type, 'has_task': bool(task)})
@@ -1102,12 +1129,7 @@ def trainer_stream_act():
     if exclude_ids:
         q = q.filter(~Tasks.task_id.in_(exclude_ids))
     if st:
-        q = q.filter(~Tasks.task_id.in_(
-            db.session.query(LessonTask.task_id).join(Lesson).filter(Lesson.student_id == st.student_id)
-        ))
-        q = q.filter(~Tasks.task_id.in_(
-            db.session.query(StudentTaskSeen.task_id).filter(StudentTaskSeen.student_id == st.student_id)
-        ))
+        q = q.filter(~Tasks.task_id.in_(_active_seen_task_ids_query(st.student_id)))
     if mode == 'trainer_auto':
         cfg = get_mmr_config()
         mmr_row = UserTaskMMR.query.filter_by(user_id=user.id, task_type=task_type).first()
@@ -1132,7 +1154,11 @@ def trainer_stream_act():
     else:
         task = q.order_by(db.func.random()).first()
     if st and task:
-        _record_student_task_seen(student_id=st.student_id, task_id=task.task_id, source='trainer')
+        try:
+            _record_student_task_seen(student_id=st.student_id, task_id=task.task_id, source='trainer')
+        except TaskExposureConflict as exc:
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(exc)}), 409
     try:
         audit_logger.log(action='trainer_stream_next', entity='Trainer', entity_id=user.id, status='success', metadata={'task_type': task_type, 'has_task': bool(task)})
     except Exception:

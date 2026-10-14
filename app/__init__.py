@@ -180,6 +180,16 @@ def create_app(config_name=None):
     app.config['S3_ACCESS_KEY'] = (os.environ.get('S3_ACCESS_KEY') or '').strip() or None
     app.config['S3_SECRET_KEY'] = (os.environ.get('S3_SECRET_KEY') or '').strip() or None
     app.config['S3_BUCKET'] = (os.environ.get('S3_BUCKET') or '').strip() or 'boostudy'
+    app.config['STORAGE_BACKEND'] = (os.environ.get('STORAGE_BACKEND') or '').strip().lower() or None
+    app.config['GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON'] = (os.environ.get('GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON') or '').strip() or None
+    app.config['GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE'] = (os.environ.get('GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE') or '').strip() or None
+    app.config['GOOGLE_DRIVE_OAUTH_CLIENT_JSON'] = (os.environ.get('GOOGLE_DRIVE_OAUTH_CLIENT_JSON') or '').strip() or None
+    app.config['GOOGLE_DRIVE_OAUTH_CLIENT_FILE'] = (os.environ.get('GOOGLE_DRIVE_OAUTH_CLIENT_FILE') or '').strip() or None
+    app.config['GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN'] = (os.environ.get('GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN') or '').strip() or None
+    app.config['GOOGLE_DRIVE_FOLDER_ID'] = (
+        (os.environ.get('GOOGLE_DRIVE_FOLDER_ID') or '').strip()
+        or '1YkwyCAzWBDsozXvowVF-TZvbpJ0g_jON'
+    )
 
     app.config['ADMIN_URL'] = (os.environ.get('ADMIN_URL') or '').strip().rstrip('/') or None
     
@@ -230,13 +240,21 @@ def create_app(config_name=None):
 
     csrf.init_app(app)
     db.init_app(app)
+    from app.task_bank.exposure import register_task_exposure_listeners
+    register_task_exposure_listeners()
     # Keep Alembic independent from the current working directory.  A relative
     # default can make one-off production commands discover zero revisions.
     migrate.init_app(app, db, directory=os.path.join(base_dir, 'migrations'))
     from app.commands.schema import schema_audit_command
     from app.commands.ai_review import ai_review_check_command
+    from app.commands.fipi_bank_import import fipi_bank_import_command
+    from app.commands.openfipi_bank_export import openfipi_bank_export_command
+    from app.commands.openfipi_bank_import import openfipi_bank_import_command
     app.cli.add_command(schema_audit_command)
     app.cli.add_command(ai_review_check_command)
+    app.cli.add_command(fipi_bank_import_command)
+    app.cli.add_command(openfipi_bank_export_command)
+    app.cli.add_command(openfipi_bank_import_command)
     audit_logger.init_app(app)
 
     from app.storage import storage as file_storage

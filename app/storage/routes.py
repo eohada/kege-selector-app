@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 
-from flask import Blueprint, request, jsonify, render_template_string
+from flask import Blueprint, request, jsonify, render_template_string, send_file, abort
 from flask_login import login_required, current_user
 
 from app.storage.s3_service import storage
@@ -101,6 +101,29 @@ def upload_file():
         return '\n'.join(html_parts), 200
 
     return jsonify({'success': True, 'files': results}), 200
+
+
+@storage_bp.route('/google-drive/<file_id>', methods=['GET'])
+@login_required
+def serve_google_drive_file(file_id):
+    """Serve private Drive assets through the authenticated BooStudy session."""
+    if not storage.use_google_drive or not file_id or len(file_id) > 200:
+        abort(404)
+    try:
+        file_obj, mime_type, filename = storage.download_google_drive_file(file_id)
+    except Exception as exc:
+        logger.error('Google Drive asset read failed for %s: %s', file_id, exc, exc_info=True)
+        abort(404)
+    response = send_file(
+        file_obj,
+        mimetype=mime_type,
+        as_attachment=False,
+        download_name=filename,
+        conditional=True,
+        max_age=3600,
+    )
+    response.headers['Cache-Control'] = 'private, max-age=3600'
+    return response
 
 
 def _error_response(message: str, status: int):

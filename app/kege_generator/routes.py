@@ -9,7 +9,7 @@ from sqlalchemy import or_, func
 
 from app.kege_generator import kege_generator_bp
 from app.kege_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
-from app.models import Lesson, Tasks, LessonTask, StudentTaskSeen, UsageHistory, db
+from app.models import Lesson, Tasks, LessonTask, UsageHistory, db
 from app.models import TaskTemplate, TemplateTask
 from app.utils.jinja_filters import normalize_task_content_assets, normalize_task_content_urls
 from app.auth.rbac_utils import has_permission
@@ -373,11 +373,6 @@ def _attach_task_to_lesson(task_id: int, lesson: Lesson, assignment_type: str) -
     if existing:
         return False
     db.session.add(LessonTask(lesson_id=lesson.lesson_id, task_id=task_id, assignment_type=assignment_type))
-    try:
-        if lesson.student_id:
-            db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
-    except Exception:
-        pass
     if assignment_type == 'homework':
         lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
         lesson.homework_result_percent = None
@@ -526,11 +521,6 @@ def generator_stream_act():
                     existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=tid).first()
                     if not existing:
                         db.session.add(LessonTask(lesson_id=lesson_id, task_id=tid, assignment_type=assignment_type))
-                        try:
-                            if lesson.student_id:
-                                db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=tid, source=f'lesson:{assignment_type}'))
-                        except Exception:
-                            pass
                         added_task_ids.append(tid)
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
@@ -753,11 +743,6 @@ def task_action():
                         db.session.add(lesson_task)
                         added_count += 1
                         added_task_ids.append(task_id)
-                        try:
-                            if lesson.student_id:
-                                db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
-                        except Exception:
-                            pass
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None

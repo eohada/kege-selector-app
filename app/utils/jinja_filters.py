@@ -170,6 +170,7 @@ _PLATFORM_MEDIA_PREFIXES = (
     "/uploads/",
     "/attachments/",
     "/media/",
+    "/storage/",
     "/internal/",
     "/theory/uploads/",
 )
