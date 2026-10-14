@@ -196,7 +196,7 @@ def upgrade():
                     event_keys.add(event_key)
 
             seen_rows = {
-                (row['student_id'], row['task_id']): row
+                (row['student_id'], row['task_id']): dict(row)
                 for row in bind.execute(sa.select(seen)).mappings()
             }
             for student_id, task_id, exposed_at, is_error_review, source, context_id in deduplicated_events:
