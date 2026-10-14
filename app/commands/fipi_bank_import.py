@@ -19,6 +19,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from app.storage.s3_service import storage
+from app.utils.mathml import normalize_fipi_mathml
 from core.db_models import Course, TaskReview, Tasks, db
 
 
@@ -91,6 +92,7 @@ def _clean_fragment(raw_html: str, page_url: str) -> tuple[BeautifulSoup, list[d
     soup = BeautifulSoup(raw_html or '', 'html.parser')
     for node in soup.find_all(['script', 'style', 'noscript']):
         node.decompose()
+    normalize_fipi_mathml(soup)
     for node in soup.find_all(True):
         for attribute in list(node.attrs):
             if attribute.lower().startswith('on') or attribute.lower() == 'srcdoc':
