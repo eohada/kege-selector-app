@@ -50,15 +50,18 @@ def upgrade():
         ('exam_year', sa.SmallInteger(), True, None),
         ('source_key', sa.String(length=190), True, None),
         ('content_fingerprint', sa.String(length=64), True, None),
-        ('prototype_status', sa.String(length=20), False, 'unreviewed'),
-        ('ingest_status', sa.String(length=20), False, 'ready'),
+        ('prototype_status', sa.String(length=20), False, "'unreviewed'"),
+        ('ingest_status', sa.String(length=20), False, "'ready'"),
     )
     for name, column_type, nullable, server_default in columns_to_add:
         if name.lower() in columns:
             continue
-        column = sa.Column(name, column_type, nullable=nullable)
-        if server_default is not None:
-            column.server_default = server_default
+        column = sa.Column(
+            name,
+            column_type,
+            nullable=nullable,
+            server_default=sa.text(server_default) if server_default is not None else None,
+        )
         op.add_column(table_name, column)
 
     indexes = (
@@ -107,9 +110,12 @@ def upgrade():
         for name, column_type, nullable, server_default in seen_additions:
             if name.lower() in seen_columns:
                 continue
-            column = sa.Column(name, column_type, nullable=nullable)
-            if server_default is not None:
-                column.server_default = server_default
+            column = sa.Column(
+                name,
+                column_type,
+                nullable=nullable,
+                server_default=sa.text(server_default) if server_default is not None else None,
+            )
             op.add_column(seen_table, column)
 
         current_indexes = {index['name'].lower() for index in sa.inspect(bind).get_indexes(seen_table) if index.get('name')}
