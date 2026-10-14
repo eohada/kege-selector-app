@@ -339,6 +339,11 @@ def openfipi_bank_import_command(source_path: Path, course_slug: str, limit: int
                 counts['drive_assets_uploaded'] += len(uploaded_this_task)
                 if activate_ready and not task.is_active:
                     counts['inactive_missing_data'] += 1
+                if counts['imported'] % 25 == 0:
+                    click.echo(
+                        f"В этом запуске добавлено {counts['imported']}; "
+                        f"загружено файлов в Drive {counts['drive_assets_uploaded']}."
+                    )
             except Exception as exc:
                 db.session.rollback()
                 for archive_path, storage_key in uploaded_this_task:

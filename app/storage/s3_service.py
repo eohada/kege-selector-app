@@ -137,7 +137,7 @@ class StorageService:
                 media_body=MediaIoBaseUpload(upload_stream, mimetype=mime_type, resumable=True),
                 fields='id',
                 supportsAllDrives=True,
-            ).execute()
+            ).execute(num_retries=5)
             return f"gdrive://{created['id']}"
 
         if self.use_s3:
