@@ -1042,6 +1042,7 @@ def task_generator_bank_picker_list():
     bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by))
     if include_imported:
         bq = bq.filter(or_(Tasks.is_active.is_(True), Tasks.bank_origin == 'scraped'))
+        bq = bq.filter(Tasks.ingest_status != 'retired_2027')
     else:
         bq = bq.filter(Tasks.is_active.is_(True))
     if selected_task_id is not None:
@@ -1107,14 +1108,17 @@ def task_generator_bank_picker_list():
             'solution': (getattr(getattr(t, 'task_solution', None), 'solution_text', None) or ''),
             'max_score': getattr(t, 'max_score', 1) or 1,
             'author_name': (getattr(getattr(t, 'created_by', None), 'full_name', None) or 'Автор'),
-            'source': getattr(t, 'source_url', None) or getattr(t, 'kege_source_tag', None) or 'Банк задач',
+            'source': ' · '.join(filter(None, (
+                getattr(t, 'source_name', None) or getattr(t, 'source_url', None) or 'Банк задач',
+                str(t.source_year) if t.source_year else None,
+            ))),
             'topic': thematic.get(t.source_prototype, {}).get('module') or (f"Задание №{t.task_number}" if t.task_number else 'Без номера задания'),
             'title': thematic.get(t.source_prototype, {}).get('title') or (f"Задание №{t.task_number}" if t.task_number else 'Номер не размечен'),
             'attached_files': getattr(t, 'attached_files', []) or [],
             'can_manage': bool(getattr(current_user, 'is_creator', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)()),
             'can_edit': bool((getattr(t, 'bank_origin', None) == 'manual' and getattr(t, 'created_by_id', None) == current_user.id) or getattr(current_user, 'is_admin', lambda: False)()),
             'student_task_mmr': _get_user_task_mmr(target_user_id, getattr(t, 'task_number', None)),
-            'content_html': (normalize_task_content_assets(getattr(t, 'content_html', '') or '', getattr(t, 'attached_files', None), getattr(t, 'source_url', None)))[:12000],
+            'content_html': normalize_task_content_assets(getattr(t, 'content_html', '') or '', getattr(t, 'attached_files', None), getattr(t, 'source_url', None)),
             'already_added': fully,
             'student_exposure': {
                 'blocked': bool(blocked_states),
@@ -2078,7 +2082,7 @@ def task_generator_bank_detail(task_id: int):
     """Полноразмерный V2-просмотр одного задания из банка."""
     _require_manual_task_create_access()
     task = Tasks.query.filter_by(task_id=task_id).first_or_404()
-    if not task.is_active and task.bank_origin != 'scraped':
+    if task.ingest_status == 'retired_2027' or (not task.is_active and task.bank_origin != 'scraped'):
         abort(404)
 
     return_to = (request.args.get('return_to') or '').strip()

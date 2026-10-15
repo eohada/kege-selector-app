@@ -1,0 +1,45 @@
+/* Shared typography for imported task conditions in every BooStudy workspace. */
+:where(.task-condition, .task-bank-condition, .task-content, .tw-task-content, #task-current-content, #os-task-body, .room-task-content-body, .template-preview-task-body) {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+
+:where(.task-condition, .task-bank-condition, .task-content, .tw-task-content, #task-current-content, #os-task-body, .room-task-content-body, .template-preview-task-body) :where(img, video, svg) {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+:where(.task-condition, .task-bank-condition, .task-content, .tw-task-content, #task-current-content, #os-task-body, .room-task-content-body, .template-preview-task-body) table {
+  border-collapse: collapse;
+  width: max-content;
+  max-width: 100%;
+  margin: .75rem 0;
+  background: #fff;
+}
+
+:where(.task-condition, .task-bank-condition, .task-content, .tw-task-content, #task-current-content, #os-task-body, .room-task-content-body, .template-preview-task-body) :where(th, td) {
+  border: 1px solid #cbd5e1;
+  padding: .4rem .6rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+:where(.task-condition, .task-bank-condition, .task-content, .tw-task-content, #task-current-content, #os-task-body, .room-task-content-body, .template-preview-task-body) th {
+  background: #f1f5f9;
+  font-weight: 700;
+}
+
+:where(.task-condition, .task-bank-condition, .task-content, .tw-task-content, #task-current-content, #os-task-body, .room-task-content-body, .template-preview-task-body) math[display="block"] {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: .5rem 0;
+  text-align: center;
+}
+
+:where(.task-condition, .task-bank-condition, .task-content, .tw-task-content, #task-current-content, #os-task-body, .room-task-content-body, .template-preview-task-body) :where(pre, code) {
+  max-width: 100%;
+  overflow-x: auto;
+}

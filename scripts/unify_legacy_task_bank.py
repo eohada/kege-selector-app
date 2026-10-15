@@ -210,6 +210,8 @@ def main():
     parser.add_argument('--apply', action='store_true')
     parser.add_argument('--assets', action='store_true', help='Migrate KEGE files and inline images to Google Drive')
     parser.add_argument('--limit', type=int, default=0)
+    parser.add_argument('--after-id', type=int, default=0)
+    parser.add_argument('--through-id', type=int, default=0)
     args = parser.parse_args()
     if args.assets and not args.apply:
         parser.error('--assets requires --apply because Drive uploads are irreversible')
@@ -227,7 +229,9 @@ def main():
                 Tasks.source_key.like('kompege:ege-informatics:%'),
                 or_(Tasks.attached_files.isnot(None), Tasks.content_html.ilike('%<img%')),
             )
-        last_id = 0
+        last_id = args.after_id
+        if args.through_id:
+            query = query.filter(Tasks.task_id <= args.through_id)
         while True:
             batch = query.filter(Tasks.task_id > last_id).order_by(Tasks.task_id).limit(100).all()
             if not batch:
