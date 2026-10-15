@@ -10,8 +10,15 @@ x-web-common: &web-common
   environment:
     ENVIRONMENT: production
     EVENTLET_NO_GREENDNS: "yes"
+    PYTHON_TASK_SANDBOX_URL: http://python-task-sandbox:8777
   volumes:
     - ./uploads:/app/uploads
+  networks:
+    - default
+    - python_sandbox
+  depends_on:
+    python-task-sandbox:
+      condition: service_healthy
   command: >
     env EVENTLET_NO_GREENDNS=yes
     gunicorn wsgi:app
@@ -30,6 +37,37 @@ x-web-common: &web-common
     start_period: 20s
 
 services:
+  python-task-sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.python_sandbox_controller
+    image: boostudy-python-sandbox-controller:2026-10-v1
+    restart: unless-stopped
+    environment:
+      PYTHON_TASK_SANDBOX_IMAGE: boostudy-python-task-sandbox:2026-10-v1
+      PYTHON_TASK_SANDBOX_HOST: 0.0.0.0
+      PYTHON_TASK_SANDBOX_PORT: "8777"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - python_sandbox
+    read_only: true
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8777/health', timeout=2).read()"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
   web_blue:
     <<: *web-common
     container_name: boostudy_web_blue
@@ -46,3 +84,6 @@ networks:
   default:
     name: boostudy_default
     external: true
+  python_sandbox:
+    name: boostudy_python_sandbox
+    internal: true

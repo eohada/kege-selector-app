@@ -125,6 +125,8 @@ def _normalize_answer_spec(task: Tasks) -> dict[str, Any]:
 
     return {
         "type": answer_type,
+        "grading_mode": "manual" if str(spec.get("grading_mode") or "").lower() == "manual" else "auto",
+        "language": str(spec.get("language") or "python").strip()[:32],
         "prompt": str(spec.get("prompt") or "").strip()[:500],
         "placeholder": str(spec.get("placeholder") or "").strip()[:500],
         "options": normalized_options,
@@ -347,6 +349,11 @@ class WorkspaceContext:
     def as_payload(self) -> dict[str, Any]:
         answer_spec = _normalize_answer_spec(self.task) if self.task else {"default_workspace_mode": "code", "fields": []}
         attachments = normalize_task_attachments(self.task.attached_files) if self.task else []
+        is_python_bank = bool(self.task and getattr(self.task, "bank_category", "exam") == "python_practice")
+        safe_task_meta = dict(self.task_meta or {})
+        if is_python_bank and not self.can_review:
+            safe_task_meta.pop("topics", None)
+            safe_task_meta.pop("difficulty_label", None)
         # Эталонный ответ и решение доступны преподавателю ВСЕГДА, а ученику — ТОЛЬКО после проверки!
         show_review_details = bool(self.can_review or self.is_reviewed)
         safe_correct_answer = (self.correct_answer or _extract_task_correct_answer(self.task) or "") if (show_review_details and self.task) else ""
@@ -361,7 +368,7 @@ class WorkspaceContext:
             "task_id": self.task_id,
             "title": self.title,
             "subtitle": self.subtitle,
-            "source_label": self.source_label,
+            "source_label": self.source_label if self.can_review or not is_python_bank else None,
             "assignment_title": self.assignment_title or self.title,
             "return_url": self.return_url,
             "student_id": self.student_id,
@@ -378,9 +385,9 @@ class WorkspaceContext:
             "hints": _visible_task_hints(self.task) if self.task else [],
             "attachments": attachments,
             "max_score": int(self.task.max_score or 1) if self.task else 1,
-            "task_number": self.task.task_number if self.task else None,
+            "task_number": None if is_python_bank else self.task.task_number if self.task else None,
             "task_title": str(getattr(self.task, "title", "") or "").strip() if self.task else "",
-            "difficulty": getattr(self.task, "difficulty_label", "") if self.task else "",
+            "difficulty": getattr(self.task, "difficulty_label", "") if self.task and (self.can_review or not is_python_bank) else "",
             "content_html": normalize_task_content_assets(
                 prepare_task_content_html(self.task.content_html or ""),
                 self.task.attached_files,
@@ -404,7 +411,7 @@ class WorkspaceContext:
             "next_task": self.next_task,
             "tasks_nav": self.tasks_nav or [],
             "submission_meta": self.submission_meta or {},
-            "task_meta": self.task_meta or {},
+            "task_meta": safe_task_meta,
             "answer_hint": safe_correct_answer,
             "correct_answer": safe_correct_answer,
             "teacher_comment": self.teacher_comment or "",
@@ -497,6 +504,12 @@ def _is_task_manual_review(t_at: AssignmentTask | None, t_t: Tasks | None) -> bo
         return True
     if not t_t:
         return False
+    raw_spec = getattr(t_t, "answer_spec", None)
+    if isinstance(raw_spec, dict):
+        if raw_spec.get("type") == "code":
+            return str(raw_spec.get("grading_mode") or "manual").lower() != "auto"
+        if raw_spec.get("type") == "long_answer":
+            return True
     if getattr(t_t, "verification_type", None) == "manual":
         return True
     if getattr(t_t, "task_type", None) in {"code", "long_answer"}:
@@ -507,7 +520,6 @@ def _is_task_manual_review(t_at: AssignmentTask | None, t_t: Tasks | None) -> bo
             return True
     except Exception:
         pass
-    raw_spec = getattr(t_t, "answer_spec", None)
     if isinstance(raw_spec, dict) and raw_spec.get("type") in {"code", "long_answer"}:
         return True
     if t_t.course_id is not None and t_t.task_number is not None:

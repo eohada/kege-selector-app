@@ -775,7 +775,8 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         return None
     payload = {
         'task_id': task.task_id,
-        'task_number': task.task_number,
+        'task_number': None if getattr(task, 'bank_category', 'exam') == 'python_practice' else task.task_number,
+        'bank_category': getattr(task, 'bank_category', 'exam'),
         'site_task_id': task.site_task_id,
         'source_url': task.source_url,
         'content_html': normalize_task_content_assets(task.content_html or '', task.attached_files, task.source_url),
@@ -787,7 +788,7 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         'kege_difficulty_tier': task.kege_difficulty_tier,
         'kege_tier_label_ru': task.kege_tier_label_ru,
         'difficulty_label_ru': _difficulty_label_ru(task),
-        'student_task_mmr': _get_user_task_mmr(target_user_id, task.task_number),
+        'student_task_mmr': None if getattr(task, 'bank_category', 'exam') == 'python_practice' else _get_user_task_mmr(target_user_id, task.task_number),
         'answer_spec': task.answer_spec,
         'answer_needs_verification': isinstance(task.answer_spec, dict) and task.answer_spec.get('source_answer_verified') is False,
         'hints': task.hints,
@@ -795,7 +796,7 @@ def _task_to_payload(task: Tasks, target_user_id: int | None = None):
         'difficulty_level': task.difficulty_level,
         'solution': getattr(TaskSolution.query.filter_by(task_id=task.task_id).first(), 'solution_text', None),
         'course_id': task.course_id,
-        'can_edit': bool((task.bank_origin == 'manual' and task.created_by_id == getattr(current_user, 'id', None)) or getattr(current_user, 'is_admin', lambda: False)()),
+        'can_edit': bool(getattr(task, 'bank_category', 'exam') == 'python_practice' or (task.bank_origin == 'manual' and task.created_by_id == getattr(current_user, 'id', None)) or getattr(current_user, 'is_admin', lambda: False)()),
     }
     triplet_ids = _get_triplet_task_ids(task)
     if triplet_ids:
@@ -1003,6 +1004,9 @@ def task_generator_bank_picker_list():
     search_query = (data.get('search_query') or data.get('q') or '').strip()
     only_my = str(data.get('only_my') or '').lower() in ('true', '1', 'yes')
     include_imported = str(data.get('include_imported') or '').lower() in ('true', '1', 'yes')
+    bank_category = str(data.get('bank_category', 'exam') or 'exam').strip()
+    if bank_category not in ('all', 'exam', 'python_practice'):
+        bank_category = 'exam'
 
     page = max(1, int(data.get('page', 1) or 1))
     per_page = min(100, max(5, int(data.get('per_page', 12) or 12)))
@@ -1038,7 +1042,9 @@ def task_generator_bank_picker_list():
 
     from app.utils.python_bank_import import foundations_metadata
     from app.utils.python_ege_curriculum_import import curriculum_metadata
-    thematic = {**foundations_metadata(), **curriculum_metadata()}
+    from app.utils.python_practice_bank import python_bank_metadata
+    python_thematic = python_bank_metadata()
+    thematic = {**foundations_metadata(), **curriculum_metadata(), **python_thematic}
     bq = Tasks.query.options(joinedload(Tasks.course), joinedload(Tasks.created_by))
     if include_imported:
         bq = bq.filter(or_(Tasks.is_active.is_(True), Tasks.bank_origin == 'scraped'))
@@ -1047,6 +1053,8 @@ def task_generator_bank_picker_list():
         bq = bq.filter(Tasks.is_active.is_(True))
     if selected_task_id is not None:
         bq = bq.filter(Tasks.task_id == selected_task_id)
+    if bank_category in ('exam', 'python_practice'):
+        bq = bq.filter(Tasks.bank_category == bank_category)
     if exam_course_id:
         bq = bq.filter(Tasks.course_id == exam_course_id)
     module = (data.get('module') or '').strip()
@@ -1088,7 +1096,8 @@ def task_generator_bank_picker_list():
         items.append({
             'task_id': tid,
             'course_id': getattr(t, 'course_id', None),
-            'task_number': getattr(t, 'task_number', 1),
+            'bank_category': getattr(t, 'bank_category', 'exam'),
+            'task_number': None if getattr(t, 'bank_category', 'exam') == 'python_practice' else getattr(t, 'task_number', 1),
             'is_active': bool(getattr(t, 'is_active', True)),
             'source_name': getattr(t, 'source_name', None),
             'source_year': getattr(t, 'source_year', None),
@@ -1096,7 +1105,7 @@ def task_generator_bank_picker_list():
             'prototype_status': getattr(t, 'prototype_status', None),
             'ingest_status': getattr(t, 'ingest_status', None),
             'answer_needs_verification': isinstance(t.answer_spec, dict) and t.answer_spec.get('source_answer_verified') is False,
-            'course_title': (t.course.title if getattr(t, 'course', None) else None),
+            'course_title': (t.course.title if getattr(t, 'course', None) else ('Программирование на Python' if getattr(t, 'bank_category', 'exam') == 'python_practice' else None)),
             'bank_origin': getattr(t, 'bank_origin', None),
             'kege_source_tag': getattr(t, 'kege_source_tag', None),
             'kege_difficulty_tier': getattr(t, 'kege_difficulty_tier', None),
@@ -1104,6 +1113,8 @@ def task_generator_bank_picker_list():
             'difficulty_label_ru': _difficulty_label_ru(t),
             'difficulty_level': getattr(t, 'difficulty_level', 2) or 2,
             'answer': getattr(t, 'answer', '') or '',
+            'answer_spec': getattr(t, 'answer_spec', None) or {},
+            'hints': getattr(t, 'hints', None) or [],
             'starter_code': getattr(t, 'starter_code', '') or '',
             'solution': (getattr(getattr(t, 'task_solution', None), 'solution_text', None) or ''),
             'max_score': getattr(t, 'max_score', 1) or 1,
@@ -1116,8 +1127,8 @@ def task_generator_bank_picker_list():
             'title': thematic.get(t.source_prototype, {}).get('title') or (f"Задание №{t.task_number}" if t.task_number else 'Номер не размечен'),
             'attached_files': getattr(t, 'attached_files', []) or [],
             'can_manage': bool(getattr(current_user, 'is_creator', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)()),
-            'can_edit': bool((getattr(t, 'bank_origin', None) == 'manual' and getattr(t, 'created_by_id', None) == current_user.id) or getattr(current_user, 'is_admin', lambda: False)()),
-            'student_task_mmr': _get_user_task_mmr(target_user_id, getattr(t, 'task_number', None)),
+            'can_edit': bool(getattr(t, 'bank_category', 'exam') == 'python_practice' or (getattr(t, 'bank_origin', None) == 'manual' and getattr(t, 'created_by_id', None) == current_user.id) or getattr(current_user, 'is_admin', lambda: False)()),
+            'student_task_mmr': None if getattr(t, 'bank_category', 'exam') == 'python_practice' else _get_user_task_mmr(target_user_id, getattr(t, 'task_number', None)),
             'content_html': normalize_task_content_assets(getattr(t, 'content_html', '') or '', getattr(t, 'attached_files', None), getattr(t, 'source_url', None)),
             'already_added': fully,
             'student_exposure': {
@@ -1137,7 +1148,14 @@ def task_generator_bank_picker_list():
         'page': page,
         'per_page': per_page,
         'courses': [{'id': course.id, 'title': course.title, 'slug': course.slug} for course in Course.query.filter_by(is_active=True).order_by(Course.title).all()],
-        'modules': list(dict.fromkeys(meta['module'] for meta in thematic.values())),
+        'modules': list(dict.fromkeys(
+            meta['module']
+            for key, meta in thematic.items()
+            if (bank_category == 'python_practice' and key.startswith('python_topic_'))
+            or (bank_category == 'exam' and not key.startswith('python_topic_'))
+            or bank_category == 'all'
+        )),
+        'bank_category': bank_category,
     }), 200
 
 
@@ -1925,12 +1943,17 @@ def task_generator_bank_save(task_id: int):
         return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
 
     is_admin = bool(getattr(current_user, 'is_admin', lambda: False)())
-    if task.bank_origin != 'manual' or (task.created_by_id != current_user.id and not is_admin):
+    is_python_bank_task = getattr(task, 'bank_category', 'exam') == 'python_practice'
+    if is_python_bank_task:
+        _require_manual_task_create_access()
+    elif task.bank_origin != 'manual' or (task.created_by_id != current_user.id and not is_admin):
         return jsonify({'success': False, 'error': 'Можно редактировать только свои авторские задания'}), 403
 
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Ожидается JSON'}), 400
+    if is_python_bank_task and set(data) - {'difficulty_level'}:
+        return jsonify({'success': False, 'error': 'В авторском банке Python здесь можно изменить только сложность'}), 400
 
     editable = {'content', 'answer', 'solution', 'starter_code', 'max_score', 'difficulty_level', 'hints', 'answer_spec', 'task_number'}
     if not editable.intersection(data):
@@ -2095,6 +2118,7 @@ def task_generator_bank_detail(task_id: int):
     return render_template(
         'sandbox/task_bank_detail.html',
         task_id=task.task_id,
+        bank_category=getattr(task, 'bank_category', 'exam'),
         return_to=return_to,
         back_to=back_to,
     )

@@ -312,7 +312,7 @@
                     <div class="tw-about-row">
                         <span class="tw-about-label">Тип проверки</span>
                         <span class="tw-about-badge tw-about-badge-purple">
-                            <i class="ph-bold ph-cpu"></i> {{ workspace.task_meta.verification_type if (workspace.task_meta and workspace.task_meta.verification_type) else ('Автопроверка' if workspace.answer_spec.type in ['short_answer', 'single_choice', 'matching'] else 'Ручная проверка') }}
+                            <i class="ph-bold ph-cpu"></i> {{ workspace.task_meta.verification_type if (workspace.task_meta and workspace.task_meta.verification_type) else ('Автопроверка' if workspace.answer_spec.grading_mode == 'auto' and workspace.answer_spec.type in ['short_answer', 'single_choice', 'matching', 'code'] else 'Ручная проверка') }}
                         </span>
                     </div>
                     <div class="tw-about-row">
@@ -1017,7 +1017,7 @@
                     <div class="tw-about-row">
                         <span class="tw-about-label">Тип проверки</span>
                         <span class="tw-about-badge tw-about-badge-purple">
-                            <i class="ph-bold ph-cpu"></i> {{ workspace.task_meta.verification_type if (workspace.task_meta and workspace.task_meta.verification_type) else ('Автопроверка' if workspace.answer_spec.type in ['short_answer', 'single_choice', 'matching'] else 'Ручная проверка') }}
+                            <i class="ph-bold ph-cpu"></i> {{ workspace.task_meta.verification_type if (workspace.task_meta and workspace.task_meta.verification_type) else ('Автопроверка' if workspace.answer_spec.grading_mode == 'auto' and workspace.answer_spec.type in ['short_answer', 'single_choice', 'matching', 'code'] else 'Ручная проверка') }}
                         </span>
                     </div>
                     <div class="tw-about-row">

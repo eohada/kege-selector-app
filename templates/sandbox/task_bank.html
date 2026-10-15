@@ -43,6 +43,10 @@
         </div>
       </label>
       <div class="space-y-2">
+        <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Раздел банка</p>
+        <div id="bank-category-tabs" class="flex gap-2 overflow-x-auto pb-2 boostudy-scroll-horizontal"></div>
+      </div>
+      <div id="bank-course-filter" class="space-y-2">
         <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Курс</p>
         <div id="bank-course-tabs" class="flex gap-2 overflow-x-auto pb-2 boostudy-scroll-horizontal"></div>
       </div>
@@ -83,6 +87,7 @@ const BANK_SELECTION_KEY = 'boostudy.assignment-bank.selection.v1';
 const BANK_RETURN_TO = {{ return_to | tojson }};
 let bankCourseId = '';
 let bankModule = '';
+let bankCategory = 'exam';
 let bankSearchTimer = null;
 let bankPage = 1;
 let bankTotal = 0;
@@ -115,12 +120,14 @@ function taskForBuilder(task) {
   return {
     task_id: task.task_id,
     task_number: task.task_number,
+    bank_category: task.bank_category || 'exam',
     content_html: task.content_html,
     answer: task.answer || '',
+    answer_spec: task.answer_spec || {},
     starter_code: task.starter_code || '',
     max_score: task.max_score || 1,
     source: task.source || 'Банк заданий',
-    requires_manual_grading: !task.answer,
+    requires_manual_grading: task.answer_spec?.grading_mode === 'manual' || (!task.answer && task.answer_spec?.type !== 'code'),
   };
 }
 
@@ -153,18 +160,24 @@ function taskCard(task) {
   const exposure = task.student_exposure;
   const reuseBlocked = Boolean(exposure?.blocked);
   const readyForAssignment = Boolean(task.is_active) && task.ingest_status === 'ready' && !reuseBlocked;
-  const prototypeLabel = ({ real: 'Прототип экзамена', practice_only: 'Тренировка', unreviewed: 'Прототип не проверен' })[task.prototype_status] || 'Статус прототипа не указан';
+  const prototypeLabel = task.bank_category === 'python_practice' ? 'Авторское задание BooStudy' : ({ real: 'Прототип экзамена', practice_only: 'Тренировка', unreviewed: 'Прототип не проверен' })[task.prototype_status] || 'Статус прототипа не указан';
   const ingestLabel = ({ needs_classification: 'Нужно определить номер', needs_answer_review: 'Нужно проверить ответ', needs_review: 'Нужна проверка', ready: 'Готово к работе' })[task.ingest_status] || 'Статус импорта не указан';
-  const sourceYear = task.source_year ? `Источник ${task.source_year}` : 'Год источника не указан';
+  const sourceYear = task.bank_category === 'python_practice' ? '' : task.source_year ? `Источник ${task.source_year}` : 'Год источника не указан';
   const examYear = task.exam_year ? `ЕГЭ/ОГЭ ${task.exam_year}` : '';
   const useHistory = reuseBlocked
     ? `Уже выдавалось · повтор после ${new Date(exposure.active_until).toLocaleDateString('ru-RU')}`
     : exposure?.expired ? 'Ранее выдавалось · срок повтора вышел' : '';
   const buttonLabel = reuseBlocked ? 'Уже выдавалось' : !readyForAssignment ? 'Пока недоступно' : queued ? 'Добавлено' : 'В работу';
+  const formatLabel = task.answer_spec?.type === 'code'
+    ? (task.answer_spec?.grading_mode === 'auto' ? 'Python · автотесты' : 'Python · проверит преподаватель')
+    : task.answer_spec?.type === 'matching' ? 'Сопоставление'
+      : task.answer_spec?.type === 'single_choice' ? 'Выбор ответа'
+        : task.answer_spec?.type === 'short_answer' ? 'Короткий ответ'
+          : task.answer_spec?.type === 'long_answer' ? 'Развёрнутый ответ' : '';
   return `<article onclick="openTaskDetail(${task.task_id})" class="cursor-pointer bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] hover:border-indigo-300 rounded-2xl p-5 space-y-4 transition-all">
     <div class="flex items-start justify-between gap-3"><span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black leading-tight">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">${escapeHtml(task.difficulty_label_ru || 'Средний')}</span></div>
     <div class="space-y-2 min-w-0"><h2 class="text-base font-black text-slate-800 leading-snug break-words">${escapeHtml(task.title || 'Задание')}</h2><p class="text-xs leading-relaxed text-slate-600 break-words">${escapeHtml(conditionSummary(task.content_html).slice(0, 210) || 'Откройте задание, чтобы посмотреть условие и код.')}</p></div>
-    <div class="flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-500"><span class="rounded-lg bg-slate-100 px-2 py-1">${escapeHtml(task.source_name || task.source || 'Источник не указан')}</span><span class="rounded-lg bg-slate-100 px-2 py-1">${escapeHtml([sourceYear, examYear].filter(Boolean).join(' · '))}</span><span class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1">${escapeHtml(prototypeLabel)}</span>${task.answer_needs_verification ? '<span class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1">Ответ источника не проверен</span>' : ''}${useHistory ? `<span class="rounded-lg ${reuseBlocked ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'} px-2 py-1">${escapeHtml(useHistory)}</span>` : ''}${!readyForAssignment && !reuseBlocked ? `<span class="rounded-lg bg-rose-50 text-rose-700 px-2 py-1">${escapeHtml(ingestLabel)}</span>` : ''}</div>
+    <div class="flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-500"><span class="rounded-lg bg-slate-100 px-2 py-1">${escapeHtml(task.source_name || task.source || 'Источник не указан')}</span>${[sourceYear, examYear].filter(Boolean).length ? `<span class="rounded-lg bg-slate-100 px-2 py-1">${escapeHtml([sourceYear, examYear].filter(Boolean).join(' · '))}</span>` : ''}<span class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1">${escapeHtml(prototypeLabel)}</span>${formatLabel ? `<span class="rounded-lg bg-indigo-50 text-indigo-700 px-2 py-1">${escapeHtml(formatLabel)}</span>` : ''}${task.answer_needs_verification ? '<span class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1">Ответ источника не проверен</span>' : ''}${useHistory ? `<span class="rounded-lg ${reuseBlocked ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'} px-2 py-1">${escapeHtml(useHistory)}</span>` : ''}${!readyForAssignment && !reuseBlocked ? `<span class="rounded-lg bg-rose-50 text-rose-700 px-2 py-1">${escapeHtml(ingestLabel)}</span>` : ''}</div>
     <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 min-w-0"><span class="text-[11px] font-bold text-slate-400 truncate">${escapeHtml(task.course_title || '')}</span><button type="button" ${readyForAssignment ? `onclick="event.stopPropagation(); toggleQueuedTask(${task.task_id})"` : 'disabled'} class="shrink-0 ${!readyForAssignment ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-3 py-2 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all text-xs">${buttonLabel}</button></div>
   </article>`;
 }
@@ -183,7 +196,14 @@ function renderBankTasks(tasks, append = false) {
 
 function renderBankTabs(data) {
   const tabClass = active => `px-4 py-2.5 rounded-xl text-xs font-black whitespace-nowrap border transition-all cursor-pointer ${active ? 'bg-indigo-600 text-white border-indigo-700 shadow-[0_3px_0_#3730a3]' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`;
+  const categoryTabs = [
+    ['all', 'Все задания'],
+    ['exam', 'ЕГЭ и ОГЭ'],
+    ['python_practice', 'Программирование на Python'],
+  ];
+  document.getElementById('bank-category-tabs').innerHTML = categoryTabs.map(([category, label]) => `<button type="button" class="${tabClass(category === bankCategory)}" onclick='setBankCategory(${JSON.stringify(category)})'>${label}</button>`).join('');
   document.getElementById('bank-course-tabs').innerHTML = `<button type="button" class="${tabClass(!bankCourseId)}" onclick="setBankCourse('')">Все курсы</button>${(data.courses || []).map(course => `<button type="button" class="${tabClass(String(course.id) === String(bankCourseId))}" onclick="setBankCourse('${course.id}')">${escapeHtml(course.title)}</button>`).join('')}`;
+  document.getElementById('bank-course-filter').classList.toggle('hidden', bankCategory === 'python_practice');
   document.getElementById('bank-module-tabs').innerHTML = `<button type="button" class="${tabClass(!bankModule)}" onclick="setBankModule('')">Все темы</button>${(data.modules || []).map(module => `<button type="button" class="${tabClass(module === bankModule)}" onclick='setBankModule(${JSON.stringify(module)})'>${escapeHtml(module)}</button>`).join('')}`;
   const mine = document.getElementById('bank-only-my');
   const onlyMine = mine.dataset.active === 'true';
@@ -208,6 +228,7 @@ async function loadBankTasks({ append = false } = {}) {
   if (targetStudents) params.set('recipient_ids', targetStudents);
   if (bankCourseId) params.set('exam_course_id', bankCourseId);
   if (bankModule) params.set('module', bankModule);
+  if (bankCategory) params.set('bank_category', bankCategory);
   const query = document.getElementById('bank-search').value.trim();
   if (query) params.set('q', query);
   if (document.getElementById('bank-only-my').dataset.active === 'true') params.set('only_my', 'true');
@@ -235,6 +256,7 @@ function resetAndLoad() {
 }
 
 function setBankCourse(courseId) { bankCourseId = String(courseId || ''); bankModule = ''; resetAndLoad(); }
+function setBankCategory(category) { bankCategory = category || ''; bankCourseId = ''; bankModule = ''; resetAndLoad(); }
 function setBankModule(module) { bankModule = module || ''; resetAndLoad(); }
 function toggleOnlyMyBankTasks() { const button = document.getElementById('bank-only-my'); button.dataset.active = button.dataset.active === 'true' ? 'false' : 'true'; resetAndLoad(); }
 function toggleImportedBankTasks() { const button = document.getElementById('bank-include-imported'); button.dataset.active = button.dataset.active === 'true' ? 'false' : 'true'; resetAndLoad(); }

@@ -387,6 +387,8 @@ class Tasks(db.Model):
     __tablename__ = 'Tasks'
     task_id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    # First-class bank namespace; non-exam practice tasks must not masquerade as a KIM number.
+    bank_category = db.Column(db.String(40), nullable=False, default='exam', server_default='exam', index=True)
     task_number = db.Column(db.Integer, nullable=False, index=True)
     # Для заданий 19–21: одна задача на источнике = три задания (19, 20, 21). Связка по task_group_id (например site_task_id).
     task_group_id = db.Column(db.String(64), nullable=True, index=True)
@@ -509,6 +511,15 @@ class TaskSolution(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
     task = db.relationship('Tasks', foreign_keys=[task_id], backref=db.backref('task_solution', uselist=False))
+
+
+class TaskCodeTestSuite(db.Model):
+    """Hidden server-side tests for automatically graded Python assignment tasks."""
+    __tablename__ = 'TaskCodeTestSuites'
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id', ondelete='CASCADE'), primary_key=True)
+    test_cases = db.Column(JSONBCompat, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    task = db.relationship('Tasks', foreign_keys=[task_id], backref=db.backref('code_test_suite', uselist=False, cascade='all, delete-orphan'))
 
 
 class Topic(db.Model):

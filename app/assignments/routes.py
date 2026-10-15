@@ -1426,11 +1426,16 @@ def _is_assignment_task_manual_review(at):
     task = getattr(at, 'task', None)
     if not task:
         return False
+    raw_spec = getattr(task, 'answer_spec', None)
+    if isinstance(raw_spec, dict):
+        if raw_spec.get('type') == 'code':
+            return raw_spec.get('grading_mode') != 'auto'
+        if raw_spec.get('type') == 'long_answer':
+            return True
     if getattr(task, 'verification_type', None) == 'manual':
         return True
     if getattr(task, 'task_type', None) in {'code', 'long_answer'}:
         return True
-    raw_spec = getattr(task, 'answer_spec', None)
     if isinstance(raw_spec, dict) and raw_spec.get('type') in {'code', 'long_answer'}:
         return True
     template = _get_task_template(task)
@@ -1459,6 +1464,27 @@ def auto_grade_answer(answer, assignment_task):
     на саму авто-проверку — если задан эталонный ответ, авто-проверка выполняется.
     """
     task = assignment_task.task
+    answer_spec = getattr(task, 'answer_spec', None)
+    if isinstance(answer_spec, dict) and answer_spec.get('type') == 'code':
+        if answer_spec.get('grading_mode') != 'auto':
+            return None, None
+        from core.db_models import TaskCodeTestSuite
+        from app.tasks.python_sandbox import grade_python_code
+
+        suite = TaskCodeTestSuite.query.filter_by(task_id=task.task_id).first()
+        if not suite or not isinstance(suite.test_cases, list):
+            from app.tasks.python_sandbox import PythonSandboxUnavailable
+            raise PythonSandboxUnavailable("Для задания не настроены автотесты")
+        source = (getattr(answer, 'student_code', None) or answer.value or '').strip()
+        correct, _details = grade_python_code(source, suite.test_cases)
+        template = _get_task_template(task)
+        score_value = (
+            template.max_primary_score
+            if template is not None and template.max_primary_score is not None
+            else assignment_task.max_score or getattr(task, 'max_score', 1) or 1
+        )
+        return correct, score_value if correct else 0
+
     student_answer = (answer.value or '').strip()
     correct_answer = _effective_correct_answer(assignment_task)
 
