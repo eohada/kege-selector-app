@@ -3,7 +3,7 @@
 {% block sandbox_content %}
 <meta name="csrf-token" content="{{ csrf_token() if csrf_token else '' }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex.min.css') }}">
-<script defer src="{{ url_for('static', filename='katex/katex.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script>
 <script defer src="{{ url_for('static', filename='katex/contrib/auto-render.min.js') }}"></script>
 
 <main class="min-h-screen flex-1 relative z-10 bg-slate-50/50 p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-28 pt-4 sm:pt-6 overflow-x-hidden">
@@ -69,7 +69,7 @@ function highlightPython(code) {
   return result + escapeHtml(code.slice(last));
 }
 function decorateCondition() { document.querySelectorAll('#task-condition pre code').forEach(code => { code.innerHTML = highlightPython(code.textContent || ''); }); }
-function renderTaskMath() { if (typeof renderMathInElement !== 'function') return; for (const id of ['task-condition', 'task-solution']) { renderMathInElement(document.getElementById(id), { delimiters: [{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false},{left:'$',right:'$',display:false}], throwOnError:false }); } }
+function renderTaskMath() { if (typeof window.katex?.renderToString !== 'function' || typeof renderMathInElement !== 'function') return; for (const id of ['task-condition', 'task-solution']) { renderMathInElement(document.getElementById(id), { delimiters: [{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false},{left:'$',right:'$',display:false}], throwOnError:false }); } }
 function taskForBuilder(task) { return { task_id:task.task_id, task_number:task.task_number, content_html:task.content_html, answer:task.answer || '', starter_code:task.starter_code || '', max_score:task.max_score || 1, source:task.source || 'Банк заданий', requires_manual_grading:!task.answer }; }
 function queuedIds() { try { return new Map(JSON.parse(sessionStorage.getItem(BANK_SELECTION_KEY) || '[]').filter(task => task?.task_id).map(task => [Number(task.task_id), task])); } catch (_) { return new Map(); } }
 function targetContextParams() { const source = new URL(BANK_RETURN_TO, window.location.origin).searchParams; const target = new URLSearchParams({ task_id: String(TASK_ID), per_page: '5', include_imported: 'true' }); ['lesson_id', 'assignment_id', 'assignment_type'].forEach(key => { const value = source.get(key); if (value) target.set(key, value); }); const students = source.get('recipient_ids') || source.get('student_ids'); if (students) target.set('recipient_ids', students); return target; }
