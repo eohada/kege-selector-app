@@ -1,4 +1,5 @@
 from app.services.daily_service import DailyService
+from app.services.livekit_service import LiveKitService
 """
 Маршруты для управления уроками
 """
@@ -1455,6 +1456,7 @@ def lesson_interactive_room(lesson_id: int):
         is_demo_preview=demo_preview,
         room_mode=True,
         room_student_notes=lesson.student_notes or '',
+        livekit_enabled=LiveKitService.is_enabled_for_user(current_user, lesson),
         trainer_token=None,
         config_error=None,
         zen_mode=False,
@@ -4949,3 +4951,120 @@ def lesson_studio_daily_join(lesson_id: int):
             'user_name': user_name,
             'backup_call_url': backup_url,
         }), 500
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/livekit/token', methods=['POST'])
+@login_required
+def lesson_livekit_token(lesson_id: int):
+    """
+    Generate a secure LiveKit JWT access token for the authenticated user
+    to join the lesson's native video room.
+    """
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+
+    if not LiveKitService.is_enabled_for_user(current_user, lesson):
+        return jsonify({
+            'success': False,
+            'error': 'LiveKit видеосвязь недоступна (пилотный режим)'
+        }), 403
+
+    is_teacher = _lesson_studio_is_teacher()
+    user_name = getattr(current_user, 'display_name', None) or current_user.username
+    user_id = str(current_user.id)
+    identity = f"user-{user_id}"
+    room_name = f"lesson-{lesson_id}"
+
+    state = _lesson_studio_state(lesson)
+    backup_url = state.get('backup_call_url') or ''
+
+    metadata = {
+        'user_id': user_id,
+        'user_name': user_name,
+        'is_teacher': is_teacher,
+        'avatar_url': getattr(current_user, 'avatar_url', None) or ''
+    }
+
+    try:
+        token = LiveKitService.create_token(
+            room_name=room_name,
+            identity=identity,
+            name=user_name,
+            is_teacher=is_teacher,
+            metadata=metadata
+        )
+        return jsonify({
+            'success': True,
+            'token': token,
+            'url': LiveKitService.get_url(request.host),
+            'room_name': room_name,
+            'identity': identity,
+            'user_name': user_name,
+            'is_teacher': is_teacher,
+            'backup_call_url': backup_url,
+        })
+    except Exception as e:
+        logger.error("Failed to generate LiveKit token for lesson %s: %s", lesson_id, e)
+        return jsonify({
+            'success': False,
+            'error': f'Ошибка генерации токена видеосвязи: {str(e)}',
+            'backup_call_url': backup_url
+        }), 500
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/livekit/admin/mute', methods=['POST'])
+@login_required
+def lesson_livekit_admin_mute(lesson_id: int):
+    """Teacher-only: remotely mute a participant's audio or video track."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+
+    data = request.get_json(silent=True) or {}
+    identity = data.get('identity')
+    track_sid = data.get('track_sid')
+    muted = bool(data.get('muted', True))
+
+    if not identity or not track_sid:
+        return jsonify({'success': False, 'error': 'Не указан identity или track_sid'}), 400
+
+    room_name = f"lesson-{lesson_id}"
+    ok, msg = LiveKitService.admin_mute_participant(room_name, identity, track_sid, muted)
+    return jsonify({'success': ok, 'message': msg}), (200 if ok else 502)
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/livekit/admin/remove', methods=['POST'])
+@login_required
+def lesson_livekit_admin_remove(lesson_id: int):
+    """Teacher-only: kick/remove participant from video room."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+
+    data = request.get_json(silent=True) or {}
+    identity = data.get('identity')
+    if not identity:
+        return jsonify({'success': False, 'error': 'Не указан identity'}), 400
+
+    room_name = f"lesson-{lesson_id}"
+    ok, msg = LiveKitService.admin_remove_participant(room_name, identity)
+    return jsonify({'success': ok, 'message': msg}), (200 if ok else 502)
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/livekit/admin/end', methods=['POST'])
+@login_required
+def lesson_livekit_admin_end(lesson_id: int):
+    """Teacher-only: end video call room for everyone."""
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    _lesson_studio_access(lesson)
+
+    if not _lesson_studio_is_teacher():
+        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+
+    room_name = f"lesson-{lesson_id}"
+    ok, msg = LiveKitService.admin_delete_room(room_name)
+    return jsonify({'success': ok, 'message': msg}), (200 if ok else 502)

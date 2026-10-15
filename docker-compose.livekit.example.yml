@@ -1,0 +1,28 @@
+# =====================================================================
+# BooStudy Self-Hosted LiveKit Video Service (WebRTC)
+# =====================================================================
+# Usage (Local / Dev):
+#   docker compose -f docker-compose.livekit.yml up -d
+#
+# Ports (Official LiveKit Deployment):
+#   - 7880/tcp : Signal (HTTP / WebSocket)
+#   - 7881/tcp : WebRTC TCP Fallback
+#   - 3478/udp : Built-in TURN server
+#   - 50000-50050/udp : WebRTC media transport range
+# =====================================================================
+
+services:
+  livekit:
+    image: livekit/livekit-server:v1.8
+    container_name: boostudy-livekit
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "3478:3478/udp"
+      - "50000-50050:50000-50050/udp"
+    environment:
+      - LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secretdevsecret1234567890abcdef1234567890}

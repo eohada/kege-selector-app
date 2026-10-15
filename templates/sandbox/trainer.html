@@ -2155,7 +2155,7 @@
         pointer-events: none !important;
       }
     </style>
-    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261013-50">{% endif %}
+    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261013-50">{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
     {% if homework_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261013-os"><link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261013-1">{% endif %}
 
     <!-- 3. РЕЖИМ 2: АРЕНА НАРЕШИВАНИЯ (REAL GLASS OS 8.0 ULTRA WORKSPACE) -->
@@ -3016,6 +3016,148 @@
         </form>
         <div class="window-resize-handle" title="Изменить размер"></div>
       </div>
+
+      {% if livekit_enabled %}
+      <!-- 4B. NATIVE VIDEO CALL WINDOW (LiveKit WebRTC 1-on-1) -->
+      <div id="video-window" data-lesson-id="{{ lesson_id }}" data-teacher="{{ 'true' if is_studio_teacher else 'false' }}" class="glass-os-window hidden absolute top-16 left-1/4 w-[680px] h-[520px] bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-45 text-slate-800 font-sans flex flex-col" aria-label="Видеосвязь урока">
+        <div id="video-window-header" class="lesson-video-titlebar">
+          <div class="lesson-os-window-controls">
+            <button type="button" id="video-dot-close" class="lesson-os-window-dot is-close" aria-label="Скрыть окно видео"></button>
+            <button type="button" id="video-dot-minimize" class="lesson-os-window-dot is-minimize" aria-label="Свернуть в PiP" title="Свернуть в PiP"></button>
+            <button type="button" id="video-dot-maximize" class="lesson-os-window-dot is-maximize" aria-label="Развернуть видео"></button>
+          </div>
+          <div class="lesson-video-title-wrap">
+            <i class="ph-bold ph-video-camera" aria-hidden="true"></i>
+            <span class="lesson-video-title-text">Видеосвязь урока</span>
+            <div id="livekit-status-badge" class="lesson-video-badge status-idle">
+              <span class="lesson-video-badge-dot"></span>
+              <span id="livekit-status-text">Готов к подключению</span>
+            </div>
+          </div>
+          <div class="lesson-video-title-actions">
+            <span id="livekit-room-indicator" class="lesson-video-room-tag">HD WebRTC</span>
+          </div>
+        </div>
+
+        <div class="lesson-video-body">
+          <!-- 1. LOBBY VIEW (Device Check & Join) -->
+          <div id="livekit-view-lobby" class="lesson-video-lobby">
+            <div class="lesson-video-lobby-preview">
+              <video id="livekit-preview-video" autoplay playsinline muted disablePictureInPicture></video>
+              <div id="livekit-preview-avatar" class="lesson-video-lobby-avatar">
+                <span id="livekit-preview-initials">?</span>
+              </div>
+              <div id="livekit-preview-no-cam" class="lesson-video-no-cam hidden">Камера выключена</div>
+              <div class="lesson-video-mic-meter" title="Индикатор микрофона">
+                <div id="livekit-mic-meter-fill" class="lesson-video-mic-meter-fill"></div>
+              </div>
+            </div>
+
+            <!-- Custom Styled Light Selectors -->
+            <div class="lesson-video-device-row">
+              <!-- Custom Mic Select -->
+              <div class="lesson-video-custom-select" id="custom-select-mic-wrap">
+                <button type="button" class="lesson-video-select-trigger" id="custom-select-mic-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="lesson-video-select-left">
+                    <i class="ph-bold ph-microphone"></i>
+                    <span class="lesson-video-select-label" id="custom-select-mic-label">Поиск микрофонов...</span>
+                  </span>
+                  <i class="ph-bold ph-caret-down lesson-video-select-caret"></i>
+                </button>
+                <div class="lesson-video-select-menu" id="custom-select-mic-menu" role="listbox" hidden></div>
+                <select id="livekit-select-mic" class="hidden-native-select"></select>
+              </div>
+
+              <!-- Custom Cam Select -->
+              <div class="lesson-video-custom-select" id="custom-select-cam-wrap">
+                <button type="button" class="lesson-video-select-trigger" id="custom-select-cam-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="lesson-video-select-left">
+                    <i class="ph-bold ph-video-camera"></i>
+                    <span class="lesson-video-select-label" id="custom-select-cam-label">Поиск камер...</span>
+                  </span>
+                  <i class="ph-bold ph-caret-down lesson-video-select-caret"></i>
+                </button>
+                <div class="lesson-video-select-menu" id="custom-select-cam-menu" role="listbox" hidden></div>
+                <select id="livekit-select-cam" class="hidden-native-select"></select>
+              </div>
+
+              <!-- Custom Speaker Select -->
+              <div class="lesson-video-custom-select" id="custom-select-speaker-wrap">
+                <button type="button" class="lesson-video-select-trigger" id="custom-select-speaker-trigger" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="lesson-video-select-left">
+                    <i class="ph-bold ph-speaker-high"></i>
+                    <span class="lesson-video-select-label" id="custom-select-speaker-label">Поиск динамиков...</span>
+                  </span>
+                  <i class="ph-bold ph-caret-down lesson-video-select-caret"></i>
+                </button>
+                <div class="lesson-video-select-menu" id="custom-select-speaker-menu" role="listbox" hidden></div>
+                <select id="livekit-select-speaker" class="hidden-native-select"></select>
+              </div>
+            </div>
+
+            <button type="button" id="livekit-btn-join" class="lesson-video-join-btn">
+              <i class="ph-bold ph-video-camera"></i>
+              <span>Подключиться к звонку</span>
+            </button>
+          </div>
+
+          <!-- 2. ACTIVE CALL VIEW (Video Grid) -->
+          <div id="livekit-view-call" class="lesson-video-active-call hidden">
+            <div class="lesson-video-streams-container">
+              <!-- Screenshare View (Full Width / Hero Tile) -->
+              <div id="livekit-screenshare-view" class="lesson-video-screenshare-view hidden">
+                <video id="livekit-screenshare-video" autoplay playsinline disablePictureInPicture></video>
+                <div class="lesson-video-screenshare-badge"><i class="ph-bold ph-screencast"></i> <span id="livekit-screenshare-badge-name">Демонстрация экрана</span></div>
+              </div>
+
+              <!-- Remote Video (Interlocutor) -->
+              <div class="lesson-video-remote-tile">
+                <video id="livekit-remote-video" autoplay playsinline disablePictureInPicture></video>
+                <div id="livekit-remote-placeholder" class="lesson-video-remote-placeholder">
+                  <div class="lesson-video-avatar-circle">
+                    <span id="livekit-remote-initials">?</span>
+                  </div>
+                  <span id="livekit-remote-placeholder-name">Ожидание собеседника…</span>
+                </div>
+                <div id="livekit-remote-badge" class="lesson-video-participant-badge">
+                  <span id="livekit-remote-name">Собеседник</span>
+                  <span id="livekit-remote-mic-icon" class="badge-icon"><i class="ph-bold ph-microphone"></i></span>
+                </div>
+              </div>
+
+              <!-- Local Video (Self) -->
+              <div class="lesson-video-local-tile">
+                <video id="livekit-local-video" autoplay playsinline muted disablePictureInPicture></video>
+                <div id="livekit-local-badge" class="lesson-video-participant-badge">
+                  <span>Вы</span>
+                  <span id="livekit-local-mic-icon" class="badge-icon"><i class="ph-bold ph-microphone"></i></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- In-Call Floating Control Bar -->
+            <div class="lesson-video-toolbar">
+              <button type="button" id="livekit-btn-mic" class="lesson-video-btn" title="Микрофон"><i class="ph-bold ph-microphone"></i></button>
+              <button type="button" id="livekit-btn-cam" class="lesson-video-btn" title="Камера"><i class="ph-bold ph-video-camera"></i></button>
+              <button type="button" id="livekit-btn-screen" class="lesson-video-btn" title="Демонстрация экрана"><i class="ph-bold ph-screencast"></i></button>
+              <button type="button" id="livekit-btn-pip" class="lesson-video-btn" title="Свернуть в PiP"><i class="ph-bold ph-picture-in-picture"></i></button>
+              {% if is_studio_teacher %}
+              <button type="button" id="livekit-btn-admin-mute" class="lesson-video-btn" title="Заглушить ученика"><i class="ph-bold ph-speaker-slash"></i></button>
+              {% endif %}
+              <div class="lesson-video-menu-wrapper">
+                <button type="button" id="livekit-btn-more" class="lesson-video-btn" title="Ещё"><i class="ph-bold ph-dots-three"></i></button>
+                <div id="livekit-more-menu" class="lesson-video-more-menu" hidden>
+                  <button type="button" id="livekit-btn-backup-call" class="lesson-video-menu-item"><i class="ph-bold ph-arrow-square-out text-indigo-400"></i> Резервный звонок</button>
+                </div>
+              </div>
+              <button type="button" id="livekit-btn-hangup" class="lesson-video-btn btn-hangup" title="Завершить звонок"><i class="ph-bold ph-phone-disconnect"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="window-resize-handle" title="Изменить размер"></div>
+      </div>
+      {% endif %}
       {% endif %}
 
       <!-- 5. WHITEBOARD CANVAS APP WINDOW (Объектная учебная доска) -->
@@ -3428,6 +3570,14 @@
         </div>
 
         {% if room_mode and not homework_mode %}
+        {% if livekit_enabled %}
+        <!-- Native Video Conference (LiveKit) -->
+        <div id="dock-icon-video-window" class="board-dock-item group relative" data-room-label="Видео" role="button" tabindex="0" aria-label="Открыть видеосвязь" title="Видеосвязь" onclick="toggleDockWindow('video-window')">
+          <i class="ph-bold ph-video-camera text-lg" aria-hidden="true"></i>
+          <b id="lesson-os-video-status-dot-dock" class="lesson-os-video-status-dot hidden" aria-label="В эфире"></b>
+          <span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Видеосвязь</span>
+        </div>
+        {% endif %}
         <div id="dock-icon-files-window" class="board-dock-item group relative" data-room-label="Файлы" role="button" tabindex="0" aria-label="Открыть файлы урока" title="Файлы урока" onclick="toggleDockWindow('files-window')"><i class="ph-bold ph-folder text-lg" aria-hidden="true"></i></div>
         {% if linked_homework_url %}<a class="board-dock-item group relative" data-room-label="Домашняя OS" href="{{ linked_homework_url }}" aria-label="Открыть домашнюю OS" title="Открыть домашнюю OS"><i class="ph-bold ph-notebook text-lg" aria-hidden="true"></i></a>{% endif %}
         {% endif %}
@@ -3475,7 +3625,19 @@
             class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800">
           <button class="px-3.5 py-2 bg-indigo-600 text-white rounded-xl font-bold font-sans cursor-pointer"><i class="ph-bold ph-paper-plane-right"></i></button>
         </div>
+      {% if livekit_enabled %}
+      <!-- Floating PiP Widget in Corner of BooStudy OS -->
+      <div id="video-floating-pip" class="hidden" aria-label="Плавающее окно видео">
+        <video id="video-pip-video" autoplay playsinline disablePictureInPicture></video>
+        <div class="lesson-video-pip-badge"><i class="ph-bold ph-user"></i> <span id="video-pip-badge-name">Собеседник</span></div>
+        <div class="lesson-video-pip-controls">
+          <button type="button" id="video-pip-mic" class="lesson-video-pip-btn" title="Микрофон"><i class="ph-bold ph-microphone"></i></button>
+          <button type="button" id="video-pip-cam" class="lesson-video-pip-btn" title="Камера"><i class="ph-bold ph-video-camera"></i></button>
+          <button type="button" id="video-pip-restore" class="lesson-video-pip-btn" title="Развернуть окно"><i class="ph-bold ph-corners-out"></i></button>
+          <button type="button" id="video-pip-close" class="lesson-video-pip-btn" title="Скрыть в фон"><i class="ph-bold ph-x"></i></button>
+        </div>
       </div>
+      {% endif %}
 
       <!-- GLASS OS CUSTOM MODAL COMPONENT (Light Glassmorphism Aesthetic) -->
       <div id="glass-modal-overlay"
@@ -10432,4 +10594,5 @@
 </script>
 {% endif %}
 {% if homework_mode %}<script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261013-os"></script><script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261013-1"></script>{% endif %}
+{% if room_mode and livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}
 {% endblock %}

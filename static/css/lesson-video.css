@@ -1,0 +1,834 @@
+/* =====================================================================
+   BooStudy OS — Native Video Call Window & Floating PiP Styles (LiveKit)
+   Tactile 3D & Light Glass-OS Visual Canon
+   ===================================================================== */
+
+/* --- 1. Video Window Base --- */
+#video-window {
+  min-width: 440px;
+  min-height: 400px;
+  width: 660px;
+  height: 540px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 100px);
+  background: #ffffff;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.14), 0 10px 20px -5px rgba(15, 23, 42, 0.08);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 45;
+  transition: opacity 0.16s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#video-window.hidden {
+  display: none !important;
+}
+
+#video-window.window-maximized {
+  top: 16px !important;
+  left: 16px !important;
+  width: calc(100vw - 32px) !important;
+  height: calc(100vh - 96px) !important;
+  max-width: none !important;
+  max-height: none !important;
+  border-radius: 16px;
+}
+
+/* --- 2. Titlebar --- */
+.lesson-video-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1.5px solid #e2e8f0;
+  user-select: none;
+  cursor: grab;
+  shrink: 0;
+}
+
+.lesson-video-titlebar:active {
+  cursor: grabbing;
+}
+
+.lesson-video-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #1e293b;
+  font-family: inherit;
+}
+
+.lesson-video-title-wrap i {
+  color: #6366f1;
+  font-size: 16px;
+}
+
+.lesson-video-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.lesson-video-badge.status-idle {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.lesson-video-badge.status-connecting {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.lesson-video-badge.status-connected {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.lesson-video-badge.status-error {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.lesson-video-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.lesson-video-badge.status-connected .lesson-video-badge-dot {
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* --- 3. Body Viewport --- */
+.lesson-video-body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+/* --- 4. Light Pre-join Lobby View --- */
+.lesson-video-lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  background: #ffffff;
+  color: #0f172a;
+  overflow-y: auto;
+}
+
+.lesson-video-lobby.hidden,
+.lesson-video-lobby[hidden],
+#livekit-view-lobby.hidden,
+#livekit-view-lobby[hidden] {
+  display: none !important;
+}
+
+.lesson-video-active-call.hidden,
+.lesson-video-active-call[hidden],
+#livekit-view-call.hidden,
+#livekit-view-call[hidden] {
+  display: none !important;
+}
+
+.lesson-video-lobby-preview {
+  position: relative;
+  width: 320px;
+  height: 195px;
+  background: #f8fafc;
+  border-radius: 18px;
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+  margin-bottom: 20px;
+  shrink: 0;
+}
+
+.lesson-video-lobby-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.lesson-video-lobby-avatar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f1f5f9;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.lesson-video-mic-meter {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  right: 12px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(4px);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.lesson-video-mic-meter-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  border-radius: 3px;
+  transition: width 0.08s ease;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+/* Device Selectors Container */
+.lesson-video-device-row {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+/* Tactile 3D Custom Select Component */
+.lesson-video-custom-select {
+  position: relative;
+  width: 100%;
+  z-index: 10;
+}
+
+.lesson-video-custom-select.is-active,
+.lesson-video-custom-select:focus-within {
+  z-index: 50;
+}
+
+.lesson-video-select-trigger {
+  width: 100%;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 9px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #e2e8f0;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  outline: none;
+}
+
+.lesson-video-select-trigger:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 0 #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.lesson-video-select-trigger:active,
+.lesson-video-select-trigger.is-open {
+  background: #ffffff;
+  border-color: #6366f1;
+  box-shadow: 0 2px 0 #6366f1, 0 4px 12px rgba(99, 102, 241, 0.1);
+  transform: translateY(1px);
+}
+
+.lesson-video-select-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.lesson-video-select-left i {
+  font-size: 16px;
+  color: #6366f1;
+  shrink: 0;
+}
+
+.lesson-video-select-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.lesson-video-select-trigger .select-caret {
+  font-size: 12px;
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+  shrink: 0;
+}
+
+.lesson-video-select-trigger.is-open .select-caret {
+  transform: rotate(180deg);
+  color: #6366f1;
+}
+
+/* Custom Dropdown Menu */
+.lesson-video-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.16), 0 4px 10px -2px rgba(15, 23, 42, 0.08);
+  padding: 6px;
+  z-index: 200;
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  animation: menu-pop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lesson-video-custom-select.open-upward .lesson-video-select-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+  box-shadow: 0 -12px 30px -4px rgba(15, 23, 42, 0.16), 0 -4px 10px -2px rgba(15, 23, 42, 0.08);
+}
+
+.lesson-video-select-menu[hidden] {
+  display: none !important;
+}
+
+.lesson-video-select-menu::-webkit-scrollbar {
+  width: 5px;
+}
+.lesson-video-select-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+.lesson-video-select-menu::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+@keyframes menu-pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lesson-video-select-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.lesson-video-select-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.lesson-video-select-item.is-selected {
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.lesson-video-select-item.is-selected::after {
+  content: '✓';
+  font-weight: 800;
+  color: #4f46e5;
+  font-size: 13px;
+  margin-left: 8px;
+}
+
+/* Join Button (3D Tactile) */
+.lesson-video-join-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px 32px;
+  border-radius: 14px;
+  border: none;
+  box-shadow: 0 4px 0 #3730a3, 0 8px 18px rgba(99, 102, 241, 0.35);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+}
+
+.lesson-video-join-btn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 #3730a3, 0 10px 22px rgba(99, 102, 241, 0.45);
+}
+
+.lesson-video-join-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #3730a3, 0 4px 10px rgba(99, 102, 241, 0.3);
+}
+
+.lesson-video-join-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 0 #3730a3;
+}
+
+/* --- 5. Active Call Layout --- */
+.lesson-video-active-call {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.lesson-video-streams-container {
+  position: relative;
+  flex: 1;
+  margin: 12px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Remote Primary Video Tile */
+.lesson-video-remote-tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.lesson-video-remote-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: transparent;
+}
+
+.lesson-video-remote-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lesson-video-avatar-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #eef2ff;
+  border: 2px solid #c7d2fe;
+  color: #4f46e5;
+  font-size: 32px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);
+}
+
+/* Local Floating PiP Tile within Window */
+.lesson-video-local-tile {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 160px;
+  height: 110px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  border: 2px solid #ffffff;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.16), 0 4px 10px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  z-index: 10;
+  cursor: move;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lesson-video-local-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  background: #e2e8f0;
+}
+
+.lesson-video-local-tile:hover {
+  border-color: #6366f1;
+  box-shadow: 0 12px 28px -5px rgba(99, 102, 241, 0.25);
+}
+
+/* Participant Badges (Light Glass Piles) */
+.lesson-video-participant-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+}
+
+.lesson-video-participant-badge.is-speaking {
+  box-shadow: 0 0 0 2px #22c55e, 0 2px 8px rgba(15, 23, 42, 0.15);
+}
+
+/* Screenshare View */
+.lesson-video-screenshare-view {
+  position: absolute;
+  inset: 0;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.lesson-video-screenshare-view.hidden,
+.lesson-video-screenshare-view[hidden],
+#livekit-screenshare-view.hidden,
+#livekit-screenshare-view[hidden] {
+  display: none !important;
+}
+
+.lesson-video-screenshare-view video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: transparent;
+}
+
+/* --- 6. Light Floating Toolbar --- */
+.lesson-video-toolbar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 6px 12px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 4px 10px -2px rgba(15, 23, 42, 0.06);
+  z-index: 20;
+}
+
+.lesson-video-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #e2e8f0;
+  transition: all 0.12s ease;
+}
+
+.lesson-video-btn:hover {
+  background: #f8fafc;
+  color: #4f46e5;
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 0 #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.lesson-video-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #cbd5e1;
+}
+
+.lesson-video-btn.is-active {
+  background: #4f46e5;
+  border-color: #4338ca;
+  color: #ffffff;
+  box-shadow: 0 2px 0 #312e81;
+}
+
+.lesson-video-btn.is-off {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #ef4444;
+  box-shadow: 0 2px 0 #fca5a5;
+}
+
+.lesson-video-btn.btn-hangup {
+  background: #ef4444;
+  border-color: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 2px 0 #b91c1c;
+}
+
+.lesson-video-btn.btn-hangup:hover {
+  background: #dc2626;
+  border-color: #b91c1c;
+  box-shadow: 0 3px 0 #991b1b;
+}
+
+.lesson-video-btn.btn-hangup:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #991b1b;
+}
+
+/* More Options Dropdown */
+.lesson-video-more-menu {
+  position: absolute;
+  bottom: 54px;
+  right: 0;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 190px;
+  z-index: 30;
+}
+
+.lesson-video-more-menu[hidden] {
+  display: none !important;
+}
+
+.lesson-video-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.12s ease;
+}
+
+.lesson-video-menu-item:hover {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+/* --- 7. Floating PiP Widget (OS Corner) --- */
+#video-floating-pip {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 280px;
+  height: 175px;
+  background: #f8fafc;
+  border-radius: 18px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16), 0 4px 12px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+#video-floating-pip.hidden {
+  display: none !important;
+}
+
+#video-floating-pip:active {
+  cursor: grabbing;
+}
+
+#video-floating-pip:hover {
+  border-color: #6366f1;
+  box-shadow: 0 20px 45px rgba(99, 102, 241, 0.22), 0 6px 20px rgba(99, 102, 241, 0.12);
+}
+
+#video-floating-pip video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  background: #f1f5f9;
+}
+
+.lesson-video-pip-controls {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(248, 250, 252, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+#video-floating-pip:hover .lesson-video-pip-controls {
+  opacity: 1;
+}
+
+.lesson-video-pip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  color: #334155;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(15, 23, 42, 0.06);
+  transition: all 0.15s ease;
+}
+
+.lesson-video-pip-btn i {
+  color: #334155;
+}
+
+.lesson-video-pip-btn:hover {
+  background: #eef2ff;
+  border-color: #6366f1;
+  color: #4f46e5;
+  transform: scale(1.08);
+}
+
+.lesson-video-pip-btn:hover i {
+  color: #4f46e5;
+}
+
+.lesson-video-pip-btn:active {
+  transform: scale(0.95);
+}
+
+.lesson-video-pip-btn.is-off {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+
+.lesson-video-pip-btn.is-off i {
+  color: #ef4444;
+}
+
+.lesson-video-pip-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* --- 8. Dock Status Dot --- */
+.lesson-os-video-status-dot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+}
