@@ -5,11 +5,12 @@
 {% block body_class %}tw-page-workspace{% if embedded_answer|default(false) %} tw-embedded-answer{% if workspace.presentation_mode == 'code' %} tw-embedded-code{% endif %}{% endif %}{% endblock %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace.css') }}?v=20260922-tactile-v5">
-<link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261013-workspace-v2">
-<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace-split.css') }}?v=20261013-visual-v3">
-<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os.css') }}?v=20261013-os-v1">
-{% if embedded_answer|default(false) %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-answer-embed.css') }}?v=20261013-1">{% endif %}
+{% if not embedded_answer|default(false) %}<link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261014-engine-v6">{% endif %}
+<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/task-workspace-split.css') }}?v=20261014-engine-v5">
+{% if not embedded_answer|default(false) %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os.css') }}?v=20261013-os-v1">{% endif %}
+{% if embedded_answer|default(false) %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-answer-embed.css') }}?v=20261014-2">{% endif %}
 {% endblock %}
 
 {% block sandbox_content %}
@@ -1211,7 +1212,8 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261013-workspace-v2"></script>
-<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20261013-split-workspace-v2"></script>
-<script src="{{ url_for('static', filename='task-workspace/homework-os.js') }}?v=20261013-os-v1"></script>
+<script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script>
+{% if not embedded_answer|default(false) %}<script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261014-engine-v6"></script>{% endif %}
+<script src="{{ url_for('static', filename='task-workspace/task-workspace.js') }}?v=20261013-engine-v4"></script>
+{% if not embedded_answer|default(false) %}<script src="{{ url_for('static', filename='task-workspace/homework-os.js') }}?v=20261013-os-v1"></script>{% endif %}
 {% endblock %}

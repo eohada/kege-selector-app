@@ -1,0 +1,73 @@
+/* The answer is an OS app window. Keep the existing answer controller and
+   form in the iframe while removing the duplicated page shell. */
+html:has(body.tw-embedded-answer), body.tw-embedded-answer { min-height: 100%; background: #fff !important; }
+body.tw-embedded-answer #dashboard-sidebar,
+body.tw-embedded-answer .bs-dashboard-mobile-nav,
+body.tw-embedded-answer .bs-dashboard-topbar,
+body.tw-embedded-answer .bs-dashboard-header,
+body.tw-embedded-answer .tw-shell > :not(#tw-workspace-grid):not(.tw-bottom-bar),
+body.tw-embedded-answer #tw-workspace-grid > :not(#tw-code-workspace-grid):not(#tw-standard-workspace-grid),
+body.tw-embedded-answer .tw-standard-sidebar,
+body.tw-embedded-answer .tw-about-card,
+body.tw-embedded-answer .tw-materials-card,
+body.tw-embedded-answer .tw-standard-actions-bar,
+body.tw-embedded-answer .tw-code-redirect-card { display: none !important; }
+body.tw-embedded-answer #dashboard-main { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; }
+body.bs-dashboard-shell.tw-embedded-answer .bs-dashboard-content { padding: 0 !important; }
+body.tw-embedded-answer .tw-shell { display: flex !important; flex-direction: column !important; min-height: 100vh !important; max-width: none !important; padding: 12px !important; margin: 0 !important; gap: 10px !important; }
+body.tw-embedded-answer #tw-workspace-grid,
+body.tw-embedded-answer #tw-standard-workspace-grid,
+body.tw-embedded-answer .tw-standard-main { display: block !important; width: 100% !important; min-width: 0 !important; max-width: none !important; padding: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; }
+body.tw-embedded-answer #tw-answer-workspace { display: block !important; position: static !important; width: 100% !important; min-height: 0 !important; max-height: none !important; margin: 0 !important; box-shadow: none !important; }
+body.tw-embedded-answer #tw-workspace-grid #tw-answer-workspace[hidden] { display: block !important; }
+body.tw-embedded-answer #tw-code-workspace-grid { display: none !important; }
+body.tw-embedded-answer #tw-canvas-workspace,
+body.tw-embedded-answer .boo-canvas-fab,
+body.tw-embedded-answer .boo-canvas-toolbar,
+body.tw-embedded-answer .boo-canvas-overlay,
+body.tw-embedded-answer .boo-canvas-zoom-island,
+body.tw-embedded-answer .boo-canvas-pages-bar,
+body.tw-embedded-answer .boo-canvas-minimap,
+body.tw-embedded-answer .boo-canvas-save-status,
+body.tw-embedded-answer .boo-canvas-context-bar { display: none !important; }
+body.tw-embedded-answer .tw-bottom-progress { display: none !important; }
+body.tw-embedded-answer .tw-bottom-bar {
+  position: static !important;
+  margin-top: auto !important;
+  width: 100% !important;
+  padding: 10px 14px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+}
+body.tw-embedded-answer .tw-bottom-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  justify-content: flex-end !important;
+}
+body.tw-embedded-answer .tw-answer-input,
+body.tw-embedded-answer .tw-standard-answer-input {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  border: 2px solid #e2e8f0 !important;
+  transition: border-color .15s ease, box-shadow .15s ease !important;
+}
+body.tw-embedded-answer .tw-answer-input:focus,
+body.tw-embedded-answer .tw-standard-answer-input:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+body.tw-embedded-code #tw-standard-workspace-grid { display: none !important; }
+body.tw-embedded-code #tw-code-workspace-grid,
+body.tw-embedded-code .tw-code-sidebar,
+body.tw-embedded-code #tw-code-answer-box { display: block !important; width: 100% !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; }
+body.tw-embedded-code .tw-code-main,
+body.tw-embedded-code .tw-code-sidebar > :not(#tw-code-answer-box) { display: none !important; }

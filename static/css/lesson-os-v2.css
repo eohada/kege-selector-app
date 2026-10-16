@@ -416,7 +416,7 @@ body.bs-lesson-room main.room-lesson-shell {
   width: clamp(300px, 23.6vw, 470px);
   min-width: 280px;
   height: clamp(300px, 40.1vh, 460px);
-  max-height: min(40.1vh, calc(100% - 210px));
+  max-height: calc(100% - 130px);
 }
 .room-lesson-os #terminal-window {
   position: absolute !important;
@@ -443,15 +443,15 @@ body.bs-lesson-room main.room-lesson-shell {
   box-shadow: var(--bs-shadow-e2, 0 12px 28px rgba(96, 75, 91, .12)) !important;
 }
 .room-lesson-os #terminal-window {
-  border-color: rgba(46, 56, 91, .92) !important;
-  background: #111a2d !important;
-  box-shadow: 0 16px 38px rgba(18, 25, 49, .22), 0 3px 8px rgba(18, 25, 49, .12) !important;
+  border-color: #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
 }
 .room-lesson-os #terminal-window-header {
-  border-bottom-color: #2b3550;
-  background: linear-gradient(110deg, #18233a, #202c48);
+  border-bottom-color: #e2e8f0 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
 }
-.room-lesson-os #terminal-window-header > div:first-child > span { color: #e5e9f3; font-size: 12px; letter-spacing: .01em; }
+.room-lesson-os #terminal-window-header > div:first-child > span { color: #1e293b; font-size: 12px; letter-spacing: .01em; }
 .room-lesson-os #terminal-window > div.flex-1.flex.flex-row.overflow-hidden > div:first-child { flex: 0 0 120px; width: 120px !important; }
 .room-lesson-os #terminal-tab-output { font-size: 13px; line-height: 1.45; }
 .room-lesson-os .lesson-os-code-titlebar,
@@ -638,11 +638,11 @@ body.bs-lesson-room main.room-lesson-shell {
 .room-lesson-os .lesson-os-files-empty { padding: 30px 14px; color: #7c8aad; font-size: 12px; text-align: center; }
 .room-lesson-os #files-window > .window-resize-handle { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: se-resize; }
 
-.room-lesson-os #dock-icon-lesson-info-window,
 .room-lesson-os #dock-icon-teacher-notes-window,
 .room-lesson-os #dock-icon-reference-window,
 .room-lesson-os #dock-icon-booai,
 .room-lesson-os #board-dock > .board-dock-divider,
+.room-lesson-os #lesson-os-add,
 .room-lesson-os #booai-popover { display: none !important; }
 .room-lesson-os #board-dock { height: 68px; gap: 8px; padding: 2px 10px; overflow: visible; }
 .room-lesson-os #board-dock > .board-dock-item,
@@ -665,13 +665,13 @@ body.bs-lesson-room main.room-lesson-shell {
   height: 42px;
   border-radius: 13px;
 }
-.room-lesson-os #dock-icon-code-window { order: 1 !important; }
-.room-lesson-os #dock-icon-theory-window { order: 2 !important; }
-.room-lesson-os #dock-icon-task-window { order: 3 !important; }
-.room-lesson-os #dock-icon-terminal-window { order: 4 !important; }
-.room-lesson-os #dock-icon-notes-window { order: 5 !important; }
-.room-lesson-os #dock-icon-files-window { order: 6 !important; }
-.room-lesson-os #lesson-os-add { order: 7; position: relative; }
+.room-lesson-os #dock-icon-code-window { order: 0; }
+.room-lesson-os #dock-icon-theory-window { order: 0; }
+.room-lesson-os #dock-icon-task-window { order: 0; }
+.room-lesson-os #dock-icon-terminal-window { order: 0; }
+.room-lesson-os #dock-icon-notes-window { order: 0; }
+.room-lesson-os #dock-icon-files-window { order: 0; }
+.room-lesson-os #lesson-os-add { order: 999; position: relative; }
 .room-lesson-os #lesson-os-add > summary::-webkit-details-marker { display: none; }
 .room-lesson-os .lesson-os-add-menu { position: absolute; right: 0; bottom: calc(100% + 10px); width: 240px; display: grid; gap: 4px; padding: 8px; border: 1px solid #dce4f4; border-radius: 12px; background: #fff; box-shadow: 0 15px 35px rgba(34,47,107,.18); }
 .room-lesson-os .lesson-os-add-menu button { min-height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border-radius: 8px; color: #28396b; font-size: 12px; font-weight: 700; text-align: left; cursor: pointer; }
@@ -913,28 +913,29 @@ body.bs-lesson-room main.room-lesson-shell {
 }
 .room-lesson-os #terminal-window.glass-os-window {
   border-radius: var(--bs-radius-lg, 20px) !important;
-  border-color: #343d58 !important;
-  background: #121827 !important;
-  box-shadow: 0 20px 42px rgba(20, 22, 52, .25), 0 3px 10px rgba(20, 22, 52, .13) !important;
+  border-color: #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
 }
 .room-lesson-os #terminal-window-header {
-  border-bottom-color: #343d58;
-  background: linear-gradient(110deg, #1d2538, #252b42);
+  border-bottom-color: #e2e8f0 !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
 }
 .room-lesson-os #terminal-window .term-tab-btn.active {
-  background: #34375d;
-  color: #fff;
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border: 1px solid #c7d2fe !important;
 }
 .room-lesson-os #terminal-window > .flex-1 {
-  background: #171c2c;
-  color: #e7e9f4;
+  background: #ffffff !important;
+  color: #0f172a !important;
 }
 .room-lesson-os #terminal-window > .flex-1 > div:first-child {
-  background: #1d2336;
-  border-color: #343d58;
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
 }
 .room-lesson-os #terminal-window :is(.text-slate-400, .text-slate-500) {
-  color: #aeb6cf;
+  color: #64748b;
 }
 .room-lesson-os :is(.lesson-os-code-titlebar, #task-window-title),
 .room-lesson-os #lesson-info-window-header > span:not(#lesson-info-save-status) {
@@ -1085,3 +1086,184 @@ body.bs-lesson-room main.room-lesson-shell {
   .room-lesson-os .board-tool-btn,
   .room-lesson-os .editor-command-btn { transition: none; }
 }
+
+/* --- Control Center Popover & Presence Extensions --- */
+.lesson-os-control-wrap { position: relative; }
+.lesson-os-control-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  letter-spacing: 0.02em;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.lesson-os-control-badge.is-active {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+}
+.lesson-os-control-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 170;
+  width: 320px;
+  padding: 14px;
+  border: 1px solid #e1e7fb;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 20px 45px rgba(38, 52, 115, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lesson-os-control-popover.hidden { display: none; }
+.lesson-os-control-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid #edf0f8;
+  padding-bottom: 8px;
+}
+.lesson-os-control-header strong {
+  font-size: 13px;
+  color: #1e293b;
+  font-weight: 700;
+}
+.lesson-os-control-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lesson-os-control-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+}
+.lesson-os-control-toggle-row:hover {
+  background: #f8fafc;
+}
+.lesson-os-control-toggle-row input[type="checkbox"] {
+  margin-top: 3px;
+  accent-color: #4f46e5;
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+}
+.lesson-os-control-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.lesson-os-control-text strong {
+  font-size: 12px;
+  color: #334155;
+}
+.lesson-os-control-text span {
+  font-size: 10px;
+  color: #64748b;
+  line-height: 1.3;
+}
+.lesson-os-control-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+.lesson-os-control-windows-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 8px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+.lesson-os-control-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #334155;
+  cursor: pointer;
+}
+.lesson-os-control-checkbox-item input[type="checkbox"] {
+  accent-color: #4f46e5;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+.lesson-os-control-footer {
+  border-top: 1px solid #edf0f8;
+  padding-top: 8px;
+}
+
+/* Presence list extensions */
+.lesson-os-presence-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.lesson-os-class-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: #ede9fe;
+  color: #5b21b6;
+  white-space: nowrap;
+}
+.lesson-os-kick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ef4444;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 4px;
+  justify-self: end;
+}
+.lesson-os-kick-btn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+/* Top Laser Pointer Layer */
+.lesson-os-top-laser-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999999;
+  overflow: hidden;
+}
+
+/* Hidden buttons in room mode per instructions */
+.room-lesson-os #board-present-btn,
+.room-lesson-os #board-reaction-btn,
+.room-lesson-os #board-reaction-menu,
+.room-lesson-os .board-command-popover-wrap:has(#board-reaction-btn),
+.room-lesson-os #chat-window,
+.room-lesson-os #dock-icon-chat-window,
+.room-lesson-os .lesson-os-system-bar #video-toggle-btn {
+  display: none !important;
+}
+

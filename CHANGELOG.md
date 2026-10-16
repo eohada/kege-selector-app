@@ -1417,7 +1417,7 @@
 ## [2026-07-31 17:54:00] - 🛠️ ФИКС ОТПРАВКИ СООБЩЕНИЙ QA-БОТА (`QA_BOT_TOKEN`) (v7.3)
 
 - **🐛 Устранена предупреждающая заглушка `Missing token or chat_id`**:
-  - В [app/services/telegram_notifications.py](file:///e:/projects/kege_selector_app_current/app/services/telegram_notifications.py) и [run_qa_bot_local.py](file:///e:/projects/kege_selector_app_current/run_qa_bot_local.py) установлен токен `8933706317:AAFeN6fww_-EjVqM0okB8N1vrDaPM5dA7ws` по умолчанию для QA-бота.
+  - В [app/services/telegram_notifications.py](file:///e:/projects/kege_selector_app_current/app/services/telegram_notifications.py) и [run_qa_bot_local.py](file:///e:/projects/kege_selector_app_current/run_qa_bot_local.py) настроено получение токена через переменную `QA_BOT_TOKEN` / `TELEGRAM_TESTERS_BOT_TOKEN` для QA-бота.
   - Функция `send_telegram_message(..., bot_type='qa')` теперь успешно отправляет ответы в Telegram.
 
 
@@ -1433,7 +1433,7 @@
 - **👑 Мгновенная привязка Создателя (`app/bots/qa_bot.py`)**:
   - Добавлена команда `/start 777`. При её отправке Telegram аккаунт пользователя (Chat ID) моментально привязывается к профилю `creator` в базе данных с выдачей 100% God-Mode доступа.
 - **🚀 Скрипт локального запуска бота (`run_qa_bot_local.py`)**:
-  - Создан файл [run_qa_bot_local.py](file:///e:/projects/kege_selector_app_current/run_qa_bot_local.py) для автономного локального запуска бот-поллинга без вебхуков по токену `8933706317:AAFeN6fww_-EjVqM0okB8N1vrDaPM5dA7ws`.
+  - Создан файл [run_qa_bot_local.py](file:///e:/projects/kege_selector_app_current/run_qa_bot_local.py) для автономного локального запуска бот-поллинга без вебхуков по токену из переменной `QA_BOT_TOKEN`.
 
 
 ## [2026-07-31 17:47:00] - 🤖 QA & TESTER BOT REVOLUTION (@Boostudy_Dev_testers_Bot) (v7.0)

@@ -25,6 +25,7 @@ from .service import (
     restore_workspace_version,
     load_workspace_notes,
     save_workspace_version,
+    cache_workspace_snapshot,
 )
 from .socket import emit_workspace_snapshot
 
@@ -192,9 +193,11 @@ def workspace_code_api():
     )
     if not ctx.can_edit:
         abort(403)
-    # OS editor saves only code. The answer window owns the answer and its
-    # value must survive independent code autosaves.
-    save_workspace_code(ctx, str(data.get("code") or ""), ctx.plain_answer)
+    code = str(data.get("code") or "")
+    # Code tasks submit the OS editor itself; other answer types keep their
+    # separate value when the editor autosaves.
+    is_code_answer = ctx.as_payload().get("answer_spec", {}).get("type") == "code"
+    save_workspace_code(ctx, code, code if is_code_answer else ctx.plain_answer)
     return jsonify({"success": True})
 
 
@@ -408,4 +411,5 @@ def workspace_bridge_api():
             target_drawing.strokes_json = drawing.strokes_json
             target_drawing.thumbnail_url = drawing.thumbnail_url
     db.session.commit()
+    cache_workspace_snapshot(ctx, copied_code, target_state["answer"], source="transfer")
     return jsonify({"success": True, "message": "Материалы скопированы в пространство задания"})

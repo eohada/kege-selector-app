@@ -7,10 +7,22 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from app import create_app
-from core.db_models import db, User
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-TOKEN = "8992987768:AAGMSCNlX4l4a2IRdWuY54PlM8SprAWea6A"
-ADMIN_TG_ID = 854161398
+TOKEN = (
+    os.environ.get("QA_BOT_TOKEN")
+    or os.environ.get("TELEGRAM_TESTERS_BOT_TOKEN")
+    or ""
+).strip()
+ADMIN_TG_ID = int(os.environ.get("BOOTSTRAP_CREATOR_CHAT_ID") or os.environ.get("TELEGRAM_ADMIN_ID") or 854161398)
+
+if not TOKEN:
+    print("ОШИБКА: QA_BOT_TOKEN / TELEGRAM_TESTERS_BOT_TOKEN не задан!", file=sys.stderr)
+    sys.exit(1)
 
 bot = telebot.TeleBot(TOKEN)
 app = create_app()

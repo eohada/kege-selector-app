@@ -19,12 +19,24 @@ logging.basicConfig(
 logger = logging.getLogger('run_bot')
 
 def run():
-    token = os.environ.get('TELEGRAM_BOT_TOKEN')
-    if not token:
-        logger.error("ОШИБКА: TELEGRAM_BOT_TOKEN не задан в .env!")
+    token = (
+        os.environ.get('TELEGRAM_DEV_BOT_TOKEN')
+        or os.environ.get('TELEGRAM_BOT_TOKEN')
+        or os.environ.get('MAIN_BOT_TOKEN')
+        or os.environ.get('BOT_TOKEN')
+    )
+    if not token or not token.strip():
+        logger.error("ОШИБКА: Токен Telegram-бота не найден в переменных окружения или .env!")
+        logger.error("Задайте TELEGRAM_BOT_TOKEN (или TELEGRAM_DEV_BOT_TOKEN) в .env файле.")
         sys.exit(1)
 
-    logger.info("Запуск Telegram Dev-бота (%s...)", token[:12])
+    token = token.strip()
+    os.environ['TELEGRAM_BOT_TOKEN'] = token
+    os.environ['MAIN_BOT_TOKEN'] = token
+    os.environ['BOT_TOKEN'] = token
+
+    bot_id = token.split(':')[0] if ':' in token else 'bot'
+    logger.info("Запуск Telegram Dev-бота (%s:***)", bot_id)
     
     # Запускаем штатный long-polling модуль приложения
     from app.telegram.polling import main

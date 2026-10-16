@@ -5,7 +5,8 @@ import os
 from urllib.parse import urlsplit, urlunsplit
 
 MAIN_BOT_TOKEN = (
-    os.environ.get('MAIN_BOT_TOKEN')
+    os.environ.get('TELEGRAM_DEV_BOT_TOKEN')
+    or os.environ.get('MAIN_BOT_TOKEN')
     or os.environ.get('BOT_TOKEN')
     or os.environ.get('TELEGRAM_BOT_TOKEN')
     or ''

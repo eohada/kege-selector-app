@@ -104,7 +104,7 @@
             <span class="student-dashboard-next-note"><i class="ph ph-sparkle" aria-hidden="true"></i>Следующий шаг в твоём плане</span>
             <img class="student-dashboard-next-art{% if dashboard_showcase %} is-python{% endif %}" src="{{ url_for('static', filename='images/dashboard/showcase-next-art.png' if dashboard_showcase else 'images/lesson/lesson_task_mascot.png') }}" alt="" aria-hidden="true" loading="lazy">
           {% else %}
-            <div class="student-dashboard-empty student-dashboard-empty-on-color"><i class="ph ph-calendar-x" aria-hidden="true"></i><strong>Ближайших занятий нет</strong><span>Когда преподаватель добавит урок, он появится здесь.</span><a class="bs-button bs-button-secondary" href="{{ url_for('schedule.schedule') }}">Открыть расписание</a></div>
+            <div class="student-dashboard-empty student-dashboard-empty-on-color"><i class="ph ph-calendar-x" aria-hidden="true"></i><strong>Ближайших занятий нет</strong><span>Когда преподаватель добавит урок, он появится здесь.</span><span class="bs-button bs-button-secondary opacity-60 cursor-not-allowed pointer-events-none" title="Технические неполадки">Расписание недоступно</span></div>
           {% endif %}
         </article>
         <div class="student-dashboard-learning-tiles">
@@ -137,7 +137,7 @@
     <aside class="student-dashboard-schedule bs-dashboard-card">
       <div class="student-dashboard-card-heading">
         <div class="student-dashboard-heading-title"><span class="student-dashboard-heading-icon is-green"><i class="ph-bold ph-calendar-blank" aria-hidden="true"></i></span><h2>Расписание</h2></div>
-        <a href="{{ url_for('schedule.schedule') }}">Все занятия <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/80 cursor-not-allowed select-none" title="Технические неполадки"><i class="ph-fill ph-warning text-amber-500"></i>Технические неполадки</span>
       </div>
       <div class="student-dashboard-week" aria-label="Дни текущей недели">
         {% for day in schedule_days|default([]) %}<span class="{% if day.is_today %}is-today{% endif %}"><small>{{ day.weekday }}</small><strong>{{ day.number }}</strong></span>{% endfor %}
@@ -163,7 +163,7 @@
           {% else %}
             <span>Запланированные занятия будут отображаться здесь.</span>
           {% endif %}
-          <a href="{{ url_for('schedule.schedule') }}">Перейти к расписанию <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          <span class="text-xs font-semibold text-slate-400 cursor-not-allowed">Расписание временно недоступно</span>
         </div>
       {% endif %}
     </aside>
@@ -225,7 +225,7 @@
       <div class="student-dashboard-quick-list">
         <a href="{% if next_assignment %}{{ url_for('assignments.submission_view', submission_id=next_assignment.submission_id) }}{% else %}{{ url_for('assignments.assignments_list') }}{% endif %}"><i class="ph ph-pencil-line" aria-hidden="true"></i><span>{% if next_assignment %}Сдать ДЗ: {{ next_assignment.assignment.title[:20] if next_assignment.assignment else 'Активное ДЗ' }}{% else %}Все задания и ДЗ{% endif %}</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
         <a href="{{ url_for('theory.theory_index') }}"><i class="ph ph-book-open" aria-hidden="true"></i><span>Повторить теорию</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
-        <a href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span>Посмотреть расписание</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        <div class="opacity-60 cursor-not-allowed pointer-events-none flex items-center justify-between py-2 px-3 rounded-xl border border-slate-100 bg-slate-50" title="Технические неполадки"><div class="flex items-center gap-2.5"><i class="ph ph-calendar-blank text-slate-400 text-base" aria-hidden="true"></i><span class="text-xs font-bold text-slate-500">Посмотреть расписание</span></div><span class="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Неполадки</span></div>
         <a href="{% if student %}{{ url_for('students.student_analytics', student_id=student.student_id) }}{% else %}{{ url_for('theory.theory_index') }}{% endif %}"><i class="ph ph-chart-line-up" aria-hidden="true"></i><span>Мой прогресс и оценки</span><i class="ph ph-arrow-right" aria-hidden="true"></i></a>
       </div>
     </article>

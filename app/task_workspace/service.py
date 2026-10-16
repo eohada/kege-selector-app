@@ -1098,6 +1098,11 @@ def load_workspace_state_payload(ctx: WorkspaceContext) -> dict[str, Any]:
 
 
 def load_workspace_notes(ctx: WorkspaceContext) -> str:
+    # Notes are an independent OS app. Code/answer autosaves may carry an
+    # older snapshot, so the latest explicit notes save is authoritative.
+    explicit = _version_lookup(ctx).filter(CodeWorkspaceVersion.source.in_(("notes", "transfer"))).first()
+    if explicit and isinstance(explicit.snapshot, dict) and "notes" in explicit.snapshot:
+        return str(explicit.snapshot["notes"] or "")
     for version in _version_lookup(ctx).limit(100).all():
         snapshot = version.snapshot if isinstance(version.snapshot, dict) else {}
         if "notes" in snapshot:

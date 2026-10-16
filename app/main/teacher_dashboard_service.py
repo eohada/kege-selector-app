@@ -390,7 +390,7 @@ def get_teacher_dashboard_data(teacher_user: User) -> Dict[str, Any]:
             "title": "Успеваемость стабильна",
             "subtitle": "Резких падений среднего балла не зафиксировано",
             "action_text": "Все ученики →",
-            "action_url": "/students",
+            "action_url": "/teacher/students",
         })
 
     # Focus 2: Pending reviews

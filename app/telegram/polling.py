@@ -24,9 +24,27 @@ def _drop_pending_updates() -> bool:
     return _truthy(os.environ.get('TELEGRAM_POLLING_DROP_PENDING_UPDATES'))
 
 
+_conflict_count = 0
+
+
 async def _log_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    global _conflict_count
     if isinstance(context.error, Conflict):
-        logger.warning('Telegram polling conflict: another getUpdates client is active')
+        _conflict_count += 1
+        logger.warning(
+            'Telegram polling conflict (#%d): another getUpdates client is active! '
+            'Make sure you are not sharing this bot token with another running instance (e.g. production server).',
+            _conflict_count,
+        )
+        env = (os.environ.get('ENVIRONMENT') or 'local').strip().lower()
+        if _conflict_count >= 5 and env in {'local', 'development', 'dev'}:
+            logger.error(
+                'CRITICAL: Local poller reached %d consecutive 409 Conflicts. '
+                'Another instance (e.g. production server) is actively polling this bot token. '
+                'To isolate your local Windows environment and avoid stealing production messages, '
+                'create a separate test bot via @BotFather and set TELEGRAM_DEV_BOT_TOKEN in your .env.',
+                _conflict_count,
+            )
         return
     logger.exception('Telegram polling error while processing update=%r', update, exc_info=context.error)
 

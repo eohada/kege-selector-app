@@ -1,0 +1,608 @@
+.homework-os .homework-os-task-tabs {
+  position: absolute; z-index: 1190; inset: 60px 0 auto; height: 48px;
+  display: flex; align-items: center; gap: 6px; overflow-x: auto;
+  padding: 6px 20px; border-bottom: 1px solid #e2e8f7;
+  background: rgba(251, 251, 255, .97); font: 700 12px Inter, sans-serif;
+}
+.homework-os-task-tab {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  min-height: 32px; padding: 0 14px; border: 1px solid #dfe5f5;
+  border-radius: 10px; background: #fff; color: #506088;
+  box-shadow: 0 2px 0 #c9d2e7; text-decoration: none;
+  cursor: pointer; user-select: none;
+  transition: transform .15s ease, opacity .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.homework-os-task-tab:hover { color: #4934de; border-color: #aca2ff; }
+.homework-os-task-tab.is-active { color: #fff; border-color: #5140ed; background: linear-gradient(145deg,#6957ff,#4d39ed); box-shadow: 0 3px 0 #382ac7; }
+.homework-os #canvas-window.lesson-os-desktop { inset: 108px 0 0 !important; height: calc(100% - 108px) !important; }
+.room-lesson-os #board-command-bar, .room-lesson-os #board-tool-rail,
+.room-lesson-os #board-pages-panel, .room-lesson-os #board-inspector,
+.room-lesson-os #board-statusbar, .room-lesson-os #board-empty-state,
+.room-lesson-os #board-presentation-banner, .room-lesson-os #board-window-controls,
+.room-lesson-os #sidebar-tools-palette,
+.room-lesson-os #lesson-os-add,
+.homework-os #board-command-bar, .homework-os #board-tool-rail,
+.homework-os #board-pages-panel, .homework-os #board-inspector,
+.homework-os #board-statusbar, .homework-os #board-empty-state,
+.homework-os #board-presentation-banner, .homework-os #board-window-controls,
+.homework-os #sidebar-tools-palette {
+  display: none !important;
+}
+
+/* Traffic lights: only red (close) and green (maximize/fullscreen) */
+.lesson-os-window-dot.is-minimize,
+.os-window-dot.is-minimize,
+.lesson-os-window-dot.bg-amber-400,
+.os-window-dot.bg-amber-400,
+.lesson-os-window-dot.bg-\[\#FFBD2E\],
+.os-window-dot.bg-\[\#FFBD2E\],
+.os-window-dot[onclick*="minimizeWindow"],
+button[onclick*="minimizeWindow"],
+div[onclick*="minimizeWindow"] {
+  display: none !important;
+}
+.room-lesson-os #board-app-layout,
+.homework-os #board-app-layout { display: block !important; height: 100% !important; min-height: 0 !important; }
+.room-lesson-os #board-app-layout > main,
+.homework-os #board-app-layout > main { width: 100% !important; height: 100% !important; min-width: 0 !important; max-width: none !important; }
+.room-lesson-os #whiteboard-canvas-viewport,
+.homework-os #whiteboard-canvas-viewport { width: 100% !important; height: 100% !important; min-height: 0 !important; background: #fdfdff !important; }
+.room-lesson-os #whiteboard-canvas-viewport > :not(.boo-canvas-overlay):not(.boo-canvas-toolbar),
+.homework-os #whiteboard-canvas-viewport > :not(.boo-canvas-overlay):not(.boo-canvas-toolbar) { display: none !important; }
+.room-lesson-os #whiteboard-canvas-viewport .boo-canvas-overlay.is-embedded,
+.homework-os #whiteboard-canvas-viewport .boo-canvas-overlay.is-embedded { width: 100% !important; height: 100% !important; background-image: radial-gradient(#dbe0f1 1px, transparent 1px); background-size: 20px 20px; }
+.room-lesson-os #whiteboard-canvas-viewport .boo-canvas-toolbar.is-embedded,
+.homework-os #whiteboard-canvas-viewport .boo-canvas-toolbar.is-embedded { top: 16px; left: 16px; z-index: 35 !important; }
+
+/* Homework default layout */
+.homework-os #task-window { top: 126px; right: 20px; width: min(380px, 32vw); height: min(52vh, 520px); max-height: none; }
+.homework-os #code-window { top: 126px; left: 120px; width: min(540px, calc(47vw - 40px)); height: min(53vh, 530px); }
+.homework-os #terminal-window { bottom: 90px; left: 22px; height: min(23vh, 250px); }
+
+/* Lesson Room default layout */
+.room-lesson-os:not(.homework-os) #task-window { top: 76px; right: 24px; width: min(420px, 34vw); height: min(60vh, 560px); max-height: none; }
+.room-lesson-os:not(.homework-os) #code-window { top: 76px; left: 88px; width: min(580px, calc(50vw - 60px)); height: min(58vh, 560px); }
+.room-lesson-os:not(.homework-os) #terminal-window { bottom: 90px; left: 88px; width: min(580px, calc(50vw - 60px)); height: min(24vh, 260px); }
+.room-lesson-os:not(.homework-os) #files-window { top: 96px; left: calc(50% - 220px); width: 440px; height: 420px; }
+.room-lesson-os:not(.homework-os) #theory-window { top: 86px; right: 48px; width: min(500px, 40vw); height: min(62vh, 580px); }
+.room-lesson-os:not(.homework-os) #lesson-info-window { top: 86px; left: calc(50% - 240px); width: 480px; height: min(60vh, 560px); }
+.room-lesson-os:not(.homework-os) #chat-window { bottom: 90px; right: 24px; width: 360px; height: 420px; }
+.room-lesson-os.homework-os #homework-answer-window { position: absolute; top: 126px; right: auto; bottom: auto; left: calc(50% - 100px); width: min(460px, 36vw); height: min(58vh, 600px); min-width: 300px; min-height: 250px; }
+.homework-os .homework-answer-window iframe { flex: 1 1 auto; width: 100%; min-height: 0; border: 0; background: #fff; }
+.room-lesson-os.homework-os #homework-answer-window.homework-answer-code { height: 350px !important; min-height: 290px; }
+.homework-os .homework-answer-code iframe { display: none; }
+.homework-answer-code-help { display: flex; flex: 1; flex-direction: column; align-items: stretch; gap: 14px; padding: 22px; color: #192553; }
+.homework-answer-code-help[hidden] { display: none !important; }
+.homework-answer-code-icon-row { display: flex; align-items: center; gap: 12px; }
+.homework-answer-code-icon-row > i { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #efedff; color: #5140ed; font-size: 24px; flex-shrink: 0; }
+.homework-answer-code-icon-row strong { font-size: 15px; font-weight: 800; color: #1e293b; display: block; line-height: 1.25; }
+.homework-answer-code-badge { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+.homework-answer-code-help p { margin: 0; color: #64748b; font-size: 12px; line-height: 1.5; }
+.homework-answer-code-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+.homework-answer-code-actions button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 9px; font-size: 11.5px; font-weight: 700; cursor: pointer; border: 1px solid #dce3f3; background: #fff; color: #334155; transition: all .15s ease; }
+.homework-answer-code-actions button.is-primary { background: #4f46e5; border-color: #4f46e5; color: #fff; box-shadow: 0 2px 0 #3730a3; }
+.homework-answer-code-actions button.is-primary:hover { background: #4338ca; }
+.homework-answer-submit-hint { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; font-size: 11px; color: #64748b; line-height: 1.4; }
+.homework-answer-submit-hint i { font-size: 14px; color: #6366f1; flex-shrink: 0; }
+.homework-os #dock-icon-homework-answer-window > i { color: #fff; background: #5140ed; }
+.homework-os #dock-icon-booai,.homework-os #booai-popover,.homework-os [title="BooAI Помощник"] { display: none !important; }
+.room-lesson-os.homework-os #homework-files-window { position: absolute !important; top: 168px !important; right: 48px !important; width: min(430px, 38vw) !important; height: min(60vh, 540px) !important; min-width: 300px; min-height: 260px; }
+.homework-files-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px; border-bottom: 1px solid #e6eaf5; }
+.homework-files-actions button,.homework-files-actions label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid #dce3f3; border-radius: 9px; background: #fff; color: #3d4e7e; font-size: 11px; font-weight: 750; cursor: pointer; }
+.homework-files-actions button:hover,.homework-files-actions label:hover { border-color: #9f95ff; color: #5140ed; }
+.homework-files-actions #homework-file-status { color: #59689b; font-size: 10px; }
+.homework-files-list { overflow-y: auto; flex: 0 1 auto; max-height: 37%; padding: 8px 12px; }
+.homework-files-list button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 10px; border-radius: 9px; color: #283767; text-align: left; font-size: 11px; }
+.homework-files-list .homework-file-attachment { display: block; padding: 9px 10px; color: #4f46e5; font-size: 11px; font-weight: 700; text-decoration: none; }
+.homework-files-list button:hover,.homework-files-list button.is-active { background: #f0efff; color: #4f3fe6; }
+.homework-files-list small { margin-left: auto; color: #8290b2; }
+.homework-file-editor { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; gap: 8px; padding: 10px 12px 14px; }
+.homework-file-editor[hidden] { display: none !important; }
+.homework-file-editor strong { font-size: 11px; }
+.homework-file-editor textarea { flex: 1 1 auto; min-height: 100px; resize: none; padding: 10px; border: 1px solid #dce3f3; border-radius: 9px; font: 11px/1.5 ui-monospace, monospace; outline-color: #5f4dff; }
+.homework-file-editor > div { display: flex; gap: 8px; justify-content: flex-end; }
+.homework-file-editor .lesson-os-system-action { min-height: 30px; font-size: 10px; }
+.homework-os .homework-os-dialog { position: fixed; z-index: 3000; width: min(440px, calc(100vw - 30px)); padding: 22px; border: 1px solid #dce2f6; border-radius: 20px; background: #fff; color: #182149; box-shadow: 0 22px 70px #25316035; font: 13px Inter, sans-serif; }
+.homework-os .homework-os-dialog::backdrop { background: #10183688; }
+.homework-os-dialog-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 17px; }
+.homework-os-dialog-head button { color: #64748b; }
+.homework-os-dialog p { line-height: 1.5; color: #5e6a8d; }
+.homework-os-dialog select { width: 100%; margin: 18px 0 12px; padding: 10px; border: 1px solid #d4dcf1; border-radius: 10px; }
+.homework-os-dialog #hw-os-transfer-status { min-height: 22px; margin-bottom: 10px; color: #4f46e5; }
+@media (max-width: 900px) {
+  .homework-os .lesson-os-system-center { display: flex !important; justify-content: flex-start; }
+  .homework-os .lesson-os-system-center strong { max-width: 170px; }
+  .homework-os .homework-os-system-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .homework-os .homework-os-system-bar .lesson-os-system-right { width: auto; min-width: 0; }
+  .homework-os .homework-os-system-bar .lesson-os-system-right .lesson-os-system-action:not([hidden]) { display: inline-flex !important; }
+  .homework-os .homework-os-system-bar .lesson-os-system-right .lesson-os-system-action span { display: none; }
+  .homework-os #task-window { width: min(350px, calc(100% - 24px)) !important; }
+  .homework-os #code-window,
+  .room-lesson-os.homework-os #homework-answer-window,
+  .room-lesson-os.homework-os #homework-files-window { position: absolute !important; width: min(560px, calc(100% - 24px)) !important; left: 12px !important; right: auto !important; }
+}
+
+/* Enhanced Task Condition Typography & Styling */
+#task-window {
+  background: #ffffff !important;
+}
+#task-window .task-window-body {
+  padding: 16px 20px !important;
+}
+#task-window #task-current-content {
+  color: #1e293b !important;
+  font-size: 13.5px !important;
+  line-height: 1.65 !important;
+  font-weight: 450 !important;
+}
+#task-window #task-current-content p {
+  margin: 0 0 12px 0 !important;
+  line-height: 1.65 !important;
+}
+#task-window #task-current-content p:last-child {
+  margin-bottom: 0 !important;
+}
+#task-window #task-current-content strong {
+  font-weight: 750 !important;
+  color: #0f172a !important;
+}
+#task-window #task-current-content em {
+  font-style: italic !important;
+}
+#task-window #task-current-content code:not(pre code) {
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  background: #f1f5f9 !important;
+  color: #4338ca !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+#task-window #task-current-content pre {
+  margin: 12px 0 !important;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 12.5px !important;
+  line-height: 1.55 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.03) !important;
+}
+#task-window #task-current-content table {
+  width: 100% !important;
+  margin: 12px 0 !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  border: 1px solid #cbd5e1 !important;
+  font-size: 12.5px !important;
+}
+#task-window #task-current-content th {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  border-right: 1px solid #e2e8f0 !important;
+  text-align: left !important;
+}
+#task-window #task-current-content td {
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-right: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+#task-window #task-current-content tr:last-child td {
+  border-bottom: none !important;
+}
+#task-window #task-current-content th:last-child,
+#task-window #task-current-content td:last-child {
+  border-right: none !important;
+}
+#task-window #task-current-content ul,
+#task-window #task-current-content ol {
+  margin: 8px 0 12px 20px !important;
+  padding: 0 !important;
+}
+#task-window #task-current-content li {
+  margin-bottom: 5px !important;
+  line-height: 1.6 !important;
+}
+#task-window #task-current-content blockquote {
+  margin: 12px 0 !important;
+  padding: 10px 14px !important;
+  border-left: 4px solid #6366f1 !important;
+  background: #f8faff !important;
+  border-radius: 0 10px 10px 0 !important;
+  color: #3730a3 !important;
+}
+
+/* Open Answer Tactile Action Button */
+.hw-open-answer-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  padding: 11px 16px !important;
+  border-radius: 12px !important;
+  border: 1px solid #4338ca !important;
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+  color: #ffffff !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+  box-shadow: 0 3px 0 #3730a3, 0 8px 20px rgba(79, 70, 229, 0.25) !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease !important;
+}
+.hw-open-answer-btn:hover {
+  background: linear-gradient(135deg, #6d70ff, #584feb) !important;
+  box-shadow: 0 4px 0 #3730a3, 0 10px 24px rgba(79, 70, 229, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+.hw-open-answer-btn:active {
+  box-shadow: 0 1px 0 #3730a3 !important;
+  transform: translateY(2px) !important;
+}
+
+/* Dock drag-and-drop styles with smooth FLIP animations */
+.room-lesson-os #board-dock > .board-dock-item,
+#board-dock > .board-dock-item {
+  order: 0 !important;
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  will-change: transform;
+}
+.room-lesson-os #board-dock > #lesson-os-add,
+#board-dock > #lesson-os-add {
+  order: 999 !important;
+}
+.board-dock-item.is-pointer-dragging {
+  opacity: 0.95 !important;
+  box-shadow: 0 20px 36px -6px rgba(79, 70, 229, 0.42), 0 0 0 2px rgba(99, 102, 241, 0.6) !important;
+  z-index: 99999 !important;
+  cursor: grabbing !important;
+  pointer-events: none !important;
+  transition: box-shadow 0.2s ease, opacity 0.2s ease !important;
+}
+.board-dock-item.just-dropped {
+  animation: dockItemPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes dockItemPop {
+  0% { transform: scale(0.88); }
+  50% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+/* Universal Resize Handle - Identical across all OS windows */
+.glass-os-window > .window-resize-handle,
+.homework-files-window .window-resize-handle,
+.homework-answer-window .window-resize-handle,
+.lesson-os-code-resize,
+.window-resize-handle {
+  position: absolute !important;
+  right: 4px !important;
+  bottom: 4px !important;
+  left: auto !important;
+  top: auto !important;
+  width: 18px !important;
+  height: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 60 !important;
+  color: #94a3b8 !important;
+  cursor: nwse-resize !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  user-select: none !important;
+  border-radius: 4px !important;
+  opacity: 0.6 !important;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s !important;
+}
+.glass-os-window > .window-resize-handle:hover,
+.homework-files-window .window-resize-handle:hover,
+.homework-answer-window .window-resize-handle:hover,
+.lesson-os-code-resize:hover,
+.window-resize-handle:hover {
+  opacity: 1 !important;
+  color: #4f46e5 !important;
+  background-color: rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Code Editor Caret Visibility */
+#code-editor-textarea {
+  caret-color: #4f46e5 !important;
+}
+
+/* Terminal Window Light Theme Harmonization */
+#terminal-window {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
+}
+#terminal-window #terminal-window-header {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+}
+#terminal-window #terminal-tab-output,
+#terminal-window #terminal-tab-problems {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+#terminal-window .text-emerald-400 {
+  color: #047857 !important;
+}
+#terminal-window .text-rose-400 {
+  color: #e11d48 !important;
+}
+#terminal-window .text-amber-400 {
+  color: #d97706 !important;
+}
+#terminal-window .text-slate-300 {
+  color: #334155 !important;
+}
+#terminal-window .text-slate-400 {
+  color: #64748b !important;
+}
+#terminal-window .text-slate-500 {
+  color: #475569 !important;
+}
+#terminal-window #terminal-input-bar {
+  background: #f1f5f9 !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+#terminal-window #terminal-stdin-input {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Files Window Empty State & List Polish */
+.homework-files-empty {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 32px 16px !important;
+  margin: auto 0 !important;
+  user-select: none !important;
+}
+.homework-files-empty-icon {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 14px !important;
+  background: #eef2ff !important;
+  border: 1px solid #e0e7ff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #4f46e5 !important;
+  font-size: 24px !important;
+  margin-bottom: 10px !important;
+}
+.homework-files-empty-title {
+  font-size: 13px !important;
+  font-weight: 750 !important;
+  color: #1e293b !important;
+  margin-bottom: 4px !important;
+}
+.homework-files-empty-desc {
+  font-size: 11px !important;
+  color: #94a3b8 !important;
+  max-width: 220px !important;
+  line-height: 1.45 !important;
+}
+
+/* Lesson Files Window Polish */
+.lesson-os-files-body {
+  padding: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+.lesson-os-files-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+.lesson-os-file-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  padding: 10px 14px !important;
+  border-radius: 10px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  transition: all .15s ease !important;
+}
+.lesson-os-file-row:hover {
+  background: #eef2ff !important;
+  border-color: #c7d2fe !important;
+  color: #4f46e5 !important;
+}
+.lesson-os-files-empty {
+  padding: 30px 16px !important;
+  text-align: center !important;
+  color: #94a3b8 !important;
+  font-size: 12px !important;
+}
+
+/* Task Accordions & Sample Formatting */
+#task-window #task-current-content details {
+  margin: 12px 0 !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  background: #f8fafc !important;
+  overflow: hidden !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.2s ease !important;
+}
+#task-window #task-current-content details[open] {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.05) !important;
+}
+#task-window #task-current-content summary {
+  padding: 9px 14px !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  background: #f1f5f9 !important;
+  user-select: none !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  list-style: none !important;
+  transition: background-color 0.15s ease !important;
+}
+#task-window #task-current-content summary::-webkit-details-marker {
+  display: none !important;
+}
+#task-window #task-current-content summary::before {
+  content: "▶" !important;
+  font-size: 9px !important;
+  color: #6366f1 !important;
+  transition: transform 0.2s ease !important;
+  display: inline-block !important;
+}
+#task-window #task-current-content details[open] > summary::before {
+  transform: rotate(90deg) !important;
+}
+#task-window #task-current-content details[open] > summary {
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #eef2ff !important;
+  color: #3730a3 !important;
+}
+#task-window #task-current-content details > :not(summary) {
+  padding: 12px 14px !important;
+}
+#task-window #task-current-content details pre,
+#task-window #task-current-content .task-python-code {
+  margin: 8px 0 !important;
+  padding: 12px 14px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  color: #1e293b !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.03) !important;
+}
+#task-window #task-current-content .tok-keyword,
+#task-window #task-current-content .syn-keyword { color: #7c3aed !important; font-weight: 700 !important; }
+#task-window #task-current-content .tok-builtin,
+#task-window #task-current-content .syn-builtin { color: #0284c7 !important; font-weight: 700 !important; }
+#task-window #task-current-content .tok-string,
+#task-window #task-current-content .syn-string { color: #059669 !important; font-weight: 600 !important; }
+#task-window #task-current-content .tok-number,
+#task-window #task-current-content .syn-number { color: #ea580c !important; font-weight: 700 !important; }
+#task-window #task-current-content .tok-comment,
+#task-window #task-current-content .syn-comment { color: #94a3b8 !important; font-style: italic !important; }
+#task-window #task-current-content .tok-op,
+#task-window #task-current-content .syn-op,
+#task-window #task-current-content .syn-operator { color: #64748b !important; font-weight: 600 !important; }
+#task-window #task-current-content .tok-func,
+#task-window #task-current-content .syn-func { color: #2563eb !important; font-weight: 700 !important; }
+.task-sample-io {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  margin-top: 8px !important;
+  padding: 10px 12px !important;
+  background: #f1f5f9 !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  font-family: ui-monospace, monospace !important;
+  font-size: 12px !important;
+}
+.task-sample-expr {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+.task-sample-res {
+  color: #059669 !important;
+  font-weight: 700 !important;
+}
+
+/* Universal OS Window Titlebars & Controls Unification */
+.room-lesson-os .glass-os-window .lesson-os-code-titlebar,
+.room-lesson-os .glass-os-window #task-window-header,
+.room-lesson-os .glass-os-window #terminal-window-header,
+.room-lesson-os .glass-os-window #homework-files-window-header,
+.room-lesson-os .glass-os-window #homework-answer-window-header {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  padding: 0 14px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #1e293b !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  box-sizing: border-box !important;
+}
+
+.room-lesson-os .lesson-os-window-controls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.room-lesson-os .lesson-os-window-dot {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 999px !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  transition: transform 0.15s ease !important;
+}
+
+.room-lesson-os .lesson-os-window-dot:hover {
+  transform: scale(1.15) !important;
+}
+
+.room-lesson-os .lesson-os-window-dot.is-close {
+  background: #ff5f56 !important;
+  border-color: #e0443e !important;
+}
+
+.room-lesson-os .lesson-os-window-dot.is-minimize {
+  background: #ffbd2e !important;
+  border-color: #dea123 !important;
+}
+
+.room-lesson-os .lesson-os-window-dot.is-maximize {
+  background: #27c93f !important;
+  border-color: #1aab29 !important;
+}
+
+.room-lesson-os .glass-os-window {
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
+  overflow: hidden !important;
+}
+

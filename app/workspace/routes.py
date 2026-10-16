@@ -142,21 +142,29 @@ def _workspace_context_scope(task_id: int, context_type: str | None, context_id:
             LessonTask.query
             .options(sa.orm.joinedload(LessonTask.lesson).joinedload(Lesson.student))
             .filter_by(lesson_task_id=int(context_id))
-            .first_or_404()
+            .first()
         )
-        lesson = lesson_task.lesson
+        lesson = lesson_task.lesson if lesson_task else (
+            Lesson.query
+            .options(sa.orm.joinedload(Lesson.student))
+            .filter_by(lesson_id=int(context_id))
+            .first()
+        )
+        if not lesson:
+            abort(404)
         student = lesson.student if lesson else None
         if not student or not student.user_id:
             abort(404)
-        if int(lesson_task.task_id or 0) != int(task_id):
+        if lesson_task and int(lesson_task.task_id or 0) != int(task_id):
             abort(403)
         if not can_user_access_student(current_user, student_user_id=int(student.user_id)):
             abort(403)
+        can_write = (int(current_user.id) == int(student.user_id) or can_user_access_student(current_user, student_user_id=int(student.user_id))) and not _is_parent_user()
         return {
             'owner_user_id': int(student.user_id),
             'context_type': 'lesson',
             'context_id': int(context_id),
-            'can_write': int(current_user.id) == int(student.user_id) and not _is_parent_user(),
+            'can_write': can_write,
         }
 
     task = Tasks.query.filter_by(task_id=int(task_id)).first()

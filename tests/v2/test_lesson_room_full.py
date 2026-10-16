@@ -48,7 +48,7 @@ def test_canonical_lesson_room_renders_all_real_workspaces(app, client, role_use
     assert 'id="dock-icon-theory-window"' in html
     assert 'id="dock-icon-terminal-window"' in html
     assert 'boostudy_lesson_os_windows_v7_' in html
-    assert "(!compact && ['task-window', 'terminal-window', 'theory-window', 'lesson-info-window'].includes(id))" in html
+    assert "(!compact && id === 'task-window')" in html
     assert 'id="task-current-content"' in html
     assert 'id="theory-window-body"' in html
     assert 'id="room-work-mode-switcher"' not in html

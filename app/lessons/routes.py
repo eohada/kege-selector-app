@@ -471,6 +471,16 @@ def lesson_start(lesson_id):
     except Exception:
         logger.warning('notify_lesson_started_for_lesson after lesson_start failed', exc_info=True)
 
+    try:
+        from app.lessons.lesson_socket import emit_lesson_studio_updated
+        emit_lesson_studio_updated(
+            lesson.lesson_id,
+            _lesson_studio_state_for_viewer(_lesson_studio_state(lesson), is_teacher=False),
+            status=getattr(lesson, 'status', None),
+        )
+    except Exception:
+        logger.warning('emit_lesson_studio_updated after lesson_start failed', exc_info=True)
+
     if is_json:
         return jsonify({
             'success': True,

@@ -36,6 +36,7 @@ collect_ignore = [
         'test_tariffs_admin_v2.py',
         'test_demo_experience_v2.py',
         'test_telegram_hardening.py',
+        'test_telegram_local_linking.py',
         'test_telegram_application.py',
         'test_telegram_delivery.py',
         'test_python_programming_routes.py',

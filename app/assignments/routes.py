@@ -35,7 +35,7 @@ from app.notifications.service import notify_student_and_parents, notify_user, b
 from app.telegram.user_notify import notify_user_by_id
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 from app.utils.course_tasks import get_task_numbers
-from app.utils.jinja_filters import normalize_task_content_assets, normalize_task_content_urls
+from app.utils.jinja_filters import normalize_task_content_assets, normalize_task_content_urls, normalize_task_attachments
 from app.lessons.utils import normalize_answer_value
 from app.constants import SubmissionStatus
 from app.assignments.submission_lifecycle_service import (
@@ -3878,7 +3878,9 @@ def submissions_list():
         func.upper(func.coalesce(Submission.status, '')) != 'REVOKED',
         Assignment.is_active == True,  # noqa: E712  скрываем архивные
     ).options(
-        joinedload(Submission.assignment).joinedload(Assignment.tasks),
+        joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task).joinedload(Tasks.knowledge_node),
+        joinedload(Submission.assignment).joinedload(Assignment.lesson),
+        joinedload(Submission.assignment).joinedload(Assignment.exam_course),
         joinedload(Submission.assignment).joinedload(Assignment.created_by),
         joinedload(Submission.answers)
     ).order_by(Submission.assigned_at.desc()).all()
@@ -3910,6 +3912,7 @@ def submissions_list():
                 'total': total,
                 'done': done,
                 'has_draft': has_draft,
+                'all_tasks': all_tasks,
             })
     except Exception as e:
         logger.warning(f"Failed to build lesson_workspaces for student {student.student_id}: {e}")
@@ -3951,6 +3954,320 @@ def submissions_list():
             'is_graded': (norm_status == 'GRADED'),
         }
 
+    # Month names in Russian
+    ru_months = ['', 'янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
+    ru_months_full = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+    ru_months_cap = ['', 'ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЯ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕНТ', 'ОКТ', 'НОЯ', 'ДЕК']
+
+    submissions_data = []
+    for sub in submissions:
+        assign = sub.assignment
+        if not assign:
+            continue
+
+        norm_status = normalize_legacy_status(sub.status)
+        title = assign.title or f"Работа #{sub.submission_id}"
+        title_lower = title.lower()
+
+        lesson_topic = (assign.lesson.topic if assign.lesson and assign.lesson.topic else '')
+        course_name = (getattr(assign.exam_course, 'title', '') or '')
+
+        # Detect icon type purely from course/title keywords
+        if 'python' in title_lower or 'питон' in title_lower or 'python' in course_name.lower():
+            icon_type = 'python'
+        elif any(k in title_lower or k in course_name.lower() for k in ['бд', 'баз', 'sql', 'данн', 'workspace', 'таблиц', 'excel']):
+            icon_type = 'database'
+        elif any(k in title_lower for k in ['цикл', 'код', 'code', 'алгоритм']):
+            icon_type = 'code'
+        elif any(k in title_lower for k in ['строк', 'список', 'теория']):
+            icon_type = 'book'
+        elif any(k in title_lower for k in ['введение', 'тест', 'лаборатор']):
+            icon_type = 'flask'
+        elif assign.assignment_type in ['exam', 'mock']:
+            icon_type = 'exam'
+        else:
+            icon_type = 'doc'
+
+        # Type labels
+        type_label = "Домашняя работа"
+        if assign.assignment_type in ['exam', 'mock']:
+            type_label = "Пробный экзамен"
+        elif assign.assignment_type in ['test', 'check', 'verification']:
+            type_label = "Проверочная работа"
+        elif assign.assignment_type == 'classwork':
+            type_label = "Классная работа"
+
+        # Tasks list strictly from DB
+        answers_map = {ans.assignment_task_id: ans for ans in (sub.answers or [])}
+        tasks_list = []
+        ordered_at = sorted(assign.tasks or [], key=lambda t: (t.order_index, t.assignment_task_id))
+
+        for idx, at in enumerate(ordered_at, 1):
+            t_obj = at.task
+            t_ans = answers_map.get(at.assignment_task_id)
+
+            if t_ans and (t_ans.is_correct is True or (norm_status == 'GRADED' and getattr(t_ans, 'score', 0) > 0) or (norm_status in ('GRADED', 'SUBMITTED') and t_ans.value)):
+                t_status = 'completed'
+                t_status_label = 'Выполнено'
+            elif t_ans and (str(getattr(t_ans, 'value', '') or '').strip() or str(getattr(t_ans, 'student_code', '') or '').strip() or (getattr(t_ans, 'files', None) and len(t_ans.files) > 0)):
+                t_status = 'in_progress'
+                t_status_label = 'В работе'
+            else:
+                t_status = 'not_started'
+                t_status_label = 'Не начато'
+
+            t_node = getattr(t_obj, 'knowledge_node', None)
+            if t_node and t_node.name:
+                t_title = f"{idx}. {t_node.name}"
+            elif t_obj and t_obj.task_number:
+                t_title = f"{idx}. Задание №{t_obj.task_number}"
+            else:
+                t_title = f"{idx}. Задание {idx}"
+
+            diff_str = "простой уровень" if getattr(t_obj, 'difficulty_level', None) == 1 else ("сложный уровень" if getattr(t_obj, 'difficulty_level', None) == 3 else "средний уровень")
+            if t_node and t_node.parent:
+                t_sub = f"{t_node.parent.name} · {diff_str}"
+            elif t_obj and t_obj.task_number:
+                t_sub = f"КЕГЭ №{t_obj.task_number} · {diff_str}"
+            else:
+                t_sub = f"Задание · {diff_str}"
+
+            t_files = []
+            if t_obj and t_obj.attached_files:
+                for f_item in normalize_task_attachments(t_obj.attached_files):
+                    if isinstance(f_item, dict):
+                        f_url = f_item.get('download_url') or f_item.get('url') or ''
+                        f_name = f_item.get('name') or 'Файл к заданию'
+                        if f_url:
+                            t_files.append({'name': f_name, 'url': f_url, 'task_num': idx})
+
+            tasks_list.append({
+                'assignment_task_id': at.assignment_task_id,
+                'task_number': idx,
+                'title': t_title,
+                'subtitle': t_sub,
+                'status': t_status,
+                'status_label': t_status_label,
+                'focus_url': url_for('assignments.submission_view', submission_id=sub.submission_id) + f"?focus_at={at.assignment_task_id}",
+                'files': t_files
+            })
+
+        total_tasks = len(tasks_list)
+        completed_tasks = sum(1 for t in tasks_list if t['status'] == 'completed')
+        progress_pct = int(round(completed_tasks * 100 / total_tasks)) if total_tasks > 0 else 0
+
+        # Topic & Subtitle
+        topic_base = lesson_topic or course_name
+        if topic_base:
+            display_topic = f"{topic_base} · {total_tasks} заданий"
+            detail_subtitle = topic_base
+        else:
+            display_topic = f"{type_label} · {total_tasks} заданий"
+            detail_subtitle = type_label
+
+        # Determine status
+        if norm_status == 'GRADED':
+            status_key = 'completed'
+            status_label = 'Выполнено'
+        elif norm_status in ('SUBMITTED', 'NEEDS_MANUAL_REVIEW'):
+            status_key = 'under_review'
+            status_label = 'На проверке'
+        elif completed_tasks > 0:
+            status_key = 'in_progress'
+            status_label = 'В работе'
+        else:
+            status_key = 'not_started'
+            status_label = 'Не начато'
+
+        # Deadline calculations
+        deadline = assign.deadline
+        is_burning = False
+        is_overdue = False
+        deadline_short = "Без дедлайна"
+        deadline_full = "Без дедлайна"
+        deadline_left = "Без ограничений"
+
+        if deadline:
+            try:
+                msk_deadline = deadline.astimezone(MOSCOW_TZ) if hasattr(deadline, 'astimezone') else deadline
+                d_day = msk_deadline.day
+                d_m_idx = msk_deadline.month
+                d_month = ru_months[d_m_idx] if 0 < d_m_idx < 13 else ''
+                d_month_full = ru_months_full[d_m_idx] if 0 < d_m_idx < 13 else ''
+                d_time = msk_deadline.strftime('%H:%M')
+                deadline_short = f"до {d_day} {d_month}, {d_time}"
+                deadline_full = f"{d_day} {d_month_full}, {d_time}"
+
+                delta = deadline - now
+                if delta.total_seconds() < 0:
+                    is_overdue = True
+                    deadline_left = "Срок сдачи истёк"
+                elif delta.days == 0:
+                    is_burning = True
+                    deadline_left = "Осталось менее суток"
+                elif delta.days <= 2:
+                    is_burning = True
+                    deadline_left = f"Осталось {delta.days} дн."
+                else:
+                    deadline_left = f"Осталось {delta.days} дней"
+            except Exception:
+                deadline_short = "до дедлайна"
+                deadline_full = "Дедлайн установлен"
+                deadline_left = ""
+
+        # Category group:
+        if status_key == 'completed':
+            group_key = 'completed'
+        elif status_key == 'under_review':
+            group_key = 'review'
+        elif deadline:
+            group_key = 'urgent'
+        else:
+            group_key = 'no_deadline'
+
+        # Action button text and style
+        if status_key == 'under_review':
+            action_text = 'Посмотреть'
+            action_style = 'secondary'
+        elif status_key == 'completed':
+            action_text = 'Посмотреть'
+            action_style = 'secondary'
+        elif status_key == 'not_started':
+            action_text = 'Начать →'
+            action_style = 'primary'
+        else:
+            action_text = 'Продолжить →'
+            action_style = 'primary'
+
+        all_materials = []
+        for tl in tasks_list:
+            all_materials.extend(tl['files'])
+
+        created_by_name = "Преподаватель"
+        if assign.created_by:
+            prof = getattr(assign.created_by, 'teacher_profile', None) or getattr(assign.created_by, 'profile', None)
+            created_by_name = getattr(prof, 'name', None) or getattr(assign.created_by, 'username', 'Преподаватель')
+
+        submissions_data.append({
+            'submission_id': sub.submission_id,
+            'title': title,
+            'topic': display_topic,
+            'detail_subtitle': detail_subtitle,
+            'icon_type': icon_type,
+            'status': status_key,
+            'status_label': status_label,
+            'group': group_key,
+            'filter_type': 'exam' if assign.assignment_type in ['exam', 'mock'] else 'homework',
+            'type_label': type_label,
+            'type_author': f"Назначено: {created_by_name}" if created_by_name else "Назначено преподавателем",
+            'is_deadline_work': bool(deadline),
+            'deadline_short': deadline_short,
+            'deadline_full': deadline_full,
+            'deadline_left': deadline_left,
+            'is_burning': is_burning,
+            'is_overdue': is_overdue,
+            'total_tasks': total_tasks,
+            'completed_tasks': completed_tasks,
+            'progress_pct': progress_pct,
+            'action_text': action_text,
+            'action_style': action_style,
+            'view_url': url_for('assignments.submission_view', submission_id=sub.submission_id),
+            'description': assign.description or "Инструкции и комментарии преподавателя отсутствуют.",
+            'tasks': tasks_list,
+            'materials': all_materials,
+            'deadline_ts': deadline.timestamp() if deadline else 9999999999,
+            'assigned_ts': sub.assigned_at.timestamp() if sub.assigned_at else 0
+        })
+
+    # Integrate real lesson workspaces as "Без дедлайна" items if available
+    for lw in lesson_workspaces:
+        l = lw['lesson']
+        l_total = lw['total']
+        l_done = lw['done']
+        l_pct = int(round(l_done * 100 / l_total)) if l_total > 0 else 0
+        l_status = 'completed' if l_done == l_total and l_total > 0 else ('in_progress' if l_done > 0 else 'not_started')
+        l_title = l.topic or f"Урок {l.course_order_index or ''}"
+
+        if not any(s['title'] == l_title for s in submissions_data):
+            l_tasks = []
+            for t_idx, at_item in enumerate(lw.get('all_tasks', []), 1):
+                t_obj = getattr(at_item, 'task', None)
+                l_tasks.append({
+                    'assignment_task_id': getattr(at_item, 'lesson_task_id', t_idx),
+                    'task_number': t_idx,
+                    'title': f"{t_idx}. Задание №{t_obj.task_number}" if t_obj and t_obj.task_number else f"{t_idx}. Задача по уроку",
+                    'subtitle': f"Задание · средний уровень",
+                    'status': 'completed' if (at_item.status or '').lower() in ['submitted', 'graded', 'returned'] else 'in_progress',
+                    'status_label': 'Выполнено' if (at_item.status or '').lower() in ['submitted', 'graded', 'returned'] else 'В работе',
+                    'focus_url': url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id),
+                    'files': []
+                })
+
+            submissions_data.append({
+                'submission_id': f"lesson_{l.lesson_id}",
+                'title': l_title,
+                'topic': f"Задания по уроку · {l_total} заданий",
+                'detail_subtitle': l_title,
+                'icon_type': 'book',
+                'status': l_status,
+                'status_label': 'Выполнено' if l_status == 'completed' else ('В работе' if l_status == 'in_progress' else 'Не начато'),
+                'group': 'completed' if l_status == 'completed' else 'no_deadline',
+                'filter_type': 'homework',
+                'type_label': "Задания по уроку",
+                'type_author': "Материалы урока",
+                'is_deadline_work': False,
+                'deadline_short': "Без дедлайна",
+                'deadline_full': "Без ограничений по времени",
+                'deadline_left': "Без ограничений",
+                'is_burning': False,
+                'is_overdue': False,
+                'total_tasks': l_total,
+                'completed_tasks': l_done,
+                'progress_pct': l_pct,
+                'action_text': 'Посмотреть' if l_status == 'completed' else ('Продолжить →' if l_status == 'in_progress' else 'Начать →'),
+                'action_style': 'secondary' if l_status == 'completed' else 'primary',
+                'view_url': url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id),
+                'description': "Задания и материалы по уроку для самостоятельного закрепления знаний.",
+                'tasks': l_tasks,
+                'materials': [],
+                'deadline_ts': 9999999999,
+                'assigned_ts': l.lesson_date.timestamp() if l.lesson_date else 0
+            })
+
+    # Sort submissions by group priority, then by assigned date
+    priority_order = {'urgent': 1, 'review': 2, 'no_deadline': 3, 'completed': 4}
+    submissions_data.sort(key=lambda x: (priority_order.get(x['group'], 5), -x['assigned_ts']))
+
+    # Upcoming deadlines strictly from real assignments with deadlines
+    upcoming_deadlines = []
+    real_deadlines = [s for s in submissions_data if s['is_deadline_work'] and s['status'] not in ('completed',)]
+    real_deadlines.sort(key=lambda x: x['deadline_ts'])
+    for rd in real_deadlines[:5]:
+        try:
+            dt = datetime.fromtimestamp(rd['deadline_ts'], tz=timezone.utc).astimezone(MOSCOW_TZ)
+            d_day = dt.day
+            d_m_idx = dt.month
+            d_m_cap = ru_months_cap[d_m_idx] if 0 < d_m_idx < 13 else ''
+            d_time = dt.strftime('%H:%M')
+            delta = dt - now.astimezone(MOSCOW_TZ)
+            dot = 'rose' if delta.days <= 1 else ('amber' if delta.days <= 4 else 'indigo')
+            upcoming_deadlines.append({
+                'submission_id': rd['submission_id'],
+                'date_badge': f"{d_day} {d_m_cap}.",
+                'time_str': d_time,
+                'title': rd['title'],
+                'dot_color': dot
+            })
+        except Exception:
+            pass
+
+    # Filter tab counts
+    total_count = len(submissions_data)
+    in_work_count = sum(1 for s in submissions_data if s['status'] == 'in_progress')
+    on_review_count = sum(1 for s in submissions_data if s['status'] == 'under_review')
+    completed_count = sum(1 for s in submissions_data if s['status'] == 'completed')
+    exam_count = sum(1 for s in submissions_data if s.get('filter_type') == 'exam')
+
     # Сбор ошибок ученика для интерактивного блока «Работа над ошибками»
     mistakes = []
     mistake_task_numbers = set()
@@ -3974,15 +4291,27 @@ def submissions_list():
                         })
                         mistake_task_numbers.add(task.task_number)
 
+    mistakes_count = len(mistakes)
+    mistakes_topics_count = len(mistake_task_numbers)
+
     return render_template(
         'submissions_list.html',
         submissions=submissions,
+        submissions_data=submissions_data,
+        upcoming_deadlines=upcoming_deadlines,
+        submissions_json=json.dumps(submissions_data, ensure_ascii=False),
+        total_count=total_count,
+        in_work_count=in_work_count,
+        on_review_count=on_review_count,
+        completed_count=completed_count,
+        exam_count=exam_count,
         student=student,
         lesson_workspaces=lesson_workspaces,
         submission_display_status=submission_display_status,
         submission_progress=submission_progress,
         mistakes=mistakes,
-        mistake_topics_count=len(mistake_task_numbers),
+        mistakes_count=mistakes_count,
+        mistakes_topics_count=mistakes_topics_count,
     )
 
 

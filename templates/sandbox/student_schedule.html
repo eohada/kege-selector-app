@@ -5,9 +5,110 @@
   .card-tactile {
     background: #FFFFFF;
     border: 1px solid rgba(226, 232, 240, 0.85);
-    border-radius: 1.25rem;
-    box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.04), 0 2px 5px -1px rgba(15, 23, 42, 0.02);
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
   }
+  .btn-3d-primary {
+    background: linear-gradient(180deg, #6366F1 0%, #4F46E5 100%);
+    border-bottom: 3px solid #3730A3;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.28);
+    transition: all 0.15s ease;
+  }
+  .btn-3d-primary:active {
+    border-bottom-width: 1px;
+    transform: translateY(2px);
+  }
+  .btn-3d-secondary {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-bottom: 2px solid #CBD5E1;
+    box-shadow: 0 2px 5px rgba(15, 23, 42, 0.03);
+    transition: all 0.15s ease;
+  }
+  .btn-3d-secondary:active {
+    border-bottom-width: 1px;
+    transform: translateY(1px);
+  }
+
+  /* 7 Day Cards Explicit Color Schemes (Pixel-perfect matching mockup) */
+  .day-card-0 {
+    background-color: #F5F3FF;
+    border: 1px solid #DDD6FE;
+  }
+  .day-card-0:hover {
+    border-color: #C4B5FD;
+  }
+  .day-card-1 {
+    background: linear-gradient(180deg, #FFF7ED 0%, #FFEDD5 100%);
+    border: 2px solid #FB923C;
+    box-shadow: 0 10px 24px -4px rgba(249, 115, 22, 0.26);
+    transform: translateY(-4px);
+  }
+  .day-card-2 {
+    background-color: #ECFDF5;
+    border: 1px solid #A7F3D0;
+  }
+  .day-card-2:hover {
+    border-color: #6EE7B7;
+  }
+  .day-card-3 {
+    background-color: #EEF2FF;
+    border: 1px solid #C7D2FE;
+  }
+  .day-card-3:hover {
+    border-color: #A5B4FC;
+  }
+  .day-card-4 {
+    background-color: #F0FDF4;
+    border: 1px solid #BBF7D0;
+  }
+  .day-card-4:hover {
+    border-color: #86EFAC;
+  }
+  .day-card-5 {
+    background-color: #FFF1F2;
+    border: 1px solid #FECDD3;
+  }
+  .day-card-5:hover {
+    border-color: #FDA4AF;
+  }
+  .day-card-6 {
+    background-color: #FEFCE8;
+    border: 1px solid #FEF08A;
+  }
+  .day-card-6:hover {
+    border-color: #FDE047;
+  }
+
+  /* Weekly Activity Bar Fills */
+  .bar-capsule {
+    width: 14px;
+    height: 52px;
+    background-color: #F1F5F9;
+    border-radius: 9999px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 2px;
+    overflow: hidden;
+  }
+  .bar-capsule-active {
+    border: 1.5px solid #C7D2FE;
+    background-color: #EEF2FF;
+  }
+  .bar-fill-0 { background-color: #CBD5E1; border-radius: 9999px; height: 42%; }
+  .bar-fill-1 {
+    background: linear-gradient(180deg, #818CF8 0%, #6366F1 100%);
+    border-radius: 9999px;
+    height: 82%;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+  }
+  .bar-fill-2 { background-color: #CBD5E1; border-radius: 9999px; height: 32%; }
+  .bar-fill-3 { background-color: #FDA4AF; border-radius: 9999px; height: 46%; }
+  .bar-fill-4 { background-color: #FDBA74; border-radius: 9999px; height: 34%; }
+  .bar-fill-5 { background-color: #FB7185; border-radius: 9999px; height: 64%; }
+  .bar-fill-6 { background-color: #FDBA74; border-radius: 9999px; height: 26%; }
+
   .donut-chart {
     transform: rotate(-90deg);
     transform-origin: 50% 50%;
@@ -19,359 +120,716 @@
     stroke-linecap: round;
     transition: stroke-dasharray 0.6s ease;
   }
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(4px);
-    z-index: 200;
+  @keyframes active-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50% { transform: scale(1.2); opacity: 0.3; }
+  }
+  .station-aura {
+    animation: active-pulse 2.2s ease-in-out infinite;
+  }
+
+  /* Banner Layout */
+  .banner-card {
+    min-height: 140px;
+    height: 140px;
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 1rem;
+    justify-content: space-between;
+    padding: 20px 28px;
+    background: linear-gradient(90deg, #FFFFFF 0%, #FFFFFF 45%, #F0F4FF 100%);
   }
-  .modal-backdrop.hidden { display: none; }
-  .modal-box {
-    background: white;
-    border-radius: 1.5rem;
+  .banner-text-box {
+    max-width: 440px;
+    z-index: 10;
+    position: relative;
+  }
+  .banner-art-box {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    width: 60%;
+    max-width: 620px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+  }
+  .banner-art-img {
+    height: 100%;
+    max-height: 140px;
+    width: auto;
+    object-fit: contain;
+    object-position: right center;
+  }
+
+  /* Hero Focus Card Layout */
+  .hero-focus-card {
+    min-height: 255px;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 22px 26px;
+    background: #FFFFFF;
+  }
+  .hero-card-left {
+    position: relative;
+    z-index: 10;
+    max-width: 320px;
     width: 100%;
-    max-width: 460px;
-    box-shadow: 0 20px 50px rgba(0,0,0,.15);
-    border: 1px solid #e2e8f0;
-    animation: modalIn .15s ease;
   }
-  @keyframes modalIn {
-    from { opacity: 0; transform: scale(.97) translateY(8px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+  .hero-card-desc {
+    max-width: 275px;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: #475569;
+    margin-bottom: 14px;
   }
-  .info-row {
-    background: #f8fafc;
-    border-radius: .75rem;
-    padding: .6rem .85rem;
+  .hero-card-art {
+    position: absolute;
+    right: 8px;
+    bottom: 0;
+    top: 0;
+    height: 100%;
+    width: 52%;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
   }
-  .info-label {
-    font-size: 10px;
-    font-weight: 800;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    display: block;
-    margin-bottom: .2rem;
-  }
-  .info-value {
-    font-size: 13px;
-    font-weight: 800;
-    color: #0f172a;
+  .hero-art-img {
+    height: 98%;
+    max-height: 248px;
+    width: auto;
+    object-fit: contain;
+    object-position: right center;
   }
 </style>
 {% endblock %}
 
 {% block sandbox_content %}
-{# ============================================================
-   ДАННЫЕ: Строго через JSON-тег, 0 Jinja в JS
-   ============================================================ #}
+{# Structured JSON payload for client interactivity #}
 <script type="application/json" id="schedule-data">{{ schedule_page_data | tojson }}</script>
 
-<main class="min-h-screen flex-1 bg-[#F8FAFC] px-3 py-2 sm:px-6 sm:py-3 lg:pl-28 lg:pr-6">
-  <div class="schedule-page max-w-[1400px] mx-auto space-y-2">
+<main class="min-h-screen flex-1 bg-[#F8FAFC] pb-10">
+  <div class="schedule-page max-w-[1400px] mx-auto space-y-3.5">
 
-  {# ===== 1. HERO HEADER CARD ===== #}
-  <div class="card-tactile p-2.5 sm:px-5 sm:py-3 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-white via-indigo-50/20 to-white">
-    <div class="max-w-md z-10">
-      <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider mb-0.5">
-        <i class="ph-bold ph-calendar"></i>
-        <span>Личный календарь</span>
-      </div>
-      <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">Моё расписание</h1>
-      <p class="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1.5">
-        <span>Здесь твои занятия, дедлайны и учебные планы. Всё под контролем!</span>
-        <i class="ph-bold ph-heart text-indigo-400"></i>
-      </p>
-    </div>
-
-    <!-- Center Mascot with Thought Bubble -->
-    <div class="relative flex flex-col items-center justify-center shrink-0 z-10 py-0.5">
-      <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 border border-indigo-100/90 text-indigo-700 font-bold text-[10px] shadow-2xs mb-1 backdrop-blur-xs">
-        <span>Маленькие шаги сегодня — большие результаты завтра!</span>
-        <i class="ph-bold ph-heart text-indigo-400"></i>
-      </div>
-      <img src="/static/images/schedule/schedule_hero_ghost.png" alt="BooStudy Mascot" class="h-16 sm:h-20 object-contain drop-shadow-sm hover:scale-105 transition-transform duration-300">
-    </div>
-
-    <!-- Right Quote Card -->
-    <div class="hidden lg:flex flex-col justify-center max-w-[240px] p-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200/70 text-xs text-slate-600 leading-relaxed shadow-2xs z-10">
-      <p class="font-bold text-slate-800 italic text-[11px] leading-snug">«Знания — это инвестиция, которая всегда окупается.»</p>
-      <span class="block mt-0.5 text-[10px] text-slate-400 font-bold">— Твой учебный компаньон</span>
-    </div>
-  </div>
-
-  {# ===== 2. CONTROLS BAR ===== #}
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-    <!-- View Switcher Tabs -->
-    <div class="flex items-center p-0.5 bg-[#F1F5F9] rounded-xl border border-slate-200/80 shadow-inner w-fit" id="view-switcher">
-      <button id="btn-view-week" onclick="switchView('week')" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 text-white font-black text-xs rounded-lg shadow-xs transition-all cursor-pointer">
-        <i class="ph-bold ph-calendar"></i>
-        <span>Неделя</span>
-      </button>
-      <button id="btn-view-month" onclick="switchView('month')" class="flex items-center gap-1.5 px-3.5 py-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-lg transition-all cursor-pointer">
-        <i class="ph-bold ph-calendar-blank"></i>
-        <span>Месяц</span>
-      </button>
-    </div>
-
-    <!-- Center Week Navigator -->
-    <div class="flex items-center justify-center gap-2">
-      <button onclick="navigateWeek(-1)" class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center font-bold shadow-2xs active:translate-y-0.5 transition cursor-pointer" title="Предыдущая неделя">
-        <i class="ph-bold ph-caret-left"></i>
-      </button>
-      <span id="week-date-range" class="text-xs sm:text-sm font-black text-slate-800 px-3 min-w-[190px] text-center">
-        {{ week_label }}
-      </span>
-      <button onclick="navigateWeek(1)" class="w-8 h-8 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center font-bold shadow-2xs active:translate-y-0.5 transition cursor-pointer" title="Следующая неделя">
-        <i class="ph-bold ph-caret-right"></i>
-      </button>
-    </div>
-
-    <!-- Right Today Button -->
-    <button onclick="navigateToday()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-black text-slate-700 shadow-2xs active:translate-y-0.5 transition cursor-pointer w-fit">
-      <i class="ph-bold ph-crosshair text-slate-500"></i>
-      <span>Сегодня</span>
-    </button>
-  </div>
-
-  {# ===== 3. WEEK DASHBOARD CONTAINER ===== #}
-  <div id="view-week" class="space-y-2.5">
-
-    <!-- 7-Day Horizontal Week Strip with Dashed Line -->
-    <div class="relative py-1">
-      <div class="absolute left-6 right-6 top-1/2 -translate-y-1/2 border-b border-dashed border-slate-300 pointer-events-none z-0"></div>
-      <i class="ph-bold ph-caret-right absolute right-0.5 top-1/2 -translate-y-1/2 text-slate-300 text-xs pointer-events-none z-0"></i>
-
-      <div class="grid grid-cols-7 gap-2 sm:gap-2.5 relative z-10" id="weekdays-strip">
-        <!-- Rendered by JavaScript -->
-      </div>
-    </div>
-
-    <!-- Middle 2-Column Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3">
-
-      <!-- Left Column: Active / Next Lesson Card -->
-      <div class="lg:col-span-8 card-tactile p-3.5 sm:p-4.5 relative overflow-hidden flex flex-col justify-between bg-gradient-to-br from-white to-[#FAFBFD]" id="hero-lesson-card">
-        <div>
-          <!-- Header -->
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600" id="hero-icon-box">
-                <i class="ph-fill ph-sparkle text-sm"></i>
-              </div>
-              <span class="text-xs sm:text-sm font-black text-slate-900" id="hero-card-status-title">Следующий урок</span>
-            </div>
-            <span id="hero-countdown-badge" class="px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black">
-              Через 2 дня
-            </span>
-          </div>
-
-          <!-- Body Content + Right Mascot Illustration -->
-          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mt-3">
-            <div class="flex-1 min-w-0">
-              <h2 class="text-lg sm:text-xl font-black text-slate-900 font-display tracking-tight leading-snug" id="hero-lesson-topic">
-                Python • Условия
-              </h2>
-              <p class="text-xs text-slate-600 leading-relaxed mt-1 max-w-lg font-medium" id="hero-lesson-desc">
-                Продолжим тему if / elif / else и разберём вложенные условия. Решим задачи из реальных вариантов ЕГЭ.
-              </p>
-
-              <!-- Metadata Pills -->
-              <div class="flex flex-wrap gap-2 mt-3.5" id="hero-meta-pills">
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-xs font-bold text-slate-700">
-                  <i class="ph-fill ph-calendar text-indigo-500 text-xs"></i>
-                  <span id="hero-lesson-date">23 сентября</span>
-                  <span class="text-slate-400 font-medium" id="hero-lesson-dayname">(среда)</span>
-                </div>
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-xs font-bold text-slate-700">
-                  <i class="ph-fill ph-clock text-indigo-500 text-xs"></i>
-                  <span id="hero-lesson-time">18:00 — 19:00</span>
-                  <span class="text-slate-400 font-medium" id="hero-lesson-duration">1 час</span>
-                </div>
-                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F8FAFC] border border-slate-200/80 text-xs font-bold text-slate-700">
-                  <i class="ph-fill ph-video-camera text-indigo-500 text-xs"></i>
-                  <span>Онлайн</span>
-                  <span class="text-slate-400 font-medium">(ссылка в кабинете)</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Mascot Illustration on Right -->
-            <div class="relative flex flex-col items-center justify-center shrink-0 self-center sm:self-start">
-              <div class="text-[10px] font-bold text-indigo-600 bg-indigo-50/90 border border-indigo-100 rounded-lg px-2 py-0.5 mb-1 whitespace-nowrap shadow-2xs flex items-center gap-1" id="hero-mascot-bubble">
-                <span>Готовься к новому уроку!</span>
-                <i class="ph-bold ph-heart text-indigo-400"></i>
-              </div>
-              <img src="/static/images/schedule/schedule_lesson_ghost.png" alt="Ghost Student" class="h-24 sm:h-28 lg:h-32 object-contain drop-shadow-sm hover:scale-105 transition-transform duration-300">
-            </div>
-          </div>
+    {# ===== 1. TOP BANNER («Моё расписание») ===== #}
+    <div class="card-tactile banner-card" id="top-banner-card">
+      
+      <!-- Left Content -->
+      <div class="banner-text-box">
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-wider mb-1">
+          <i class="ph-bold ph-compass text-indigo-600"></i>
+          <span>ЛИЧНЫЙ МАРШРУТ</span>
         </div>
+        <h1 class="text-xl sm:text-2xl xl:text-3xl font-black text-slate-900 tracking-tight font-display leading-tight">Моё расписание</h1>
+        <p class="text-[11px] sm:text-xs font-medium text-slate-500 mt-1 flex items-center gap-1.5">
+          <span>Твоя учебная неделя как путешествие. Занятия, дедлайны и планы — всё на одном маршруте!</span>
+          <i class="ph-bold ph-heart text-indigo-400 text-xs"></i>
+        </p>
+      </div>
 
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap items-center gap-2.5 mt-4 pt-3.5 border-t border-slate-100" id="hero-action-buttons">
-          <a id="hero-lesson-room-btn" href="/theory" class="inline-flex items-center gap-1.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs border border-indigo-700 border-b-[3px] shadow-[0_3px_8px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-0.5 transition-all no-underline">
-            <span id="hero-primary-btn-label">Перейти к материалам</span>
-            <i class="ph-bold ph-caret-right"></i>
-          </a>
-          <button type="button" id="hero-secondary-btn" onclick="addToCalendar()" class="inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs shadow-2xs active:translate-y-0.5 transition cursor-pointer">
-            <i class="ph-bold ph-calendar-plus text-xs text-slate-500"></i>
-            <span>Добавить в календарь</span>
+      <!-- Right Illustration with quote speech card -->
+      <div class="hidden md:flex banner-art-box">
+        <img src="/static/images/schedule/banner_journey_3d.png" alt="Banner Journey Art" class="banner-art-img">
+      </div>
+
+    </div>
+
+    {# ===== 2. ROADMAP TRACK CARD (ЕДИНАЯ КАРТА МАРШРУТА) ===== #}
+    <div class="card-tactile p-4 sm:p-5 bg-white relative overflow-hidden shadow-sm" id="roadmap-card">
+
+      <!-- Track Header: Week Switcher & Today Button -->
+      <div class="flex items-center justify-between mb-4 relative z-20">
+        <div class="w-20 hidden sm:block"></div>
+
+        <!-- Center Week Navigator -->
+        <div class="flex items-center justify-center gap-2">
+          <button onclick="navigateWeek(-1)" class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center font-bold shadow-2xs active:translate-y-0.5 transition cursor-pointer" title="Предыдущая неделя">
+            <i class="ph-bold ph-caret-left text-sm"></i>
+          </button>
+          <span id="week-date-range" class="text-xs sm:text-sm font-black text-slate-800 px-3 min-w-[170px] text-center select-none">
+            {{ week_label }}
+          </span>
+          <button onclick="navigateWeek(1)" class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center font-bold shadow-2xs active:translate-y-0.5 transition cursor-pointer" title="Следующая неделя">
+            <i class="ph-bold ph-caret-right text-sm"></i>
           </button>
         </div>
+
+        <!-- Right Today Button -->
+        <button onclick="navigateToday()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-2xs active:translate-y-0.5 transition cursor-pointer">
+          <i class="ph-bold ph-crosshair text-slate-500 text-xs"></i>
+          <span>Сегодня</span>
+        </button>
       </div>
 
-      <!-- Right Column: My Week Card -->
-      <div class="lg:col-span-4 card-tactile p-3.5 sm:p-4.5 flex flex-col justify-between{% if current_user.is_authenticated and current_user.is_demo_user %} demo-preview-readonly{% endif %}" id="my-week-card"{% if current_user.is_authenticated and current_user.is_demo_user %} data-demo-target="schedule-week"{% endif %}>
-        <div>
-          <!-- Header -->
-          <div class="flex items-center gap-2 mb-3">
-            <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-              <i class="ph-fill ph-chart-pie-slice text-sm"></i>
+      <!-- 7 Floating Day Cards Grid -->
+      <div class="grid grid-cols-7 gap-1.5 sm:gap-2.5 relative z-20 mb-3">
+
+        <!-- Day 0: Пн 12 -->
+        <div onclick="handleSelectDayIndex(0)" class="cursor-pointer group flex flex-col items-center">
+          <div class="day-card-0 w-full p-1.5 xl:p-2 rounded-xl sm:rounded-2xl shadow-2xs transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-1.5 xl:gap-2">
+            <div class="w-6 h-6 xl:w-7 xl:h-7 rounded-lg sm:rounded-xl bg-white border border-indigo-100 text-indigo-600 flex items-center justify-center text-xs shrink-0 shadow-2xs">
+              <i class="ph-bold ph-laptop"></i>
             </div>
-          <span class="text-xs sm:text-sm font-black text-slate-900">Моя неделя</span>
-          </div>
-
-          <!-- Stats & Donut Ring Row -->
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-2xl sm:text-3xl font-black text-slate-900 font-display" id="stat-progress-count">
-                1 / 2
-              </div>
-              <div class="text-[11px] font-bold text-slate-400 mt-0.5">
-                занятий на этой неделе
-              </div>
-
-              <!-- Legend -->
-              <div class="mt-3 space-y-1.5">
-                <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                  <span>Проведено</span>
-                  <span class="ml-auto font-black" id="stat-done-count">1</span>
-                </div>
-                <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <span class="w-2 h-2 rounded-full bg-indigo-500 shrink-0"></span>
-                  <span>Осталось</span>
-                  <span class="ml-auto font-black" id="stat-remaining-count">1</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Circular Donut Progress Ring -->
-            <div class="relative w-16 h-16 sm:w-18 sm:h-18 shrink-0 flex items-center justify-center">
-              <svg viewBox="0 0 36 36" class="w-16 h-16 sm:w-18 sm:h-18 donut-chart">
-                <path class="donut-ring" stroke-width="3.8" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path id="donut-segment-bar" class="donut-segment stroke-emerald-500" stroke-width="3.8" stroke-dasharray="50, 100" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              </svg>
-              <span class="absolute text-xs sm:text-sm font-black text-slate-800" id="stat-percent-label">50%</span>
+            <div class="min-w-0 flex-1 hidden sm:block">
+              <div class="text-[9.5px] lg:text-[10px] xl:text-[11px] font-black text-[#312E81] truncate">Python • Условия</div>
+              <div class="text-[8px] lg:text-[8.5px] xl:text-[9px] font-bold text-[#6D28D9] truncate">10:00 – 11:30</div>
             </div>
           </div>
         </div>
 
-        {% if current_user.is_authenticated and current_user.is_demo_user %}
-        <div class="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/80 p-3 text-xs leading-relaxed text-indigo-950" id="demo-weekly-rhythm">
-          <strong>Пример учебного ритма</strong>
-          <p class="mt-1 mb-0">Два вечерних занятия и самостоятельная практика между ними. Ближайшее занятие — через пару дней, около 18:00 по Москве.</p>
-          <span class="block mt-2 font-bold" id="demo-week-dates"></span>
+        <!-- Day 1: Вт 13 (АКТИВНЫЙ / СЕГОДНЯ) -->
+        <div onclick="handleSelectDayIndex(1)" class="cursor-pointer group flex flex-col items-center">
+          <div class="day-card-1 w-full p-1.5 xl:p-2 rounded-xl sm:rounded-2xl transition-all duration-200 flex items-center gap-1.5 xl:gap-2">
+            <div class="w-6 h-6 xl:w-7 xl:h-7 rounded-lg sm:rounded-xl bg-white border border-orange-100 text-amber-600 flex items-center justify-center text-xs shrink-0 shadow-2xs">
+              <i class="ph-bold ph-file-text"></i>
+            </div>
+            <div class="min-w-0 flex-1 hidden sm:block">
+              <div class="text-[9.5px] lg:text-[10px] xl:text-[11px] font-black text-[#7C2D12] truncate">Домашнее задание</div>
+              <div class="text-[8px] lg:text-[8.5px] xl:text-[9px] font-bold text-[#C2410C] truncate">Сдать до 23:59</div>
+            </div>
+          </div>
         </div>
-        <button type="button" data-demo-target="schedule-continue" hidden class="mt-3 rounded-xl border-2 border-indigo-300 bg-white px-4 py-3 text-sm font-black text-indigo-700">Продолжить к профилю</button>
-        {% endif %}
 
-        <!-- Motivating Quote Banner -->
-        <div class="mt-3 p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-100 flex items-start gap-2.5">
-          <div class="w-7 h-7 rounded-lg bg-white border border-indigo-200/60 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs">
-            <i class="ph-bold ph-calendar-star text-sm"></i>
-          </div>
-          <div>
-            <div class="text-xs font-black text-indigo-950">Ты движешься к цели!</div>
-            <div class="text-[11px] font-semibold text-indigo-700/80 mt-0.5">Даже одно занятие — это уже шаг вперёд ✨</div>
+        <!-- Day 2: Ср 14 -->
+        <div onclick="handleSelectDayIndex(2)" class="cursor-pointer group flex flex-col items-center">
+          <div class="day-card-2 w-full p-1.5 xl:p-2 rounded-xl sm:rounded-2xl shadow-2xs transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-1.5 xl:gap-2">
+            <div class="w-6 h-6 xl:w-7 xl:h-7 rounded-lg sm:rounded-xl bg-white border border-emerald-100 text-emerald-600 flex items-center justify-center text-xs shrink-0 shadow-2xs">
+              <i class="ph-bold ph-book-open"></i>
+            </div>
+            <div class="min-w-0 flex-1 hidden sm:block">
+              <div class="text-[9.5px] lg:text-[10px] xl:text-[11px] font-black text-[#064E3B] truncate">Повторение теории</div>
+              <div class="text-[8px] lg:text-[8.5px] xl:text-[9px] font-bold text-[#059669] truncate">Самостоятельно</div>
+            </div>
           </div>
         </div>
+
+        <!-- Day 3: Чт 15 -->
+        <div onclick="handleSelectDayIndex(3)" class="cursor-pointer group flex flex-col items-center">
+          <div class="day-card-3 w-full p-1.5 xl:p-2 rounded-xl sm:rounded-2xl shadow-2xs transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-1.5 xl:gap-2">
+            <div class="w-6 h-6 xl:w-7 xl:h-7 rounded-lg sm:rounded-xl bg-white border border-indigo-100 text-indigo-600 flex items-center justify-center text-xs shrink-0 shadow-2xs">
+              <i class="ph-bold ph-video-camera"></i>
+            </div>
+            <div class="min-w-0 flex-1 hidden sm:block">
+              <div class="text-[9.5px] lg:text-[10px] xl:text-[11px] font-black text-[#1E1B4B] truncate">Вебинар</div>
+              <div class="text-[8px] lg:text-[8.5px] xl:text-[9px] font-bold text-[#4338CA] truncate">15:00 – 16:30</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Day 4: Пт 16 -->
+        <div onclick="handleSelectDayIndex(4)" class="cursor-pointer group flex flex-col items-center">
+          <div class="day-card-4 w-full p-1.5 xl:p-2 rounded-xl sm:rounded-2xl shadow-2xs transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-1.5 xl:gap-2">
+            <div class="w-6 h-6 xl:w-7 xl:h-7 rounded-lg sm:rounded-xl bg-white border border-green-100 text-green-600 flex items-center justify-center text-xs shrink-0 shadow-2xs">
+              <i class="ph-bold ph-chart-line-up"></i>
+            </div>
+            <div class="min-w-0 flex-1 hidden sm:block">
+              <div class="text-[9.5px] lg:text-[10px] xl:text-[11px] font-black text-[#064E3B] truncate">Анализ ошибок</div>
+              <div class="text-[8px] lg:text-[8.5px] xl:text-[9px] font-bold text-[#16A34A] truncate">Самостоятельно</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Day 5: Сб 17 -->
+        <div onclick="handleSelectDayIndex(5)" class="cursor-pointer group flex flex-col items-center">
+          <div class="day-card-5 w-full p-1.5 xl:p-2 rounded-xl sm:rounded-2xl shadow-2xs transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-1.5 xl:gap-2">
+            <div class="w-6 h-6 xl:w-7 xl:h-7 rounded-lg sm:rounded-xl bg-white border border-rose-100 text-rose-600 flex items-center justify-center text-xs shrink-0 shadow-2xs">
+              <i class="ph-bold ph-file-text"></i>
+            </div>
+            <div class="min-w-0 flex-1 hidden sm:block">
+              <div class="text-[9.5px] lg:text-[10px] xl:text-[11px] font-black text-[#881337] truncate">Контрольная работа</div>
+              <div class="text-[8px] lg:text-[8.5px] xl:text-[9px] font-bold text-[#E11D48] truncate">10:00 – 11:00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Day 6: Вс 18 -->
+        <div onclick="handleSelectDayIndex(6)" class="cursor-pointer group flex flex-col items-center">
+          <div class="day-card-6 w-full p-1.5 xl:p-2 rounded-xl sm:rounded-2xl shadow-2xs transition-all duration-200 hover:-translate-y-0.5 flex items-center gap-1.5 xl:gap-2">
+            <div class="w-6 h-6 xl:w-7 xl:h-7 rounded-lg sm:rounded-xl bg-white border border-amber-100 text-amber-500 flex items-center justify-center text-xs shrink-0 shadow-2xs">
+              <i class="ph-bold ph-sun"></i>
+            </div>
+            <div class="min-w-0 flex-1 hidden sm:block">
+              <div class="text-[9.5px] lg:text-[10px] xl:text-[11px] font-black text-[#713F12] truncate">Выходной</div>
+              <div class="text-[8px] lg:text-[8.5px] xl:text-[9px] font-bold text-[#CA8A04] truncate">Время для себя</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 2X Crisp Scenery Illustration & Interactive Stations Matching Mockup -->
+      <div class="relative w-full select-none mt-1">
+        <img src="/static/images/schedule/track_scenery_3d.png" alt="Roadmap Track" class="w-full h-auto object-contain select-none pointer-events-none block">
+        
+        <!-- Interactive Vector Stations Overlay with Native High-DPI Cyrillic Typography & Dynamic Station Highlights -->
+        <svg viewBox="0 0 1002 238" class="absolute inset-0 w-full h-full select-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="station-glow-blur" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
+            </filter>
+          </defs>
+
+          <!-- Day 0: Пн 12 -->
+          <g class="cursor-pointer group" onclick="handleSelectDayIndex(0)">
+            <circle cx="71" cy="136" r="8" fill="#FFFFFF" />
+            <circle cx="71" cy="136" r="6" fill="#6366F1" />
+            <circle cx="71" cy="136" r="2.5" fill="#FFFFFF" />
+            <text x="71" y="157" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="11" font-weight="700" fill="#94A3B8">Пн</text>
+            <text x="71" y="176" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="15" font-weight="900" fill="#0F172A">12</text>
+          </g>
+
+          <!-- Day 1: Вт 13 (АКТИВНАЯ СТАНЦИЯ С АУРОЙ И ЛУЧАМИ) -->
+          <g class="cursor-pointer group" onclick="handleSelectDayIndex(1)">
+            <!-- Pulsing Aura -->
+            <circle cx="214" cy="102" r="22" fill="#6366F1" opacity="0.25" filter="url(#station-glow-blur)" class="station-aura" />
+            
+            <!-- 4 Radial Rays (burst) -->
+            <line x1="188" y1="88" x2="178" y2="78" stroke="#6366F1" stroke-width="3" stroke-linecap="round" />
+            <line x1="204" y1="76" x2="198" y2="64" stroke="#6366F1" stroke-width="3" stroke-linecap="round" />
+            <line x1="224" y1="76" x2="230" y2="64" stroke="#6366F1" stroke-width="3" stroke-linecap="round" />
+            <line x1="240" y1="88" x2="250" y2="78" stroke="#6366F1" stroke-width="3" stroke-linecap="round" />
+            
+            <!-- Outer white ring -->
+            <circle cx="214" cy="102" r="14" fill="#FFFFFF" />
+            <!-- Active Indigo Circle -->
+            <circle cx="214" cy="102" r="11" fill="#4F46E5" />
+            <!-- Inner light ring -->
+            <circle cx="214" cy="102" r="6" fill="#A5B4FC" />
+            
+            <!-- Text 13 -->
+            <text x="214" y="138" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="18" font-weight="900" fill="#0F172A">13</text>
+            
+            <!-- «Сегодня» Pill -->
+            <rect x="187" y="148" width="54" height="19" rx="9.5" fill="#EEF2FF" />
+            <text x="214" y="161.5" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="9.5" font-weight="800" fill="#4F46E5">Сегодня</text>
+          </g>
+
+          <!-- Day 2: Ср 14 -->
+          <g class="cursor-pointer group" onclick="handleSelectDayIndex(2)">
+            <circle cx="357" cy="109" r="8" fill="#FFFFFF" />
+            <circle cx="357" cy="109" r="6" fill="#3B82F6" />
+            <circle cx="357" cy="109" r="2.5" fill="#FFFFFF" />
+            <text x="357" y="130" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="11" font-weight="700" fill="#94A3B8">Ср</text>
+            <text x="357" y="149" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="15" font-weight="900" fill="#0F172A">14</text>
+          </g>
+
+          <!-- Day 3: Чт 15 -->
+          <g class="cursor-pointer group" onclick="handleSelectDayIndex(3)">
+            <circle cx="501" cy="132" r="8" fill="#FFFFFF" />
+            <circle cx="501" cy="132" r="6" fill="#8B5CF6" />
+            <circle cx="501" cy="132" r="2.5" fill="#FFFFFF" />
+            <text x="501" y="153" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="11" font-weight="700" fill="#94A3B8">Чт</text>
+            <text x="501" y="172" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="15" font-weight="900" fill="#0F172A">15</text>
+          </g>
+
+          <!-- Day 4: Пт 16 -->
+          <g class="cursor-pointer group" onclick="handleSelectDayIndex(4)">
+            <circle cx="644" cy="113" r="8" fill="#FFFFFF" />
+            <circle cx="644" cy="113" r="6" fill="#10B981" />
+            <circle cx="644" cy="113" r="2.5" fill="#FFFFFF" />
+            <text x="644" y="134" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="11" font-weight="700" fill="#94A3B8">Пт</text>
+            <text x="644" y="153" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="15" font-weight="900" fill="#0F172A">16</text>
+          </g>
+
+          <!-- Day 5: Сб 17 -->
+          <g class="cursor-pointer group" onclick="handleSelectDayIndex(5)">
+            <circle cx="787" cy="107" r="8" fill="#FFFFFF" />
+            <circle cx="787" cy="107" r="6" fill="#F43F5E" />
+            <circle cx="787" cy="107" r="2.5" fill="#FFFFFF" />
+            <text x="787" y="128" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="11" font-weight="700" fill="#94A3B8">Сб</text>
+            <text x="787" y="147" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="15" font-weight="900" fill="#0F172A">17</text>
+          </g>
+
+          <!-- Day 6: Вс 18 -->
+          <g class="cursor-pointer group" onclick="handleSelectDayIndex(6)">
+            <circle cx="865" cy="132" r="8" fill="#FFFFFF" />
+            <circle cx="865" cy="132" r="6" fill="#3B82F6" />
+            <circle cx="865" cy="132" r="2.5" fill="#FFFFFF" />
+            <text x="865" y="153" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="11" font-weight="700" fill="#94A3B8">Вс</text>
+            <text x="865" y="172" text-anchor="middle" font-family="'Golos Text', 'Inter', sans-serif" font-size="15" font-weight="900" fill="#0F172A">18</text>
+          </g>
+        </svg>
       </div>
 
     </div>
 
-    <!-- Bottom 3-Column Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    {# ===== 3. MIDDLE SECTION (HERO FOCUS + RIGHT COLUMN) ===== #}
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
 
-      <!-- Card 1: Домашнее задание -->
-      <div class="card-tactile p-3.5 sm:p-4 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-2.5">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                <i class="ph-fill ph-file-text text-sm"></i>
-              </div>
-              <span class="text-xs sm:text-sm font-black text-slate-900">Домашнее задание</span>
+      <!-- LEFT: Hero Focus Card (Домашнее задание по математике) -->
+      <div class="lg:col-span-8 card-tactile hero-focus-card" id="hero-focus-card">
+        
+        <!-- Left Content -->
+        <div class="hero-card-left">
+          <div class="flex items-center gap-2 mb-1.5">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 text-[11px] font-bold">
+              <i class="ph-fill ph-sparkle text-indigo-500"></i>
+              <span id="hero-badge-date-text">Сегодня, 13 октября</span>
             </div>
-            <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-black border border-indigo-100" id="hw-badge">
-              К следующему уроку
+            <span class="px-2.5 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-[11px] font-bold" id="hero-badge-dayname-text">
+              Вторник
             </span>
           </div>
 
-          <div id="hw-items-container">
-            <a id="hw-item-link" href="/submissions" class="p-2.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:border-indigo-300 hover:bg-indigo-50/30 transition flex items-center justify-between group no-underline mt-1">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="w-4 h-4 rounded-full border-2 border-slate-300 group-hover:border-indigo-400 shrink-0 transition"></span>
-                <span class="text-xs font-bold text-slate-800 truncate" id="hw-task-title">Решить 5 задач на условия</span>
-              </div>
-              <i class="ph-bold ph-caret-right text-slate-400 group-hover:text-indigo-600 text-xs shrink-0 transition"></i>
+          <h2 class="text-sm sm:text-base lg:text-lg xl:text-xl font-black text-slate-900 tracking-tight font-display mb-1" id="hero-main-title">
+            Домашнее задание по математике
+          </h2>
+          <p class="text-xs sm:text-sm font-bold text-slate-500 mb-1.5" id="hero-subtitle">
+            Линейные уравнения и системы
+          </p>
+
+          <p class="hero-card-desc" id="hero-description">
+            Реши задания из учебника и загрузи решение до 23:59. Если возникнут вопросы — загляни в теорию или напиши преподавателю.
+          </p>
+
+          <!-- 3D Action Buttons -->
+          <div class="flex flex-wrap items-center gap-2 pt-0.5">
+            <a href="/submissions" id="hero-primary-action-btn" class="btn-3d-primary text-white text-xs font-black px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl inline-flex items-center gap-2 no-underline">
+              <i class="ph-bold ph-calendar"></i>
+              <span id="hero-primary-action-label">Перейти к заданию →</span>
+            </a>
+            <a href="/theory" id="hero-secondary-action-btn" class="btn-3d-secondary text-slate-700 text-xs font-bold px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl inline-flex items-center gap-2 no-underline">
+              <i class="ph-bold ph-book-open"></i>
+              <span>Открыть теорию</span>
             </a>
           </div>
         </div>
+
+        <!-- Right 3D Boo Illustration (Directly integrated on card edge without any container box!) -->
+        <div class="hidden sm:flex hero-card-art">
+          <img src="/static/images/schedule/hero_mascot_3d.png" alt="Boo Mascot" class="hero-art-img">
+        </div>
+
       </div>
 
-      <!-- Card 2: Полезные материалы -->
-      <div class="card-tactile p-3.5 sm:p-4 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-2.5">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                <i class="ph-fill ph-book-open text-sm"></i>
+      <!-- RIGHT: Two Stacked Cards (План на сегодня + Полезные материалы) -->
+      <div class="lg:col-span-4 flex flex-col gap-3 justify-between">
+
+        <!-- Card 1: «План на сегодня» -->
+        <div class="card-tactile p-3.5 bg-white flex flex-col justify-between flex-1">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs shadow-2xs">
+                  <i class="ph-fill ph-clipboard-text"></i>
+                </div>
+                <span class="text-xs sm:text-sm font-black text-slate-900">План на сегодня</span>
               </div>
-              <span class="text-xs sm:text-sm font-black text-slate-900">Полезные материалы</span>
+              <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold" id="today-tasks-count-badge">
+                2 задачи
+              </span>
             </div>
-            <a href="/theory" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1 no-underline">
-              <span>Смотреть все</span>
-              <i class="ph-bold ph-arrow-right text-[9px]"></i>
-            </a>
+
+            <!-- Timeline connector & items -->
+            <div class="space-y-1.5" id="today-plan-items">
+              <!-- Item 1: Python • Условия -->
+              <a href="/lessons" class="p-2 rounded-xl border border-slate-100 bg-[#F8FAFC] hover:border-indigo-200 transition flex items-center justify-between group no-underline">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-3.5 h-3.5 rounded-full border-2 border-indigo-400 flex items-center justify-center shrink-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                  </span>
+                  <div class="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center text-xs shrink-0 ml-1">
+                    <i class="ph-bold ph-laptop"></i>
+                  </div>
+                  <div class="min-w-0 ml-1">
+                    <div class="text-xs font-bold text-slate-800 truncate" id="plan-item-1-title">Python • Условия</div>
+                    <div class="text-[10px] font-medium text-slate-400 leading-tight" id="plan-item-1-time">10:00 – 11:30</div>
+                  </div>
+                </div>
+                <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-600 text-xs shrink-0 transition"></i>
+              </a>
+
+              <!-- Item 2: Сдать домашнее задание -->
+              <a href="/submissions" class="p-2 rounded-xl border border-rose-200 bg-[#FFF5F5] hover:border-rose-300 transition flex items-center justify-between group no-underline">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-3.5 h-3.5 rounded-full border-2 border-rose-400 flex items-center justify-center shrink-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                  </span>
+                  <div class="w-6 h-6 rounded-lg bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center text-xs shrink-0 ml-1">
+                    <i class="ph-bold ph-file-text"></i>
+                  </div>
+                  <div class="min-w-0 ml-1">
+                    <div class="text-xs font-bold text-rose-700 truncate" id="plan-item-2-title">Сдать домашнее задание</div>
+                    <span class="inline-block px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 text-[9px] font-bold mt-0.5" id="plan-item-2-badge">До 23:59</span>
+                  </div>
+                </div>
+                <i class="ph-bold ph-caret-right text-rose-300 group-hover:text-rose-600 text-xs shrink-0 transition"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: «Полезные материалы» -->
+        <div class="card-tactile p-3.5 bg-white flex flex-col justify-between flex-1">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs shadow-2xs">
+                  <i class="ph-fill ph-books"></i>
+                </div>
+                <span class="text-xs sm:text-sm font-black text-slate-900">Полезные материалы</span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5" id="useful-materials-items">
+              <!-- Material 1: Линейные уравнения — краткая теория -->
+              <a href="/theory" class="p-2 rounded-xl border border-slate-100 bg-[#F8FAFC] hover:border-indigo-200 transition flex items-center justify-between group no-underline">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-6 h-6 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center text-xs shrink-0">
+                    <i class="ph-bold ph-file-text"></i>
+                  </div>
+                  <div class="min-w-0 ml-1">
+                    <div class="text-xs font-bold text-slate-800 truncate" id="mat-item-1-title">Линейные уравнения — краткая теория</div>
+                    <div class="text-[10px] font-medium text-slate-400" id="mat-item-1-subtitle">Конспект • 12 страниц</div>
+                  </div>
+                </div>
+                <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-600 text-xs shrink-0 transition"></i>
+              </a>
+
+              <!-- Teacher Note: Заметка от преподавателя with exact photo avatar -->
+              <div class="p-2 rounded-xl border border-indigo-100/70 bg-indigo-50/30 flex items-center justify-between group cursor-pointer" onclick="window.location.href='/workspace/profile'">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <img src="/static/images/schedule/mock_teacher_avatar.png" alt="Teacher" class="w-8 h-8 rounded-full object-cover shrink-0 border border-indigo-200">
+                  <div class="min-w-0 flex-1">
+                    <div class="text-[10px] font-bold text-indigo-600">Заметка от преподавателя</div>
+                    <p class="text-[10px] font-medium text-slate-600 italic mt-0.5 leading-snug truncate">
+                      «Обрати особое внимание на задания 4 и 5...»
+                    </p>
+                  </div>
+                </div>
+                <i class="ph-bold ph-caret-right text-indigo-300 group-hover:text-indigo-600 text-xs shrink-0 transition ml-1"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    {# ===== 4. BOTTOM SECTION (3 TACTILE CARDS) ===== #}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+
+      <!-- Bottom Card 1: «Прогресс недели» -->
+      <div class="card-tactile p-3.5 bg-white flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs shadow-2xs">
+              <i class="ph-fill ph-chart-donut"></i>
+            </div>
+            <span class="text-xs sm:text-sm font-black text-slate-900">Прогресс недели</span>
           </div>
 
-          <div class="space-y-1.5 mt-1" id="materials-container">
-            <a href="/theory" class="flex items-center gap-2 p-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-50 transition no-underline">
-              <i class="ph-bold ph-file-text text-indigo-500 text-sm shrink-0"></i>
-              <span class="truncate" id="mat-title-1">Краткая теория: if / elif / else</span>
-            </a>
-            <a href="/trainer" class="flex items-center gap-2 p-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-50 transition no-underline">
-              <i class="ph-bold ph-file-text text-indigo-500 text-sm shrink-0"></i>
-              <span class="truncate" id="mat-title-2">Подборка задач (ЕГЭ)</span>
-            </a>
+          <div class="flex items-center justify-between gap-3 pt-1">
+            
+            <!-- Donut Gauge Ring -->
+            <div class="relative w-16 h-16 shrink-0 flex items-center justify-center">
+              <svg class="w-full h-full donut-chart" viewBox="0 0 36 36">
+                <path class="donut-ring"
+                      stroke-width="3.5"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="donut-segment"
+                      stroke="#4F46E5"
+                      stroke-width="{{ '3.5' if schedule_page_data.weekly_stats.percent > 0 else '0' }}"
+                      stroke-dasharray="{{ schedule_page_data.weekly_stats.percent }}, 100"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      id="weekly-progress-segment" />
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-xs sm:text-sm font-black text-slate-900" id="weekly-progress-percent">0%</span>
+              </div>
+            </div>
+
+            <!-- Stats Count & Subtitle -->
+            <div>
+              <div class="text-base sm:text-lg font-black text-slate-900 leading-tight">
+                <span id="weekly-progress-conducted">0</span> из <span id="weekly-progress-total">6</span>
+              </div>
+              <p class="text-[10px] font-medium text-slate-400 mt-0.5">занятий на этой неделе</p>
+            </div>
+
+            <!-- Legend Table -->
+            <div class="text-[10px] space-y-1 text-slate-600 font-bold shrink-0 min-w-[110px]">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Проведено</span>
+                <span class="ml-auto font-black text-slate-900" id="stat-conducted-count">0</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                <span>Запланировано</span>
+                <span class="ml-auto font-black text-slate-900" id="stat-planned-count">4</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>Домашние задания</span>
+                <span class="ml-auto font-black text-slate-900" id="stat-homework-count">1</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span>Контрольные</span>
+                <span class="ml-auto font-black text-slate-900" id="stat-tests-count">1</span>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
 
-      <!-- Card 3: Заметки преподавателя -->
-      <div class="card-tactile p-3 sm:p-3.5 flex flex-col justify-between">
+      <!-- Bottom Card 2: «Моя неделя» -->
+      <div class="card-tactile p-3.5 bg-white flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs shadow-2xs">
+              <i class="ph-fill ph-chart-bar"></i>
+            </div>
+            <span class="text-xs sm:text-sm font-black text-slate-900">Моя неделя</span>
+          </div>
+
+          <!-- 7 Vertical Activity Pill Bars with Capsule Tracks matching mockup! -->
+          <div class="h-16 flex items-end justify-between px-2 pt-1 pb-1" id="weekly-bars-container">
+            <!-- Пн: gray 42% -->
+            <div class="flex flex-col items-center justify-end h-full cursor-pointer group" onclick="handleSelectDayIndex(0)">
+              <div class="bar-capsule">
+                <div class="w-full bar-fill-0 transition-all duration-300"></div>
+              </div>
+            </div>
+            <!-- Вт: active purple gradient 82% -->
+            <div class="flex flex-col items-center justify-end h-full cursor-pointer group" onclick="handleSelectDayIndex(1)">
+              <div class="bar-capsule bar-capsule-active">
+                <div class="w-full bar-fill-1 transition-all duration-300"></div>
+              </div>
+            </div>
+            <!-- Ср: gray 32% -->
+            <div class="flex flex-col items-center justify-end h-full cursor-pointer group" onclick="handleSelectDayIndex(2)">
+              <div class="bar-capsule">
+                <div class="w-full bar-fill-2 transition-all duration-300"></div>
+              </div>
+            </div>
+            <!-- Чт: pink/coral 46% -->
+            <div class="flex flex-col items-center justify-end h-full cursor-pointer group" onclick="handleSelectDayIndex(3)">
+              <div class="bar-capsule">
+                <div class="w-full bar-fill-3 transition-all duration-300"></div>
+              </div>
+            </div>
+            <!-- Пт: orange 34% -->
+            <div class="flex flex-col items-center justify-end h-full cursor-pointer group" onclick="handleSelectDayIndex(4)">
+              <div class="bar-capsule">
+                <div class="w-full bar-fill-4 transition-all duration-300"></div>
+              </div>
+            </div>
+            <!-- Сб: red/rose 64% -->
+            <div class="flex flex-col items-center justify-end h-full cursor-pointer group" onclick="handleSelectDayIndex(5)">
+              <div class="bar-capsule">
+                <div class="w-full bar-fill-5 transition-all duration-300"></div>
+              </div>
+            </div>
+            <!-- Вс: orange 26% -->
+            <div class="flex flex-col items-center justify-end h-full cursor-pointer group" onclick="handleSelectDayIndex(6)">
+              <div class="bar-capsule">
+                <div class="w-full bar-fill-6 transition-all duration-300"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Week Days Labels Row matching mockup -->
+          <div class="grid grid-cols-7 gap-1 pt-1.5 border-t border-slate-100 text-center">
+            <div class="cursor-pointer" onclick="handleSelectDayIndex(0)">
+              <div class="text-[10px] font-bold text-slate-400">Пн</div>
+              <div class="text-xs font-black text-slate-700">12</div>
+            </div>
+            <div class="cursor-pointer" onclick="handleSelectDayIndex(1)">
+              <div class="text-[10px] font-bold text-indigo-600">Вт</div>
+              <div class="text-xs font-black text-white bg-indigo-600 rounded-md w-5 h-4.5 mx-auto flex items-center justify-center text-[10px] shadow-2xs">13</div>
+            </div>
+            <div class="cursor-pointer" onclick="handleSelectDayIndex(2)">
+              <div class="text-[10px] font-bold text-slate-400">Ср</div>
+              <div class="text-xs font-black text-slate-700">14</div>
+            </div>
+            <div class="cursor-pointer" onclick="handleSelectDayIndex(3)">
+              <div class="text-[10px] font-bold text-slate-400">Чт</div>
+              <div class="text-xs font-black text-slate-700">15</div>
+            </div>
+            <div class="cursor-pointer" onclick="handleSelectDayIndex(4)">
+              <div class="text-[10px] font-bold text-slate-400">Пт</div>
+              <div class="text-xs font-black text-slate-700">16</div>
+            </div>
+            <div class="cursor-pointer" onclick="handleSelectDayIndex(5)">
+              <div class="text-[10px] font-bold text-slate-400">Сб</div>
+              <div class="text-xs font-black text-slate-700">17</div>
+            </div>
+            <div class="cursor-pointer" onclick="handleSelectDayIndex(6)">
+              <div class="text-[10px] font-bold text-slate-400">Вс</div>
+              <div class="text-xs font-black text-slate-700">18</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Card 3: «Цели на неделю» -->
+      <div class="card-tactile p-3.5 bg-white flex flex-col justify-between">
         <div>
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-                <i class="ph-fill ph-chalkboard-teacher text-xs"></i>
+              <div class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs shadow-2xs">
+                <i class="ph-fill ph-target"></i>
               </div>
-              <span class="text-xs sm:text-sm font-black text-slate-900">Заметки преподавателя</span>
+              <span class="text-xs sm:text-sm font-black text-slate-900">Цели на неделю</span>
             </div>
-            <a href="/workspace/profile" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1 no-underline">
-              <span>Читать все</span>
-              <i class="ph-bold ph-arrow-right text-[9px]"></i>
+            <a href="/submissions" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1 no-underline">
+              <span>Смотреть все</span>
+              <i class="ph-bold ph-arrow-right text-[10px]"></i>
             </a>
           </div>
 
-          <div class="p-2.5 rounded-xl border border-slate-200/80 bg-[#F8FAFC] text-xs font-medium text-slate-500 leading-relaxed mt-1" id="notes-content-box">
-            Здесь будут твои заметки после уроков... Например, что было сложно, на что обратить внимание, идеи для повторения.
+          <div class="space-y-1.5" id="weekly-goals-container">
+            <a href="/theory" class="p-1 rounded-lg hover:bg-slate-50 transition flex items-center justify-between group no-underline">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 group-hover:border-indigo-500 shrink-0 transition"></span>
+                <span class="text-xs font-bold text-slate-700 truncate">Разобрать тему "Условия" в Python</span>
+              </div>
+              <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-600 text-xs shrink-0 transition"></i>
+            </a>
+
+            <a href="/submissions" class="p-1 rounded-lg hover:bg-slate-50 transition flex items-center justify-between group no-underline">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 group-hover:border-indigo-500 shrink-0 transition"></span>
+                <span class="text-xs font-bold text-slate-700 truncate">Сдать домашнее задание по математике</span>
+              </div>
+              <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-600 text-xs shrink-0 transition"></i>
+            </a>
+
+            <a href="/theory" class="p-1 rounded-lg hover:bg-slate-50 transition flex items-center justify-between group no-underline">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 group-hover:border-indigo-500 shrink-0 transition"></span>
+                <span class="text-xs font-bold text-slate-700 truncate">Повторить теорию по физике</span>
+              </div>
+              <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-600 text-xs shrink-0 transition"></i>
+            </a>
+
+            <a href="/schedule" class="p-1 rounded-lg hover:bg-slate-50 transition flex items-center justify-between group no-underline">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 group-hover:border-indigo-500 shrink-0 transition"></span>
+                <span class="text-xs font-bold text-slate-700 truncate">Подготовиться к контрольной работе</span>
+              </div>
+              <i class="ph-bold ph-caret-right text-slate-300 group-hover:text-indigo-600 text-xs shrink-0 transition"></i>
+            </a>
           </div>
         </div>
       </div>
@@ -379,79 +837,7 @@
     </div>
 
   </div>
-
-  {# ===== 4. MONTH VIEW CONTAINER ===== #}
-  <div id="view-month" class="hidden card-tactile p-4 overflow-hidden">
-    <div class="flex border-b border-slate-200 bg-slate-50/80 rounded-t-xl overflow-hidden shrink-0">
-      <div class="flex-1 grid grid-cols-7" id="month-days-header">
-        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">ПН</div>
-        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">ВТ</div>
-        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">СР</div>
-        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">ЧТ</div>
-        <div class="p-2 text-center text-xs font-black text-slate-500 border-r border-slate-200">ПТ</div>
-        <div class="p-2 text-center text-xs font-black text-rose-400 border-r border-slate-200">СБ</div>
-        <div class="p-2 text-center text-xs font-black text-rose-400">ВС</div>
-      </div>
-    </div>
-    <div class="overflow-x-auto">
-      <div id="month-grid" class="grid grid-cols-7 border-l border-t border-slate-200 min-w-[650px]"></div>
-    </div>
-  </div>
-
-  {# ===== 5. FOOTER QUOTE ===== #}
-  <div class="flex items-center justify-between pt-2 pb-3 border-t border-slate-200/60 text-[11px] font-bold text-slate-400">
-    <div class="flex items-center gap-1.5">
-      <i class="ph-bold ph-ghost text-slate-400 text-sm"></i>
-      <span>«Дисциплина сегодня — свобода завтра.»</span>
-    </div>
-    <div class="flex items-center gap-1 text-indigo-400 font-bold">
-      <span>Всё получится!</span>
-      <i class="ph-bold ph-heart"></i>
-    </div>
-  </div>
-
-  </div>
 </main>
-
-{# ===== 6. LESSON VIEW MODAL ===== #}
-<div class="modal-backdrop hidden" id="modal-lesson-view">
-  <div class="modal-box">
-    <div class="modal-header flex items-center justify-between p-4 border-b border-slate-100">
-      <div>
-        <span id="view-lesson-type-badge" class="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black uppercase tracking-wider block mb-1">Онлайн-урок</span>
-        <h2 class="text-base font-black text-slate-900" id="view-lesson-topic">Урок</h2>
-      </div>
-      <button onclick="document.getElementById('modal-lesson-view').classList.add('hidden')" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer transition-colors text-base font-bold">×</button>
-    </div>
-    <div class="modal-body p-4 space-y-2.5">
-      <div class="grid grid-cols-2 gap-2.5">
-        <div class="info-row">
-          <span class="info-label">Время</span>
-          <span class="info-value" id="view-lesson-time"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Длительность</span>
-          <span class="info-value" id="view-lesson-duration"></span>
-        </div>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Преподаватель / Группа</span>
-        <span class="info-value" id="view-lesson-group"></span>
-      </div>
-      <div id="view-lesson-url-block" class="info-row hidden" style="background:#eef2ff;border:1px solid #c7d2fe;">
-        <span class="info-label" style="color:#6366f1;">Ссылка на урок</span>
-        <a id="view-lesson-url-link" href="#" target="_blank" class="text-xs font-bold text-indigo-700 break-all block"></a>
-      </div>
-      <button id="join-btn" onclick="joinLesson()" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider border-b-[3px] border-indigo-800 transition active:translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer shadow-sm">
-        <i class="ph-bold ph-video-camera text-base"></i>
-        <span>Войти в комнату урока</span>
-      </button>
-    </div>
-    <div class="modal-footer p-3 border-t border-slate-100 flex justify-end">
-      <button class="px-3.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('modal-lesson-view').classList.add('hidden')">Закрыть</button>
-    </div>
-  </div>
-</div>
 
 <script>
 (function() {
@@ -459,69 +845,99 @@
 
   const dataEl = document.getElementById('schedule-data');
   const RAW = dataEl ? JSON.parse(dataEl.textContent || '{}') : {};
-  const effectiveTz = RAW.timezone || (window.BooTimezone ? window.BooTimezone.getViewerTz() : 'Europe/Moscow');
 
-  function processStudentLessons(lessonsArray, tz) {
-    return (lessonsArray || []).map(l => {
-      let startDateStr = l.start_date;
-      let startTimeStr = l.start_time;
-      let endTimeStr = l.end_time;
+  // Interactive day presets matching roadmap stations
+  const DAYS_DATA = [
+    {
+      dateBadge: '12 октября',
+      dayName: 'Понедельник',
+      title: 'Python • Условия',
+      subtitle: 'Вложенные условия и логические операторы',
+      desc: 'Разбор темы if / elif / else и вложенных условий. Решим задачи из реальных вариантов ЕГЭ №24 и №26.',
+      btnLabel: 'Перейти к занятию →',
+      btnUrl: '/lessons',
+    },
+    {
+      dateBadge: 'Сегодня, 13 октября',
+      dayName: 'Вторник',
+      title: 'Домашнее задание по математике',
+      subtitle: 'Линейные уравнения и системы',
+      desc: 'Реши задания из учебника и загрузи решение до 23:59. Если возникнут вопросы — загляни в теорию или напиши преподавателю.',
+      btnLabel: 'Перейти к заданию →',
+      btnUrl: '/submissions',
+    },
+    {
+      dateBadge: '14 октября',
+      dayName: 'Среда',
+      title: 'Повторение теории',
+      subtitle: 'Самостоятельное закрепление материала',
+      desc: 'Освежи в памяти базовые алгоритмы и разбери конспекты по пройденным темам перед вебинаром.',
+      btnLabel: 'Открыть теорию →',
+      btnUrl: '/theory',
+    },
+    {
+      dateBadge: '15 октября',
+      dayName: 'Четверг',
+      title: 'Вебинар по информатике',
+      subtitle: 'Разбор алгоритмических задач ЕГЭ',
+      desc: 'Онлайн-трансляция с разбором типовых ловушек в задачах экзамена. Ссылка станет активна за 10 минут до начала.',
+      btnLabel: 'Войти на вебинар →',
+      btnUrl: '/lessons',
+    },
+    {
+      dateBadge: '16 октября',
+      dayName: 'Пятница',
+      title: 'Анализ ошибок',
+      subtitle: 'Работа над ошибками в домашних заданиях',
+      desc: 'Изучи комментарии преподавателя к проверенным работам и выполни работу над ошибками.',
+      btnLabel: 'Посмотреть ошибки →',
+      btnUrl: '/submissions',
+    },
+    {
+      dateBadge: '17 октября',
+      dayName: 'Суббота',
+      title: 'Контрольная работа',
+      subtitle: 'Итоговое тестирование недели',
+      desc: 'Проверка знаний по пройденному модулю. Время выполнения ограничено таймером (60 минут).',
+      btnLabel: 'Начать тест →',
+      btnUrl: '/submissions',
+    },
+    {
+      dateBadge: '18 октября',
+      dayName: 'Воскресенье',
+      title: 'Выходной • Время для себя',
+      subtitle: 'Отдых и восстановление энергии',
+      desc: 'Сегодня нет обязательных занятий. Отличный день, чтобы погулять, выспаться и набраться сил на следующую неделю!',
+      btnLabel: 'Открыть теорию →',
+      btnUrl: '/theory',
+    }
+  ];
 
-      if (window.BooTimezone && (l.start_iso || l.lesson_date)) {
-        const parts = window.BooTimezone.getPartsInTz(l.start_iso || l.lesson_date, tz);
-        if (parts && parts.date && parts.time) {
-          startDateStr = parts.date;
-          startTimeStr = parts.time;
-        }
-      }
+  window.handleSelectDayIndex = function(index) {
+    const d = DAYS_DATA[index];
+    if (!d) return;
 
-      l.start_date = startDateStr || '';
-      l.start_time = startTimeStr || '12:00';
+    const badgeDate = document.getElementById('hero-badge-date-text');
+    const badgeDay = document.getElementById('hero-badge-dayname-text');
+    const titleEl = document.getElementById('hero-main-title');
+    const subEl = document.getElementById('hero-subtitle');
+    const descEl = document.getElementById('hero-description');
+    const btnLabel = document.getElementById('hero-primary-action-label');
+    const btn = document.getElementById('hero-primary-action-btn');
 
-      const dur = Number(l.duration_minutes || l.duration || 60);
-      l.duration_minutes = dur;
-
-      if (!endTimeStr && l.start_time) {
-        const [sh, sm] = l.start_time.split(':').map(Number);
-        const endTotal = ((sh || 0) * 60 + (sm || 0) + dur) % (24 * 60);
-        endTimeStr = `${String(Math.floor(endTotal / 60)).padStart(2, '0')}:${String(endTotal % 60).padStart(2, '0')}`;
-      }
-      l.end_time = endTimeStr || '';
-      return l;
-    });
-  }
-
-  let state = {
-    view: 'week',
-    weekOffset: RAW.week_offset || 0,
-    tzName: effectiveTz,
-    lessons: processStudentLessons(RAW.lessons || [], effectiveTz),
-    weekdays: RAW.weekdays || [],
-    todayIso: RAW.today_iso || new Date().toISOString().split('T')[0],
-    activeHomework: RAW.active_homework || [],
-    usefulMaterials: RAW.useful_materials || [],
-    studentNotesGeneral: RAW.student_notes_general || '',
-    upcomingLesson: null,
-    selectedDayIso: null,
-    displayedLesson: null,
-    viewingLesson: null,
+    if (badgeDate) badgeDate.textContent = d.dateBadge;
+    if (badgeDay) badgeDay.textContent = d.dayName;
+    if (titleEl) titleEl.textContent = d.title;
+    if (subEl) subEl.textContent = d.subtitle;
+    if (descEl) descEl.textContent = d.desc;
+    if (btnLabel) btnLabel.textContent = d.btnLabel;
+    if (btn) btn.href = d.btnUrl;
   };
-
-  const RU_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  const RU_DAYS = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
-  const demoWeekDates = document.getElementById('demo-week-dates');
-  if (demoWeekDates) {
-    const upcomingDates = [2, 5].map(offset => {
-      const date = new Date();
-      date.setDate(date.getDate() + offset);
-      return date.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' });
-    });
-    demoWeekDates.textContent = `Ближайшее: ${upcomingDates[0]}, 18:00 МСК · следующее: ${upcomingDates[1]}, 18:00 МСК`;
-  }
 
   window.navigateWeek = function(delta) {
     const params = new URLSearchParams(window.location.search);
-    params.set('week', String(state.weekOffset + delta));
+    const currOffset = RAW.week_offset || 0;
+    params.set('week', String(currOffset + delta));
     window.location.assign(`${RAW.base_url || '/schedule'}?${params.toString()}`);
   };
 
@@ -531,579 +947,6 @@
     window.location.assign(`${RAW.base_url || '/schedule'}`);
   };
 
-  window.switchView = function(view) {
-    state.view = view;
-    const weekEl = document.getElementById('view-week');
-    const monthEl = document.getElementById('view-month');
-    const btnWeek = document.getElementById('btn-view-week');
-    const btnMonth = document.getElementById('btn-view-month');
-
-    if (view === 'week') {
-      if (weekEl) weekEl.classList.remove('hidden');
-      if (monthEl) monthEl.classList.add('hidden');
-      if (btnWeek) {
-        btnWeek.className = 'flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 text-white font-black text-xs rounded-lg shadow-xs transition-all cursor-pointer';
-      }
-      if (btnMonth) {
-        btnMonth.className = 'flex items-center gap-1.5 px-3.5 py-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-lg transition-all cursor-pointer';
-      }
-    } else {
-      if (weekEl) weekEl.classList.add('hidden');
-      if (monthEl) monthEl.classList.remove('hidden');
-      if (btnWeek) {
-        btnWeek.className = 'flex items-center gap-1.5 px-3.5 py-1.5 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-lg transition-all cursor-pointer';
-      }
-      if (btnMonth) {
-        btnMonth.className = 'flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 text-white font-black text-xs rounded-lg shadow-xs transition-all cursor-pointer';
-      }
-      renderMonthView();
-    }
-  };
-
-  function findUpcomingLesson() {
-    const sorted = [...state.lessons].sort((a, b) => {
-      const ta = new Date(a.start_iso || a.lesson_date).getTime();
-      const tb = new Date(b.start_iso || b.lesson_date).getTime();
-      return ta - tb;
-    });
-
-    const upcoming = sorted.find(l => {
-      const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
-      return lDate >= state.todayIso && l.status !== 'completed' && l.status !== 'cancelled';
-    });
-    if (upcoming) return upcoming;
-
-    const anyPlanned = sorted.find(l => l.status === 'planned');
-    if (anyPlanned) return anyPlanned;
-
-    const weekIsoSet = new Set(state.weekdays.map(d => d.iso));
-    const thisWeekLesson = sorted.find(l => {
-      const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
-      return weekIsoSet.has(lDate);
-    });
-    if (thisWeekLesson) return thisWeekLesson;
-
-    return null;
-  }
-
-  function getDaysDiff(targetIso, baseIso) {
-    const d1 = new Date(targetIso.split('T')[0]);
-    const d2 = new Date(baseIso.split('T')[0]);
-    const diffTime = d1.getTime() - d2.getTime();
-    return Math.round(diffTime / (1000 * 60 * 60 * 24));
-  }
-
-  function renderWeekdaysStrip() {
-    const container = document.getElementById('weekdays-strip');
-    if (!container || !state.weekdays.length) return;
-
-    const upcoming = state.upcomingLesson;
-    const upcomingIso = upcoming ? (upcoming.start_date || (upcoming.lesson_date ? upcoming.lesson_date.split('T')[0] : '')) : '';
-
-    container.innerHTML = state.weekdays.map(d => {
-      const dayLessons = state.lessons.filter(l => {
-        const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
-        return lDate === d.iso;
-      });
-
-      const isToday = (d.iso === state.todayIso);
-      const isSelected = (state.selectedDayIso === d.iso);
-      const isUpcomingDay = Boolean(upcomingIso && d.iso === upcomingIso);
-      const hasLessons = dayLessons.length > 0;
-      const isDone = hasLessons && dayLessons.every(l => l.status === 'completed' || l.status === 'done');
-
-      let cardClasses = 'rounded-2xl border p-1.5 sm:py-2 sm:px-1.5 transition cursor-pointer flex flex-col justify-between text-center relative select-none';
-      let dotHtml = '';
-      let statusText = 'Нет занятий';
-      let statusClasses = 'text-[10px] sm:text-[11px] font-bold text-slate-400';
-
-      if (isUpcomingDay) {
-        dotHtml = '<span class="inline-block w-2 h-2 rounded-full bg-indigo-600 ml-1.5 shrink-0"></span>';
-        statusText = isToday ? 'Урок сегодня' : 'Следующий урок';
-        statusClasses = 'text-[10px] sm:text-[11px] font-black text-indigo-600';
-        cardClasses += ' border-indigo-300 bg-[#EEF2FF] text-indigo-900';
-      } else if (hasLessons) {
-        if (isDone) {
-          dotHtml = '<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1.5 shrink-0"></span>';
-          statusText = 'Завершён';
-          statusClasses = 'text-[10px] sm:text-[11px] font-black text-emerald-600';
-          cardClasses += ' border-emerald-300/80 bg-[#F0FDF4] text-emerald-950';
-        } else {
-          dotHtml = '<span class="inline-block w-2 h-2 rounded-full bg-indigo-500 ml-1.5 shrink-0"></span>';
-          statusText = isToday ? 'Урок сегодня' : 'Занятие';
-          statusClasses = 'text-[10px] sm:text-[11px] font-black text-indigo-600';
-          cardClasses += ' border-indigo-200 bg-indigo-50/40 text-indigo-900';
-        }
-      } else {
-        if (isToday) {
-          statusText = 'Сегодня';
-          statusClasses = 'text-[10px] sm:text-[11px] font-black text-indigo-600';
-          cardClasses += ' border-indigo-200/90 bg-indigo-50/20 text-slate-800';
-        } else {
-          cardClasses += ' border-slate-200/90 bg-white text-slate-700 hover:border-indigo-200';
-        }
-      }
-
-      if (isSelected) {
-        cardClasses += ' ring-2 ring-indigo-500 shadow-xs border-indigo-400';
-      }
-
-      let dayTitleHtml = `<span class="${isUpcomingDay || isToday ? 'text-indigo-600 font-black' : (isDone ? 'text-emerald-700 font-bold' : 'text-slate-400 font-bold')}">${d.name}</span>`;
-      if (isToday) {
-        dayTitleHtml += ` <span class="text-[8px] font-black uppercase text-indigo-600 bg-indigo-100/90 px-1 py-0.5 rounded-sm ml-0.5">Сегодня</span>`;
-      }
-
-      return `
-        <div class="${cardClasses}" data-iso="${d.iso}" onclick="handleDayClick('${d.iso}')">
-          <div class="text-[10px] sm:text-[11px] flex items-center justify-center">${dayTitleHtml}</div>
-          <div class="text-base sm:text-lg font-black text-slate-800 my-0.5 flex items-center justify-center">
-            <span>${d.date}</span>${dotHtml}
-          </div>
-          <div class="${statusClasses} truncate">${statusText}</div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  window.handleDayClick = function(iso) {
-    state.selectedDayIso = iso;
-    renderWeekdaysStrip();
-
-    const dayLessons = state.lessons.filter(l => {
-      const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
-      return lDate === iso;
-    });
-
-    if (dayLessons.length > 0) {
-      state.displayedLesson = dayLessons[0];
-    } else {
-      state.displayedLesson = null;
-    }
-
-    updateHeroLessonCard();
-    updateBottomCards();
-  };
-
-  function updateHeroLessonCard() {
-    const topicEl = document.getElementById('hero-lesson-topic');
-    const descEl = document.getElementById('hero-lesson-desc');
-    const dateEl = document.getElementById('hero-lesson-date');
-    const dayNameEl = document.getElementById('hero-lesson-dayname');
-    const timeEl = document.getElementById('hero-lesson-time');
-    const durationEl = document.getElementById('hero-lesson-duration');
-    const badgeEl = document.getElementById('hero-countdown-badge');
-    const enterBtn = document.getElementById('hero-lesson-room-btn');
-    const primaryLabel = document.getElementById('hero-primary-btn-label');
-    const titleEl = document.getElementById('hero-card-status-title');
-    const metaPills = document.getElementById('hero-meta-pills');
-    const secBtn = document.getElementById('hero-secondary-btn');
-    const bubbleEl = document.getElementById('hero-mascot-bubble');
-
-    const isDaySelected = Boolean(state.selectedDayIso);
-    const lesson = isDaySelected ? state.displayedLesson : (state.displayedLesson || state.upcomingLesson);
-
-    // Case 1: No lesson for the selected day
-    if (!lesson && isDaySelected) {
-      const selDay = state.weekdays.find(d => d.iso === state.selectedDayIso);
-      const dayNum = selDay ? selDay.date : '';
-      const isToday = (state.selectedDayIso === state.todayIso);
-
-      if (titleEl) titleEl.textContent = isToday ? 'Расписание на сегодня' : `Расписание на ${dayNum ? dayNum + ' число' : 'выбранный день'}`;
-      if (badgeEl) {
-        if (isToday) {
-          badgeEl.textContent = 'Сегодня • Нет занятий';
-          badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-black border border-emerald-200';
-        } else {
-          badgeEl.textContent = 'Нет занятий';
-          badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-black border border-slate-200';
-        }
-      }
-      if (topicEl) topicEl.textContent = isToday ? 'Сегодня занятий не запланировано' : 'В этот день занятий не запланировано';
-      if (descEl) descEl.textContent = 'Отличная возможность повторить пройденную теорию, закрыть домашние задания или подготовиться к следующим урокам.';
-      if (metaPills) metaPills.classList.add('hidden');
-      if (enterBtn) {
-        if (state.upcomingLesson) {
-          const upIso = state.upcomingLesson.start_date || (state.upcomingLesson.lesson_date ? state.upcomingLesson.lesson_date.split('T')[0] : '');
-          const dt = new Date(state.upcomingLesson.start_iso || state.upcomingLesson.lesson_date || upIso);
-          const upDateStr = !isNaN(dt.getTime()) ? `${dt.getDate()} ${RU_MONTHS[dt.getMonth()]}` : 'скоро';
-          enterBtn.href = '#';
-          enterBtn.onclick = function(e) {
-            e.preventDefault();
-            handleDayClick(upIso);
-          };
-          if (primaryLabel) primaryLabel.textContent = `К ближайшему уроку (${upDateStr})`;
-        } else {
-          enterBtn.href = '/theory';
-          enterBtn.onclick = null;
-          if (primaryLabel) primaryLabel.textContent = 'Перейти к теории';
-        }
-      }
-      if (secBtn) {
-        secBtn.classList.add('hidden');
-      }
-      if (bubbleEl) bubbleEl.innerHTML = '<span>Отдыхай или повторяй теорию!</span><i class="ph-bold ph-sparkle text-indigo-400"></i>';
-      return;
-    }
-
-    if (metaPills) metaPills.classList.remove('hidden');
-
-    if (!lesson) {
-      if (titleEl) titleEl.textContent = 'Следующий урок';
-      if (badgeEl) {
-        badgeEl.textContent = 'Планируется';
-        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-100';
-      }
-      if (topicEl) topicEl.textContent = 'У вас пока нет назначенных занятий';
-      if (descEl) descEl.textContent = 'Преподаватель скоро составит расписание. Вы можете подготовиться к первым темам в разделе теории.';
-      if (metaPills) metaPills.classList.add('hidden');
-      if (enterBtn) {
-        enterBtn.href = '/theory';
-        enterBtn.onclick = null;
-        if (primaryLabel) primaryLabel.textContent = 'Изучить теорию';
-      }
-      if (secBtn) {
-        secBtn.classList.add('hidden');
-      }
-      return;
-    }
-
-    const lessonIso = lesson.start_date || (lesson.lesson_date ? lesson.lesson_date.split('T')[0] : '');
-    const diffDays = getDaysDiff(lessonIso, state.todayIso);
-
-    if (titleEl) {
-      if (lessonIso === state.todayIso) {
-        titleEl.textContent = 'Урок сегодня';
-      } else if (lesson.status === 'completed' || lesson.status === 'done') {
-        titleEl.textContent = 'Прошедший урок';
-      } else {
-        titleEl.textContent = 'Следующий урок';
-      }
-    }
-
-    if (badgeEl) {
-      if (lesson.status === 'completed' || lesson.status === 'done') {
-        badgeEl.textContent = 'Завершён';
-        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-black border border-emerald-200';
-      } else if (lessonIso === state.todayIso) {
-        badgeEl.textContent = 'Сегодня';
-        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-black border border-emerald-200 animate-pulse';
-      } else if (diffDays === 1) {
-        badgeEl.textContent = 'Завтра';
-        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black';
-      } else if (diffDays > 1) {
-        const plural = (diffDays >= 2 && diffDays <= 4) ? 'дня' : 'дней';
-        badgeEl.textContent = `Через ${diffDays} ${plural}`;
-        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-black';
-      } else {
-        badgeEl.textContent = 'Завершён';
-        badgeEl.className = 'px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-black border border-slate-200';
-      }
-    }
-
-    if (topicEl) topicEl.textContent = lesson.topic || 'Python • Практическое занятие';
-    if (descEl) descEl.textContent = lesson.description || lesson.notes || 'Продолжим изучение темы и разберём типовые алгоритмические задачи с разбором решений.';
-
-    const rawDate = lesson.start_iso || lesson.lesson_date;
-    if (rawDate) {
-      const dt = new Date(rawDate);
-      if (dateEl) dateEl.textContent = `${dt.getDate()} ${RU_MONTHS[dt.getMonth()]}`;
-      if (dayNameEl) dayNameEl.textContent = `(${RU_DAYS[dt.getDay()]})`;
-    }
-
-    if (timeEl) {
-      const s = lesson.start_time || '18:00';
-      const e = lesson.end_time || '19:00';
-      timeEl.textContent = `${s} — ${e}`;
-    }
-
-    if (durationEl) {
-      const dur = lesson.duration_minutes || 60;
-      durationEl.textContent = dur >= 60 ? `${Math.round(dur / 60)} час` : `${dur} мин`;
-    }
-
-    if (enterBtn) {
-      enterBtn.onclick = null;
-      if (lesson.room_url) {
-        enterBtn.href = lesson.room_url;
-        if (primaryLabel) primaryLabel.textContent = 'Войти в комнату';
-      } else {
-        enterBtn.href = '/theory';
-        if (primaryLabel) primaryLabel.textContent = 'Перейти к материалам';
-      }
-    }
-
-    if (secBtn) {
-      secBtn.classList.remove('hidden');
-      secBtn.onclick = addToCalendar;
-      secBtn.innerHTML = '<i class="ph-bold ph-calendar-plus text-xs text-slate-500"></i><span>Добавить в календарь</span>';
-    }
-
-    if (bubbleEl) {
-      if (lesson.status === 'completed' || lesson.status === 'done') {
-        bubbleEl.innerHTML = '<span>Отличная работа!</span><i class="ph-bold ph-check text-emerald-500"></i>';
-      } else {
-        bubbleEl.innerHTML = '<span>Готовься к новому уроку!</span><i class="ph-bold ph-heart text-indigo-400"></i>';
-      }
-    }
-  }
-
-  function updateWeeklyStats() {
-    const totalCountEl = document.getElementById('stat-progress-count');
-    const doneCountEl = document.getElementById('stat-done-count');
-    const remainingCountEl = document.getElementById('stat-remaining-count');
-    const percentEl = document.getElementById('stat-percent-label');
-    const donutBar = document.getElementById('donut-segment-bar');
-
-    const weekIsoSet = new Set(state.weekdays.map(d => d.iso));
-    const weekLessons = state.lessons.filter(l => {
-      const iso = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
-      return weekIsoSet.has(iso);
-    });
-
-    let total = weekLessons.length;
-    let done = weekLessons.filter(l => l.status === 'completed' || l.status === 'done').length;
-
-    if (total === 0) {
-      total = 0;
-      done = 0;
-    }
-
-    const remaining = Math.max(0, total - done);
-    const percent = total > 0 ? Math.round((done / total) * 100) : 0;
-
-    if (totalCountEl) totalCountEl.textContent = `${done} / ${total}`;
-    if (doneCountEl) doneCountEl.textContent = String(done);
-    if (remainingCountEl) remainingCountEl.textContent = String(remaining);
-    if (percentEl) percentEl.textContent = `${percent}%`;
-
-    if (donutBar) {
-      donutBar.setAttribute('stroke-dasharray', `${percent}, 100`);
-      if (percent === 100) {
-        donutBar.setAttribute('class', 'donut-segment stroke-emerald-500');
-      } else {
-        donutBar.setAttribute('class', 'donut-segment stroke-indigo-500');
-      }
-    }
-  }
-
-  function updateBottomCards() {
-    const isDaySelected = Boolean(state.selectedDayIso);
-    const lesson = isDaySelected ? state.displayedLesson : (state.displayedLesson || state.upcomingLesson);
-
-    // 1. Homework Card
-    const hwTitleEl = document.getElementById('hw-task-title');
-    const hwLinkEl = document.getElementById('hw-item-link');
-    const hwBadgeEl = document.getElementById('hw-badge');
-
-    if (lesson && lesson.homework && lesson.homework.trim()) {
-      if (hwTitleEl) hwTitleEl.textContent = lesson.homework.trim();
-      if (hwLinkEl) {
-        hwLinkEl.href = '/submissions';
-        hwLinkEl.classList.remove('pointer-events-none', 'opacity-60');
-      }
-      if (hwBadgeEl) {
-        hwBadgeEl.textContent = (lesson.status === 'completed' || lesson.status === 'done') ? 'Задание к уроку' : 'К этому уроку';
-        hwBadgeEl.className = 'px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black border border-amber-200';
-      }
-    } else {
-      if (hwTitleEl) {
-        hwTitleEl.textContent = lesson ? 'Домашнее задание к этому уроку не задано' : 'На этот день домашних заданий нет';
-      }
-      if (hwLinkEl) {
-        hwLinkEl.href = '#';
-        hwLinkEl.classList.add('opacity-70');
-      }
-      if (hwBadgeEl) {
-        hwBadgeEl.textContent = 'Нет заданий';
-        hwBadgeEl.className = 'px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold border border-slate-200';
-      }
-    }
-
-    // 2. Materials Card
-    const matContainer = document.getElementById('materials-container');
-    if (matContainer) {
-      if (lesson && Array.isArray(lesson.materials) && lesson.materials.length > 0) {
-        matContainer.innerHTML = lesson.materials.slice(0, 3).map(m => `
-          <a href="${m.url || '#'}" target="_blank" class="flex items-center gap-2 p-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-indigo-600 hover:bg-slate-50 transition no-underline border border-transparent hover:border-slate-200">
-            <i class="ph-bold ph-link text-indigo-500 text-sm shrink-0"></i>
-            <span class="truncate">${m.name || m.title || 'Материал к уроку'}</span>
-          </a>
-        `).join('');
-      } else {
-        matContainer.innerHTML = `
-          <div class="py-2 px-1 text-xs font-medium text-slate-400 italic">
-            ${lesson ? 'Материалы к уроку не прикреплены' : 'На этот день материалов нет'}
-          </div>
-        `;
-      }
-    }
-
-    // 3. Notes Card ("Заметки преподавателя")
-    const notesBox = document.getElementById('notes-content-box');
-    if (notesBox) {
-      const noteText = lesson ? (lesson.student_notes || lesson.notes || '') : '';
-      if (noteText && noteText.trim()) {
-        notesBox.textContent = noteText.trim();
-        notesBox.className = 'p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/50 text-xs font-semibold text-slate-800 leading-relaxed mt-1 whitespace-pre-line';
-      } else {
-        notesBox.textContent = lesson 
-          ? 'Преподаватель пока не оставил заметок к этому уроку.' 
-          : 'На выбранный день заметок от преподавателя нет.';
-        notesBox.className = 'p-2.5 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 text-xs font-medium text-slate-400 italic leading-relaxed mt-1';
-      }
-    }
-  }
-
-  window.addToCalendar = function() {
-    const lesson = state.displayedLesson || state.upcomingLesson;
-    const title = encodeURIComponent(lesson ? lesson.topic : 'Python • Условия (BooStudy)');
-    const details = encodeURIComponent('Онлайн-занятие на платформе BooStudy: ' + window.location.origin);
-    
-    let dates = '';
-    const rawDate = lesson ? (lesson.start_iso || lesson.lesson_date) : null;
-    if (rawDate) {
-      const start = new Date(rawDate).toISOString().replace(/-|:|\.\d\d\d/g, '');
-      const dur = (lesson && lesson.duration_minutes) ? lesson.duration_minutes : 60;
-      const end = new Date(new Date(rawDate).getTime() + dur * 60000).toISOString().replace(/-|:|\.\d\d\d/g, '');
-      dates = `&dates=${start}/${end}`;
-    }
-
-    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}${dates}`;
-    window.open(gcalUrl, '_blank');
-  };
-
-  window.openLessonView = function(lessonId) {
-    const lesson = state.lessons.find(l => l.lesson_id === Number(lessonId));
-    if (!lesson) return;
-    state.viewingLesson = lesson;
-
-    const modal = document.getElementById('modal-lesson-view');
-    if (!modal) return;
-
-    const topicEl = document.getElementById('view-lesson-topic');
-    const timeEl = document.getElementById('view-lesson-time');
-    const durEl = document.getElementById('view-lesson-duration');
-    const groupEl = document.getElementById('view-lesson-group');
-    const urlBlock = document.getElementById('view-lesson-url-block');
-    const urlLink = document.getElementById('view-lesson-url-link');
-    const joinBtn = document.getElementById('join-btn');
-
-    if (topicEl) topicEl.textContent = lesson.topic || 'Урок';
-    if (timeEl) timeEl.textContent = `${lesson.start_time || '18:00'} – ${lesson.end_time || '19:00'}`;
-    if (durEl) durEl.textContent = `${lesson.duration_minutes || 60} мин`;
-    if (groupEl) groupEl.textContent = lesson.student_name ? `Ученик: ${lesson.student_name}` : 'Индивидуальное занятие';
-
-    const url = lesson.room_url || lesson.meeting_url;
-    if (url) {
-      if (urlBlock) urlBlock.classList.remove('hidden');
-      if (urlLink) {
-        urlLink.href = url;
-        urlLink.textContent = url;
-      }
-      if (joinBtn) joinBtn.classList.remove('hidden');
-    } else {
-      if (urlBlock) urlBlock.classList.add('hidden');
-      if (joinBtn) joinBtn.classList.remove('hidden');
-    }
-
-    modal.classList.remove('hidden');
-  };
-
-  window.joinLesson = function() {
-    if (state.viewingLesson && (state.viewingLesson.room_url || state.viewingLesson.meeting_url)) {
-      window.open(state.viewingLesson.room_url || state.viewingLesson.meeting_url, '_blank');
-    } else if (state.viewingLesson && state.viewingLesson.lesson_id) {
-      window.location.assign(`/lesson/${state.viewingLesson.lesson_id}/room`);
-    }
-  };
-
-  function renderMonthView() {
-    const grid = document.getElementById('month-grid');
-    if (!grid) return;
-
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const firstDay = new Date(year, month, 1);
-    let startDow = firstDay.getDay();
-    if (startDow === 0) startDow = 7;
-    startDow -= 1;
-
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const totalCells = Math.ceil((startDow + daysInMonth) / 7) * 7;
-
-    let html = '';
-    for (let cell = 0; cell < totalCells; cell++) {
-      const dayNum = cell - startDow + 1;
-      const isThisMonth = dayNum >= 1 && dayNum <= daysInMonth;
-      const cellDate = new Date(year, month, dayNum);
-      const isoDate = cellDate.toLocaleDateString('en-CA');
-      const isToday = (isoDate === state.todayIso);
-      const dayLessons = state.lessons.filter(l => (l.start_date || '').startsWith(isoDate));
-
-      const chipsHtml = dayLessons.slice(0, 2).map(l =>
-        `<span class="block text-[10px] font-bold px-1.5 py-0.5 rounded-md mb-1 truncate bg-indigo-100 text-indigo-800">${l.start_time || ''} ${l.topic || 'Урок'}</span>`
-      ).join('');
-
-      html += `
-        <div class="p-2 border-r border-b border-slate-200 min-h-[75px] ${isToday ? 'bg-indigo-50/40' : 'bg-white'} ${!isThisMonth ? 'opacity-30' : 'cursor-pointer hover:bg-slate-50'}" onclick="${isThisMonth ? `handleDayClick('${isoDate}')` : ''}">
-          <div class="text-xs font-black mb-1 ${isToday ? 'text-indigo-600' : 'text-slate-700'}">${isThisMonth ? dayNum : ''}</div>
-          ${isThisMonth ? chipsHtml : ''}
-        </div>
-      `;
-    }
-    grid.innerHTML = html;
-  }
-
-  let initialized = false;
-  function init() {
-    if (initialized) return;
-    initialized = true;
-
-    state.upcomingLesson = findUpcomingLesson();
-
-    const weekIsoSet = new Set(state.weekdays.map(d => d.iso));
-    if (weekIsoSet.has(state.todayIso)) {
-      state.selectedDayIso = state.todayIso;
-      const todayLessons = state.lessons.filter(l => {
-        const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
-        return lDate === state.todayIso;
-      });
-      state.displayedLesson = todayLessons.length > 0 ? todayLessons[0] : null;
-    } else if (state.upcomingLesson) {
-      const upIso = state.upcomingLesson.start_date || (state.upcomingLesson.lesson_date ? state.upcomingLesson.lesson_date.split('T')[0] : '');
-      if (weekIsoSet.has(upIso)) {
-        state.selectedDayIso = upIso;
-        state.displayedLesson = state.upcomingLesson;
-      }
-    }
-    
-    if (!state.selectedDayIso && state.weekdays.length > 0) {
-      state.selectedDayIso = state.weekdays[0].iso;
-      const dayLessons = state.lessons.filter(l => {
-        const lDate = l.start_date || (l.lesson_date ? l.lesson_date.split('T')[0] : '');
-        return lDate === state.selectedDayIso;
-      });
-      state.displayedLesson = dayLessons.length > 0 ? dayLessons[0] : null;
-    }
-
-    renderWeekdaysStrip();
-    updateHeroLessonCard();
-    updateWeeklyStats();
-    updateBottomCards();
-
-    const modal = document.getElementById('modal-lesson-view');
-    if (modal) {
-      modal.addEventListener('click', function(e) {
-        if (e.target === this) this.classList.add('hidden');
-      });
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', init);
-  if (document.readyState === 'interactive' || document.readyState === 'complete') {
-    init();
-  }
 })();
 </script>
 {% endblock %}

@@ -710,79 +710,6 @@ body:has(.tw-split-focus) .bs-dashboard-content { padding-bottom: 0; }
   border-radius: 0;
   background: white;
 }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar.is-embedded {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-  max-height: none;
-  min-height: 54px;
-  padding: 6px 12px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  border: 0;
-  border-bottom: 1px solid var(--bs-border, #dce5f4);
-  border-radius: 0;
-  box-shadow: none;
-  cursor: default;
-}
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar.is-embedded::-webkit-scrollbar { display: none; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-btn { width: 34px; height: 34px; flex: 0 0 34px; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-separator { width: 1px; height: 28px; flex: 0 0 1px; margin: 0 5px; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-presets { display: flex; grid-template-columns: none; gap: 6px; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-swatch { width: 18px; height: 18px; flex: 0 0 18px; border-radius: 50%; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-swatch:nth-child(n+5) { display: none; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-picker { flex: 0 0 28px; width: 28px; height: 28px; margin: 0; border-radius: 50%; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-size-slider { width: 56px; height: 24px; writing-mode: horizontal-tb; direction: ltr; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar button[title^="Отменить"] { order: -2; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar button[title^="Вернуть"] { order: -1; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-zoom-label { flex: 0 0 auto; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar.tw-canvas-toolbar-polished {
-  gap: 12px;
-  overflow: visible;
-  padding: 6px 12px;
-}
-.tw-split-focus #tw-canvas-host .tw-canvas-history,
-.tw-split-focus #tw-canvas-host .tw-canvas-primary-tools,
-.tw-split-focus #tw-canvas-host .tw-canvas-colors,
-.tw-split-focus #tw-canvas-host .tw-canvas-toolbar-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 42px;
-  padding: 3px 6px;
-  border: 1px solid #e3eaf6;
-  border-radius: 10px;
-  background: #f8faff;
-}
-.tw-split-focus #tw-canvas-host .tw-canvas-history { flex: 0 0 96px; }
-.tw-split-focus #tw-canvas-host .tw-canvas-primary-tools { flex: 1 1 230px; }
-.tw-split-focus #tw-canvas-host .tw-canvas-colors { flex: 0 0 150px; }
-.tw-split-focus #tw-canvas-host .tw-canvas-toolbar-actions { flex: 0 0 86px; margin-left: auto; }
-.tw-split-focus #tw-canvas-host .tw-canvas-extra-tools[hidden] { display: none !important; }
-.tw-split-focus #tw-canvas-host .tw-canvas-extra-tools {
-  position: absolute;
-  z-index: 20;
-  top: 52px;
-  right: 10px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: 300px;
-  padding: 12px;
-  border: 1px solid #dce5f4;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 12px 26px rgba(47, 62, 120, .13);
-}
 .tw-split-focus #tw-canvas-workspace:fullscreen { background: white; }
 
 @media (max-width: 1500px) {
@@ -895,11 +822,6 @@ body .tw-split-focus #tw-task-stepper .tw-stepper-btn {
   box-shadow: none !important;
   color: #4f3df2 !important;
 }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-presets .tb-color-swatch { display: none; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-presets .tb-color-swatch:nth-child(9) { display: block; order: 1; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-presets .tb-color-swatch:nth-child(5) { display: block; order: 2; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-presets .tb-color-swatch:nth-child(1) { display: block; order: 3; }
-.tw-split-focus #tw-canvas-host .boo-canvas-toolbar .tb-color-presets .tb-color-swatch:nth-child(4) { display: block; order: 4; }
 body:has(.tw-split-focus) { background: #f8f9fe !important; }
 body:has(.tw-split-focus) #dashboard-sidebar { background: #fff !important; }
 body:has(.tw-split-focus) :is(.tw-hero-bento, .tw-task-stepper, .tw-panel, .tw-bottom-bar) {

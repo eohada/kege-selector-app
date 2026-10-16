@@ -32,9 +32,9 @@
         <a class="bs-dashboard-nav-link {% if request.path == '/dashboard' %}is-active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="ph ph-house"></i><span>Главная</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes') %}is-active{% endif %}" href="/submissions"><i class="ph ph-check-square"></i><span>Задания</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/theory') %}is-active{% endif %}" href="{{ url_for('theory.theory_index') }}"><i class="ph ph-notebook"></i><span>Теория</span></a>
-        <a class="bs-dashboard-nav-link {% if (request.path.startswith('/student/') and request.path.endswith('/courses')) or request.path.startswith('/courses/') %}is-active{% endif %}" href="{{ url_for('courses.student_courses', student_id=student_nav_profile.student_id) if student_nav_profile else url_for('main.dashboard') }}"><i class="ph ph-map-trifold"></i><span>Программа</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/student/') and request.path.endswith('/analytics') %}is-active{% endif %}" href="{{ url_for('students.student_analytics', student_id=student_nav_profile.student_id) if student_nav_profile else url_for('main.dashboard') }}"><i class="ph ph-chart-line-up"></i><span>Аналитика</span></a>
-        <a class="bs-dashboard-nav-link {% if request.path.startswith('/schedule') %}is-active{% endif %}" href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank"></i><span>Расписание</span></a>
+        <div class="bs-dashboard-nav-link is-coming-soon bs-student-schedule-disabled" aria-disabled="true" role="link" aria-label="Расписание — Технические неполадки" title="Расписание временно недоступно: Технические неполадки"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span class="bs-student-schedule-label"><span>Расписание</span><small class="bs-schedule-issue-badge">Неполадки</small></span></div>
+        <div class="bs-dashboard-nav-link is-coming-soon bs-student-program-soon" aria-disabled="true" aria-label="Программа — скоро"><i class="ph ph-map-trifold" aria-hidden="true"></i><span class="bs-student-program-label">Программа<small>Скоро...</small></span></div>
       {% elif dashboard_admin_shell %}
         <a class="bs-dashboard-nav-link {% if request.path == '/admin/users' or request.path == '/admin' %}is-active{% endif %}" href="/admin/users"><i class="ph ph-users-three"></i><span>Пользователи</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/permissions') %}is-active{% endif %}" href="/admin/permissions"><i class="ph ph-key"></i><span>Права доступа</span></a>
@@ -47,7 +47,8 @@
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/task-formator') %}is-active{% endif %}" href="/admin/task-formator"><i class="ph ph-pencil-line"></i><span>Формирователь</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/diagnostics') %}is-active{% endif %}" href="/admin/diagnostics"><i class="ph ph-wrench"></i><span>Диагностика</span></a>
       {% else %}
-        <a class="bs-dashboard-nav-link {% if request.path in ['/dashboard', '/teacher/dashboard', '/students', '/teacher/students'] %}is-active{% endif %}" href="/teacher/students"><i class="ph ph-house"></i><span>Главная</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path in ['/dashboard', '/teacher/dashboard'] %}is-active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="ph ph-house"></i><span>Главная</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path in ['/students', '/teacher/students'] or request.path.startswith('/teacher/students') or request.path.startswith('/student/') %}is-active{% endif %}" href="/teacher/students"><i class="ph ph-users"></i><span>Ученики</span></a>
         <div class="bs-dashboard-nav-link is-coming-soon" role="link" aria-disabled="true" aria-label="Мои уроки — раздел в разработке" title="Раздел «Мои уроки» в разработке">
           <i class="ph ph-books"></i><span>Мои уроки</span><small class="bs-dashboard-nav-badge">Скоро</small>
         </div>
@@ -56,7 +57,7 @@
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/theory') %}is-active{% endif %}" href="{{ url_for('theory.manage_list') if (current_user.is_creator() or current_user.is_tutor() or current_user.is_admin() or current_user.role in ['creator', 'teacher', 'tutor', 'admin', 'chief_admin']) else url_for('theory.theory_index') }}"><i class="ph ph-notebook"></i><span>Теория</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/courses') %}is-active{% endif %}" href="/courses"><i class="ph ph-grid-four"></i><span>Программа</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/analytics') or request.path.startswith('/teacher/analytics') %}is-active{% endif %}" href="{{ url_for('main.teacher_analytics_view') }}"><i class="ph ph-chart-line-up"></i><span>Аналитика</span></a>
-        <a class="bs-dashboard-nav-link {% if request.path.startswith('/schedule') %}is-active{% endif %}" href="{{ url_for('schedule.schedule') }}"><i class="ph ph-calendar-blank"></i><span>Расписание</span></a>
+        <div class="bs-dashboard-nav-link is-coming-soon bs-student-schedule-disabled" aria-disabled="true" role="link" aria-label="Расписание — Технические неполадки" title="Расписание временно недоступно: Технические неполадки"><i class="ph ph-calendar-blank" aria-hidden="true"></i><span class="bs-student-schedule-label"><span>Расписание</span><small class="bs-schedule-issue-badge">Неполадки</small></span></div>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/library') or request.path.startswith('/teacher/library') %}is-active{% endif %}" href="{{ url_for('main.library_hub_view') }}"><i class="ph ph-folder"></i><span>Файлы</span></a>
         {% if current_user.is_admin() or current_user.is_creator() %}<a class="bs-dashboard-nav-link {% if request.path.startswith('/admin') %}is-active{% endif %}" href="/admin/users"><i class="ph ph-shield-check"></i><span>Админ-панель</span></a>{% endif %}
       {% endif %}
@@ -119,9 +120,12 @@
     <a href="/admin/audit" class="{% if request.path.startswith('/admin/audit') %}is-active{% endif %}"><i class="ph ph-scroll"></i><span>Аудит</span></a>
     <a href="/admin/diagnostics" class="{% if request.path.startswith('/admin/diagnostics') %}is-active{% endif %}"><i class="ph ph-wrench"></i><span>Диагностика</span></a>
     {% else %}
-    <a href="{{ url_for('main.dashboard') }}" class="{% if request.path == '/dashboard' %}is-active{% endif %}"><i class="ph ph-house"></i><span>Главная</span></a>
+    <a href="{{ url_for('main.dashboard') }}" class="{% if request.path in ['/dashboard', '/teacher/dashboard'] %}is-active{% endif %}"><i class="ph ph-house"></i><span>Главная</span></a>
+    {% if not current_user.is_student() %}
+    <a href="/teacher/students" class="{% if request.path in ['/students', '/teacher/students'] or request.path.startswith('/teacher/students') or request.path.startswith('/student/') %}is-active{% endif %}"><i class="ph ph-users"></i><span>Ученики</span></a>
+    {% endif %}
     <a href="{% if current_user.is_student() %}/submissions{% else %}/assignments{% endif %}" class="{% if (current_user.is_student() and (request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes'))) or (not current_user.is_student() and request.path.startswith('/assignments')) %}is-active{% endif %}"><i class="ph ph-check-square"></i><span>Задания</span></a>
-    <a href="{{ url_for('schedule.schedule') }}" class="{% if request.path.startswith('/schedule') %}is-active{% endif %}"><i class="ph ph-calendar-blank"></i><span>Расписание</span></a>
+    <div class="bs-mobile-schedule-disabled" aria-disabled="true" title="Расписание: Технические неполадки"><i class="ph ph-calendar-blank"></i><span>Расписание</span><small class="bs-mobile-schedule-badge">Неполадки</small></div>
     {% endif %}
     <a href="/workspace/profile" class="{% if request.path.startswith('/workspace/profile') %}is-active{% endif %}"><i class="ph ph-user-circle"></i><span>Профиль</span></a>
   </nav>

@@ -11,14 +11,28 @@ from app import create_app
 from app.bots.qa_bot import process_qa_bot_update
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("QA_BOT_POLLER")
+logger = logging.getLogger("qa_bot_local")
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-BOT_TOKEN = os.environ.get("QA_BOT_TOKEN") or "8933706317:AAFeN6fww_-EjVqM0okB8N1vrDaPM5dA7ws"
-os.environ["QA_BOT_TOKEN"] = BOT_TOKEN
+BOT_TOKEN = (
+    os.environ.get("QA_BOT_TOKEN")
+    or os.environ.get("TELEGRAM_TESTERS_BOT_TOKEN")
+    or ""
+).strip()
+if BOT_TOKEN:
+    os.environ["QA_BOT_TOKEN"] = BOT_TOKEN
 
 def run_polling():
+    if not BOT_TOKEN:
+        logger.error("ОШИБКА: QA_BOT_TOKEN или TELEGRAM_TESTERS_BOT_TOKEN не задан в .env или переменных окружения!")
+        sys.exit(1)
+
     app = create_app()
-    logger.info("🚀 Starting local Telegram Long-Polling for @Boostudy_Dev_testers_Bot...")
+    logger.info("🚀 Starting local Telegram Long-Polling for QA bot...")
     
     # 1. Delete Webhook to allow getUpdates
     try:

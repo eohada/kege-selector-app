@@ -755,11 +755,11 @@ def schedule():
         })
 
     active_homework = []
-    useful_materials = [
-        {'title': 'Краткая теория: if / elif / else', 'url': url_for('theory.theory_index'), 'type': 'theory'},
-        {'title': 'Подборка задач (ЕГЭ)', 'url': '/trainer', 'type': 'tasks'},
-    ]
+    useful_materials = []
+    seen_material_titles = set()
     student_notes_text = ''
+    teacher_name = None
+    teacher_avatar = None
 
     if current_user.is_authenticated and current_user.is_student():
         from app.models import Submission, Assignment
@@ -769,6 +769,12 @@ def schedule():
             if cand and cand.user_id is None:
                 st_obj = cand
         if st_obj:
+            if getattr(st_obj, 'mentor_id', None):
+                mentor = User.query.get(st_obj.mentor_id)
+                if mentor:
+                    teacher_name = getattr(mentor, 'full_name', None) or mentor.username
+                    teacher_avatar = getattr(mentor, 'avatar_url', None) or '/static/images/default-avatar.svg'
+
             try:
                 subs = (
                     Submission.query.join(Assignment, Submission.assignment_id == Assignment.assignment_id)
@@ -787,47 +793,192 @@ def schedule():
                         'id': sub.assignment_id,
                         'title': sub.assignment.title,
                         'deadline': sub.assignment.deadline.isoformat() if sub.assignment.deadline else None,
-                        'url': url_for('submissions.student_submission_room', submission_id=sub.submission_id),
+                        'url': url_for('assignments.submission_view', submission_id=sub.submission_id),
                         'status': sub.status,
                         'tasks_count': len(sub.assignment.tasks) if sub.assignment.tasks else 0,
                     })
             except Exception as e:
                 logger.warning(f"Error fetching active homework for schedule: {e}")
 
-            if not active_homework:
-                try:
-                    hw_list = (
-                        Assignment.query.filter_by(is_active=True, assignment_type='homework')
-                        .order_by(Assignment.created_at.desc())
-                        .limit(3)
-                        .all()
-                    )
-                    for hw in hw_list:
-                        active_homework.append({
-                            'id': hw.assignment_id,
-                            'title': hw.title,
-                            'deadline': hw.deadline.isoformat() if hw.deadline else None,
-                            'url': '/submissions',
-                            'status': 'ASSIGNED',
-                            'tasks_count': len(hw.tasks) if hw.tasks else 0,
-                        })
-                except Exception:
-                    pass
-
-            for l in lessons:
+            for l in sorted(lessons, key=lambda x: x.lesson_date or datetime.min, reverse=True):
                 if l.student_notes and l.student_notes.strip():
                     student_notes_text = l.student_notes.strip()
                     break
+                elif l.notes and l.notes.strip():
+                    student_notes_text = l.notes.strip()
+                    break
 
-    weekdays_payload = [
-        {
+            for l in lessons:
+                if l.materials and isinstance(l.materials, list):
+                    for m in l.materials:
+                        m_title = m.get('title') or m.get('name')
+                        if m_title and m_title not in seen_material_titles:
+                            seen_material_titles.add(m_title)
+                            useful_materials.append({
+                                'title': m_title,
+                                'url': m.get('url') or '#',
+                                'type': 'material',
+                                'pages': m.get('pages', 'Материал к уроку')
+                            })
+                if l.topic and l.topic.strip():
+                    topic_title = f"{l.topic.strip()} — теория"
+                    if topic_title not in seen_material_titles:
+                        seen_material_titles.add(topic_title)
+                        useful_materials.append({
+                            'title': topic_title,
+                            'url': url_for('theory.theory_index'),
+                            'type': 'theory',
+                            'pages': 'Конспект'
+                        })
+                if len(useful_materials) >= 4:
+                    break
+
+    # Calculate weekly metrics for student view
+    week_start_date = week_days[0]
+    week_end_date = week_days[-1]
+    week_lessons = []
+    for l_data in raw_lessons_payload:
+        s_date_str = l_data.get('start_date')
+        if s_date_str:
+            try:
+                s_date = datetime.strptime(s_date_str, '%Y-%m-%d').date()
+                if week_start_date <= s_date <= week_end_date:
+                    week_lessons.append(l_data)
+            except Exception:
+                pass
+
+    conducted_count = sum(1 for l in week_lessons if l.get('status') in ('completed', 'done'))
+    planned_count = sum(1 for l in week_lessons if l.get('status') in ('planned', 'in_progress'))
+    test_count = sum(1 for l in week_lessons if l.get('is_test') or l.get('lesson_type') == 'test')
+    hw_count = len(active_homework)
+    total_activities = conducted_count + planned_count + hw_count + test_count
+    completion_base = conducted_count + planned_count
+    progress_percent = int(round((conducted_count / completion_base) * 100)) if completion_base > 0 else 0
+
+    weekly_stats = {
+        'conducted': conducted_count,
+        'planned': planned_count,
+        'homework': hw_count,
+        'tests': test_count,
+        'total': total_activities,
+        'conducted_and_planned': completion_base,
+        'percent': progress_percent,
+    }
+
+    weekly_bars = []
+    for day in week_days:
+        day_iso = day.isoformat()
+        d_lessons = [l for l in week_lessons if l.get('start_date') == day_iso]
+        d_hw = [h for h in active_homework if h.get('deadline') and h['deadline'].startswith(day_iso)]
+        total_day = len(d_lessons) + len(d_hw)
+        intensity = min(100, max(22, total_day * 40)) if total_day > 0 else 22
+        weekly_bars.append({
+            'date': day.day,
+            'iso': day_iso,
+            'is_today': day == today_display_date,
+            'count': total_day,
+            'intensity_pct': intensity,
+        })
+
+    weekly_goals = []
+    for hw in active_homework[:2]:
+        is_done = hw.get('status') in ('SUBMITTED', 'GRADED', 'ACCEPTED')
+        weekly_goals.append({
+            'id': f"hw_{hw['id']}",
+            'title': f"Сдать домашнее задание: {hw['title']}",
+            'completed': is_done,
+            'url': hw.get('url') or '/submissions',
+            'type': 'homework',
+        })
+    for l in week_lessons[:3]:
+        is_done = l.get('status') in ('completed', 'done')
+        action_prefix = "Разобрать тему" if not is_done else "Пройдена тема"
+        weekly_goals.append({
+            'id': f"lesson_{l['lesson_id']}",
+            'title': f"{action_prefix} «{l.get('topic', 'Занятие')}»",
+            'completed': is_done,
+            'url': l.get('room_url') or '#',
+            'type': 'lesson',
+        })
+    if len(weekly_goals) > 4:
+        weekly_goals = weekly_goals[:4]
+
+    weekdays_payload = []
+    for index, day in enumerate(week_days):
+        day_iso = day.isoformat()
+        day_l = [l for l in week_lessons if l.get('start_date') == day_iso]
+        day_hw = [h for h in active_homework if h.get('deadline') and h['deadline'].startswith(day_iso)]
+        
+        main_event = None
+        if day_l:
+            first_l = day_l[0]
+            is_test = first_l.get('is_test')
+            is_webinar = first_l.get('lesson_type') == 'webinar'
+            is_done = first_l.get('status') in ('completed', 'done')
+            
+            if is_test:
+                color = 'rose'
+                icon = 'ph-check-square-offset'
+                badge = 'Контрольная работа'
+            elif is_webinar:
+                color = 'violet'
+                icon = 'ph-video-camera'
+                badge = 'Вебинар'
+            elif is_done:
+                color = 'emerald'
+                icon = 'ph-check-circle'
+                badge = 'Проведено'
+            else:
+                color = 'indigo'
+                icon = 'ph-laptop'
+                badge = 'Занятие'
+                
+            main_event = {
+                'type': 'lesson',
+                'title': first_l.get('topic') or 'Урок',
+                'subtitle': f"{first_l.get('start_time', '18:00')} – {first_l.get('end_time', '19:00')}",
+                'badge': badge,
+                'color': color,
+                'icon': icon,
+                'status': first_l.get('status'),
+                'url': first_l.get('room_url') or '#',
+            }
+        elif day_hw:
+            first_h = day_hw[0]
+            deadline_str = first_h.get('deadline', '')
+            d_time = deadline_str.split('T')[1][:5] if 'T' in deadline_str else '23:59'
+            main_event = {
+                'type': 'homework',
+                'title': first_h.get('title') or 'Домашнее задание',
+                'subtitle': f"Сдать до {d_time}",
+                'badge': 'Домашнее задание',
+                'color': 'rose',
+                'icon': 'ph-file-text',
+                'status': first_h.get('status'),
+                'url': first_h.get('url') or '/submissions',
+            }
+        else:
+            is_weekend = (index >= 5)
+            main_event = {
+                'type': 'free',
+                'title': 'Выходной' if is_weekend else 'Самостоятельно',
+                'subtitle': 'Время для себя' if is_weekend else 'Повторение',
+                'badge': 'Отдых' if is_weekend else 'Практика',
+                'color': 'amber' if is_weekend else 'slate',
+                'icon': 'ph-sun' if is_weekend else 'ph-sparkle',
+                'status': 'free',
+                'url': url_for('theory.theory_index'),
+            }
+
+        weekdays_payload.append({
             'name': day_names[index],
             'date': day.day,
-            'iso': day.isoformat(),
+            'iso': day_iso,
             'is_today': day == today_display_date,
-        }
-        for index, day in enumerate(week_days)
-    ]
+            'day_index': index,
+            'main_event': main_event,
+            'events_count': len(day_l) + len(day_hw),
+        })
 
     return render_template(
         tpl_name,
@@ -840,6 +991,11 @@ def schedule():
             'active_homework': active_homework,
             'useful_materials': useful_materials,
             'student_notes_general': student_notes_text,
+            'teacher_name': teacher_name,
+            'teacher_avatar': teacher_avatar,
+            'weekly_stats': weekly_stats,
+            'weekly_bars': weekly_bars,
+            'weekly_goals': weekly_goals,
             'week_offset': week_offset,
             'week_label': week_label,
             'timezone': timezone,

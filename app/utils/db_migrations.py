@@ -2529,6 +2529,9 @@ def ensure_schema_columns(app):
                         if 'ingest_status' not in cols:
                             db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN ingest_status VARCHAR(20) DEFAULT \'ready\''))
                             logger.info("Added ingest_status to Tasks")
+                        if 'bank_category' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN bank_category VARCHAR(40) DEFAULT \'exam\''))
+                            logger.info("Added bank_category to Tasks")
                         try:
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_source_year ON "{tasks_table_resolved}"(source_year)'))
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_source_task_number ON "{tasks_table_resolved}"(source_task_number)'))
@@ -2537,6 +2540,7 @@ def ensure_schema_columns(app):
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_content_fingerprint ON "{tasks_table_resolved}"(content_fingerprint)'))
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_prototype_status ON "{tasks_table_resolved}"(prototype_status)'))
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_ingest_status ON "{tasks_table_resolved}"(ingest_status)'))
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_Tasks_bank_category ON "{tasks_table_resolved}"(bank_category)'))
                         except Exception:
                             pass
                         try:
@@ -2656,6 +2660,7 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         # --- Новые колонки course_id / exam_course_id ---
         _add_col = _make_safe_add_column(inspector, is_postgres)
         _add_col('Tasks', 'course_id', 'INTEGER')
+        _add_col('Tasks', 'bank_category', "VARCHAR(40) DEFAULT 'exam'")
         _add_col('TheoryBlocks', 'course_id', 'INTEGER')
         _add_col('TheoryBlocks', 'pdf_path', 'VARCHAR(500)')
         _add_col('TheoryBlocks', 'group_id', 'INTEGER')

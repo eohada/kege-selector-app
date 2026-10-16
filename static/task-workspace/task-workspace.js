@@ -165,67 +165,9 @@
         return modes.length > 0 ? modes : ['answer', 'code', 'canvas'];
     }
 
-    let canvasToolbarOutsideHandler = null;
     function arrangeCanvasToolbar() {
-        const toolbar = canvasHost?.querySelector('.boo-canvas-toolbar.is-embedded');
-        if (!toolbar || toolbar.classList.contains('tw-canvas-toolbar-polished')) return;
-        const original = Array.from(toolbar.children);
-        const used = new Set();
-        const byTitle = (prefix) => original.find(item => item.tagName === 'BUTTON' && item.title?.startsWith(prefix));
-        const take = (group, item) => {
-            if (item) { group.appendChild(item); used.add(item); }
-        };
-        const history = document.createElement('div');
-        history.className = 'tw-canvas-history';
-        take(history, byTitle('Отменить'));
-        take(history, byTitle('Вернуть'));
-        const tools = document.createElement('div');
-        tools.className = 'tw-canvas-primary-tools';
-        ['Карандаш', 'Ластик', 'Нарисовать прямоугольник', 'Текст:'].forEach(title => take(tools, byTitle(title)));
-        const colors = document.createElement('div');
-        colors.className = 'tw-canvas-colors';
-        take(colors, original.find(item => item.classList.contains('tb-color-presets')));
-        take(colors, original.find(item => item.classList.contains('tb-color-picker')));
-        const actions = document.createElement('div');
-        actions.className = 'tw-canvas-toolbar-actions';
-        const fullscreen = document.createElement('button');
-        fullscreen.type = 'button';
-        fullscreen.className = 'tb-btn tw-canvas-fullscreen';
-        fullscreen.title = 'Во весь экран';
-        fullscreen.setAttribute('aria-label', fullscreen.title);
-        fullscreen.innerHTML = '<i class="ph-bold ph-arrows-out"></i>';
-        fullscreen.addEventListener('click', () => {
-            if (document.fullscreenElement === canvasWorkspace) document.exitFullscreen();
-            else canvasWorkspace?.requestFullscreen?.();
-        });
-        const more = document.createElement('button');
-        more.type = 'button';
-        more.className = 'tb-btn tw-canvas-more';
-        more.title = 'Другие инструменты';
-        more.setAttribute('aria-label', more.title);
-        more.setAttribute('aria-expanded', 'false');
-        more.innerHTML = '<i class="ph-bold ph-dots-three"></i>';
-        actions.append(fullscreen, more);
-        const extra = document.createElement('div');
-        extra.className = 'tw-canvas-extra-tools';
-        extra.hidden = true;
-        original.forEach(item => {
-            if (!used.has(item) && !item.classList.contains('tb-separator')) extra.appendChild(item);
-        });
-        more.addEventListener('click', () => {
-            extra.hidden = !extra.hidden;
-            more.setAttribute('aria-expanded', String(!extra.hidden));
-        });
-        if (canvasToolbarOutsideHandler) document.removeEventListener('click', canvasToolbarOutsideHandler);
-        canvasToolbarOutsideHandler = (event) => {
-            if (!toolbar.contains(event.target)) {
-                extra.hidden = true;
-                more.setAttribute('aria-expanded', 'false');
-            }
-        };
-        document.addEventListener('click', canvasToolbarOutsideHandler);
-        toolbar.replaceChildren(history, tools, colors, actions, extra);
-        toolbar.classList.add('tw-canvas-toolbar-polished');
+        // Canvas v2 manages its own canonical floating toolbar and popovers
+        return;
     }
 
     function applyWorkspaceMode(mode, { persist = true, closeCanvas = true } = {}) {
@@ -311,7 +253,14 @@
     }
 
     function payload() {
+        const osCode = document.body.classList.contains('tw-embedded-answer')
+            ? window.parent.document.getElementById('code-editor-textarea') : null;
+        if (osCode && code && code.value !== osCode.value) code.value = osCode.value;
         let currentAnswer = answer ? answer.value : '';
+        if (osCode && ws.answer_spec?.type === 'code') {
+            currentAnswer = osCode.value;
+            if (answer) answer.value = currentAnswer;
+        }
         if (!currentAnswer && codeAnswerInput?.value) {
             currentAnswer = codeAnswerInput.value;
             if (answer) answer.value = currentAnswer;
@@ -895,6 +844,7 @@
             return highlighted;
         }).join('\n');
     }
+    window.boostudyHighlightPythonSyntax = highlightPython;
 
 
     function updateEditorChrome() {

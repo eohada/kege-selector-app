@@ -1,3 +1,4 @@
+import pytest
 import hashlib
 import hmac
 import json
@@ -6,6 +7,7 @@ from urllib.parse import quote
 
 
 def test_production_celery_rejects_non_redis(monkeypatch):
+    pytest.importorskip('celery')
     monkeypatch.setenv('CELERY_BROKER_URL', 'memory://')
     monkeypatch.setenv('CELERY_RESULT_BACKEND', '')
     from celery_app import validate_celery_runtime_config
@@ -72,3 +74,44 @@ def test_linking_service_keeps_user_and_profile_consistent(app):
         unlink_telegram_identity(db.session, user=user, profile=profile)
         db.session.commit()
         assert not user.telegram_id and not profile.telegram_chat_id
+
+
+def test_qa_poller_fails_when_token_missing(monkeypatch):
+    import app.bots.qa_polling as qa_polling
+    monkeypatch.setattr(qa_polling, 'QA_BOT_TOKEN', '')
+    with pytest.raises(RuntimeError) as exc_info:
+        qa_polling.main()
+    assert 'QA_BOT_TOKEN' in str(exc_info.value)
+
+
+def test_validate_public_telegram_config_checks_tokens(monkeypatch):
+    import app.telegram.config as tg_conf
+    monkeypatch.setenv('ENVIRONMENT', 'production')
+    monkeypatch.setattr(tg_conf, 'APP_URL', 'https://boostudy.ru')
+    monkeypatch.setattr(tg_conf, 'TELEGRAM_BOT_USERNAME', 'boostudy_bot')
+    monkeypatch.setattr(tg_conf, 'BOT_INTERNAL_TOKEN', 'secret123')
+    monkeypatch.setattr(tg_conf, 'MAIN_BOT_TOKEN', '')
+    with pytest.raises(RuntimeError) as exc_info:
+        tg_conf.validate_public_telegram_config()
+    assert 'MAIN_BOT_TOKEN' in str(exc_info.value)
+
+
+def test_no_hardcoded_telegram_tokens_in_python_sources():
+    import re
+    import subprocess
+    token_pattern = re.compile(r'\b[0-9]{8,11}:[A-Za-z0-9_-]{35}\b')
+    res = subprocess.run(['git', 'ls-files', '*.py'], capture_output=True, text=True, check=True)
+    violations = []
+    for rel_path in res.stdout.splitlines():
+        if not rel_path.strip():
+            continue
+        try:
+            with open(rel_path.strip(), 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                matches = token_pattern.findall(content)
+                if matches:
+                    violations.append((rel_path.strip(), len(matches)))
+        except Exception:
+            pass
+    assert not violations, f"Hardcoded bot tokens found in: {violations}"
+

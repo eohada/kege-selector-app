@@ -83,17 +83,14 @@ class LiveKitService:
             return True
         if lesson:
             student = getattr(lesson, 'student', None)
-            mentor_id = getattr(student, 'mentor_id', None) or getattr(student, 'tutor_id', None)
-            if mentor_id:
-                if str(mentor_id) in pilot_ids:
+            teacher_id = getattr(student, 'teacher_id', None) if student else None
+            if teacher_id and str(teacher_id) in pilot_ids:
+                return True
+            teacher_user = getattr(student, 'teacher', None) if student else None
+            if teacher_user:
+                u = getattr(teacher_user, 'user', None) or teacher_user
+                if getattr(u, 'is_creator', lambda: False)() or getattr(u, 'is_admin', lambda: False)():
                     return True
-                try:
-                    from app.models import User, db
-                    mentor_user = db.session.get(User, mentor_id)
-                    if mentor_user and (getattr(mentor_user, 'is_creator', lambda: False)() or getattr(mentor_user, 'is_admin', lambda: False)()):
-                        return True
-                except Exception as ex:
-                    logger.debug("Failed to resolve mentor user %s for LiveKit gating: %s", mentor_id, ex)
         return False
 
     @classmethod

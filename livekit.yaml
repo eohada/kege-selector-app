@@ -1,0 +1,28 @@
+# LiveKit Server Configuration for BooStudy
+# Official reference: https://docs.livekit.io/home/self-hosting/deployment/
+
+port: 7880
+bind_addresses:
+  - "127.0.0.1"
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50050
+  use_external_ip: false
+  node_ip:
+    ipv4: "127.0.0.1"
+
+
+turn:
+  enabled: true
+  udp_port: 3478
+
+# API keys used for server-to-server and JWT verification
+# Format: <API_KEY>: <API_SECRET>
+keys:
+  devkey: secretdevsecret1234567890abcdef1234567890
+
+logging:
+  json: false
+  level: info

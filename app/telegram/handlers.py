@@ -1173,7 +1173,12 @@ async def cmd_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML',
         )
         return
+    import re
     code = context.args[0].strip().upper()
+    if code.startswith('BS-') or re.match(r'^[A-Z0-9]{4,8}$', code):
+        linked = await _try_link_by_code(update, context, code)
+        if linked:
+            return
     uname = (update.effective_user.username or '').strip()
     result = call_link_bot_api(
         chat_id=chat_id,
@@ -4751,9 +4756,9 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
     chat_id = update.effective_chat.id
     text_val = (update.message.text or "").strip()
 
-    # Проверка на формат кода привязки (например: BS-45CS, BS-0HSN)
+    # Проверка на формат кода привязки (например: BS-45CS, BS-975237)
     import re
-    if re.match(r'^BS-[A-Z0-9]{4,6}$', text_val, re.IGNORECASE):
+    if re.match(r'^BS-[A-Z0-9]{4,8}$', text_val, re.IGNORECASE):
         linked = await _try_link_by_code(update, context, text_val)
         if linked:
             return
@@ -5292,7 +5297,9 @@ async def _try_link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     """Привязывает Telegram ID к пользователю по 6-значному коду BS-XXXX."""
     import re
     from datetime import datetime, timezone
-    code = code.strip().upper()
+    from sqlalchemy import func, or_
+    raw_code = (code or "").strip().upper()
+    alt_code = raw_code if raw_code.startswith("BS-") else f"BS-{raw_code}"
     tg_user = update.effective_user
     chat_id = update.effective_chat.id
 
@@ -5301,8 +5308,13 @@ async def _try_link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         from app.models import User, UserProfile
         from app.telegram.keyboards import get_main_keyboard
 
+        session.rollback()
+
         profile = session.query(UserProfile).filter(
-            UserProfile.telegram_link_code == code
+            or_(
+                func.upper(UserProfile.telegram_link_code) == raw_code,
+                func.upper(UserProfile.telegram_link_code) == alt_code,
+            )
         ).first()
 
         if not profile or not profile.user:
@@ -5339,7 +5351,11 @@ async def _try_link_by_code(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         session.commit()
 
         user_role = getattr(user, 'role', 'student')
-        main_kb = get_main_keyboard(user_role)
+        try:
+            main_kb = get_main_keyboard(user_role)
+        except Exception as kb_err:
+            logger.warning(f"Could not construct main keyboard: {kb_err}")
+            main_kb = None
 
         await update.message.reply_text(
             f"🎉 <b>Аккаунт успешно привязан к BooStudy!</b>\n\n"

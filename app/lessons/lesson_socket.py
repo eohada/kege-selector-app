@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 # lesson_id -> { user_id: { 'sid': str, 'tab': str, 'role': 'teacher'|'student'|'parent', 'name': str } }
 _lesson_presence: dict[int, dict[int, dict[str, Any]]] = {}
 _live_strokes: dict[int, dict[str, dict[str, Any]]] = {}
+_lesson_board_strokes: dict[int, dict[str, dict[str, Any]]] = {}
+_lesson_camera_state: dict[int, dict[str, Any]] = {}
 _lesson_room_ui: dict[int, dict[str, dict[str, Any]]] = {}
 _lesson_code_state: dict[int, dict[str, Any]] = {}
 _lesson_code_cursor_emit_at: dict[str, float] = {}
@@ -32,7 +34,7 @@ def _room(lesson_id: int) -> str:
 def _room_control(lesson_id: int) -> dict[str, Any]:
     cached = _lesson_control_cache.get(lesson_id)
     now = monotonic()
-    if cached and now - cached[0] < 0.35:
+    if cached and now - cached[0] < 10.0:
         return cached[1]
     try:
         from app.lessons.whiteboard_service import get_or_create_board, normalize_document
@@ -51,6 +53,32 @@ def _teacher_control_enabled(control: dict[str, Any], key: str) -> bool:
     if mode == "free":
         return False
     return bool(control.get(key))
+
+
+def _resolve_user_presence_info(user) -> dict[str, Any]:
+    role = "teacher"
+    if user.is_student():
+        role = "student"
+    elif user.is_parent():
+        role = "parent"
+    from app.models import UserProfile, Student
+    profile = UserProfile.query.filter_by(user_id=user.id).first()
+    student = Student.query.filter_by(user_id=user.id).first() if user.is_student() else None
+    name = ""
+    school_class = None
+    if student:
+        name = student.name or ""
+        school_class = student.school_class
+    if not name and profile:
+        name = f"{profile.first_name or ''} {profile.last_name or ''}".strip()
+    if not name:
+        name = user.username or user.email or "Участник"
+    return {
+        "user_id": user.id,
+        "role": role,
+        "name": name,
+        "school_class": school_class,
+    }
 
 
 def register_lesson_socket(socketio) -> None:
@@ -188,31 +216,21 @@ def register_lesson_socket(socketio) -> None:
                     pass
         if lesson_id not in _lesson_presence:
             _lesson_presence[lesson_id] = {}
-        role = "teacher"
-        if current_user.is_student():
-            role = "student"
-        elif current_user.is_parent():
-            role = "parent"
-        from app.models import UserProfile
-        profile = UserProfile.query.filter_by(user_id=current_user.id).first()
-        name = f"{profile.first_name or ''} {profile.last_name or ''}".strip() if profile else ""
-        if not name:
-            name = current_user.username or current_user.email or "Участник"
+        uinfo = _resolve_user_presence_info(current_user)
         _lesson_presence[lesson_id][current_user.id] = {
+            "user_id": current_user.id,
             "sid": request.sid,
             "tab": "theory",
-            "role": role,
-            "name": name,
+            "role": uinfo["role"],
+            "name": uinfo["name"],
+            "school_class": uinfo["school_class"],
             "color": _pointer_colors[int(current_user.id) % len(_pointer_colors)],
             "client_id": None,
             "page_id": None,
             "follow": False,
         }
         # Отправить текущему клиенту список присутствующих и их вкладки
-        presence_list = [
-            {"user_id": uid, "tab": info["tab"], "role": info["role"], "name": info["name"]}
-            for uid, info in _lesson_presence[lesson_id].items()
-        ]
+        presence_list = list(_lesson_presence[lesson_id].values())
         socketio.emit("lesson_presence", {"lesson_id": lesson_id, "presence": presence_list}, room=request.sid, namespace="/lesson")
         # Остальным в комнате — обновлённый список (включая нового участника)
         socketio.emit(
@@ -222,6 +240,18 @@ def register_lesson_socket(socketio) -> None:
             namespace="/lesson",
             include_self=False,
         )
+        # Воспроизвести текущее состояние интерфейса комнаты (окна, режимы)
+        room_ui = _lesson_room_ui.get(lesson_id) or {}
+        for ui_payload in room_ui.values():
+            socketio.emit("lesson_room_ui_state", ui_payload, room=request.sid, namespace="/lesson")
+        # Воспроизвести текущие штрихи доски
+        board_strokes = list(_lesson_board_strokes.get(lesson_id, {}).values())
+        if board_strokes:
+            socketio.emit("board_snapshot", {"lesson_id": lesson_id, "strokes": board_strokes}, room=request.sid, namespace="/lesson")
+        # Воспроизвести текущую позицию камеры доски
+        camera_state = _lesson_camera_state.get(lesson_id)
+        if camera_state:
+            socketio.emit("whiteboard_live_camera", camera_state, room=request.sid, namespace="/lesson")
 
     @socketio.on("tab_changed", namespace="/lesson")
     def _on_tab_changed(data):
@@ -238,28 +268,18 @@ def register_lesson_socket(socketio) -> None:
             return
         if lesson_id not in _lesson_presence:
             _lesson_presence[lesson_id] = {}
-        role = "teacher"
-        if current_user.is_student():
-            role = "student"
-        elif current_user.is_parent():
-            role = "parent"
-        from app.models import UserProfile
-        profile = UserProfile.query.filter_by(user_id=current_user.id).first()
-        name = f"{profile.first_name or ''} {profile.last_name or ''}".strip() if profile else ""
-        if not name:
-            name = current_user.username or current_user.email or "Участник"
+        uinfo = _resolve_user_presence_info(current_user)
         previous = _lesson_presence.get(lesson_id, {}).get(current_user.id, {})
         _lesson_presence[lesson_id][current_user.id] = {
             **previous,
+            "user_id": current_user.id,
             "tab": tab,
-            "role": role,
-            "name": name,
+            "role": uinfo["role"],
+            "name": uinfo["name"],
+            "school_class": uinfo["school_class"],
             "color": previous.get("color") or _pointer_colors[int(current_user.id) % len(_pointer_colors)],
         }
-        presence_list = [
-            {"user_id": uid, "tab": info["tab"], "role": info["role"], "name": info["name"]}
-            for uid, info in _lesson_presence[lesson_id].items()
-        ]
+        presence_list = list(_lesson_presence[lesson_id].values())
         socketio.emit(
             "lesson_presence",
             {"lesson_id": lesson_id, "presence": presence_list},
@@ -280,6 +300,9 @@ def register_lesson_socket(socketio) -> None:
             lesson_id = int(lesson_id)
         except (TypeError, ValueError):
             return
+        stroke_id = str(stroke.get("id") or "")
+        if stroke_id:
+            _lesson_board_strokes.setdefault(lesson_id, {})[stroke_id] = stroke
         socketio.emit(
             "board_stroke",
             {
@@ -306,12 +329,28 @@ def register_lesson_socket(socketio) -> None:
             lesson_id = int(lesson_id)
         except (TypeError, ValueError):
             return
+        if action == "update":
+            for s in (data.get("strokes") or []):
+                sid = str((s or {}).get("id") or "")
+                if sid:
+                    _lesson_board_strokes.setdefault(lesson_id, {})[sid] = s
+        elif action == "delete":
+            del_ids = data.get("strokes") or data.get("stroke_ids") or []
+            board_strokes = _lesson_board_strokes.get(lesson_id, {})
+            for sid in del_ids:
+                board_strokes.pop(str(sid), None)
+        elif action == "clear":
+            _lesson_board_strokes.pop(lesson_id, None)
+
         socketio.emit(
             "board_action",
             {
                 "lesson_id": lesson_id,
                 "action": action,
-                "strokes": data.get("strokes")
+                "strokes": data.get("strokes"),
+                "stroke_ids": data.get("stroke_ids"),
+                "objects": data.get("objects"),
+                "page_id": data.get("page_id"),
             },
             room=_room(lesson_id),
             namespace="/lesson",
@@ -326,20 +365,34 @@ def register_lesson_socket(socketio) -> None:
         try:
             lesson_id = int((data or {}).get("lesson_id"))
             from app.lessons.routes import _whiteboard_access
-            _whiteboard_access(lesson_id)
-            from app.lessons.whiteboard_service import board_payload, get_or_create_board
+            _lesson, role = _whiteboard_access(lesson_id)
+            from app.lessons.whiteboard_service import board_payload, get_or_create_board, can_student_edit_page
             board = get_or_create_board(lesson_id)
             identity = _lesson_presence.setdefault(lesson_id, {}).setdefault(current_user.id, {})
+            uinfo = _resolve_user_presence_info(current_user)
             identity.update({
+                "user_id": current_user.id,
                 "sid": request.sid,
+                "role": uinfo["role"],
+                "name": uinfo["name"],
+                "school_class": uinfo["school_class"],
                 "client_id": (data or {}).get("client_id"),
                 "page_id": (data or {}).get("page_id"),
                 "follow": bool((data or {}).get("follow")),
                 "color": identity.get("color") or _pointer_colors[int(current_user.id) % len(_pointer_colors)],
             })
+            snapshot_payload = board_payload(board)
+            active_page_id = snapshot_payload.get("document", {}).get("active_page_id")
+            snapshot_payload["permissions"] = {
+                "role": role,
+                "can_edit": role == "teacher" or (role == "student" and can_student_edit_page(snapshot_payload.get("document", {}), active_page_id)),
+                "can_present": role == "teacher",
+                "can_lock": role == "teacher",
+                "control": snapshot_payload.get("document", {}).get("presentation", {}).get("control", {}),
+            }
             socketio.emit(
                 "whiteboard_snapshot",
-                {"lesson_id": lesson_id, **board_payload(board)},
+                {"lesson_id": lesson_id, **snapshot_payload},
                 room=request.sid,
                 namespace="/lesson",
             )
@@ -352,11 +405,59 @@ def register_lesson_socket(socketio) -> None:
             room_ui = _lesson_room_ui.get(lesson_id) or {}
             for ui_payload in room_ui.values():
                 socketio.emit("lesson_room_ui_state", ui_payload, room=request.sid, namespace="/lesson")
+            board_strokes = list(_lesson_board_strokes.get(lesson_id, {}).values())
+            if board_strokes:
+                socketio.emit("board_snapshot", {"lesson_id": lesson_id, "strokes": board_strokes}, room=request.sid, namespace="/lesson")
+            camera_state = _lesson_camera_state.get(lesson_id)
+            if camera_state:
+                socketio.emit("whiteboard_live_camera", camera_state, room=request.sid, namespace="/lesson")
             code_state = _lesson_code_state.get(lesson_id)
             if code_state:
                 socketio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, **code_state}, room=request.sid, namespace="/lesson")
         except Exception as error:
             logger.warning("whiteboard_join failed: %s", error)
+
+    @socketio.on("kick_participant", namespace="/lesson")
+    def _on_kick_participant(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        lesson_id = (data or {}).get("lesson_id")
+        target_user_id = (data or {}).get("user_id")
+        if not lesson_id or not target_user_id:
+            return
+        try:
+            lesson_id = int(lesson_id)
+            target_user_id = int(target_user_id)
+        except (TypeError, ValueError):
+            return
+        try:
+            from app.lessons.routes import _whiteboard_access
+            _lesson, role = _whiteboard_access(lesson_id)
+            if role != "teacher":
+                return
+        except Exception:
+            return
+
+        target_info = _lesson_presence.get(lesson_id, {}).pop(target_user_id, None)
+        target_sid = target_info.get("sid") if target_info else None
+
+        kick_payload = {
+            "lesson_id": lesson_id,
+            "user_id": target_user_id,
+            "message": "Преподаватель завершил ваше участие в этом уроке.",
+            "redirect_url": "/schedule",
+        }
+        if target_sid:
+            socketio.emit("lesson_kicked", kick_payload, room=target_sid, namespace="/lesson")
+        socketio.emit("lesson_kicked", kick_payload, room=_room(lesson_id), namespace="/lesson")
+
+        socketio.emit(
+            "lesson_presence",
+            {"lesson_id": lesson_id, "presence": list(_lesson_presence.get(lesson_id, {}).values())},
+            room=_room(lesson_id),
+            namespace="/lesson",
+        )
 
     @socketio.on("lesson_room_ui", namespace="/lesson")
     def _on_lesson_room_ui(data):
@@ -365,21 +466,45 @@ def register_lesson_socket(socketio) -> None:
             return
         try:
             lesson_id = int((data or {}).get("lesson_id"))
-            _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
-            if role != "teacher":
-                socketio.emit("whiteboard_error", {"message": "Только преподаватель может управлять интерфейсом комнаты"}, room=request.sid, namespace="/lesson")
-                return
+            role = (_lesson_presence.get(lesson_id, {}).get(current_user.id) or {}).get("role")
+            if not role:
+                _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
             kind = str((data or {}).get("kind") or "")
-            if kind not in {"mode", "window", "run"}:
+            if kind not in {"mode", "window", "window_layout", "run", "run_start", "terminal_output", "terminal_tab"}:
                 return
             control = _room_control(lesson_id)
-            if kind == "window" and not _teacher_control_enabled(control, "teacher_controls_windows"):
+            is_student_run = (
+                role == "student"
+                and control.get("student_code_editing")
+                and kind in {"run", "run_start", "terminal_output", "terminal_tab"}
+            )
+            is_student_window = (
+                role == "student"
+                and kind in {"window", "window_layout"}
+                and control.get("windows_sync") is not False
+            )
+            if role != "teacher" and not (is_student_run or is_student_window):
+                socketio.emit("whiteboard_error", {"message": "Недостаточно прав для управления интерфейсом комнаты"}, room=request.sid, namespace="/lesson")
                 return
+            if kind in {"window", "window_layout"}:
+                if control.get("windows_sync") is False:
+                    return
+                if kind == "window_layout" and control.get("window_positions_sync") is False:
+                    return
+                allowed_ctrl = control.get("windows_allowed")
+                if allowed_ctrl and (data or {}).get("window_id") not in allowed_ctrl:
+                    return
             if kind == "mode" and not _teacher_control_enabled(control, "teacher_controls_mode"):
                 return
-            if kind == "run" and not control.get("auto_open_terminal_on_run"):
+            if kind in {"run", "run_start"} and not (control.get("auto_open_terminal_on_run") or control.get("terminal_sync")):
+                return
+            if kind == "terminal_output" and not control.get("terminal_sync"):
                 return
             payload = {"lesson_id": lesson_id, "kind": kind, "updated_at": int(time() * 1000)}
+            allowed_windows = {
+                "task-window", "terminal-window", "code-window", "lesson-info-window",
+                "teacher-notes-window", "notes-window", "theory-window", "reference-window", "files-window"
+            }
             if kind == "mode":
                 mode = str((data or {}).get("mode") or "code")
                 if mode not in {"code", "board"}:
@@ -388,17 +513,47 @@ def register_lesson_socket(socketio) -> None:
             elif kind == "window":
                 window_id = str((data or {}).get("window_id") or "")[:64]
                 action = str((data or {}).get("action") or "")
-                if window_id not in {"task-window", "terminal-window", "lesson-info-window", "teacher-notes-window", "notes-window", "theory-window", "reference-window"} or action not in {"open", "minimize"}:
+                if window_id not in allowed_windows or action not in {"open", "minimize"}:
                     return
                 payload.update({"window_id": window_id, "action": action})
+            elif kind == "window_layout":
+                window_id = str((data or {}).get("window_id") or "")[:64]
+                if window_id not in allowed_windows:
+                    return
+                payload.update({
+                    "window_id": window_id,
+                    "left": (data or {}).get("left"),
+                    "top": (data or {}).get("top"),
+                    "width": (data or {}).get("width"),
+                    "height": (data or {}).get("height"),
+                    "is_maximized": bool((data or {}).get("is_maximized")),
+                })
+            elif kind == "terminal_tab":
+                tab = str((data or {}).get("tab") or "output")[:32]
+                if tab not in {"output", "problems"}:
+                    return
+                payload["tab"] = tab
+            elif kind == "terminal_output":
+                payload.update({
+                    "file_name": str((data or {}).get("file_name") or "main.py")[:120],
+                    "output": str((data or {}).get("output") or "")[:200000],
+                    "duration": str((data or {}).get("duration") or "")[:32],
+                    "exit_code": int((data or {}).get("exit_code") or 0),
+                    "is_error": bool((data or {}).get("is_error")),
+                })
             else:
                 code = str((data or {}).get("code") or "")[:100000]
                 payload.update({"file_name": str((data or {}).get("file_name") or "main.py")[:120], "code": code})
-            # A run command is transient: replaying it to a late joiner would
-            # unexpectedly execute the teacher's old code again.
-            if kind != "run":
+            # Transient runs are not replayed, but the latest terminal output, tab, and layout are preserved
+            if kind not in {"run", "run_start"}:
                 room_state = _lesson_room_ui.setdefault(lesson_id, {})
-                state_key = "mode" if kind == "mode" else f"window:{payload['window_id']}"
+                state_key = (
+                    "mode" if kind == "mode"
+                    else "terminal_output" if kind == "terminal_output"
+                    else "terminal_tab" if kind == "terminal_tab"
+                    else f"window_layout:{payload['window_id']}" if kind == "window_layout"
+                    else f"window:{payload['window_id']}"
+                )
                 room_state[state_key] = payload
             socketio.emit("lesson_room_ui", payload, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
@@ -411,7 +566,11 @@ def register_lesson_socket(socketio) -> None:
             return
         try:
             lesson_id = int((data or {}).get("lesson_id"))
-            _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
+            identity = _lesson_presence.get(lesson_id, {}).get(current_user.id)
+            if identity:
+                role = identity.get("role", "student")
+            else:
+                _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
             incoming_code = str((data or {}).get("code") or "")[:100000]
             incoming_file = str((data or {}).get("file_name") or "main.py")[:120]
             current = _lesson_code_state.get(lesson_id)
@@ -434,14 +593,16 @@ def register_lesson_socket(socketio) -> None:
             return
         try:
             lesson_id = int((data or {}).get("lesson_id"))
-            _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
+            identity = _lesson_presence.get(lesson_id, {}).get(current_user.id)
+            if identity:
+                role = identity.get("role", "student")
+            else:
+                _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
             control = _room_control(lesson_id)
             if role == "parent" or not control.get("code_sync") or (role != "teacher" and not control.get("student_code_editing")):
                 return
             throttle_key = f"{lesson_id}:{current_user.id}:{request.sid}"
             now = monotonic()
-            if now - _lesson_code_update_emit_at.get(throttle_key, 0.0) < 0.05:
-                return
             _lesson_code_update_emit_at[throttle_key] = now
             code = str((data or {}).get("code") or "")[:100000]
             state = {"file_name": str((data or {}).get("file_name") or "main.py")[:120], "code": code, "version": int((_lesson_code_state.get(lesson_id) or {}).get("version") or 0) + 1, "updated_at": int(time() * 1000)}
@@ -457,18 +618,36 @@ def register_lesson_socket(socketio) -> None:
             return
         try:
             lesson_id = int((data or {}).get("lesson_id"))
-            _whiteboard_access = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access
             throttle_key = f"{lesson_id}:{current_user.id}:{request.sid}"
             now = monotonic()
-            if now - _lesson_code_cursor_emit_at.get(throttle_key, 0.0) < 0.032:
+            if now - _lesson_code_cursor_emit_at.get(throttle_key, 0.0) < 0.025:
                 return
             _lesson_code_cursor_emit_at[throttle_key] = now
-            _whiteboard_access(lesson_id)
             control = _room_control(lesson_id)
-            if not control.get("cursor_sync"):
+            if control.get("cursor_sync") is False:
                 return
+            identity = _lesson_presence.get(lesson_id, {}).get(current_user.id)
+            if not identity:
+                _whiteboard_access = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access
+                _whiteboard_access(lesson_id)
             identity = _lesson_presence.get(lesson_id, {}).get(current_user.id, {})
-            socketio.emit("lesson_code_cursor", {"lesson_id": lesson_id, "user_id": current_user.id, "name": identity.get("name") or "Участник", "color": identity.get("color") or _pointer_colors[int(current_user.id) % len(_pointer_colors)], "file_name": str((data or {}).get("file_name") or "main.py")[:120], "cursor": {"start": max(0, int((data or {}).get("start") or 0)), "end": max(0, int((data or {}).get("end") or 0))}}, room=_room(lesson_id), namespace="/lesson", include_self=False)
+            socketio.emit(
+                "lesson_code_cursor",
+                {
+                    "lesson_id": lesson_id,
+                    "user_id": current_user.id,
+                    "name": identity.get("name") or getattr(current_user, "username", None) or "Участник",
+                    "color": identity.get("color") or _pointer_colors[int(current_user.id) % len(_pointer_colors)],
+                    "file_name": str((data or {}).get("file_name") or "main.py")[:120],
+                    "cursor": {
+                        "start": max(0, int((data or {}).get("start") or 0)),
+                        "end": max(0, int((data or {}).get("end") or 0)),
+                    },
+                },
+                room=_room(lesson_id),
+                namespace="/lesson",
+                include_self=False,
+            )
         except Exception:
             return
 
@@ -625,14 +804,22 @@ def register_lesson_socket(socketio) -> None:
                 raise WhiteboardOperationError("Некорректная фаза live-штриха")
             stroke_id = str(payload.get("stroke_id") or "")[:96]
             page_id = str(payload.get("page_id") or "")[:96]
-            if not stroke_id or not page_id:
+            if not page_id:
+                try:
+                    board_doc = normalize_document(get_or_create_board(lesson_id).document_state)
+                    page_id = str(board_doc.get("active_page_id") or (board_doc.get("pages", [{}])[0].get("id") or "default"))
+                except Exception:
+                    page_id = "default"
+            if not stroke_id:
                 raise WhiteboardOperationError("Live-штрих не содержит идентификатор")
             key = f"{current_user.id}:{stroke_id}"
             lesson_strokes = _live_strokes.setdefault(lesson_id, {})
             existing = lesson_strokes.get(key)
             fast_path = phase == "move" and existing is not None
             if not fast_path:
-                _lesson, role = _whiteboard_access(lesson_id)
+                role = (_lesson_presence.get(lesson_id, {}).get(current_user.id) or {}).get("role")
+                if not role:
+                    _lesson, role = _whiteboard_access(lesson_id)
                 if role == "parent":
                     raise WhiteboardOperationError("Родитель не может рисовать на доске")
                 control = _room_control(lesson_id)
@@ -643,16 +830,19 @@ def register_lesson_socket(socketio) -> None:
                 if _room_control(lesson_id).get("live_strokes") is False:
                     return
             points = payload.get("points") if isinstance(payload.get("points"), list) else []
-            if len(points) > 32:
-                raise WhiteboardOperationError("Слишком большой пакет точек")
+            if len(points) > 128:
+                points = points[-128:]
             safe_points = []
             for point in points:
                 if not isinstance(point, dict):
                     continue
-                x = float(point.get("x"))
-                y = float(point.get("y"))
+                try:
+                    x = float(point.get("x"))
+                    y = float(point.get("y"))
+                except (TypeError, ValueError):
+                    continue
                 if abs(x) > 100000 or abs(y) > 100000:
-                    raise WhiteboardOperationError("Координаты live-штриха выходят за допустимый диапазон")
+                    continue
                 safe_points.append({"x": x, "y": y})
             if fast_path:
                 style = existing["style"]
@@ -672,17 +862,17 @@ def register_lesson_socket(socketio) -> None:
                     role,
                 )
             sequence = int(payload.get("seq") or 0)
-            if existing and sequence <= existing["seq"]:
+            if existing and sequence > 0 and sequence <= existing.get("seq", 0):
                 return
             if phase == "start":
-                existing = {"user_id": current_user.id, "sid": request.sid, "role": role, "seq": sequence, "points": 0, "style": style, "page_id": page_id, "frame_id": payload.get("frame_id")}
+                existing = {"user_id": current_user.id, "sid": request.sid, "role": role, "seq": sequence or 1, "points": 0, "style": style, "page_id": page_id, "frame_id": payload.get("frame_id")}
                 lesson_strokes[key] = existing
             elif not existing:
                 return
             else:
-                existing["seq"] = sequence
+                existing["seq"] = sequence if sequence > 0 else (existing.get("seq", 0) + 1)
             existing["points"] += len(safe_points)
-            if existing["points"] > 4096:
+            if existing["points"] > 8192:
                 lesson_strokes.pop(key, None)
                 raise WhiteboardOperationError("Live-штрих слишком длинный")
             profile = _lesson_presence.get(lesson_id, {}).get(current_user.id, {})
@@ -692,9 +882,10 @@ def register_lesson_socket(socketio) -> None:
                 "page_id": page_id,
                 "frame_id": payload.get("frame_id"),
                 "phase": phase,
-                "seq": sequence,
+                "seq": existing.get("seq", sequence),
                 "points": safe_points,
                 "style": style,
+                "stroke": payload.get("stroke"),
                 "user_id": current_user.id,
                 "name": profile.get("name") or getattr(current_user, "username", None) or "Участник",
                 "color": profile.get("color") or _pointer_colors[int(current_user.id) % len(_pointer_colors)],
@@ -729,7 +920,7 @@ def register_lesson_socket(socketio) -> None:
             if _room_control(lesson_id).get("cursor_sync") is False:
                 return
             pointer = payload.get("pointer") if isinstance(payload.get("pointer"), dict) else {}
-            point = {"x": float(pointer.get("x")), "y": float(pointer.get("y"))}
+            point = {"x": float(pointer.get("x") or 0), "y": float(pointer.get("y") or 0)} if pointer else None
             socketio.emit("whiteboard_live_laser", {"lesson_id": lesson_id, "user_id": current_user.id, "page_id": payload.get("page_id"), "pointer": point, "visible": payload.get("visible", True)}, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
             socketio.emit("whiteboard_error", {"message": str(error)}, room=request.sid, namespace="/lesson")
@@ -742,7 +933,9 @@ def register_lesson_socket(socketio) -> None:
         try:
             payload = data or {}
             lesson_id = int(payload.get("lesson_id"))
-            _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
+            role = (_lesson_presence.get(lesson_id, {}).get(current_user.id) or {}).get("role")
+            if not role:
+                _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
             if role != "teacher":
                 return
             camera = payload.get("camera") if isinstance(payload.get("camera"), dict) else {}
@@ -757,6 +950,7 @@ def register_lesson_socket(socketio) -> None:
                     "scale": max(.35, min(2.5, float(camera.get("scale") or 1))),
                 },
             }
+            _lesson_camera_state[lesson_id] = outgoing
             socketio.emit("whiteboard_live_camera", outgoing, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
             logger.warning("whiteboard_live_camera failed: %s", error)
