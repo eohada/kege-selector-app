@@ -1,0 +1,964 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block title %}AI Homework Studio — BooStudy AI Lab{% endblock %}
+
+{% block admin_content %}
+{% set current_input = input_snapshot or selected_scenario %}
+<style>
+  .ai-hw-studio {
+    --hw-gap: 18px;
+    width: min(100%, 1400px);
+    margin: 0 auto;
+    padding: clamp(16px, 2.3vw, 30px);
+    color: var(--bs-text-primary);
+  }
+  .ai-hw-studio *, .ai-hw-studio *::before, .ai-hw-studio *::after { box-sizing: border-box; }
+  body:has(#ai-homework-studio) #qa-widget-trigger-btn { display: none !important; }
+  .hw-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: var(--bs-text-muted); font-size: 12px; }
+  .hw-topbar a { color: var(--bs-primary); font-weight: 800; text-decoration: none; }
+  .hw-hero, .hw-panel, .hw-warning {
+    min-width: 0;
+    border: 1px solid var(--bs-border);
+    border-radius: var(--bs-radius-lg, 22px);
+    background: var(--bs-bg-surface);
+    box-shadow: var(--bs-shadow-e1);
+  }
+  .hw-hero {
+    position: relative; display: flex; align-items: center; justify-content: space-between; gap: 26px;
+    overflow: hidden; padding: clamp(20px, 3vw, 34px);
+    background: linear-gradient(115deg, var(--bs-surface-lilac-soft), var(--bs-bg-surface) 66%);
+  }
+  .hw-hero::after { content: ""; position: absolute; right: -60px; top: -90px; width: 250px; height: 250px; border: 1px solid var(--bs-border-warm); border-radius: 50%; pointer-events: none; }
+  .hw-hero-copy { position: relative; z-index: 1; min-width: 0; }
+  .hw-eyebrow { margin: 0 0 8px; color: var(--bs-primary); font-size: 11px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
+  .hw-hero h1 { max-width: 800px; margin: 0; color: var(--bs-text-primary); font-size: clamp(27px, 3.2vw, 40px); font-weight: 900; letter-spacing: -.04em; line-height: 1.08; }
+  .hw-hero p { max-width: 800px; margin: 12px 0 0; color: var(--bs-text-secondary); font-size: 14px; line-height: 1.65; }
+  .hw-pill, .hw-type-pill {
+    display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; max-width: 100%;
+    padding: 9px 13px; border: 1px solid var(--bs-border); border-radius: 999px;
+    color: var(--bs-text-secondary); background: var(--bs-bg-surface); font-size: 11px; font-weight: 800;
+  }
+  .hw-pill.is-ready { color: var(--bs-success, #24745b); background: var(--bs-surface-mint-soft); }
+  .hw-pill.is-off { color: var(--bs-warning-ink); background: var(--bs-surface-butter-soft); }
+  .hw-warning { display: flex; align-items: flex-start; gap: 12px; margin-top: var(--hw-gap); padding: 14px 17px; color: var(--bs-warning-ink); background: var(--bs-surface-butter-soft); font-size: 12px; line-height: 1.55; }
+  .hw-warning i { flex: 0 0 auto; margin-top: 1px; font-size: 17px; }
+  .hw-workspace { display: grid; grid-template-columns: minmax(360px, .94fr) minmax(0, 1.06fr); gap: var(--hw-gap); margin-top: var(--hw-gap); align-items: start; }
+  .hw-column { display: grid; gap: var(--hw-gap); min-width: 0; }
+  .hw-panel { padding: clamp(16px, 2vw, 23px); }
+  .hw-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+  .hw-panel-head h2, .hw-panel-head h3 { margin: 0; color: var(--bs-text-primary); font-size: 18px; font-weight: 900; letter-spacing: -.025em; }
+  .hw-panel-head p { margin: 6px 0 0; color: var(--bs-text-muted); font-size: 12px; line-height: 1.5; }
+  .hw-form { display: grid; gap: 14px; min-width: 0; }
+  .hw-field { display: grid; gap: 6px; min-width: 0; }
+  .hw-field label, .hw-field-label { color: var(--bs-text-secondary); font-size: 11px; font-weight: 850; }
+  .hw-field input, .hw-field select, .hw-field textarea {
+    width: 100%; min-width: 0; border: 1px solid var(--bs-border); border-radius: 12px;
+    padding: 10px 12px; color: var(--bs-text-primary); background: var(--bs-bg-surface);
+    font: inherit; font-size: 13px; line-height: 1.5;
+  }
+  .hw-field select { min-height: 42px; }
+  .hw-field textarea { min-height: 86px; resize: vertical; }
+  .hw-field textarea.is-code { min-height: 190px; tab-size: 4; font-family: var(--bs-font-mono, Consolas, monospace); font-size: 12px; }
+  .hw-field input:focus-visible, .hw-field select:focus-visible, .hw-field textarea:focus-visible { outline: 3px solid var(--bs-primary-soft); outline-offset: 2px; }
+  .hw-field-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+  .hw-meta-card { min-width: 0; padding: 11px 12px; border: 1px solid var(--bs-border); border-radius: 13px; background: var(--bs-bg-base, var(--bs-bg-surface)); }
+  .hw-meta-card small { display: block; margin-bottom: 4px; color: var(--bs-text-muted); font-size: 10px; }
+  .hw-meta-card strong { display: block; overflow-wrap: anywhere; color: var(--bs-text-primary); font-size: 12px; }
+  .hw-form-divider { height: 1px; margin: 3px 0; background: var(--bs-border); }
+  .hw-select-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+  .hw-soft-button, .hw-run-button, .hw-rating-button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 42px; padding: 9px 14px; border: 1px solid var(--bs-border);
+    border-radius: 13px; color: var(--bs-text-primary); background: var(--bs-bg-surface);
+    font: inherit; font-size: 12px; font-weight: 850; cursor: pointer;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  }
+  .hw-soft-button:hover, .hw-rating-button:hover { transform: translateY(-1px); border-color: var(--bs-primary); box-shadow: 0 3px 0 var(--bs-primary-soft); }
+  .hw-run-button {
+    width: 100%; min-height: 50px; border-color: var(--bs-primary); color: #fff;
+    background: var(--bs-primary); box-shadow: 0 4px 0 color-mix(in srgb, var(--bs-primary) 70%, #332455);
+    font-size: 13px;
+  }
+  .hw-run-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0 color-mix(in srgb, var(--bs-primary) 70%, #332455); }
+  .hw-run-button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 color-mix(in srgb, var(--bs-primary) 70%, #332455); }
+  .hw-run-button:disabled, .hw-soft-button:disabled { opacity: .55; cursor: not-allowed; }
+  .hw-caption { margin: 0; color: var(--bs-text-muted); font-size: 10px; line-height: 1.5; }
+  .hw-empty, .hw-state {
+    display: grid; place-items: center; min-height: 210px; padding: 24px; border: 1px dashed var(--bs-border-strong);
+    border-radius: 16px; color: var(--bs-text-secondary); text-align: center; background: var(--bs-bg-base, var(--bs-bg-surface));
+  }
+  .hw-empty i { display: grid; width: 52px; height: 52px; margin: 0 auto 12px; place-items: center; border-radius: 17px; color: var(--bs-primary); background: var(--bs-surface-lilac-soft); font-size: 25px; }
+  .hw-empty strong { color: var(--bs-text-primary); font-size: 14px; }
+  .hw-empty p { max-width: 350px; margin: 7px auto 0; font-size: 12px; line-height: 1.55; }
+  .hw-result-stack { display: grid; gap: 11px; min-width: 0; }
+  .hw-score-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px; border: 1px solid var(--bs-border); border-radius: 16px; background: linear-gradient(110deg, var(--bs-surface-mint-soft), var(--bs-bg-surface)); }
+  .hw-score-number { color: var(--bs-text-primary); font-size: clamp(23px, 3vw, 34px); font-weight: 950; letter-spacing: -.05em; }
+  .hw-score-caption { display: block; margin-top: 3px; color: var(--bs-text-muted); font-size: 10px; }
+  .hw-result-card { min-width: 0; padding: 14px 15px; border: 1px solid var(--bs-border); border-radius: 15px; background: var(--bs-bg-surface); }
+  .hw-result-card h3 { margin: 0 0 7px; color: var(--bs-text-primary); font-size: 12px; font-weight: 900; }
+  .hw-result-card p { margin: 0; overflow-wrap: anywhere; color: var(--bs-text-secondary); font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+  .hw-mistake { padding: 12px; border-radius: 12px; background: var(--bs-surface-peach-soft); }
+  .hw-mistake + .hw-mistake { margin-top: 8px; }
+  .hw-mistake strong { display: block; margin-bottom: 5px; color: var(--bs-text-primary); font-size: 11px; }
+  .hw-mistake p { font-size: 11px; }
+  .hw-pill-tabs { display: flex; flex-wrap: wrap; gap: 7px; padding: 5px; border: 1px solid var(--bs-border); border-radius: 999px; background: var(--bs-bg-base, var(--bs-bg-surface)); }
+  .hw-pill-tab { min-height: 34px; padding: 6px 12px; border: 1px solid transparent; border-radius: 999px; color: var(--bs-text-muted); background: transparent; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; }
+  .hw-pill-tab.is-active { border-color: var(--bs-border); color: var(--bs-primary); background: var(--bs-bg-surface); box-shadow: var(--bs-shadow-e1); }
+  .hw-tab-panel[hidden] { display: none !important; }
+  .hw-quality { display: grid; gap: 8px; }
+  .hw-quality-row { display: grid; grid-template-columns: minmax(130px, .42fr) minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--bs-border); border-radius: 11px; font-size: 10px; }
+  .hw-quality-row strong { color: var(--bs-text-primary); }
+  .hw-quality-row span { color: var(--bs-text-muted); line-height: 1.4; }
+  .hw-quality-badge { padding: 4px 7px; border-radius: 999px; color: var(--bs-success, #24745b); background: var(--bs-surface-mint-soft); font-size: 9px; font-weight: 900; white-space: nowrap; }
+  .hw-quality-badge.review { color: var(--bs-warning-ink); background: var(--bs-surface-butter-soft); }
+  .hw-quality-badge.na { color: var(--bs-text-muted); background: var(--bs-bg-base, var(--bs-bg-surface)); }
+  .hw-code-json { overflow: auto; max-height: 430px; padding: 13px; border-radius: 12px; color: var(--bs-text-primary); background: var(--bs-bg-base, #f6f5f8); font: 11px/1.55 var(--bs-font-mono, Consolas, monospace); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .hw-review-form { display: grid; gap: 10px; }
+  .hw-review-form textarea { width: 100%; min-height: 76px; padding: 10px 12px; border: 1px solid var(--bs-border); border-radius: 12px; color: var(--bs-text-primary); background: var(--bs-bg-surface); font: inherit; font-size: 12px; resize: vertical; }
+  .hw-review-options { display: flex; flex-wrap: wrap; gap: 7px; }
+  .hw-rating-button[aria-pressed="true"] { border-color: var(--bs-primary); color: var(--bs-primary); background: var(--bs-surface-lilac-soft); }
+  .hw-inline-state { min-height: 18px; color: var(--bs-text-muted); font-size: 11px; }
+  .hw-back-link { display: inline-flex; align-items: center; gap: 7px; color: var(--bs-primary); font-size: 11px; font-weight: 850; text-decoration: none; }
+  .hw-judge-actions { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+  .hw-judge-check { display: inline-flex; align-items: center; gap: 9px; color: var(--bs-text-primary); font-size: 12px; font-weight: 800; }
+  .hw-judge-check input { width: 18px; height: 18px; accent-color: var(--bs-primary); }
+  .hw-judge-evidence { display: grid; gap: 8px; margin-top: 12px; }
+  .hw-judge-evidence article { padding: 10px 12px; border: 1px solid var(--bs-border); border-radius: 12px; background: var(--bs-bg-base, var(--bs-bg-surface)); font-size: 11px; }
+  .hw-judge-evidence strong { display: block; margin-bottom: 4px; }
+  @media (max-width: 980px) {
+    .hw-workspace { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 580px) {
+    .ai-hw-studio { padding: 13px; }
+    .hw-hero { align-items: flex-start; flex-direction: column; gap: 14px; border-radius: 19px; }
+    .hw-field-grid { grid-template-columns: 1fr; }
+    .hw-select-row { grid-template-columns: 1fr; }
+    .hw-quality-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .hw-quality-row span { grid-column: 1 / -1; grid-row: 2; }
+    .hw-panel { padding: 15px; border-radius: 18px; }
+  }
+</style>
+
+<main class="ai-hw-studio" id="ai-homework-studio">
+  <nav class="hw-topbar" aria-label="Навигация AI Lab">
+    <a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a>
+    <i class="ph ph-caret-right" aria-hidden="true"></i>
+    <span>AI Homework Studio</span>
+  </nav>
+
+  <header class="hw-hero">
+    <div class="hw-hero-copy">
+      <p class="hw-eyebrow">Экспериментальная проверка · только синтетические данные</p>
+      <h1>AI Homework Studio</h1>
+      <p>Проверяйте решения на тестовых сценариях, изучайте основания предварительной оценки и сравнивайте результат с эталоном.</p>
+    </div>
+    <span class="hw-pill is-off" id="hw-provider-state">
+      <i class="ph ph-plugs" aria-hidden="true"></i>
+      {% if not ai_lab_enabled %}AI-запросы выключены{% else %}GigaChat: Не проверено{% endif %}
+    </span>
+  </header>
+
+  <aside class="hw-warning" role="note">
+    <i class="ph ph-shield-warning" aria-hidden="true"></i>
+    <span>Используйте только синтетические примеры. Не вставляйте реальные домашние работы, персональные данные или секреты. AI-запросы выполняются только если ENVIRONMENT имеет локальное значение и установлен AI_LAB_ENABLED=true. Без ключа доступны сценарии и редактор; тестовый Mock используется только автоматическими проверками.</span>
+  </aside>
+
+  <div class="hw-workspace">
+    <section class="hw-column" aria-label="Входные данные эксперимента">
+      <article class="hw-panel">
+        <div class="hw-panel-head">
+          <div><p class="hw-eyebrow">Шаг 1 · сценарий</p><h2>Данные проверки</h2><p>Каждый вариант основан на синтетическом тестовом кейсе.</p></div>
+          <span class="hw-type-pill" id="hw-case-type">{{ selected_scenario.type }}</span>
+        </div>
+        <div class="hw-form">
+          <div class="hw-field">
+            <label for="hw-scenario">Тестовый сценарий</label>
+            <select id="hw-scenario">
+              {% for scenario in scenarios %}
+              <option value="{{ scenario.id }}" {% if scenario.id == selected_scenario.id %}selected{% endif %}>{{ scenario.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="hw-field-grid">
+            <div class="hw-meta-card"><small>Предмет</small><strong id="hw-subject">{{ selected_scenario.subject }}</strong></div>
+            <div class="hw-meta-card"><small>Тема</small><strong id="hw-topic">{{ selected_scenario.topic }}</strong></div>
+            <div class="hw-meta-card"><small>Сложность</small><strong id="hw-difficulty">{{ selected_scenario.difficulty }}</strong></div>
+          </div>
+          <div class="hw-field"><label for="hw-condition">Условие</label><textarea id="hw-condition">{{ current_input.condition }}</textarea></div>
+          <div class="hw-field"><label for="hw-solution">Решение ученика</label><textarea id="hw-solution" class="{% if current_input.type == 'python' %}is-code{% endif %}">{{ current_input.student_solution }}</textarea></div>
+          <div class="hw-field"><label for="hw-reference">Эталонный ответ</label><textarea id="hw-reference">{{ current_input.reference_answer }}</textarea></div>
+          <div class="hw-field"><label for="hw-criteria">Критерии оценивания · по одному на строку</label><textarea id="hw-criteria">{{ current_input.criteria | join('\n') }}</textarea></div>
+          <div class="hw-field"><label for="hw-max-score">Максимальный балл</label><input id="hw-max-score" type="number" min="0.1" max="100" step="0.1" value="{{ current_input.max_score }}"></div>
+          <div class="hw-field"><label for="hw-extra">Дополнительные инструкции эксперимента</label><textarea id="hw-extra" maxlength="2000" placeholder="Необязательно; инструкции внутри ответа ученика всё равно считаются недоверенными.">{{ current_input.additional_instructions or '' }}</textarea></div>
+        </div>
+      </article>
+
+      <article class="hw-panel" id="hw-judge-panel" {% if selected_scenario.type != 'python' %}hidden{% endif %}>
+        <div class="hw-panel-head"><div><p class="hw-eyebrow">Отдельный этап · по желанию</p><h2>Проверка кода</h2><p>Code Judge фиксирует результаты исполнения. Вы сами решаете, передавать ли отчёт модели.</p></div></div>
+        <div class="hw-form">
+          <label class="hw-judge-check" for="hw-judge-enabled"><input type="checkbox" id="hw-judge-enabled">Использовать Code Judge для этого запуска</label>
+          <div id="hw-judge-controls" hidden>
+            <div class="hw-field"><label for="hw-judge-set">Набор для этой версии задания</label><select id="hw-judge-set"></select></div>
+            <div class="hw-judge-actions"><button class="hw-soft-button" type="button" id="hw-judge-run" {% if not ai_lab_enabled %}disabled{% endif %}>Проверить код полностью</button><a class="hw-back-link" href="{{ url_for('ai_lab.code_judge_page') }}">Открыть конструктор тестов</a></div>
+            <div id="hw-judge-state" class="hw-inline-state" role="status" aria-live="polite">Сначала выполните полный набор тестов.</div>
+            <div id="hw-judge-report" class="hw-judge-evidence"></div>
+            <label class="hw-judge-check" for="hw-judge-send"><input type="checkbox" id="hw-judge-send" disabled>Передать подтверждённый отчёт в AI</label>
+          </div>
+        </div>
+      </article>
+
+      <article class="hw-panel">
+        <div class="hw-panel-head">
+          <div><p class="hw-eyebrow">Шаг 2 · конфигурация</p><h2>Модель и инструкция</h2><p>Каждый эксперимент хранит снимок выбранной версии.</p></div>
+        </div>
+        <div class="hw-form">
+          <div class="hw-select-row">
+            <div class="hw-field"><label for="hw-model">Доступная модель</label><select id="hw-model" {% if not ai_lab_enabled or not provider_card.configured %}disabled{% endif %}><option value="">Загрузите список моделей</option>{% if saved_result and saved_result.model %}<option value="{{ saved_result.model }}" selected>{{ saved_result.model }}</option>{% endif %}</select></div>
+            <button id="hw-load-models" class="hw-soft-button" type="button" data-url="{{ url_for('ai_lab.models') }}" {% if not ai_lab_enabled or not provider_card.configured %}disabled{% endif %}><i class="ph ph-arrow-clockwise" aria-hidden="true"></i>Загрузить модели</button>
+          </div>
+          <div class="hw-field">
+            <label for="hw-prompt-version">Версия системной инструкции</label>
+            <select id="hw-prompt-version" {% if not prompt_versions %}disabled{% endif %}>
+              {% for version in prompt_versions %}
+              <option value="{{ version.id }}" {% if selected_prompt and version.id == selected_prompt.id %}selected{% elif saved_result and version.version_no == saved_result.prompt_version_no %}selected{% endif %}>v0.{{ version.version_no }}{% if loop.first %} · последняя{% endif %}</option>
+              {% else %}
+              <option value="">v0.1 · начальная инструкция</option>
+              {% endfor %}
+            </select>
+            <p class="hw-caption">Текст выбранной версии можно посмотреть в разделе «Инструкции» AI Lab.</p>
+          </div>
+          <div class="hw-form-divider"></div>
+          <button id="hw-run" class="hw-run-button" type="button" data-url="{{ url_for('ai_lab.start_experiment') }}" {% if not ai_lab_enabled or not provider_card.configured %}disabled{% endif %}>
+            <i class="ph ph-play-circle" aria-hidden="true"></i>
+            {% if not ai_lab_enabled %}Включите локальную AI Lab{% elif not provider_card.configured %}Реальный запуск недоступен без ключа{% else %}Запустить предварительную проверку{% endif %}
+          </button>
+          <p class="hw-caption">Лимиты: {{ ai_lab_limits.runs_per_admin_per_hour }} запусков в час на администратора; {{ ai_lab_limits.runs_per_lab_per_hour }} в час на лабораторию; входные данные — до {{ (ai_lab_limits.max_input_bytes / 1024)|int }} КБ; не более {{ ai_lab_limits.gigachat_concurrency }} параллельных запросов GigaChat.</p>
+          <p class="hw-caption">Очередь — до {{ ai_lab_limits.max_queue_size }} ожидающих запросов; максимум {{ ai_lab_limits.max_completion_tokens }} токенов ответа; ожидание в очереди — до {{ (ai_lab_limits.queue_wait_seconds / 60)|int }} мин.</p>
+          <div id="hw-queue-state" class="hw-inline-state" data-url="{{ url_for('ai_lab.queue') }}" role="status" aria-live="polite">Получаем состояние очереди…</div>
+          <div id="hw-run-state" class="hw-inline-state" role="status" aria-live="polite"></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="hw-column" aria-label="Результат проверки">
+      <article class="hw-panel">
+        <div class="hw-panel-head">
+          <div><p class="hw-eyebrow">Шаг 3 · результат</p><h2>Предварительная проверка</h2><p>Сигналы сравнения помогают изучать качество и не являются подтверждённой оценкой.</p></div>
+          {% if saved_result %}<span class="hw-pill is-ready">{{ saved_result.status_label }}</span>{% endif %}
+        </div>
+        <div class="hw-pill-tabs" role="tablist" aria-label="Представление результата">
+          <button class="hw-pill-tab is-active" id="hw-human-tab" type="button" role="tab" aria-selected="true" aria-controls="hw-human-view" data-view="human">Педагогический результат</button>
+          <button class="hw-pill-tab" id="hw-tech-tab" type="button" role="tab" aria-selected="false" aria-controls="hw-tech-view" data-view="technical">Технические данные</button>
+        </div>
+        <div id="hw-human-view" class="hw-tab-panel" role="tabpanel" aria-labelledby="hw-human-tab" style="margin-top:14px">
+          <div id="hw-result-human" class="hw-result-stack">
+            {% if saved_result and saved_result.result %}
+              {% set result = saved_result.result %}
+              <div class="hw-score-card"><div><span class="hw-score-number">{% if result.score_awarded is not none %}{{ result.score_awarded }}{% else %}—{% endif %} / {{ result.max_score }}</span><small class="hw-score-caption">{{ 'Баллы по подтверждённым критериям' if saved_result.quality and saved_result.quality.technical and saved_result.quality.technical.code_judge else 'Предварительный балл' }} · {{ {'checked':'проверено по эталону','partially_checked':'частично проверено','insufficient_data':'недостаточно данных','manual_review':'нужна ручная проверка'}.get(result.grading_status, result.grading_status) }}</small></div><span class="hw-pill{% if result.needs_human_review %} is-off{% else %} is-ready{% endif %}">{% if result.needs_human_review %}Требуется проверка{% else %}По эталону{% endif %}</span></div>
+              <div class="hw-result-card"><h3>Краткий вывод</h3><p>{{ result.summary }}</p></div>
+              {% if result.mistakes %}<div class="hw-result-card"><h3>Обнаруженные ошибки</h3>{% for mistake in result.mistakes %}<div class="hw-mistake"><strong>{{ mistake.description }} · {{ mistake.mistake_type }}</strong>{% if mistake.solution_excerpt %}<p><b>Фрагмент:</b> {{ mistake.solution_excerpt }}</p>{% endif %}<p>{{ mistake.explanation }}</p><p><b>Как исправить:</b> {{ mistake.correction_recommendation }}</p></div>{% endfor %}</div>{% endif %}
+              <div class="hw-result-card"><h3>Комментарий ученику · черновик для преподавателя</h3><p>{{ result.student_feedback or '—' }}</p></div>
+              <div class="hw-result-card"><h3>Рекомендации преподавателю</h3><p>{{ result.teacher_feedback or '—' }}</p></div>
+              <div class="hw-result-card"><h3>Темы, предложенные моделью · не назначены</h3><p>{{ result.recommended_topics | join(' · ') if result.recommended_topics else 'Дополнительные темы не указаны.' }}{% if result.review_reason %}{{ '\n' }}{{ result.review_reason }}{% endif %}{{ '\n' }}Уверенность модели — самооценка, не вероятность правильности.</p></div>
+              {% if saved_result.quality and saved_result.quality.pedagogical_layers %}{% set layers = saved_result.quality.pedagogical_layers %}<div class="hw-result-card"><h3>Педагогические уровни · доказательная база</h3><p><b>Ученик:</b> подтверждено: {{ layers.student.correct | join(', ') if layers.student.correct else 'нет подтверждённых критериев' }}; ошибки: {{ layers.student.error | join('; ') if layers.student.error else 'не подтверждены' }}. Исправление из ответа модели требует просмотра преподавателем.</p><p><b>Преподаватель:</b> требует проверки: {{ layers.teacher.manual_check | join(', ') if layers.teacher.manual_check else 'нет неподтверждённых критериев' }}.</p><p><b>Курс:</b> {% if layers.adaptive %}{% for item in layers.adaptive %}{{ item.skill }} — {{ item.suggested_review or 'тема повторения не предложена' }}{% if not loop.last %}; {% endif %}{% endfor %}{% else %}подтверждённых оснований для новой темы нет{% endif %}. Самооценка уверенности модели не является вероятностью.</p></div>{% endif %}
+              {% if saved_result.expected %}<div class="hw-result-card"><h3>Эталонные ожидания{% if saved_result.quality and not saved_result.quality.benchmark_comparable %} · исходный сценарий{% endif %}</h3><p>{% if saved_result.quality and not saved_result.quality.benchmark_comparable %}Входные данные изменены. Эти ожидания относятся к исходному сценарию и не используются для автоматического сравнения.{% else %}{{ saved_result.expected.acceptable_conclusion or 'Ожидания заданы сценарием.' }}{% if saved_result.expected.recommendations %}{{ '\n' }}Темы: {{ saved_result.expected.recommendations | join(', ') }}{% endif %}{% endif %}</p></div>{% endif %}
+              <div class="hw-result-card"><h3>Автоматические сигналы качества</h3><p>{% if saved_result.quality and not saved_result.quality.benchmark_comparable %}Сценарий изменён: сравнение с эталоном отключено. Серверная проверка формата, ограничений и детерминированной оценки сохраняется.{% else %}Результат модели сопоставлен с эталоном. Каждый сигнал — повод для изучения; окончательная оценка качества остаётся за администратором.{% endif %}</p><div id="hw-quality-list"></div></div>
+            {% else %}
+              <div class="hw-empty"><div><i class="ph ph-clipboard-text" aria-hidden="true"></i><strong>Результат появится после запуска</strong><p>Сначала выберите сценарий и доступную модель. Когда GigaChat не настроен, реальные запросы останутся заблокированы.</p></div></div>
+            {% endif %}
+          </div>
+        </div>
+        <div id="hw-tech-view" class="hw-tab-panel" role="tabpanel" aria-labelledby="hw-tech-tab" hidden style="margin-top:14px">
+          <div id="hw-result-technical" class="hw-result-stack">
+            {% if saved_result %}
+            {% set technical_data = saved_result.quality.get('technical') if saved_result.quality else none %}
+            <div class="hw-field-grid">
+              <div class="hw-meta-card"><small>Версия модели</small><strong>{{ technical_data.model_version if technical_data else saved_result.model or '—' }}</strong></div>
+              <div class="hw-meta-card"><small>Инструкция</small><strong>v0.{{ saved_result.prompt_version_no or '—' }}</strong></div>
+              <div class="hw-meta-card"><small>Время ответа</small><strong>{% if saved_result.duration_ms is not none %}{{ saved_result.duration_ms }} мс{% else %}Нет данных{% endif %}</strong></div>
+              <div class="hw-meta-card"><small>Полный вход</small><strong>{{ technical_data.usage.full_input_tokens if technical_data and technical_data.usage.full_input_tokens is not none else (saved_result.input_tokens if saved_result.input_tokens is not none else 'Нет данных') }}</strong></div>
+              <div class="hw-meta-card"><small>Из кеша GigaChat</small><strong>{{ technical_data.usage.precached_prompt_tokens if technical_data and technical_data.usage.precached_prompt_tokens is not none else 'Нет данных' }}</strong></div>
+              <div class="hw-meta-card"><small>Новые входные токены</small><strong>{{ technical_data.usage.prompt_tokens if technical_data and technical_data.usage.prompt_tokens is not none else 'Нет данных' }}</strong></div>
+              <div class="hw-meta-card"><small>Токены генерации</small><strong>{{ technical_data.usage.completion_tokens if technical_data and technical_data.usage.completion_tokens is not none else (saved_result.output_tokens if saved_result.output_tokens is not none else 'Нет данных') }}</strong></div>
+              <div class="hw-meta-card"><small>Списано токенов</small><strong>{{ technical_data.usage.total_tokens if technical_data and technical_data.usage.total_tokens is not none else 'Нет данных' }}</strong></div>
+              <div class="hw-meta-card"><small>Валидация</small><strong>{{ saved_result.validation_status }}</strong></div>
+              {% if technical_data %}<div class="hw-meta-card"><small>Семантическая проверка</small><strong>{{ technical_data.semantic_validation.status }} · попыток: {{ technical_data.semantic_validation.attempt_count }}</strong></div>{% endif %}
+            </div>
+            {% if saved_result.error_message %}<div class="hw-result-card"><h3>Ошибка обработки</h3><p>{{ saved_result.error_message }}</p></div>{% endif %}
+            {% if technical_data %}
+            <div class="hw-result-card"><h3>Параметры генерации, сессия и идентификатор входа</h3><pre class="hw-code-json">{{ {'generation_parameters': technical_data.generation_parameters, 'session_context': technical_data.session_context, 'payload_id': technical_data.payload_id, 'payload_sha256': technical_data.payload_sha256} | tojson(indent=2) }}</pre></div>
+            {% for attempt in technical_data.attempts %}
+            <details class="hw-result-card"><summary>Попытка {{ attempt.attempt }} · запрос и ответ GigaChat</summary><h4>Фактический payload запроса</h4><pre class="hw-code-json">{{ attempt.request_payload | tojson(indent=2) }}</pre><h4>Ответ модели и usage</h4><pre class="hw-code-json">{{ {'response': attempt.response, 'usage': attempt.usage, 'semantic_validation': attempt.semantic_validation, 'payload_id': attempt.payload_id, 'payload_sha256': attempt.payload_sha256} | tojson(indent=2) }}</pre></details>
+            {% endfor %}
+            {% endif %}
+            <div class="hw-result-card"><h3>Структурированный ответ JSON</h3><pre class="hw-code-json">{{ (saved_result.result or saved_result.raw_response or 'Нет данных') | tojson(indent=2) }}</pre></div>
+            {% else %}
+            <div class="hw-empty"><div><i class="ph ph-brackets-curly" aria-hidden="true"></i><strong>Технические данные пока отсутствуют</strong><p>Токены, время ответа, валидация и JSON будут сохранены вместе с экспериментом.</p></div></div>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+
+      <article class="hw-panel">
+        <div class="hw-panel-head">
+          <div><p class="hw-eyebrow">Независимая оценка</p><h2>Качество проверки</h2><p>Самооценка модели не заменяет оценку администратора.</p></div>
+        </div>
+        <div class="hw-review-form">
+          <div class="hw-review-options" role="group" aria-label="Оценка результата администратором">
+            <button class="hw-rating-button" type="button" data-rating="correct" aria-pressed="false" {% if not saved_result or not saved_result.result %}disabled{% endif %}>Верно</button>
+            <button class="hw-rating-button" type="button" data-rating="partially_correct" aria-pressed="false" {% if not saved_result or not saved_result.result %}disabled{% endif %}>Частично верно</button>
+            <button class="hw-rating-button" type="button" data-rating="incorrect" aria-pressed="false" {% if not saved_result or not saved_result.result %}disabled{% endif %}>Неверно</button>
+          </div>
+          <textarea id="hw-review-comment" maxlength="3000" placeholder="Комментарий проверяющего" {% if not saved_result or not saved_result.result %}disabled{% endif %}>{{ saved_result.manual_comment if saved_result else '' }}</textarea>
+          <button id="hw-save-review" class="hw-soft-button" type="button" data-url="{{ saved_result.review_url if saved_result else '' }}" {% if not saved_result or not saved_result.result %}disabled{% endif %}>Сохранить оценку качества</button>
+          <div id="hw-review-state" class="hw-inline-state" role="status" aria-live="polite">{% if saved_result and saved_result.manual_rating %}Оценка уже сохранена: {{ {'correct':'Верно','partially_correct':'Частично верно','incorrect':'Неверно'}.get(saved_result.manual_rating, saved_result.manual_rating) }}{% endif %}</div>
+          {% if saved_result %}<a class="hw-back-link" href="{{ url_for('admin.admin_ai_lab', section='history') }}"><i class="ph ph-arrow-left" aria-hidden="true"></i>К истории экспериментов</a>{% endif %}
+        </div>
+      </article>
+    </section>
+  </div>
+  <input type="hidden" id="hw-csrf" value="{{ csrf_token() }}">
+</main>
+
+<script id="hw-scenarios-data" type="application/json">{{ scenarios | tojson }}</script>
+<script id="hw-judge-sets-data" type="application/json">{{ code_judge_test_sets | tojson }}</script>
+<script id="hw-initial-result" type="application/json">{{ saved_result | tojson }}</script>
+<script>
+  (() => {
+    const root = document.getElementById('ai-homework-studio');
+    if (!root) return;
+    const scenarios = JSON.parse(document.getElementById('hw-scenarios-data').textContent || '[]');
+    const scenarioSelect = document.getElementById('hw-scenario');
+    const modelSelect = document.getElementById('hw-model');
+    const loadModels = document.getElementById('hw-load-models');
+    const runButton = document.getElementById('hw-run');
+    const runState = document.getElementById('hw-run-state');
+    const csrf = document.getElementById('hw-csrf')?.value || '';
+    const fields = {
+      condition: document.getElementById('hw-condition'),
+      solution: document.getElementById('hw-solution'),
+      reference: document.getElementById('hw-reference'),
+      criteria: document.getElementById('hw-criteria'),
+      maxScore: document.getElementById('hw-max-score'),
+      extra: document.getElementById('hw-extra')
+    };
+    let selectedRating = null;
+    const saved = JSON.parse(document.getElementById('hw-initial-result').textContent || 'null');
+    const judgeSets = JSON.parse(document.getElementById('hw-judge-sets-data').textContent || '[]');
+    const judgePanel = document.getElementById('hw-judge-panel');
+    const judgeEnabled = document.getElementById('hw-judge-enabled');
+    const judgeControls = document.getElementById('hw-judge-controls');
+    const judgeSetSelect = document.getElementById('hw-judge-set');
+    const judgeSend = document.getElementById('hw-judge-send');
+    const judgeState = document.getElementById('hw-judge-state');
+    const judgeReportNode = document.getElementById('hw-judge-report');
+    let judgeRun = null;
+
+    function renderJudgeReport(report) {
+      judgeReportNode.replaceChildren();
+      if (!report) return;
+      const rubric = report.result?.rubric || report.rubric || {};
+      const summary = document.createElement('article');
+      const heading = document.createElement('strong');
+      const suiteSnapshot = report.result?.test_set_snapshot || {};
+      const assignmentId = report.assignment_id || suiteSnapshot.assignment_id;
+      const assignmentVersion = report.assignment_version || suiteSnapshot.assignment_version;
+      const testSetVersion = report.test_set_version || suiteSnapshot.test_set_version;
+      const rubricVersion = report.rubric_version || suiteSnapshot.rubric_version;
+      heading.textContent = `Code Judge #${report.id || report.run_id} · ${assignmentId || 'без связи'} v${assignmentVersion || '—'} · тесты v${testSetVersion || '—'} · рубрика v${rubricVersion || '—'} · ${report.result?.passed ?? report.passed}/${report.result?.total ?? report.total} тестов`;
+      const detail = document.createElement('span');
+      detail.textContent = `Подтверждено ${rubric.confirmed_score ?? 0}/${rubric.max_score ?? 0} баллов · без подтверждения ${rubric.unconfirmed_max_score ?? 0} · ${report.duration_ms ?? 0} мс`;
+      summary.append(heading, detail);
+      judgeReportNode.append(summary);
+      (rubric.criteria || []).forEach((criterion) => {
+        const card = document.createElement('article');
+        const title = document.createElement('strong');
+        const state = { fulfilled: 'выполнен', not_fulfilled: 'не выполнен', insufficient_data: 'недостаточно данных' }[criterion.status] || 'без проверки';
+        title.textContent = `${criterion.title}: ${criterion.score_awarded === null ? state : criterion.score_awarded + '/' + criterion.max_score + ' · ' + state}`;
+        const evidence = document.createElement('span');
+        evidence.textContent = `${criterion.rationale || criterion.description || ''} ${(criterion.evidence || []).map((item) => `${item.case_id}: ${item.status}`).join(' · ')}`.trim();
+        card.append(title, evidence);
+        judgeReportNode.append(card);
+      });
+    }
+
+    function clearJudgeReport() {
+      judgeRun = null;
+      judgeSend.checked = false;
+      judgeSend.disabled = true;
+      judgeReportNode.replaceChildren();
+      judgeState.textContent = 'Код или задание изменены. Выполните полную проверку заново.';
+    }
+
+    function updateJudgeAvailability() {
+      const scenario = selectedScenario();
+      judgePanel.hidden = scenario?.type !== 'python';
+      judgeControls.hidden = !judgeEnabled.checked || judgePanel.hidden;
+      const previous = judgeSetSelect.value;
+      const compatible = judgeSets.filter((item) => item.assignment_id === scenario?.assignment_id && Number(item.assignment_version) === Number(scenario?.assignment_version));
+      judgeSetSelect.replaceChildren();
+      compatible.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = String(item.id);
+        option.textContent = `${item.title} · тесты v${item.test_set_version} · рубрика v${item.rubric_version}`;
+        judgeSetSelect.append(option);
+      });
+      if (compatible.some((item) => String(item.id) === previous)) judgeSetSelect.value = previous;
+      const canUseJudge = scenario?.type === 'python' && compatible.length > 0;
+      document.getElementById('hw-judge-run').disabled = !canUseJudge;
+      if (scenario?.type === 'python' && !canUseJudge) judgeState.textContent = 'Для этого стабильного ID и версии задания ещё нет связанного набора тестов.';
+    }
+
+    judgeEnabled.addEventListener('change', updateJudgeAvailability);
+    judgeSetSelect.addEventListener('change', clearJudgeReport);
+    fields.solution.addEventListener('input', clearJudgeReport);
+    fields.condition.addEventListener('input', clearJudgeReport);
+    fields.reference.addEventListener('input', clearJudgeReport);
+    fields.criteria.addEventListener('input', clearJudgeReport);
+    fields.maxScore.addEventListener('input', clearJudgeReport);
+    document.getElementById('hw-judge-run').addEventListener('click', async () => {
+      const suite = judgeSets.find((item) => String(item.id) === judgeSetSelect.value);
+      if (!suite) { judgeState.textContent = 'Выберите доступный набор тестов.'; return; }
+      if (suite.assignment_id !== selectedScenario()?.assignment_id || Number(suite.assignment_version) !== Number(selectedScenario()?.assignment_version)) { judgeState.textContent = 'Этот набор привязан к другой стабильной версии задания.'; return; }
+      const button = document.getElementById('hw-judge-run');
+      button.disabled = true;
+      clearJudgeReport();
+      judgeState.textContent = 'Code Judge выполняет полный набор в изолированном runner…';
+      try {
+        const response = await fetch('/admin/ai-lab/api/code-judge/run', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+          body: JSON.stringify({ request_key: crypto.randomUUID(), run_type: 'submit', test_set_id: suite.id, test_set_version: suite.test_set_version, test_set: suite, code: fields.solution.value })
+        });
+        const data = await response.json();
+        if (!data.run) throw new Error(data.error || `Code Judge вернул HTTP ${response.status}.`);
+        judgeRun = data.run;
+        renderJudgeReport(judgeRun);
+        judgeSend.disabled = !judgeRun.result?.complete;
+        judgeState.textContent = judgeRun.result?.complete ? 'Проверка сохранена. Можно отдельно запустить AI с этим отчётом.' : (judgeRun.technical_error || 'Проверка не завершилась.');
+      } catch (error) { judgeState.textContent = error.message; }
+      finally { button.disabled = false; }
+    });
+
+    function selectedScenario() {
+      return scenarios.find((item) => item.id === scenarioSelect.value) || scenarios[0];
+    }
+    function setScenario(scenario) {
+      if (!scenario) return;
+      document.getElementById('hw-subject').textContent = scenario.subject || '';
+      document.getElementById('hw-topic').textContent = scenario.topic || '';
+      document.getElementById('hw-difficulty').textContent = scenario.difficulty || '';
+      document.getElementById('hw-case-type').textContent = scenario.type || '';
+      fields.condition.value = scenario.condition || '';
+      fields.solution.value = scenario.student_solution || '';
+      fields.reference.value = scenario.reference_answer || '';
+      fields.criteria.value = Array.isArray(scenario.criteria) ? scenario.criteria.join('\n') : '';
+      fields.maxScore.value = scenario.max_score || '';
+      fields.extra.value = '';
+      fields.solution.classList.toggle('is-code', scenario.type === 'python');
+    }
+    scenarioSelect.addEventListener('change', () => { setScenario(selectedScenario()); clearJudgeReport(); updateJudgeAvailability(); });
+
+    document.querySelectorAll('.hw-pill-tab[data-view]').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.view;
+        document.querySelectorAll('.hw-pill-tab[data-view]').forEach((item) => {
+          const active = item === tab;
+          item.classList.toggle('is-active', active);
+          item.setAttribute('aria-selected', String(active));
+        });
+        document.getElementById('hw-human-view').hidden = target !== 'human';
+        document.getElementById('hw-tech-view').hidden = target !== 'technical';
+      });
+    });
+
+    function addTextCard(container, title, value, className) {
+      const card = document.createElement('section');
+      card.className = className || 'hw-result-card';
+      const heading = document.createElement('h3');
+      heading.textContent = title;
+      const paragraph = document.createElement('p');
+      paragraph.textContent = value || '—';
+      card.append(heading, paragraph);
+      container.append(card);
+      return card;
+    }
+    function statusLabel(status) {
+      return ({
+        checked: 'проверено',
+        partially_checked: 'частично проверено',
+        insufficient_data: 'недостаточно данных',
+        manual_review: 'нужна ручная проверка'
+      })[status] || status || '—';
+    }
+    function renderQuality(container, quality) {
+      const card = document.createElement('section');
+      card.className = 'hw-result-card';
+      const heading = document.createElement('h3');
+      heading.textContent = 'Автоматические сигналы качества';
+      const note = document.createElement('p');
+      note.textContent = quality?.benchmark_comparable === false
+        ? 'Сценарий изменён: сравнение с исходным эталоном отключено. Серверные проверки формата и оценки продолжают работать.'
+        : 'Автоматические сигналы помогают сравнению, но не подтверждают качество проверки.';
+      const list = document.createElement('div');
+      list.className = 'hw-quality';
+      const labels = {
+        error_detection: 'Обнаружение ошибок',
+        score_match: 'Предварительный балл',
+        criteria_alignment: 'Соответствие критериям',
+        mandatory_constraints: 'Обязательные ограничения',
+        json_validity: 'Валидность JSON'
+      };
+      Object.entries(labels).forEach(([key, label]) => {
+        const item = quality?.[key];
+        if (!item) return;
+        const row = document.createElement('div');
+        row.className = 'hw-quality-row';
+        const title = document.createElement('strong');
+        title.textContent = label;
+        const detail = document.createElement('span');
+        detail.textContent = item.detail || '';
+        const badge = document.createElement('b');
+        badge.className = 'hw-quality-badge' + (item.status === 'review' ? ' review' : item.status === 'not_assessable' ? ' na' : '');
+        badge.textContent = item.status === 'pass' ? 'Сигнал: совпало' : item.status === 'review' ? 'Нужно изучить' : 'Нет оценки';
+        row.append(title, detail, badge);
+        list.append(row);
+      });
+      card.append(heading, note, list);
+      container.append(card);
+    }
+    function renderResult(data) {
+      const human = document.getElementById('hw-result-human');
+      const technical = document.getElementById('hw-result-technical');
+      human.replaceChildren();
+      technical.replaceChildren();
+      if (data.status !== 'succeeded' || !data.result) {
+        const empty = document.createElement('div');
+        empty.className = 'hw-empty';
+        const inner = document.createElement('div');
+        const icon = document.createElement('i');
+        icon.className = 'ph ph-warning-circle';
+        icon.setAttribute('aria-hidden', 'true');
+        const title = document.createElement('strong');
+        title.textContent = data.status_label || 'Проверка не завершена';
+        const message = document.createElement('p');
+        message.textContent = data.error_message || 'Проверьте настройки провайдера и запустите новый эксперимент.';
+        inner.append(icon, title, message);
+        empty.append(inner);
+        human.append(empty);
+        addTextCard(technical, 'Ошибка обработки', data.error_message || data.error_code || 'Нет данных');
+        const raw = document.createElement('pre');
+        raw.className = 'hw-code-json';
+        raw.textContent = data.raw_response || 'Сырой ответ отсутствует.';
+        technical.append(raw);
+        return;
+      }
+      const result = data.result;
+      const score = document.createElement('div');
+      score.className = 'hw-score-card';
+      const scoreBlock = document.createElement('div');
+      const scoreValue = document.createElement('span');
+      scoreValue.className = 'hw-score-number';
+      scoreValue.textContent = (result.score_awarded === null ? '—' : result.score_awarded) + ' / ' + result.max_score;
+      const caption = document.createElement('small');
+      caption.className = 'hw-score-caption';
+      caption.textContent = (data.quality?.technical?.code_judge ? 'Баллы по подтверждённым критериям · ' : 'Предварительный балл · ') + statusLabel(result.grading_status);
+      scoreBlock.append(scoreValue, caption);
+      const review = document.createElement('span');
+      review.className = 'hw-pill' + (result.needs_human_review ? ' is-off' : ' is-ready');
+      review.textContent = result.needs_human_review ? 'Требуется проверка' : 'Проверено по эталону';
+      score.append(scoreBlock, review);
+      human.append(score);
+      addTextCard(human, 'Краткий вывод', result.summary);
+      if (Array.isArray(result.mistakes) && result.mistakes.length) {
+        const card = document.createElement('section');
+        card.className = 'hw-result-card';
+        const heading = document.createElement('h3');
+        heading.textContent = 'Обнаруженные ошибки';
+        card.append(heading);
+        result.mistakes.forEach((mistake) => {
+          const item = document.createElement('div');
+          item.className = 'hw-mistake';
+          const title = document.createElement('strong');
+          title.textContent = (mistake.description || 'Ошибка') + ' · ' + (mistake.mistake_type || 'other');
+          item.append(title);
+          if (mistake.solution_excerpt) {
+            const excerpt = document.createElement('p');
+            excerpt.textContent = 'Фрагмент: ' + mistake.solution_excerpt;
+            item.append(excerpt);
+          }
+          const explanation = document.createElement('p');
+          explanation.textContent = mistake.explanation || '';
+          const recommendation = document.createElement('p');
+          recommendation.textContent = 'Как исправить: ' + (mistake.correction_recommendation || '—');
+          item.append(explanation, recommendation);
+          card.append(item);
+        });
+        human.append(card);
+      }
+      addTextCard(human, 'Комментарий ученику · черновик для преподавателя', result.student_feedback);
+      addTextCard(human, 'Рекомендации преподавателю', result.teacher_feedback);
+      const topics = Array.isArray(result.recommended_topics) ? result.recommended_topics.join(' · ') : '';
+      addTextCard(human, 'Темы, предложенные моделью · не назначены', (topics || 'Дополнительные темы не указаны.') + (result.review_reason ? '\n' + result.review_reason : '') + '\nУверенность модели — самооценка, не вероятность правильности.');
+      const layers = data.quality?.pedagogical_layers;
+      if (layers) addTextCard(human, 'Педагогические уровни · доказательная база',
+        'Ученик: подтверждено — ' + (layers.student.correct.join(', ') || 'нет') + '; ошибки — ' + (layers.student.error.join('; ') || 'не подтверждены') + '.\n' +
+        'Преподаватель: ручная проверка — ' + (layers.teacher.manual_check.join(', ') || 'нет неподтверждённых критериев') + '.\n' +
+        'Курс: ' + (layers.adaptive.map((item) => item.skill + ' — ' + (item.suggested_review || 'тема не предложена')).join('; ') || 'оснований для новой темы нет') + '. Самооценка модели не является вероятностью.');
+      if (data.expected) {
+        const expectedText = data.quality?.benchmark_comparable === false
+          ? 'Входные данные изменены. Ожидания относятся к исходному сценарию и не используются для автоматического сравнения.'
+          : (data.expected.acceptable_conclusion || '') + (data.expected.recommendations?.length ? '\nТемы: ' + data.expected.recommendations.join(', ') : '');
+        addTextCard(human, data.quality?.benchmark_comparable === false ? 'Эталонные ожидания · исходный сценарий' : 'Эталонные ожидания', expectedText);
+      }
+      renderQuality(human, data.quality);
+      const judgeEvidence = data.quality?.technical?.code_judge;
+      if (judgeEvidence) {
+        const card = document.createElement('section');
+        card.className = 'hw-result-card';
+        const title = document.createElement('h3');
+        title.textContent = data.quality?.code_judge_conflict ? 'Конфликт с Code Judge · ручной разбор' : 'Подтверждения Code Judge';
+        card.append(title);
+        const coverage = document.createElement('p');
+        coverage.textContent = `${judgeEvidence.rubric?.confirmed_score ?? 0}/${judgeEvidence.rubric?.max_score ?? 0} подтверждено; ${judgeEvidence.rubric?.unconfirmed_max_score ?? 0} баллов не проверено. ${judgeEvidence.coverage_note || ''}`;
+        card.append(coverage);
+        if (data.quality?.code_judge_conflict_detail) {
+          const conflict = document.createElement('p'); conflict.textContent = `Обнаруженное противоречие: ${data.quality.code_judge_conflict_detail}`; card.append(conflict);
+        }
+        if (data.quality?.code_judge_retry_used) {
+          const retry = document.createElement('p'); retry.textContent = 'GigaChat исправил противоречие после одного контролируемого повтора.'; card.append(retry);
+        }
+        (judgeEvidence.rubric?.criteria || []).forEach((criterion, index) => {
+          const item = document.createElement('p');
+          const modelScore = result.criterion_scores?.[index]?.score_awarded;
+          const status = { fulfilled: 'выполнен', not_fulfilled: 'не выполнен', insufficient_data: 'недостаточно данных' }[criterion.status] || criterion.status;
+          item.textContent = `${criterion.title}: ${status}; Judge ${criterion.score_awarded === null ? '—' : criterion.score_awarded + '/' + criterion.max_score}; AI ${modelScore ?? 'не указал'}. ${criterion.rationale || ''} Проверки: ${(criterion.evidence || []).map((e) => `${e.case_id} — ${e.status}`).join(', ') || 'не связаны'}.`;
+          card.append(item);
+        });
+        human.append(card);
+      }
+
+      const facts = document.createElement('div');
+      facts.className = 'hw-field-grid';
+      const audit = data.quality?.technical;
+      const tokenUsage = audit?.usage || {};
+      [
+        ['Версия модели', audit?.model_version || data.model],
+        ['Инструкция', 'v0.' + (data.prompt_version_no || '—')],
+        ['Время ответа', data.duration_ms === null ? 'Нет данных' : data.duration_ms + ' мс'],
+        ['Полный вход', tokenUsage.full_input_tokens ?? data.input_tokens ?? 'Нет данных'],
+        ['Из кеша GigaChat', tokenUsage.precached_prompt_tokens ?? 'Нет данных'],
+        ['Новые входные токены', tokenUsage.prompt_tokens ?? 'Нет данных'],
+        ['Токены генерации', tokenUsage.completion_tokens ?? data.output_tokens ?? 'Нет данных'],
+        ['Списано токенов', tokenUsage.total_tokens ?? 'Нет данных'],
+        ['Валидация', data.validation_status],
+        ['Семантическая проверка', audit?.semantic_validation?.status || 'Нет данных'],
+        ['Попыток', audit?.semantic_validation?.attempt_count ?? 'Нет данных']
+      ].forEach(([label, value]) => {
+        const cell = document.createElement('div');
+        cell.className = 'hw-meta-card';
+        const small = document.createElement('small');
+        small.textContent = label;
+        const strong = document.createElement('strong');
+        strong.textContent = value || '—';
+        cell.append(small, strong);
+        facts.append(cell);
+      });
+      technical.append(facts);
+      if (audit) {
+        const auditCard = document.createElement('section');
+        auditCard.className = 'hw-result-card';
+        const auditTitle = document.createElement('h3');
+        auditTitle.textContent = 'Параметры генерации, сессия и идентификатор входа';
+        const auditJson = document.createElement('pre');
+        auditJson.className = 'hw-code-json';
+        auditJson.textContent = JSON.stringify({
+          generation_parameters: audit.generation_parameters,
+          session_context: audit.session_context,
+          payload_id: audit.payload_id,
+          payload_sha256: audit.payload_sha256
+        }, null, 2);
+        auditCard.append(auditTitle, auditJson);
+        (audit.attempts || []).forEach((attempt) => {
+          const details = document.createElement('details');
+          details.className = 'hw-result-card';
+          const summary = document.createElement('summary');
+          summary.textContent = 'Попытка ' + attempt.attempt + ' · фактический запрос и ответ';
+          const request = document.createElement('pre');
+          request.className = 'hw-code-json';
+          request.textContent = JSON.stringify(attempt.request_payload, null, 2);
+          const answer = document.createElement('pre');
+          answer.className = 'hw-code-json';
+          answer.textContent = JSON.stringify({
+            response: attempt.response,
+            usage: attempt.usage,
+            semantic_validation: attempt.semantic_validation,
+            payload_id: attempt.payload_id,
+            payload_sha256: attempt.payload_sha256
+          }, null, 2);
+          details.append(summary, request, answer);
+          auditCard.append(details);
+        });
+        technical.append(auditCard);
+      }
+      const jsonCard = document.createElement('section');
+      jsonCard.className = 'hw-result-card';
+      const jsonTitle = document.createElement('h3');
+      jsonTitle.textContent = 'Структурированный ответ JSON';
+      const json = document.createElement('pre');
+      json.className = 'hw-code-json';
+      json.textContent = JSON.stringify(result, null, 2);
+      jsonCard.append(jsonTitle, json);
+      technical.append(jsonCard);
+
+      document.querySelectorAll('.hw-rating-button').forEach((button) => { button.disabled = false; });
+      document.getElementById('hw-review-comment').disabled = false;
+      document.getElementById('hw-save-review').disabled = false;
+      document.getElementById('hw-save-review').dataset.url = data.review_url || '';
+    }
+    function renderSavedRating(data) {
+      if (!data?.manual_rating) return;
+      selectedRating = data.manual_rating;
+      document.querySelectorAll('.hw-rating-button').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.rating === selectedRating));
+      });
+    }
+
+    if (saved) {
+      if (saved.result || saved.status !== 'succeeded') renderResult(saved);
+      renderSavedRating(saved);
+      if (saved.quality?.technical?.code_judge) {
+        judgeEnabled.checked = true;
+        judgeRun = saved.quality.technical.code_judge;
+        judgeSend.checked = true;
+        judgeSend.disabled = false;
+        renderJudgeReport(judgeRun);
+        judgeState.textContent = 'Сохранённый отчёт Code Judge передан в этот эксперимент.';
+      }
+    }
+    updateJudgeAvailability();
+
+    const queueState = document.getElementById('hw-queue-state');
+    const providerState = document.getElementById('hw-provider-state');
+    let queuePollTimer = null;
+    let pendingRequest = null;
+    async function refreshQueueState() {
+      if (!queueState?.dataset.url) return;
+      try {
+        const response = await fetch(queueState.dataset.url, { credentials: 'same-origin' });
+        const payload = await response.json();
+        if (!payload.ok) throw new Error(payload.error || 'Не удалось получить очередь.');
+        const queue = payload.queue;
+        const active = queue.active_count ? 'Выполняется: ' + queue.active_count + '/' + queue.concurrency_limit : 'Сейчас запросы не выполняются';
+        const queued = queue.queued_count ? 'Ожидают: ' + queue.queued_count + '/' + queue.queue_limit : 'Ожидающих нет';
+        queueState.textContent = active + ' · ' + queued + ' · очередь FIFO';
+      } catch (_error) {
+        queueState.textContent = 'Состояние очереди временно недоступно.';
+      }
+    }
+    function startQueuePolling() {
+      refreshQueueState();
+      if (!queuePollTimer) queuePollTimer = window.setInterval(refreshQueueState, 900);
+    }
+    function stopQueuePolling() {
+      if (queuePollTimer) window.clearInterval(queuePollTimer);
+      queuePollTimer = null;
+      refreshQueueState();
+    }
+    function setProviderVerified(verified) {
+      if (!providerState) return;
+      providerState.classList.toggle('is-ready', verified);
+      providerState.classList.toggle('is-off', !verified);
+      providerState.innerHTML = '';
+      const icon = document.createElement('i');
+      icon.className = verified ? 'ph ph-plugs-connected' : 'ph ph-plugs';
+      icon.setAttribute('aria-hidden', 'true');
+      providerState.append(icon, document.createTextNode(verified ? 'GigaChat: Подключено' : 'GigaChat: Не проверено'));
+    }
+    function providerErrorMessage(payload) {
+      const labels = {
+        tls_verification_failed: 'Ошибка проверки TLS-сертификата. ',
+        tls_bundle_not_found: 'Файл доверенного сертификата не найден. ',
+        authorization_failed: 'Ошибка авторизации GigaChat. ',
+        not_configured: 'Не настроен ключ GigaChat. ',
+        connection_failed: 'GigaChat API недоступен по сети. ',
+        connection_timeout: 'GigaChat API не ответил вовремя. ',
+        response_timeout: 'GigaChat API не завершил ответ вовремя. ',
+        provider_unavailable: 'Сервис GigaChat временно недоступен. ',
+        provider_rate_limited: 'GigaChat ограничил частоту запросов. ',
+        provider_quota_exhausted: 'Квота GigaChat исчерпана. ',
+        queue_full: 'Очередь GigaChat заполнена. ',
+        queue_timeout: 'Истекло время ожидания очереди. '
+      };
+      return (labels[payload.error_code] || '') + (payload.error || 'Проверьте подключение и повторите.');
+    }
+    refreshQueueState();
+
+    if (loadModels) {
+      loadModels.addEventListener('click', async () => {
+        loadModels.disabled = true;
+        loadModels.textContent = 'Загружаем…';
+        startQueuePolling();
+        runState.textContent = 'Запрос каталога моделей в последовательной очереди…';
+        try {
+          const response = await fetch(loadModels.dataset.url, { credentials: 'same-origin' });
+          const payload = await response.json();
+          if (!payload.ok) throw new Error(providerErrorMessage(payload));
+          const previous = modelSelect.value || payload.default_model || '';
+          modelSelect.replaceChildren();
+          payload.models.forEach((model) => {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model;
+            modelSelect.append(option);
+          });
+          modelSelect.value = payload.models.includes(previous) ? previous : payload.models[0];
+          runButton.disabled = false;
+          runButton.innerHTML = '';
+          const icon = document.createElement('i');
+          icon.className = 'ph ph-play-circle';
+          icon.setAttribute('aria-hidden', 'true');
+          runButton.append(icon, document.createTextNode('Запустить предварительную проверку'));
+          loadModels.textContent = 'Обновить список';
+          setProviderVerified(true);
+          const tls = payload.tls;
+          const tlsLabel = tls?.ca_bundle_file_exists
+            ? 'TLS проверен · сертификат из ' + tls.ca_bundle_source
+            : 'TLS проверен штатным хранилищем';
+          runState.textContent = 'Загружено ' + payload.models.length + ' доступных моделей. ' + tlsLabel + '.';
+        } catch (error) {
+          setProviderVerified(false);
+          runState.textContent = error.message || 'Не удалось загрузить список моделей.';
+          loadModels.textContent = 'Повторить загрузку';
+        } finally {
+          loadModels.disabled = false;
+          stopQueuePolling();
+        }
+      });
+    }
+
+    if (runButton) {
+      runButton.addEventListener('click', async () => {
+        if (!modelSelect.value) {
+          runState.textContent = 'Сначала загрузите каталог и выберите доступную модель.';
+          return;
+        }
+        runButton.disabled = true;
+        runState.textContent = 'Запрос поставлен в последовательную очередь GigaChat…';
+        startQueuePolling();
+        const scenario = selectedScenario();
+        const input = {
+          condition: fields.condition.value,
+          student_solution: fields.solution.value,
+          reference_answer: fields.reference.value,
+          criteria: fields.criteria.value.split('\n').map((value) => value.trim()).filter(Boolean),
+          max_score: fields.maxScore.value,
+          additional_instructions: fields.extra.value
+        };
+        const requestData = {
+          scenario_id: scenario.id,
+          model: modelSelect.value,
+          prompt_version_id: document.getElementById('hw-prompt-version').value || null,
+          input
+        };
+        if (judgeEnabled.checked && judgeSend.checked) {
+          if (!judgeRun) { runState.textContent = 'Сначала выполните полную проверку Code Judge.'; runButton.disabled = false; stopQueuePolling(); return; }
+          requestData.code_judge_run_id = judgeRun.id || judgeRun.run_id;
+        }
+        const requestFingerprint = JSON.stringify(requestData);
+        if (!pendingRequest || pendingRequest.fingerprint !== requestFingerprint) {
+          pendingRequest = {
+            fingerprint: requestFingerprint,
+            key: window.crypto?.randomUUID
+              ? window.crypto.randomUUID()
+              : (Date.now().toString(16) + '-' + Math.random().toString(16).slice(2))
+          };
+        }
+        try {
+          const response = await fetch(runButton.dataset.url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrf
+            },
+            body: JSON.stringify({ request_key: pendingRequest.key, ...requestData })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(providerErrorMessage(data));
+          pendingRequest = null;
+          renderResult(data);
+          runState.textContent = data.status === 'succeeded' ? 'Эксперимент сохранён в истории.' : (data.error_message || data.status_label);
+          if (data.experiment_url) window.history.replaceState({}, '', data.experiment_url);
+          document.querySelector('.hw-panel-head .hw-pill')?.remove();
+          document.getElementById('hw-human-tab').focus();
+          selectedRating = null;
+          document.querySelectorAll('.hw-rating-button').forEach((button) => button.setAttribute('aria-pressed', 'false'));
+          document.getElementById('hw-review-comment').value = '';
+          document.getElementById('hw-review-state').textContent = '';
+        } catch (error) {
+          runState.textContent = error.message || 'Сбой соединения. Повторите запуск.';
+        } finally {
+          runButton.disabled = false;
+          stopQueuePolling();
+        }
+      });
+    }
+
+    document.querySelectorAll('.hw-rating-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        selectedRating = button.dataset.rating;
+        document.querySelectorAll('.hw-rating-button').forEach((item) => {
+          item.setAttribute('aria-pressed', String(item === button));
+        });
+      });
+    });
+    const reviewButton = document.getElementById('hw-save-review');
+    if (reviewButton) {
+      reviewButton.addEventListener('click', async () => {
+        const state = document.getElementById('hw-review-state');
+        if (!selectedRating) {
+          state.textContent = 'Выберите оценку качества.';
+          return;
+        }
+        reviewButton.disabled = true;
+        state.textContent = 'Сохраняем оценку…';
+        try {
+          const reviewUrl = reviewButton.dataset.url;
+          if (!reviewUrl) throw new Error('Не сформирован адрес сохранения оценки. Обновите страницу и повторите попытку.');
+          const response = await fetch(reviewUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify({
+              rating: selectedRating,
+              comment: document.getElementById('hw-review-comment').value
+            })
+          });
+          const contentType = response.headers.get('content-type') || '';
+          if (!contentType.includes('application/json')) {
+            if (response.status === 404) {
+              throw new Error('Маршрут сохранения ручной оценки не найден (HTTP 404). Backend вернул HTML вместо ответа AI Lab.');
+            }
+            throw new Error(`Backend вернул HTTP ${response.status} без JSON-ответа AI Lab.`);
+          }
+          let payload;
+          try {
+            payload = await response.json();
+          } catch (_) {
+            throw new Error(`Backend вернул некорректный JSON-ответ (HTTP ${response.status}).`);
+          }
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || `Не удалось сохранить оценку (HTTP ${response.status}).`);
+          }
+          state.textContent = 'Оценка качества сохранена.';
+        } catch (error) {
+          state.textContent = error.message || 'Не удалось сохранить оценку.';
+        } finally {
+          reviewButton.disabled = false;
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

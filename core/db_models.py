@@ -3862,3 +3862,219 @@ class GuestReview(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
     session = db.relationship('GuestSession')
     participant = db.relationship('GuestParticipant')
+
+
+class AiLabPromptVersion(db.Model):
+    """Версионированные инструкции из локальной AI Lab."""
+    __tablename__ = 'AiLabPromptVersions'
+    __table_args__ = (
+        db.UniqueConstraint('version_no', name='uq_ai_lab_prompt_version_no'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    version_no = db.Column(db.Integer, nullable=False)
+    prompt_name = db.Column(db.String(120), nullable=False, default='AI Homework Evaluator')
+    content = db.Column(db.Text, nullable=False)
+    restored_from_version_no = db.Column(db.Integer, nullable=True)
+    created_by_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('Users.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    def __repr__(self):
+        return f'<AiLabPromptVersion v0.{self.version_no}>'
+
+
+class AiLabRubricVersion(db.Model):
+    """Local synthetic rubric proposal and immutable approval history."""
+    __tablename__ = 'AiLabRubricVersions'
+    __table_args__ = (
+        db.UniqueConstraint('rubric_key', 'version_no', name='uq_ai_lab_rubric_key_version'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    rubric_key = db.Column(db.String(36), nullable=False, index=True)
+    version_no = db.Column(db.Integer, nullable=False)
+    assignment_id = db.Column(db.String(120), nullable=False, index=True)
+    assignment_version = db.Column(db.Integer, nullable=False)
+    task_json = db.Column(db.JSON, nullable=False)
+    criteria_json = db.Column(db.JSON, nullable=False)
+    proposed_tests_json = db.Column(db.JSON, nullable=False, default=list)
+    raw_proposal_json = db.Column(db.JSON, nullable=True)
+    edits_json = db.Column(db.JSON, nullable=False, default=list)
+    validation_json = db.Column(db.JSON, nullable=False, default=dict)
+    status = db.Column(db.String(20), nullable=False, default='draft', index=True)
+    model = db.Column(db.String(160), nullable=True)
+    prompt_version = db.Column(db.String(40), nullable=False)
+    generation_json = db.Column(db.JSON, nullable=False, default=dict)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    approved_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    approved_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+
+class AiLabRubricTestVerification(db.Model):
+    """Immutable sandbox evidence for suggested tests and teacher edge cases."""
+    __tablename__ = 'AiLabRubricTestVerifications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    rubric_version_id = db.Column(db.Integer, db.ForeignKey('AiLabRubricVersions.id'), nullable=False, index=True)
+    actor_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    reference_hash = db.Column(db.String(64), nullable=False)
+    report_json = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class AiLabRubricReview(db.Model):
+    """Append-only expert classification of a local rubric version."""
+    __tablename__ = 'AiLabRubricReviews'
+
+    id = db.Column(db.Integer, primary_key=True)
+    rubric_version_id = db.Column(db.Integer, db.ForeignKey('AiLabRubricVersions.id'), nullable=False, index=True)
+    actor_user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='SET NULL'), nullable=True)
+    verdict = db.Column(db.String(16), nullable=False)
+    issues_json = db.Column(db.JSON, nullable=False, default=list)
+    note = db.Column(db.Text, nullable=False, default='')
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class AiLabExperiment(db.Model):
+    """Изолированный запуск на синтетическом кейсе; не связан с рабочими сдачами."""
+    __tablename__ = 'AiLabExperiments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    actor_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('Users.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+    request_key = db.Column(db.String(36), nullable=False)
+    scenario_id = db.Column(db.String(80), nullable=False, index=True)
+    status = db.Column(db.String(32), nullable=False, default='running', index=True)
+    provider = db.Column(db.String(32), nullable=True)
+    model = db.Column(db.String(160), nullable=True)
+
+    prompt_version_id = db.Column(
+        db.Integer,
+        db.ForeignKey('AiLabPromptVersions.id', ondelete='SET NULL'),
+        nullable=True,
+    )
+    prompt_version_no = db.Column(db.Integer, nullable=True)
+    prompt_snapshot = db.Column(db.Text, nullable=False)
+    scenario_snapshot = db.Column(db.JSON, nullable=False, default=dict)
+    input_snapshot = db.Column(db.JSON, nullable=False, default=dict)
+    expected_snapshot = db.Column(db.JSON, nullable=False, default=dict)
+
+    result_json = db.Column(db.JSON, nullable=True)
+    raw_response = db.Column(db.Text, nullable=True)
+    validation_status = db.Column(db.String(32), nullable=False, default='pending')
+    quality_json = db.Column(db.JSON, nullable=True)
+    error_code = db.Column(db.String(64), nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+
+    input_tokens = db.Column(db.Integer, nullable=True)
+    output_tokens = db.Column(db.Integer, nullable=True)
+    duration_ms = db.Column(db.Integer, nullable=True)
+
+    manual_rating = db.Column(db.String(24), nullable=True)
+    manual_comment = db.Column(db.Text, nullable=True)
+    reviewer_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('Users.id', ondelete='SET NULL'),
+        nullable=True,
+    )
+    reviewed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    actor = db.relationship('User', foreign_keys=[actor_user_id])
+    reviewer = db.relationship('User', foreign_keys=[reviewer_user_id])
+    prompt_version = db.relationship('AiLabPromptVersion', foreign_keys=[prompt_version_id])
+
+    __table_args__ = (
+        UniqueConstraint('actor_user_id', 'request_key', name='uq_ai_lab_run_actor_request'),
+        Index('ix_ai_lab_run_created_status', 'created_at', 'status'),
+        Index('ix_ai_lab_run_scenario_created', 'scenario_id', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f'<AiLabExperiment id={self.id} scenario={self.scenario_id} status={self.status}>'
+
+
+class AiLabCodeJudgeTestSet(db.Model):
+    """Persistent synthetic Code Judge task definitions, isolated from assignments."""
+    __tablename__ = 'AiLabCodeJudgeTestSets'
+
+    id = db.Column(db.Integer, primary_key=True)
+    scenario_id = db.Column(db.String(80), nullable=False, unique=True)
+    title = db.Column(db.String(180), nullable=False)
+    description = db.Column(db.Text, nullable=False, default='')
+    mode = db.Column(db.String(16), nullable=False)
+    function_name = db.Column(db.String(80), nullable=True)
+    comparator = db.Column(db.String(32), nullable=False, default='exact')
+    tolerance = db.Column(db.Float, nullable=False, default=1e-6)
+    starter_code = db.Column(db.Text, nullable=False, default='')
+    test_cases = db.Column(db.JSON, nullable=False, default=list)
+    rubric_json = db.Column(db.JSON, nullable=False, default=list)
+    assignment_id = db.Column(db.String(120), nullable=True, index=True)
+    assignment_version = db.Column(db.Integer, nullable=True)
+    test_set_version = db.Column(db.Integer, nullable=False, default=1)
+    rubric_version = db.Column(db.Integer, nullable=False, default=1)
+    is_seeded = db.Column(db.Boolean, nullable=False, default=False)
+    created_by_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('Users.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
+class AiLabCodeJudgeRun(db.Model):
+    """Local-only execution history; never linked to a real student submission."""
+    __tablename__ = 'AiLabCodeJudgeRuns'
+
+    id = db.Column(db.Integer, primary_key=True)
+    actor_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('Users.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+    test_set_id = db.Column(
+        db.Integer,
+        db.ForeignKey('AiLabCodeJudgeTestSets.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+    request_key = db.Column(db.String(36), nullable=False)
+    scenario_id = db.Column(db.String(80), nullable=False, index=True)
+    run_type = db.Column(db.String(16), nullable=False)
+    mode = db.Column(db.String(16), nullable=False)
+    status = db.Column(db.String(32), nullable=False, default='queued', index=True)
+    test_set_version = db.Column(db.Integer, nullable=False)
+    runner_version = db.Column(db.String(80), nullable=True)
+    code = db.Column(db.Text, nullable=False)
+    code_hash = db.Column(db.String(64), nullable=False, index=True)
+    result_json = db.Column(db.JSON, nullable=True)
+    duration_ms = db.Column(db.Integer, nullable=True)
+    technical_error = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utc_now, nullable=False, index=True)
+
+    actor = db.relationship('User', foreign_keys=[actor_user_id])
+    test_set = db.relationship('AiLabCodeJudgeTestSet')
+
+    __table_args__ = (
+        UniqueConstraint('actor_user_id', 'request_key', name='uq_ai_lab_code_judge_actor_request'),
+        Index('ix_ai_lab_code_judge_created_status', 'created_at', 'status'),
+    )

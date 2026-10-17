@@ -1,0 +1,12 @@
+{
+  "name": "digit-sum-development",
+  "version": 1,
+  "purpose": "Разработка отчёта и правил оценки; исключён из контрольной метрики.",
+  "cases": [
+    {"id":"dev-string-loop","code":"def digit_sum(n):\n    total = 0\n    for digit in str(n):\n        total += int(digit)\n    return total","expected_score":3},
+    {"id":"dev-zero-none","code":"def digit_sum(n):\n    if n == 0:\n        return None\n    return sum(map(int, str(n)))","expected_score":2},
+    {"id":"dev-last-digit","code":"def digit_sum(n):\n    return n % 10","expected_score":1},
+    {"id":"dev-syntax","code":"def digit_sum(n)\n    return n","expected_score":null},
+    {"id":"dev-raise","code":"def digit_sum(n):\n    raise RuntimeError('synthetic')","expected_score":null}
+  ]
+}

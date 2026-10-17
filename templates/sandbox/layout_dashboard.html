@@ -37,6 +37,7 @@
         <div class="bs-dashboard-nav-link is-coming-soon bs-student-program-soon" aria-disabled="true" aria-label="Программа — скоро"><i class="ph ph-map-trifold" aria-hidden="true"></i><span class="bs-student-program-label">Программа<small>Скоро...</small></span></div>
       {% elif dashboard_admin_shell %}
         <a class="bs-dashboard-nav-link {% if request.path == '/admin/users' or request.path == '/admin' %}is-active{% endif %}" href="/admin/users"><i class="ph ph-users-three"></i><span>Пользователи</span></a>
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/ai-lab') %}is-active{% endif %}" href="{{ url_for('admin.admin_ai_lab') }}"><i class="ph ph-flask"></i><span>AI Lab</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/permissions') %}is-active{% endif %}" href="/admin/permissions"><i class="ph ph-key"></i><span>Права доступа</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/audit') %}is-active{% endif %}" href="/admin/audit"><i class="ph ph-scroll"></i><span>Аудит</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/admin/promocodes') %}is-active{% endif %}" href="/admin/promocodes"><i class="ph ph-ticket"></i><span>Промокоды</span></a>
@@ -117,6 +118,7 @@
   <nav id="dashboard-mobile-nav" class="bs-dashboard-mobile-nav" aria-label="Мобильная навигация">
     {% if dashboard_admin_shell %}
     <a href="/admin/users" class="{% if request.path.startswith('/admin/users') or request.path == '/admin' %}is-active{% endif %}"><i class="ph ph-users-three"></i><span>Пользователи</span></a>
+    <a href="{{ url_for('admin.admin_ai_lab') }}" class="{% if request.path.startswith('/admin/ai-lab') %}is-active{% endif %}"><i class="ph ph-flask"></i><span>AI Lab</span></a>
     <a href="/admin/audit" class="{% if request.path.startswith('/admin/audit') %}is-active{% endif %}"><i class="ph ph-scroll"></i><span>Аудит</span></a>
     <a href="/admin/diagnostics" class="{% if request.path.startswith('/admin/diagnostics') %}is-active{% endif %}"><i class="ph ph-wrench"></i><span>Диагностика</span></a>
     {% else %}

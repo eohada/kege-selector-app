@@ -31,6 +31,48 @@ def _room(lesson_id: int) -> str:
     return f"lesson:{lesson_id}"
 
 
+def _load_cached_board_strokes(lesson_id: int) -> dict[str, Any]:
+    if lesson_id not in _lesson_board_strokes:
+        _lesson_board_strokes[lesson_id] = {}
+        try:
+            from app.models import Lesson
+            lesson = Lesson.query.get(lesson_id)
+            if lesson:
+                from app.lessons.routes import _lesson_studio_state
+                state = _lesson_studio_state(lesson)
+                board = state.get("board") or {}
+                strokes = board.get("strokes") or []
+                for s in strokes:
+                    if isinstance(s, dict):
+                        sid = str(s.get("id") or s.get("stroke_id") or len(_lesson_board_strokes[lesson_id]))
+                        _lesson_board_strokes[lesson_id][sid] = s
+        except Exception as e:
+            logger.warning("Error loading cached board strokes for lesson %s: %s", lesson_id, e)
+    return _lesson_board_strokes[lesson_id]
+
+
+def _persist_cached_board_strokes(lesson_id: int) -> None:
+    try:
+        from app.models import Lesson, db, moscow_now
+        lesson = Lesson.query.get(lesson_id)
+        if lesson:
+            from app.lessons.routes import _lesson_studio_state, _save_lesson_studio_state
+            state = _lesson_studio_state(lesson)
+            strokes = list(_lesson_board_strokes.get(lesson_id, {}).values())
+            board = state.get("board") or {}
+            rev = int(board.get("revision") or 0) + 1
+            state["board"] = {
+                "strokes": strokes,
+                "revision": rev,
+                "updated_at": moscow_now().isoformat(),
+            }
+            _save_lesson_studio_state(lesson, state)
+            db.session.commit()
+    except Exception as e:
+        logger.warning("Error persisting cached board strokes for lesson %s: %s", lesson_id, e)
+
+
+
 def _room_control(lesson_id: int) -> dict[str, Any]:
     cached = _lesson_control_cache.get(lesson_id)
     now = monotonic()
@@ -245,7 +287,7 @@ def register_lesson_socket(socketio) -> None:
         for ui_payload in room_ui.values():
             socketio.emit("lesson_room_ui_state", ui_payload, room=request.sid, namespace="/lesson")
         # Воспроизвести текущие штрихи доски
-        board_strokes = list(_lesson_board_strokes.get(lesson_id, {}).values())
+        board_strokes = list(_load_cached_board_strokes(lesson_id).values())
         if board_strokes:
             socketio.emit("board_snapshot", {"lesson_id": lesson_id, "strokes": board_strokes}, room=request.sid, namespace="/lesson")
         # Воспроизвести текущую позицию камеры доски
@@ -302,7 +344,8 @@ def register_lesson_socket(socketio) -> None:
             return
         stroke_id = str(stroke.get("id") or "")
         if stroke_id:
-            _lesson_board_strokes.setdefault(lesson_id, {})[stroke_id] = stroke
+            _load_cached_board_strokes(lesson_id)[stroke_id] = stroke
+            _persist_cached_board_strokes(lesson_id)
         socketio.emit(
             "board_stroke",
             {
@@ -329,18 +372,21 @@ def register_lesson_socket(socketio) -> None:
             lesson_id = int(lesson_id)
         except (TypeError, ValueError):
             return
+        board_strokes = _load_cached_board_strokes(lesson_id)
         if action == "update":
             for s in (data.get("strokes") or []):
                 sid = str((s or {}).get("id") or "")
                 if sid:
-                    _lesson_board_strokes.setdefault(lesson_id, {})[sid] = s
+                    board_strokes[sid] = s
+            _persist_cached_board_strokes(lesson_id)
         elif action == "delete":
             del_ids = data.get("strokes") or data.get("stroke_ids") or []
-            board_strokes = _lesson_board_strokes.get(lesson_id, {})
             for sid in del_ids:
                 board_strokes.pop(str(sid), None)
+            _persist_cached_board_strokes(lesson_id)
         elif action == "clear":
-            _lesson_board_strokes.pop(lesson_id, None)
+            _lesson_board_strokes[lesson_id] = {}
+            _persist_cached_board_strokes(lesson_id)
 
         socketio.emit(
             "board_action",
@@ -405,7 +451,7 @@ def register_lesson_socket(socketio) -> None:
             room_ui = _lesson_room_ui.get(lesson_id) or {}
             for ui_payload in room_ui.values():
                 socketio.emit("lesson_room_ui_state", ui_payload, room=request.sid, namespace="/lesson")
-            board_strokes = list(_lesson_board_strokes.get(lesson_id, {}).values())
+            board_strokes = list(_load_cached_board_strokes(lesson_id).values())
             if board_strokes:
                 socketio.emit("board_snapshot", {"lesson_id": lesson_id, "strokes": board_strokes}, room=request.sid, namespace="/lesson")
             camera_state = _lesson_camera_state.get(lesson_id)
@@ -920,8 +966,22 @@ def register_lesson_socket(socketio) -> None:
             if _room_control(lesson_id).get("cursor_sync") is False:
                 return
             pointer = payload.get("pointer") if isinstance(payload.get("pointer"), dict) else {}
-            point = {"x": float(pointer.get("x") or 0), "y": float(pointer.get("y") or 0)} if pointer else None
-            socketio.emit("whiteboard_live_laser", {"lesson_id": lesson_id, "user_id": current_user.id, "page_id": payload.get("page_id"), "pointer": point, "visible": payload.get("visible", True)}, room=_room(lesson_id), namespace="/lesson", include_self=False)
+            socketio.emit(
+                "whiteboard_live_laser",
+                {
+                    "lesson_id": lesson_id,
+                    "user_id": current_user.id,
+                    "page_id": payload.get("page_id"),
+                    "pointer": point,
+                    "visible": payload.get("visible", True),
+                    "color": payload.get("color"),
+                    "width": payload.get("width") or payload.get("size"),
+                    "is_start": bool(payload.get("is_start")),
+                },
+                room=_room(lesson_id),
+                namespace="/lesson",
+                include_self=False,
+            )
         except Exception as error:
             socketio.emit("whiteboard_error", {"message": str(error)}, room=request.sid, namespace="/lesson")
 

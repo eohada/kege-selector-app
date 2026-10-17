@@ -597,7 +597,7 @@ def _object_is_editable(document: dict[str, Any], page: dict[str, Any], item: di
 
 def can_student_edit_page(document: dict[str, Any], page_id: str) -> bool:
     control = _control(document)
-    if control.get("board_locked") or not control.get("student_editing"):
+    if control.get("board_locked") or control.get("student_editing") is False:
         return False
     if _page_is_locked(document, page_id):
         return False

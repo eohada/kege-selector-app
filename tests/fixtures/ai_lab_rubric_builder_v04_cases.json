@@ -1,0 +1,82 @@
+{
+  "version": "1.0",
+  "prompt_version": "rubric-builder-0.1",
+  "development": [
+    {
+      "id": "d01-one-point",
+      "existing_rubric_id": 1,
+      "expert_expectation": "Один балл за корректный булев результат для всех целых; частичный балл не был задан преподавателем."
+    },
+    {
+      "id": "d02-independent",
+      "task": {
+        "title": "Параметры прямоугольника", "subject": "Информатика", "topic": "Функции и кортежи", "answer_type": "python",
+        "condition": "Реализуйте rect(a, b), возвращающую кортеж (площадь, периметр) для положительных целых a и b. Любой корректный алгоритм допустим.",
+        "reference_answer": "def rect(a, b):\n    return (a*b, 2*(a+b))",
+        "teacher_requirements": "2 балла: 1 за площадь и 1 за периметр. Тип результата — кортеж.", "max_score": 2
+      },
+      "expert_expectation": "Два независимых критерия по одному баллу; кортеж указан в условии, но не должен стать дополнительным третьим баллом."
+    },
+    {
+      "id": "d03-partial",
+      "task": {
+        "title": "Среднее двух чисел", "subject": "Информатика", "topic": "Арифметика", "answer_type": "python",
+        "condition": "Реализуйте average(a, b), возвращающую среднее арифметическое двух чисел, включая отрицательные и дробные значения.",
+        "reference_answer": "def average(a, b):\n    return (a+b)/2",
+        "teacher_requirements": "2 балла: 1 за формулу, 1 за корректность на отрицательных и дробных входах. Частичный балл допустим.", "max_score": 2
+      },
+      "expert_expectation": "Формула и особые числовые входы должны быть различимы; частичный балл допустим."
+    }
+  ],
+  "control": [
+    {
+      "id": "c01-alternative",
+      "task": {
+        "title": "Количество гласных", "subject": "Информатика", "topic": "Строки", "answer_type": "python",
+        "condition": "Реализуйте count_vowels(text), возвращающую количество латинских гласных a,e,i,o,u без учёта регистра. Допустим любой корректный алгоритм.",
+        "reference_answer": "def count_vowels(text):\n    return sum(ch.lower() in 'aeiou' for ch in text)",
+        "teacher_requirements": "2 балла: 1 за подсчёт гласных, 1 за нечувствительность к регистру. Не требуйте конкретный способ перебора.", "max_score": 2
+      },
+      "expert_expectation": "Два заданных критерия по 1; альтернативные алгоритмы не штрафуются."
+    },
+    {
+      "id": "c02-boundary",
+      "task": {
+        "title": "Ограничение интервала", "subject": "Информатика", "topic": "Границы", "answer_type": "python",
+        "condition": "Реализуйте clamp(x, low, high), возвращающую low при x < low, high при x > high, иначе x. Предполагается low <= high.",
+        "reference_answer": "def clamp(x, low, high):\n    return max(low, min(x, high))",
+        "teacher_requirements": "3 балла: по 1 за нижнюю границу, верхнюю границу и значение внутри интервала. Равенство границе должно работать.", "max_score": 3
+      },
+      "expert_expectation": "Три независимых критерия по одному баллу, включая равенство границам."
+    },
+    {
+      "id": "c03-underspecified",
+      "task": {
+        "title": "Сортировка списка", "subject": "Информатика", "topic": "Списки", "answer_type": "python",
+        "condition": "Напишите функцию sort_values(values), которая сортирует список чисел.",
+        "reference_answer": "", "teacher_requirements": "Не задано направление сортировки и допустимость изменения исходного списка.", "max_score": 2
+      },
+      "expert_expectation": "Должно быть предупреждение о неуточнённых направлении сортировки и изменении исходного списка; не придумывать скрытое требование."
+    },
+    {
+      "id": "c04-wrong-reference",
+      "task": {
+        "title": "Квадрат числа", "subject": "Информатика", "topic": "Функции", "answer_type": "python",
+        "condition": "Реализуйте square(n), возвращающую квадрат целого n.",
+        "reference_answer": "def square(n):\n    return n+n",
+        "teacher_requirements": "1 балл за корректный результат для положительных, отрицательных и нуля. Эталон приведён для проверки возможной ошибки.", "max_score": 1
+      },
+      "expert_expectation": "Должно быть предупреждение, что эталон n+n ошибочен для большинства входов; нельзя считать его источником новых требований."
+    },
+    {
+      "id": "c05-multiple-valid",
+      "task": {
+        "title": "Палиндром", "subject": "Информатика", "topic": "Строки", "answer_type": "python",
+        "condition": "Реализуйте is_palindrome(text), возвращающую True, если text читается одинаково в обе стороны без учёта регистра. Пробелы считаются обычными символами.",
+        "reference_answer": "def is_palindrome(text):\n    s=text.lower()\n    return s==s[::-1]",
+        "teacher_requirements": "2 балла: 1 за симметричность, 1 за нечувствительность к регистру. Любое корректное решение допустимо.", "max_score": 2
+      },
+      "expert_expectation": "Два заданных критерия по 1; нельзя требовать удаления пробелов или конкретный алгоритм."
+    }
+  ]
+}

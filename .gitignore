@@ -240,7 +240,7 @@ output/
 tmp/
 data/*.sqlite
 scratch/
-artifacts/visual/
+artifacts/
 /*.png
 gen-lang-client-*.json
 .codex/

@@ -1,0 +1,31 @@
+{
+  "name": "digit-sum-control-holdout",
+  "version": 1,
+  "assignment_id": "ai-lab.python.digit-sum",
+  "assignment_version": 1,
+  "suite": "digit-sum-evidence-v1",
+  "model": "GigaChat-3-Pro",
+  "criteria": ["multi-digit", "zero-single", "embedded-zero"],
+  "cases": [
+    {"id":"h01-map-string","code":"def digit_sum(n):\n    return sum(map(int, str(n)))","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h02-reduce","code":"from functools import reduce\ndef digit_sum(n):\n    return reduce(lambda total, char: total + int(char), str(n), 0)","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h03-recursion","code":"def digit_sum(n):\n    if n < 10:\n        return n\n    return n % 10 + digit_sum(n // 10)","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h04-list-comprehension","code":"def digit_sum(n):\n    return sum([int(char) for char in str(n)])","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h05-divmod-loop","code":"def digit_sum(n):\n    total = 0\n    while n > 0:\n        n, digit = divmod(n, 10)\n        total += digit\n    return total","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h06-recursive-string","code":"def digit_sum(n):\n    text = str(n)\n    return int(text[0]) if len(text) == 1 else int(text[0]) + digit_sum(int(text[1:]))","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h07-generator-sum","code":"def digit_sum(n):\n    return sum(int(char) for char in f'{n}')","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h08-while-place","code":"def digit_sum(n):\n    total = 0\n    while n:\n        total += n % 10\n        n //= 10\n    return total","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h09-ord-conversion","code":"def digit_sum(n):\n    return sum(ord(char) - ord('0') for char in str(n))","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h10-recursive-tail","code":"def digit_sum(n):\n    def visit(value, acc):\n        if value == 0:\n            return acc\n        return visit(value // 10, acc + value % 10)\n    return visit(n, 0)","expected_score":3,"criterion_scores":{"multi-digit":1,"zero-single":1,"embedded-zero":1},"issue_tags":[],"recommendation_tags":[]},
+    {"id":"h11-zero-null","code":"def digit_sum(n):\n    if n == 0:\n        return None\n    return sum(map(int, str(n)))","expected_score":2,"criterion_scores":{"multi-digit":1,"zero-single":0,"embedded-zero":1},"issue_tags":["zero_boundary"],"recommendation_tags":["zero_boundary"]},
+    {"id":"h12-independent-errors","code":"def digit_sum(n):\n    if n == 0:\n        return None\n    return sum(map(int, str(n))) + 1","expected_score":0,"criterion_scores":{"multi-digit":0,"zero-single":0,"embedded-zero":0},"issue_tags":["zero_boundary","off_by_one"],"recommendation_tags":["zero_boundary","sum_accuracy"]},
+    {"id":"h13-trailing-zero-error","code":"def digit_sum(n):\n    return sum(map(int, str(n))) + (1 if n % 10 == 0 else 0)","expected_score":1,"criterion_scores":{"multi-digit":1,"zero-single":0,"embedded-zero":0},"issue_tags":["zero_boundary","embedded_zero"],"recommendation_tags":["zero_boundary","embedded_zero"]},
+    {"id":"h14-last-digit-only","code":"def digit_sum(n):\n    return n % 10","expected_score":1,"criterion_scores":{"multi-digit":0,"zero-single":1,"embedded-zero":0},"issue_tags":["incomplete_digit_traversal"],"recommendation_tags":["all_digits"]},
+    {"id":"h15-string-result","code":"def digit_sum(n):\n    return str(sum(map(int, str(n))))","expected_score":0,"criterion_scores":{"multi-digit":0,"zero-single":0,"embedded-zero":0},"issue_tags":["return_type"],"recommendation_tags":["return_integer"]},
+    {"id":"h16-constant-zero","code":"def digit_sum(n):\n    return 0","expected_score":0,"criterion_scores":{"multi-digit":0,"zero-single":0,"embedded-zero":0},"issue_tags":["constant_result"],"recommendation_tags":["use_input_digits"]},
+    {"id":"h17-incomplete-pass","code":"def digit_sum(n):\n    pass","expected_score":0,"criterion_scores":{"multi-digit":0,"zero-single":0,"embedded-zero":0},"issue_tags":["incomplete_return"],"recommendation_tags":["return_sum"]},
+    {"id":"h18-syntax-error","code":"def digit_sum(n)\n    return sum(map(int, str(n)))","expected_score":null,"criterion_scores":{"multi-digit":null,"zero-single":null,"embedded-zero":null},"issue_tags":["syntax_error"],"recommendation_tags":["syntax_error"]},
+    {"id":"h19-runtime-error","code":"def digit_sum(n):\n    return 1 // (n - n)","expected_score":null,"criterion_scores":{"multi-digit":null,"zero-single":null,"embedded-zero":null},"issue_tags":["runtime_error"],"recommendation_tags":["runtime_error"]},
+    {"id":"h20-unmapped-criterion","suite":"digit-sum-alternative","code":"def digit_sum(n):\n    return sum(map(int, str(n)))","expected_score":null,"criterion_scores":{"multi-digit":1,"zero-single":null,"embedded-zero":1},"issue_tags":[],"recommendation_tags":["unverified_criterion"]}
+  ]
+}

@@ -158,6 +158,91 @@ def admin_panel():
     return redirect(url_for('admin.admin_users'))
 
 
+@admin_bp.route('/admin/ai-lab')
+@login_required
+def admin_ai_lab():
+    """Интерфейс лаборатории BooStudy AI, доступный администраторам и создателям."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен. Требуется роль "Администратор" или "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    sections = {'overview', 'experiments', 'instructions', 'models', 'history'}
+    section = (request.args.get('section') or 'overview').strip().lower()
+    if section not in sections:
+        section = 'overview'
+
+    modules = [
+        {
+            'icon': 'ph-map-trifold',
+            'name': 'Адаптивные курсы',
+            'description': 'Интеллектуальный анализ прогресса и персонализация учебных маршрутов. Система будет выявлять пробелы, подбирать повторения и предлагать корректировки программы.',
+            'status': 'Первый в очереди',
+            'tone': 'lilac',
+        },
+        {
+            'icon': 'ph-notebook',
+            'name': 'Проверка домашних работ',
+            'description': 'Предварительная оценка решений, разбор ошибок, комментарии и рекомендации преподавателю.',
+            'status': 'Открыть AI Homework Studio',
+            'tone': 'sky',
+            'href': url_for('ai_lab.studio'),
+        },
+        {
+            'icon': 'ph-chart-line-up',
+            'name': 'Интеллектуальная аналитика',
+            'description': 'Анализ учебных показателей, выявление закономерностей, отслеживание прогресса и поиск проблемных навыков.',
+            'status': 'Планируется',
+            'tone': 'mint',
+        },
+        {
+            'icon': 'ph-chalkboard-teacher',
+            'name': 'Анализ уроков',
+            'description': 'Расшифровка записей занятий, создание кратких конспектов и использование результатов уроков для персонализации обучения.',
+            'status': 'Планируется',
+            'tone': 'peach',
+        },
+        {
+            'icon': 'ph-lightning',
+            'name': 'Умная практика',
+            'description': 'Подбор и генерация упражнений для блиц-вопросов, работы над ошибками и закрепления знаний.',
+            'status': 'Планируется',
+            'tone': 'butter',
+        },
+    ]
+    from app.ai_lab.provider import is_local_ai_lab_enabled
+    from app.ai_lab.prompts import DEFAULT_PROMPT_TEXT
+    from app.ai_lab.service import (
+        ensure_initial_prompt,
+        get_dashboard_stats,
+        get_experiments,
+        get_prompt_versions,
+        get_provider_card,
+    )
+
+    lab_enabled = is_local_ai_lab_enabled()
+    lab_stats = get_dashboard_stats() if lab_enabled else None
+    lab_prompt = None
+    lab_prompt_versions = []
+    lab_experiments = []
+    if lab_enabled and section == 'instructions':
+        lab_prompt = ensure_initial_prompt()
+        lab_prompt_versions = get_prompt_versions()
+    if lab_enabled and section in {'experiments', 'history'}:
+        lab_experiments = get_experiments(25 if section == 'history' else 8)
+    return render_template(
+        'sandbox/ai_lab.html',
+        ai_lab_section=section,
+        ai_lab_modules=modules,
+        ai_lab_enabled=lab_enabled,
+        ai_lab_provider=get_provider_card(),
+        ai_lab_stats=lab_stats,
+        ai_lab_prompt=lab_prompt,
+        ai_lab_prompt_text=lab_prompt.content if lab_prompt else DEFAULT_PROMPT_TEXT,
+        ai_lab_prompt_versions=lab_prompt_versions,
+        ai_lab_experiments=lab_experiments,
+    )
+
+
 def _start_db_sync_job(prod_db_url: str, sandbox_db_url: str):
     app = current_app._get_current_object()
 

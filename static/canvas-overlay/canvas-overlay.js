@@ -138,6 +138,8 @@
     if (savedLWidth) laserWidth = savedLWidth;
   } catch (_) {}
   let laserMenu = null;
+  let remoteLaserColor = null;
+  let remoteLaserWidth = null;
   let currentBrush = 'pen'; // 'pen' | 'pencil' | 'brush' | 'highlighter'
 
   // Realtime Sync Adapter & Remote State
@@ -2650,8 +2652,8 @@
     }
 
     const now = Date.now();
-    const lColor = laserColor || '#ef4444';
-    const baseWidth = Math.max(3, (laserWidth || 6));
+    const lColor = (interactionMode === 'laser' ? laserColor : (remoteLaserColor || laserColor)) || '#ef4444';
+    const baseWidth = Math.max(3, (interactionMode === 'laser' ? laserWidth : (remoteLaserWidth || laserWidth || 6)));
 
     // Pass 1: Outer neon glowing bloom
     laserCtx.save();
@@ -2660,6 +2662,7 @@
     for (let i = 0; i < laserTrail.length - 1; i++) {
       const p1 = laserTrail[i];
       const p2 = laserTrail[i + 1];
+      if (p2.isStart) continue;
       const age = now - p2.t;
       if (age >= 1200) continue;
       const alpha = Math.max(0, 1 - age / 1200);
@@ -2680,6 +2683,7 @@
     for (let i = 0; i < laserTrail.length - 1; i++) {
       const p1 = laserTrail[i];
       const p2 = laserTrail[i + 1];
+      if (p2.isStart) continue;
       const age = now - p2.t;
       if (age >= 1200) continue;
       const alpha = Math.max(0, 1 - age / 1200);
@@ -5573,9 +5577,9 @@
     // Laser pointer
     if (tool === 'laser') {
       interactionMode = 'laser';
-      laserTrail.push({ x: screenX, y: screenY, t: Date.now() });
+      laserTrail.push({ x: screenX, y: screenY, t: Date.now(), isStart: true });
       drawLaserTop();
-      realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true);
+      realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true, { color: laserColor, width: laserWidth, isStart: true });
       canvas.setPointerCapture?.(e.pointerId);
       e.preventDefault();
       return;
@@ -5712,9 +5716,9 @@
 
     // Laser pointer
     if (interactionMode === 'laser') {
-      laserTrail.push({ x: screenX, y: screenY, t: Date.now() });
+      laserTrail.push({ x: screenX, y: screenY, t: Date.now(), isStart: false });
       drawLaserTop();
-      realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true);
+      realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true, { color: laserColor, width: laserWidth, isStart: false });
       e.preventDefault();
       return;
     }
@@ -6647,23 +6651,31 @@
 
   function undo() {
     if (!strokes.length) return;
-    redoStack.push(strokes.pop());
+    const popped = strokes.pop();
+    redoStack.push(popped);
     selectedIds.clear();
     dirty = true;
     redraw();
     updateSelectionBox();
     saveLocal();
     scheduleSave();
+    if (popped && popped.id) {
+      realtimeSyncAdapter?.onStrokesDelete?.([popped.id]);
+    }
   }
 
   function redo() {
     if (!redoStack.length) return;
-    strokes.push(redoStack.pop());
+    const restored = redoStack.pop();
+    strokes.push(restored);
     dirty = true;
     redraw();
     updateSelectionBox();
     saveLocal();
     scheduleSave();
+    if (restored) {
+      realtimeSyncAdapter?.onStrokeCommit?.(restored);
+    }
   }
 
   function executeClearAll() {
@@ -8103,15 +8115,22 @@
     syncDomWidgets();
   }
 
-  function applyRemoteLaser(worldPoint, visible = true) {
+  function applyRemoteLaser(worldPoint, visible = true, options = {}) {
     if (!visible || !worldPoint) {
       laserTrail.length = 0;
       drawLaserTop();
       return;
     }
+    if (options.color) remoteLaserColor = options.color;
+    if (options.width || options.size) remoteLaserWidth = Number(options.width || options.size);
     const screenX = Number(worldPoint.x) * viewScale + viewOffsetX;
     const screenY = Number(worldPoint.y) * viewScale + viewOffsetY;
-    laserTrail.push({ x: screenX, y: screenY, t: Date.now() });
+    laserTrail.push({
+      x: screenX,
+      y: screenY,
+      t: Date.now(),
+      isStart: Boolean(options.isStart),
+    });
     drawLaserTop();
   }
 

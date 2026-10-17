@@ -1,0 +1,713 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block title %}BooStudy AI Lab · BooStudy{% endblock %}
+
+{% block extra_head %}
+  {{ super() }}
+  <style>
+    .bs-ai-lab {
+      --ai-lab-gap: var(--bs-space-5, 20px);
+      width: min(100%, 1400px);
+      margin-inline: auto;
+      padding: clamp(18px, 2.4vw, 36px) clamp(16px, 2.4vw, 36px) 52px;
+      color: var(--bs-text-primary);
+      display: grid;
+      gap: var(--ai-lab-gap);
+    }
+
+    .bs-ai-lab *,
+    .bs-ai-lab *::before,
+    .bs-ai-lab *::after { box-sizing: border-box; }
+
+    .ai-lab-hero,
+    .ai-lab-panel,
+    .ai-lab-module,
+    .ai-lab-empty,
+    .ai-lab-provider,
+    .ai-lab-pillar {
+      border: 1px solid var(--bs-border);
+      border-radius: var(--bs-radius-xl, 28px);
+      background: var(--bs-bg-surface);
+    }
+
+    .ai-lab-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(250px, .75fr);
+      align-items: center;
+      gap: clamp(20px, 4vw, 54px);
+      min-height: 270px;
+      padding: clamp(24px, 4vw, 52px);
+      border-color: var(--bs-border-warm);
+      background: linear-gradient(112deg, var(--bs-surface-peach-soft) 0%, var(--bs-bg-surface) 58%, var(--bs-surface-lilac-soft) 100%);
+      box-shadow: var(--bs-shadow-e1);
+      overflow: hidden;
+      position: relative;
+      isolation: isolate;
+    }
+
+    .ai-lab-hero::after {
+      content: "";
+      width: 330px;
+      height: 330px;
+      border: 1px solid var(--bs-border);
+      border-radius: 50%;
+      position: absolute;
+      right: 9%;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: -1;
+    }
+
+    .ai-lab-copy { min-width: 0; max-width: 760px; }
+    .ai-lab-brandline,
+    .ai-lab-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--bs-text-muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .11em;
+      line-height: 1.35;
+      text-transform: uppercase;
+    }
+
+    .ai-lab-brandline { margin-bottom: 17px; }
+    .ai-lab-brandline i { color: var(--bs-primary); font-size: 16px; }
+    .ai-lab-title {
+      margin: 0;
+      color: var(--bs-text-primary);
+      font-size: clamp(32px, 4.2vw, 54px);
+      font-weight: 800;
+      letter-spacing: -.045em;
+      line-height: 1.04;
+    }
+    .ai-lab-subtitle {
+      margin: 10px 0 0;
+      color: var(--bs-text-secondary);
+      font-size: clamp(17px, 2vw, 22px);
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .ai-lab-description {
+      max-width: 680px;
+      margin: 12px 0 0;
+      color: var(--bs-text-secondary);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+    .ai-lab-hero-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+
+    .ai-lab-status,
+    .ai-lab-version,
+    .ai-lab-pill {
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 6px 11px;
+      border: 1px solid transparent;
+      border-radius: var(--bs-radius-pill, 999px);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.25;
+      white-space: normal;
+    }
+    .ai-lab-status { background: var(--bs-surface-butter-soft); border-color: var(--bs-border-warm); color: var(--bs-warning-ink); }
+    .ai-lab-status i { font-size: 14px; }
+    .ai-lab-version { background: var(--bs-bg-surface); border-color: var(--bs-border); color: var(--bs-text-secondary); }
+
+    .ai-lab-orbit {
+      min-height: 190px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      color: var(--bs-primary);
+    }
+    .ai-lab-orbit::before,
+    .ai-lab-orbit::after {
+      content: "";
+      position: absolute;
+      width: 182px;
+      height: 112px;
+      border: 1px solid var(--bs-border-strong);
+      border-radius: 50%;
+      transform: rotate(-28deg);
+    }
+    .ai-lab-orbit::after { transform: rotate(52deg); border-color: var(--bs-border-warm); }
+    .ai-lab-orbit-core {
+      width: 92px;
+      height: 92px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--bs-border);
+      border-radius: var(--bs-radius-xl, 28px);
+      background: rgba(255, 254, 253, .9);
+      box-shadow: var(--bs-shadow-e1);
+      transform: rotate(-5deg);
+    }
+    .ai-lab-orbit-core i { font-size: 44px; transform: rotate(5deg); }
+    .ai-lab-orbit-node {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      position: absolute;
+      border: 1px solid var(--bs-border);
+      border-radius: var(--bs-radius-md, 14px);
+      background: var(--bs-bg-surface);
+      box-shadow: var(--bs-shadow-e1);
+      font-size: 18px;
+    }
+    .ai-lab-orbit-node.node-one { top: 12px; right: 25%; color: var(--bs-info); }
+    .ai-lab-orbit-node.node-two { bottom: 11px; left: 20%; color: var(--bs-success); }
+    .ai-lab-orbit-node.node-three { right: 12%; bottom: 30%; color: var(--bs-warning); }
+
+    .ai-lab-tabs {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      border: 1px solid var(--bs-border);
+      border-radius: var(--bs-radius-lg, 20px);
+      background: var(--bs-bg-surface-soft);
+    }
+    .ai-lab-tab {
+      min-height: 44px;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 15px;
+      border: 1px solid transparent;
+      border-radius: var(--bs-radius-md, 14px);
+      color: var(--bs-text-secondary);
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: color var(--bs-motion-fast, 120ms) ease, background var(--bs-motion-fast, 120ms) ease, border-color var(--bs-motion-fast, 120ms) ease, transform var(--bs-motion-fast, 120ms) ease;
+    }
+    .ai-lab-tab i { font-size: 17px; }
+    .ai-lab-tab:hover { background: var(--bs-bg-surface); color: var(--bs-text-primary); border-color: var(--bs-border); transform: translateY(-1px); }
+    .ai-lab-tab.is-active { background: var(--bs-bg-surface); border-color: var(--bs-border); color: var(--bs-primary); box-shadow: var(--bs-shadow-e1); }
+    .ai-lab-tab:focus-visible,
+    .ai-lab-provider:focus-visible { outline: 3px solid var(--bs-primary-soft); outline-offset: 2px; }
+
+    .ai-lab-section { display: grid; gap: var(--ai-lab-gap); }
+    .ai-lab-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+    .ai-lab-section-heading h2,
+    .ai-lab-section-heading h1 { margin: 0; color: var(--bs-text-primary); font-size: clamp(23px, 2.5vw, 31px); font-weight: 800; letter-spacing: -.035em; line-height: 1.15; }
+    .ai-lab-section-heading p { max-width: 720px; margin: 8px 0 0; color: var(--bs-text-secondary); font-size: 14px; line-height: 1.6; }
+    .ai-lab-eyebrow { margin: 0 0 9px; color: var(--bs-primary); }
+    .ai-lab-count { color: var(--bs-text-muted); font-size: 12px; font-weight: 700; }
+
+    .ai-lab-modules {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-auto-rows: minmax(156px, auto);
+      gap: var(--ai-lab-gap);
+    }
+    .ai-lab-module {
+      --module-surface: var(--bs-bg-surface);
+      min-width: 0;
+      grid-column: span 3;
+      padding: clamp(17px, 2vw, 23px);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      background: linear-gradient(150deg, var(--module-surface), var(--bs-bg-surface) 75%);
+      transition: transform var(--bs-motion-normal, 180ms) ease, border-color var(--bs-motion-normal, 180ms) ease, box-shadow var(--bs-motion-normal, 180ms) ease;
+    }
+    .ai-lab-module:hover { transform: translateY(-1px); border-color: var(--bs-border-strong); box-shadow: var(--bs-shadow-e1); }
+    .ai-lab-module.is-featured { grid-column: span 6; grid-row: span 2; padding: clamp(22px, 3vw, 34px); }
+    .ai-lab-module.tone-lilac { --module-surface: var(--bs-surface-lilac-soft); }
+    .ai-lab-module.tone-sky { --module-surface: var(--bs-surface-sky-soft); }
+    .ai-lab-module.tone-mint { --module-surface: var(--bs-surface-mint-soft); }
+    .ai-lab-module.tone-peach { --module-surface: var(--bs-surface-peach-soft); }
+    .ai-lab-module.tone-butter { --module-surface: var(--bs-surface-butter-soft); }
+    .ai-lab-module-icon {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--bs-border);
+      border-radius: var(--bs-radius-md, 14px);
+      background: rgba(255, 254, 253, .85);
+      color: var(--bs-primary);
+      font-size: 21px;
+    }
+    .tone-sky .ai-lab-module-icon { color: var(--bs-info); }
+    .tone-mint .ai-lab-module-icon { color: var(--bs-success); }
+    .tone-peach .ai-lab-module-icon { color: var(--bs-warning-ink); }
+    .tone-butter .ai-lab-module-icon { color: var(--bs-warning-ink); }
+    .ai-lab-module h3 { margin: 17px 0 0; color: var(--bs-text-primary); font-size: 16px; font-weight: 800; line-height: 1.3; letter-spacing: -.02em; }
+    .ai-lab-module.is-featured h3 { margin-top: 20px; font-size: clamp(22px, 2.3vw, 29px); }
+    .ai-lab-module p { margin: 9px 0 19px; color: var(--bs-text-secondary); font-size: 13px; line-height: 1.55; }
+    .ai-lab-module.is-featured p { max-width: 560px; font-size: 14px; line-height: 1.65; }
+    .ai-lab-module .ai-lab-status { margin-top: auto; }
+    .ai-lab-course-flow { width: 100%; margin: 0 0 18px; }
+    .ai-lab-course-flow-label { display: block; margin-bottom: 9px; color: var(--bs-text-muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .ai-lab-course-flow-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .ai-lab-course-step { min-width: 0; min-height: 68px; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 7px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md, 14px); background: var(--bs-bg-surface); color: var(--bs-text-secondary); font-size: 11px; font-weight: 700; line-height: 1.35; }
+    .ai-lab-course-step i { color: var(--bs-primary); font-size: 16px; }
+    .ai-lab-status.tone-lilac { color: #5134bc; background: var(--bs-primary-soft); border-color: rgba(91, 53, 245, .12); }
+    .ai-lab-status.tone-sky { color: #126ba9; background: var(--bs-info-soft); border-color: rgba(25, 137, 232, .12); }
+    .ai-lab-status.tone-mint { color: #087953; background: var(--bs-success-soft); border-color: rgba(22, 185, 130, .12); }
+    .ai-lab-status.tone-peach,
+    .ai-lab-status.tone-butter { color: var(--bs-warning-ink); background: var(--bs-surface-butter-soft); border-color: var(--bs-border-warm); }
+
+    .ai-lab-panel { padding: clamp(20px, 3vw, 32px); box-shadow: var(--bs-shadow-e0); }
+    .ai-lab-work-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(250px, .7fr); gap: var(--ai-lab-gap); align-items: stretch; }
+    .ai-lab-empty {
+      min-height: 230px;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      padding: clamp(22px, 3vw, 34px);
+      border-style: dashed;
+      background: var(--bs-bg-surface-soft);
+    }
+    .ai-lab-empty-icon {
+      width: 66px;
+      height: 66px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--bs-border);
+      border-radius: var(--bs-radius-xl, 28px);
+      background: var(--bs-bg-surface);
+      color: var(--bs-primary);
+      box-shadow: var(--bs-shadow-e1);
+      font-size: 30px;
+    }
+    .ai-lab-empty h3 { margin: 0; color: var(--bs-text-primary); font-size: 18px; font-weight: 800; line-height: 1.35; }
+    .ai-lab-empty p { max-width: 550px; margin: 8px 0 0; color: var(--bs-text-secondary); font-size: 13px; line-height: 1.6; }
+    .ai-lab-work-aside { display: grid; gap: 10px; align-content: center; }
+    .ai-lab-future-item { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md); background: var(--bs-bg-surface); color: var(--bs-text-secondary); font-size: 13px; font-weight: 700; }
+    .ai-lab-future-item i { color: var(--bs-primary); font-size: 17px; }
+    .ai-lab-future-item span { margin-left: auto; color: var(--bs-text-muted); font-size: 11px; font-weight: 600; }
+
+    .ai-lab-content-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ai-lab-gap); }
+    .ai-lab-pillar { min-width: 0; min-height: 190px; padding: 23px; display: flex; flex-direction: column; align-items: flex-start; background: var(--bs-bg-surface); }
+    .ai-lab-pillar > i { width: 42px; height: 42px; display: grid; place-items: center; border-radius: var(--bs-radius-md, 14px); background: var(--bs-surface-lilac-soft); color: var(--bs-primary); font-size: 21px; }
+    .ai-lab-pillar h2 { margin: 16px 0 0; color: var(--bs-text-primary); font-size: 16px; font-weight: 800; line-height: 1.35; }
+    .ai-lab-pillar p { margin: 7px 0 15px; color: var(--bs-text-secondary); font-size: 13px; line-height: 1.55; }
+    .ai-lab-pillar .ai-lab-status { margin-top: auto; }
+    .ai-lab-provider { max-width: 720px; min-height: 190px; padding: clamp(22px, 3vw, 32px); display: flex; align-items: flex-start; gap: 20px; background: linear-gradient(135deg, var(--bs-surface-sky-soft), var(--bs-bg-surface) 75%); }
+    .ai-lab-provider-mark { width: 56px; height: 56px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--bs-border); border-radius: var(--bs-radius-lg, 20px); background: var(--bs-bg-surface); color: var(--bs-info); font-size: 28px; }
+    .ai-lab-provider h2 { margin: 0; color: var(--bs-text-primary); font-size: 21px; font-weight: 800; }
+    .ai-lab-provider p { max-width: 520px; margin: 8px 0 16px; color: var(--bs-text-secondary); font-size: 13px; line-height: 1.6; }
+    .ai-lab-provider-note { margin: 10px 0 0 !important; color: var(--bs-text-muted) !important; font-size: 12px !important; }
+    .ai-lab-empty.is-centered { min-height: 300px; flex-direction: column; justify-content: center; text-align: center; }
+    .ai-lab-empty.is-centered p { margin-inline: auto; }
+
+    @media (max-width: 1100px) {
+      .ai-lab-hero { grid-template-columns: minmax(0, 1.3fr) minmax(190px, .7fr); }
+      .ai-lab-tabs { flex-wrap: wrap; overflow: visible; }
+      .ai-lab-module { grid-column: span 4; }
+      .ai-lab-module.is-featured { grid-column: span 8; }
+      .ai-lab-work-grid { grid-template-columns: minmax(0, 1fr); }
+      .ai-lab-work-aside { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .ai-lab-future-item { align-items: flex-start; flex-wrap: wrap; }
+      .ai-lab-future-item span { width: 100%; margin-left: 28px; }
+    }
+    @media (max-width: 760px) {
+      .bs-ai-lab { gap: 16px; padding: 18px 14px 36px; }
+      .ai-lab-hero { grid-template-columns: minmax(0, 1fr); min-height: 0; gap: 8px; padding: 23px 20px 18px; }
+      .ai-lab-hero::after { display: none; }
+      .ai-lab-orbit { min-height: 135px; }
+      .ai-lab-orbit::before, .ai-lab-orbit::after { width: 158px; height: 86px; }
+      .ai-lab-orbit-core { width: 70px; height: 70px; border-radius: var(--bs-radius-lg, 20px); }
+      .ai-lab-orbit-core i { font-size: 34px; }
+      .ai-lab-orbit-node { width: 32px; height: 32px; font-size: 16px; }
+      .ai-lab-title { font-size: clamp(32px, 9vw, 42px); }
+      .ai-lab-description { font-size: 14px; }
+      .ai-lab-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-inline: -1px; overflow: visible; }
+      .ai-lab-tab { width: 100%; min-width: 0; flex: initial; padding-inline: 10px; font-size: 12px; }
+      .ai-lab-section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .ai-lab-modules { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(175px, auto); gap: 12px; }
+      .ai-lab-module { grid-column: span 1; padding: 16px; border-radius: var(--bs-radius-lg, 20px); }
+      .ai-lab-module.is-featured { grid-column: span 2; grid-row: auto; padding: 21px; }
+      .ai-lab-module h3 { font-size: 15px; }
+      .ai-lab-module p { font-size: 12px; }
+      .ai-lab-module.is-featured p { font-size: 13px; }
+      .ai-lab-module .ai-lab-status { align-self: flex-start; font-size: 11px; }
+      .ai-lab-course-flow { margin: 2px 0 16px; }
+      .ai-lab-course-flow-steps { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+      .ai-lab-course-step { min-height: 0; flex-direction: row; align-items: center; justify-content: flex-start; padding: 9px 11px; }
+      .ai-lab-work-aside { grid-template-columns: minmax(0, 1fr); }
+      .ai-lab-future-item { align-items: center; flex-wrap: nowrap; }
+      .ai-lab-future-item span { width: auto; margin-left: auto; }
+      .ai-lab-content-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+      .ai-lab-pillar { min-height: 0; }
+      .ai-lab-provider { min-height: 0; gap: 14px; padding: 21px; border-radius: var(--bs-radius-lg, 20px); }
+      .ai-lab-provider-mark { width: 46px; height: 46px; border-radius: var(--bs-radius-md, 14px); font-size: 23px; }
+      .ai-lab-empty { min-height: 0; align-items: flex-start; gap: 15px; padding: 21px; border-radius: var(--bs-radius-lg, 20px); }
+      .ai-lab-empty-icon { width: 52px; height: 52px; border-radius: var(--bs-radius-md, 14px); font-size: 24px; }
+      .ai-lab-empty h3 { font-size: 16px; }
+      .ai-lab-empty p { font-size: 12px; }
+      .ai-lab-empty.is-centered { min-height: 250px; align-items: center; }
+    }
+    @media (max-width: 430px) {
+      .ai-lab-hero { padding-inline: 17px; }
+      .ai-lab-module { padding: 14px; }
+      .ai-lab-module.is-featured { padding: 19px; }
+      .ai-lab-status { max-width: 100%; font-size: 11px; }
+      .ai-lab-provider { flex-direction: column; }
+      .ai-lab-empty { flex-direction: column; }
+      .ai-lab-empty.is-centered { align-items: center; }
+    }
+    @media (max-width: 850px) {
+      .bs-admin-shell:has(#boostudy-ai-lab) .bs-dashboard-sidebar-footer { display: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .bs-ai-lab *, .bs-ai-lab *::before, .bs-ai-lab *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+    body:has(#boostudy-ai-lab) #qa-widget-trigger-btn { display: none !important; }
+  </style>
+{% endblock %}
+
+{% block admin_content %}
+<main class="bs-ai-lab" id="boostudy-ai-lab">
+  {% if ai_lab_section == 'overview' %}
+    <header class="ai-lab-hero">
+      <div class="ai-lab-copy">
+        <div class="ai-lab-brandline"><i class="ph-bold ph-flask" aria-hidden="true"></i><span>Лаборатория интеллекта BooStudy</span></div>
+        <h1 class="ai-lab-title">BooStudy AI Lab</h1>
+        <p class="ai-lab-subtitle">Лаборатория интеллекта BooStudy</p>
+        <p class="ai-lab-description">Создавайте, исследуйте и совершенствуйте интеллектуальные инструменты обучения. Здесь начинается развитие BooStudy AI.</p>
+        <div class="ai-lab-hero-meta">
+          <span class="ai-lab-status"><i class="ph ph-hourglass-medium" aria-hidden="true"></i>Лаборатория готовится</span>
+          <span class="ai-lab-version">Версия v0.1</span>
+          <a class="ai-lab-tab is-active" href="{{ url_for('ai_lab.code_judge_page') }}">Открыть BooStudy Code Judge</a>
+          <a class="ai-lab-tab" href="{{ url_for('ai_lab.rubric_builder_page') }}">Генератор критериев</a>
+          <a class="ai-lab-tab" href="{{ url_for('ai_lab.quality_dashboard_page') }}">Качество AI Lab</a>
+        </div>
+      </div>
+      <div class="ai-lab-orbit" aria-hidden="true">
+        <span class="ai-lab-orbit-node node-one"><i class="ph ph-books"></i></span>
+        <span class="ai-lab-orbit-node node-two"><i class="ph ph-graduation-cap"></i></span>
+        <span class="ai-lab-orbit-node node-three"><i class="ph ph-lightning"></i></span>
+        <span class="ai-lab-orbit-core"><i class="ph-bold ph-brain"></i></span>
+      </div>
+    </header>
+  {% else %}
+    <div class="ai-lab-section-heading">
+      <div>
+        <p class="ai-lab-eyebrow">BooStudy AI Lab · v0.1</p>
+        {% if ai_lab_section == 'experiments' %}
+          <h1>Центр экспериментов</h1>
+          <p>Пространство для проверки гипотез, тестирования моделей и исследования поведения BooStudy AI.</p>
+        {% elif ai_lab_section == 'instructions' %}
+          <h1>Инструкции и правила</h1>
+          <p>Редактируйте инструкцию проверки и сохраняйте версии для новых экспериментов. Уже сохранённые версии не изменяются.</p>
+        {% elif ai_lab_section == 'models' %}
+          <h1>Подключённые модели</h1>
+          <p>Управление поставщиками AI, конфигурациями моделей и параметрами использования.</p>
+        {% else %}
+          <h1>История экспериментов</h1>
+          <p>Все исследования, результаты тестирования и изменения интеллектуальной системы в одном месте.</p>
+        {% endif %}
+      </div>
+      <span class="ai-lab-status{% if ai_lab_enabled %} tone-mint{% endif %}">
+        <i class="ph {% if ai_lab_enabled %}ph-shield-check{% else %}ph-lock-key{% endif %}" aria-hidden="true"></i>
+        {% if ai_lab_enabled %}Локальный режим включён{% else %}AI-запросы выключены{% endif %}
+      </span>
+    </div>
+  {% endif %}
+
+  <nav class="ai-lab-tabs" aria-label="Разделы AI Lab">
+    {% set lab_tabs = [
+      ('overview', 'Обзор', 'ph-squares-four'),
+      ('experiments', 'Эксперименты', 'ph-flask'),
+      ('instructions', 'Инструкции', 'ph-notepad'),
+      ('models', 'Модели', 'ph-circles-three-plus'),
+      ('history', 'История', 'ph-clock-counter-clockwise')
+    ] %}
+    {% for key, label, icon in lab_tabs %}
+      <a class="ai-lab-tab{% if ai_lab_section == key %} is-active{% endif %}"
+         href="{{ url_for('admin.admin_ai_lab', section=key) }}"
+         {% if ai_lab_section == key %}aria-current="page"{% endif %}>
+        <i class="ph {{ icon }}" aria-hidden="true"></i><span>{{ label }}</span>
+      </a>
+    {% endfor %}
+  </nav>
+
+  {% if ai_lab_section == 'overview' %}
+    <section class="ai-lab-section" aria-labelledby="ai-lab-directions-title">
+      <div class="ai-lab-section-heading">
+        <div><p class="ai-lab-eyebrow">Направления BooStudy AI</p><h2 id="ai-lab-directions-title">Пять направлений BooStudy AI</h2></div>
+        <span class="ai-lab-count">От маршрута до практики</span>
+      </div>
+      <div class="ai-lab-modules">
+        {% for module in ai_lab_modules %}
+          {% if module.href %}
+          <a class="ai-lab-module tone-{{ module.tone }}{% if loop.first %} is-featured{% endif %}" href="{{ module.href }}">
+          {% else %}
+          <article class="ai-lab-module tone-{{ module.tone }}{% if loop.first %} is-featured{% endif %}">
+          {% endif %}
+            <span class="ai-lab-module-icon"><i class="ph-bold {{ module.icon }}" aria-hidden="true"></i></span>
+            <h3>{{ module.name }}</h3>
+            <p>{{ module.description }}</p>
+            {% if loop.first %}
+              <div class="ai-lab-course-flow" aria-label="Будущая логика адаптивного курса">
+                <span class="ai-lab-course-flow-label">Будущий учебный цикл</span>
+                <div class="ai-lab-course-flow-steps">
+                  <div class="ai-lab-course-step"><i class="ph ph-magnifying-glass" aria-hidden="true"></i><span>Найти пробелы</span></div>
+                  <div class="ai-lab-course-step"><i class="ph ph-arrows-clockwise" aria-hidden="true"></i><span>Подобрать повторения</span></div>
+                  <div class="ai-lab-course-step"><i class="ph ph-map-trifold" aria-hidden="true"></i><span>Уточнить маршрут</span></div>
+                </div>
+              </div>
+            {% endif %}
+            <span class="ai-lab-status tone-{{ module.tone }}"><i class="ph ph-circle" aria-hidden="true"></i>{{ module.status }}</span>
+          {% if module.href %}</a>{% else %}</article>{% endif %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="ai-lab-section" aria-labelledby="ai-lab-workspace-title">
+      <div class="ai-lab-section-heading">
+        <div><p class="ai-lab-eyebrow">Исследования и наблюдения</p><h2 id="ai-lab-workspace-title">Рабочая область</h2></div>
+      </div>
+      <div class="ai-lab-panel ai-lab-work-grid">
+        <div class="ai-lab-empty">
+          <span class="ai-lab-empty-icon"><i class="ph ph-flask" aria-hidden="true"></i></span>
+          <div>
+            <h3>AI Homework Studio готова к синтетическим сценариям</h3>
+            <p>Проверяйте предварительные оценки на учебных примерах, сравнивайте результат с эталоном и фиксируйте ручную оценку качества.</p>
+            <a class="ai-lab-tab is-active" href="{{ url_for('ai_lab.studio') }}">Открыть рабочую область</a>
+          </div>
+        </div>
+        <div class="ai-lab-work-aside" aria-label="Состояние лаборатории">
+          <div class="ai-lab-future-item"><i class="ph ph-flask" aria-hidden="true"></i>Запуски<span>{{ ai_lab_stats.total_runs if ai_lab_stats else '—' }}</span></div>
+          <div class="ai-lab-future-item"><i class="ph ph-cpu" aria-hidden="true"></i>Доступ к GigaChat<span>{{ 'Готов' if ai_lab_provider.configured and ai_lab_enabled else 'Не подключён' }}</span></div>
+          <div class="ai-lab-future-item"><i class="ph ph-shield-check" aria-hidden="true"></i>Рабочие сдачи<span>Изолировано</span></div>
+        </div>
+      </div>
+    </section>
+  {% elif ai_lab_section == 'experiments' %}
+    <section class="ai-lab-section" aria-label="AI Homework эксперименты">
+      <div class="ai-lab-panel">
+        <div class="ai-lab-section-heading">
+          <div><p class="ai-lab-eyebrow">Первое направление</p><h2>Предварительная проверка домашних работ</h2><p>15 синтетических сценариев по базовому Python. Каждый запуск сохраняет входные данные, версию инструкции, результат и сигналы сравнения.</p></div>
+          <a class="ai-lab-tab is-active" href="{{ url_for('ai_lab.studio') }}">Открыть AI Homework Studio</a>
+        </div>
+      </div>
+      {% if ai_lab_experiments %}
+      <div class="ai-lab-run-list" aria-label="Недавние эксперименты">
+        {% for run in ai_lab_experiments %}
+        <a class="ai-lab-run" href="{{ url_for('ai_lab.experiment', experiment_id=run.id) }}">
+          <span class="ai-lab-run-icon"><i class="ph ph-flask" aria-hidden="true"></i></span>
+          <span class="ai-lab-run-copy"><strong>{{ run.scenario_snapshot.get('title', run.scenario_id) }}</strong><small>{{ run.created_at.strftime('%d.%m.%Y %H:%M') }} · v0.{{ run.prompt_version_no or '—' }}</small></span>
+          <span class="ai-lab-status{% if run.status == 'succeeded' %} tone-mint{% elif run.status == 'failed' or run.status == 'invalid_response' %} tone-peach{% endif %}">{{ {'succeeded':'Завершён','running':'Обработка','failed':'Ошибка','invalid_response':'Некорректный JSON'}.get(run.status, run.status) }}</span>
+          <i class="ph ph-arrow-up-right" aria-hidden="true"></i>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="ai-lab-empty is-centered">
+        <span class="ai-lab-empty-icon"><i class="ph ph-flask" aria-hidden="true"></i></span>
+        <div><h3>Сценарии готовы к первому запуску</h3><p>{% if ai_lab_enabled %}Подключите GigaChat в разделе «Модели», затем запустите синтетический кейс.{% else %}Для реальных запросов нужен локальный режим и флаг AI_LAB_ENABLED=true.{% endif %}</p></div>
+      </div>
+      {% endif %}
+    </section>
+  {% elif ai_lab_section == 'instructions' %}
+    <section class="ai-lab-section" aria-label="Версии инструкции AI Homework">
+      <div class="ai-lab-panel">
+        <div class="ai-lab-section-heading">
+          <div><p class="ai-lab-eyebrow">Снимок для каждого запуска</p><h2>AI Homework Evaluator</h2><p>Редактирование создаёт новую версию. Сохранённые версии не перезаписываются.</p></div>
+          {% if ai_lab_prompt %}<span class="ai-lab-status tone-lilac">Текущая версия v0.{{ ai_lab_prompt.version_no }}</span>{% else %}<span class="ai-lab-status tone-butter">Только просмотр</span>{% endif %}
+        </div>
+        <form method="post" action="{{ url_for('ai_lab.save_instruction') }}" class="ai-lab-instruction-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label for="ai-lab-prompt-content">Системная инструкция</label>
+          <textarea id="ai-lab-prompt-content" name="content" rows="16" maxlength="30000" {% if not ai_lab_enabled %}readonly{% endif %}>{{ ai_lab_prompt.content if ai_lab_prompt else ai_lab_prompt_text }}</textarea>
+          {% if ai_lab_enabled %}<button class="ai-lab-tab is-active" type="submit">Сохранить новую версию</button>{% else %}<p class="ai-lab-muted">Редактирование выключено, пока локальная лаборатория не включена.</p>{% endif %}
+        </form>
+      </div>
+      <div class="ai-lab-panel">
+        <div class="ai-lab-section-heading"><div><p class="ai-lab-eyebrow">Неизменяемая история</p><h2>Версии инструкции</h2></div></div>
+        {% if ai_lab_prompt_versions %}
+        <div class="ai-lab-run-list">
+          {% for version in ai_lab_prompt_versions %}
+          <div class="ai-lab-run">
+            <span class="ai-lab-run-icon"><i class="ph ph-git-branch" aria-hidden="true"></i></span>
+            <span class="ai-lab-run-copy"><strong>v0.{{ version.version_no }}{% if loop.first %} · последняя{% endif %}</strong><small>{{ version.created_at.strftime('%d.%m.%Y %H:%M') }}{% if version.restored_from_version_no %} · восстановлена из v0.{{ version.restored_from_version_no }}{% endif %}</small></span>
+            {% if ai_lab_enabled and not loop.first %}
+            <form method="post" action="{{ url_for('ai_lab.restore_instruction', version_no=version.version_no) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="ai-lab-inline-button" type="submit">Создать на её основе</button>
+            </form>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="ai-lab-muted">История версий появится после включения локальной AI Lab.</p>
+        {% endif %}
+      </div>
+    </section>
+  {% elif ai_lab_section == 'models' %}
+    <section class="ai-lab-section" aria-label="Поставщик моделей">
+      <article class="ai-lab-provider">
+        <span class="ai-lab-provider-mark"><i class="ph-bold ph-cloud" aria-hidden="true"></i></span>
+        <div>
+          <p class="ai-lab-eyebrow">Серверная интеграция · только локальная лаборатория</p>
+          <h2>GigaChat</h2>
+          <p>Ключ читается только backend из окружения. Интерфейс и AI Homework не обращаются к рабочим сдачам.</p>
+          <span id="ai-lab-provider-status" class="ai-lab-status tone-sky"><i class="ph ph-plugs" aria-hidden="true"></i>{{ ai_lab_provider.state }}</span>
+          <div class="ai-lab-provider-facts">
+            <span><small>Провайдер</small><strong>GigaChat</strong></span>
+            <span><small>Тип доступа</small><strong>{{ ai_lab_provider.scope }}</strong></span>
+            <span><small>Модель по умолчанию</small><strong>{{ ai_lab_provider.default_model or 'Не выбрана' }}</strong></span>
+            <span><small>Входные токены</small><strong>{% if ai_lab_stats and ai_lab_stats.input_tokens is not none %}{{ ai_lab_stats.input_tokens }}{% else %}Нет данных{% endif %}</strong></span>
+            <span><small>Выходные токены</small><strong>{% if ai_lab_stats and ai_lab_stats.output_tokens is not none %}{{ ai_lab_stats.output_tokens }}{% else %}Нет данных{% endif %}</strong></span>
+          </div>
+          {% if ai_lab_stats and ai_lab_stats.latest_error %}<p class="ai-lab-provider-error"><strong>Последняя фактическая ошибка:</strong> {{ ai_lab_stats.latest_error }}</p>{% endif %}
+          <input type="hidden" id="ai-lab-csrf" value="{{ csrf_token() }}">
+          <button id="ai-lab-diagnostics" class="ai-lab-tab is-active" type="button" data-url="{{ url_for('ai_lab.diagnostics') }}" {% if not ai_lab_enabled or not ai_lab_provider.configured %}disabled{% endif %}>Проверить подключение</button>
+          <div id="ai-lab-diagnostics-result" class="ai-lab-diagnostics-result" role="status" aria-live="polite"></div>
+          <p class="ai-lab-provider-note">Статус остаётся «Не проверено», пока backend не получит актуальный список моделей с TLS-проверкой. Это не запускает оценку задания.</p>
+        </div>
+      </article>
+    </section>
+  {% else %}
+    <section class="ai-lab-section" aria-label="История экспериментов">
+      {% if ai_lab_experiments %}
+      <div class="ai-lab-run-list">
+        {% for run in ai_lab_experiments %}
+        <a class="ai-lab-run" href="{{ url_for('ai_lab.experiment', experiment_id=run.id) }}">
+          <span class="ai-lab-run-icon"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i></span>
+          <span class="ai-lab-run-copy"><strong>{{ run.scenario_snapshot.get('title', run.scenario_id) }}</strong><small>{{ run.created_at.strftime('%d.%m.%Y %H:%M') }} · {{ run.model or 'Модель не указана' }} · v0.{{ run.prompt_version_no or '—' }}</small>{% if run.manual_rating %}<small>Ручная оценка: {{ {'correct':'Верно','partially_correct':'Частично верно','incorrect':'Неверно'}.get(run.manual_rating, run.manual_rating) }}{% if run.manual_comment %} · {{ run.manual_comment|truncate(140, true, '…') }}{% endif %}</small>{% endif %}</span>
+          {% if run.result_json and run.result_json.score_awarded is not none %}<span class="ai-lab-status tone-lilac">{{ run.result_json.score_awarded }}/{{ run.result_json.max_score }}</span>{% endif %}
+          <span class="ai-lab-status{% if run.status == 'succeeded' %} tone-mint{% elif run.status != 'running' %} tone-peach{% endif %}">{{ {'succeeded':'Завершён','running':'Обработка','failed':'Ошибка','invalid_response':'Некорректный JSON'}.get(run.status, run.status) }}</span>
+          <i class="ph ph-arrow-up-right" aria-hidden="true"></i>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="ai-lab-empty is-centered">
+        <span class="ai-lab-empty-icon"><i class="ph ph-clock-counter-clockwise" aria-hidden="true"></i></span>
+        <div><h3>История появится после первого запуска</h3><p>{% if ai_lab_enabled %}Запуски на синтетических данных сохраняются вместе со снимком задания и инструкции.{% else %}Локальная лаборатория выключена; история запусков не загружается.{% endif %}</p></div>
+      </div>
+      {% endif %}
+    </section>
+  {% endif %}
+</main>
+<style>
+  .ai-lab-module { color: inherit; text-decoration: none; }
+  .ai-lab-module:focus-visible,
+  .ai-lab-run:focus-visible,
+  .ai-lab-inline-button:focus-visible { outline: 3px solid var(--bs-primary-soft); outline-offset: 3px; }
+  .ai-lab-instruction-form { display: grid; gap: 12px; margin-top: 22px; }
+  .ai-lab-instruction-form label { color: var(--bs-text-primary); font-size: 13px; font-weight: 800; }
+  .ai-lab-instruction-form textarea {
+    width: 100%; min-height: 280px; padding: 16px; resize: vertical;
+    border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md, 14px);
+    color: var(--bs-text-primary); background: var(--bs-bg-surface); font: inherit;
+    line-height: 1.6;
+  }
+  .ai-lab-instruction-form textarea:focus-visible { outline: 3px solid var(--bs-primary-soft); outline-offset: 2px; }
+  .ai-lab-run-list { display: grid; gap: 10px; }
+  .ai-lab-run {
+    display: flex; align-items: center; gap: 13px; min-width: 0; padding: 14px 16px;
+    border: 1px solid var(--bs-border); border-radius: var(--bs-radius-md, 14px);
+    background: var(--bs-bg-surface); color: inherit; text-decoration: none;
+  }
+  .ai-lab-run:hover { border-color: var(--bs-border-strong); box-shadow: var(--bs-shadow-e1); }
+  .ai-lab-run-icon { display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; border-radius: 12px; color: var(--bs-primary); background: var(--bs-surface-lilac-soft); }
+  .ai-lab-run-copy { display: grid; flex: 1; min-width: 0; gap: 4px; }
+  .ai-lab-run-copy strong { overflow: hidden; color: var(--bs-text-primary); text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  .ai-lab-run-copy small { color: var(--bs-text-muted); font-size: 11px; }
+  .ai-lab-provider-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 9px; margin: 18px 0; }
+  .ai-lab-provider-facts span { display: grid; gap: 4px; min-width: 0; padding: 11px 13px; border: 1px solid var(--bs-border); border-radius: 12px; background: var(--bs-bg-surface); }
+  .ai-lab-provider-facts small { color: var(--bs-text-muted); font-size: 10px; }
+  .ai-lab-provider-facts strong { overflow-wrap: anywhere; color: var(--bs-text-primary); font-size: 12px; }
+    .ai-lab-provider-error { padding: 12px 14px; border: 1px solid var(--bs-danger-border, var(--bs-border)); border-radius: 12px; color: var(--bs-danger-ink, var(--bs-text-primary)); background: var(--bs-danger-soft, var(--bs-bg-surface)); font-size: 12px; }
+  .ai-lab-inline-button { min-height: 36px; padding: 7px 12px; border: 1px solid var(--bs-border); border-radius: 10px; color: var(--bs-primary); background: var(--bs-bg-surface); font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
+  .ai-lab-inline-button:hover { border-color: var(--bs-primary); }
+  .ai-lab-diagnostics-result { min-height: 20px; margin-top: 10px; color: var(--bs-text-secondary); font-size: 12px; line-height: 1.5; }
+  .ai-lab-muted { color: var(--bs-text-muted); font-size: 12px; line-height: 1.55; }
+  .ai-lab-tab:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+  @media (max-width: 680px) {
+    .ai-lab-run { align-items: flex-start; flex-wrap: wrap; padding: 12px; }
+    .ai-lab-run-copy { flex-basis: calc(100% - 58px); }
+    .ai-lab-run > .ai-lab-status { margin-left: 50px; }
+    .ai-lab-section-heading { align-items: flex-start; flex-direction: column; }
+    .ai-lab-section-heading .ai-lab-tab { width: 100%; justify-content: center; }
+  }
+</style>
+<script>
+  (() => {
+    const button = document.getElementById('ai-lab-diagnostics');
+    const output = document.getElementById('ai-lab-diagnostics-result');
+    const status = document.getElementById('ai-lab-provider-status');
+    if (!button || !output) return;
+    function showStatus(verified) {
+      if (!status) return;
+      status.classList.toggle('tone-mint', verified);
+      status.classList.toggle('tone-sky', !verified);
+      status.replaceChildren();
+      const icon = document.createElement('i');
+      icon.className = verified ? 'ph ph-plugs-connected' : 'ph ph-plugs';
+      icon.setAttribute('aria-hidden', 'true');
+      status.append(icon, document.createTextNode(verified ? 'Подключено' : 'Не проверено'));
+    }
+    const diagnosticsLabels = {
+      tls_verification_failed: 'Ошибка сертификата TLS',
+      tls_bundle_not_found: 'Не найден CA bundle',
+      authorization_failed: 'Ошибка авторизации',
+      not_configured: 'Ключ не настроен',
+      connection_failed: 'GigaChat API недоступен',
+      connection_timeout: 'Истекло время подключения к API',
+      response_timeout: 'API не завершил ответ вовремя',
+      provider_unavailable: 'GigaChat API временно недоступен',
+      provider_rate_limited: 'Ограничение частоты запросов',
+      provider_quota_exhausted: 'Квота GigaChat исчерпана',
+      queue_full: 'Очередь запросов заполнена',
+      queue_timeout: 'Истекло время ожидания очереди'
+    };
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      output.textContent = 'Проверяем доступ и загружаем каталог моделей…';
+      try {
+        const response = await fetch(button.dataset.url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.getElementById('ai-lab-csrf')?.value || ''
+          },
+          body: '{}'
+        });
+        const payload = await response.json();
+        showStatus(Boolean(payload.ok));
+        if (payload.ok) {
+          const tls = payload.tls || {};
+          const trust = tls.ca_bundle_file_exists
+            ? 'CA bundle из ' + tls.ca_bundle_source + ' найден; '
+            : 'Используется системное хранилище; ';
+          output.textContent = 'Подключено · TLS-проверка включена · ' + trust + payload.duration_ms + ' мс · ' + payload.models.length + ' моделей: ' + payload.models.join(', ');
+        } else {
+          const label = diagnosticsLabels[payload.error_code] || 'Проверка не пройдена';
+          const tls = payload.tls?.ca_bundle_configured
+            ? ' · CA bundle: ' + payload.tls.ca_bundle_source + (payload.tls.ca_bundle_file_exists ? ', файл найден' : ', файл не найден')
+            : '';
+          output.textContent = label + tls + ' · ' + (payload.error || 'Повторите проверку после исправления настроек.');
+        }
+      } catch (_error) {
+        showStatus(false);
+        output.textContent = 'Не удалось получить результат диагностики. Проверьте соединение и повторите.';
+      } finally {
+        button.disabled = false;
+      }
+    });
+  })();
+</script>
+{% endblock %}

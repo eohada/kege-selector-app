@@ -848,32 +848,35 @@ def lesson_studio_state_save(lesson_id: int):
         if not lesson_course_id or not TheoryBlock.query.filter_by(id=theory_block_id, course_id=lesson_course_id).first():
             return jsonify({'success': False, 'error': 'Материал теории не относится к курсу урока'}), 400
         state['active_theory_block_id'] = theory_block_id
-    if not isinstance(phase_timers, dict) or not isinstance(phase_durations, dict):
-        return jsonify({'success': False, 'error': 'Некорректные таймеры этапов'}), 400
+    default_phase_durations = {'preparation': 900, 'practice': 1800, 'reflection': 900}
+    phase_timers = phase_timers if isinstance(phase_timers, dict) else {}
+    phase_durations = phase_durations if isinstance(phase_durations, dict) else {}
     normalized_phase_timers, normalized_phase_durations = {}, {}
     for phase in ('preparation', 'practice', 'reflection'):
         try:
-            seconds = int(phase_timers.get(phase))
-            duration_seconds = int(phase_durations.get(phase))
+            duration_seconds = int(phase_durations.get(phase) or default_phase_durations.get(phase, 900))
         except (TypeError, ValueError):
-            return jsonify({'success': False, 'error': 'Некорректные таймеры этапов'}), 400
-        if not 0 <= seconds <= 4 * 60 * 60 or not 60 <= duration_seconds <= 4 * 60 * 60:
-            return jsonify({'success': False, 'error': 'Таймер этапа должен быть от 1 минуты до 4 часов'}), 400
+            duration_seconds = default_phase_durations.get(phase, 900)
+        try:
+            seconds = int(phase_timers.get(phase) or duration_seconds)
+        except (TypeError, ValueError):
+            seconds = duration_seconds
+        duration_seconds = max(60, min(duration_seconds, 4 * 60 * 60))
+        seconds = max(0, min(seconds, 4 * 60 * 60))
         normalized_phase_timers[phase] = seconds
         normalized_phase_durations[phase] = duration_seconds
     state['phase_timers'] = normalized_phase_timers
     state['phase_durations'] = normalized_phase_durations
-    timer = state['timer']
+    timer = state.get('timer') if isinstance(state.get('timer'), dict) else {}
     try:
-        timer_seconds = int(timer.get('seconds'))
+        timer_seconds = int(timer.get('seconds') or 900)
     except (TypeError, ValueError):
-        return jsonify({'success': False, 'error': 'Некорректное значение таймера'}), 400
-    if not 0 <= timer_seconds <= 4 * 60 * 60 or not isinstance(timer.get('running'), bool):
-        return jsonify({'success': False, 'error': 'Некорректное состояние таймера'}), 400
+        timer_seconds = 900
+    timer_seconds = max(0, min(timer_seconds, 4 * 60 * 60))
     state['timer'] = {
         'mode': 'phase',
         'seconds': timer_seconds,
-        'running': timer.get('running', False),
+        'running': bool(timer.get('running', False)),
         'updated_at': moscow_now().isoformat(),
         'completed_at': timer.get('completed_at') if timer_seconds == 0 else None,
     }
@@ -4148,7 +4151,25 @@ def lesson_room_search_tasks(lesson_id: int):
 
     query_text = (request.args.get('q') or '').strip()
     raw_num = request.args.get('number')
+    raw_course = request.args.get('course_id')
+    raw_diff = request.args.get('difficulty')
+
     q = Tasks.query.filter(getattr(Tasks, 'is_active', True) == True)
+
+    if raw_course and raw_course != 'all':
+        try:
+            cid = int(raw_course)
+            q = q.filter(Tasks.course_id == cid)
+        except (ValueError, TypeError):
+            pass
+
+    if raw_diff and raw_diff != 'all':
+        try:
+            diff_level = int(raw_diff)
+            q = q.filter(Tasks.difficulty_level == diff_level)
+        except (ValueError, TypeError):
+            pass
+
     if raw_num:
         try:
             task_num = int(raw_num)
@@ -4158,7 +4179,32 @@ def lesson_room_search_tasks(lesson_id: int):
     if query_text:
         q = q.filter(Tasks.content_html.ilike(f'%{query_text}%'))
     
-    tasks = q.order_by(Tasks.task_number.asc(), Tasks.task_id.desc()).limit(20).all()
+    tasks = q.order_by(Tasks.task_number.asc(), Tasks.task_id.desc()).limit(30).all()
+
+    def _parse_files(raw_files):
+        if not raw_files:
+            return []
+        if isinstance(raw_files, list):
+            return raw_files
+        try:
+            import json
+            data = json.loads(raw_files)
+            if isinstance(data, list):
+                res = []
+                for item in data:
+                    if isinstance(item, dict):
+                        res.append({
+                            'name': item.get('name') or item.get('filename') or 'файл',
+                            'url': item.get('url') or item.get('path') or '',
+                        })
+                    elif isinstance(item, str):
+                        u = item if item.startswith('/') or item.startswith('http') else f'/static/uploads/{item}'
+                        res.append({'name': item.split('/')[-1], 'url': u})
+                return res
+        except Exception:
+            pass
+        return [{'name': f.strip().split('/')[-1], 'url': f.strip() if f.strip().startswith('/') or f.strip().startswith('http') else f'/static/uploads/{f.strip()}'} for f in str(raw_files).split(',') if f.strip()]
+
     results = []
     for t in tasks:
         clean_text = re.sub(r'<[^>]+>', ' ', t.content_html or '')
@@ -4172,9 +4218,22 @@ def lesson_room_search_tasks(lesson_id: int):
             ),
             'site_task_id': t.site_task_id or f'№{t.task_id}',
             'snippet': clean_text or 'Без описания',
+            'content_html': _task_room_description(t),
             'answer': t.answer or '',
+            'difficulty_level': t.difficulty_level or 2,
+            'course_id': t.course_id,
+            'attached_files': _parse_files(t.attached_files),
         })
-    return jsonify({'success': True, 'tasks': results})
+
+    courses = []
+    try:
+        active_courses = Course.query.filter_by(is_active=True).order_by(Course.title.asc()).all()
+        for c in active_courses:
+            courses.append({'id': c.id, 'title': c.title, 'slug': c.slug})
+    except Exception:
+        pass
+
+    return jsonify({'success': True, 'tasks': results, 'courses': courses})
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/quick-add-task', methods=['POST'])
@@ -4512,7 +4571,7 @@ def lesson_delete_material(lesson_id):
 
 
 
-@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard', methods=['GET'])
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/legacy-info', methods=['GET'])
 @login_required
 def lesson_whiteboard_info(lesson_id):
     """Получить информацию о доске урока."""

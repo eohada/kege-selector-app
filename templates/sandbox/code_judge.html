@@ -1,0 +1,125 @@
+{% extends "sandbox/layout_admin.html" %}
+
+{% block title %}BooStudy Code Judge — AI Lab{% endblock %}
+
+{% block extra_head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ai-lab-code-judge.css') }}">
+{% endblock %}
+
+{% block admin_content %}
+<main class="cj-page" id="boo-code-judge" data-mode="solution" data-enabled="{{ 'true' if code_judge_enabled else 'false' }}">
+  <header class="cj-toolbar">
+    <div class="cj-heading">
+      <nav class="cj-breadcrumb" aria-label="Навигация"><a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a><i class="ph ph-caret-right" aria-hidden="true"></i><span>Code Judge</span></nav>
+      <h1>Code Judge</h1>
+    </div>
+    <div class="cj-toolbar-actions">
+      <div class="cj-mode-tabs" role="tablist" aria-label="Режим Code Judge">
+        <button type="button" class="cj-mode-tab is-active" data-cj-mode="solution" role="tab" aria-selected="true">Решение</button>
+        <button type="button" class="cj-mode-tab" data-cj-mode="constructor" role="tab" aria-selected="false">Конструктор</button>
+      </div>
+      <details class="cj-runner-details" id="cj-runner-details">
+        <summary class="cj-state{% if code_judge_runner.ready %} is-ready{% endif %}" id="cj-runner-state"><i class="ph {% if code_judge_runner.ready %}ph-shield-check{% else %}ph-lock-key{% endif %}" aria-hidden="true"></i><span>{{ 'Python Runner готов' if code_judge_runner.ready else 'Runner недоступен' }}</span><i class="ph ph-caret-down" aria-hidden="true"></i></summary>
+        <div class="cj-runner-popover">
+          <strong>Изолированный Python Runner</strong>
+          <p>Только локальная AI Lab. Запуски не влияют на реальные домашние работы.</p>
+          <div class="cj-queue" id="cj-queue"><span>{{ code_judge_runner.message }}</span><span>Ожидают: {{ code_judge_runner.queue.waiting if code_judge_runner.queue else 0 }}</span></div>
+          <div class="cj-limit-grid">
+            <div><small>Код</small><strong>{{ (code_judge_limits.max_source_bytes / 1024)|int }} КБ</strong></div>
+            <div><small>Тестов</small><strong>{{ code_judge_limits.max_test_cases }}</strong></div>
+            <div><small>Время</small><strong>{{ code_judge_limits.test_timeout_seconds }} с/тест</strong></div>
+            <div><small>Память</small><strong>{{ code_judge_limits.memory_mb }} МБ</strong></div>
+            <div><small>Вывод</small><strong>{{ (code_judge_limits.max_output_bytes / 1024)|int }} КБ</strong></div>
+            <div><small>CPU</small><strong>{{ code_judge_limits.cpu_cores }}</strong></div>
+            <div><small>Параллельно</small><strong>{{ code_judge_limits.concurrency }}</strong></div>
+            <div><small>Очередь</small><strong>{{ code_judge_limits.max_queue_size }}</strong></div>
+          </div>
+          <div id="cj-security-profile" class="cj-security-profile"></div>
+        </div>
+      </details>
+    </div>
+  </header>
+  <div class="cj-message" id="cj-message" role="status" aria-live="polite"></div>
+
+  <section class="cj-workspace" aria-label="Рабочая область Code Judge">
+    <div class="cj-left">
+      <section class="cj-panel cj-task-panel" id="cj-solution-panel" aria-label="Задание">
+        <div class="cj-task-top">
+          <label for="cj-set-select">Задание</label>
+          <select id="cj-set-select">{% for item in code_judge_test_sets %}<option value="{{ item.id }}">{{ item.title }}</option>{% endfor %}</select>
+        </div>
+        <div class="cj-left-tabs" role="tablist" aria-label="Сведения о задании">
+          <button class="cj-left-tab is-active" type="button" data-cj-left-tab="condition" role="tab" aria-selected="true">Условие</button>
+          <button class="cj-left-tab" type="button" data-cj-left-tab="cases" role="tab" aria-selected="false">Тесты</button>
+          <button class="cj-left-tab" type="button" data-cj-left-tab="history" role="tab" aria-selected="false">История</button>
+        </div>
+        <div class="cj-left-panel is-active" data-cj-left-panel="condition" role="tabpanel">
+          <div class="cj-task-label"><span id="cj-task-mode"></span><span id="cj-task-version"></span></div>
+          <h2 id="cj-task-title"></h2>
+          <p id="cj-task-description"></p>
+          <div class="cj-task-example" id="cj-task-examples"></div>
+          <div class="cj-task-note">Публичные примеры помогают проверить решение. Полная проверка включает скрытые тесты.</div>
+        </div>
+        <div class="cj-left-panel" data-cj-left-panel="cases" role="tabpanel">
+          <div class="cj-section-head"><h2>Тесты задания</h2><span id="cj-case-count"></span></div>
+          <div class="cj-public-cases" id="cj-public-cases"></div>
+        </div>
+        <div class="cj-left-panel" data-cj-left-panel="history" role="tabpanel">
+          <div class="cj-section-head"><h2>История запусков</h2><span>Локальная AI Lab</span></div>
+          <div id="cj-history-list" class="cj-history-list"></div>
+        </div>
+      </section>
+
+      <section class="cj-panel cj-builder-panel" id="cj-constructor-panel" aria-label="Конструктор тестов" hidden>
+        <div class="cj-section-head"><div><p class="cj-kicker">Конструктор</p><h2>Задание и тесты</h2></div><button class="cj-button" type="button" id="cj-new-set"><i class="ph ph-plus" aria-hidden="true"></i>Новое</button></div>
+        <div class="cj-builder-grid">
+          <div class="cj-builder-info">
+            <div class="cj-field"><label for="cj-title">Название</label><input id="cj-title" maxlength="180"></div>
+            <div class="cj-field"><label for="cj-description">Условие</label><textarea id="cj-description" maxlength="12000"></textarea></div>
+            <div class="cj-field"><label for="cj-assignment">Связь с версией задания AI Homework</label><select id="cj-assignment"><option value="">Без связи · только Code Judge</option>{% for item in code_judge_assignments %}<option value="{{ item.assignment_id }}@{{ item.assignment_version }}" data-id="{{ item.assignment_id }}" data-version="{{ item.assignment_version }}">{{ item.title }}{% if 'рубрика v' not in item.title %} · v{{ item.assignment_version }}{% endif %}</option>{% endfor %}</select></div>
+            <div class="cj-builder-actions"><button class="cj-button" type="button" id="cj-import-rubric">Загрузить критерии рубрики</button><a class="cj-button" href="{{ url_for('ai_lab.rubric_builder_page') }}">Генератор критериев</a></div>
+            <div class="cj-field-row">
+              <div class="cj-field"><label for="cj-mode">Режим Python</label><select id="cj-mode"><option value="function">Функция</option><option value="program">Программа</option></select></div>
+              <div class="cj-field" id="cj-function-field"><label for="cj-function">Имя функции</label><input id="cj-function" maxlength="80"></div>
+            </div>
+            <div class="cj-field-row">
+              <div class="cj-field"><label for="cj-comparator">Сравнение</label><select id="cj-comparator"><option value="exact">Точное совпадение</option><option value="normalize_newlines">Нормализация строк</option><option value="trim_whitespace">Пробелы по краям</option><option value="ignore_whitespace">Все пробелы</option><option value="numeric_tolerance">Числовой допуск</option></select></div>
+              <div class="cj-field"><label for="cj-tolerance">Допуск</label><input id="cj-tolerance" type="number" min="0" max="1" step="0.000001" value="0.000001"></div>
+            </div>
+            <div class="cj-builder-actions"><button class="cj-button cj-button-primary" type="button" id="cj-save-set">Сохранить набор</button><button class="cj-button" type="button" id="cj-delete-set">Удалить набор</button></div>
+          </div>
+          <div class="cj-builder-tests">
+            <div class="cj-section-head"><div><h3>Тесты</h3><p>До {{ code_judge_limits.max_test_cases }} случаев</p></div><button class="cj-button" type="button" id="cj-add-case">Добавить тест</button></div>
+            <div class="cj-builder-test-grid"><div class="cj-test-list" id="cj-test-list"></div><div class="cj-case-editor" id="cj-case-editor"></div></div>
+          </div>
+        </div>
+        <div class="cj-rubric-section">
+          <div class="cj-section-head"><div><h3>Критерии оценивания</h3><p>Баллы начисляются по отдельным проверяемым условиям.</p></div><button class="cj-button" id="cj-add-criterion" type="button">Добавить критерий</button></div>
+          <div class="cj-rubric-grid"><div id="cj-rubric-list" class="cj-rubric-list"></div><div id="cj-rubric-editor" class="cj-rubric-editor"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="cj-right" id="cj-right">
+      <section class="cj-panel cj-editor-panel" aria-labelledby="cj-editor-heading" id="cj-editor-panel">
+        <div class="cj-section-head"><div><p class="cj-kicker">Рабочая область</p><h2 id="cj-editor-heading">Решение на Python</h2></div><span class="cj-draft-state" id="cj-draft-state">Черновик сохранён</span></div>
+        <div class="cj-editor-wrap"><div id="cj-line-numbers" class="cj-line-numbers" aria-hidden="true">1</div><pre id="cj-highlight" class="cj-highlight" aria-hidden="true"></pre><textarea id="cj-code" class="cj-editor" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Исходный код Python" wrap="off"></textarea></div>
+        <div class="cj-run-actions"><button class="cj-button cj-button-primary" type="button" id="cj-run" {% if not code_judge_runner.ready or not code_judge_enabled %}disabled{% endif %}><i class="ph ph-play" aria-hidden="true"></i>Запустить</button><button class="cj-button" type="button" id="cj-submit" {% if not code_judge_runner.ready or not code_judge_enabled %}disabled{% endif %}>Проверить решение</button><span class="cj-shortcut">Ctrl+Enter · публичные тесты</span></div>
+      </section>
+      <div class="cj-resize-handle" id="cj-resize-handle" role="separator" tabindex="0" aria-label="Изменить высоту редактора" aria-orientation="horizontal"><span></span></div>
+      <section class="cj-panel cj-results-panel" aria-labelledby="cj-results-heading">
+        <div class="cj-section-head"><div><p class="cj-kicker">Результат</p><h2 id="cj-results-heading">Проверка решения</h2></div><span id="cj-result-caption" class="cj-result-caption">Пока нет результата</span></div>
+        <div id="cj-result-summary" class="cj-result-summary"></div>
+        <div class="cj-result-tabs" role="tablist" aria-label="Подробности результата"><button class="cj-tab" type="button" role="tab" aria-selected="true" data-cj-tab="tests">Тесты</button><button class="cj-tab" type="button" role="tab" aria-selected="false" data-cj-tab="output">stdout / stderr</button><button class="cj-tab" type="button" role="tab" aria-selected="false" data-cj-tab="technical">Технические данные</button></div>
+        <div class="cj-tabpanel is-active" role="tabpanel" data-cj-panel="tests" id="cj-result-tests"><p class="cj-empty">Запустите код, чтобы увидеть результаты.</p></div>
+        <div class="cj-tabpanel" role="tabpanel" data-cj-panel="output" id="cj-result-output"></div>
+        <div class="cj-tabpanel" role="tabpanel" data-cj-panel="technical" id="cj-result-technical"></div>
+      </section>
+    </div>
+  </section>
+</main>
+<input type="hidden" id="cj-csrf" value="{{ csrf_token() }}">
+<script id="cj-initial-data" type="application/json">{{ {"enabled": code_judge_enabled, "test_sets": code_judge_test_sets, "selected": code_judge_selected, "history": code_judge_history, "runner": code_judge_runner, "limits": code_judge_limits, "assignments": code_judge_assignments}|tojson }}</script>
+<script src="{{ url_for('static', filename='js/ai-lab-code-judge.js') }}" defer></script>
+{% endblock %}

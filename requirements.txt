@@ -16,6 +16,7 @@ gunicorn==23.0.0
 psycopg2-binary==2.9.10
 markdown>=3.7
 requests>=2.31.0
+docker>=7.0,<8.0
 bleach>=6.1.0
 python-telegram-bot[socks]>=22.5
 python-dotenv>=1.0.1

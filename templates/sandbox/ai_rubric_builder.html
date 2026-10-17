@@ -1,0 +1,38 @@
+{% extends "sandbox/layout_admin.html" %}
+{% block title %}Генератор критериев — BooStudy AI Lab{% endblock %}
+{% block extra_head %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-rubric-builder.css') }}">{% endblock %}
+{% block admin_content %}
+<main class="rb-page" id="rubric-builder" data-enabled="{{ 'true' if ai_lab_enabled else 'false' }}" data-model="{{ default_model }}">
+  <header class="rb-header">
+    <div><nav class="rb-crumb"><a href="{{ url_for('admin.admin_ai_lab') }}">AI Lab</a><i class="ph ph-caret-right" aria-hidden="true"></i><span>Генератор критериев</span></nav><p class="rb-eyebrow">Локальная лаборатория · черновики</p><h1>Генератор критериев</h1><p>Составьте задание, проверьте предложение модели и утвердите собственную версию рубрики.</p></div>
+    <a class="rb-button rb-button-soft" href="{{ url_for('ai_lab.studio') }}"><i class="ph ph-arrow-up-right" aria-hidden="true"></i>AI Homework Studio</a>
+  </header>
+  <div id="rb-message" class="rb-message" role="status" aria-live="polite"></div>
+  <div class="rb-grid">
+    <section class="rb-card rb-task" aria-labelledby="rb-task-heading">
+      <div class="rb-card-heading"><span class="rb-step">01</span><div><p class="rb-eyebrow">Исходные данные</p><h2 id="rb-task-heading">Задание</h2></div></div>
+      <div class="rb-fields">
+        <label>Название задания<input id="rb-title" maxlength="180" placeholder="Например, сумма цифр числа"></label>
+        <div class="rb-field-pair"><label>Предмет<input id="rb-subject" maxlength="120" value="Информатика"></label><label>Тема<input id="rb-topic" maxlength="200" placeholder="Функции и циклы"></label></div>
+        <div class="rb-field-pair"><label>Тип ответа<select id="rb-type"><option value="python">Python</option><option value="text">Развёрнутый ответ</option><option value="short_answer">Краткий ответ</option></select></label><label>Максимум баллов<input id="rb-max" type="number" min="0.1" max="100" step="0.1" value="3"></label></div>
+        <label>Условие<textarea id="rb-condition" rows="7" maxlength="8000" placeholder="Что требуется сделать? Какие входы, выходы и допустимые решения?"></textarea></label>
+        <label>Эталонный ответ <small>необязательно</small><textarea id="rb-reference" rows="5" maxlength="8000"></textarea></label>
+        <label>Требования преподавателя <small>необязательно</small><textarea id="rb-requirements" rows="3" maxlength="4000" placeholder="Явные ограничения и допустимые варианты"></textarea></label>
+        <div class="rb-generate-row"><label>Модель<select id="rb-model"><option value="">Загрузка моделей…</option></select></label><button class="rb-button rb-button-primary" id="rb-generate" type="button" {% if not ai_lab_enabled %}disabled{% endif %}><i class="ph ph-sparkle" aria-hidden="true"></i>Предложить критерии</button></div>
+      </div>
+    </section>
+    <section class="rb-card rb-rubric" aria-labelledby="rb-rubric-heading">
+      <div class="rb-card-heading"><span class="rb-step">02</span><div><p class="rb-eyebrow">Редактирование и проверка</p><h2 id="rb-rubric-heading">Рубрика</h2></div><span id="rb-version" class="rb-version">Черновик</span></div>
+      <div class="rb-tabs" role="tablist" aria-label="Разделы рубрики"><button type="button" class="is-active" data-tab="criteria" role="tab" aria-selected="true">Критерии</button><button type="button" data-tab="tests" role="tab" aria-selected="false">Предложенные тесты</button><button type="button" data-tab="versions" role="tab" aria-selected="false">Версии</button></div>
+      <div id="rb-criteria-panel" class="rb-tab-panel"><div id="rb-summary" class="rb-summary">Сначала создайте предложение для задания.</div><div id="rb-criteria" class="rb-criteria"></div><button id="rb-add" class="rb-button rb-button-soft" type="button"><i class="ph ph-plus" aria-hidden="true"></i>Добавить критерий</button><div id="rb-validation" class="rb-validation"></div><div class="rb-repair"><h3>Исправить замечания</h3><p class="rb-note">Отметьте проблемные критерии. GigaChat предложит новую версию; утверждение останется за вами.</p><label>Причина исправления<textarea id="rb-repair-reason" rows="2" maxlength="1000" placeholder="Какие требования нарушены и что нужно уточнить?"></textarea></label><button id="rb-repair" class="rb-button rb-button-soft" type="button" disabled>Попросить исправить выбранное</button><div id="rb-comparison" aria-live="polite"></div></div></div>
+      <div id="rb-tests-panel" class="rb-tab-panel" hidden><p class="rb-note">Тесты модели не становятся рабочими автоматически. Проверка выполняет доверенный эталон только в изолированном Code Judge. Даже совпадение с эталоном не доказывает полноту набора.</p><div id="rb-tests"></div><div class="rb-test-verification"><label>Доверенный эталон Python<textarea id="rb-test-reference" rows="5" placeholder="def solve(...): ..."></textarea></label><label>Дополнительный граничный пример · аргументы JSON<input id="rb-edge-input" placeholder="[0]"></label><label>Ожидаемый результат JSON<input id="rb-edge-expected" placeholder="0"></label><label class="rb-checkbox"><input id="rb-reference-confirmed" type="checkbox">Эталон проверен преподавателем</label><button id="rb-verify-tests" class="rb-button rb-button-soft" type="button">Проверить тесты в Runner</button><div id="rb-verification-result"></div></div></div>
+      <div id="rb-versions-panel" class="rb-tab-panel" hidden><div id="rb-versions"></div></div>
+      <div class="rb-repair"><h3>Экспертная оценка версии</h3><p class="rb-note">Оценка добавляется отдельной записью в историю. Исходная версия не меняется.</p><div class="rb-field-pair"><label>Результат<select id="rb-review-verdict"><option value="pass">Прошла проверку</option><option value="fail">Требует исправления</option></select></label><label>Категория ошибки<select id="rb-review-category"><option value="">Нет</option><option value="duplicate">Дублирование</option><option value="point_allocation">Распределение баллов</option><option value="incomplete">Неполный критерий</option><option value="unverifiable">Непроверяемое условие</option><option value="invented_constraint">Придуманное ограничение</option><option value="ambiguous">Неоднозначность</option><option value="alternative_unfair">Несправедливость к альтернативам</option><option value="reference_misread">Неверно понят эталон</option></select></label></div><label>Конкретное замечание<textarea id="rb-review-note" rows="2" maxlength="1000"></textarea></label><button id="rb-review" class="rb-button rb-button-soft" type="button" disabled>Сохранить экспертную оценку</button><p id="rb-review-current" class="rb-note"></p></div>
+      <label class="rb-warning-ack"><input type="checkbox" id="rb-ack">Предупреждения проверены преподавателем</label><div class="rb-actions"><button id="rb-save" class="rb-button rb-button-soft" type="button" disabled>Сохранить новую версию</button><button id="rb-approve" class="rb-button rb-button-primary" type="button" disabled>Утвердить рубрику</button></div>
+    </section>
+  </div>
+</main>
+<input type="hidden" id="rb-csrf" value="{{ csrf_token() }}">
+<script id="rb-initial-rubrics" type="application/json">{{ rubrics | tojson }}</script>
+<script src="{{ url_for('static', filename='js/ai-rubric-builder.js') }}" defer></script>
+{% endblock %}

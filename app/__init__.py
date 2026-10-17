@@ -601,6 +601,8 @@ def create_app(config_name=None):
     app.register_blueprint(students_bp)
     app.register_blueprint(lessons_bp)
     app.register_blueprint(admin_bp)
+    from app.ai_lab.routes import ai_lab_bp
+    app.register_blueprint(ai_lab_bp)
     from app.admin.impersonate import admin_impersonate_bp
     app.register_blueprint(admin_impersonate_bp)
     
