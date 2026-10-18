@@ -37,9 +37,9 @@ class WhiteboardConflict(Exception):
     document: dict[str, Any]
 
 
-def _new_page(title: str, order: int) -> dict[str, Any]:
+def _new_page(title: str, order: int, page_id: str | None = None) -> dict[str, Any]:
     return {
-        "id": f"page-{uuid4().hex[:12]}",
+        "id": (page_id or "").strip() or f"page-{uuid4().hex[:12]}",
         "title": title,
         "order": order,
         "objects": [],
@@ -63,6 +63,8 @@ def default_control() -> dict[str, Any]:
         "student_code_editing": False,
         "canvas_sync": True,
         "windows_sync": True,
+        "windows_mode": "teacher",
+        "workspace_sync": True,
         "window_positions_sync": True,
         "windows_allowed": [
             "code-window", "task-window", "terminal-window", "notes-window", "theory-window", "files-window", "lesson-info-window"
@@ -508,8 +510,15 @@ def normalize_document(value: Any) -> dict[str, Any]:
         "cursor_sync",
         "auto_open_terminal_on_run",
         "student_code_editing",
+        "canvas_sync",
+        "windows_sync",
+        "workspace_sync",
+        "window_positions_sync",
     ):
-        control[key] = bool(control.get(key))
+        control[key] = bool(control.get(key, True))
+    control["windows_mode"] = str(control.get("windows_mode") or "teacher") if control.get("windows_mode") in {"teacher", "student", "both", "independent"} else "teacher"
+    if not isinstance(control.get("windows_allowed"), list):
+        control["windows_allowed"] = default_control()["windows_allowed"]
     for key in ("allowed_page_ids", "allowed_frame_ids", "locked_page_ids", "locked_frame_ids"):
         if not isinstance(control.get(key), list):
             control[key] = []
@@ -671,7 +680,8 @@ def apply_operation(document: dict[str, Any], operation: dict[str, Any]) -> dict
 
     if operation_type == "page.create":
         title = (operation.get("title") or "Новая страница").strip()[:120]
-        next_document["pages"].append(_new_page(title or "Новая страница", len(next_document["pages"])))
+        page_id = (operation.get("page_id") or "").strip()
+        next_document["pages"].append(_new_page(title or "Новая страница", len(next_document["pages"]), page_id=page_id or None))
         return next_document
     if operation_type == "page.rename":
         page = _page(next_document, operation.get("page_id"))

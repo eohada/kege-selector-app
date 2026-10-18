@@ -536,8 +536,8 @@ def register_hooks(app):
         if request.path.startswith('/sandbox/') or request.path == '/sandbox' or request.path.startswith('/sandbox_reference/') or request.path == '/sandbox_reference' or request.path.startswith('/u/') or request.path.startswith('/profile') or request.path.startswith('/mentor/') or request.path.startswith('/teacher/'):
             return
 
-        excluded_endpoints = ('auth.login', 'auth.logout', 'auth.register', 'auth.register_student_invite', 'auth.register_parent_invite', 'auth.forgot_password', 'auth.reset_password_confirm', 'auth.debug_last_email', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.readiness_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
-        excluded_paths = ('/', '/api/qa/desktop-report', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public', '/favicon.ico', '/register', '/forgot-password', '/reset-password-confirm', '/debug/last-email')
+        excluded_endpoints = ('auth.login', 'auth.logout', 'auth.register', 'auth.register_student_invite', 'auth.register_parent_invite', 'auth.forgot_password', 'auth.reset_password_confirm', 'auth.debug_last_email', 'static', 'main.favicon', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.readiness_check', 'main.landing', 'main.index', 'main.legal_hub', 'main.legal_offer', 'main.legal_privacy', 'main.legal_consent', 'main.faq', 'billing.billing_plans_public')
+        excluded_paths = ('/', '/api/qa/desktop-report', '/landing', '/index', '/home', '/legal', '/legal/offer', '/legal/privacy', '/legal/consent', '/faq', '/billing/plans/public', '/favicon.ico', '/register', '/forgot-password', '/reset-password-confirm', '/debug/last-email')
         
         if (request.endpoint in excluded_endpoints or 
             request.path in excluded_paths or 

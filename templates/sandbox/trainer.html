@@ -2247,7 +2247,7 @@
         color: #0f172a;
       }
     </style>
-    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261015-dock-fix-v4"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261015-os"><link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261015-dock-fix-v4">{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
+    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261018-desktops-sync-v2"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261018-sync-v2"><link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261018-v2">{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
 
     <!-- 3. РЕЖИМ 2: АРЕНА НАРЕШИВАНИЯ (REAL GLASS OS 8.0 ULTRA WORKSPACE) -->
     <div id="trainer-arena-view"
@@ -2281,9 +2281,54 @@
           {% endif %}
           <span class="lesson-os-duration"><i class="ph-bold ph-clock" aria-hidden="true"></i>{{ room_lesson.duration or 60 }} мин</span>
         </div>
-        <div class="lesson-os-system-center">
-          <span class="lesson-os-brand-mark" aria-hidden="true"><i class="ph-bold ph-brain"></i></span>
-          <div class="lesson-os-system-title"><strong>{{ room_lesson.topic or 'Комната урока' }}</strong><span>{% if room_lesson.subject %}{{ room_lesson.subject }}{% else %}BooStudy OS{% endif %}</span></div>
+        <div class="lesson-os-system-center flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <span class="lesson-os-brand-mark" aria-hidden="true"><i class="ph-bold ph-brain"></i></span>
+            <div class="lesson-os-system-title"><strong>{{ room_lesson.topic or 'Комната урока' }}</strong><span>{% if room_lesson.subject %}{{ room_lesson.subject }}{% else %}BooStudy OS{% endif %}</span></div>
+          </div>
+          {% if room_mode and not homework_mode %}
+          <div class="h-6 w-px bg-slate-200/80 mx-1"></div>
+          <div id="lesson-virtual-desktops-bar" class="lesson-virtual-desktops-bar relative flex items-center gap-1 select-none text-xs">
+            <button type="button" id="lesson-desktop-prev-btn" class="w-7 h-7 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors border border-slate-200/80 cursor-pointer" title="Предыдущий стол (Alt + ←)">
+              <i class="ph-bold ph-caret-left text-xs"></i>
+            </button>
+            <button type="button" id="lesson-desktop-trigger" class="h-7 px-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-all border border-slate-200/90 shadow-2xs cursor-pointer min-w-[90px] justify-between" title="Выбор и управление рабочим столом">
+              <span class="flex items-center gap-1.5 truncate">
+                <i class="ph-bold ph-squares-four text-indigo-600 text-sm"></i>
+                <span id="lesson-desktop-current-name" class="truncate font-black max-w-[110px]">Стол 1</span>
+              </span>
+              <i class="ph-bold ph-caret-down text-[10px] text-slate-400"></i>
+            </button>
+            <button type="button" id="lesson-desktop-next-btn" class="w-7 h-7 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors border border-slate-200/80 cursor-pointer" title="Следующий стол (Alt + →)">
+              <i class="ph-bold ph-caret-right text-xs"></i>
+            </button>
+
+            <!-- Dropdown Popover -->
+            <div id="lesson-desktop-dropdown" style="top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 3500; min-width: 270px;" class="hidden absolute rounded-2xl bg-white border border-slate-200/90 shadow-xl p-2 space-y-2 animate-in fade-in zoom-in-95 duration-100">
+              <div class="flex items-center justify-between px-2 pt-1 pb-1 border-b border-slate-100 text-[11px] font-bold text-slate-500">
+                <span class="flex items-center gap-1.5">
+                  <i class="ph-bold ph-squares-four text-indigo-500"></i>
+                  <span>Рабочие столы</span>
+                </span>
+                <span id="lesson-desktops-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-50 text-indigo-600 font-mono font-bold">1</span>
+              </div>
+              <div id="lesson-desktops-list" class="max-h-56 overflow-y-auto no-scrollbar space-y-1">
+                <!-- Dynamically populated table items -->
+              </div>
+              {% if is_studio_teacher|default(false) %}
+              <div class="pt-1 border-t border-slate-100">
+                <button type="button" id="lesson-desktop-add-btn" class="w-full h-8 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-indigo-200/70 cursor-pointer shadow-2xs">
+                  <i class="ph-bold ph-plus text-xs"></i>
+                  <span>Создать новый стол</span>
+                </button>
+              </div>
+              {% endif %}
+              <div class="text-[10px] text-slate-400 text-center font-medium px-1">
+                <kbd class="px-1 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 font-mono">Alt</kbd> + <kbd class="px-1 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 font-mono">←</kbd> / <kbd class="px-1 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 font-mono">→</kbd>
+              </div>
+            </div>
+          </div>
+          {% endif %}
         </div>
         <div class="lesson-os-system-right">
           {% if linked_homework_url %}<a class="lesson-os-system-action" href="{{ linked_homework_url }}"><i class="ph-bold ph-notebook" aria-hidden="true"></i><span>Домашняя OS</span></a>{% endif %}
@@ -2390,28 +2435,8 @@
           {% endif %}
           <button type="button" class="lesson-os-system-action" onclick="openWindow('lesson-info-window')" aria-label="Информация об уроке"><i class="ph-bold ph-info" aria-hidden="true"></i><span>Об уроке</span></button>
           <button type="button" id="lesson-os-board-actions-toggle" class="lesson-os-system-action" aria-label="Дополнительные действия доски" aria-controls="board-command-bar" aria-expanded="false" title="Действия доски"><i class="ph-bold ph-dots-three" aria-hidden="true"></i></button>
+        </div>
       </header>
-      {% endif %}
-
-      {% if room_mode and not homework_mode %}
-      <div id="lesson-virtual-desktops-bar" class="lesson-virtual-desktops-bar flex items-center justify-between px-4 py-1.5 bg-white/90 backdrop-blur-md border-b border-slate-200/90 z-35 select-none text-xs">
-        <div class="flex items-center gap-2 min-w-0">
-          <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1 shrink-0">
-            <i class="ph-bold ph-squares-four text-indigo-500"></i>
-            <span>Столы:</span>
-          </span>
-          <div id="lesson-desktops-tabs" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            <!-- Dynamically populated workspace tabs -->
-          </div>
-          <button type="button" id="lesson-desktop-add-btn" class="h-6 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-[11px] flex items-center gap-1 transition-colors border border-indigo-200/60 shrink-0 cursor-pointer" title="Создать новый рабочий стол">
-            <i class="ph-bold ph-plus"></i>
-            <span>Стол</span>
-          </button>
-        </div>
-        <div class="flex items-center gap-2 text-[10px] text-slate-400 font-medium shrink-0">
-          <span class="hidden sm:inline">Переключение: <kbd class="px-1 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono text-[9px]">Alt + ← / →</kbd></span>
-        </div>
-      </div>
       {% endif %}
 
       <!-- LAYER 1: FULLSCREEN LIGHT IDE CANVAS -->
@@ -2979,90 +3004,93 @@
             <button class="lesson-os-window-action" type="button" aria-label="Закрыть план урока" title="Закрыть" onclick="closeWindow('lesson-info-window')"><i class="ph-bold ph-x" aria-hidden="true"></i></button>
           </div>
         </div>
-        <div class="lesson-studio-scroll flex-1 overflow-y-auto p-4 space-y-3">
-          <section class="lesson-studio-card p-4 bg-gradient-to-br from-indigo-50 to-white border-indigo-100">
+        <div class="lesson-studio-scroll flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+          <section class="lesson-studio-card p-4 bg-white border border-slate-200/90 shadow-2xs rounded-2xl">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <div class="text-[9px] font-black uppercase tracking-[.14em] text-indigo-500">Текущий урок</div>
+                <div class="text-[9px] font-black uppercase tracking-[.14em] text-indigo-600">Текущий урок</div>
                 <h2 id="lesson-info-title" class="mt-1 text-base font-black text-slate-900 truncate">{{ room_lesson.topic|default('Урок BooStudy') if room_lesson else 'Урок BooStudy' }}</h2>
                 <div id="lesson-info-meta" class="mt-1 text-[10px] font-bold text-slate-500"></div>
               </div>
               {% if is_studio_teacher|default(false) %}
-              <button id="lesson-start-btn" type="button" class="lesson-studio-chip border-indigo-200 bg-indigo-600 text-white" {% if room_lesson.status == 'in_progress' %}title="Начать урок заново"{% endif %}>{% if room_lesson.status == 'in_progress' %}Начать заново{% elif room_lesson.status == 'completed' %}Урок завершён{% else %}Начать урок{% endif %}</button>
+              <button id="lesson-start-btn" type="button" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all active:translate-y-0.5 cursor-pointer flex items-center gap-1.5" {% if room_lesson.status == 'in_progress' %}title="Начать урок заново"{% endif %}>
+                <i class="ph-bold {% if room_lesson.status == 'in_progress' %}ph-arrows-clockwise{% else %}ph-play{% endif %}"></i>
+                <span>{% if room_lesson.status == 'in_progress' %}Начать заново{% elif room_lesson.status == 'completed' %}Урок завершён{% else %}Начать урок{% endif %}</span>
+              </button>
               {% endif %}
             </div>
             <div id="lesson-info-intro-view" class="mt-3 text-[11px] leading-relaxed text-slate-600"></div>
             {% if is_studio_teacher|default(false) %}
-            <textarea id="lesson-info-intro" class="lesson-studio-field mt-3 min-h-[64px] p-2.5" placeholder="Коротко зафиксируй фокус занятия..."></textarea>
+            <textarea id="lesson-info-intro" class="lesson-studio-field mt-3 min-h-[64px] p-2.5 w-full rounded-xl border border-slate-200 bg-slate-50/50 text-xs focus:bg-white transition-all" placeholder="Коротко зафиксируй фокус занятия..."></textarea>
             {% endif %}
           </section>
 
-          <section class="lesson-studio-card p-3">
+          <section class="lesson-studio-card p-3.5 bg-white border border-slate-200/90 shadow-2xs rounded-2xl">
             <div class="flex items-center justify-between gap-2 mb-2">
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Цели урока</span>
-              {% if is_studio_teacher|default(false) %}<button id="lesson-goal-add-btn" type="button" class="lesson-studio-chip px-2">Добавить цель</button>{% endif %}
+              {% if is_studio_teacher|default(false) %}<button id="lesson-goal-add-btn" type="button" class="lesson-studio-chip px-2.5 py-1 text-xs">Добавить цель</button>{% endif %}
             </div>
             <ul id="lesson-goals-list" class="space-y-1.5"></ul>
             {% if is_studio_teacher|default(false) %}
             <div id="lesson-goal-editor" class="hidden mt-2 flex gap-2">
-              <input id="lesson-goal-input" class="lesson-studio-field p-2" maxlength="500" placeholder="Например: разобрать алгоритм...">
-              <button id="lesson-goal-save-btn" type="button" class="lesson-studio-chip is-active px-3">OK</button>
+              <input id="lesson-goal-input" class="lesson-studio-field p-2 flex-1 text-xs rounded-xl border border-slate-200" maxlength="500" placeholder="Например: разобрать алгоритм...">
+              <button id="lesson-goal-save-btn" type="button" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all cursor-pointer"><i class="ph-bold ph-check"></i> Сохранить</button>
             </div>
             {% endif %}
           </section>
 
-          <section id="lesson-agenda-section" class="lesson-studio-card p-3">
-            <div class="flex items-center justify-between gap-2 mb-2">
+          <section id="lesson-agenda-section" class="lesson-studio-card p-3.5 bg-white border border-slate-200/90 shadow-2xs rounded-2xl">
+            <div class="flex items-center justify-between gap-2 mb-2.5">
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">План урока</span>
               <span id="lesson-phase-label" class="text-[10px] font-black text-indigo-600">Подготовка</span>
             </div>
-            <div id="lesson-phase-buttons" class="{% if not is_studio_teacher %}hidden {% endif %}flex flex-wrap gap-1.5">
-              <button type="button" class="lesson-studio-chip" data-studio-phase="preparation">Старт</button>
-              <button type="button" class="lesson-studio-chip" data-studio-phase="practice">Практика</button>
-              <button type="button" class="lesson-studio-chip" data-studio-phase="reflection">Рефлексия</button>
+            <div id="lesson-phase-buttons" class="{% if not is_studio_teacher %}hidden {% endif %}grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/80 text-xs">
+              <button type="button" class="lesson-studio-phase-btn win-mode-btn is-active py-1.5 px-2 rounded-lg font-bold text-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer" data-studio-phase="preparation">Старт</button>
+              <button type="button" class="lesson-studio-phase-btn win-mode-btn py-1.5 px-2 rounded-lg font-bold text-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer" data-studio-phase="practice">Практика</button>
+              <button type="button" class="lesson-studio-phase-btn win-mode-btn py-1.5 px-2 rounded-lg font-bold text-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer" data-studio-phase="reflection">Рефлексия</button>
             </div>
             <div id="lesson-agenda-list" class="mt-3 space-y-1.5"></div>
           </section>
 
-          <section class="lesson-studio-card p-3">
+          <section class="lesson-studio-card p-3.5 bg-white border border-slate-200/90 shadow-2xs rounded-2xl">
             <div class="flex items-center justify-between gap-2">
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Таймер этапа</span>
               <strong id="lesson-studio-timer" class="text-lg font-black tabular-nums text-slate-900">00:00</strong>
             </div>
-            <div class="mt-2 flex flex-wrap gap-1.5">
+            <div class="mt-2.5 flex flex-wrap gap-2">
               {% if is_studio_teacher|default(false) %}
-              <button id="lesson-timer-toggle" type="button" class="lesson-studio-chip">Запустить</button>
-              <button id="lesson-timer-reset" type="button" class="lesson-studio-chip">Сбросить</button>
+              <button id="lesson-timer-toggle" type="button" class="lesson-studio-chip px-3 py-1.5 text-xs font-bold"><i class="ph-bold ph-play"></i> Запустить</button>
+              <button id="lesson-timer-reset" type="button" class="lesson-studio-chip px-3 py-1.5 text-xs font-bold"><i class="ph-bold ph-arrow-counter-clockwise"></i> Сбросить</button>
               {% else %}<span class="text-[10px] font-semibold text-slate-400">Таймером управляет преподаватель</span>{% endif %}
             </div>
           </section>
 
-          <section class="lesson-studio-card p-3">
+          <section class="lesson-studio-card p-3.5 bg-white border border-slate-200/90 shadow-2xs rounded-2xl">
             <div class="flex items-center justify-between gap-2">
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Текущий фокус</span>
               <span id="lesson-focus-status" class="text-[10px] font-bold text-slate-400">Синхронизируется</span>
             </div>
             {% if is_studio_teacher|default(false) %}
             <div class="mt-2 flex gap-2">
-              <input id="lesson-focus-input" class="lesson-studio-field p-2 text-xs" maxlength="300" placeholder="На чём концентрируемся прямо сейчас...">
-              <button id="lesson-focus-save-btn" type="button" class="lesson-studio-chip is-active px-3">OK</button>
+              <input id="lesson-focus-input" class="lesson-studio-field p-2 flex-1 text-xs rounded-xl border border-slate-200" maxlength="300" placeholder="На чём концентрируемся прямо сейчас...">
+              <button id="lesson-focus-save-btn" type="button" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all cursor-pointer"><i class="ph-bold ph-check"></i> Сохранить</button>
             </div>
             {% endif %}
             <div id="lesson-guidance-view" class="mt-2 text-[11px] leading-relaxed text-slate-600">Фокус пока не задан.</div>
             <div id="lesson-student-signal" class="hidden mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-[10px] font-bold text-amber-700"></div>
           </section>
 
-          <section id="lesson-outcome-section" class="lesson-studio-card p-3">
+          <section id="lesson-outcome-section" class="lesson-studio-card p-3.5 bg-white border border-slate-200/90 shadow-2xs rounded-2xl">
             <div class="flex items-center justify-between gap-2 mb-2">
               <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Итог урока</span>
               <span id="lesson-outcome-status" class="text-[10px] font-bold text-slate-400">Не опубликован</span>
             </div>
             {% if is_studio_teacher|default(false) %}
             <div class="grid gap-2">
-              <textarea id="lesson-outcome-completed" class="lesson-studio-field min-h-[52px] p-2" placeholder="Освоено — по одному пункту в строке"></textarea>
-              <textarea id="lesson-outcome-repeat" class="lesson-studio-field min-h-[52px] p-2" placeholder="Повторить — по одному пункту в строке"></textarea>
-              <textarea id="lesson-outcome-homework" class="lesson-studio-field min-h-[52px] p-2" placeholder="Домашнее задание"></textarea>
-              <button id="lesson-finish-btn" type="button" class="lesson-studio-chip is-active w-full">Опубликовать итог и завершить урок</button>
+              <textarea id="lesson-outcome-completed" class="lesson-studio-field min-h-[52px] p-2 text-xs rounded-xl border border-slate-200" placeholder="Освоено — по одному пункту в строке"></textarea>
+              <textarea id="lesson-outcome-repeat" class="lesson-studio-field min-h-[52px] p-2 text-xs rounded-xl border border-slate-200" placeholder="Повторить — по одному пункту в строке"></textarea>
+              <textarea id="lesson-outcome-homework" class="lesson-studio-field min-h-[52px] p-2 text-xs rounded-xl border border-slate-200" placeholder="Домашнее задание"></textarea>
+              <button id="lesson-finish-btn" type="button" class="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs w-full shadow-xs transition-all active:translate-y-0.5 cursor-pointer flex items-center justify-center gap-2"><i class="ph-bold ph-check-circle text-emerald-400"></i> Опубликовать итог и завершить урок</button>
             </div>
             {% else %}
             <div id="lesson-outcome-view" class="text-[11px] leading-relaxed text-slate-600">Итог появится после завершения урока.</div>
@@ -3112,26 +3140,35 @@
         <!-- Filter bar -->
         <div class="p-3 bg-slate-50/90 border-b border-slate-200/80 space-y-2 shrink-0">
           <div class="flex flex-wrap items-center gap-2">
+            <!-- Bank Category selector -->
+            <select id="teacher-bank-category-select" class="h-8.5 px-3 pr-8 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-2xs focus:outline-none focus:border-amber-500 cursor-pointer" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 8px center; appearance: none;">
+              <option value="all">Все банки</option>
+              <option value="exam">Банк ЕГЭ / ОГЭ</option>
+              <option value="python_practice">Практикум Python</option>
+            </select>
             <!-- Course selector -->
-            <select id="teacher-bank-course-select" class="h-8 px-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:outline-none focus:border-amber-400">
+            <select id="teacher-bank-course-select" class="h-8.5 px-3 pr-8 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-2xs focus:outline-none focus:border-amber-500 cursor-pointer" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 8px center; appearance: none;">
               <option value="all">Все курсы</option>
             </select>
             <!-- Difficulty filter -->
-            <select id="teacher-bank-diff-select" class="h-8 px-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:outline-none focus:border-amber-400">
+            <select id="teacher-bank-diff-select" class="h-8.5 px-3 pr-8 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-2xs focus:outline-none focus:border-amber-500 cursor-pointer" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2214%22%20height%3D%2214%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 8px center; appearance: none;">
               <option value="all">Все сложности</option>
               <option value="1">1 · Базовый</option>
               <option value="2">2 · Средний</option>
               <option value="3">3 · Сложный</option>
             </select>
             <!-- Task number filter -->
-            <input id="teacher-bank-number-input" type="number" min="1" max="100" placeholder="№" class="h-8 w-16 px-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:outline-none focus:border-amber-400">
+            <input id="teacher-bank-number-input" type="number" min="1" max="100" placeholder="№" class="h-8.5 w-16 px-2.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 shadow-2xs focus:outline-none focus:border-amber-500 text-center">
             <!-- Search text input -->
             <div class="flex-1 min-w-[150px] relative">
-              <input id="teacher-bank-search-input" type="text" placeholder="Поиск по условию..." class="h-8 w-full pl-7 pr-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-400">
+              <input id="teacher-bank-search-input" type="text" placeholder="Поиск по условию или коду..." class="h-8.5 w-full pl-8 pr-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-2xs focus:outline-none focus:border-amber-500">
               <i class="ph-bold ph-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
             </div>
-            <button id="teacher-bank-search-btn" type="button" class="h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1 transition-all shadow-xs cursor-pointer">
-              <i class="ph-bold ph-funnel"></i> Найти
+            <button id="teacher-bank-reset-btn" type="button" class="h-8.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer" title="Сбросить фильтры">
+              <i class="ph-bold ph-arrow-counter-clockwise"></i>
+            </button>
+            <button id="teacher-bank-search-btn" type="button" class="h-8.5 px-3.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer">
+              <i class="ph-bold ph-magnifying-glass"></i> Найти
             </button>
           </div>
         </div>
@@ -3139,6 +3176,21 @@
         <!-- Tasks list & preview container -->
         <div id="teacher-bank-tasks-container" class="flex-1 overflow-y-auto p-4 space-y-3.5 bg-white">
           <div class="text-center py-10 text-slate-400 text-xs">Загрузка банка заданий...</div>
+        </div>
+
+        <!-- Pagination footer -->
+        <div id="teacher-bank-pagination" class="flex items-center justify-between px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs font-semibold text-slate-600 shrink-0 select-none">
+          <div class="flex items-center gap-2">
+            <button type="button" id="teacher-bank-prev-page" class="h-7 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-slate-700 text-xs flex items-center gap-1 transition-colors shadow-2xs">
+              <i class="ph-bold ph-caret-left"></i> Назад
+            </button>
+            <button type="button" id="teacher-bank-next-page" class="h-7 px-3 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed font-bold text-slate-700 text-xs flex items-center gap-1 transition-colors shadow-2xs">
+              Вперёд <i class="ph-bold ph-caret-right"></i>
+            </button>
+          </div>
+          <div id="teacher-bank-page-info" class="text-[11px] font-bold text-slate-500">
+            Загрузка...
+          </div>
         </div>
 
         <div class="window-resize-handle absolute bottom-0 right-0 w-4 h-4 opacity-60 flex items-center justify-center select-none font-bold text-[10px]">⇲</div>
@@ -3971,12 +4023,12 @@
       {% endif %}
 
       <!-- GLASS OS CUSTOM MODAL COMPONENT (Light Glassmorphism Aesthetic) -->
-      <div id="glass-modal-overlay"
-        class="hidden fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-200 opacity-0 pointer-events-none">
+      <div id="glass-modal-overlay" style="z-index: 99999 !important;"
+        class="hidden fixed inset-0 z-[99999] bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-200 opacity-0 pointer-events-none">
         <div id="glass-modal-box"
-          class="w-full max-w-md bg-white/90 backdrop-blur-2xl border border-white/80 shadow-[0_20px_50px_rgba(15,23,42,0.15)] rounded-2xl p-6 space-y-4 font-sans text-slate-800 transform scale-95 transition-transform duration-200">
+          class="w-full max-w-md bg-white/95 backdrop-blur-2xl border border-white/80 shadow-[0_20px_50px_rgba(15,23,42,0.18)] rounded-2xl p-6 space-y-4 font-sans text-slate-800 transform scale-95 transition-transform duration-200">
           <div class="flex items-center justify-between">
-            <h3 id="glass-modal-title" class="text-lg font-bold font-display text-slate-900"></h3>
+            <h3 id="glass-modal-title" class="text-base font-bold font-display text-slate-900"></h3>
             <button onclick="closeGlassModal()"
               class="text-slate-400 hover:text-slate-700 text-sm cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition-colors"><i class="ph-bold ph-x"></i></button>
           </div>
@@ -3984,7 +4036,7 @@
 
           <div id="glass-modal-input-wrap" class="hidden">
             <input type="text" id="glass-modal-input"
-              class="w-full bg-slate-100/80 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none transition-all">
+              class="w-full bg-slate-100/90 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl px-3.5 py-2.5 text-xs font-mono outline-none transition-all">
           </div>
 
           <div id="glass-modal-preview-wrap"
@@ -3993,11 +4045,9 @@
               class="m-0 font-mono text-xs text-slate-800 whitespace-pre-wrap leading-relaxed"></pre>
           </div>
 
-          <div class="flex items-center justify-end gap-2 pt-2">
-            <button id="glass-modal-btn-cancel" onclick="closeGlassModal()"
-              class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-xl text-xs transition-colors cursor-pointer">Отмена</button>
-            <button id="glass-modal-btn-confirm"
-              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-medium rounded-xl text-xs shadow-md transition-all cursor-pointer">Подтвердить</button>
+          <div class="flex items-center justify-end gap-2.5 pt-2">
+            <button id="glass-modal-btn-cancel" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 cursor-pointer transition-all active:translate-y-0.5 shadow-sm" onclick="closeGlassModal()">Отмена</button>
+            <button id="glass-modal-btn-confirm" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm border border-indigo-500 cursor-pointer transition-all active:translate-y-0.5">Подтвердить</button>
           </div>
         </div>
       </div>
@@ -4063,8 +4113,10 @@
     const confirmBtn = document.getElementById('glass-modal-btn-confirm');
     const cancelBtn = document.getElementById('glass-modal-btn-cancel');
     cancelBtn.classList.remove('hidden');
+    cancelBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 cursor-pointer transition-all active:translate-y-0.5 shadow-sm';
     cancelBtn.textContent = 'Отмена';
-    confirmBtn.textContent = 'Подтвердить';
+    confirmBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm border border-indigo-500 cursor-pointer transition-all active:translate-y-0.5';
+    confirmBtn.textContent = 'Сохранить';
 
     confirmBtn.onclick = () => {
       const val = inputEl.value;
@@ -4072,11 +4124,21 @@
       if (onConfirm) onConfirm(val);
     };
 
+    inputEl.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmBtn.click();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeGlassModal();
+      }
+    };
+
     openGlassModal();
-    setTimeout(() => inputEl.focus(), 60);
+    setTimeout(() => { inputEl.focus(); inputEl.select(); }, 60);
   }
 
-  function showGlassConfirm({ title, message, onConfirm }) {
+  function showGlassConfirm({ title, message, confirmText, confirmDanger, onConfirm }) {
     document.getElementById('glass-modal-title').textContent = title || 'Подтверждение';
     const msgEl = document.getElementById('glass-modal-message');
     msgEl.textContent = message || '';
@@ -4088,8 +4150,12 @@
     const confirmBtn = document.getElementById('glass-modal-btn-confirm');
     const cancelBtn = document.getElementById('glass-modal-btn-cancel');
     cancelBtn.classList.remove('hidden');
+    cancelBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 cursor-pointer transition-all active:translate-y-0.5 shadow-sm';
     cancelBtn.textContent = 'Отмена';
-    confirmBtn.textContent = 'Удалить';
+    confirmBtn.className = confirmDanger !== false
+      ? 'px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm border border-rose-500 cursor-pointer transition-all active:translate-y-0.5'
+      : 'px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm border border-indigo-500 cursor-pointer transition-all active:translate-y-0.5';
+    confirmBtn.textContent = confirmText || (confirmDanger !== false ? 'Удалить' : 'Подтвердить');
 
     confirmBtn.onclick = () => {
       closeGlassModal();
@@ -4112,6 +4178,7 @@
     cancelBtn.classList.add('hidden');
 
     const confirmBtn = document.getElementById('glass-modal-btn-confirm');
+    confirmBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm border border-indigo-500 cursor-pointer transition-all active:translate-y-0.5';
     confirmBtn.textContent = 'ОК';
     confirmBtn.onclick = () => {
       closeGlassModal();
@@ -4160,6 +4227,14 @@
       }
     }
   });
+
+  window.openGlassModal = openGlassModal;
+  window.closeGlassModal = closeGlassModal;
+  window.showGlassPrompt = showGlassPrompt;
+  window.showGlassConfirm = showGlassConfirm;
+  window.showGlassAlert = showGlassAlert;
+  window.showGlassPreview = showGlassPreview;
+
 
   // ----------------------------------------------------------------------
   // 1. VIRTUAL FILE SYSTEM (VFS) & EXPLORER MANAGER
@@ -5434,6 +5509,8 @@
   }
 
   const windowManager = new OSWindowManager();
+  window.windowManager = windowManager;
+  window.isPrivateWindow = isPrivateWindow;
 
   function mountLessonOsWorkspace() {
     if (!trainerOsConfig.room_mode) return;
@@ -7937,7 +8014,7 @@
       const page = () => next.pages.find((item) => item.id === (operation.page_id || next.active_page_id));
       if (operation.type === 'document.replace') return clone(operation.document);
       if (operation.type === 'page.create') {
-        next.pages.push({ id: uid('page'), title: operation.title || 'Новая страница', order: next.pages.length, objects: [] });
+        next.pages.push({ id: operation.page_id || uid('page'), title: operation.title || 'Новая страница', order: next.pages.length, objects: [] });
         return next;
       }
       if (operation.type === 'page.rename') {
@@ -8068,8 +8145,15 @@
     function deletePage(page) {
       if (!page || !state.canPresent) return;
       if ((state.document?.pages || []).length <= 1) { showReaction('Нельзя удалить последнюю страницу'); return; }
-      if (!window.confirm(`Удалить страницу «${page.title || 'Без названия'}»? Все объекты на ней тоже будут удалены.`)) return;
-      commit({ type: 'page.delete', page_id: page.id });
+      showGlassConfirm({
+        title: 'Удалить страницу?',
+        message: `Удалить страницу «${page.title || 'Без названия'}»? Все объекты на ней тоже будут удалены.`,
+        confirmText: 'Удалить',
+        confirmDanger: true,
+        onConfirm: () => {
+          commit({ type: 'page.delete', page_id: page.id });
+        }
+      });
     }
 
     function renderPages() {
@@ -8329,11 +8413,34 @@
       const layer = $('#board-object-layer');
       const page = pageById();
       if (!layer || !page) return;
-      [...layer.children].forEach((child) => { if (child.id !== 'board-selection-overlay') child.remove(); });
-      page.objects.forEach((item) => {
-        const element = makeObjectElement(item);
-        if (element) layer.appendChild(element);
+
+      const currentIds = new Set((page.objects || []).map((o) => o.id));
+      [...layer.children].forEach((child) => {
+        if (child.id === 'board-selection-overlay') return;
+        const id = child.dataset.objectId;
+        if (!id || !currentIds.has(id)) {
+          child.remove();
+        }
       });
+
+      (page.objects || []).forEach((item) => {
+        let element = layer.querySelector(`.board-object[data-object-id="${item.id}"]`);
+        if (!element) {
+          element = makeObjectElement(item);
+          if (element) layer.appendChild(element);
+        } else {
+          const bounds = objectBounds(item);
+          element.style.left = `${bounds.x}px`;
+          element.style.top = `${bounds.y}px`;
+          element.style.width = `${Math.max(24, bounds.width)}px`;
+          element.style.height = `${Math.max(24, bounds.height)}px`;
+          element.style.zIndex = item.z_index || 1;
+          element.style.transform = `rotate(${item.rotation || 0}deg)`;
+          element.classList.toggle('is-locked', Boolean(item.locked));
+          element.classList.toggle('is-selected', state.selectedIds.includes(item.id));
+        }
+      });
+
       renderSelectionOverlay();
       renderCanvas();
       $('#board-empty-state')?.classList.toggle('hidden', page.objects.length > 0);
@@ -8726,13 +8833,13 @@
       const allowed = Array.isArray(control.windows_allowed) ? control.windows_allowed : [
         'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
       ];
-      return !allowed.includes(windowId);
+      return allowed.includes(windowId);
     }
 
     function sendRoomUi(payload) {
       if (!state.socket || !payload?.kind) return;
       const control = controlState();
-      const isTeacher = state.role === 'teacher';
+      const isTeacher = Boolean(trainerOsConfig.is_studio_teacher || state.role === 'teacher');
       const winMode = control.windows_mode || (control.windows_sync === false ? 'independent' : 'teacher');
       const isCodeKind = ['run', 'run_start', 'terminal_output', 'terminal_tab'].includes(payload.kind);
       const isWindowKind = ['window', 'window_layout'].includes(payload.kind);
@@ -8775,6 +8882,7 @@
 
     function syncCurrentRoomUi(control = controlState()) {
       if (state.role !== 'teacher' || !state.socket) return;
+      window.lessonVirtualWorkspaces?.syncAll?.();
       if (_teacherControlEnabled(control, 'teacher_controls_mode')) {
         const activeMode = [...document.querySelectorAll('.room-mode-button.is-active[data-room-mode]')]
           .find((button) => button.offsetParent !== null)?.dataset.roomMode;
@@ -9027,7 +9135,11 @@
       const winMode = ctrl.windows_mode || (ctrl.windows_sync === false ? 'independent' : 'teacher');
 
       if (payload.kind === 'workspace' && ctrl.workspace_sync !== false) {
-        window.lessonVirtualWorkspaces?.applyRemoteWorkspace?.(payload);
+        if (window.lessonVirtualWorkspaces?.applyRemoteWorkspace) {
+          window.lessonVirtualWorkspaces.applyRemoteWorkspace(payload);
+        } else {
+          window._pendingWorkspacePayload = payload;
+        }
         return;
       }
 
@@ -9366,7 +9478,7 @@
         const selected = objectById(id);
         return selected ? { id, x: selected.x || 0, y: selected.y || 0, points: selected.type === 'stroke' ? clone(selected.data?.points || []) : null } : null;
       }).filter(Boolean) };
-      capturePointer(event.currentTarget, event);
+      capturePointer(viewport(), event);
       window.addEventListener('pointermove', dragObject);
       window.addEventListener('pointerup', stopObjectDrag, { once: true });
     }
@@ -9377,17 +9489,25 @@
       const dx = point.x - state.dragging.startX;
       const dy = point.y - state.dragging.startY;
       if (Math.abs(dx) > .5 || Math.abs(dy) > .5) state.dragging.moved = true;
+      let hasStroke = false;
       state.dragging.items.forEach((entry) => {
         const item = objectById(entry.id);
         if (!item || item.locked) return;
         if (item.type === 'stroke') {
           item.data.points = entry.points.map((strokePoint) => ({ x: strokePoint.x + dx, y: strokePoint.y + dy }));
+          hasStroke = true;
         } else {
           item.x = snap(entry.x + dx);
           item.y = snap(entry.y + dy);
+          const el = document.querySelector(`.board-object[data-object-id="${item.id}"]`);
+          if (el) {
+            el.style.left = `${item.x}px`;
+            el.style.top = `${item.y}px`;
+          }
         }
       });
-      renderObjects();
+      renderSelectionOverlay();
+      if (hasStroke) renderCanvas();
 
       // Realtime live stream to observers during drag
       const now = performance.now();
@@ -9453,6 +9573,7 @@
         const scaleX = width / Math.max(1, state.resizing.width);
         const scaleY = height / Math.max(1, state.resizing.height);
         item.data.points = state.resizing.points.map((strokePoint) => ({ x: bounds.x + (strokePoint.x - bounds.x) * scaleX, y: bounds.y + (strokePoint.y - bounds.y) * scaleY }));
+        renderCanvas();
       } else {
         item.width = width;
         item.height = height;
@@ -9460,13 +9581,42 @@
           item.data.start = { x: 0, y: item.height / 2 };
           item.data.end = { x: item.width, y: item.height / 2 };
         }
+        const el = document.querySelector(`.board-object[data-object-id="${item.id}"]`);
+        if (el) {
+          el.style.width = `${Math.max(24, width)}px`;
+          el.style.height = `${Math.max(24, height)}px`;
+        }
       }
-      renderObjects();
+      renderSelectionOverlay();
+
+      // Realtime live stream to observers during resize
+      const now = performance.now();
+      if (state.socket && (now - (state.lastObjectResizeEmitAt || 0) > 28)) {
+        state.lastObjectResizeEmitAt = now;
+        state.socket.emit('board_action', {
+          lesson_id: lessonId,
+          action: 'object_resize',
+          object_id: item.id,
+          width: item.width,
+          height: item.height,
+          page_id: state.currentPageId,
+        });
+      }
     }
 
     function stopResize() {
       const item = objectById(state.resizing?.itemId);
       if (item && state.resizing) {
+        if (state.socket) {
+          state.socket.emit('board_action', {
+            lesson_id: lessonId,
+            action: 'object_resize',
+            object_id: item.id,
+            width: item.width,
+            height: item.height,
+            page_id: state.currentPageId,
+          });
+        }
         const patch = item.type === 'stroke' ? { data: { ...item.data, points: clone(item.data.points) } } : { width: item.width, height: item.height, ...(item.type === 'arrow' ? { data: clone(item.data) } : {}) };
         commit({ type: 'object.update', page_id: state.currentPageId, object_id: item.id, patch }, { alreadyApplied: true });
       }
@@ -9570,6 +9720,7 @@
       state.liveCameraSeq += 1;
       emitRealtime('whiteboard_live_camera', {
         lesson_id: lessonId,
+        client_id: state.clientId || clientId,
         page_id: state.currentPageId,
         frame_id: state.document.presentation.frame_id || null,
         seq: state.liveCameraSeq,
@@ -9916,6 +10067,9 @@
           setSelection([]);
         }
       }
+      if (operation.type === 'control.update') {
+        window.dispatchEvent(new CustomEvent('boostudy:control-updated', { detail: operation.control }));
+      }
       state.version = Math.max(state.version, Number(version || 0));
       renderDocument();
     }
@@ -9925,20 +10079,23 @@
         setTimeout(connectCanvasOverlaySync, 150);
         return;
       }
+      const handleLaser = (pointer, visible, meta = {}) => {
+        if (!state.socket || !state.connected) return;
+        state.socket.emit('whiteboard_live_laser', {
+          lesson_id: lessonId,
+          client_id: clientId,
+          page_id: state.currentPageId,
+          pointer: pointer,
+          visible: visible !== false,
+          color: meta?.color,
+          width: meta?.width,
+          is_start: meta?.isStart,
+        });
+      };
+
       window.BooCanvasOverlay.setRealtimeSync({
-        onLaserMove: (pointer, visible, meta = {}) => {
-          if (!state.socket || !state.connected) return;
-          state.socket.emit('whiteboard_live_laser', {
-            lesson_id: lessonId,
-            client_id: clientId,
-            page_id: state.currentPageId,
-            pointer: pointer,
-            visible: visible !== false,
-            color: meta?.color,
-            width: meta?.width,
-            is_start: meta?.isStart,
-          });
-        },
+        onLaserMove: handleLaser,
+        onLaserLive: handleLaser,
         onStrokeLive: (phase, data) => {
           if (!state.socket || !state.connected) return;
           if (controlState().live_strokes === false && state.role !== 'teacher') return;
@@ -10002,6 +10159,10 @@
           });
         },
         onCameraChange: (panX, panY, scale) => {
+          state.panX = panX;
+          state.panY = panY;
+          state.scale = scale;
+          renderTransform();
           if (!state.socket || !state.connected) return;
           if (state.role !== 'teacher' && !state.canPresent) return;
           if (controlState().canvas_sync === false) return;
@@ -10016,6 +10177,9 @@
         },
       });
       window.BooCanvasOverlay.setReadOnly(!state.canEdit);
+      if (state.panX !== undefined || state.panY !== undefined || state.scale !== undefined) {
+        window.BooCanvasOverlay.setCamera(state.panX || 0, state.panY || 0, state.scale || 1);
+      }
     }
 
     function setupSocket() {
@@ -10035,6 +10199,9 @@
           state.socket.emit('lesson_code_join', { lesson_id: lessonId, file_name: activeFileName, code: virtualFS[activeFileName] || '' });
           flushOutbox();
           connectCanvasOverlaySync();
+          if (trainerOsConfig.is_studio_teacher) {
+            window.lessonVirtualWorkspaces?.syncAll?.();
+          }
         });
         state.socket.on('disconnect', () => { state.connected = false; setSaveState('offline', 'Ожидаем сеть'); });
         state.socket.on('whiteboard_snapshot', (payload) => { if (payload.document) applySnapshot(payload.document, payload.version, { serverNow: payload.server_now, preserveOutbox: Boolean(state.outbox.length || state.inFlight) }); });
@@ -10126,20 +10293,41 @@
         state.socket.on('board_action', (payload) => {
           if (Number(payload.lesson_id) !== Number(lessonId)) return;
           if (payload.action === 'object_drag' && Array.isArray(payload.objects)) {
-            let changed = false;
+            let strokeChanged = false;
             payload.objects.forEach((obj) => {
               const local = objectById(obj.id);
               if (local && !local.locked) {
                 if (obj.points && local.type === 'stroke' && local.data) {
                   local.data.points = obj.points;
-                  changed = true;
+                  strokeChanged = true;
                 } else {
-                  if (obj.x !== undefined) { local.x = obj.x; changed = true; }
-                  if (obj.y !== undefined) { local.y = obj.y; changed = true; }
+                  if (obj.x !== undefined) {
+                    local.x = obj.x;
+                    const el = document.querySelector(`.board-object[data-object-id="${obj.id}"]`);
+                    if (el) el.style.left = `${local.x}px`;
+                  }
+                  if (obj.y !== undefined) {
+                    local.y = obj.y;
+                    const el = document.querySelector(`.board-object[data-object-id="${obj.id}"]`);
+                    if (el) el.style.top = `${local.y}px`;
+                  }
                 }
               }
             });
-            if (changed) renderObjects();
+            renderSelectionOverlay();
+            if (strokeChanged) renderCanvas();
+          } else if (payload.action === 'object_resize' && payload.object_id) {
+            const local = objectById(payload.object_id);
+            if (local && !local.locked) {
+              if (payload.width !== undefined) local.width = payload.width;
+              if (payload.height !== undefined) local.height = payload.height;
+              const el = document.querySelector(`.board-object[data-object-id="${payload.object_id}"]`);
+              if (el) {
+                el.style.width = `${Math.max(24, local.width)}px`;
+                el.style.height = `${Math.max(24, local.height)}px`;
+              }
+              renderSelectionOverlay();
+            }
           } else if (payload.action === 'update' && payload.strokes) {
             window.BooCanvasOverlay?.applyRemoteStrokesUpdate?.(payload.strokes);
           } else if (payload.action === 'delete') {
@@ -10162,8 +10350,7 @@
         state.socket.on('whiteboard_live_laser', (payload) => {
           if (Number(payload.lesson_id) === Number(lessonId) && (!payload.page_id || payload.page_id === state.currentPageId)) {
             if (payload.visible !== false) renderRemoteLaser(payload);
-            window.BooCanvasOverlay?.applyRemoteLaser?.(payload.pointer, {
-              visible: payload.visible !== false,
+            window.BooCanvasOverlay?.applyRemoteLaser?.(payload.pointer, payload.visible !== false, {
               color: payload.color,
               width: payload.width,
               isStart: payload.is_start,
@@ -10201,12 +10388,21 @@
           }, 3500);
         });
         state.socket.on('whiteboard_live_camera', (payload) => {
-          if (Number(payload.lesson_id) !== Number(lessonId) || state.canPresent || state.role === 'teacher' || state.followPaused) return;
+          if (Number(payload.lesson_id) !== Number(lessonId) || state.canPresent || state.role === 'teacher') return;
           if (controlState().canvas_sync === false) return;
           const seq = Number(payload.seq || 0);
+          const senderClientId = payload.client_id || payload.sender_id || null;
+          if (senderClientId && senderClientId !== state.lastLiveCameraClientId) {
+            state.lastLiveCameraClientId = senderClientId;
+            state.lastLiveCameraSeq = 0;
+          } else if (seq < (state.lastLiveCameraSeq || 0) - 5) {
+            state.lastLiveCameraSeq = 0;
+          }
           if (seq > 0 && seq <= (state.lastLiveCameraSeq || 0)) return;
           if (seq > 0) state.lastLiveCameraSeq = seq;
-          if (payload.page_id && payload.page_id !== state.currentPageId) {
+          state.followPaused = false;
+          const pageChanged = payload.page_id && payload.page_id !== state.currentPageId;
+          if (pageChanged) {
             state.currentPageId = payload.page_id;
             state.document.active_page_id = payload.page_id;
             setSelection([]);
@@ -10218,7 +10414,11 @@
           state.panX = panX;
           state.panY = panY;
           state.scale = scale;
-          renderDocument();
+          if (pageChanged) {
+            renderDocument();
+          } else {
+            renderTransform();
+          }
           if (window.BooCanvasOverlay?.setCamera) {
             window.BooCanvasOverlay.setCamera(panX, panY, scale);
           }
@@ -11058,6 +11258,37 @@
         queueCodeSync: (code, fileName) => queueCodeSync(code, fileName),
         sendCodeCursor: (start, end, fileName) => sendCodeCursor(start, end, fileName),
         getControl: () => controlState(),
+      };
+      window.boostudyWhiteboard = {
+        state: state,
+        activatePage: (pageId) => {
+          if (!pageId) return;
+          if (state.canPresent) commit({ type: 'page.activate', page_id: pageId });
+          else {
+            state.currentPageId = pageId;
+            if (state.document) state.document.active_page_id = pageId;
+            setSelection([]);
+            renderDocument();
+          }
+        },
+        createPage: (title) => {
+          if (state.canPresent) {
+            const newId = uid('page');
+            commit({ type: 'page.create', title: title || 'Новая страница', page_id: newId });
+            return newId;
+          }
+          return null;
+        },
+        renamePage: (pageId, title) => {
+          const p = state.document?.pages?.find(x => x.id === pageId);
+          if (p && state.canPresent) commitPageRename(p, title);
+        },
+        deletePage: (pageId) => {
+          const p = state.document?.pages?.find(x => x.id === pageId);
+          if (p && state.canPresent) commit({ type: 'page.delete', page_id: pageId });
+        },
+        getPages: () => (state.document?.pages || []),
+        getActivePageId: () => state.currentPageId,
       };
       bindBoardEvents();
       loadBoard();
@@ -11905,6 +12136,20 @@
     const socketPoll = window.setInterval(() => {
       if (bindSocket()) window.clearInterval(socketPoll);
     }, 500);
+    window.lessonTasksController = {
+      getActiveTaskId: () => activeTaskId,
+      selectTaskById: (id) => {
+        if (!id) {
+          activeTaskId = null;
+          renderEmptyTask();
+          return;
+        }
+        const task = tasks.find(t => Number(t.lesson_task_id || t.task_id) === Number(id));
+        if (task) renderTask(task);
+        else renderEmptyTask();
+      }
+    };
+
     document.addEventListener('DOMContentLoaded', bindTaskWindow, { once: true });
   })();
 
@@ -11920,24 +12165,35 @@
     const isTeacher = Boolean(config.is_studio_teacher);
     if (!config.room_mode || !lessonId || !isTeacher) return;
 
+    const categorySelect = document.getElementById('teacher-bank-category-select');
     const courseSelect = document.getElementById('teacher-bank-course-select');
     const diffSelect = document.getElementById('teacher-bank-diff-select');
     const numInput = document.getElementById('teacher-bank-number-input');
     const searchInput = document.getElementById('teacher-bank-search-input');
     const searchBtn = document.getElementById('teacher-bank-search-btn');
+    const resetBtn = document.getElementById('teacher-bank-reset-btn');
     const container = document.getElementById('teacher-bank-tasks-container');
+    const prevPageBtn = document.getElementById('teacher-bank-prev-page');
+    const nextPageBtn = document.getElementById('teacher-bank-next-page');
+    const pageInfo = document.getElementById('teacher-bank-page-info');
 
     if (!container) return;
 
     let coursesLoaded = false;
+    let categoriesLoaded = false;
+    let currentBankPage = 1;
+    let totalBankPages = 1;
 
-    async function loadTeacherBankTasks() {
+    async function loadTeacherBankTasks(page = 1) {
+      currentBankPage = typeof page === 'number' ? page : 1;
       const q = searchInput?.value.trim() || '';
       const number = numInput?.value.trim() || '';
       const courseId = courseSelect?.value || 'all';
       const difficulty = diffSelect?.value || 'all';
+      const category = categorySelect?.value || 'all';
 
       container.innerHTML = '<div class="flex items-center justify-center py-12 text-slate-400 text-xs font-semibold"><i class="ph-bold ph-spinner animate-spin text-lg mr-2 text-amber-500"></i> Загрузка заданий...</div>';
+      if (pageInfo) pageInfo.textContent = 'Загрузка...';
 
       try {
         const params = new URLSearchParams();
@@ -11945,19 +12201,48 @@
         if (number) params.set('number', number);
         if (courseId && courseId !== 'all') params.set('course_id', courseId);
         if (difficulty && difficulty !== 'all') params.set('difficulty', difficulty);
+        if (category && category !== 'all') params.set('bank_category', category);
+        params.set('page', String(currentBankPage));
+        params.set('per_page', '30');
 
         const res = await fetch(`/lesson/${lessonId}/search-tasks?${params.toString()}`);
         const data = await res.json();
         if (!res.ok || data.success === false) throw new Error(data.error || 'Ошибка загрузки заданий');
 
         if (!coursesLoaded && Array.isArray(data.courses) && courseSelect) {
+          const selected = courseSelect.value;
+          courseSelect.innerHTML = '<option value="all">Все курсы</option>';
           data.courses.forEach(c => {
+            const cid = c.course_id || c.id;
             const opt = document.createElement('option');
-            opt.value = c.course_id;
-            opt.textContent = c.title || `Курс #${c.course_id}`;
+            opt.value = cid;
+            opt.textContent = c.title || `Курс #${cid}`;
             courseSelect.appendChild(opt);
           });
+          if (selected) courseSelect.value = selected;
           coursesLoaded = true;
+        }
+
+        if (!categoriesLoaded && Array.isArray(data.categories) && categorySelect) {
+          const selectedCat = categorySelect.value;
+          categorySelect.innerHTML = '<option value="all">Все банки</option>';
+          data.categories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.id;
+            opt.textContent = cat.title || cat.id;
+            categorySelect.appendChild(opt);
+          });
+          if (selectedCat) categorySelect.value = selectedCat;
+          categoriesLoaded = true;
+        }
+
+        currentBankPage = data.page || 1;
+        totalBankPages = data.pages || 1;
+
+        if (prevPageBtn) prevPageBtn.disabled = currentBankPage <= 1;
+        if (nextPageBtn) nextPageBtn.disabled = currentBankPage >= totalBankPages;
+        if (pageInfo) {
+          pageInfo.textContent = `Стр. ${currentBankPage} из ${totalBankPages} (${data.total || 0} заданий)`;
         }
 
         const tasks = Array.isArray(data.tasks) ? data.tasks : [];
@@ -11967,9 +12252,10 @@
         }
 
         container.innerHTML = tasks.map(task => {
-          const diffBadge = task.difficulty === 1
+          const diffLevel = Number(task.difficulty_level || task.difficulty || 2);
+          const diffBadge = diffLevel === 1
             ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Базовый (1)</span>'
-            : task.difficulty === 3
+            : diffLevel === 3
             ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Сложный (3)</span>'
             : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Средний (2)</span>';
 
@@ -11988,11 +12274,11 @@
           const hasAnswer = Boolean(answerText);
 
           return `
-            <article class="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-amber-300 transition-all space-y-2.5">
+            <article class="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-amber-300 transition-all space-y-2.5">
               <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2 flex-wrap">
                   <span class="text-xs font-black text-slate-900">${task.task_number ? `Задание №${task.task_number}` : (task.title || 'Задание')}</span>
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">${task.course_name || 'Банк'}</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">${escapeHtml(task.course_name || 'Банк')}</span>
                   ${diffBadge}
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
@@ -12017,14 +12303,22 @@
 
               ${hasAnswer ? `
                 <div class="task-answer-box hidden mt-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center justify-between">
-                  <div><span>Эталонный ответ:</span> <span class="font-mono ml-1 font-black">${answerText}</span></div>
+                  <div><span>Эталонный ответ:</span> <span class="font-mono ml-1 font-black">${escapeHtml(answerText)}</span></div>
                 </div>
               ` : ''}
             </article>
           `;
         }).join('');
 
-        // Render math in previews if Katex available
+        if (typeof window.boostudyHighlightPythonSyntax === 'function') {
+          container.querySelectorAll('.task-content-preview pre').forEach((pre) => {
+            const rawCode = pre.innerText || pre.textContent || '';
+            if (rawCode.trim()) {
+              pre.innerHTML = `<code>${window.boostudyHighlightPythonSyntax(rawCode).replace(/\n$/, '')}</code>`;
+            }
+          });
+        }
+
         if (typeof renderMathInElement === 'function') {
           renderMathInElement(container, {
             delimiters: [
@@ -12073,24 +12367,39 @@
           addBtn.classList.add('bg-emerald-600');
           addBtn.innerHTML = '<i class="ph-bold ph-check"></i> Добавлено';
 
-          // Open task window for teacher & student
           openWindow('task-window');
         } catch (err) {
-          alert('Ошибка при добавлении задания: ' + err.message);
+          showGlassAlert({ title: 'Ошибка добавления', message: 'Не удалось добавить задание: ' + err.message });
           addBtn.disabled = false;
           addBtn.innerHTML = origHtml;
         }
       }
     });
 
-    searchBtn?.addEventListener('click', loadTeacherBankTasks);
-    searchInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadTeacherBankTasks(); });
-    numInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadTeacherBankTasks(); });
-    courseSelect?.addEventListener('change', loadTeacherBankTasks);
-    diffSelect?.addEventListener('change', loadTeacherBankTasks);
+    searchBtn?.addEventListener('click', () => loadTeacherBankTasks(1));
+    resetBtn?.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      if (numInput) numInput.value = '';
+      if (courseSelect) courseSelect.value = 'all';
+      if (diffSelect) diffSelect.value = 'all';
+      if (categorySelect) categorySelect.value = 'all';
+      loadTeacherBankTasks(1);
+    });
+    searchInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadTeacherBankTasks(1); });
+    numInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadTeacherBankTasks(1); });
+    categorySelect?.addEventListener('change', () => loadTeacherBankTasks(1));
+    courseSelect?.addEventListener('change', () => loadTeacherBankTasks(1));
+    diffSelect?.addEventListener('change', () => loadTeacherBankTasks(1));
+
+    prevPageBtn?.addEventListener('click', () => {
+      if (currentBankPage > 1) loadTeacherBankTasks(currentBankPage - 1);
+    });
+    nextPageBtn?.addEventListener('click', () => {
+      if (currentBankPage < totalBankPages) loadTeacherBankTasks(currentBankPage + 1);
+    });
 
     // Initial search
-    loadTeacherBankTasks();
+    loadTeacherBankTasks(1);
   })();
 
   // ----------------------------------------------------------------------
@@ -12108,11 +12417,26 @@
     const viewerId = config.viewer_id || (isTeacher ? 'teacher' : 'student');
     const storageKey = `boostudy_desktops_${lessonId}_${viewerId}`;
 
-    const tabsContainer = document.getElementById('lesson-desktops-tabs');
+    const barEl = document.getElementById('lesson-virtual-desktops-bar');
+    const triggerBtn = document.getElementById('lesson-desktop-trigger');
+    const dropdownEl = document.getElementById('lesson-desktop-dropdown');
+    const currentNameEl = document.getElementById('lesson-desktop-current-name');
+    const countBadgeEl = document.getElementById('lesson-desktops-count-badge');
+    const listContainer = document.getElementById('lesson-desktops-list');
+    const prevBtn = document.getElementById('lesson-desktop-prev-btn');
+    const nextBtn = document.getElementById('lesson-desktop-next-btn');
     const addBtn = document.getElementById('lesson-desktop-add-btn');
 
     let workspaces = [
-      { id: 'desktop-1', name: 'Стол 1', layouts: {}, scratchpad: '' }
+      {
+        id: 'desktop-1',
+        name: 'Стол 1',
+        pageId: 'page_1',
+        layouts: { 'canvas-window': { open: true } },
+        codeState: { virtualFS: { 'main.py': '' }, activeFileName: 'main.py', openTabs: ['main.py'] },
+        taskId: null,
+        scratchpad: ''
+      }
     ];
     let activeDesktopId = 'desktop-1';
 
@@ -12142,17 +12466,31 @@
       const scratch = getScratchpadEl();
       if (scratch) current.scratchpad = scratch.value || '';
 
+      current.codeState = {
+        virtualFS: JSON.parse(JSON.stringify(virtualFS || {})),
+        activeFileName: activeFileName || 'main.py',
+        openTabs: Array.isArray(openTabs) ? [...openTabs] : ['main.py']
+      };
+
+      current.taskId = window.lessonTasksController?.getActiveTaskId?.() || null;
+
       const layouts = {};
       const winManager = window.windowManager;
       if (winManager?.registeredWindows) {
         for (const [id, { windowEl }] of winManager.registeredWindows) {
-          if (!windowEl || isPrivateWindow(id)) continue;
+          if (!windowEl || (typeof window.isPrivateWindow === 'function' && window.isPrivateWindow(id)) || id === 'canvas-window') continue;
+          const rect = windowEl.getBoundingClientRect();
+          const parentRect = windowEl.parentElement?.getBoundingClientRect() || { left: 0, top: 0 };
+          const computedLeft = windowEl.style.left || (rect.left > 0 ? `${Math.round(rect.left - parentRect.left)}px` : '');
+          const computedTop = windowEl.style.top || (rect.top > 0 ? `${Math.round(rect.top - parentRect.top)}px` : '');
+          const computedWidth = windowEl.style.width || (rect.width > 0 ? `${Math.round(rect.width)}px` : '');
+          const computedHeight = windowEl.style.height || (rect.height > 0 ? `${Math.round(rect.height)}px` : '');
           layouts[id] = {
             open: !windowEl.classList.contains('hidden') && windowEl.dataset.isMinimized !== 'true',
-            left: windowEl.style.left,
-            top: windowEl.style.top,
-            width: windowEl.style.width,
-            height: windowEl.style.height,
+            left: computedLeft,
+            top: computedTop,
+            width: computedWidth,
+            height: computedHeight,
             is_maximized: windowEl.dataset.isMaximized === 'true',
           };
         }
@@ -12163,54 +12501,167 @@
 
     function restoreDesktopState(desktop) {
       if (!desktop) return;
+
+      // 1. Scratchpad
       const scratch = getScratchpadEl();
       if (scratch) scratch.value = desktop.scratchpad || '';
 
+      // 2. Code state
+      if (desktop.codeState && desktop.codeState.virtualFS) {
+        Object.keys(virtualFS).forEach(k => delete virtualFS[k]);
+        Object.assign(virtualFS, desktop.codeState.virtualFS);
+        activeFileName = desktop.codeState.activeFileName || 'main.py';
+        if (!virtualFS[activeFileName]) virtualFS[activeFileName] = '';
+        openTabs = Array.isArray(desktop.codeState.openTabs) && desktop.codeState.openTabs.length ? [...desktop.codeState.openTabs] : [activeFileName];
+      } else {
+        Object.keys(virtualFS).forEach(k => delete virtualFS[k]);
+        virtualFS['main.py'] = '';
+        activeFileName = 'main.py';
+        openTabs = ['main.py'];
+      }
+      const editorArea = document.getElementById('code-editor-textarea');
+      if (editorArea) {
+        editorArea.value = virtualFS[activeFileName] || '';
+      }
+      renderEditorTabs();
+      renderExplorerFileList();
+      renderSourceControlList();
+      updateCodeHighlight();
+      updateStatusBarCursorPos();
+      if (isTeacher) {
+        window.boostudyLessonControl?.queueCodeSync?.(virtualFS[activeFileName] || '', activeFileName);
+      }
+
+      // 3. Task state
+      window.lessonTasksController?.selectTaskById?.(desktop.taskId || null);
+
+      // 4. Ensure canvas surface remains visible and active
+      const canvasWin = document.getElementById('canvas-window');
+      if (canvasWin) {
+        canvasWin.classList.remove('hidden', 'window-minimized', 'pointer-events-none');
+        canvasWin.style.display = 'flex';
+        canvasWin.style.opacity = '1';
+        canvasWin.dataset.isMinimized = 'false';
+      }
+
+      // 5. Window layouts
       const winManager = window.windowManager;
-      if (desktop.layouts && winManager?.registeredWindows) {
+      if (winManager?.registeredWindows) {
         for (const [id, { windowEl }] of winManager.registeredWindows) {
-          if (!windowEl || isPrivateWindow(id)) continue;
-          const layout = desktop.layouts[id];
+          if (!windowEl || (typeof window.isPrivateWindow === 'function' && window.isPrivateWindow(id)) || id === 'canvas-window') continue;
+          const layout = desktop.layouts ? desktop.layouts[id] : null;
           if (layout) {
             if (layout.left) windowEl.style.setProperty('left', layout.left, 'important');
+            else windowEl.style.removeProperty('left');
             if (layout.top) windowEl.style.setProperty('top', layout.top, 'important');
+            else windowEl.style.removeProperty('top');
             if (layout.width) windowEl.style.setProperty('width', layout.width, 'important');
+            else windowEl.style.removeProperty('width');
             if (layout.height) windowEl.style.setProperty('height', layout.height, 'important');
-            if (layout.open) openWindow(id, { remote: true });
-            else minimizeToDock(id, { remote: true });
+            else windowEl.style.removeProperty('height');
+
+            if (layout.open) {
+              openWindow(id, { remote: true });
+            } else {
+              minimizeToDock(id, { remote: true });
+            }
+          } else {
+            minimizeToDock(id, { remote: true });
           }
         }
       }
     }
 
-    function renderTabs() {
-      if (!tabsContainer) return;
-      tabsContainer.innerHTML = workspaces.map((w, idx) => {
-        const isActive = w.id === activeDesktopId;
-        const activeClass = isActive
-          ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-          : 'bg-slate-100/80 text-slate-600 border-slate-200/80 hover:bg-slate-200/80 hover:text-slate-900';
+    function toggleDropdown(show) {
+      if (!dropdownEl) return;
+      const willShow = typeof show === 'boolean' ? show : dropdownEl.classList.contains('hidden');
+      dropdownEl.classList.toggle('hidden', !willShow);
+    }
 
-        const delBtn = workspaces.length > 1
-          ? `<button type="button" class="tab-del-btn text-xs opacity-70 hover:opacity-100 hover:text-rose-300 ml-1 cursor-pointer" data-del-id="${w.id}" title="Удалить стол"><i class="ph-bold ph-x text-[10px]"></i></button>`
-          : '';
+    function renderUI() {
+      const active = workspaces.find(w => w.id === activeDesktopId) || workspaces[0];
+      if (active) activeDesktopId = active.id;
+      if (currentNameEl && active) currentNameEl.textContent = active.name;
+      if (countBadgeEl) countBadgeEl.textContent = String(workspaces.length);
 
-        return `
-          <div class="desktop-tab flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold cursor-pointer transition-all border shrink-0 ${activeClass}" data-desktop-id="${w.id}">
-            <span class="desktop-name truncate max-w-[120px]" data-desktop-id="${w.id}" title="Двойной клик для переименования">${escapeHtml(w.name)}</span>
-            ${delBtn}
-          </div>
-        `;
-      }).join('');
+      if (listContainer) {
+        listContainer.innerHTML = workspaces.map((w) => {
+          const isActive = w.id === activeDesktopId;
+          const activeClass = isActive
+            ? 'bg-indigo-50/90 text-indigo-900 border-indigo-200'
+            : 'bg-slate-50/60 hover:bg-slate-100 text-slate-700 border-transparent';
+          const checkIcon = isActive
+            ? '<i class="ph-bold ph-check text-indigo-600 text-xs shrink-0"></i>'
+            : '<span class="w-3 shrink-0"></span>';
+
+          const actions = isTeacher ? `
+            <div class="flex items-center gap-1 ml-auto shrink-0">
+              <button type="button" class="btn-rename-desktop p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 cursor-pointer transition-colors" data-id="${w.id}" title="Переименовать стол"><i class="ph-bold ph-pencil-simple text-xs"></i></button>
+              ${workspaces.length > 1 ? `<button type="button" class="btn-del-desktop p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors" data-id="${w.id}" title="Удалить стол"><i class="ph-bold ph-trash text-xs"></i></button>` : ''}
+            </div>
+          ` : '';
+
+          return `
+            <div class="desktop-dropdown-item flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${activeClass}" data-id="${w.id}">
+              ${checkIcon}
+              <span class="truncate max-w-[130px]">${escapeHtml(w.name)}</span>
+              ${actions}
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function ensureDesktopPage(workspace) {
+      if (!workspace) return;
+      if (!workspace.pageId) {
+        if (workspace.id === 'desktop-1' || workspaces[0]?.id === workspace.id) {
+          workspace.pageId = 'page_1';
+        } else {
+          workspace.pageId = `page_${workspace.id}`;
+        }
+      }
+    }
+
+    function syncWorkspacesToRoom() {
+      if (!isTeacher) return;
+      const ctrl = window.boostudyLessonControl?.getControl?.() || {};
+      if (ctrl.workspace_sync !== false) {
+        window.boostudyLessonControl?.sendUi?.({
+          kind: 'workspace',
+          action: 'sync_all',
+          workspaces,
+          activeDesktopId,
+        });
+      }
     }
 
     function switchDesktop(nextId, options = {}) {
       if (nextId === activeDesktopId && !options.force) return;
-      captureCurrentDesktopState();
+      if (!options.remote) {
+        captureCurrentDesktopState();
+      }
       activeDesktopId = nextId;
       const target = workspaces.find(w => w.id === nextId);
-      if (target) restoreDesktopState(target);
-      renderTabs();
+      if (target) {
+        ensureDesktopPage(target);
+        restoreDesktopState(target);
+        if (target.pageId) {
+          if (state) state.currentPageId = target.pageId;
+          if (window.BooCanvasOverlay) {
+            const pages = window.BooCanvasOverlay.getPages?.() || [];
+            if (!pages.some(p => p.id === target.pageId) && window.BooCanvasOverlay.addNewPage) {
+              window.BooCanvasOverlay.addNewPage(target.name, target.pageId);
+            } else if (window.BooCanvasOverlay.switchPage) {
+              window.BooCanvasOverlay.switchPage(target.pageId);
+            }
+          }
+          if (window.boostudyWhiteboard?.activatePage) {
+            window.boostudyWhiteboard.activatePage(target.pageId);
+          }
+        }
+      }
+      renderUI();
       saveToStorage();
 
       if (!options.remote && isTeacher) {
@@ -12220,102 +12671,174 @@
             kind: 'workspace',
             action: 'switch',
             desktopId: nextId,
+            pageId: target?.pageId,
+            desktop: target ? {
+              id: target.id,
+              name: target.name,
+              pageId: target.pageId,
+              layouts: target.layouts,
+              codeState: target.codeState,
+              taskId: target.taskId,
+              scratchpad: target.scratchpad,
+            } : null,
+            workspaces: workspaces,
           });
         }
       }
     }
 
     function createDesktop() {
-      const newId = `desktop-${Date.now()}`;
+      if (!isTeacher) return;
       const newName = `Стол ${workspaces.length + 1}`;
-      workspaces.push({ id: newId, name: newName, layouts: {}, scratchpad: '' });
-      switchDesktop(newId);
-
-      if (isTeacher) {
-        const ctrl = window.boostudyLessonControl?.getControl?.() || {};
-        if (ctrl.workspace_sync !== false) {
-          window.boostudyLessonControl?.sendUi?.({
-            kind: 'workspace',
-            action: 'sync_all',
-            workspaces,
-            activeDesktopId,
-          });
+      const newId = `desktop-${Date.now()}`;
+      let newPageId = `page_${newId}`;
+      if (window.BooCanvasOverlay?.addNewPage) {
+        newPageId = window.BooCanvasOverlay.addNewPage(newName, newPageId);
+      } else if (window.boostudyWhiteboard?.createPage) {
+        newPageId = window.boostudyWhiteboard.createPage(newName);
+      }
+      const defaultLayouts = {};
+      if (window.windowManager?.registeredWindows) {
+        for (const [id] of window.windowManager.registeredWindows) {
+          if (id !== 'canvas-window') defaultLayouts[id] = { open: false };
         }
       }
+      const freshCode = {
+        virtualFS: { 'main.py': '' },
+        activeFileName: 'main.py',
+        openTabs: ['main.py']
+      };
+      workspaces.push({
+        id: newId,
+        name: newName,
+        pageId: newPageId,
+        layouts: defaultLayouts,
+        codeState: freshCode,
+        taskId: null,
+        scratchpad: ''
+      });
+      switchDesktop(newId);
+      syncWorkspacesToRoom();
     }
 
     function renameDesktop(desktopId) {
+      if (!isTeacher) return;
       const desktop = workspaces.find(w => w.id === desktopId);
       if (!desktop) return;
-      const newName = prompt('Новое название рабочего стола:', desktop.name);
-      if (!newName || !newName.trim()) return;
-      desktop.name = newName.trim();
-      renderTabs();
-      saveToStorage();
-
-      if (isTeacher) {
-        const ctrl = window.boostudyLessonControl?.getControl?.() || {};
-        if (ctrl.workspace_sync !== false) {
-          window.boostudyLessonControl?.sendUi?.({
-            kind: 'workspace',
-            action: 'sync_all',
-            workspaces,
-            activeDesktopId,
-          });
+      toggleDropdown(false);
+      showGlassPrompt({
+        title: 'Название рабочего стола',
+        placeholder: 'Например: Стол 1',
+        initialValue: desktop.name,
+        onConfirm: (newName) => {
+          if (!newName || !newName.trim()) return;
+          desktop.name = newName.trim();
+          if (desktop.pageId && window.boostudyWhiteboard?.renamePage) {
+            window.boostudyWhiteboard.renamePage(desktop.pageId, desktop.name);
+          }
+          renderUI();
+          saveToStorage();
+          syncWorkspacesToRoom();
         }
-      }
+      });
     }
 
     function deleteDesktop(desktopId) {
-      if (workspaces.length <= 1) return;
-      workspaces = workspaces.filter(w => w.id !== desktopId);
-      if (activeDesktopId === desktopId) {
-        activeDesktopId = workspaces[0].id;
-        restoreDesktopState(workspaces[0]);
-      }
-      renderTabs();
-      saveToStorage();
-
-      if (isTeacher) {
-        const ctrl = window.boostudyLessonControl?.getControl?.() || {};
-        if (ctrl.workspace_sync !== false) {
-          window.boostudyLessonControl?.sendUi?.({
-            kind: 'workspace',
-            action: 'sync_all',
-            workspaces,
-            activeDesktopId,
-          });
+      if (!isTeacher || workspaces.length <= 1) return;
+      const desktop = workspaces.find(w => w.id === desktopId);
+      if (!desktop) return;
+      toggleDropdown(false);
+      showGlassConfirm({
+        title: 'Удалить рабочий стол?',
+        message: `Стол «${desktop.name}» будет удалён. Все открытые окна на нём закроются.`,
+        confirmDanger: true,
+        confirmText: 'Удалить',
+        onConfirm: () => {
+          if (desktop.pageId) {
+            if (window.BooCanvasOverlay?.deletePage) {
+              window.BooCanvasOverlay.deletePage(desktop.pageId);
+            }
+            if (window.boostudyWhiteboard?.deletePage) {
+              window.boostudyWhiteboard.deletePage(desktop.pageId);
+            }
+          }
+          workspaces = workspaces.filter(w => w.id !== desktopId);
+          if (activeDesktopId === desktopId) {
+            activeDesktopId = workspaces[0].id;
+            restoreDesktopState(workspaces[0]);
+            if (workspaces[0].pageId) {
+              if (window.BooCanvasOverlay?.switchPage) {
+                window.BooCanvasOverlay.switchPage(workspaces[0].pageId);
+              }
+              if (window.boostudyWhiteboard?.activatePage) {
+                window.boostudyWhiteboard.activatePage(workspaces[0].pageId);
+              }
+            }
+          }
+          renderUI();
+          saveToStorage();
+          syncWorkspacesToRoom();
         }
-      }
+      });
     }
 
-    tabsContainer?.addEventListener('click', (e) => {
-      const delBtn = e.target.closest('.tab-del-btn');
-      if (delBtn) {
+    document.addEventListener('click', (e) => {
+      if (barEl && !barEl.contains(e.target) && dropdownEl && !dropdownEl.classList.contains('hidden')) {
+        toggleDropdown(false);
+      }
+    });
+
+    triggerBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleDropdown();
+    });
+
+    prevBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = workspaces.findIndex(w => w.id === activeDesktopId);
+      if (idx !== -1) {
+        const nextIdx = (idx - 1 + workspaces.length) % workspaces.length;
+        switchDesktop(workspaces[nextIdx].id);
+      }
+    });
+
+    nextBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = workspaces.findIndex(w => w.id === activeDesktopId);
+      if (idx !== -1) {
+        const nextIdx = (idx + 1) % workspaces.length;
+        switchDesktop(workspaces[nextIdx].id);
+      }
+    });
+
+    listContainer?.addEventListener('click', (e) => {
+      const renameBtn = e.target.closest('.btn-rename-desktop');
+      if (renameBtn) {
         e.stopPropagation();
-        const delId = delBtn.dataset.delId;
-        if (delId && confirm('Удалить этот рабочий стол?')) {
-          deleteDesktop(delId);
-        }
+        renameDesktop(renameBtn.dataset.id);
         return;
       }
-
-      const tab = e.target.closest('.desktop-tab');
-      if (tab) {
-        const id = tab.dataset.desktopId;
-        if (id) switchDesktop(id);
+      const delBtn = e.target.closest('.btn-del-desktop');
+      if (delBtn) {
+        e.stopPropagation();
+        deleteDesktop(delBtn.dataset.id);
+        return;
+      }
+      const item = e.target.closest('.desktop-dropdown-item');
+      if (item && item.dataset.id) {
+        switchDesktop(item.dataset.id);
+        toggleDropdown(false);
       }
     });
 
-    tabsContainer?.addEventListener('dblclick', (e) => {
-      const nameSpan = e.target.closest('.desktop-name');
-      if (nameSpan) {
-        const id = nameSpan.dataset.desktopId;
-        if (id) renameDesktop(id);
-      }
-    });
-
-    addBtn?.addEventListener('click', createDesktop);
+    if (isTeacher) {
+      addBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        createDesktop();
+      });
+    } else if (addBtn) {
+      addBtn.classList.add('hidden');
+    }
 
     // Keyboard navigation: Alt + ArrowLeft / ArrowRight
     document.addEventListener('keydown', (e) => {
@@ -12331,27 +12854,56 @@
     });
 
     window.lessonVirtualWorkspaces = {
+      syncAll: syncWorkspacesToRoom,
       applyRemoteWorkspace(payload) {
         if (!payload) return;
+        if (Array.isArray(payload.workspaces) && payload.workspaces.length) {
+          workspaces = payload.workspaces;
+        }
         if (payload.action === 'switch' && payload.desktopId) {
-          if (!workspaces.some(w => w.id === payload.desktopId)) {
-            workspaces.push({ id: payload.desktopId, name: `Стол ${workspaces.length + 1}`, layouts: {}, scratchpad: '' });
+          let target = workspaces.find(w => w.id === payload.desktopId);
+          if (!target) {
+            target = payload.desktop ? { ...payload.desktop } : {
+              id: payload.desktopId,
+              name: payload.name || `Стол ${workspaces.length + 1}`,
+              pageId: payload.pageId || `page_${payload.desktopId}`,
+              layouts: payload.layouts || {},
+              codeState: payload.codeState || null,
+              taskId: payload.taskId || null,
+              scratchpad: payload.scratchpad || '',
+            };
+            workspaces.push(target);
+          } else if (payload.desktop) {
+            Object.assign(target, payload.desktop);
+          } else {
+            if (payload.pageId && !target.pageId) target.pageId = payload.pageId;
+            if (payload.layouts) target.layouts = payload.layouts;
+            if (payload.codeState) target.codeState = payload.codeState;
+            if (payload.taskId !== undefined) target.taskId = payload.taskId;
+            if (payload.scratchpad !== undefined) target.scratchpad = payload.scratchpad;
           }
-          switchDesktop(payload.desktopId, { remote: true });
+          switchDesktop(payload.desktopId, { remote: true, force: true });
         } else if (payload.action === 'sync_all' && Array.isArray(payload.workspaces)) {
           workspaces = payload.workspaces;
           if (payload.activeDesktopId) {
             switchDesktop(payload.activeDesktopId, { remote: true, force: true });
           } else {
-            renderTabs();
+            renderUI();
           }
         }
       }
     };
 
-    renderTabs();
+    if (window._pendingWorkspacePayload) {
+      window.lessonVirtualWorkspaces.applyRemoteWorkspace(window._pendingWorkspacePayload);
+      window._pendingWorkspacePayload = null;
+    } else if (isTeacher) {
+      syncWorkspacesToRoom();
+    }
+
+    renderUI();
   })();
 </script>
 {% endif %}
-{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261015-engine-v8"></script><script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261015-dock-fix-v4"></script>{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
+{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261018-engine-v9"></script><script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261018-v2"></script>{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
 {% endblock %}

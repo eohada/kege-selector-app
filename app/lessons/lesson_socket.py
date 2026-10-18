@@ -344,6 +344,8 @@ def register_lesson_socket(socketio) -> None:
             return
         stroke_id = str(stroke.get("id") or "")
         if stroke_id:
+            if not stroke.get("page_id"):
+                stroke["page_id"] = "page_1"
             _load_cached_board_strokes(lesson_id)[stroke_id] = stroke
             _persist_cached_board_strokes(lesson_id)
         socketio.emit(
@@ -377,6 +379,13 @@ def register_lesson_socket(socketio) -> None:
             for s in (data.get("strokes") or []):
                 sid = str((s or {}).get("id") or "")
                 if sid:
+                    if sid in board_strokes:
+                        if not (s or {}).get("src") and board_strokes[sid].get("src"):
+                            s["src"] = board_strokes[sid]["src"]
+                        if not (s or {}).get("page_id") and board_strokes[sid].get("page_id"):
+                            s["page_id"] = board_strokes[sid]["page_id"]
+                    elif not (s or {}).get("page_id"):
+                        s["page_id"] = "page_1"
                     board_strokes[sid] = s
             _persist_cached_board_strokes(lesson_id)
         elif action == "delete":
@@ -385,7 +394,13 @@ def register_lesson_socket(socketio) -> None:
                 board_strokes.pop(str(sid), None)
             _persist_cached_board_strokes(lesson_id)
         elif action == "clear":
-            _lesson_board_strokes[lesson_id] = {}
+            target_page_id = data.get("page_id")
+            if target_page_id:
+                to_delete = [sid for sid, s in board_strokes.items() if s.get("page_id") == target_page_id]
+                for sid in to_delete:
+                    board_strokes.pop(sid, None)
+            else:
+                _lesson_board_strokes[lesson_id] = {}
             _persist_cached_board_strokes(lesson_id)
 
         socketio.emit(
@@ -396,6 +411,9 @@ def register_lesson_socket(socketio) -> None:
                 "strokes": data.get("strokes"),
                 "stroke_ids": data.get("stroke_ids"),
                 "objects": data.get("objects"),
+                "object_id": data.get("object_id"),
+                "width": data.get("width"),
+                "height": data.get("height"),
                 "page_id": data.get("page_id"),
             },
             room=_room(lesson_id),
@@ -516,30 +534,45 @@ def register_lesson_socket(socketio) -> None:
             if not role:
                 _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
             kind = str((data or {}).get("kind") or "")
-            if kind not in {"mode", "window", "window_layout", "run", "run_start", "terminal_output", "terminal_tab"}:
+            if kind not in {"mode", "window", "window_layout", "workspace", "run", "run_start", "terminal_output", "terminal_tab"}:
                 return
             control = _room_control(lesson_id)
+            win_mode = control.get("windows_mode") or ("independent" if control.get("windows_sync") is False else "teacher")
             is_student_run = (
                 role == "student"
                 and control.get("student_code_editing")
                 and kind in {"run", "run_start", "terminal_output", "terminal_tab"}
             )
-            is_student_window = (
-                role == "student"
-                and kind in {"window", "window_layout"}
-                and control.get("windows_sync") is not False
-            )
-            if role != "teacher" and not (is_student_run or is_student_window):
-                socketio.emit("whiteboard_error", {"message": "Недостаточно прав для управления интерфейсом комнаты"}, room=request.sid, namespace="/lesson")
-                return
-            if kind in {"window", "window_layout"}:
-                if control.get("windows_sync") is False:
+            is_window_action = kind in {"window", "window_layout"}
+            is_workspace_action = kind == "workspace"
+            
+            if is_window_action:
+                if win_mode == "independent":
+                    return
+                if win_mode == "teacher" and role != "teacher":
+                    socketio.emit("whiteboard_error", {"message": "Управление окнами закреплено за преподавателем"}, room=request.sid, namespace="/lesson")
+                    return
+                if win_mode == "student" and role == "teacher":
+                    socketio.emit("whiteboard_error", {"message": "Управление окнами передано ученику"}, room=request.sid, namespace="/lesson")
                     return
                 if kind == "window_layout" and control.get("window_positions_sync") is False:
                     return
                 allowed_ctrl = control.get("windows_allowed")
                 if allowed_ctrl and (data or {}).get("window_id") not in allowed_ctrl:
                     return
+
+            if is_workspace_action:
+                if control.get("workspace_sync") is False and role != "teacher":
+                    return
+                action_type = str((data or {}).get("action") or "")
+                if role != "teacher" and action_type in {"sync_all", "create", "rename", "delete"}:
+                    socketio.emit("whiteboard_error", {"message": "Управлять рабочими столами может только преподаватель"}, room=request.sid, namespace="/lesson")
+                    return
+
+            if not (is_window_action or is_workspace_action or is_student_run or role == "teacher"):
+                socketio.emit("whiteboard_error", {"message": "Недостаточно прав для управления интерфейсом комнаты"}, room=request.sid, namespace="/lesson")
+                return
+
             if kind == "mode" and not _teacher_control_enabled(control, "teacher_controls_mode"):
                 return
             if kind in {"run", "run_start"} and not (control.get("auto_open_terminal_on_run") or control.get("terminal_sync")):
@@ -587,6 +620,41 @@ def register_lesson_socket(socketio) -> None:
                     "exit_code": int((data or {}).get("exit_code") or 0),
                     "is_error": bool((data or {}).get("is_error")),
                 })
+            elif kind == "workspace":
+                action = str((data or {}).get("action") or "")[:32]
+                payload["action"] = action
+                raw_workspaces = (data or {}).get("workspaces")
+                if isinstance(raw_workspaces, list):
+                    clean_workspaces = []
+                    for w in raw_workspaces[:25]:
+                        if isinstance(w, dict) and w.get("id"):
+                            clean_workspaces.append({
+                                "id": str(w.get("id"))[:64],
+                                "name": str(w.get("name") or "Стол")[:60],
+                                "layouts": dict(w.get("layouts") or {}),
+                                "codeState": dict(w.get("codeState") or {}),
+                                "taskId": w.get("taskId"),
+                                "scratchpad": str(w.get("scratchpad") or "")[:50000],
+                                "pageId": str(w.get("pageId") or w.get("page_id") or "")[:64],
+                            })
+                    payload["workspaces"] = clean_workspaces
+
+                if action == "switch":
+                    payload["desktopId"] = str((data or {}).get("desktopId") or "")[:64]
+                    payload["pageId"] = str((data or {}).get("pageId") or "")[:64]
+                    raw_desktop = (data or {}).get("desktop")
+                    if isinstance(raw_desktop, dict):
+                        payload["desktop"] = {
+                            "id": str(raw_desktop.get("id") or payload["desktopId"])[:64],
+                            "name": str(raw_desktop.get("name") or "Стол")[:60],
+                            "pageId": str(raw_desktop.get("pageId") or payload["pageId"])[:64],
+                            "layouts": dict(raw_desktop.get("layouts") or {}),
+                            "codeState": dict(raw_desktop.get("codeState") or {}),
+                            "taskId": raw_desktop.get("taskId"),
+                            "scratchpad": str(raw_desktop.get("scratchpad") or "")[:50000],
+                        }
+                elif action == "sync_all":
+                    payload["activeDesktopId"] = str((data or {}).get("activeDesktopId") or "")[:64]
             else:
                 code = str((data or {}).get("code") or "")[:100000]
                 payload.update({"file_name": str((data or {}).get("file_name") or "main.py")[:120], "code": code})
@@ -595,12 +663,33 @@ def register_lesson_socket(socketio) -> None:
                 room_state = _lesson_room_ui.setdefault(lesson_id, {})
                 state_key = (
                     "mode" if kind == "mode"
+                    else "workspace" if kind == "workspace"
                     else "terminal_output" if kind == "terminal_output"
                     else "terminal_tab" if kind == "terminal_tab"
                     else f"window_layout:{payload['window_id']}" if kind == "window_layout"
-                    else f"window:{payload['window_id']}"
+                    else f"window:{payload['window_id']}" if kind == "window"
+                    else f"{kind}:{payload.get('id', 'default')}"
                 )
-                room_state[state_key] = payload
+                if kind == "workspace" and payload.get("action") == "switch":
+                    ws_state = room_state.setdefault("workspace", {
+                        "lesson_id": lesson_id,
+                        "kind": "workspace",
+                        "action": "sync_all",
+                        "workspaces": [],
+                        "activeDesktopId": payload.get("desktopId"),
+                    })
+                    ws_state["activeDesktopId"] = payload.get("desktopId")
+                    if payload.get("desktop"):
+                        d_id = payload["desktop"].get("id")
+                        existing_d = next((w for w in ws_state["workspaces"] if w.get("id") == d_id), None)
+                        if existing_d:
+                            existing_d.update(payload["desktop"])
+                        else:
+                            ws_state["workspaces"].append(payload["desktop"])
+                elif kind == "workspace" and payload.get("action") == "sync_all":
+                    room_state["workspace"] = payload
+                else:
+                    room_state[state_key] = payload
             socketio.emit("lesson_room_ui", payload, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
             logger.warning("lesson_room_ui failed: %s", error)
@@ -960,8 +1049,10 @@ def register_lesson_socket(socketio) -> None:
                 role = identity.get("role")
             else:
                 _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
-            if role != "teacher":
-                socketio.emit("whiteboard_error", {"message": "Лазер доступен только преподавателю"}, room=request.sid, namespace="/lesson")
+            if role not in ("teacher", "student"):
+                return
+            if role == "student" and _room_control(lesson_id).get("student_editing") is False:
+                socketio.emit("whiteboard_error", {"message": "Рисование на доске отключено"}, room=request.sid, namespace="/lesson")
                 return
             if _room_control(lesson_id).get("cursor_sync") is False:
                 return
@@ -971,8 +1062,9 @@ def register_lesson_socket(socketio) -> None:
                 {
                     "lesson_id": lesson_id,
                     "user_id": current_user.id,
+                    "client_id": payload.get("client_id"),
                     "page_id": payload.get("page_id"),
-                    "pointer": point,
+                    "pointer": pointer,
                     "visible": payload.get("visible", True),
                     "color": payload.get("color"),
                     "width": payload.get("width") or payload.get("size"),
@@ -1001,6 +1093,7 @@ def register_lesson_socket(socketio) -> None:
             camera = payload.get("camera") if isinstance(payload.get("camera"), dict) else {}
             outgoing = {
                 "lesson_id": lesson_id,
+                "client_id": payload.get("client_id"),
                 "page_id": str(payload.get("page_id") or "")[:96],
                 "frame_id": payload.get("frame_id"),
                 "seq": int(payload.get("seq") or 0),

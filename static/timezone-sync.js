@@ -20,13 +20,22 @@
       // Если установлен ручной режим и пояс уже задан, не переопределяем принудительно
       if (mode === 'manual') return;
 
-      // Если эффективный пояс уже совпадает с браузерным, повторно не отправляем
-      if (effectiveTz && effectiveTz === browserTz) return;
+      // В режиме auto гарантируем немедленное отражение локального пояса в интерфейсе
+      if (effectiveTz !== browserTz) {
+        if (metaEffective) metaEffective.setAttribute('content', browserTz);
+        const headerName = document.getElementById('profile-tz-header-name');
+        if (headerName) headerName.textContent = browserTz;
+        if (window.BooTimezone && typeof window.BooTimezone.setViewerTz === 'function') {
+          window.BooTimezone.setViewerTz(browserTz);
+        } else {
+          window.dispatchEvent(new CustomEvent('boostudy:timezone-changed', { detail: { timezone: browserTz } }));
+        }
+      }
 
-      // Проверяем сессионный кэш, чтобы не слать запрос на каждый переход по страницам
+      // Если эффективный пояс уже совпадает с браузерным и уже был синхронизирован, повторно не отправляем
       const storageKey = 'boostudy_synced_tz';
       try {
-        if (sessionStorage.getItem(storageKey) === browserTz) return;
+        if (effectiveTz === browserTz && sessionStorage.getItem(storageKey) === browserTz) return;
       } catch (e) {}
 
       const csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -50,6 +59,8 @@
             sessionStorage.setItem(storageKey, browserTz);
           } catch (e) {}
           if (metaEffective) metaEffective.setAttribute('content', browserTz);
+          const headerName = document.getElementById('profile-tz-header-name');
+          if (headerName) headerName.textContent = browserTz;
         }
       })
       .catch(() => {});

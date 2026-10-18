@@ -4153,8 +4153,24 @@ def lesson_room_search_tasks(lesson_id: int):
     raw_num = request.args.get('number')
     raw_course = request.args.get('course_id')
     raw_diff = request.args.get('difficulty')
+    raw_cat = request.args.get('bank_category')
+    raw_page = request.args.get('page')
+    raw_per_page = request.args.get('per_page')
+
+    try:
+        page = max(1, int(raw_page or 1))
+    except (ValueError, TypeError):
+        page = 1
+
+    try:
+        per_page = min(100, max(6, int(raw_per_page or 24)))
+    except (ValueError, TypeError):
+        per_page = 24
 
     q = Tasks.query.filter(getattr(Tasks, 'is_active', True) == True)
+
+    if raw_cat and raw_cat != 'all':
+        q = q.filter(Tasks.bank_category == raw_cat)
 
     if raw_course and raw_course != 'all':
         try:
@@ -4176,10 +4192,22 @@ def lesson_room_search_tasks(lesson_id: int):
             q = q.filter(Tasks.task_number == task_num)
         except (ValueError, TypeError):
             pass
+
     if query_text:
-        q = q.filter(Tasks.content_html.ilike(f'%{query_text}%'))
-    
-    tasks = q.order_by(Tasks.task_number.asc(), Tasks.task_id.desc()).limit(30).all()
+        term = f'%{query_text}%'
+        search_clauses = [Tasks.content_html.ilike(term)]
+        for attr in ('title', 'source', 'author'):
+            if hasattr(Tasks, attr):
+                search_clauses.append(getattr(Tasks, attr).ilike(term))
+        q = q.filter(or_(*search_clauses))
+
+    import math
+    total = q.count()
+    pages = max(1, math.ceil(total / per_page))
+    if page > pages:
+        page = pages
+
+    tasks = q.order_by(Tasks.course_id.asc(), Tasks.task_number.asc(), Tasks.task_id.desc()).offset((page - 1) * per_page).limit(per_page).all()
 
     def _parse_files(raw_files):
         if not raw_files:
@@ -4205,6 +4233,44 @@ def lesson_room_search_tasks(lesson_id: int):
             pass
         return [{'name': f.strip().split('/')[-1], 'url': f.strip() if f.strip().startswith('/') or f.strip().startswith('http') else f'/static/uploads/{f.strip()}'} for f in str(raw_files).split(',') if f.strip()]
 
+    def _render_task_preview(t):
+        raw = _task_room_description(t)
+        if not raw:
+            return ''
+        if '```' in raw:
+            try:
+                import markdown
+                return markdown.markdown(raw, extensions=['fenced_code', 'tables'])
+            except Exception:
+                pass
+        return raw
+
+    courses = []
+    course_map = {}
+    try:
+        active_courses = Course.query.filter_by(is_active=True).order_by(Course.title.asc()).all()
+        for c in active_courses:
+            courses.append({'id': c.id, 'course_id': c.id, 'title': c.title, 'slug': c.slug})
+            course_map[c.id] = c.title
+    except Exception:
+        pass
+
+    category_labels = {
+        'exam': 'Банк ЕГЭ / ОГЭ',
+        'python_practice': 'Практикум Python',
+    }
+    categories = []
+    try:
+        cat_rows = db.session.query(Tasks.bank_category).filter(Tasks.bank_category != None).distinct().all()
+        for (cat_val,) in cat_rows:
+            if cat_val:
+                categories.append({
+                    'id': cat_val,
+                    'title': category_labels.get(cat_val, cat_val.replace('_', ' ').capitalize())
+                })
+    except Exception:
+        pass
+
     results = []
     for t in tasks:
         clean_text = re.sub(r'<[^>]+>', ' ', t.content_html or '')
@@ -4218,22 +4284,25 @@ def lesson_room_search_tasks(lesson_id: int):
             ),
             'site_task_id': t.site_task_id or f'№{t.task_id}',
             'snippet': clean_text or 'Без описания',
-            'content_html': _task_room_description(t),
+            'content_html': _render_task_preview(t),
             'answer': t.answer or '',
             'difficulty_level': t.difficulty_level or 2,
             'course_id': t.course_id,
+            'course_name': course_map.get(t.course_id, 'Банк заданий'),
+            'bank_category': t.bank_category,
             'attached_files': _parse_files(t.attached_files),
         })
 
-    courses = []
-    try:
-        active_courses = Course.query.filter_by(is_active=True).order_by(Course.title.asc()).all()
-        for c in active_courses:
-            courses.append({'id': c.id, 'title': c.title, 'slug': c.slug})
-    except Exception:
-        pass
-
-    return jsonify({'success': True, 'tasks': results, 'courses': courses})
+    return jsonify({
+        'success': True,
+        'tasks': results,
+        'total': total,
+        'page': page,
+        'pages': pages,
+        'per_page': per_page,
+        'courses': courses,
+        'categories': categories,
+    })
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/quick-add-task', methods=['POST'])

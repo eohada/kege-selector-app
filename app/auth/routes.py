@@ -20,12 +20,76 @@ from wtforms.validators import DataRequired
 from app.auth import auth_bp
 from app.limiter import limiter
 from datetime import timedelta
-from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage, Enrollment, FamilyTie
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage, Enrollment, FamilyTie, UserConsent
 from app.notifications.service import notify_user
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.course_tasks import get_task_numbers, get_max_score_for_task
 from app.utils.cross_env_login import verify_cross_env_token
 from core.audit_logger import audit_logger
+
+CURRENT_LEGAL_VERSION = '2026-10-18'
+
+def _record_registration_consents(user_id: int, agree_analytics: bool = False):
+    """
+    Фиксация юридических подтверждений пользователя при регистрации:
+    1. Оферта (offer)
+    2. Согласие на обработку персональных данных (pd_consent)
+    3. Ознакомление с политикой конфиденциальности (privacy)
+    4. Необязательное согласие на веб-аналитику (analytics, если отмечено)
+    """
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    if ip and ',' in ip:
+        ip = ip.split(',')[0].strip()
+    ua = (request.headers.get('User-Agent') or '')[:500]
+
+    # Обязательное подтверждение оферты
+    db.session.add(UserConsent(
+        user_id=user_id,
+        document_key='offer',
+        version=CURRENT_LEGAL_VERSION,
+        ip_address=ip,
+        user_agent=ua
+    ))
+
+    # Обязательное согласие на обработку персональных данных
+    db.session.add(UserConsent(
+        user_id=user_id,
+        document_key='pd_consent',
+        version=CURRENT_LEGAL_VERSION,
+        ip_address=ip,
+        user_agent=ua
+    ))
+
+    # Ознакомление с политикой конфиденциальности
+    db.session.add(UserConsent(
+        user_id=user_id,
+        document_key='privacy',
+        version=CURRENT_LEGAL_VERSION,
+        ip_address=ip,
+        user_agent=ua
+    ))
+
+    # Опциональное согласие на техническую веб-аналитику
+    if agree_analytics:
+        db.session.add(UserConsent(
+            user_id=user_id,
+            document_key='analytics',
+            version=CURRENT_LEGAL_VERSION,
+            ip_address=ip,
+            user_agent=ua
+        ))
+
+    audit_logger.log(
+        action='legal_consent',
+        entity='UserConsent',
+        entity_id=user_id,
+        status='success',
+        metadata={
+            'documents': ['offer', 'pd_consent', 'privacy'] + (['analytics'] if agree_analytics else []),
+            'version': CURRENT_LEGAL_VERSION,
+            'ip': ip
+        }
+    )
 
 class LoginForm(FlaskForm):
     """Форма входа для пользователей"""
@@ -1184,6 +1248,19 @@ def register():
         password = request.form.get('password')
         password_confirm = request.form.get('password_confirm')
         role = request.form.get('role', 'tutor').strip()
+        agree_offer = bool(request.form.get('agree_offer'))
+        agree_consent = bool(request.form.get('agree_consent'))
+        agree_analytics = bool(request.form.get('agree_analytics'))
+
+        if not agree_offer:
+            return render_template('auth/register.html', error='Для регистрации необходимо принять условия публичной оферты.',
+                                   tutor=tutor, invite_student=invite_student, ref=ref_param,
+                                   username=username, email=email, full_name=full_name)
+
+        if not agree_consent:
+            return render_template('auth/register.html', error='Для регистрации необходимо дать согласие на обработку персональных данных.',
+                                   tutor=tutor, invite_student=invite_student, ref=ref_param,
+                                   username=username, email=email, full_name=full_name)
 
         if not username or not password:
             return render_template('auth/register.html', error='Все обязательные поля должны быть заполнены.',
@@ -1199,10 +1276,12 @@ def register():
             role = 'parent'
         elif tutor:
             role = 'student'
-        elif role not in ('tutor', 'teacher'):
+        elif role in ('student', 'tutor', 'parent'):
+            role = role
+        elif role == 'teacher':
             role = 'tutor'
         else:
-            role = 'tutor'
+            role = 'student'
 
         if User.query.filter_by(username=username).first():
             return render_template('auth/register.html', error='Пользователь с таким логином уже существует.',
@@ -1266,6 +1345,8 @@ def register():
                 )
                 db.session.add(family_tie)
 
+            _record_registration_consents(new_user.id, agree_analytics=agree_analytics)
+
             db.session.commit()
 
             login_user(new_user, remember=True)
@@ -1319,6 +1400,15 @@ def register_student_invite(token: str):
         email = (request.form.get('email') or '').strip()
         password = request.form.get('password')
         password_confirm = request.form.get('password_confirm')
+        agree_offer = bool(request.form.get('agree_offer'))
+        agree_consent = bool(request.form.get('agree_consent'))
+        agree_analytics = bool(request.form.get('agree_analytics'))
+
+        if not agree_offer:
+            return render_template('auth/register_student_invite.html', error='Для регистрации необходимо принять условия публичной оферты.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
+
+        if not agree_consent:
+            return render_template('auth/register_student_invite.html', error='Для регистрации необходимо дать согласие на обработку персональных данных.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
 
         if not username or not password:
             return render_template('auth/register_student_invite.html', error='Все обязательные поля должны быть заполнены.', invite=invite, teacher=teacher, username=username, email=email, full_name=full_name), 400
@@ -1366,6 +1456,7 @@ def register_student_invite(token: str):
                 enrollment = Enrollment(tutor_id=teacher_id, student_id=new_user.id, subject='Информатика', status='active')
                 db.session.add(enrollment)
 
+            _record_registration_consents(new_user.id, agree_analytics=agree_analytics)
             invite.mark_used(new_user.id)
             db.session.commit()
 
@@ -1410,6 +1501,15 @@ def register_parent_invite(token: str):
         email = (request.form.get('email') or '').strip()
         password = request.form.get('password')
         password_confirm = request.form.get('password_confirm')
+        agree_offer = bool(request.form.get('agree_offer'))
+        agree_consent = bool(request.form.get('agree_consent'))
+        agree_analytics = bool(request.form.get('agree_analytics'))
+
+        if not agree_offer:
+            return render_template('auth/register_parent_invite.html', error='Для регистрации необходимо принять условия публичной оферты.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
+
+        if not agree_consent:
+            return render_template('auth/register_parent_invite.html', error='Для регистрации необходимо дать согласие на обработку персональных данных.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
 
         if not username or not password:
             return render_template('auth/register_parent_invite.html', error='Все обязательные поля должны быть заполнены.', invite=invite, student=target_student, student_user=target_student_user, username=username, email=email, full_name=full_name), 400
@@ -1449,6 +1549,7 @@ def register_parent_invite(token: str):
                     )
                     db.session.add(family_tie)
 
+            _record_registration_consents(new_user.id, agree_analytics=agree_analytics)
             invite.mark_used(new_user.id)
             db.session.commit()
 

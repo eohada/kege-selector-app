@@ -237,14 +237,28 @@ def presence_user(user_id):
         return jsonify({'error': 'server_error'}), 500
 
 
+@main_bp.route('/legal')
+def legal_hub():
+    """Правовой хаб: список всех документов и реквизиты"""
+    return render_template('legal_hub.html')
+
+
 @main_bp.route('/legal/offer')
 def legal_offer():
-    return render_template('legal_offer.html')
+    """Публичная оферта — открытие официального PDF"""
+    return redirect(url_for('static', filename='documents/offer.pdf'))
 
 
 @main_bp.route('/legal/privacy')
 def legal_privacy():
-    return render_template('legal_privacy.html')
+    """Политика обработки персональных данных — открытие официального PDF"""
+    return redirect(url_for('static', filename='documents/privacy.pdf'))
+
+
+@main_bp.route('/legal/consent')
+def legal_consent():
+    """Согласие на обработку персональных данных — открытие официального PDF"""
+    return redirect(url_for('static', filename='documents/consent.pdf'))
 
 
 @main_bp.route('/favicon.ico')
@@ -256,20 +270,23 @@ def favicon():
 @main_bp.route('/legal/accept', methods=['POST'])
 @login_required
 def legal_accept():
-    """Зафиксировать согласие пользователя с документом (MVP)."""
+    """Зафиксировать согласие пользователя с документом."""
     doc = (request.form.get('document_key') or '').strip().lower()
-    version = (request.form.get('version') or '1').strip()
-    if doc not in {'offer', 'privacy'}:
+    version = (request.form.get('version') or '2026-10-18').strip()
+    if doc not in {'offer', 'privacy', 'consent', 'pd_consent', 'analytics'}:
         flash('Некорректный документ.', 'danger')
         return redirect(url_for('main.dashboard'))
 
     try:
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip and ',' in ip:
+            ip = ip.split(',')[0].strip()
         consent = UserConsent(
             user_id=current_user.id,
             document_key=doc,
             version=version,
-            ip_address=request.remote_addr,
-            user_agent=request.headers.get('User-Agent'),
+            ip_address=ip,
+            user_agent=request.headers.get('User-Agent', '')[:500],
         )
         db.session.add(consent)
         db.session.commit()

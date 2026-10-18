@@ -203,8 +203,19 @@
       <!-- ПРАВАЯ КОЛОНКА (5 из 12): ДЕТАЛИ ВЫБРАННОЙ РАБОТЫ И БЛИЖАЙШИЕ ДЕДЛАЙНЫ -->
       <div class="lg:col-span-5 flex flex-col gap-6 lg:sticky lg:top-6" id="rightDetailPanel">
 
+        <!-- КАРТОЧКА: ПУСТОЙ СТЕЙТ ВЫБРАННОЙ РАБОТЫ -->
+        <div class="bg-white rounded-[2rem] border-2 border-slate-200/90 shadow-[0_4px_0_#DAE1E9] p-8 flex flex-col items-center justify-center text-center gap-3.5 {% if submissions %}hidden{% endif %}" id="selectedWorkEmptyCard">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-50/80 border border-indigo-100 flex items-center justify-center text-indigo-600 text-2xl shadow-2xs">
+            <i class="ph-bold ph-tray"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-display font-black text-slate-800">Нет выбранной работы</h3>
+            <p class="text-xs font-bold text-slate-400 mt-1 max-w-xs">Здесь появятся подробности задания, когда преподаватель назначит вам новую работу.</p>
+          </div>
+        </div>
+
         <!-- КАРТОЧКА 1: ДЕТАЛИ ВЫБРАННОЙ РАБОТЫ (MASTER-DETAIL) -->
-        <div class="bg-white rounded-[2rem] border-2 border-slate-200/90 shadow-[0_4px_0_#DAE1E9] p-6 flex flex-col gap-5 relative" id="selectedWorkCard">
+        <div class="bg-white rounded-[2rem] border-2 border-slate-200/90 shadow-[0_4px_0_#DAE1E9] p-6 flex flex-col gap-5 relative {% if not submissions %}hidden{% endif %}" id="selectedWorkCard">
 
           <!-- Шапка детальной карточки -->
           <div class="flex items-start justify-between gap-3">
@@ -708,6 +719,10 @@
     selectedWorkId = subId;
     const item = submissionsData.find(s => String(s.submission_id) === String(subId));
     if (item) {
+      const detailCard = document.getElementById('selectedWorkCard');
+      const emptyDetailCard = document.getElementById('selectedWorkEmptyCard');
+      if (detailCard) detailCard.classList.remove('hidden');
+      if (emptyDetailCard) emptyDetailCard.classList.add('hidden');
       updateDetailPanel(item);
       // Подсвечиваем карточку
       document.querySelectorAll('.assignment-card-row').forEach(card => {
@@ -812,13 +827,21 @@
     }
 
     // Выбираем карточку по умолчанию, если текущая не выбрана или скрыта
+    const detailCard = document.getElementById('selectedWorkCard');
+    const emptyDetailCard = document.getElementById('selectedWorkEmptyCard');
+
     if (filtered.length > 0) {
+      if (detailCard) detailCard.classList.remove('hidden');
+      if (emptyDetailCard) emptyDetailCard.classList.add('hidden');
       const currentExists = filtered.some(s => String(s.submission_id) === String(selectedWorkId));
       if (!currentExists) {
         selectWorkById(filtered[0].submission_id);
       } else {
         selectWorkById(selectedWorkId);
       }
+    } else {
+      if (detailCard) detailCard.classList.add('hidden');
+      if (emptyDetailCard) emptyDetailCard.classList.remove('hidden');
     }
   }
 

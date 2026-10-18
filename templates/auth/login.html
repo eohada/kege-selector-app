@@ -132,6 +132,12 @@
                 <a href="{{ (config.DEMO_BASE_URL + '/demo') if config.DEMO_BASE_URL else url_for('auth.demo_choose') }}" class="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors mt-1 no-underline">
                     <i class="ph-bold ph-sparkles text-amber-500"></i> Попробовать демо без регистрации
                 </a>
+
+                <div class="pt-2 border-t border-slate-100/60 mt-1">
+                    <a href="{{ url_for('main.legal_hub') }}" class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-indigo-600 transition-colors no-underline">
+                        <i class="ph-bold ph-shield-check text-xs"></i> Юридические документы
+                    </a>
+                </div>
             </div>
 
         </div>

@@ -572,27 +572,113 @@ body.bs-lesson-room main.room-lesson-shell {
   background: linear-gradient(150deg, #fff 0%, #fff 72%, var(--bs-surface-lilac-soft, #f3efff) 150%);
   box-shadow: 0 2px 9px rgba(70, 54, 75, .045);
 }
+.room-lesson-os #lesson-info-window .lesson-studio-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
 .room-lesson-os #lesson-info-window .lesson-studio-card:first-child {
-  border-color: color-mix(in srgb, var(--bs-primary, #5b35f5) 14%, var(--bs-border, #ebe7ed));
-  background: linear-gradient(125deg, var(--bs-surface-peach-soft, #fff4ed), #fff 52%, var(--bs-surface-lilac-soft, #f3efff));
+  border-color: #cbd5e1;
+  background: linear-gradient(135deg, #f8fafc, #ffffff);
 }
 .room-lesson-os #lesson-info-window .lesson-studio-chip {
-  border-color: var(--bs-border, #ebe7ed);
-  color: var(--bs-text-secondary, #5d6275);
-  box-shadow: 0 1px 2px rgba(70, 54, 75, .035);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: all 0.15s ease;
 }
 .room-lesson-os #lesson-info-window .lesson-studio-chip:hover,
 .room-lesson-os #lesson-info-window .lesson-studio-chip:focus-visible {
-  border-color: color-mix(in srgb, var(--bs-primary, #5b35f5) 32%, #fff);
-  background: var(--bs-primary-soft, #eeeaff);
-  color: var(--bs-primary, #5b35f5);
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 .room-lesson-os #lesson-info-window .lesson-studio-chip.is-active {
-  border-color: var(--bs-primary, #5b35f5);
-  background: var(--bs-primary, #5b35f5);
-  box-shadow: 0 2px 0 color-mix(in srgb, var(--bs-primary, #5b35f5) 72%, #160c5e);
+  border-color: #4338ca;
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 2px 0 #3730a3, 0 4px 6px -1px rgba(79, 70, 229, 0.25);
 }
-.room-lesson-os #lesson-info-window .lesson-studio-field { border-color: var(--bs-border, #ebe7ed); }
+.room-lesson-os #lesson-info-window .lesson-studio-field {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.room-lesson-os #lesson-info-window .lesson-studio-field:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* Task Bank Preview Styles */
+.task-content-preview {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #334155;
+}
+.task-content-preview pre {
+  margin: 8px 0;
+  padding: 10px 14px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 4;
+}
+.task-content-preview code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+}
+.task-content-preview :not(pre) > code {
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-weight: 600;
+}
+.task-content-preview table {
+  width: 100%;
+  margin: 10px 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 11.5px;
+}
+.task-content-preview th,
+.task-content-preview td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  text-align: left;
+}
+.task-content-preview tr:last-child td { border-bottom: none; }
+.task-content-preview td:last-child,
+.task-content-preview th:last-child { border-right: none; }
+.task-content-preview th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #0f172a;
+}
 .room-lesson-os #chat-window {
   top: 150px;
   right: min(420px, 33vw);
@@ -1265,5 +1351,276 @@ body.bs-lesson-room main.room-lesson-shell {
 .room-lesson-os #dock-icon-chat-window,
 .room-lesson-os .lesson-os-system-bar #video-toggle-btn {
   display: none !important;
+}
+
+/* Task Bank Preview & Typography */
+.task-content-preview {
+  color: #334155;
+  line-height: 1.6;
+}
+.task-content-preview p {
+  margin-bottom: 0.6rem;
+}
+.task-content-preview p:last-child {
+  margin-bottom: 0;
+}
+.task-content-preview pre,
+.task-content-preview code.block {
+  background: #0f172a !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 0.75rem !important;
+  padding: 0.75rem 1rem !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-size: 11.5px !important;
+  line-height: 1.5 !important;
+  overflow-x: auto !important;
+  margin: 0.6rem 0 !important;
+  white-space: pre !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+.task-content-preview pre code {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  border: none !important;
+  white-space: pre !important;
+}
+.task-content-preview code:not(pre code) {
+  background: #f1f5f9;
+  color: #4338ca;
+  font-weight: 700;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.35rem;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+}
+.task-content-preview table {
+  border-collapse: collapse;
+  width: auto;
+  max-width: 100%;
+  margin: 0.6rem 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.task-content-preview th,
+.task-content-preview td {
+  border: 1px solid #e2e8f0;
+  padding: 4px 10px;
+  text-align: left;
+}
+.task-content-preview th {
+  background: #f8fafc;
+  font-weight: 700;
+}
+.task-content-preview img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+/* Syntax Highlighting Tokens in Task Preview */
+.task-content-preview pre .syn-comment { color: #94a3b8 !important; font-style: italic; }
+.task-content-preview pre .syn-string { color: #34d399 !important; font-weight: 600; }
+.task-content-preview pre .syn-number { color: #fbbf24 !important; font-weight: 700; }
+.task-content-preview pre .syn-keyword { color: #c084fc !important; font-weight: 700; }
+.task-content-preview pre .syn-builtin { color: #60a5fa !important; font-weight: 700; }
+.task-content-preview pre .syn-function { color: #38bdf8 !important; font-weight: 700; }
+.task-content-preview pre .syn-decorator { color: #fde047 !important; font-weight: 700; }
+.task-content-preview pre .syn-operator { color: #f472b6 !important; font-weight: 700; }
+
+/* Virtual Desktops Compact Bar & Dropdown */
+.lesson-virtual-desktops-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  user-select: none;
+}
+.lesson-virtual-desktops-bar #lesson-desktop-trigger {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  max-width: 160px;
+}
+.lesson-virtual-desktops-bar #lesson-desktop-trigger:hover {
+  border-color: #818cf8;
+}
+#lesson-desktop-dropdown {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 270px !important;
+  max-width: 90vw !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 20px 35px -5px rgba(15, 23, 42, 0.15), 0 10px 15px -5px rgba(15, 23, 42, 0.08) !important;
+  z-index: 3500 !important;
+  padding: 0.6rem !important;
+}
+#lesson-desktop-dropdown.hidden {
+  display: none !important;
+}
+.desktop-dropdown-item {
+  transition: all 0.12s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 0.75rem;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.desktop-dropdown-item.is-active {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border-color: #c7d2fe !important;
+}
+.desktop-dropdown-item:not(.is-active):hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   Task Bank & Task Window IDE Code Blocks & Syntax Highlighting
+   ========================================================================== */
+.task-content-preview pre {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  padding: 0.85rem 1rem !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid #1e293b !important;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 11.5px !important;
+  line-height: 1.6 !important;
+  white-space: pre !important;
+  overflow-x: auto !important;
+  margin: 0.6rem 0 !important;
+  tab-size: 4 !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.task-content-preview pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  border: 0 !important;
+  color: inherit !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  white-space: inherit !important;
+  box-shadow: none !important;
+}
+
+.task-content-preview :not(pre) > code {
+  background: #f1f5f9 !important;
+  color: #4338ca !important;
+  padding: 0.15rem 0.35rem !important;
+  border-radius: 0.35rem !important;
+  border: 1px solid #e2e8f0 !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+.task-content-preview .syn-keyword { color: #f43f5e !important; font-weight: 700; }
+.task-content-preview .syn-builtin { color: #38bdf8 !important; }
+.task-content-preview .syn-string { color: #34d399 !important; }
+.task-content-preview .syn-comment { color: #64748b !important; font-style: italic; }
+.task-content-preview .syn-number { color: #fbbf24 !important; }
+.task-content-preview .syn-boolean { color: #c084fc !important; font-weight: 700; }
+.task-content-preview .syn-function { color: #60a5fa !important; }
+.task-content-preview .syn-decorator { color: #e879f9 !important; }
+.task-content-preview .syn-operator { color: #94a3b8 !important; }
+
+/* Filter bar controls in Teacher Task Bank Window */
+#teacher-task-bank-window select {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  font-weight: 700 !important;
+  font-size: 11.5px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 0.65rem !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+#teacher-task-bank-window select:hover {
+  border-color: #94a3b8 !important;
+}
+#teacher-task-bank-window select:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15) !important;
+}
+/* Glass OS Modal Dialog Buttons - BooStudy Tactile Canon */
+#glass-modal-btn-cancel {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 18px !important;
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 3px 0 #cbd5e1 !important;
+  cursor: pointer !important;
+  transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+#glass-modal-btn-cancel:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+#glass-modal-btn-cancel:active {
+  transform: translateY(2px) !important;
+  box-shadow: 0 1px 0 #cbd5e1 !important;
+}
+
+#glass-modal-btn-confirm {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 20px !important;
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  border: 1px solid #4338ca !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 3px 0 #3730a3 !important;
+  cursor: pointer !important;
+  transition: background 0.12s ease, transform 0.08s ease, box-shadow 0.08s ease !important;
+}
+#glass-modal-btn-confirm:hover {
+  background: #4338ca !important;
+}
+#glass-modal-btn-confirm:active {
+  transform: translateY(2px) !important;
+  box-shadow: 0 1px 0 #3730a3 !important;
+}
+
+#glass-modal-btn-confirm.is-danger {
+  background: #e11d48 !important;
+  color: #ffffff !important;
+  border: 1px solid #be123c !important;
+  box-shadow: 0 3px 0 #9f1239 !important;
+}
+#glass-modal-btn-confirm.is-danger:hover {
+  background: #be123c !important;
+}
+#glass-modal-btn-confirm.is-danger:active {
+  transform: translateY(2px) !important;
+  box-shadow: 0 1px 0 #9f1239 !important;
+}
+
+/* Ensure Desktop Dropdown always opens downwards from the topbar */
+#lesson-desktop-dropdown {
+  top: calc(100% + 8px) !important;
+  bottom: auto !important;
+  max-height: calc(100vh - 80px) !important;
 }
 

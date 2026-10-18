@@ -196,6 +196,7 @@
   let middlePanActive = false;
   let dragStartPos = { x: 0, y: 0 };
   let lastMoveSyncTime = 0;
+  let lastResizeSyncTime = 0;
   let resizeHandle = null;
   let resizeStartBounds = null;
   let resizeSnapshot = null;
@@ -227,8 +228,13 @@
   function getActivePage() {
     let p = pages.find((pg) => pg.id === currentPageId);
     if (!p) {
-      p = pages[0] || { id: 'page_1', title: 'Страница 1', background: 'dots', strokes: [] };
-      currentPageId = p.id;
+      if (currentPageId) {
+        p = { id: currentPageId, title: `Страница ${pages.length + 1}`, background: 'dots', strokes: [] };
+        pages.push(p);
+      } else {
+        p = pages[0] || { id: 'page_1', title: 'Страница 1', background: 'dots', strokes: [] };
+        currentPageId = p.id;
+      }
     }
     return p;
   }
@@ -239,13 +245,13 @@
   }
 
   function storageKey() {
-    if (!taskId) return null;
-    return `boo.canvas.${contextType || 'submission'}.${contextId || 'none'}.${taskId}`;
+    if (!taskId && !contextId) return null;
+    return `boo.canvas.${contextType || 'submission'}.${contextId || 'none'}.${taskId || 'general'}`;
   }
 
   function contextKey() {
-    if (!taskId) return null;
-    return `${contextType || 'submission'}:${contextId || 'none'}:${taskId}`;
+    if (!taskId && !contextId) return null;
+    return `${contextType || 'submission'}:${contextId || 'none'}:${taskId || 'general'}`;
   }
 
   function saveLocal() {
@@ -1593,23 +1599,34 @@
   }
 
   function switchPage(pageId) {
-    if (currentPageId === pageId) return;
+    if (!pageId) return;
+    let target = pages.find((p) => p.id === pageId);
+    if (!target) {
+      target = { id: pageId, title: `Страница ${pages.length + 1}`, background: getActivePage()?.background || 'dots', strokes: [] };
+      pages.push(target);
+    }
     currentPageId = pageId;
+    remoteLiveStrokes.clear();
     syncPageStrokes();
     selectedIds.clear();
-    const curPage = getActivePage();
-    applyCanvasBackground(curPage.background || 'dots');
+    applyCanvasBackground(target.background || 'dots');
     renderPageTabs();
     redraw();
+    syncDomWidgets();
     updateSelectionBox();
     updateMinimap();
   }
 
-  function addNewPage() {
-    const newId = generateId('page');
+  function addNewPage(customTitle, customId) {
+    const newId = customId || generateId('page');
+    const existing = pages.find((p) => p.id === newId);
+    if (existing) {
+      switchPage(newId);
+      return newId;
+    }
     const newPage = {
       id: newId,
-      title: `Страница ${pages.length + 1}`,
+      title: customTitle || `Страница ${pages.length + 1}`,
       background: getActivePage().background || 'dots',
       strokes: []
     };
@@ -1618,6 +1635,23 @@
     dirty = true;
     saveLocal();
     scheduleSave();
+    return newId;
+  }
+
+  function deletePage(pageId) {
+    if (!pageId || pages.length <= 1) return;
+    const idx = pages.findIndex((p) => p.id === pageId);
+    if (idx >= 0) {
+      pages.splice(idx, 1);
+      if (currentPageId === pageId) {
+        switchPage(pages[0].id);
+      } else {
+        renderPageTabs();
+      }
+      dirty = true;
+      saveLocal();
+      scheduleSave();
+    }
   }
 
   function applyCanvasBackground(bgType) {
@@ -2478,6 +2512,7 @@
 
     const mathObj = {
       id: generateId('math'),
+      page_id: currentPageId,
       type: 'math',
       latex,
       fontSize: 22,
@@ -2500,6 +2535,7 @@
     syncDomWidgets();
     updateSelectionBox();
     scheduleSave();
+    realtimeSyncAdapter?.onStrokeCommit?.(mathObj);
   }
 
   // --- Export Modal (PNG, SVG, PDF, JSON) ---
@@ -2625,7 +2661,7 @@
       laserCanvas.style.height = canvas.style.height;
     }
 
-    if (laserTrail.length <= 1) {
+    if (laserTrail.length === 0) {
       if (!laserCleared) {
         laserCtx.setTransform(1, 0, 0, 1, 0, 0);
         laserCtx.clearRect(0, 0, laserCanvas.width, laserCanvas.height);
@@ -2655,50 +2691,52 @@
     const lColor = (interactionMode === 'laser' ? laserColor : (remoteLaserColor || laserColor)) || '#ef4444';
     const baseWidth = Math.max(3, (interactionMode === 'laser' ? laserWidth : (remoteLaserWidth || laserWidth || 6)));
 
-    // Pass 1: Outer neon glowing bloom
-    laserCtx.save();
-    laserCtx.shadowColor = lColor;
-    laserCtx.shadowBlur = 14;
-    for (let i = 0; i < laserTrail.length - 1; i++) {
-      const p1 = laserTrail[i];
-      const p2 = laserTrail[i + 1];
-      if (p2.isStart) continue;
-      const age = now - p2.t;
-      if (age >= 1200) continue;
-      const alpha = Math.max(0, 1 - age / 1200);
+    if (laserTrail.length > 1) {
+      // Pass 1: Outer neon glowing bloom
+      laserCtx.save();
+      laserCtx.shadowColor = lColor;
+      laserCtx.shadowBlur = 14;
+      for (let i = 0; i < laserTrail.length - 1; i++) {
+        const p1 = laserTrail[i];
+        const p2 = laserTrail[i + 1];
+        if (p2.isStart) continue;
+        const age = now - p2.t;
+        if (age >= 1200) continue;
+        const alpha = Math.max(0, 1 - age / 1200);
 
-      laserCtx.beginPath();
-      laserCtx.strokeStyle = hexToRgba(lColor, alpha * 0.7);
-      laserCtx.lineWidth = Math.max(2, baseWidth * 1.5 * alpha);
-      laserCtx.moveTo(p1.x + offsetX, p1.y + offsetY);
-      laserCtx.lineTo(p2.x + offsetX, p2.y + offsetY);
-      laserCtx.stroke();
+        laserCtx.beginPath();
+        laserCtx.strokeStyle = hexToRgba(lColor, alpha * 0.7);
+        laserCtx.lineWidth = Math.max(2, baseWidth * 1.5 * alpha);
+        laserCtx.moveTo(p1.x + offsetX, p1.y + offsetY);
+        laserCtx.lineTo(p2.x + offsetX, p2.y + offsetY);
+        laserCtx.stroke();
+      }
+      laserCtx.restore();
+
+      // Pass 2: Intense white-hot core
+      laserCtx.save();
+      laserCtx.shadowColor = '#ffffff';
+      laserCtx.shadowBlur = 6;
+      for (let i = 0; i < laserTrail.length - 1; i++) {
+        const p1 = laserTrail[i];
+        const p2 = laserTrail[i + 1];
+        if (p2.isStart) continue;
+        const age = now - p2.t;
+        if (age >= 1200) continue;
+        const alpha = Math.max(0, 1 - age / 1200);
+
+        laserCtx.beginPath();
+        laserCtx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+        laserCtx.lineWidth = Math.max(1, baseWidth * 0.45 * alpha);
+        laserCtx.moveTo(p1.x + offsetX, p1.y + offsetY);
+        laserCtx.lineTo(p2.x + offsetX, p2.y + offsetY);
+        laserCtx.stroke();
+      }
+      laserCtx.restore();
     }
-    laserCtx.restore();
-
-    // Pass 2: Intense white-hot core
-    laserCtx.save();
-    laserCtx.shadowColor = '#ffffff';
-    laserCtx.shadowBlur = 6;
-    for (let i = 0; i < laserTrail.length - 1; i++) {
-      const p1 = laserTrail[i];
-      const p2 = laserTrail[i + 1];
-      if (p2.isStart) continue;
-      const age = now - p2.t;
-      if (age >= 1200) continue;
-      const alpha = Math.max(0, 1 - age / 1200);
-
-      laserCtx.beginPath();
-      laserCtx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
-      laserCtx.lineWidth = Math.max(1, baseWidth * 0.45 * alpha);
-      laserCtx.moveTo(p1.x + offsetX, p1.y + offsetY);
-      laserCtx.lineTo(p2.x + offsetX, p2.y + offsetY);
-      laserCtx.stroke();
-    }
-    laserCtx.restore();
 
     // Pass 3: Glowing laser head dot at current dragging tip
-    if (interactionMode === 'laser' && laserTrail.length > 0) {
+    if (laserTrail.length > 0) {
       const tip = laserTrail[laserTrail.length - 1];
       laserCtx.save();
       laserCtx.beginPath();
@@ -2778,6 +2816,7 @@
 
     if (remoteLiveStrokes.size > 0) {
       remoteLiveStrokes.forEach((s) => {
+        if (s.page_id && s.page_id !== currentPageId) return;
         if (s.type === 'note' || s.type === 'widget' || s.type === 'math') return;
         drawStroke(s, activeRect);
       });
@@ -5645,7 +5684,7 @@
 
     // Text Tool
     if (tool === 'text') {
-      const space = getActiveTaskContentRect();
+      const space = embeddedTarget ? null : getActiveTaskContentRect();
       const pos = pointForEvent(e, space);
       beginTextEntry(e, space, pos);
       e.preventDefault();
@@ -5654,7 +5693,7 @@
 
     // Drawing / Shapes / Highlighter
     interactionMode = 'draw';
-    const space = getActiveTaskContentRect();
+    const space = embeddedTarget ? null : getActiveTaskContentRect();
     const pos = pointForEvent(e, space);
     pos.p = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0.5;
     pos.t = Date.now();
@@ -5665,6 +5704,7 @@
 
     currentStroke = {
       id: generateId(shape ? 'shp' : (isHighlighter ? 'hl' : 'strk')),
+      page_id: currentPageId,
       type: isConnector ? 'connector' : (shape ? 'shape' : (isHighlighter ? 'highlighter' : 'stroke')),
       brush: bId || 'ballpoint',
       shape: shape || 'rectangle',
@@ -5798,7 +5838,16 @@
       if (now - (lastMoveSyncTime || 0) > 28) {
         lastMoveSyncTime = now;
         const updated = strokes.filter((s) => selectedIds.has(s.id));
-        if (updated.length) realtimeSyncAdapter?.onStrokesUpdate?.(updated);
+        if (updated.length) {
+          const syncStrokes = updated.map((s) => {
+            if (s.type === 'image' && s.src) {
+              const { src, ...rest } = s;
+              return rest;
+            }
+            return s;
+          });
+          realtimeSyncAdapter?.onStrokesUpdate?.(syncStrokes);
+        }
       }
 
       e.preventDefault();
@@ -5920,7 +5969,16 @@
       dirty = true;
       saveLocal();
       scheduleSave();
-      if (updated.length) realtimeSyncAdapter?.onStrokesUpdate?.(updated);
+      if (updated.length) {
+        const syncStrokes = updated.map((s) => {
+          if (s.type === 'image' && s.src) {
+            const { src, ...rest } = s;
+            return rest;
+          }
+          return s;
+        });
+        realtimeSyncAdapter?.onStrokesUpdate?.(syncStrokes);
+      }
       return;
     }
 
@@ -5958,7 +6016,8 @@
       saveLocal();
       scheduleSave();
       if (finished) {
-        realtimeSyncAdapter?.onStrokeLive?.('end', { stroke_id: finished.id });
+        finished.page_id = finished.page_id || currentPageId;
+        realtimeSyncAdapter?.onStrokeLive?.('end', { stroke_id: finished.id, page_id: finished.page_id });
         realtimeSyncAdapter?.onStrokeCommit?.(finished);
       }
     }
@@ -6199,6 +6258,22 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+
+    const now = performance.now();
+    if (now - (lastResizeSyncTime || 0) > 28) {
+      lastResizeSyncTime = now;
+      const updated = strokes.filter((s) => selectedIds.has(s.id));
+      if (updated.length) {
+        const syncStrokes = updated.map((s) => {
+          if (s.type === 'image' && s.src) {
+            const { src, ...rest } = s;
+            return rest;
+          }
+          return s;
+        });
+        realtimeSyncAdapter?.onStrokesUpdate?.(syncStrokes);
+      }
+    }
   }
 
   function onRotatePointerDown(e) {
@@ -6310,6 +6385,7 @@
 
     const newNote = {
       id: generateId('note'),
+      page_id: currentPageId,
       type: 'note',
       text: '',
       colorTheme: 'yellow',
@@ -6326,6 +6402,7 @@
     redraw();
     updateSelectionBox();
     scheduleSave();
+    realtimeSyncAdapter?.onStrokeCommit?.(newNote);
 
     setTimeout(() => {
       const ta = objectLayer.querySelector(`[data-obj-id="${newNote.id}"] textarea`);
@@ -6354,10 +6431,10 @@
         offCanvas.height = h;
         const oCtx = offCanvas.getContext('2d');
         oCtx.drawImage(img, 0, 0, w, h);
-        const mime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const dataUrl = offCanvas.toDataURL(mime, 0.85);
+        const mime = 'image/jpeg';
+        const dataUrl = offCanvas.toDataURL(mime, 0.82);
 
-        const space = getActiveTaskContentRect();
+        const space = embeddedTarget ? null : getActiveTaskContentRect();
         const origin = canvasOrigin();
         const posX = clientX !== undefined ? clientX : (origin.left + window.innerWidth / 3);
         const posY = clientY !== undefined ? clientY : (origin.top + window.innerHeight / 3);
@@ -6379,6 +6456,7 @@
 
         const newImgStroke = {
           id: generateId('img'),
+          page_id: currentPageId,
           type: 'image',
           src: dataUrl,
           points: [p1, p2],
@@ -6394,6 +6472,7 @@
         redraw();
         updateSelectionBox();
         scheduleSave();
+        realtimeSyncAdapter?.onStrokeCommit?.(newImgStroke);
       };
       img.src = ev.target.result;
     };
@@ -6406,6 +6485,7 @@
     const p1 = pointForEvent({ pageX: origin.left + 200, pageY: origin.top + 200 }, space);
     const pdfCard = {
       id: generateId('pdf'),
+      page_id: currentPageId,
       type: 'widget',
       widgetType: 'pdf',
       points: [p1, { x: p1.x + 280, y: p1.y + 180 }],
@@ -6415,6 +6495,7 @@
     strokes.push(pdfCard);
     setTool('select');
     redraw();
+    realtimeSyncAdapter?.onStrokeCommit?.(pdfCard);
   }
 
   // --- Text Editor ---
@@ -6443,6 +6524,7 @@
 
     const newText = {
       id: generateId('txt'),
+      page_id: currentPageId,
       type: 'text',
       text,
       color: draft.color,
@@ -6461,6 +6543,7 @@
     redraw();
     updateSelectionBox();
     scheduleSave();
+    realtimeSyncAdapter?.onStrokeCommit?.(newText);
   }
 
   function beginTextEntry(e, space, point, existingTextObj) {
@@ -6531,8 +6614,10 @@
           }
         });
       }
+      clone.page_id = currentPageId;
       strokes.push(clone);
       newSelected.add(clone.id);
+      realtimeSyncAdapter?.onStrokeCommit?.(clone);
     });
 
     selectedIds = newSelected;
@@ -6688,7 +6773,7 @@
     saveLocal();
     scheduleSave();
     updateSaveStatus('unsaved');
-    realtimeSyncAdapter?.onBoardClear?.();
+    realtimeSyncAdapter?.onBoardClear?.(currentPageId);
   }
 
   // --- Persistence Engine ---
@@ -7015,9 +7100,13 @@
     const pageY = e.pageY !== undefined ? e.pageY : e.clientY + window.scrollY;
     const displayedX = pageX - origin.left;
     const displayedY = pageY - origin.top;
+    if (!space) {
+      const x = (displayedX - width / 2 - viewOffsetX) / viewScale + width / 2;
+      const y = (displayedY - height / 2 - viewOffsetY) / viewScale + height / 2;
+      return { x, y };
+    }
     const x = origin.left + (displayedX - width / 2 - viewOffsetX) / viewScale + width / 2;
     const y = origin.top + (displayedY - height / 2 - viewOffsetY) / viewScale + height / 2;
-    if (!space) return { x, y };
     const rx = (x - space.left) / Math.max(space.width, 1);
     const ry = (y - space.top) / Math.max(space.height, 1);
     return { x, y, rx, ry };
@@ -7051,8 +7140,8 @@
     const width = canvas.width / Math.max(dpr, 1);
     const height = canvas.height / Math.max(dpr, 1);
     const mapped = resolvePointForRender(worldPoint, stroke, activeRect);
-    const localX = mapped.x - origin.left;
-    const localY = mapped.y - origin.top;
+    const localX = (stroke && stroke.space) ? (mapped.x - origin.left) : mapped.x;
+    const localY = (stroke && stroke.space) ? (mapped.y - origin.top) : mapped.y;
     return {
       x: width / 2 + (localX - width / 2) * viewScale + viewOffsetX,
       y: height / 2 + (localY - height / 2) * viewScale + viewOffsetY,
@@ -7545,6 +7634,9 @@
   }
 
   function hasValidContext() {
+    if (contextType === 'lesson' || contextType === 'lesson_task' || embeddedTarget || document.getElementById('canvas-window')) {
+      return Boolean(Number.isFinite(contextId) && contextId > 0) || Boolean(Number.isFinite(taskId) && taskId > 0) || Boolean(embeddedTarget) || Boolean(document.getElementById('canvas-window'));
+    }
     return Number.isFinite(taskId) && taskId > 0;
   }
 
@@ -8037,10 +8129,12 @@
     if (!payload) return;
     const strokeId = payload.stroke_id || payload.stroke?.id;
     if (!strokeId) return;
+    const pageId = payload.page_id || payload.stroke?.page_id;
     if (payload.phase === 'cancel') {
       remoteLiveStrokes.delete(strokeId);
     } else if (payload.phase === 'end') {
       if (payload.stroke) {
+        if (pageId) payload.stroke.page_id = pageId;
         remoteLiveStrokes.set(strokeId, payload.stroke);
       }
       setTimeout(() => {
@@ -8050,12 +8144,14 @@
         }
       }, 1000);
     } else if (payload.stroke) {
+      if (pageId) payload.stroke.page_id = pageId;
       remoteLiveStrokes.set(strokeId, payload.stroke);
     } else {
       let existing = remoteLiveStrokes.get(strokeId);
       if (!existing) {
         existing = {
           id: strokeId,
+          page_id: pageId || currentPageId,
           tool: payload.style?.eraser ? 'eraser' : 'pen',
           points: [],
           color: payload.style?.color || '#4f46e5',
@@ -8065,6 +8161,7 @@
         };
         remoteLiveStrokes.set(strokeId, existing);
       }
+      if (pageId && !existing.page_id) existing.page_id = pageId;
       if (Array.isArray(payload.points)) {
         existing.points.push(...payload.points);
       }
@@ -8075,69 +8172,128 @@
   function applyRemoteStrokeCommit(remoteStroke) {
     if (!remoteStroke || !remoteStroke.id) return;
     remoteLiveStrokes.delete(remoteStroke.id);
-    const idx = strokes.findIndex((s) => s.id === remoteStroke.id);
-    if (idx >= 0) {
-      strokes[idx] = remoteStroke;
-    } else {
-      strokes.push(remoteStroke);
+    const targetPageId = remoteStroke.page_id || currentPageId;
+    let targetPage = pages.find((p) => p.id === targetPageId);
+    if (!targetPage) {
+      targetPage = { id: targetPageId, title: `Страница ${pages.length + 1}`, background: 'dots', strokes: [] };
+      pages.push(targetPage);
+      renderPageTabs();
     }
-    getActivePage().strokes = strokes;
-    redraw();
-    syncDomWidgets();
+    const idx = targetPage.strokes.findIndex((s) => s.id === remoteStroke.id);
+    if (idx >= 0) {
+      targetPage.strokes[idx] = remoteStroke;
+    } else {
+      targetPage.strokes.push(remoteStroke);
+    }
+    if (currentPageId === targetPageId) {
+      strokes = targetPage.strokes;
+      redraw();
+      syncDomWidgets();
+    }
   }
 
   function applyRemoteStrokesUpdate(updatedStrokes) {
     if (!Array.isArray(updatedStrokes)) return;
+    let shouldRedraw = false;
     updatedStrokes.forEach((s) => {
       if (!s || !s.id) return;
-      const idx = strokes.findIndex((item) => item.id === s.id);
-      if (idx >= 0) strokes[idx] = s;
-      else strokes.push(s);
+      pages.forEach((pg) => {
+        const idx = pg.strokes.findIndex((item) => item.id === s.id);
+        if (idx >= 0) {
+          const existingSrc = pg.strokes[idx].src;
+          const existingPageId = pg.strokes[idx].page_id;
+          pg.strokes[idx] = { ...pg.strokes[idx], ...s };
+          if (!s.src && existingSrc) pg.strokes[idx].src = existingSrc;
+          if (!s.page_id && existingPageId) pg.strokes[idx].page_id = existingPageId;
+          if (pg.id === currentPageId) shouldRedraw = true;
+        }
+      });
     });
-    getActivePage().strokes = strokes;
-    redraw();
-    syncDomWidgets();
+    if (shouldRedraw) {
+      strokes = getActivePage().strokes;
+      redraw();
+      syncDomWidgets();
+    }
   }
 
   function applyRemoteStrokesDelete(strokeIds) {
     const idSet = new Set(Array.isArray(strokeIds) ? strokeIds : [strokeIds]);
-    strokes = strokes.filter((s) => !idSet.has(s.id));
-    getActivePage().strokes = strokes;
-    redraw();
-    syncDomWidgets();
+    let shouldRedraw = false;
+    pages.forEach((pg) => {
+      const prevLen = pg.strokes.length;
+      pg.strokes = pg.strokes.filter((s) => !idSet.has(s.id));
+      if (pg.id === currentPageId && pg.strokes.length !== prevLen) {
+        shouldRedraw = true;
+      }
+    });
+    if (shouldRedraw) {
+      strokes = getActivePage().strokes;
+      redraw();
+      syncDomWidgets();
+    }
   }
 
-  function applyRemoteBoardClear() {
-    strokes.length = 0;
-    remoteLiveStrokes.clear();
-    getActivePage().strokes = strokes;
-    redraw();
-    syncDomWidgets();
+  function applyRemoteBoardClear(targetPageId) {
+    const pId = targetPageId || currentPageId;
+    const pg = pages.find((p) => p.id === pId);
+    if (pg) {
+      pg.strokes = [];
+    }
+    if (currentPageId === pId) {
+      strokes = [];
+      remoteLiveStrokes.clear();
+      redraw();
+      syncDomWidgets();
+    }
   }
 
   function applyRemoteLaser(worldPoint, visible = true, options = {}) {
-    if (!visible || !worldPoint) {
+    const opts = (typeof visible === 'object' && visible !== null) ? visible : (options || {});
+    const isVisible = (typeof visible === 'boolean') ? visible : (opts.visible !== false);
+    if (!isVisible || !worldPoint) {
       laserTrail.length = 0;
       drawLaserTop();
       return;
     }
-    if (options.color) remoteLaserColor = options.color;
-    if (options.width || options.size) remoteLaserWidth = Number(options.width || options.size);
+    if (opts.color) remoteLaserColor = opts.color;
+    if (opts.width || opts.size) remoteLaserWidth = Number(opts.width || opts.size);
     const screenX = Number(worldPoint.x) * viewScale + viewOffsetX;
     const screenY = Number(worldPoint.y) * viewScale + viewOffsetY;
     laserTrail.push({
       x: screenX,
       y: screenY,
       t: Date.now(),
-      isStart: Boolean(options.isStart),
+      isStart: Boolean(opts.isStart),
     });
     drawLaserTop();
   }
 
   function setAllStrokes(strokesList) {
     remoteLiveStrokes.clear();
-    strokes = Array.isArray(strokesList) ? strokesList.slice() : [];
-    getActivePage().strokes = strokes;
+    const list = Array.isArray(strokesList) ? strokesList : [];
+    const pageMap = new Map();
+    list.forEach((s) => {
+      if (!s) return;
+      const pid = s.page_id || 'page_1';
+      s.page_id = pid;
+      if (!pageMap.has(pid)) pageMap.set(pid, []);
+      pageMap.get(pid).push(s);
+    });
+
+    pageMap.forEach((pStrokes, pid) => {
+      let page = pages.find((p) => p.id === pid);
+      if (!page) {
+        page = { id: pid, title: pid === 'page_1' ? 'Страница 1' : `Страница ${pages.length + 1}`, background: 'dots', strokes: [] };
+        pages.push(page);
+      }
+      page.strokes = pStrokes;
+    });
+    pages.forEach((p) => {
+      if (!pageMap.has(p.id)) p.strokes = [];
+    });
+
+    syncPageStrokes();
+    renderPageTabs();
     redraw();
     syncDomWidgets();
   }
@@ -8177,6 +8333,9 @@
     exportJSON,
     addNewPage,
     switchPage,
+    deletePage,
+    getPages: () => pages,
+    getActivePageId: () => currentPageId,
     setCamera: (offsetX, offsetY, scale, broadcast = false) => {
       if (Number.isFinite(offsetX)) viewOffsetX = offsetX;
       if (Number.isFinite(offsetY)) viewOffsetY = offsetY;

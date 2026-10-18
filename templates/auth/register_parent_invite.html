@@ -117,6 +117,34 @@
                            class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-purple-500 focus:bg-white transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
                 </div>
 
+                <!-- Legal Consents Block -->
+                <div class="flex flex-col gap-2.5 pt-2 border-t border-slate-100">
+                    <label class="flex items-start gap-2.5 cursor-pointer text-xs text-slate-600 select-none">
+                        <input type="checkbox" name="agree_offer" id="agree_offer" value="1" required class="mt-0.5 w-4 h-4 rounded text-purple-600 border-slate-300 focus:ring-purple-500 cursor-pointer">
+                        <span>
+                            Я принимаю условия <a href="{{ url_for('main.legal_offer') }}" target="_blank" class="text-purple-600 hover:underline font-bold">публичной оферты</a> <span class="text-rose-500">*</span>
+                        </span>
+                    </label>
+
+                    <label class="flex items-start gap-2.5 cursor-pointer text-xs text-slate-600 select-none">
+                        <input type="checkbox" name="agree_consent" id="agree_consent" value="1" required class="mt-0.5 w-4 h-4 rounded text-purple-600 border-slate-300 focus:ring-purple-500 cursor-pointer">
+                        <span>
+                            Я даю <a href="{{ url_for('main.legal_consent') }}" target="_blank" class="text-purple-600 hover:underline font-bold">согласие на обработку персональных данных</a> <span class="text-rose-500">*</span>
+                        </span>
+                    </label>
+
+                    <label class="flex items-start gap-2.5 cursor-pointer text-xs text-slate-500 select-none">
+                        <input type="checkbox" name="agree_analytics" id="agree_analytics" value="1" class="mt-0.5 w-4 h-4 rounded text-purple-600 border-slate-300 focus:ring-purple-500 cursor-pointer">
+                        <span>
+                            Я согласен(на) на сбор технической веб-аналитики для улучшения сервиса (необязательно)
+                        </span>
+                    </label>
+
+                    <p class="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                        Регистрируясь, вы подтверждаете ознакомление с <a href="{{ url_for('main.legal_privacy') }}" target="_blank" class="text-purple-600 hover:underline font-bold">Политикой конфиденциальности</a>.
+                    </p>
+                </div>
+
                 <!-- Submit Button -->
                 <button type="submit" class="w-full mt-2 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm px-6 py-4 rounded-2xl border-b-[4px] border-purple-800 shadow-[0_4px_12px_rgba(147,51,234,0.3)] active:border-b-0 active:translate-y-[4px] transition-all flex items-center justify-center gap-2 cursor-pointer border-x-0 border-t-0">
                     <i class="ph-bold ph-check-circle text-lg"></i>

@@ -699,6 +699,7 @@ def create_app(config_name=None):
             app,
             async_mode=async_mode,
             cors_allowed_origins='*',
+            max_http_buffer_size=25 * 1024 * 1024,
             logger=False,
             engineio_logger=False,
         )

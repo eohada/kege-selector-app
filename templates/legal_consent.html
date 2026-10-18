@@ -1,0 +1,94 @@
+{% extends 'base_public.html' %}
+{% block title %}Согласие на обработку персональных данных · BooStudy{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="space-y-3">
+        <a href="{{ url_for('main.legal_hub') }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 border-b-[3px] border-slate-300 text-xs font-black uppercase tracking-wider text-slate-700 hover:text-indigo-600 active:translate-y-0.5 transition-all no-underline">
+            <i class="ph-bold ph-arrow-left"></i>
+            <span>Все документы</span>
+        </a>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] font-black text-amber-700 uppercase tracking-wider">
+            <i class="ph-bold ph-check-circle"></i>
+            <span>Персональные данные</span>
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-display font-black text-slate-900 tracking-tight">
+            Согласие на обработку персональных данных
+        </h1>
+        <p class="text-slate-500 font-medium text-xs sm:text-sm">
+            Платформа BooStudy (https://boostudy.ru/) · Редакция от 18.10.2026 г. · г. Томск
+        </p>
+    </div>
+
+    {% set pdf_url = url_for('static', filename='documents/consent.pdf') %}
+    <div class="flex items-center gap-3 flex-wrap">
+        <a href="{{ pdf_url }}" target="_blank" download class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] border-indigo-800 shadow-xs active:border-b active:translate-y-[3px] transition-all no-underline">
+            <i class="ph-bold ph-download-simple text-base"></i>
+            <span>Скачать официальный PDF</span>
+        </a>
+        <a href="{{ pdf_url }}" target="_blank" class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-black text-xs uppercase tracking-wider px-4 py-3 rounded-xl border border-slate-200 border-b-[4px] border-slate-300 shadow-xs active:border-b active:translate-y-[3px] transition-all no-underline">
+            <i class="ph-bold ph-arrow-square-out text-base"></i>
+            <span>Открыть в новой вкладке</span>
+        </a>
+    </div>
+
+    <div class="bg-white border-2 border-slate-200 shadow-[0_6px_0_#DAE1E9] rounded-3xl p-6 sm:p-10 text-slate-700 leading-relaxed text-sm sm:text-base">
+        <p style="margin-bottom: 1.25rem;">
+            Физическое лицо, оставляя заявку на веб-сайте платформы BooStudy (<a href="https://boostudy.ru/" target="_blank" style="color: #4f46e5;">https://boostudy.ru/</a>) через форму регистрации, форму оплаты или иные формы ввода данных, действуя свободно, своей волей и в своем интересе, а также подтверждая свою дееспособность, предоставляет свое согласие Король Александру Евгеньевичу (далее — Оператор) на обработку своих персональных данных на следующих условиях:
+        </p>
+
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 1.5rem 0 0.5rem 0; color: var(--text-primary, #0f172a);">
+            1. Форма согласия
+        </h3>
+        <p style="margin-bottom: 1rem;">
+            1. Данное Согласие дается на обработку персональных данных как без использования средств автоматизации, так и с их использованием.
+        </p>
+
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 1.5rem 0 0.5rem 0; color: var(--text-primary, #0f172a);">
+            2. Перечень обрабатываемых персональных данных
+        </h3>
+        <p style="margin-bottom: 0.5rem;">
+            Согласие дается на обработку следующих персональных данных:
+        </p>
+        <ul style="list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.25rem;">
+            <li>Имя;</li>
+            <li>Имя пользователя (username) и/или ID профиля в мессенджере Telegram;</li>
+            <li>Адрес электронной почты (e-mail);</li>
+            <li>Пользовательские технические данные (сведения о местоположении; тип и версия ОС; тип и версия браузера; тип устройства и разрешение экрана; источник перехода на сайт; язык ОС и браузера; история навигации по сайту; IP-адрес).</li>
+        </ul>
+
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 1.5rem 0 0.5rem 0; color: var(--text-primary, #0f172a);">
+            3. Цели обработки персональных данных
+        </h3>
+        <p style="margin-bottom: 1rem;">
+            Предоставление доступа к личному кабинету и обучающим материалам; отправка уведомлений о ходе обучения; направление электронных чеков об оплате услуг; техническая аналитика действий на сайте.
+        </p>
+
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 1.5rem 0 0.5rem 0; color: var(--text-primary, #0f172a);">
+            4. Основания для обработки персональных данных
+        </h3>
+        <p style="margin-bottom: 1rem;">
+            Статья 24 Конституции Российской Федерации; статья 6 Федерального закона № 152-ФЗ «О персональных данных»; публичная оферта Оператора.
+        </p>
+
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 1.5rem 0 0.5rem 0; color: var(--text-primary, #0f172a);">
+            5. Перечень действий с персональными данными
+        </h3>
+        <p style="margin-bottom: 1rem;">
+            В ходе обработки персональных данных будут совершены следующие действия: сбор, запись, систематизация, накопление, хранение, уточнение (обновление, изменение), извлечение, использование, передача (предоставление, доступ), блокирование, удаление и уничтожение.
+        </p>
+
+        <h3 style="font-size: 1.1rem; font-weight: 800; margin: 1.5rem 0 0.5rem 0; color: var(--text-primary, #0f172a);">
+            6. Срок действия согласия и порядок отзыва
+        </h3>
+        <p style="margin-bottom: 1.5rem;">
+            Настоящее Согласие действует до достижения целей обработки персональных данных либо до момента его отзыва путем направления уведомления на электронный адрес Оператора: <a href="mailto:boostudywork@gmail.com" style="color: #4f46e5; font-weight: 600;">boostudywork@gmail.com</a>.
+        </p>
+
+        <div class="mt-8 pt-6 border-t-2 border-slate-100 flex flex-col gap-2 text-xs font-medium text-slate-500">
+            <div><strong class="text-slate-800">Оператор:</strong> Король Александр Евгеньевич · <strong class="text-slate-800">ИНН:</strong> 700301487394 · <strong class="text-slate-800">ОГРНИП:</strong> 324700000044531</div>
+            <div><strong class="text-slate-800">E-mail:</strong> <a href="mailto:boostudywork@gmail.com" class="text-indigo-600 font-bold hover:underline">boostudywork@gmail.com</a> · <strong class="text-slate-800">Сайт:</strong> https://boostudy.ru/</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

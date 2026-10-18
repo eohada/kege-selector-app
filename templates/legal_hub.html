@@ -1,0 +1,139 @@
+{% extends 'base_public.html' %}
+{% block title %}Юридические документы · BooStudy{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-8">
+    
+    <!-- Top Header Banner -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b-2 border-slate-200/80">
+        <div>
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200/80 text-[11px] font-black text-indigo-700 uppercase tracking-wider mb-2">
+                <i class="ph-bold ph-shield-check"></i>
+                <span>Правовая информация</span>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-display font-black text-slate-900 tracking-tight">
+                Юридические документы
+            </h1>
+            <p class="text-slate-500 font-medium text-sm sm:text-base mt-1">
+                Официальные документы, регламенты и условия использования платформы BooStudy
+            </p>
+        </div>
+        <div class="self-start sm:self-center shrink-0">
+            <div class="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 shadow-xs">
+                <i class="ph-bold ph-calendar-check text-indigo-600 text-base"></i>
+                <span>Действующая редакция: 18.10.2026</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3 Cards Grid (Tactile 3D Cards) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Card 1: Публичная оферта -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_6px_0_#DAE1E9] rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:shadow-[0_8px_0_#DAE1E9] hover:-translate-y-0.5 transition-all">
+            <div>
+                <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center text-2xl mb-5 shadow-xs">
+                    <i class="ph-bold ph-file-text"></i>
+                </div>
+                <h2 class="text-xl font-display font-black text-slate-900 mb-2">
+                    Публичная оферта
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mb-6">
+                    Договор оказания услуг по проведению онлайн-занятий, доступу к платформе, тарифам и порядку возврата средств.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-100">
+                <a href="{{ url_for('static', filename='documents/offer.pdf') }}" target="_blank" class="inline-flex items-center justify-center w-full gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider px-4 py-3 rounded-xl border border-indigo-700 border-b-[4px] border-indigo-800 shadow-xs active:border-b active:translate-y-[3px] transition-all no-underline">
+                    <i class="ph-bold ph-file-pdf text-base"></i>
+                    <span>Открыть PDF</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Card 2: Политика конфиденциальности -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_6px_0_#DAE1E9] rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:shadow-[0_8px_0_#DAE1E9] hover:-translate-y-0.5 transition-all">
+            <div>
+                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center text-2xl mb-5 shadow-xs">
+                    <i class="ph-bold ph-lock-key"></i>
+                </div>
+                <h2 class="text-xl font-display font-black text-slate-900 mb-2">
+                    Конфиденциальность
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mb-6">
+                    Политика обработки персональных данных: порядок сбора, защиты, правовые основания, сроки хранения и права субъекта.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-100">
+                <a href="{{ url_for('static', filename='documents/privacy.pdf') }}" target="_blank" class="inline-flex items-center justify-center w-full gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider px-4 py-3 rounded-xl border border-indigo-700 border-b-[4px] border-indigo-800 shadow-xs active:border-b active:translate-y-[3px] transition-all no-underline">
+                    <i class="ph-bold ph-file-pdf text-base"></i>
+                    <span>Открыть PDF</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Card 3: Согласие на обработку данных -->
+        <div class="bg-white border-2 border-slate-200 shadow-[0_6px_0_#DAE1E9] rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:shadow-[0_8px_0_#DAE1E9] hover:-translate-y-0.5 transition-all">
+            <div>
+                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center text-2xl mb-5 shadow-xs">
+                    <i class="ph-bold ph-check-circle"></i>
+                </div>
+                <h2 class="text-xl font-display font-black text-slate-900 mb-2">
+                    Согласие на обработку ПД
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mb-6">
+                    Условия предоставления согласия на обработку персональных данных при регистрации, записи на курсы и обратной связи.
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-100">
+                <a href="{{ url_for('static', filename='documents/consent.pdf') }}" target="_blank" class="inline-flex items-center justify-center w-full gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-wider px-4 py-3 rounded-xl border border-indigo-700 border-b-[4px] border-indigo-800 shadow-xs active:border-b active:translate-y-[3px] transition-all no-underline">
+                    <i class="ph-bold ph-file-pdf text-base"></i>
+                    <span>Открыть PDF</span>
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bento Card: Requisites of Operator -->
+    <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-3xl p-6 sm:p-8">
+        <div class="flex items-center gap-2.5 mb-5">
+            <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-base shadow-xs">
+                <i class="ph-bold ph-identification-card"></i>
+            </div>
+            <h3 class="font-display font-black text-lg text-slate-900 tracking-tight">
+                Реквизиты оператора и исполнителя
+            </h3>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+                <div class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Исполнитель</div>
+                <div class="text-sm font-bold text-slate-900">ИП Король Александр Евгеньевич</div>
+            </div>
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+                <div class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">ИНН</div>
+                <div class="text-sm font-mono font-bold text-slate-900">700301487394</div>
+            </div>
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+                <div class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">ОГРНИП</div>
+                <div class="text-sm font-mono font-bold text-slate-900">324700000044531</div>
+            </div>
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+                <div class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Адрес регистрации</div>
+                <div class="text-sm font-bold text-slate-900">г. Томск, ул. Герасименко, д. 3/8</div>
+            </div>
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+                <div class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Налоговый режим</div>
+                <div class="text-sm font-bold text-slate-900">НПД (самозанятость)</div>
+            </div>
+            <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+                <div class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Контактный e-mail</div>
+                <a href="mailto:boostudywork@gmail.com" class="text-sm font-bold text-indigo-600 hover:text-indigo-500 no-underline">
+                    boostudywork@gmail.com
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

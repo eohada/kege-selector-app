@@ -63,17 +63,6 @@
         {% if current_user.is_admin() or current_user.is_creator() %}<a class="bs-dashboard-nav-link {% if request.path.startswith('/admin') %}is-active{% endif %}" href="/admin/users"><i class="ph ph-shield-check"></i><span>Админ-панель</span></a>{% endif %}
       {% endif %}
     </nav>
-
-    <div class="bs-dashboard-sidebar-footer">
-      <div class="bs-dashboard-help-card">
-        <div class="bs-dashboard-help-art" aria-hidden="true">
-          <img src="{{ url_for('static', filename='images/profile/hero_ghost.png' if current_user.is_student() else 'images/dashboard/hero_student.png') }}" alt="">
-        </div>
-        <strong>{% if dashboard_admin_shell %}Центр управления{% else %}Бу всегда рядом!{% endif %}</strong>
-        <span>{% if dashboard_admin_shell %}Системные разделы и контроль доступа в одном месте.{% else %}Подсказки и помощь для спокойного учебного дня.{% endif %}</span>
-        <a href="{% if dashboard_admin_shell %}/admin/diagnostics{% else %}/workspace/profile{% endif %}" class="bs-dashboard-help-action">{% if dashboard_admin_shell %}Открыть диагностику{% else %}Написать Бу{% endif %} <i class="ph ph-arrow-right"></i></a>
-      </div>
-    </div>
   </aside>
 
   <div id="dashboard-main" class="bs-dashboard-main">
@@ -91,10 +80,6 @@
         </div>
       </div>
       <div class="bs-dashboard-topbar-actions">
-        <a class="bs-dashboard-icon-button" href="{{ url_for('notifications.notifications_list') }}" aria-label="Открыть уведомления" title="Уведомления">
-          <i class="ph ph-bell" aria-hidden="true"></i>
-          {% if unread_notifications|default(0) %}<span class="bs-dashboard-notification-count{% if current_user.is_student() %} is-dot{% endif %}">{% if not current_user.is_student() %}{{ unread_notifications }}{% endif %}</span>{% endif %}
-        </a>
         <div class="bs-dashboard-profile-wrap" data-profile-menu-wrap>
           <button class="bs-dashboard-topbar-profile" type="button" aria-haspopup="menu" aria-expanded="false" data-profile-menu-trigger>
             <img src="{% if current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" alt="">

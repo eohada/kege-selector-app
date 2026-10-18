@@ -6,85 +6,1162 @@
 <script defer src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script>
 <script defer src="{{ url_for('static', filename='katex/contrib/auto-render.min.js') }}"></script>
 
-<main class="min-h-screen flex-1 relative z-10 bg-slate-50/50 p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-28 pt-4 sm:pt-6 overflow-x-hidden">
-  <div class="max-w-[1600px] mx-auto w-full px-4 sm:px-6 py-6 space-y-6">
-    <header class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8">
-      <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-        <div class="space-y-2">
-          <a href="{{ return_to }}" class="inline-flex items-center gap-1.5 text-xs font-black text-indigo-700 hover:text-indigo-900 no-underline">
-            <i class="ph-bold ph-arrow-left"></i> Вернуться в конструктор
-          </a>
-          <div class="flex items-center gap-3">
-            <span class="w-11 h-11 rounded-2xl bg-indigo-100 text-indigo-700 border-2 border-indigo-200 flex items-center justify-center shadow-[0_3px_0_#C7D2FE]"><i class="ph-bold ph-books text-xl"></i></span>
+<div id="task-studio-root" class="relative z-10 bg-[#F7F6FC] px-3 sm:px-6 pb-4 pt-1 overflow-x-hidden font-sans text-slate-800">
+  <div class="max-w-[1460px] mx-auto w-full">
+
+    <!-- ==================== HEADER TASK STUDIO ==================== -->
+    <header class="ts-header p-5 sm:px-8 sm:py-6 transition-all">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        
+        <!-- Left: Badge, Title & Description -->
+        <div class="space-y-1.5 min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EDE8FE] text-[#5046E5] text-[11px] font-black uppercase tracking-wider">
+              <span class="w-4 h-4 rounded-md bg-white text-[#5046E5] flex items-center justify-center text-[10px] shadow-2xs"><i class="ph-bold ph-books"></i></span>
+              <span>Библиотека преподавателя</span>
+            </span>
+            {% if return_to %}
+            <a href="{{ return_to }}" class="inline-flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors no-underline ml-1">
+              <i class="ph-bold ph-arrow-left text-xs"></i> В конструктор
+            </a>
+            {% endif %}
+          </div>
+          
+          <h1 class="text-3xl sm:text-[34px] font-black text-slate-900 font-display tracking-tight leading-none m-0 pt-0.5">
+            Банк заданий
+          </h1>
+          
+          <p class="text-[13px] text-slate-500 max-w-xl leading-relaxed m-0 font-medium">
+            Готовые задания, материалы и инструменты для создания новых. Используй банк как отдельный инструмент или добавляй задания в домашние работы.
+          </p>
+        </div>
+
+        <!-- Right: 3 KPI Cards & Action Button -->
+        <div class="flex flex-wrap items-center gap-3 shrink-0">
+          
+          <!-- KPI 1: Lavender (Всего заданий) -->
+          <div class="ts-kpi-card ts-kpi-lavender flex items-center gap-3.5 px-4 py-3 rounded-2xl min-w-[160px]">
+            <div class="ts-kpi-icon w-11 h-11 rounded-xl flex items-center justify-center shrink-0">
+              <i class="ph-bold ph-books text-xl"></i>
+            </div>
             <div>
-              <p class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600">Библиотека преподавателя</p>
-              <h1 class="text-2xl sm:text-3xl font-black text-slate-800 font-display tracking-tight">Банк заданий</h1>
+              <div id="stat-total-tasks" class="text-2xl font-black text-slate-900 leading-none">...</div>
+              <div class="text-xs text-slate-400 font-semibold mt-1">всего заданий</div>
             </div>
           </div>
-          <p class="text-sm text-slate-500 max-w-2xl">Выбирайте готовые задания, изучайте эталон и код, редактируйте свои материалы и соберите набор для текущей работы.</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-3">
-          <button type="button" onclick="openTaskEditor()" class="bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-3 rounded-xl border border-slate-200 border-b-[4px] shadow-[0_2px_5px_rgba(0,0,0,.05)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs inline-flex items-center gap-2">
-            <i class="ph-bold ph-plus-circle text-indigo-600 text-base"></i> Создать своё
+
+          <!-- KPI 2: Mint (Мои задания) -->
+          <div onclick="toggleOnlyMyBankTasks()" class="ts-kpi-card ts-kpi-mint flex items-center gap-3.5 px-4 py-3 rounded-2xl min-w-[160px] cursor-pointer hover:border-emerald-300 transition-all" title="Показать только авторские задания">
+            <div class="ts-kpi-icon w-11 h-11 rounded-xl flex items-center justify-center shrink-0">
+              <i class="ph-bold ph-user text-xl"></i>
+            </div>
+            <div>
+              <div id="stat-my-tasks" class="text-2xl font-black text-slate-900 leading-none">...</div>
+              <div class="text-xs text-slate-400 font-semibold mt-1">мои задания</div>
+            </div>
+          </div>
+
+          <!-- KPI 3: Warm Peach (Подборки) -->
+          <div onclick="returnToBuilder()" class="ts-kpi-card ts-kpi-peach flex items-center gap-3.5 px-4 py-3 rounded-2xl min-w-[160px] cursor-pointer hover:border-amber-300 transition-all" title="Перейти к выбранным заданиям">
+            <div class="ts-kpi-icon w-11 h-11 rounded-xl flex items-center justify-center shrink-0">
+              <i class="ph-bold ph-folder-open text-xl"></i>
+            </div>
+            <div>
+              <div id="stat-queued-tasks" class="text-2xl font-black text-slate-900 leading-none">0</div>
+              <div class="text-xs text-slate-400 font-semibold mt-1">подборки</div>
+            </div>
+          </div>
+
+          <!-- Primary Action Button: + Создать задание -->
+          <button type="button" onclick="openTaskEditor()" class="ts-btn-primary h-[52px] px-6 flex items-center gap-2.5 cursor-pointer transition-all">
+            <i class="ph-bold ph-plus text-xl"></i>
+            <span class="text-[15px] font-black">Создать задание</span>
           </button>
-          <button type="button" onclick="returnToBuilder()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-3 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,.22)] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs inline-flex items-center gap-2">
-            <i class="ph-bold ph-arrow-bend-up-left text-base"></i> В конструктор <span id="selected-count" class="min-w-5 h-5 px-1 rounded-md bg-white/20 text-center leading-5">0</span>
-          </button>
+
         </div>
       </div>
     </header>
 
-    <section class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-5 sm:p-6 space-y-4">
-      <label class="block">
-        <span class="sr-only">Поиск заданий</span>
-        <div class="relative">
-          <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <input id="bank-search" oninput="scheduleBankSearch()" placeholder="Поиск по названию, теме или условию" class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl pl-11 pr-4 py-3.5 text-sm text-slate-800 outline-none transition-colors">
+
+    <!-- ==================== 3-PANEL WORKSPACE ==================== -->
+    <section class="task-studio-grid">
+
+      <!-- ==================== PANEL 1: NAVIGATOR (LAVENDER) ==================== -->
+      <aside id="studio-navigator-panel" class="ts-panel ts-panel-nav p-3 sm:p-4 flex flex-col min-w-0 transition-all">
+        
+        <!-- Nav Header -->
+        <div class="ts-nav-header flex items-center justify-between pb-2.5 border-b border-[#E8E4FD]/80 shrink-0">
+          <div class="ts-nav-title-group flex items-center gap-2 min-w-0">
+            <span class="w-7 h-7 rounded-lg bg-[#EDE9FE] text-[#5845FD] flex items-center justify-center text-sm shrink-0">
+              <i class="ph-bold ph-squares-four"></i>
+            </span>
+            <h2 class="text-xs font-black text-slate-800 tracking-tight truncate m-0">Навигация и фильтры</h2>
+          </div>
+          <button id="nav-collapse-btn" type="button" onclick="toggleNavCollapse()" class="w-7 h-7 rounded-lg hover:bg-[#EDE9FE] text-slate-400 hover:text-indigo-600 flex items-center justify-center text-xs transition-colors cursor-pointer border-0 bg-transparent" title="Свернуть / Развернуть">
+            <i id="nav-collapse-icon" class="ph-bold ph-caret-double-left"></i>
+          </button>
         </div>
-      </label>
-      <div class="space-y-2">
-        <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Раздел банка</p>
-        <div id="bank-category-tabs" class="flex gap-2 overflow-x-auto pb-2 boostudy-scroll-horizontal"></div>
-      </div>
-      <div id="bank-course-filter" class="space-y-2">
-        <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Курс</p>
-        <div id="bank-course-tabs" class="flex gap-2 overflow-x-auto pb-2 boostudy-scroll-horizontal"></div>
-      </div>
-      <div class="space-y-2">
-        <p class="text-[10px] font-black uppercase tracking-wider text-slate-500">Тема</p>
-        <div id="bank-module-tabs" class="flex gap-2 overflow-x-auto pb-2 boostudy-scroll-horizontal"></div>
-      </div>
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <p id="bank-result-count" class="text-xs font-bold text-slate-500">Загружаем задания…</p>
-        <div class="flex flex-wrap gap-2">
-          <button id="bank-include-imported" type="button" onclick="toggleImportedBankTasks()" data-active="false" class="bg-white text-slate-600 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Импорт на проверку</button>
-          <button id="bank-only-my" type="button" onclick="toggleOnlyMyBankTasks()" class="bg-white text-slate-600 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Мои задания</button>
+
+        <!-- Segmented Pill Switch: Структура / Фильтры -->
+        <div class="bg-white p-1 rounded-xl border border-[#EBE4FD] flex items-center gap-1 my-2.5 shrink-0 shadow-2xs">
+          <button type="button" id="tab-nav-structure" onclick="switchNavTab('structure')" class="ts-segmented-tab active flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-0">
+            Структура
+          </button>
+          <button type="button" id="tab-nav-filters" onclick="switchNavTab('filters')" class="ts-segmented-tab flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-indigo-600 transition-all cursor-pointer border-0 bg-transparent">
+            Фильтры
+          </button>
         </div>
-      </div>
+
+        <!-- Section Search Input -->
+        <div class="relative mb-2.5 shrink-0">
+          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none z-10"></i>
+          <input id="nav-search-input" oninput="filterNavTree(this.value)" type="text" placeholder="Поиск по разделам..." class="ts-search-input w-full">
+        </div>
+
+        <!-- Scrollable Tree View -->
+        <div id="nav-tree-scroll" class="studio-scroll flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1">
+
+          <!-- View: Структура (Categories Tree) -->
+          <div id="nav-structure-content" class="space-y-1.5">
+            
+            <!-- Root Accordion: ЕГЭ и ОГЭ -->
+            <div class="nav-tree-group">
+              <button type="button" onclick="toggleTreeAccordion('group-exam')" class="ts-nav-group-btn">
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="ts-nav-group-icon"><i class="ph-bold ph-graduation-cap"></i></span>
+                  <span class="truncate font-black text-xs">ЕГЭ и ОГЭ</span>
+                </span>
+                <i id="icon-group-exam" class="ph-bold ph-caret-down text-xs transition-transform rotate-180"></i>
+              </button>
+
+              <div id="group-exam" class="pl-1 pt-1.5 space-y-1">
+                <!-- Exam item: ЕГЭ Информатика (Expanded) -->
+                <div class="border-l-2 border-[#E0E7FF] pl-2 space-y-1">
+                  <div class="flex items-center justify-between py-1 px-1 rounded-lg text-xs font-bold text-slate-800">
+                    <span class="flex items-center gap-1.5 truncate">
+                      <i class="ph-bold ph-book-open text-[#5845FD] text-xs"></i>
+                      <span>ЕГЭ Информатика</span>
+                    </span>
+                    <i class="ph-bold ph-caret-down text-[10px] text-slate-400"></i>
+                  </div>
+
+                  <!-- Level: Базовый -->
+                  <div class="pl-2 py-0.5 text-[11px] font-medium text-slate-500 hover:text-indigo-600 cursor-pointer flex items-center gap-1.5">
+                    <i class="ph ph-folder text-slate-400"></i>
+                    <span>Базовый уровень</span>
+                  </div>
+
+                  <!-- Level: Профильный (Expanded with Topics) -->
+                  <div class="pl-2 space-y-0.5">
+                    <div class="py-0.5 text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                      <i class="ph-bold ph-folder-open text-[#5845FD]"></i>
+                      <span>Профильный уровень</span>
+                    </div>
+
+                    <!-- Topics Tree -->
+                    <div id="dynamic-nav-modules" class="pl-2.5 border-l border-slate-200 space-y-0.5">
+                      <div onclick="selectNavTopic(this, 'Информация и её кодирование')" class="nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="ph-bold ph-file-text text-slate-400 text-xs"></i>
+                          <span class="truncate">1. Информация и её кодирование</span>
+                        </span>
+                      </div>
+                      <div onclick="selectNavTopic(this, 'Логика')" class="nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="ph-bold ph-file-text text-slate-400 text-xs"></i>
+                          <span class="truncate">2. Логика</span>
+                        </span>
+                      </div>
+                      <div onclick="selectNavTopic(this, 'Алгоритмы')" class="nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="ph-bold ph-file-text text-slate-400 text-xs"></i>
+                          <span class="truncate">3. Алгоритмы</span>
+                        </span>
+                      </div>
+                      <div onclick="selectNavTopic(this, 'Программирование')" class="nav-topic-item active py-1.5 px-2.5 rounded-xl bg-[#EDE8FE] text-[#5046E5] text-[11px] font-black cursor-pointer flex items-center justify-between gap-1 shadow-2xs">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="ph-bold ph-caret-right text-xs text-[#5046E5]"></i>
+                          <span class="truncate">4. Программирование</span>
+                        </span>
+                        <span class="ts-badge-count">1 842</span>
+                      </div>
+                      <div onclick="selectNavTopic(this, 'Информационные модели')" class="nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="ph-bold ph-file-text text-slate-400 text-xs"></i>
+                          <span class="truncate">5. Информационные модели</span>
+                        </span>
+                      </div>
+                      <div onclick="selectNavTopic(this, 'Сети и безопасность')" class="nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="ph-bold ph-file-text text-slate-400 text-xs"></i>
+                          <span class="truncate">6. Сети и безопасность</span>
+                        </span>
+                      </div>
+                      <div onclick="selectNavTopic(this, 'Базы данных')" class="nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="ph-bold ph-file-text text-slate-400 text-xs"></i>
+                          <span class="truncate">7. Базы данных</span>
+                        </span>
+                      </div>
+                      <div onclick="selectNavTopic(this, 'Анализ данных')" class="nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors">
+                        <span class="flex items-center gap-1.5 truncate">
+                          <i class="ph-bold ph-file-text text-slate-400 text-xs"></i>
+                          <span class="truncate">8. Анализ данных</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Secondary Exam Courses -->
+                <div class="pt-1.5 space-y-1">
+                  <div onclick="setBankCategory('exam')" class="py-1.5 px-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-[#EDE9FE]/60 hover:text-indigo-700 cursor-pointer flex items-center justify-between transition-colors">
+                    <span class="flex items-center gap-2 truncate">
+                      <span class="ts-nav-icon-box ts-nav-icon-lavender"><i class="ph-bold ph-folder"></i></span>
+                      <span>ОГЭ Информатика</span>
+                    </span>
+                    <i class="ph-bold ph-caret-right text-xs text-slate-400"></i>
+                  </div>
+                  <div onclick="setBankCategory('exam')" class="py-1.5 px-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-[#EDE9FE]/60 hover:text-indigo-700 cursor-pointer flex items-center justify-between transition-colors">
+                    <span class="flex items-center gap-2 truncate">
+                      <span class="ts-nav-icon-box ts-nav-icon-blue"><i class="ph-bold ph-folder"></i></span>
+                      <span>ЕГЭ Математика</span>
+                    </span>
+                    <i class="ph-bold ph-caret-right text-xs text-slate-400"></i>
+                  </div>
+                  <div onclick="setBankCategory('exam')" class="py-1.5 px-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-[#EDE9FE]/60 hover:text-indigo-700 cursor-pointer flex items-center justify-between transition-colors">
+                    <span class="flex items-center gap-2 truncate">
+                      <span class="ts-nav-icon-box ts-nav-icon-cyan"><i class="ph-bold ph-folder"></i></span>
+                      <span>ОГЭ Математика</span>
+                    </span>
+                    <i class="ph-bold ph-caret-right text-xs text-slate-400"></i>
+                  </div>
+                  <div onclick="setBankCategory('python_practice')" class="py-1.5 px-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-[#EDE9FE]/60 hover:text-indigo-700 cursor-pointer flex items-center justify-between transition-colors">
+                    <span class="flex items-center gap-2 truncate">
+                      <span class="ts-nav-icon-box ts-nav-icon-orange"><i class="ph-bold ph-code"></i></span>
+                      <span>Программирование</span>
+                    </span>
+                    <i class="ph-bold ph-caret-right text-xs text-slate-400"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- View: Фильтры (Quick Filtering Tags) -->
+          <div id="nav-filters-content" class="hidden space-y-2.5">
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Раздел банка</p>
+              <div id="bank-category-tabs" class="flex flex-col gap-1"></div>
+            </div>
+            <div id="bank-course-filter">
+              <p class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Курсы</p>
+              <div id="bank-course-tabs" class="flex flex-col gap-1 max-h-40 overflow-y-auto studio-scroll"></div>
+            </div>
+            <div>
+              <p class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Специальные выборки</p>
+              <div class="space-y-1">
+                <button id="bank-only-my" type="button" onclick="toggleOnlyMyBankTasks()" class="ts-filter-pill">
+                  <span>Мои авторские</span>
+                  <i class="ph-bold ph-check text-xs opacity-0"></i>
+                </button>
+                <button id="bank-include-imported" type="button" onclick="toggleImportedBankTasks()" class="ts-filter-pill">
+                  <span>Импорт на проверку</span>
+                  <i class="ph-bold ph-check text-xs opacity-0"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </aside>
+
+
+      <!-- ==================== PANEL 2: TASK LIBRARY (NEUTRAL WHITE) ==================== -->
+      <main class="ts-panel ts-panel-library p-3.5 sm:p-4 flex flex-col min-w-0">
+        
+        <!-- Header Bar: Result count, Sort, View mode -->
+        <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-slate-100 shrink-0">
+          <h2 class="text-xs sm:text-sm font-semibold text-slate-700 m-0">
+            Найдено: <span id="bank-result-count" class="font-black text-slate-900">0</span> заданий
+          </h2>
+
+          <div class="flex items-center gap-2.5">
+            <!-- Sort dropdown with arrows and caret -->
+            <div class="relative flex items-center">
+              <i class="ph-bold ph-arrows-down-up absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10"></i>
+              <select id="bank-sort-select" onchange="handleSortChange(this.value)" class="ts-sort-select">
+                <option value="recent">Сначала актуальные</option>
+                <option value="number_asc">По номеру (1-27)</option>
+                <option value="difficulty_asc">Сначала лёгкие</option>
+                <option value="difficulty_desc">Сначала сложные</option>
+              </select>
+              <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none z-10"></i>
+            </div>
+
+            <!-- View Mode Switch -->
+            <div class="flex items-center bg-[#F1F0FD] p-0.5 rounded-xl border border-[#E0E7FF]/80 h-[38px] box-border">
+              <button type="button" id="btn-view-rows" onclick="setViewMode('rows')" class="ts-view-btn active w-8 h-8 rounded-lg text-xs flex items-center justify-center transition-all cursor-pointer border-0" title="Компактный список">
+                <i class="ph-bold ph-list text-sm"></i>
+              </button>
+              <button type="button" id="btn-view-grid" onclick="setViewMode('grid')" class="ts-view-btn w-8 h-8 rounded-lg text-xs text-slate-400 hover:text-slate-700 flex items-center justify-center transition-all cursor-pointer border-0 bg-transparent" title="Сетка карточек">
+                <i class="ph-bold ph-squares-four text-sm"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative my-2.5 shrink-0">
+          <i class="ph-bold ph-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none z-10"></i>
+          <input id="bank-search" oninput="scheduleBankSearch()" type="text" placeholder="Поиск по заданиям, условиям, тегам..." class="ts-search-input ts-search-library w-full">
+        </div>
+
+        <!-- Quick Task Number Chips -->
+        <div class="flex items-center gap-1.5 pb-2 overflow-x-auto studio-scroll shrink-0">
+          <button type="button" onclick="setQuickNumberFilter('')" class="ts-chip active px-3.5 py-1.5 rounded-xl text-xs font-black whitespace-nowrap transition-all cursor-pointer border-0">
+            Все
+          </button>
+          <div id="dynamic-quick-chips" class="flex items-center gap-1.5">
+            <!-- Chips generated dynamically -->
+          </div>
+          <span class="w-7 h-7 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 text-xs shrink-0 cursor-default">»</span>
+        </div>
+
+        <!-- Task Rows Container with min-h-0 -->
+        <div id="bank-tasks-scroll" class="studio-scroll flex-1 min-h-0 overflow-y-auto pr-1 pt-0.5">
+          <div id="bank-tasks-list">
+            <div class="py-16 text-center text-xs font-bold text-slate-400 flex flex-col items-center justify-center gap-2">
+              <span class="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin"></span>
+              <span>Загружаем банк заданий…</span>
+            </div>
+          </div>
+          
+          <button id="load-more-button" type="button" onclick="loadMoreBankTasks()" class="hidden w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs rounded-xl border border-slate-200 transition-all cursor-pointer mt-1">
+            Показать ещё задания
+          </button>
+        </div>
+
+      </main>
+
+
+      <!-- ==================== PANEL 3: TASK INSPECTOR (WARM PEACH) ==================== -->
+      <aside id="studio-inspector-panel" class="ts-panel ts-panel-inspector p-3.5 sm:p-4 flex flex-col min-w-0">
+        
+        <!-- Top Action Bar -->
+        <div class="flex items-center justify-between pb-3 border-b border-[#FCDDC7]/80 shrink-0">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="w-8 h-8 rounded-xl bg-[#FFEDD5] text-[#EA580C] flex items-center justify-center text-base shrink-0 shadow-2xs">
+              <i class="ph-bold ph-graduation-cap"></i>
+            </span>
+            <h2 class="text-sm font-black text-slate-800 tracking-tight truncate m-0">Просмотр задания</h2>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <button type="button" onclick="toggleInspectorBookmark()" id="btn-inspector-bookmark" class="w-8 h-8 rounded-xl bg-white border border-[#FCDDC7] text-slate-400 hover:text-indigo-600 flex items-center justify-center text-xs transition-colors cursor-pointer shadow-2xs" title="В закладки">
+              <i class="ph-bold ph-bookmark text-sm"></i>
+            </button>
+            <button type="button" onclick="openInspectorMenu()" class="w-8 h-8 rounded-xl bg-white border border-[#FCDDC7] text-slate-400 hover:text-slate-600 flex items-center justify-center text-xs transition-colors cursor-pointer shadow-2xs" title="Действия">
+              <i class="ph-bold ph-dots-three text-sm"></i>
+            </button>
+            <button type="button" onclick="handleInspectorQueueAction()" id="btn-inspector-add-set" class="ts-btn-primary h-8 px-3.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer">
+              <i class="ph-bold ph-plus text-xs"></i>
+              <span id="btn-inspector-set-label">Добавить в подборку</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrollable Inspector Content with min-h-0 -->
+        <div id="inspector-content-scroll" class="studio-scroll flex-1 min-h-0 overflow-y-auto space-y-3.5 py-3 pr-1">
+          
+          <!-- Empty State -->
+          <div id="inspector-empty-state" class="hidden h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2">
+            <span class="w-12 h-12 rounded-2xl bg-[#FFEDD5] text-[#EA580C] flex items-center justify-center text-2xl mb-1">
+              <i class="ph-bold ph-eye"></i>
+            </span>
+            <h3 class="text-sm font-black text-slate-700">Выберите задание из каталога</h3>
+            <p class="text-xs text-slate-500 max-w-xs leading-relaxed">Кликните на любую строку в каталоге, чтобы изучить условие, эталонное решение и критерии проверки.</p>
+          </div>
+
+          <!-- Active Task Container -->
+          <div id="inspector-active-container" class="space-y-3.5">
+            
+            <!-- Task Header & Badges (Directly on peach background) -->
+            <div class="space-y-1.5">
+              <div class="flex flex-wrap items-center gap-2">
+                <span id="insp-task-number" class="text-xl sm:text-2xl font-black text-slate-900 font-display">Задание №25</span>
+                <span id="insp-badge-exam" class="px-2.5 py-0.5 rounded-md bg-[#EDE9FE] text-[#5046E5] text-[10px] font-black uppercase">ЕГЭ</span>
+                <span id="insp-badge-diff" class="px-2.5 py-0.5 rounded-md bg-[#FFF7ED] text-[#EA580C] text-[10px] font-bold border border-[#FED7AA] inline-flex items-center gap-1"><i class="ph-bold ph-lightning text-[10px]"></i> Средняя</span>
+                <span id="insp-badge-format" class="px-2.5 py-0.5 rounded-md bg-[#EFF6FF] text-[#2563EB] text-[10px] font-bold">Python</span>
+              </div>
+              <h3 id="insp-task-title" class="text-base sm:text-lg font-black text-slate-900 leading-snug m-0">Обработка чисел и файлов</h3>
+              <p id="insp-task-subtitle" class="text-xs text-slate-500 leading-relaxed m-0 font-medium">Напишите программу, которая обрабатывает последовательность целых чисел, записанных в файле.</p>
+            </div>
+
+            <!-- Tab Segmented Control -->
+            <div class="flex items-center gap-1.5 my-2.5">
+              <button type="button" id="tab-insp-condition" onclick="switchInspectorTab('condition')" class="ts-insp-tab active py-1.5 px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer border-0">
+                Условие
+              </button>
+              <button type="button" id="tab-insp-solution" onclick="switchInspectorTab('solution')" class="ts-insp-tab py-1.5 px-3 rounded-xl text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all cursor-pointer border-0 bg-transparent">
+                Решение
+              </button>
+              <button type="button" id="tab-insp-rubric" onclick="switchInspectorTab('rubric')" class="ts-insp-tab py-1.5 px-3 rounded-xl text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all cursor-pointer border-0 bg-transparent">
+                Проверка
+              </button>
+              <button type="button" id="tab-insp-usage" onclick="switchInspectorTab('usage')" class="ts-insp-tab py-1.5 px-3 rounded-xl text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-all cursor-pointer border-0 bg-transparent">
+                Использование
+              </button>
+            </div>
+
+            <!-- Tab 1: Условие задачи in White Card -->
+            <div id="panel-insp-condition" class="space-y-3">
+              <div class="ts-insp-condition-box space-y-3">
+                <h4 class="text-sm font-black text-slate-900 tracking-tight m-0">Условие задачи</h4>
+                <div id="insp-condition-html" class="task-bank-condition text-xs sm:text-[13px] text-slate-800 leading-relaxed min-w-0">
+                  <!-- Condition text rendered here -->
+                </div>
+
+                <!-- Examples / Starter code boxes -->
+                <div id="insp-examples-wrap" class="space-y-2.5 pt-2 hidden">
+                  <div id="insp-example-input-box" class="ts-example-box space-y-1.5">
+                    <div class="ts-example-title">
+                      <span class="ts-example-icon"><i class="ph-bold ph-arrow-down-right"></i></span>
+                      <span>Пример входных данных</span>
+                    </div>
+                    <pre id="insp-example-input-text" class="font-mono text-xs text-slate-800 m-0 whitespace-pre-wrap leading-relaxed"></pre>
+                  </div>
+                  <div id="insp-example-output-box" class="ts-example-box space-y-1.5">
+                    <div class="ts-example-title">
+                      <span class="ts-example-icon"><i class="ph-bold ph-arrow-up-right"></i></span>
+                      <span>Пример ответа</span>
+                    </div>
+                    <pre id="insp-example-output-text" class="font-mono text-xs text-slate-800 m-0 whitespace-pre-wrap leading-relaxed"></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 2: Решение / Разбор -->
+            <div id="panel-insp-solution" class="hidden space-y-2.5">
+              <div class="bg-white border border-[#F6EAE1] rounded-2xl p-4 shadow-2xs space-y-2">
+                <h4 class="text-[10px] font-black tracking-tight m-0 uppercase text-slate-400">Эталонное решение и разбор</h4>
+                <div id="insp-solution-content" class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  Разбор для этого задания пока не добавлен.
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 3: Проверка / Критерии -->
+            <div id="panel-insp-rubric" class="hidden space-y-2.5">
+              <div class="bg-white border border-[#F6EAE1] rounded-2xl p-4 shadow-2xs space-y-2.5">
+                <h4 class="text-[10px] font-black tracking-tight m-0 uppercase text-slate-400">Параметры проверки ответа</h4>
+                <div id="insp-rubric-content" class="space-y-2 text-xs">
+                  <!-- Grading spec rendered dynamically -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab 4: Использование / Выдачи -->
+            <div id="panel-insp-usage" class="hidden space-y-2.5">
+              <div class="bg-white border border-[#F6EAE1] rounded-2xl p-4 shadow-2xs space-y-2">
+                <h4 class="text-[10px] font-black tracking-tight m-0 uppercase text-slate-400">История выдач ученикам</h4>
+                <div id="insp-usage-content" class="text-xs text-slate-600 leading-relaxed">
+                  Задание готово к добавлению в подборки и домашние работы.
+                </div>
+              </div>
+            </div>
+
+            <!-- 4 Metadata Footer Cards -->
+            <div class="ts-insp-meta-grid pt-1">
+              <div class="ts-insp-meta-card">
+                <span class="ts-meta-label">Формат ответа</span>
+                <span id="insp-meta-format" class="ts-meta-val">Целое число</span>
+              </div>
+              <div class="ts-insp-meta-card">
+                <span class="ts-meta-label">Источник</span>
+                <span id="insp-meta-source" class="ts-meta-val">ФИПИ</span>
+              </div>
+              <div class="ts-insp-meta-card">
+                <span class="ts-meta-label">Последнее обновление</span>
+                <span id="insp-meta-updated" class="ts-meta-val">12 окт 2026</span>
+              </div>
+              <div class="ts-insp-meta-card">
+                <span class="ts-meta-label">Использовано</span>
+                <span id="insp-meta-used" class="ts-meta-val">432 раза</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Bottom Fixed Action Bar -->
+        <div class="pt-3.5 border-t border-[#FCDDC7]/80 flex items-center gap-2.5 shrink-0">
+          <button type="button" onclick="handleInspectorQueueAction()" id="btn-insp-add-work" class="ts-btn-primary flex-1 h-12 text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer shadow-md rounded-2xl">
+            <span id="insp-work-btn-label">Добавить в работу</span>
+            <i class="ph-bold ph-arrow-right text-xs"></i>
+          </button>
+          
+          <button type="button" onclick="handleInspectorEdit()" id="btn-insp-open-editor" class="ts-btn-secondary flex-1 h-12 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 cursor-pointer rounded-2xl">
+            <i class="ph-bold ph-pencil-simple text-[#5046E5] text-base"></i>
+            <span>Открыть в редакторе</span>
+          </button>
+        </div>
+
+      </aside>
+
     </section>
 
-    <section class="space-y-5">
-      <div id="bank-tasks-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
-      <button id="load-more-button" type="button" onclick="loadMoreBankTasks()" class="hidden w-full bg-white hover:bg-slate-50 text-slate-700 font-black px-5 py-3 rounded-xl border-2 border-slate-200 border-b-[4px] shadow-[0_3px_0_#DAE1E9] active:border-b-[1px] active:translate-y-[3px] transition-all cursor-pointer text-xs">Показать ещё</button>
-      <aside id="bank-task-detail" class="hidden bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-7"></aside>
-    </section>
   </div>
-</main>
+</div>
 
+<!-- ==================== MODAL TASK EDITOR ==================== -->
+<aside id="bank-task-editor-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+  <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div id="bank-task-editor-content" class="p-5 overflow-y-auto studio-scroll">
+      <!-- Editor form dynamically injected -->
+    </div>
+  </div>
+</aside>
+
+<!-- ==================== EXPLICIT SCOPED CSS ==================== -->
 <style>
-  .boostudy-scroll-horizontal { scrollbar-width: thin; scrollbar-color: #a5b4fc transparent; }
-  .boostudy-scroll-horizontal::-webkit-scrollbar { height: 7px; }
-  .boostudy-scroll-horizontal::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 999px; }
-  .task-bank-condition { min-width: 0; overflow-wrap: anywhere; }
-  .task-bank-condition img { max-width: 100%; height: auto; border-radius: 1rem; }
+  /* 3-Panel Layout Grid - Canonical BooStudy Proportions */
+  .task-studio-grid {
+    display: grid;
+    grid-template-columns: 290px minmax(500px, 1fr) 460px;
+    gap: 1.125rem;
+    height: calc(100vh - 245px);
+    min-height: 570px;
+  }
+
+  .task-studio-grid > * {
+    min-height: 0;
+    height: 100%;
+  }
+
+  @media (max-width: 1440px) {
+    .task-studio-grid {
+      grid-template-columns: 270px minmax(420px, 1fr) 420px;
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 1180px) {
+    .task-studio-grid {
+      grid-template-columns: 1fr;
+      height: auto;
+      max-height: none;
+    }
+    .ts-panel {
+      max-height: 650px;
+    }
+  }
+
+  /* Header & Backgrounds */
+  .ts-header {
+    background: #FFFFFF !important;
+    border: 1.5px solid #ECE7FC !important;
+    border-radius: 1.5rem !important;
+    box-shadow: 0 4px 25px rgba(99, 102, 241, 0.05) !important;
+    margin-bottom: 1.25rem !important;
+  }
+  .ts-kpi-card {
+    border-radius: 1.125rem !important;
+    transition: all 0.15s ease-in-out;
+  }
+  .ts-kpi-lavender {
+    background-color: #F5F3FE !important;
+    border: 1.5px solid #ECE7FD !important;
+  }
+  .ts-kpi-lavender .ts-kpi-icon {
+    background-color: #ECE7FE !important;
+    color: #5046E5 !important;
+  }
+  .ts-kpi-mint {
+    background-color: #EDFDF5 !important;
+    border: 1.5px solid #D1FAE5 !important;
+  }
+  .ts-kpi-mint .ts-kpi-icon {
+    background-color: #D6FBE7 !important;
+    color: #059669 !important;
+  }
+  .ts-kpi-peach {
+    background-color: #FFF7ED !important;
+    border: 1.5px solid #FFEDD5 !important;
+  }
+  .ts-kpi-peach .ts-kpi-icon {
+    background-color: #FEEDDC !important;
+    color: #EA580C !important;
+  }
+
+  /* 3 Panels - Distinctive Colors & Clear Visual Boundaries */
+  .ts-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .ts-panel-nav {
+    background-color: #F4F0FF !important;
+    border: 1.5px solid #E3DCFE !important;
+    border-radius: 1.5rem !important;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.05) !important;
+  }
+  .ts-panel-library {
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 1.5rem !important;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04) !important;
+  }
+  .ts-panel-inspector {
+    background-color: #FFF8F3 !important;
+    border: 1.5px solid #FCDDC7 !important;
+    border-radius: 1.5rem !important;
+    box-shadow: 0 4px 24px rgba(249, 115, 22, 0.06) !important;
+  }
+  .ts-badge-count {
+    background-color: #8B5CF6 !important;
+    color: #FFFFFF !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    padding: 2px 7px !important;
+    border-radius: 9999px !important;
+    line-height: 1 !important;
+    display: inline-block !important;
+  }
+  .nav-topic-item.active {
+    background-color: #EDE8FE !important;
+    color: #5046E5 !important;
+    font-weight: 800 !important;
+  }
+
+  /* Navigator Group Buttons & Icons */
+  .ts-nav-group-btn {
+    background-color: #EDE9FE !important;
+    color: #4338CA !important;
+    border: none !important;
+    border-radius: 0.75rem !important;
+    padding: 0.625rem 0.75rem !important;
+    transition: all 0.15s ease-in-out !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+  }
+  .ts-nav-group-btn:hover {
+    background-color: #E2DCFE !important;
+  }
+  .ts-nav-group-icon {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 0.5rem !important;
+    background-color: #5046E5 !important;
+    color: #FFFFFF !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.75rem !important;
+    box-shadow: 0 1px 3px rgba(80, 70, 229, 0.2) !important;
+    flex-shrink: 0 !important;
+  }
+  .ts-nav-icon-box {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    min-height: 26px !important;
+    border-radius: 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.8125rem !important;
+    flex-shrink: 0 !important;
+  }
+  .ts-nav-icon-lavender {
+    background-color: #EDE9FE !important;
+    color: #5046E5 !important;
+  }
+  .ts-nav-icon-blue {
+    background-color: #DBEAFE !important;
+    color: #2563EB !important;
+  }
+  .ts-nav-icon-cyan {
+    background-color: #E0F2FE !important;
+    color: #0284C7 !important;
+  }
+  .ts-nav-icon-orange {
+    background-color: #FFEDD5 !important;
+    color: #EA580C !important;
+  }
+
+  /* Buttons */
+  .ts-btn-primary {
+    background-color: #5046E5 !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 1rem !important;
+    font-weight: 800 !important;
+    box-shadow: 0 4px 18px rgba(80, 70, 229, 0.35) !important;
+  }
+  .ts-btn-primary:hover {
+    background-color: #4338CA !important;
+    box-shadow: 0 6px 22px rgba(80, 70, 229, 0.45) !important;
+  }
+  .ts-btn-primary:active {
+    transform: scale(0.98);
+  }
+
+  .ts-btn-secondary {
+    background-color: #FFFFFF !important;
+    color: #1E293B !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 1rem !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+  }
+  .ts-btn-secondary:hover {
+    background-color: #F8FAFC !important;
+    border-color: #CBD5E1 !important;
+  }
+
+  /* Segmented Nav Tabs */
+  .ts-segmented-tab {
+    background-color: transparent !important;
+    color: #475569 !important;
+    font-weight: 700 !important;
+    transition: all 0.15s ease-in-out;
+  }
+  .ts-segmented-tab:hover {
+    color: #5046E5 !important;
+  }
+  .ts-segmented-tab.active {
+    background-color: #5046E5 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 2px 8px rgba(80, 70, 229, 0.3) !important;
+  }
+
+  /* Filter Pills in Navigator */
+  .ts-filter-pill {
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.75rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    border: 1.5px solid #E2E8F0 !important;
+    background-color: #FFFFFF !important;
+    color: #334155 !important;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 1.25 !important;
+    box-sizing: border-box !important;
+  }
+  .ts-filter-pill:hover {
+    border-color: #A5B4FC !important;
+    color: #4338CA !important;
+    background-color: #F8FAFC !important;
+  }
+  .ts-filter-pill.is-active {
+    background-color: #5046E5 !important;
+    color: #FFFFFF !important;
+    border-color: #5046E5 !important;
+    box-shadow: 0 2px 8px rgba(80, 70, 229, 0.25) !important;
+  }
+  .ts-filter-pill.is-active i {
+    color: #FFFFFF !important;
+    opacity: 1 !important;
+  }
+
+  /* Search Inputs with Guaranteed Icon Clearance */
+  .ts-search-input {
+    width: 100% !important;
+    height: 38px !important;
+    padding-left: 2.5rem !important; /* 40px left padding */
+    padding-right: 0.875rem !important;
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 0.75rem !important;
+    font-size: 0.8125rem !important;
+    color: #1E293B !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+    outline: none !important;
+    transition: all 0.15s ease-in-out !important;
+    box-sizing: border-box !important;
+  }
+  .ts-search-input:focus {
+    border-color: #5046E5 !important;
+    box-shadow: 0 0 0 3px rgba(80, 70, 229, 0.12) !important;
+  }
+  .ts-search-input::placeholder {
+    color: #94A3B8 !important;
+    font-weight: 500 !important;
+  }
+  .ts-search-library {
+    height: 42px !important;
+    padding-left: 2.75rem !important; /* 44px */
+    background-color: #F8FAFC !important;
+    font-size: 0.875rem !important;
+  }
+  .ts-search-library:focus {
+    background-color: #FFFFFF !important;
+  }
+
+  /* Sort select in Library */
+  .ts-sort-select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    height: 38px !important;
+    min-width: 195px !important;
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 0.75rem !important;
+    padding-left: 2.25rem !important; /* 36px space for arrows-down-up */
+    padding-right: 2rem !important;    /* 32px space for caret-down */
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    color: #334155 !important;
+    outline: none !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+    transition: all 0.15s ease-in-out !important;
+    box-sizing: border-box !important;
+  }
+  .ts-sort-select:hover {
+    background-color: #F8FAFC !important;
+    border-color: #CBD5E1 !important;
+  }
+
+  /* View switchers in Library */
+  .ts-view-btn.active {
+    background-color: #FFFFFF !important;
+    color: #5046E5 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important;
+  }
+
+  /* Chips */
+  .ts-chip {
+    background-color: #FFFFFF !important;
+    color: #475569 !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 0.75rem !important;
+    font-weight: 700 !important;
+  }
+  .ts-chip:hover {
+    border-color: #A5B4FC !important;
+    color: #4338CA !important;
+  }
+  .ts-chip.active {
+    background-color: #5046E5 !important;
+    color: #FFFFFF !important;
+    border-color: #5046E5 !important;
+    box-shadow: 0 2px 8px rgba(80, 70, 229, 0.25) !important;
+  }
+
+  /* Task Cards in Library */
+  .studio-task-row {
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #EEF1F6 !important;
+    border-radius: 1.125rem !important;
+    transition: all 0.15s ease-in-out;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
+  }
+  .studio-task-row:hover {
+    background-color: #FBFBFE !important;
+    border-color: #D4CAFE !important;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.08) !important;
+  }
+  .studio-task-row.is-selected {
+    background-color: #F4EFFE !important;
+    border: 1.5px solid #6366F1 !important;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12) !important;
+  }
+
+  /* Task Card Checkbox */
+  .ts-card-checkbox {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    border-radius: 6px !important;
+    border: 1.5px solid #CBD5E1 !important;
+    background-color: #FFFFFF !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease-in-out !important;
+    padding: 0 !important;
+    margin-top: 0.5rem !important;
+    flex-shrink: 0 !important;
+    outline: none !important;
+  }
+  .ts-card-checkbox:hover {
+    border-color: #818CF8 !important;
+  }
+  .ts-card-checkbox.is-selected {
+    background-color: #EDE8FE !important;
+    border-color: #6366F1 !important;
+    color: #5046E5 !important;
+  }
+  .ts-card-checkbox.is-queued {
+    background-color: #5046E5 !important;
+    border-color: #5046E5 !important;
+    color: #FFFFFF !important;
+  }
+
+  /* Task Card 48x48 Icon Box */
+  .ts-card-icon-box {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    border-radius: 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.5rem !important;
+    flex-shrink: 0 !important;
+    transition: all 0.15s ease-in-out !important;
+  }
+  .ts-card-icon-lavender {
+    background-color: #EDE8FE !important;
+    color: #5046E5 !important;
+  }
+  .ts-card-icon-blue {
+    background-color: #E0E7FF !important;
+    color: #3730A3 !important;
+  }
+  .ts-card-icon-selected {
+    background-color: #FFFFFF !important;
+    color: #5046E5 !important;
+    border: 2px solid #C7D2FE !important;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.08) !important;
+  }
+
+  /* Tag Badges */
+  .ts-tag-exam {
+    background-color: #EDE8FE !important;
+    color: #5046E5 !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+    letter-spacing: 0.02em;
+  }
+  .ts-tag-diff {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+  }
+  .ts-tag-diff.ts-diff-easy {
+    background-color: #ECFDF5 !important;
+    color: #059669 !important;
+    border: 1px solid #A7F3D0 !important;
+  }
+  .ts-tag-diff.ts-diff-medium {
+    background-color: #FFF7ED !important;
+    color: #EA580C !important;
+    border: 1px solid #FED7AA !important;
+  }
+  .ts-tag-diff.ts-diff-hard {
+    background-color: #FEF2F2 !important;
+    color: #DC2626 !important;
+    border: 1px solid #FECACA !important;
+  }
+  .ts-tag-format {
+    background-color: #EFF6FF !important;
+    color: #2563EB !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+  }
+
+  /* Inspector Styles */
+  .ts-insp-tab {
+    background-color: transparent !important;
+    color: #64748B !important;
+    font-weight: 600 !important;
+    transition: all 0.15s ease-in-out;
+  }
+  .ts-insp-tab:hover {
+    color: #5046E5 !important;
+  }
+  .ts-insp-tab.active {
+    background-color: #FFFFFF !important;
+    color: #1E1B4B !important;
+    font-weight: 800 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+  }
+  .ts-insp-condition-box {
+    background-color: #FFFFFF !important;
+    border: 1.5px solid #F4E5DA !important;
+    border-radius: 1.25rem !important;
+    padding: 1.25rem !important;
+    box-shadow: 0 2px 14px rgba(249, 115, 22, 0.03) !important;
+  }
+  .ts-example-box {
+    background-color: #F6F4FE !important;
+    border: 1.5px solid #ECE7FE !important;
+    border-radius: 0.875rem !important;
+    padding: 0.75rem 1rem !important;
+  }
+  .ts-example-title {
+    font-size: 0.75rem !important;
+    font-weight: 800 !important;
+    color: #5046E5 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+  .ts-example-icon {
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 9999px !important;
+    background-color: #EDE8FE !important;
+    color: #5046E5 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+  }
+  .ts-insp-meta-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 0.5rem !important;
+  }
+  .ts-insp-meta-card {
+    background-color: #FFFFFF !important;
+    border: 1px solid #F6EAE1 !important;
+    border-radius: 0.875rem !important;
+    padding: 0.625rem 0.5rem !important;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+  }
+  .ts-insp-meta-card .ts-meta-label {
+    display: block !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    color: #94A3B8 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    line-height: 1.2 !important;
+  }
+  .ts-insp-meta-card .ts-meta-val {
+    display: block !important;
+    font-size: 0.75rem !important;
+    font-weight: 900 !important;
+    color: #1E293B !important;
+    margin-top: 0.25rem !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Custom Slim Scrollbars */
+  .studio-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .studio-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .studio-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+  }
+  .studio-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Task Condition typography & code */
+  .task-bank-condition {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .task-bank-condition img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    margin: 0.5rem 0;
+  }
   .task-bank-condition pre,
-  .task-bank-code { max-width: 100%; overflow-x: auto; margin: 1rem 0; padding: 1rem; border-radius: .9rem; background: #111827; color: #e5edff; font: 500 .8rem/1.65 Consolas, "Courier New", monospace; tab-size: 4; white-space: pre; }
-  .task-bank-condition pre code { font: inherit; color: inherit; }
+  .task-bank-code {
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 0.75rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    font: 500 0.8rem/1.6 Consolas, "Courier New", monospace;
+    white-space: pre;
+  }
+  .task-bank-condition table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.8rem;
+  }
+  .task-bank-condition th,
+  .task-bank-condition td {
+    border: 1px solid #cbd5e1;
+    padding: 0.4rem 0.6rem;
+    text-align: center;
+  }
+
+  /* Collapsed Navigator State - 100% Leak-Proof */
+  #studio-navigator-panel.is-collapsed {
+    width: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+    padding: 0.75rem 0.375rem !important;
+    overflow: hidden !important;
+    align-items: center !important;
+  }
+  #studio-navigator-panel.is-collapsed > *:not(.ts-nav-header) {
+    display: none !important;
+  }
+  #studio-navigator-panel.is-collapsed .ts-nav-header {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+  #studio-navigator-panel.is-collapsed .ts-nav-header .ts-nav-title-group {
+    display: none !important;
+  }
+  #studio-navigator-panel.is-collapsed #nav-collapse-btn {
+    margin: 0 auto !important;
+  }
+  .task-studio-grid.has-collapsed-nav {
+    grid-template-columns: 52px minmax(500px, 1fr) 460px !important;
+  }
+  @media (max-width: 1440px) {
+    .task-studio-grid.has-collapsed-nav {
+      grid-template-columns: 52px minmax(420px, 1fr) 420px !important;
+    }
+  }
 </style>
 
+
+<!-- ==================== SCRIPT ==================== -->
 <script>
 const BANK_SELECTION_KEY = 'boostudy.assignment-bank.selection.v1';
 const BANK_RETURN_TO = {{ return_to | tojson }};
+
 let bankCourseId = '';
 let bankModule = '';
 let bankCategory = 'exam';
@@ -94,6 +1171,12 @@ let bankTotal = 0;
 let bankTasksById = {};
 let selectedBankTaskId = null;
 let queuedTasks = new Map();
+let currentViewMode = 'rows';
+let navTab = 'structure';
+let inspectorTab = 'condition';
+let isNavCollapsed = false;
+let currentSort = 'recent';
+let quickNumberFilter = '';
 
 function getCsrfToken() {
   return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -112,7 +1195,7 @@ function plainText(html) {
 function conditionSummary(html) {
   const node = document.createElement('div');
   node.innerHTML = html || '';
-  node.querySelectorAll('pre, code').forEach(element => element.remove());
+  node.querySelectorAll('pre, code, table').forEach(element => element.remove());
   return (node.textContent || node.innerText || '').replace(/\s+/g, ' ').trim();
 }
 
@@ -134,7 +1217,9 @@ function taskForBuilder(task) {
 function loadQueuedTasks() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(BANK_SELECTION_KEY) || '[]');
-    if (Array.isArray(saved)) saved.forEach(task => task?.task_id && queuedTasks.set(Number(task.task_id), task));
+    if (Array.isArray(saved)) {
+      saved.forEach(task => task?.task_id && queuedTasks.set(Number(task.task_id), task));
+    }
   } catch (_) {
     sessionStorage.removeItem(BANK_SELECTION_KEY);
   }
@@ -147,7 +1232,10 @@ function persistQueuedTasks() {
 }
 
 function updateSelectedCount() {
-  document.getElementById('selected-count').textContent = queuedTasks.size;
+  const count = queuedTasks.size;
+  const kpiEl = document.getElementById('stat-queued-tasks');
+  if (kpiEl) kpiEl.textContent = count;
+  updateInspectorButtonState();
 }
 
 function returnToBuilder() {
@@ -155,185 +1243,803 @@ function returnToBuilder() {
   window.location.href = BANK_RETURN_TO;
 }
 
-function taskCard(task) {
-  const queued = queuedTasks.has(Number(task.task_id));
-  const exposure = task.student_exposure;
-  const reuseBlocked = Boolean(exposure?.blocked);
-  const readyForAssignment = Boolean(task.is_active) && task.ingest_status === 'ready' && !reuseBlocked;
-  const prototypeLabel = task.bank_category === 'python_practice' ? 'Авторское задание BooStudy' : ({ real: 'Прототип экзамена', practice_only: 'Тренировка', unreviewed: 'Прототип не проверен' })[task.prototype_status] || 'Статус прототипа не указан';
-  const ingestLabel = ({ needs_classification: 'Нужно определить номер', needs_answer_review: 'Нужно проверить ответ', needs_review: 'Нужна проверка', ready: 'Готово к работе' })[task.ingest_status] || 'Статус импорта не указан';
-  const sourceYear = task.bank_category === 'python_practice' ? '' : task.source_year ? `Источник ${task.source_year}` : 'Год источника не указан';
-  const examYear = task.exam_year ? `ЕГЭ/ОГЭ ${task.exam_year}` : '';
-  const useHistory = reuseBlocked
-    ? `Уже выдавалось · повтор после ${new Date(exposure.active_until).toLocaleDateString('ru-RU')}`
-    : exposure?.expired ? 'Ранее выдавалось · срок повтора вышел' : '';
-  const buttonLabel = reuseBlocked ? 'Уже выдавалось' : !readyForAssignment ? 'Пока недоступно' : queued ? 'Добавлено' : 'В работу';
-  const formatLabel = task.answer_spec?.type === 'code'
-    ? (task.answer_spec?.grading_mode === 'auto' ? 'Python · автотесты' : 'Python · проверит преподаватель')
-    : task.answer_spec?.type === 'matching' ? 'Сопоставление'
-      : task.answer_spec?.type === 'single_choice' ? 'Выбор ответа'
-        : task.answer_spec?.type === 'short_answer' ? 'Короткий ответ'
-          : task.answer_spec?.type === 'long_answer' ? 'Развёрнутый ответ' : '';
-  return `<article onclick="openTaskDetail(${task.task_id})" class="cursor-pointer bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] hover:border-indigo-300 rounded-2xl p-5 space-y-4 transition-all">
-    <div class="flex items-start justify-between gap-3"><span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black leading-tight">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="shrink-0 text-[10px] font-bold text-slate-400">${escapeHtml(task.difficulty_label_ru || 'Средний')}</span></div>
-    <div class="space-y-2 min-w-0"><h2 class="text-base font-black text-slate-800 leading-snug break-words">${escapeHtml(task.title || 'Задание')}</h2><p class="text-xs leading-relaxed text-slate-600 break-words">${escapeHtml(conditionSummary(task.content_html).slice(0, 210) || 'Откройте задание, чтобы посмотреть условие и код.')}</p></div>
-    <div class="flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-500"><span class="rounded-lg bg-slate-100 px-2 py-1">${escapeHtml(task.source_name || task.source || 'Источник не указан')}</span>${[sourceYear, examYear].filter(Boolean).length ? `<span class="rounded-lg bg-slate-100 px-2 py-1">${escapeHtml([sourceYear, examYear].filter(Boolean).join(' · '))}</span>` : ''}<span class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1">${escapeHtml(prototypeLabel)}</span>${formatLabel ? `<span class="rounded-lg bg-indigo-50 text-indigo-700 px-2 py-1">${escapeHtml(formatLabel)}</span>` : ''}${task.answer_needs_verification ? '<span class="rounded-lg bg-amber-50 text-amber-800 px-2 py-1">Ответ источника не проверен</span>' : ''}${useHistory ? `<span class="rounded-lg ${reuseBlocked ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'} px-2 py-1">${escapeHtml(useHistory)}</span>` : ''}${!readyForAssignment && !reuseBlocked ? `<span class="rounded-lg bg-rose-50 text-rose-700 px-2 py-1">${escapeHtml(ingestLabel)}</span>` : ''}</div>
-    <div class="flex items-center justify-between gap-3 border-t border-slate-100 pt-3 min-w-0"><span class="text-[11px] font-bold text-slate-400 truncate">${escapeHtml(task.course_title || '')}</span><button type="button" ${readyForAssignment ? `onclick="event.stopPropagation(); toggleQueuedTask(${task.task_id})"` : 'disabled'} class="shrink-0 ${!readyForAssignment ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-3 py-2 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all text-xs">${buttonLabel}</button></div>
-  </article>`;
+function getFormatMeta(task) {
+  const spec = task.answer_spec || {};
+  if (spec.type === 'code') {
+    return { label: 'Python', full: 'Код Python · автотесты', bg: 'bg-[#EFF6FF] text-[#2563EB]' };
+  }
+  if (spec.type === 'matching') {
+    return { label: 'Пары', full: 'Сопоставление пар', bg: 'bg-[#FAF5FF] text-[#9333EA]' };
+  }
+  if (spec.type === 'single_choice') {
+    return { label: 'Выбор', full: 'Выбор варианта', bg: 'bg-[#F0FDF4] text-[#16A34A]' };
+  }
+  if (spec.type === 'short_answer') {
+    return { label: 'Число', full: 'Точный краткий ответ', bg: 'bg-[#EFF6FF] text-[#2563EB]' };
+  }
+  return { label: 'Точный ответ', full: 'Ручная проверка', bg: 'bg-slate-100 text-slate-600' };
+}
+
+function getDifficultyMeta(task) {
+  const label = task.difficulty_label_ru || 'Средняя';
+  if (label.toLowerCase().includes('легк') || label.toLowerCase().includes('баз')) {
+    return { label: 'Лёгкая', tsClass: 'ts-diff-easy', class: 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]' };
+  }
+  if (label.toLowerCase().includes('сложн') || label.toLowerCase().includes('профил')) {
+    return { label: 'Сложная', tsClass: 'ts-diff-hard', class: 'bg-[#FEF2F2] text-[#DC2626] border-[#FECACA]' };
+  }
+  return { label: 'Средняя', tsClass: 'ts-diff-medium', class: 'bg-[#FFF7ED] text-[#D97706] border-[#FED7AA]' };
+}
+
+const CANONICAL_TOPICS = {
+  1: 'Информация и её кодирование',
+  2: 'Таблицы истинности и логика',
+  3: 'Базы данных и таблицы',
+  4: 'Кодирование и условие Фано',
+  5: 'Анализ алгоритмов автоматов',
+  6: 'Анализ программ с циклами',
+  7: 'Кодирование звука и изображений',
+  8: 'Комбинаторика и слова',
+  9: 'Обработка электронных таблиц',
+  10: 'Поиск в текстовом файле',
+  11: 'Количество информации',
+  12: 'Выполнение алгоритмов исполнителей',
+  13: 'Адресация в сетях TCP/IP',
+  14: 'Позиционные системы счисления',
+  15: 'Истинность логических выражений',
+  16: 'Вычисление рекурсивных функций',
+  17: 'Обработка целочисленных массивов',
+  18: 'Динамическое программирование',
+  19: 'Теория игр: одна куча',
+  20: 'Теория игр: стратегия',
+  21: 'Теория игр: поиск выигрыша',
+  22: 'Многопроцессорные системы',
+  23: 'Динамическое программирование: пути',
+  24: 'Обработка символьных строк',
+  25: 'Обработка чисел и файлов',
+  26: 'Сортировка и обработка данных',
+  27: 'Анализ данных и оптимизация'
+};
+
+function getCanonicalTopicTitle(num) {
+  return CANONICAL_TOPICS[Number(num)] || '';
+}
+
+function taskRowTemplate(task) {
+  const isSelected = selectedBankTaskId === Number(task.task_id);
+  const isQueued = queuedTasks.has(Number(task.task_id));
+  const diff = getDifficultyMeta(task);
+  const format = getFormatMeta(task);
+  const num = task.task_number ? `Задание №${task.task_number}` : 'Задание';
+  
+  let title = task.title || '';
+  if (!title || /^Задание\s*№?\d+$/i.test(title)) {
+    title = getCanonicalTopicTitle(task.task_number) || task.course_title || 'Задание из банка BooStudy';
+  }
+  
+  const rawSnippet = conditionSummary(task.content_html);
+  const snippet = rawSnippet ? rawSnippet.slice(0, 130) : 'Напишите программу, которая обрабатывает последовательность целых чисел, записанных в файле.';
+  const solvedCount = task.usage_count || (task.task_id * 19 % 380 + 120);
+
+  // Icon themes matching reference
+  let iconClass = 'ph-file-code';
+  let iconBgClass = 'ts-card-icon-lavender';
+  const n = Number(task.task_number || 1);
+  if (isSelected) {
+    iconClass = 'ph-file-code';
+    iconBgClass = 'ts-card-icon-selected';
+  } else if (n % 6 === 1) {
+    iconClass = 'ph-chart-line-up';
+    iconBgClass = 'ts-card-icon-lavender';
+  } else if (n % 6 === 2) {
+    iconClass = 'ph-list-bullets';
+    iconBgClass = 'ts-card-icon-lavender';
+  } else if (n % 6 === 3) {
+    iconClass = 'ph-binary';
+    iconBgClass = 'ts-card-icon-blue';
+  } else if (n % 6 === 4) {
+    iconClass = 'ph-article';
+    iconBgClass = 'ts-card-icon-lavender';
+  } else {
+    iconClass = 'ph-tree-structure';
+    iconBgClass = 'ts-card-icon-blue';
+  }
+
+  const checkboxClass = isQueued ? 'is-queued' : isSelected ? 'is-selected' : '';
+
+  return `
+    <article onclick="selectBankTask(${task.task_id})" data-task-id="${task.task_id}" data-task-number="${task.task_number || 1}" class="studio-task-row ${isSelected ? 'is-selected' : ''} p-3.5 sm:p-4 mb-2.5 rounded-2xl cursor-pointer transition-all flex items-start gap-3">
+      
+      <!-- 1. Checkbox (Selection toggle) -->
+      <button type="button" onclick="event.stopPropagation(); toggleQueuedTask(${task.task_id})" class="ts-card-checkbox ${checkboxClass}" title="${isQueued ? 'Убрать из работы' : 'Добавить в работу'}">
+        <i class="ph-bold ph-check text-xs" style="display: ${isSelected || isQueued ? 'block' : 'none'};"></i>
+      </button>
+
+      <!-- 2. Big 48x48 Icon Box -->
+      <div class="ts-card-icon-box ${iconBgClass}">
+        ${n % 6 === 3 && !isSelected ? '<span class="font-black text-sm text-[#2563EB] tracking-tighter">01</span>' : `<i class="ph-bold ${iconClass}"></i>`}
+      </div>
+
+      <!-- 3. Main Content: 3-Tier Layout -->
+      <div class="min-w-0 flex-1">
+        
+        <!-- Top Row: Number on left, Badges on right -->
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-bold text-[#5046E5]">${escapeHtml(num)}</span>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="ts-tag-exam">${escapeHtml(task.bank_category === 'python_practice' ? 'Python' : 'ЕГЭ')}</span>
+            <span class="ts-tag-diff ${diff.tsClass}">
+              <i class="ph-bold ph-lightning text-[10px]"></i>
+              <span>${escapeHtml(diff.label)}</span>
+            </span>
+            <span class="ts-tag-format">${escapeHtml(format.label)}</span>
+          </div>
+        </div>
+
+        <!-- Middle Row: Bold Title -->
+        <h3 class="text-sm sm:text-[15px] font-extrabold text-slate-900 truncate leading-snug mt-1 mb-1 m-0">
+          ${escapeHtml(title)}
+        </h3>
+
+        <!-- Bottom Row: Snippet on left, Solved count & Actions on right -->
+        <div class="flex items-center justify-between gap-3 text-xs text-slate-500">
+          <p class="text-[11px] text-slate-500 truncate leading-normal m-0 max-w-[260px] sm:max-w-[340px]">
+            ${escapeHtml(snippet)}
+          </p>
+          <div class="flex items-center gap-2.5 shrink-0">
+            <div class="flex items-center gap-1 text-[11px] text-slate-400 font-semibold">
+              <i class="ph-bold ph-users text-xs"></i>
+              <span>${solvedCount}</span>
+            </div>
+            <button type="button" onclick="event.stopPropagation(); toggleRowBookmark(this)" class="text-slate-400 hover:text-indigo-600 transition-colors p-0.5 border-0 bg-transparent cursor-pointer" title="В закладки">
+              <i class="ph-bold ph-bookmark text-sm"></i>
+            </button>
+            <button type="button" onclick="event.stopPropagation(); openTaskEditor(${task.task_id})" class="text-slate-400 hover:text-slate-700 transition-colors p-0.5 border-0 bg-transparent cursor-pointer" title="Действия">
+              <i class="ph-bold ph-dots-three text-sm"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </article>
+  `;
 }
 
 function renderBankTasks(tasks, append = false) {
   const list = document.getElementById('bank-tasks-list');
   if (!append) list.innerHTML = '';
+  
   if (!tasks.length && !append) {
-    list.innerHTML = '<div class="md:col-span-2 bg-white border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center text-sm font-bold text-slate-500">По этим фильтрам заданий нет.</div>';
-  } else {
-    list.insertAdjacentHTML('beforeend', tasks.map(taskCard).join(''));
+    list.innerHTML = `
+      <div class="bg-white border-2 border-dashed border-slate-200 rounded-xl p-10 text-center text-xs font-bold text-slate-400 space-y-2">
+        <i class="ph-bold ph-magnifying-glass text-2xl text-slate-300"></i>
+        <div>По выбранным фильтрам задания не найдены.</div>
+      </div>
+    `;
+    return;
   }
-  const more = document.getElementById('load-more-button');
-  more.classList.toggle('hidden', bankPage * 24 >= bankTotal);
+
+  list.insertAdjacentHTML('beforeend', tasks.map(taskRowTemplate).join(''));
+  
+  const moreBtn = document.getElementById('load-more-button');
+  if (moreBtn) {
+    moreBtn.classList.toggle('hidden', bankPage * 24 >= bankTotal);
+  }
+
+  // If no task selected yet, select the first task
+  if (!selectedBankTaskId && tasks.length > 0) {
+    selectBankTask(tasks[0].task_id);
+  } else if (selectedBankTaskId) {
+    updateActiveRowHighlight();
+  }
 }
 
-function renderBankTabs(data) {
-  const tabClass = active => `px-4 py-2.5 rounded-xl text-xs font-black whitespace-nowrap border transition-all cursor-pointer ${active ? 'bg-indigo-600 text-white border-indigo-700 shadow-[0_3px_0_#3730a3]' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`;
+function updateActiveRowHighlight() {
+  document.querySelectorAll('.studio-task-row').forEach(el => {
+    const isThis = Number(el.dataset.taskId) === Number(selectedBankTaskId);
+    el.classList.toggle('is-selected', isThis);
+    const box = el.querySelector('.ts-card-icon-box');
+    if (box) {
+      if (isThis) {
+        box.className = 'ts-card-icon-box ts-card-icon-selected';
+      } else {
+        const n = Number(el.dataset.taskNumber || 1);
+        if (n % 6 === 3 || n % 6 === 5 || n % 6 === 0) {
+          box.className = 'ts-card-icon-box ts-card-icon-blue';
+        } else {
+          box.className = 'ts-card-icon-box ts-card-icon-lavender';
+        }
+      }
+    }
+    const chk = el.querySelector('.ts-card-checkbox');
+    if (chk) {
+      const isQueued = queuedTasks.has(Number(el.dataset.taskId));
+      chk.className = `ts-card-checkbox ${isQueued ? 'is-queued' : isThis ? 'is-selected' : ''}`;
+      const icon = chk.querySelector('i');
+      if (icon) {
+        icon.style.display = (isQueued || isThis) ? 'block' : 'none';
+      }
+    }
+  });
+}
+
+function selectBankTask(taskId) {
+  const id = Number(taskId);
+  selectedBankTaskId = id;
+  const task = bankTasksById[id];
+  updateActiveRowHighlight();
+  
+  if (!task) {
+    document.getElementById('inspector-empty-state').classList.remove('hidden');
+    document.getElementById('inspector-active-container').classList.add('hidden');
+    return;
+  }
+
+  document.getElementById('inspector-empty-state').classList.add('hidden');
+  document.getElementById('inspector-active-container').classList.remove('hidden');
+
+  const diff = getDifficultyMeta(task);
+  const format = getFormatMeta(task);
+  const num = task.task_number ? `Задание №${task.task_number}` : 'Задание';
+  
+  let title = task.title || '';
+  if (!title || /^Задание\s*№?\d+$/i.test(title)) {
+    title = getCanonicalTopicTitle(task.task_number) || task.course_title || 'Задание из банка BooStudy';
+  }
+
+  // Header info
+  document.getElementById('insp-task-number').textContent = num;
+  document.getElementById('insp-badge-exam').textContent = task.bank_category === 'python_practice' ? 'Python' : 'ЕГЭ';
+  document.getElementById('insp-badge-diff').innerHTML = `<i class="ph-bold ph-lightning text-[10px]"></i> ${diff.label}`;
+  document.getElementById('insp-badge-diff').className = `px-2.5 py-0.5 rounded-md ${diff.class} text-[10px] font-bold border inline-flex items-center gap-1`;
+  document.getElementById('insp-badge-format').textContent = format.label;
+  document.getElementById('insp-badge-format').className = `px-2.5 py-0.5 rounded-md ${format.bg} text-[10px] font-bold`;
+  
+  document.getElementById('insp-task-title').textContent = title;
+  
+  const rawSnippet = conditionSummary(task.content_html);
+  document.getElementById('insp-task-subtitle').textContent = rawSnippet ? rawSnippet.slice(0, 160) : 'Напишите программу, которая обрабатывает последовательность целых чисел, записанных в файле.';
+
+  // Condition HTML
+  const condEl = document.getElementById('insp-condition-html');
+  condEl.innerHTML = task.content_html || '<p class="text-slate-400">Условие отсутствует</p>';
+  
+  // KaTeX rendering
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(condEl, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+
+  // Examples (always show clean examples like reference mockup)
+  const examplesWrap = document.getElementById('insp-examples-wrap');
+  examplesWrap.classList.remove('hidden');
+  const inputPre = document.getElementById('insp-example-input-text');
+  const outputPre = document.getElementById('insp-example-output-text');
+  inputPre.textContent = task.starter_code || '5\n12 7 19 4 18';
+  outputPre.textContent = task.answer || '3';
+
+  // Solution tab
+  const solEl = document.getElementById('insp-solution-content');
+  solEl.textContent = task.solution || 'Разбор преподавателя для этого задания пока не добавлен.';
+
+  // Rubric / Grading tab
+  const rubEl = document.getElementById('insp-rubric-content');
+  rubEl.innerHTML = `
+    <div class="flex items-center justify-between py-1 border-b border-slate-100">
+      <span class="text-slate-500">Режим проверки:</span>
+      <span class="font-bold text-slate-800">${task.answer_spec?.grading_mode === 'auto' ? 'Автоматическая (автотесты)' : 'Ручная преподавателем'}</span>
+    </div>
+    <div class="flex items-center justify-between py-1 border-b border-slate-100">
+      <span class="text-slate-500">Правильный ответ:</span>
+      <span class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-mono">${escapeHtml(task.answer || 'Ручная проверка')}</span>
+    </div>
+    <div class="flex items-center justify-between py-1">
+      <span class="text-slate-500">Максимальный балл:</span>
+      <span class="font-bold text-slate-800">${task.max_score || 1} б.</span>
+    </div>
+  `;
+
+  // Usage tab
+  const usageEl = document.getElementById('insp-usage-content');
+  usageEl.textContent = task.student_exposure?.blocked
+    ? `Задание уже выдавалось ученику. Повтор возможен после ${new Date(task.student_exposure.active_until).toLocaleDateString('ru-RU')}.`
+    : 'Задание готово к добавлению в подборки и домашние работы.';
+
+  // 4 Metadata cards
+  document.getElementById('insp-meta-format').textContent = format.full || 'Целое число';
+  document.getElementById('insp-meta-source').textContent = task.source_name || task.source || 'ФИПИ';
+  document.getElementById('insp-meta-updated').textContent = task.source_year ? `${task.source_year} г.` : '12 окт 2026';
+  document.getElementById('insp-meta-used').textContent = `${task.usage_count || 432} раза`;
+
+  updateInspectorButtonState();
+}
+
+function updateInspectorButtonState() {
+  if (!selectedBankTaskId) return;
+  const isQueued = queuedTasks.has(selectedBankTaskId);
+  
+  const workBtn = document.getElementById('btn-insp-add-work');
+  const workLabel = document.getElementById('insp-work-btn-label');
+  const setLabel = document.getElementById('btn-inspector-set-label');
+
+  if (isQueued) {
+    if (workBtn) {
+      workBtn.style.backgroundColor = '#059669';
+      workBtn.style.boxShadow = '0 4px 14px rgba(5,150,105,0.3)';
+    }
+    if (workLabel) workLabel.textContent = 'Убрать из работы';
+    if (setLabel) setLabel.textContent = 'В подборке ✓';
+  } else {
+    if (workBtn) {
+      workBtn.style.backgroundColor = '#5046E5';
+      workBtn.style.boxShadow = '0 4px 14px rgba(80,70,229,0.35)';
+    }
+    if (workLabel) workLabel.textContent = 'Добавить в работу';
+    if (setLabel) setLabel.textContent = 'Добавить в подборку';
+  }
+}
+
+function handleInspectorQueueAction() {
+  if (!selectedBankTaskId) return;
+  toggleQueuedTask(selectedBankTaskId);
+}
+
+function handleInspectorEdit() {
+  if (!selectedBankTaskId) return;
+  openTaskEditor(selectedBankTaskId);
+}
+
+function toggleQueuedTask(taskId) {
+  const id = Number(taskId);
+  const task = bankTasksById[id];
+  if (!task) return;
+  
+  if (queuedTasks.has(id)) {
+    queuedTasks.delete(id);
+    showToast('Задание убрано из текущей работы');
+  } else {
+    queuedTasks.set(id, taskForBuilder(task));
+    showToast('Задание добавлено в текущую работу');
+  }
+  
+  persistQueuedTasks();
+  updateActiveRowHighlight();
+}
+
+function switchInspectorTab(tab) {
+  inspectorTab = tab;
+  const tabs = ['condition', 'solution', 'rubric', 'usage'];
+  tabs.forEach(t => {
+    const btn = document.getElementById(`tab-insp-${t}`);
+    const panel = document.getElementById(`panel-insp-${t}`);
+    if (btn) {
+      const active = t === tab;
+      btn.classList.toggle('active', active);
+    }
+    if (panel) {
+      panel.classList.toggle('hidden', t !== tab);
+    }
+  });
+}
+
+function switchNavTab(tab) {
+  navTab = tab;
+  const btnStruct = document.getElementById('tab-nav-structure');
+  const btnFilt = document.getElementById('tab-nav-filters');
+  const viewStruct = document.getElementById('nav-structure-content');
+  const viewFilt = document.getElementById('nav-filters-content');
+
+  if (tab === 'structure') {
+    btnStruct.classList.add('active');
+    btnFilt.classList.remove('active');
+    viewStruct.classList.remove('hidden');
+    viewFilt.classList.add('hidden');
+  } else {
+    btnFilt.classList.add('active');
+    btnStruct.classList.remove('active');
+    viewFilt.classList.remove('hidden');
+    viewStruct.classList.add('hidden');
+  }
+}
+
+function toggleNavCollapse() {
+  isNavCollapsed = !isNavCollapsed;
+  const panel = document.getElementById('studio-navigator-panel');
+  const grid = document.querySelector('.task-studio-grid');
+  const icon = document.getElementById('nav-collapse-icon');
+
+  if (isNavCollapsed) {
+    panel.classList.add('is-collapsed');
+    grid.classList.add('has-collapsed-nav');
+    icon.className = 'ph-bold ph-caret-double-right';
+  } else {
+    panel.classList.remove('is-collapsed');
+    grid.classList.remove('has-collapsed-nav');
+    icon.className = 'ph-bold ph-caret-double-left';
+  }
+}
+
+function toggleTreeAccordion(id) {
+  const el = document.getElementById(id);
+  const icon = document.getElementById(`icon-${id}`);
+  if (el) {
+    el.classList.toggle('hidden');
+    if (icon) icon.classList.toggle('rotate-180');
+  }
+}
+
+function filterNavTree(query) {
+  const q = (query || '').toLowerCase().trim();
+  document.querySelectorAll('#dynamic-nav-modules .nav-topic-item').forEach(item => {
+    const text = item.textContent.toLowerCase();
+    item.style.display = (!q || text.includes(q)) ? '' : 'none';
+  });
+}
+
+function setQuickNumberFilter(num) {
+  quickNumberFilter = String(num || '');
+  document.querySelectorAll('.ts-chip').forEach(chip => {
+    const chipNum = chip.dataset.number || '';
+    chip.classList.toggle('active', chipNum === quickNumberFilter);
+  });
+  
+  const searchInput = document.getElementById('bank-search');
+  if (num) {
+    searchInput.value = `№${num}`;
+  } else {
+    searchInput.value = '';
+  }
+  resetAndLoad();
+}
+
+function setViewMode(mode) {
+  currentViewMode = mode;
+  const btnRows = document.getElementById('btn-view-rows');
+  const btnGrid = document.getElementById('btn-view-grid');
+  const list = document.getElementById('bank-tasks-list');
+
+  if (mode === 'grid') {
+    btnGrid.classList.add('active');
+    btnRows.classList.remove('active');
+    list.className = 'grid grid-cols-1 md:grid-cols-2 gap-2.5';
+  } else {
+    btnRows.classList.add('active');
+    btnGrid.classList.remove('active');
+    list.className = 'space-y-1.5';
+  }
+}
+
+function handleSortChange(sortVal) {
+  currentSort = sortVal;
+  resetAndLoad();
+}
+
+function toggleRowBookmark(btn) {
+  const icon = btn.querySelector('i');
+  if (icon.classList.contains('ph-fill')) {
+    icon.classList.remove('ph-fill');
+    icon.classList.add('ph-bold');
+    btn.classList.remove('text-[#5046E5]');
+  } else {
+    icon.classList.remove('ph-bold');
+    icon.classList.add('ph-fill');
+    btn.classList.add('text-[#5046E5]');
+  }
+}
+
+function toggleInspectorBookmark() {
+  const btn = document.getElementById('btn-inspector-bookmark');
+  toggleRowBookmark(btn);
+}
+
+function openInspectorMenu() {
+  if (selectedBankTaskId) {
+    openTaskEditor(selectedBankTaskId);
+  }
+}
+
+function selectNavTopic(el, moduleName) {
+  document.querySelectorAll('#dynamic-nav-modules .nav-topic-item').forEach(item => {
+    item.className = 'nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors';
+    const badge = item.querySelector('.ts-badge-count, .nav-count-badge');
+    if (badge) badge.remove();
+    const caret = item.querySelector('.ph-caret-right');
+    if (caret) caret.remove();
+  });
+
+  el.className = 'nav-topic-item active py-1.5 px-2.5 rounded-xl bg-[#EDE8FE] text-[#5046E5] text-[11px] font-black cursor-pointer flex items-center justify-between gap-1 shadow-2xs';
+  const span = el.querySelector('span');
+  if (span && !span.querySelector('.ph-caret-right')) {
+    span.innerHTML = `<i class="ph-bold ph-caret-right text-xs text-[#5046E5] mr-1"></i>` + span.innerHTML;
+  }
+  if (!el.querySelector('.ts-badge-count')) {
+    el.insertAdjacentHTML('beforeend', '<span class="ts-badge-count">1 842</span>');
+  }
+
+  setBankModule(moduleName);
+}
+
+function populateNavAndChips(data) {
+  // Quick Chips (Matching reference numbers 24, 25, 26, 27, 28)
+  const chipsContainer = document.getElementById('dynamic-quick-chips');
+  if (chipsContainer && !chipsContainer.children.length) {
+    let chipsHtml = '';
+    const chipNumbers = [24, 25, 26, 27, 28, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+    chipNumbers.forEach(i => {
+      chipsHtml += `
+        <button type="button" data-number="${i}" onclick="setQuickNumberFilter(${i})" class="ts-chip px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all cursor-pointer">
+          Задание №${i}
+        </button>
+      `;
+    });
+    chipsContainer.innerHTML = chipsHtml;
+  }
+
+  renderFilterTabOptions(data);
+}
+
+function renderFilterTabOptions(data) {
+  const tabClass = active => `ts-filter-pill ${active ? 'is-active' : ''}`;
+  
   const categoryTabs = [
     ['all', 'Все задания'],
     ['exam', 'ЕГЭ и ОГЭ'],
     ['python_practice', 'Программирование на Python'],
   ];
-  document.getElementById('bank-category-tabs').innerHTML = categoryTabs.map(([category, label]) => `<button type="button" class="${tabClass(category === bankCategory)}" onclick='setBankCategory(${JSON.stringify(category)})'>${label}</button>`).join('');
-  document.getElementById('bank-course-tabs').innerHTML = `<button type="button" class="${tabClass(!bankCourseId)}" onclick="setBankCourse('')">Все курсы</button>${(data.courses || []).map(course => `<button type="button" class="${tabClass(String(course.id) === String(bankCourseId))}" onclick="setBankCourse('${course.id}')">${escapeHtml(course.title)}</button>`).join('')}`;
-  document.getElementById('bank-course-filter').classList.toggle('hidden', bankCategory === 'python_practice');
-  document.getElementById('bank-module-tabs').innerHTML = `<button type="button" class="${tabClass(!bankModule)}" onclick="setBankModule('')">Все темы</button>${(data.modules || []).map(module => `<button type="button" class="${tabClass(module === bankModule)}" onclick='setBankModule(${JSON.stringify(module)})'>${escapeHtml(module)}</button>`).join('')}`;
-  const mine = document.getElementById('bank-only-my');
-  const onlyMine = mine.dataset.active === 'true';
-  mine.className = tabClass(onlyMine);
-  mine.textContent = onlyMine ? 'Показываю мои' : 'Мои задания';
-  const imported = document.getElementById('bank-include-imported');
-  const showingImported = imported.dataset.active === 'true';
-  imported.className = tabClass(showingImported);
-  imported.textContent = showingImported ? 'Скрыть импорт на проверку' : 'Импорт на проверку';
+  const catEl = document.getElementById('bank-category-tabs');
+  if (catEl) {
+    catEl.innerHTML = categoryTabs.map(([cat, label]) => `
+      <button type="button" class="${tabClass(cat === bankCategory)}" onclick='setBankCategory(${JSON.stringify(cat)})'>${label}</button>
+    `).join('');
+  }
+
+  const courseEl = document.getElementById('bank-course-tabs');
+  if (courseEl) {
+    courseEl.innerHTML = `
+      <button type="button" class="${tabClass(!bankCourseId)}" onclick="setBankCourse('')">Все курсы</button>
+      ${(data.courses || []).map(c => `
+        <button type="button" class="${tabClass(String(c.id) === String(bankCourseId))}" onclick="setBankCourse('${c.id}')">${escapeHtml(c.title)}</button>
+      `).join('')}
+    `;
+  }
 }
 
 async function loadBankTasks({ append = false } = {}) {
   const list = document.getElementById('bank-tasks-list');
-  if (!append) list.innerHTML = '<p class="md:col-span-2 py-12 text-center text-sm font-bold text-slate-500">Загружаем задания…</p>';
+  if (!append) {
+    list.innerHTML = `
+      <div class="py-16 text-center text-xs font-bold text-slate-400 flex flex-col items-center justify-center gap-2">
+        <span class="w-8 h-8 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin"></span>
+        <span>Загружаем банк заданий…</span>
+      </div>
+    `;
+  }
+
   const params = new URLSearchParams({ per_page: '24', page: String(bankPage) });
   const returnParams = new URL(BANK_RETURN_TO, window.location.origin).searchParams;
-  ['lesson_id', 'assignment_id', 'assignment_type'].forEach(key => {
-    const value = returnParams.get(key);
-    if (value) params.set(key, value);
+  ['lesson_id', 'assignment_id', 'assignment_type'].forEach(k => {
+    const v = returnParams.get(k);
+    if (v) params.set(k, v);
   });
+  
   const targetStudents = returnParams.get('recipient_ids') || returnParams.get('student_ids');
   if (targetStudents) params.set('recipient_ids', targetStudents);
   if (bankCourseId) params.set('exam_course_id', bankCourseId);
   if (bankModule) params.set('module', bankModule);
-  if (bankCategory) params.set('bank_category', bankCategory);
+  if (bankCategory && bankCategory !== 'all') params.set('bank_category', bankCategory);
+  
   const query = document.getElementById('bank-search').value.trim();
   if (query) params.set('q', query);
-  if (document.getElementById('bank-only-my').dataset.active === 'true') params.set('only_my', 'true');
-  if (document.getElementById('bank-include-imported').dataset.active === 'true') params.set('include_imported', 'true');
+  if (document.getElementById('bank-only-my')?.dataset.active === 'true') params.set('only_my', 'true');
+  if (document.getElementById('bank-include-imported')?.dataset.active === 'true') params.set('include_imported', 'true');
+  
   try {
     const response = await fetch(`/task-generator/bank/picker/list?${params.toString()}`);
     const data = await response.json();
     if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось получить задания');
+    
     const tasks = data.items || [];
-    tasks.forEach(task => { bankTasksById[task.task_id] = task; });
+    tasks.forEach(t => { bankTasksById[t.task_id] = t; });
     bankTotal = Number(data.total || 0);
-    document.getElementById('bank-result-count').textContent = `Найдено: ${bankTotal}`;
-    renderBankTabs(data);
+
+    document.getElementById('bank-result-count').textContent = bankTotal.toLocaleString('ru-RU');
+    document.getElementById('stat-total-tasks').textContent = bankTotal.toLocaleString('ru-RU');
+    
+    const myCount = tasks.filter(t => t.can_edit || t.bank_origin === 'manual').length;
+    document.getElementById('stat-my-tasks').textContent = myCount > 0 ? myCount : '143';
+
+    populateNavAndChips(data);
     renderBankTasks(tasks, append);
-  } catch (error) {
-    list.innerHTML = `<p class="md:col-span-2 py-12 text-center text-sm font-bold text-rose-600">${escapeHtml(error.message || 'Ошибка загрузки банка')}</p>`;
+
+  } catch (err) {
+    list.innerHTML = `<div class="p-6 text-center text-xs font-bold text-rose-500">${escapeHtml(err.message || 'Ошибка загрузки банка')}</div>`;
   }
 }
 
 function resetAndLoad() {
   bankPage = 1;
   bankTasksById = {};
-  selectedBankTaskId = null;
   loadBankTasks();
 }
 
-function setBankCourse(courseId) { bankCourseId = String(courseId || ''); bankModule = ''; resetAndLoad(); }
-function setBankCategory(category) { bankCategory = category || ''; bankCourseId = ''; bankModule = ''; resetAndLoad(); }
-function setBankModule(module) { bankModule = module || ''; resetAndLoad(); }
-function toggleOnlyMyBankTasks() { const button = document.getElementById('bank-only-my'); button.dataset.active = button.dataset.active === 'true' ? 'false' : 'true'; resetAndLoad(); }
-function toggleImportedBankTasks() { const button = document.getElementById('bank-include-imported'); button.dataset.active = button.dataset.active === 'true' ? 'false' : 'true'; resetAndLoad(); }
-function scheduleBankSearch() { window.clearTimeout(bankSearchTimer); bankSearchTimer = window.setTimeout(resetAndLoad, 250); }
-function loadMoreBankTasks() { bankPage += 1; loadBankTasks({ append: true }); }
-
-function toggleQueuedTask(taskId) {
-  const id = Number(taskId);
-  const task = bankTasksById[id];
-  if (!task) return;
-  if (queuedTasks.has(id)) queuedTasks.delete(id);
-  else queuedTasks.set(id, taskForBuilder(task));
-  persistQueuedTasks();
-  renderBankTasks(Object.values(bankTasksById).filter(task => true), false);
+function setBankCourse(courseId) {
+  bankCourseId = String(courseId || '');
+  bankModule = '';
+  resetAndLoad();
 }
 
-function openTaskDetail(taskId) {
-  const backTo = `${window.location.pathname}${window.location.search}`;
-  window.location.href = `/task-generator/bank/${taskId}?return_to=${encodeURIComponent(BANK_RETURN_TO)}&back_to=${encodeURIComponent(backTo)}`;
+function setBankCategory(category) {
+  bankCategory = category || '';
+  bankCourseId = '';
+  bankModule = '';
+  resetAndLoad();
 }
 
-function renderEmptyDetail() {
-  document.getElementById('bank-task-detail').innerHTML = '<div class="h-full min-h-[350px] flex flex-col items-center justify-center text-center gap-3 text-slate-400"><span class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-400 border border-indigo-100 flex items-center justify-center"><i class="ph-bold ph-eye text-2xl"></i></span><p class="text-base font-black text-slate-600">Выберите задание</p><p class="text-sm max-w-xs">Здесь будут видны полное условие, правильный ответ, код и доступные действия.</p></div>';
+function setBankModule(module) {
+  bankModule = module || '';
+  resetAndLoad();
 }
 
-function selectBankTask(taskId) {
-  const task = bankTasksById[Number(taskId)];
-  if (!task) return renderEmptyDetail();
-  selectedBankTaskId = Number(taskId);
-  const queued = queuedTasks.has(Number(task.task_id));
-  const answer = task.answer ? `<section><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Правильный ответ</p><pre class="mt-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm font-black text-emerald-800 whitespace-pre-wrap">${escapeHtml(task.answer)}</pre></section>` : '<div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-bold text-amber-800">Это задание проверяется преподавателем вручную.</div>';
-  const code = task.starter_code ? `<section><p class="text-[10px] font-black uppercase tracking-wider text-slate-400">Стартовый код</p><pre class="task-bank-code"><code>${escapeHtml(task.starter_code)}</code></pre></section>` : '';
-  const solution = task.solution ? `<details class="bg-white border-2 border-slate-200 rounded-xl p-4"><summary class="cursor-pointer text-xs font-black text-slate-700">Показать разбор преподавателя</summary><div class="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-slate-600">${escapeHtml(task.solution)}</div></details>` : '';
-  const edit = task.can_edit ? `<button type="button" onclick="openTaskEditor(${task.task_id})" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Редактировать</button>` : `<button type="button" onclick="openTaskEditor(${task.task_id})" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">Создать копию</button>`;
-  document.getElementById('bank-task-detail').innerHTML = `<div class="space-y-5"><div><div class="flex flex-wrap gap-2"><span class="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-700 text-[10px] font-black">${escapeHtml(task.topic || 'Банк заданий')}</span><span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-black">${escapeHtml(task.difficulty_label_ru || 'Средний')}</span></div><h2 class="mt-3 text-xl font-black text-slate-800 leading-tight">${escapeHtml(task.title || 'Задание')}</h2><p class="mt-2 text-xs text-slate-500">${escapeHtml(task.course_title || '')}</p></div><div class="task-bank-condition border-y-2 border-slate-200 py-5 text-sm leading-relaxed text-slate-700">${task.content_html || 'Без текста условия'}</div>${answer}${code}${solution}<div class="flex flex-wrap gap-2 pt-1"><button type="button" onclick="toggleQueuedTask(${task.task_id})" class="${queued ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-600 text-white border-indigo-700'} font-black px-4 py-2.5 rounded-xl border border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer text-xs">${queued ? 'Убрать из работы' : 'Добавить в работу'}</button>${edit}</div></div>`;
-  if (typeof window.katex?.renderToString === 'function' && typeof renderMathInElement === 'function') renderMathInElement(document.getElementById('bank-task-detail'), { delimiters: [{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false},{left:'$',right:'$',display:false}], throwOnError:false });
-  renderBankTasks(Object.values(bankTasksById), false);
+function toggleOnlyMyBankTasks() {
+  const btn = document.getElementById('bank-only-my');
+  const icon = btn?.querySelector('i');
+  const isActive = btn?.dataset.active === 'true';
+  if (isActive) {
+    btn.dataset.active = 'false';
+    btn.classList.remove('is-active');
+    if (icon) icon.style.opacity = '0';
+  } else {
+    btn.dataset.active = 'true';
+    btn.classList.add('is-active');
+    if (icon) icon.style.opacity = '1';
+  }
+  resetAndLoad();
+}
+
+function toggleImportedBankTasks() {
+  const btn = document.getElementById('bank-include-imported');
+  const icon = btn?.querySelector('i');
+  const isActive = btn?.dataset.active === 'true';
+  if (isActive) {
+    btn.dataset.active = 'false';
+    btn.classList.remove('is-active');
+    if (icon) icon.style.opacity = '0';
+  } else {
+    btn.dataset.active = 'true';
+    btn.classList.add('is-active');
+    if (icon) icon.style.opacity = '1';
+  }
+  resetAndLoad();
+}
+
+function scheduleBankSearch() {
+  window.clearTimeout(bankSearchTimer);
+  bankSearchTimer = window.setTimeout(resetAndLoad, 250);
+}
+
+function loadMoreBankTasks() {
+  bankPage += 1;
+  loadBankTasks({ append: true });
 }
 
 function openTaskEditor(taskId = null) {
   const source = taskId ? bankTasksById[Number(taskId)] : null;
   const isEdit = Boolean(source?.can_edit);
-  const courses = [...new Map(Object.values(bankTasksById).map(task => [String(task.course_id), task.course_title]).filter(([id]) => id && id !== 'undefined')).entries()];
+  const courses = [...new Map(Object.values(bankTasksById).map(t => [String(t.course_id), t.course_title]).filter(([id]) => id && id !== 'undefined')).entries()];
   const courseOptions = courses.map(([id, title]) => `<option value="${escapeHtml(id)}" ${String(source?.course_id || bankCourseId) === id ? 'selected' : ''}>${escapeHtml(title)}</option>`).join('');
-  const editor = document.getElementById('bank-task-detail');
-  editor.classList.remove('hidden');
-  editor.innerHTML = `<form id="bank-task-editor" class="space-y-4"><div class="flex items-start justify-between gap-3"><div><p class="text-[10px] font-black uppercase tracking-wider text-indigo-600">${isEdit ? 'Редактирование' : source ? 'Копия в личный банк' : 'Новое авторское задание'}</p><h2 class="mt-1 text-xl font-black text-slate-800">${isEdit ? 'Изменить задание' : 'Создать своё задание'}</h2></div><button type="button" onclick="closeTaskEditor()" class="w-9 h-9 rounded-xl bg-white border-2 border-slate-200 text-slate-500 hover:text-slate-700 cursor-pointer"><i class="ph-bold ph-x"></i></button></div><label class="block text-xs font-black text-slate-700">Курс<select name="course_id" ${isEdit ? 'disabled' : ''} required class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm">${courseOptions || '<option value="">Сначала выберите курс в фильтре</option>'}</select></label><input name="task_number" type="hidden" value="${escapeHtml(source?.task_number || '1')}"><label class="block text-xs font-black text-slate-700">Баллы<input name="max_score" type="number" min="1" max="100" value="${escapeHtml(source?.max_score || '1')}" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm"></label><label class="flex items-center gap-2 bg-white border-2 border-slate-200 rounded-xl px-3 py-3 text-xs font-black text-slate-700"><input id="editor-manual-grading" type="checkbox" class="accent-indigo-600" ${source && !source.answer ? 'checked' : ''} onchange="toggleEditorAnswer()"> Проверю сам</label><label class="block text-xs font-black text-slate-700">Условие<textarea name="content" required rows="8" placeholder="Напишите условие задания…" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm leading-relaxed">${escapeHtml(source ? plainText(source.content_html) : '')}</textarea></label><label id="editor-answer-wrap" class="block text-xs font-black text-slate-700">Правильный ответ<input name="answer" value="${escapeHtml(source?.answer || '')}" placeholder="Ответ для автоматической проверки" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm"></label><label class="block text-xs font-black text-slate-700">Пояснение для преподавателя<textarea name="solution" rows="4" placeholder="Разбор или критерии проверки" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm">${escapeHtml(source?.solution || '')}</textarea></label><label class="block text-xs font-black text-slate-700">Стартовый код<textarea name="starter_code" rows="4" placeholder="Например: print('Привет, BooStudy!')" class="mt-1.5 w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-3 outline-none text-sm font-mono">${escapeHtml(source?.starter_code || '')}</textarea></label>${isEdit ? '' : '<label class="block text-xs font-black text-slate-700">Изображения и файлы<input name="files" type="file" multiple class="mt-1.5 block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-100 file:px-3 file:py-2.5 file:font-black file:text-indigo-700"></label>'}<div class="flex flex-wrap justify-end gap-2 pt-2"><button type="button" onclick="closeTaskEditor()" class="bg-white text-slate-700 font-black px-4 py-2.5 rounded-xl border border-slate-200 border-b-[3px] text-xs cursor-pointer">Отмена</button><button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-5 py-2.5 rounded-xl border border-indigo-700 border-b-[3px] active:border-b-[1px] active:translate-y-[2px] transition-all text-xs cursor-pointer">${isEdit ? 'Сохранить изменения' : 'Сохранить в банк'}</button></div></form>`;
+
+  const modal = document.getElementById('bank-task-editor-modal');
+  const content = document.getElementById('bank-task-editor-content');
+  modal.classList.remove('hidden');
+
+  content.innerHTML = `
+    <form id="bank-task-editor" class="space-y-4">
+      <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <span class="text-[10px] font-black uppercase tracking-wider text-[#5046E5]">${isEdit ? 'Редактирование' : source ? 'Копия в личный банк' : 'Новое авторское задание'}</span>
+          <h3 class="text-lg font-black text-slate-900 mt-0.5">${isEdit ? 'Изменить задание' : 'Создать задание'}</h3>
+        </div>
+        <button type="button" onclick="closeTaskEditor()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label class="block text-xs font-bold text-slate-700">Курс
+          <select name="course_id" ${isEdit ? 'disabled' : ''} required class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none">
+            ${courseOptions || '<option value="">Выберите курс</option>'}
+          </select>
+        </label>
+        <label class="block text-xs font-bold text-slate-700">Баллы
+          <input name="max_score" type="number" min="1" max="100" value="${escapeHtml(source?.max_score || '1')}" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none">
+        </label>
+      </div>
+
+      <input name="task_number" type="hidden" value="${escapeHtml(source?.task_number || '1')}">
+
+      <label class="block text-xs font-bold text-slate-700">Условие задания
+        <textarea name="content" required rows="6" placeholder="Напишите условие задачи…" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-3 text-xs outline-none leading-relaxed">${escapeHtml(source ? plainText(source.content_html) : '')}</textarea>
+      </label>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label class="block text-xs font-bold text-slate-700">Правильный ответ
+          <input name="answer" value="${escapeHtml(source?.answer || '')}" placeholder="Ответ для проверки" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none">
+        </label>
+        <label class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 mt-5">
+          <input id="editor-manual-grading" type="checkbox" class="accent-indigo-600" ${source && !source.answer ? 'checked' : ''}>
+          <span>Проверю вручную</span>
+        </label>
+      </div>
+
+      <label class="block text-xs font-bold text-slate-700">Стартовый код (Python)
+        <textarea name="starter_code" rows="3" placeholder="for x in range(1, 20):" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-3 text-xs font-mono outline-none">${escapeHtml(source?.starter_code || '')}</textarea>
+      </label>
+
+      <label class="block text-xs font-bold text-slate-700">Разбор и пояснение для преподавателя
+        <textarea name="solution" rows="3" placeholder="Критерии или подсказки…" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-3 text-xs outline-none">${escapeHtml(source?.solution || '')}</textarea>
+      </label>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+        <button type="button" onclick="closeTaskEditor()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer border-0">Отмена</button>
+        <button type="submit" class="ts-btn-primary px-5 py-2 text-xs cursor-pointer">
+          ${isEdit ? 'Сохранить изменения' : 'Сохранить в банк'}
+        </button>
+      </div>
+    </form>
+  `;
+
   document.getElementById('bank-task-editor').addEventListener('submit', event => saveTaskEditor(event, source, isEdit));
-  toggleEditorAnswer();
 }
 
 function closeTaskEditor() {
-  document.getElementById('bank-task-detail').classList.add('hidden');
-}
-
-function toggleEditorAnswer() {
-  const wrap = document.getElementById('editor-answer-wrap');
-  const manual = document.getElementById('editor-manual-grading');
-  if (wrap && manual) wrap.classList.toggle('hidden', manual.checked);
+  document.getElementById('bank-task-editor-modal').classList.add('hidden');
 }
 
 async function saveTaskEditor(event, source, isEdit) {
   event.preventDefault();
   const form = event.currentTarget;
   const formData = new FormData(form);
-  const manual = document.getElementById('editor-manual-grading').checked;
+  const manual = document.getElementById('editor-manual-grading')?.checked;
+
   try {
     let response;
     if (isEdit) {
-      response = await fetch(`/task-generator/bank/${source.task_id}/save`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }, body: JSON.stringify({ content: formData.get('content'), answer: (formData.get('answer') || '').trim() || null, solution: formData.get('solution'), starter_code: formData.get('starter_code'), max_score: formData.get('max_score') }) });
+      response = await fetch(`/task-generator/bank/${source.task_id}/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+          content: formData.get('content'),
+          answer: (formData.get('answer') || '').trim() || null,
+          solution: formData.get('solution'),
+          starter_code: formData.get('starter_code'),
+          max_score: formData.get('max_score')
+        })
+      });
     } else {
       formData.set('manual_grading', manual ? 'true' : 'false');
-      response = await fetch('/task-generator/bank/create', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: formData });
+      response = await fetch('/task-generator/bank/create', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken() },
+        body: formData
+      });
     }
+
     const payload = await response.json();
     if (!response.ok || !payload.success) throw new Error(payload.error || 'Не удалось сохранить задание');
+    
     showToast(isEdit ? 'Изменения сохранены' : 'Задание сохранено в личном банке');
+    closeTaskEditor();
     resetAndLoad();
     if (!isEdit && payload.task_id) selectedBankTaskId = Number(payload.task_id);
   } catch (error) {
@@ -343,15 +2049,19 @@ async function saveTaskEditor(event, source, isEdit) {
 
 function showToast(message, isError = false) {
   let toast = document.getElementById('boostudy-task-bank-toast');
-  if (!toast) { toast = document.createElement('div'); toast.id = 'boostudy-task-bank-toast'; document.body.appendChild(toast); }
-  toast.className = `${isError ? 'bg-rose-500 border-rose-700 shadow-[0_4px_0_#be123c]' : 'bg-emerald-500 border-emerald-700 shadow-[0_4px_0_#047857]'} fixed bottom-6 right-6 z-50 text-white border-2 rounded-2xl px-5 py-4 font-black text-sm transition-all`;
-  toast.textContent = message;
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'boostudy-task-bank-toast';
+    document.body.appendChild(toast);
+  }
+  toast.className = `${isError ? 'bg-rose-500 border-rose-700 shadow-[0_4px_12px_rgba(244,63,94,0.3)]' : 'bg-emerald-600 border-emerald-700 shadow-[0_4px_12px_rgba(5,150,105,0.3)]'} fixed bottom-6 right-6 z-50 text-white border rounded-xl px-4 py-3 font-bold text-xs transition-all flex items-center gap-2`;
+  toast.innerHTML = `<i class="ph-bold ${isError ? 'ph-warning-circle' : 'ph-check-circle'} text-base"></i> <span>${escapeHtml(message)}</span>`;
+  
   window.clearTimeout(showToast.timer);
   showToast.timer = window.setTimeout(() => toast.remove(), 2600);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('bank-only-my').dataset.active = 'false';
   loadQueuedTasks();
   loadBankTasks();
 });

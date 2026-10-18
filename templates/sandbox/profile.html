@@ -60,6 +60,242 @@
 [id$="-modal"] > div {
   overscroll-behavior: contain;
 }
+
+#profile-onboarding,
+[id$="-modal"],
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100050 !important;
+  background-color: rgba(15, 23, 42, 0.78) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  overflow-y: auto !important;
+}
+
+#profile-onboarding.hidden,
+[id$="-modal"].hidden,
+.modal-overlay.hidden {
+  display: none !important;
+}
+
+#profile-onboarding section,
+[id$="-modal"] > div:not(.bs-modal-backdrop) {
+  position: relative !important;
+  z-index: 100051 !important;
+  box-shadow: 0 25px 65px -12px rgba(15, 23, 42, 0.55), 0 8px 0 #CBD5E1 !important;
+  border: 2px solid #CBD5E1 !important;
+  border-radius: 32px !important;
+  background-color: #FFFFFF !important;
+  max-height: calc(100vh - 32px) !important;
+  max-height: calc(100dvh - 32px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  margin: auto !important;
+}
+
+#profile-onboarding section .overflow-y-auto,
+#ranks-cards-scroll,
+#modal-goals-list,
+[id$="-modal"] .overflow-y-auto,
+[id$="-modal"] [class*="overflow-y-auto"] {
+  min-height: 0 !important;
+  flex-shrink: 1 !important;
+  overscroll-behavior: contain !important;
+}
+
+#achievements-cards-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  min-height: auto !important;
+  height: auto !important;
+  align-self: start !important;
+  grid-auto-rows: minmax(140px, auto) !important;
+}
+@media (max-width: 640px) {
+  #achievements-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.ach-card {
+  min-height: 140px !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  box-sizing: border-box !important;
+}
+
+.ach-card.hidden,
+#ranks-modal .rank-card-item.hidden {
+  display: none !important;
+}
+
+/* Category filter tabs in achievements modal */
+.ach-tab-btn {
+  padding: 6px 16px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  border-radius: 12px !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  color: #64748B !important;
+  background: transparent !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  line-height: 1.3 !important;
+}
+.ach-tab-btn:hover {
+  color: #0F172A !important;
+  background: #E2E8F0 !important;
+}
+.ach-tab-btn.active {
+  background: #4F46E5 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35) !important;
+}
+.ach-tab-btn.active i {
+  color: #FFFFFF !important;
+}
+
+.rank-tab-btn {
+  padding: 5px 12px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  border-radius: 10px !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  color: #64748B !important;
+  background: transparent !important;
+}
+.rank-tab-btn:hover {
+  color: #0F172A !important;
+  background: #E2E8F0 !important;
+}
+.rank-tab-btn.active {
+  background: #4F46E5 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3) !important;
+}
+
+/* Timezone mode switcher pill tabs */
+.tz-mode-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #64748B !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+}
+.tz-mode-tab:hover {
+  color: #0F172A !important;
+}
+.tz-mode-radio:checked + .tz-mode-tab {
+  background: #FFFFFF !important;
+  color: #4F46E5 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  font-weight: 900 !important;
+}
+
+/* Custom Styled Select Dropdown (BooStudy UI) */
+.bs-custom-trigger {
+  width: 100% !important;
+  background-color: #F8FAFC !important;
+  border: 2px solid #E2E8F0 !important;
+  border-radius: 14px !important;
+  padding: 10px 14px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
+  box-shadow: 0 2px 0 #DAE1E9 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: 44px !important;
+  box-sizing: border-box !important;
+}
+
+.bs-custom-trigger:hover {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+
+.bs-custom-trigger:focus {
+  background-color: #FFFFFF !important;
+  border-color: #6366F1 !important;
+  box-shadow: 0 2px 0 #6366F1 !important;
+  outline: none !important;
+}
+
+.bs-custom-menu {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: calc(100% + 6px) !important;
+  background-color: #FFFFFF !important;
+  border: 2px solid #E2E8F0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16), 0 4px 0 #CBD5E1 !important;
+  padding: 6px !important;
+  z-index: 100200 !important;
+  max-height: 240px !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+#custom-timezone-dropdown .bs-custom-menu {
+  top: auto !important;
+  bottom: calc(100% + 6px) !important;
+}
+
+.bs-custom-option {
+  width: 100% !important;
+  text-align: left !important;
+  padding: 9px 12px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  color: #334155 !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  box-sizing: border-box !important;
+}
+
+.bs-custom-option:hover {
+  background-color: #EEF2FF !important;
+  color: #4F46E5 !important;
+}
+
+.bs-custom-option.selected {
+  background-color: #EEF2FF !important;
+  color: #4338CA !important;
+  font-weight: 900 !important;
+}
 </style>
 {% set display_user = target_user if (target_user is defined and target_user) else current_user %}
 {% set is_student = (target_role is defined and target_role == 'student') or (display_user is defined and display_user and display_user.is_student is defined and display_user.is_student()) or (display_user is defined and display_user and display_user.role == 'student') or (display_user is not defined or not display_user or not display_user.is_authenticated) %}
@@ -302,7 +538,7 @@
     </div>
 
     {% if is_owner %}
-    <section id="telegram-connection" class="mt-4 rounded-[1.75rem] border-2 border-sky-100 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-4 sm:p-5 shadow-[0_4px_0_#DCEAF6]" aria-labelledby="telegram-connection-title">
+    <section id="telegram-connection" class="mt-6 rounded-[1.75rem] border-2 border-sky-100 bg-gradient-to-br from-sky-50 via-white to-indigo-50 p-4 sm:p-5 shadow-[0_4px_0_#DCEAF6]" aria-labelledby="telegram-connection-title">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="flex min-w-0 items-start gap-3">
           <div class="tg-connection-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-200">
@@ -311,45 +547,22 @@
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
               <h2 id="telegram-connection-title" class="text-base font-black text-slate-900">Telegram и уведомления</h2>
-              <span id="tg-status-pill" class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-extrabold text-slate-600">Проверяем статус…</span>
+              <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[11px] font-black text-amber-800">Скоро</span>
             </div>
-            <p id="tg-status-description" class="mt-1 text-sm leading-5 text-slate-600">Подключите Telegram, чтобы получать уведомления и открывать BooStudy из бота.</p>
+            <p id="tg-status-description" class="mt-1 text-sm leading-5 text-slate-600">Интеграция с Telegram-ботом и мгновенные уведомления скоро появятся на платформе.</p>
           </div>
         </div>
         <div class="flex flex-wrap gap-2 lg:justify-end">
-          <button id="tg-connect-button" type="button" onclick="startTelegramConnection()" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_#0284C7] transition hover:bg-sky-600 active:translate-y-0.5 active:shadow-none">
-            <i class="ph-bold ph-link"></i><span>Подключить Telegram</span>
+          <button type="button" disabled class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-100 border border-slate-200 px-4 py-2 text-sm font-bold text-slate-400 cursor-not-allowed">
+            <i class="ph-bold ph-hourglass-medium"></i><span>Скоро</span>
           </button>
-          <button type="button" onclick="refreshTelegramStatus()" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50" aria-label="Обновить статус Telegram">
-            <i class="ph-bold ph-arrows-clockwise"></i><span class="hidden sm:inline">Обновить</span>
-          </button>
-          <button id="tg-notifications-button" type="button" onclick="toggleTelegramNotifications()" hidden class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100"></button>
-          <button id="tg-unlink-button" type="button" onclick="unlinkTelegram()" hidden class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-bold text-rose-600 transition hover:bg-rose-50">Отвязать</button>
-        </div>
-      </div>
-
-      <div id="tg-link-panel" hidden class="mt-4 rounded-2xl border border-sky-200 bg-white/90 p-4">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p class="text-sm font-extrabold text-slate-900">Ссылка готова на 15 минут</p>
-            <p class="mt-0.5 text-xs leading-5 text-slate-500">Откройте бота по ссылке — аккаунт подключится автоматически. Если Telegram не открывается, отправьте код в чат с ботом.</p>
-          </div>
-          <a id="tg-deep-link" href="#" target="_blank" rel="noopener" class="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white no-underline shadow-[0_3px_0_#4338CA] transition hover:bg-indigo-700 active:translate-y-0.5 active:shadow-none">
-            <i class="ph-bold ph-paper-plane-tilt"></i>Открыть бота
-          </a>
-        </div>
-        <div class="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-3">
-          <span class="text-xs font-bold text-slate-500">Код:</span>
-          <code id="tg-link-code" class="rounded-lg bg-white px-2.5 py-1.5 font-mono text-base font-black tracking-widest text-slate-900 shadow-xs"></code>
-          <button type="button" onclick="copyTelegramLinkCode()" class="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-extrabold text-slate-700 transition hover:bg-slate-100">Скопировать</button>
-          <span id="tg-link-expiry" class="ml-auto text-xs font-semibold text-slate-500"></span>
         </div>
       </div>
     </section>
     {% endif %}
 
     <!-- 2. METRICS ROW (4 Cards in 1 Row - Level moved below to main content) -->
-    <div class="profile-metrics grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 mt-3.5">
+    <div class="profile-metrics grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mt-6">
       
       <!-- Metric 1: Прогресс обучения (Real DB Calculation) -->
       <div class="bg-white border-2 border-slate-200/90 rounded-[1.5rem] p-4 shadow-[0_4px_0_#DAE1E9] flex flex-col justify-between gap-2.5 transition-transform hover:-translate-y-0.5">
@@ -442,10 +655,10 @@
     </div>
 
     <!-- 3. MAIN CONTENT (2 Columns: Left 7 cols, Right 5 cols) -->
-    <div class="profile-main-grid grid grid-cols-1 lg:grid-cols-12 gap-3.5 mt-3.5 items-start">
+    <div class="profile-main-grid grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 items-start">
       
       <!-- LEFT COLUMN (7 cols) -->
-      <div class="lg:col-span-7 space-y-3.5">
+      <div class="lg:col-span-7 flex flex-col gap-6">
         
         <!-- Card 1: ТЕКУЩИЙ УРОВЕНЬ (Replaces 'Текущая тема' as requested) -->
         <div class="bg-white border-2 border-slate-200/90 rounded-[1.75rem] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9] space-y-4">
@@ -602,7 +815,7 @@
       </div>
 
       <!-- RIGHT COLUMN (5 cols) -->
-      <div class="lg:col-span-5 space-y-3.5">
+      <div class="lg:col-span-5 flex flex-col gap-6">
         
         <!-- Card 1: Мои награды -->
         <div class="bg-white border-2 border-slate-200/90 rounded-[1.75rem] p-5 sm:p-6 shadow-[0_4px_0_#DAE1E9] space-y-4">
@@ -735,13 +948,45 @@
   </div>
 </main>
 
-<div id="image-crop-modal" class="fixed inset-0 z-[10030] hidden items-center justify-center bg-slate-950/70 p-3">
-  <div class="w-full max-w-2xl rounded-[2rem] border-2 border-slate-200 bg-white p-4 sm:p-6 shadow-[0_8px_0_#DAE1E9]">
-    <div class="mb-3 flex items-center justify-between"><div><p class="text-[10px] font-black uppercase tracking-widest text-indigo-500">Подготовка изображения</p><h2 id="crop-title" class="text-lg font-black text-slate-900">Аватар</h2></div><button type="button" onclick="closeImageCrop()" class="rounded-xl bg-slate-100 p-2 text-slate-600"><i class="ph-bold ph-x"></i></button></div>
-    <div class="overflow-hidden rounded-2xl bg-slate-100"><canvas id="image-crop-canvas" class="mx-auto block max-h-[52vh] max-w-full touch-none"></canvas></div>
-    <label class="mt-4 block text-xs font-black text-slate-600">Масштаб <input id="crop-scale" type="range" min="1" max="3" step="0.01" value="1" class="mt-2 w-full" oninput="updateCropScale(this.value)"></label>
-    <p class="mt-2 text-xs font-medium text-slate-400">Перетаскивай изображение пальцем или мышью, чтобы выбрать положение.</p>
-    <div class="mt-4 flex justify-end gap-2"><button type="button" onclick="closeImageCrop()" class="rounded-xl bg-slate-100 px-4 py-2.5 text-xs font-black text-slate-600">Отмена</button><button type="button" onclick="applyImageCrop()" class="rounded-xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2.5 text-xs font-black text-white">Готово</button></div>
+<div id="image-crop-modal" class="fixed inset-0 z-[10030] hidden items-center justify-center bg-slate-950/70 p-3 sm:p-5">
+  <div class="w-full max-w-xl rounded-[2.25rem] border-2 border-slate-300 bg-white p-5 sm:p-6 shadow-[0_25px_65px_-12px_rgba(15,23,42,0.55),0_8px_0_#CBD5E1] flex flex-col">
+    <div class="mb-3.5 flex items-center justify-between pb-3 border-b-2 border-slate-100 shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 border-2 border-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg shadow-[0_2px_0_#C7D2FE]">
+          <i class="ph-bold ph-crop"></i>
+        </div>
+        <div>
+          <span class="text-[10px] font-black uppercase tracking-wider text-indigo-600">Подготовка изображения</span>
+          <h2 id="crop-title" class="text-base sm:text-lg font-black text-slate-900 font-display mb-0">Кадрирование</h2>
+        </div>
+      </div>
+      <button type="button" onclick="closeImageCrop()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-all cursor-pointer border-0 active:translate-y-0.5" title="Закрыть">
+        <i class="ph-bold ph-x text-sm"></i>
+      </button>
+    </div>
+    
+    <div class="overflow-hidden rounded-2xl bg-slate-900 border-2 border-slate-200 flex-1 min-h-0 flex items-center justify-center relative">
+      <canvas id="image-crop-canvas" class="mx-auto block max-h-[46vh] max-w-full touch-none select-none"></canvas>
+    </div>
+
+    <div class="mt-3.5 pt-3 border-t-2 border-slate-100 shrink-0 space-y-3">
+      <div class="flex items-center justify-between gap-4">
+        <label for="crop-scale" class="text-xs font-black text-slate-700 flex items-center gap-1.5 shrink-0">
+          <i class="ph-bold ph-magnifying-glass-plus text-indigo-600"></i> Масштаб
+        </label>
+        <input id="crop-scale" type="range" min="1" max="3" step="0.01" value="1" class="flex-1 accent-indigo-600 cursor-pointer" oninput="updateCropScale(this.value)">
+      </div>
+      <p class="text-[11px] font-bold text-slate-400 mb-0">Перетаскивай изображение пальцем или мышью, чтобы выбрать нужный фрагмент.</p>
+    </div>
+
+    <div class="mt-4 pt-3 border-t-2 border-slate-100 flex items-center justify-end gap-2.5 shrink-0">
+      <button type="button" onclick="closeImageCrop()" class="px-5 py-2.5 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-black text-xs shadow-[0_2px_0_#CBD5E1] active:translate-y-0.5 transition-all cursor-pointer">
+        Отмена
+      </button>
+      <button type="button" onclick="applyImageCrop()" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-[0_3px_0_#4338CA] active:translate-y-0.5 transition-all cursor-pointer border-0 uppercase tracking-wider">
+        Готово
+      </button>
+    </div>
   </div>
 </div>
 
@@ -749,19 +994,87 @@
    A demo account has its own visual-novel onboarding, so it must be the only
    foreground layer on this page. #}
 {% if show_profile_onboarding is defined and show_profile_onboarding and not (current_user.is_authenticated and current_user.is_demo_user) %}
-<div id="profile-onboarding" class="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/45 backdrop-blur-sm p-4">
-  <section class="w-full max-w-lg rounded-[2rem] border-2 border-slate-200 bg-white p-6 sm:p-8 shadow-[0_8px_0_#DAE1E9]">
-    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500">Первый вход</p>
-    <h2 class="mt-2 text-2xl font-black text-slate-900">Собери свой профиль за минуту</h2>
-    <p class="mt-2 text-sm font-medium text-slate-500">Здесь пока нет вымышленных достижений: показатели появятся по мере твоей реальной работы.</p>
-    <ol class="mt-5 space-y-3 text-sm font-bold text-slate-700">
-      <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">1</span><span>Нажми на аватар или «Редактировать» — добавь фото, класс и пару слов о себе.</span></li>
-      <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">2</span><span>Сформулируй главную цель и добавь 1–3 цели на эту неделю справа.</span></li>
-      <li class="flex gap-3"><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">3</span><span>После первого урока и выполненных заданий здесь появятся посещаемость, стрик и награды.</span></li>
-    </ol>
-    <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <button type="button" onclick="finishProfileOnboarding(false)" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600">Позже</button>
-      <button type="button" onclick="finishProfileOnboarding(true)" class="rounded-xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2.5 text-xs font-black text-white">Заполнить профиль</button>
+<div id="profile-onboarding" class="fixed inset-0 flex items-center justify-center p-3 sm:p-5">
+  <section class="w-full max-w-lg rounded-[2.25rem] border-2 border-slate-300 bg-white p-6 sm:p-7 relative flex flex-col shadow-[0_25px_65px_-12px_rgba(15,23,42,0.55),0_8px_0_#CBD5E1] overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-3 shrink-0 mb-3">
+      <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-2xl bg-indigo-600 border-2 border-indigo-700 text-white flex items-center justify-center text-2xl shadow-[0_3px_0_#4338CA] shrink-0">
+          <i class="ph-fill ph-sparkle"></i>
+        </div>
+        <div>
+          <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1">
+            <i class="ph-bold ph-hand-waving"></i> Первый вход
+          </span>
+          <h2 class="text-xl sm:text-2xl font-black text-slate-900 font-display tracking-tight mt-0.5 mb-0">Собери свой профиль</h2>
+        </div>
+      </div>
+      <button type="button" onclick="finishProfileOnboarding(false)" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-all cursor-pointer border-0 active:translate-y-0.5 shrink-0" title="Закрыть">
+        <i class="ph-bold ph-x text-base"></i>
+      </button>
+    </div>
+    
+    <p class="text-xs font-bold text-slate-500 leading-relaxed shrink-0 mb-4">
+      Добро пожаловать в BooStudy! Выполни несколько простых шагов, чтобы подготовить профиль к комфортным занятиям:
+    </p>
+
+    <!-- Scrollable Steps List -->
+    <div class="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
+      <div class="p-3.5 rounded-2xl bg-slate-50 border-2 border-slate-200/90 shadow-[0_2px_0_#DAE1E9] flex items-start gap-3.5 transition-all hover:bg-slate-50/80">
+        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-[0_2px_0_#4338CA] shrink-0">
+          1
+        </div>
+        <div class="min-w-0 flex-1">
+          <h4 class="text-xs font-black text-slate-900 mb-0.5 flex items-center gap-1.5">
+            <span>Фото, класс и контакты</span>
+            <i class="ph-bold ph-user-circle text-indigo-500 text-sm"></i>
+          </h4>
+          <p class="text-[11px] font-bold text-slate-500 leading-snug mb-0">
+            Нажми на аватар или «Редактировать» — установи фотографию, укажи свой класс и Telegram для связи с куратором.
+          </p>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-slate-50 border-2 border-slate-200/90 shadow-[0_2px_0_#DAE1E9] flex items-start gap-3.5 transition-all hover:bg-slate-50/80">
+        <div class="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center font-black text-sm shadow-[0_2px_0_#6D28D9] shrink-0">
+          2
+        </div>
+        <div class="min-w-0 flex-1">
+          <h4 class="text-xs font-black text-slate-900 mb-0.5 flex items-center gap-1.5">
+            <span>Цели на неделю</span>
+            <i class="ph-bold ph-crosshair text-purple-500 text-sm"></i>
+          </h4>
+          <p class="text-[11px] font-bold text-slate-500 leading-snug mb-0">
+            Поставь планку по решённым задачам — это поможет держать темп и фокус на пути к высоким баллам.
+          </p>
+        </div>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-slate-50 border-2 border-slate-200/90 shadow-[0_2px_0_#DAE1E9] flex items-start gap-3.5 transition-all hover:bg-slate-50/80">
+        <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shadow-[0_2px_0_#D97706] shrink-0">
+          3
+        </div>
+        <div class="min-w-0 flex-1">
+          <h4 class="text-xs font-black text-slate-900 mb-0.5 flex items-center gap-1.5">
+            <span>Опыт, ранги и награды</span>
+            <i class="ph-bold ph-trophy text-amber-500 text-sm"></i>
+          </h4>
+          <p class="text-[11px] font-bold text-slate-500 leading-snug mb-0">
+            После каждого решённого задания здесь будут начисляться XP, открываться ачивки и расти твой стрик активности.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky Footer -->
+    <div class="shrink-0 pt-4 mt-3 border-t-2 border-slate-100 flex items-center justify-between gap-3 bg-white">
+      <button type="button" onclick="finishProfileOnboarding(false)" class="px-5 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 font-black text-xs shadow-[0_2px_0_#DAE1E9] active:translate-y-0.5 transition-all cursor-pointer">
+        Позже
+      </button>
+      <button type="button" onclick="finishProfileOnboarding(true)" class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-[0_3px_0_#4338CA] active:translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer border-0 uppercase tracking-wider">
+        <i class="ph-bold ph-pencil-simple text-sm"></i>
+        <span>Заполнить профиль →</span>
+      </button>
     </div>
   </section>
 </div>
@@ -812,25 +1125,25 @@
 
     <!-- Module Filter Tabs -->
     <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pt-3 pb-1 shrink-0 border-b border-slate-100">
-      <button type="button" onclick="filterRanksTab('all')" id="rank-tab-all" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-2xs whitespace-nowrap">
+      <button type="button" onclick="filterRanksTab('all')" id="rank-tab-all" class="rank-tab-btn active">
         Все (50)
       </button>
-      <button type="button" onclick="filterRanksTab('python')" id="rank-tab-python" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+      <button type="button" onclick="filterRanksTab('python')" id="rank-tab-python" class="rank-tab-btn">
         Основы Python (1–15)
       </button>
-      <button type="button" onclick="filterRanksTab('base')" id="rank-tab-base" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+      <button type="button" onclick="filterRanksTab('base')" id="rank-tab-base" class="rank-tab-btn">
         Базовый КЕГЭ (16–30)
       </button>
-      <button type="button" onclick="filterRanksTab('hard')" id="rank-tab-hard" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+      <button type="button" onclick="filterRanksTab('hard')" id="rank-tab-hard" class="rank-tab-btn">
         Сложный КЕГЭ (31–45)
       </button>
-      <button type="button" onclick="filterRanksTab('top')" id="rank-tab-top" class="py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+      <button type="button" onclick="filterRanksTab('top')" id="rank-tab-top" class="rank-tab-btn">
         Курс на 100 (46–50)
       </button>
     </div>
 
     <!-- Levels & Ranks Progression Grid (50 levels) -->
-    <div class="flex-1 overflow-y-auto pr-1 mt-3 space-y-3 custom-scrollbar" id="ranks-cards-scroll">
+    <div class="flex-1 min-h-0 overflow-y-auto pr-1 mt-3 space-y-3 custom-scrollbar" id="ranks-cards-scroll">
       {% for rank in all_ranks_list %}
       <div {% if rank.status == 'current' %}id="rank-card-current"{% endif %} data-group="{% if rank.level <= 15 %}python{% elif rank.level <= 30 %}base{% elif rank.level <= 45 %}hard{% else %}top{% endif %}" class="rank-card-item p-4 rounded-2xl border-2 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4
         {% if rank.status == 'current' %}
@@ -928,36 +1241,27 @@
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 pb-3 shrink-0">
       <!-- Tabs (Pills) -->
       <div class="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl overflow-x-auto">
-        <button type="button" onclick="filterAchievementsTab('all')" id="ach-tab-all" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-sm whitespace-nowrap">
+        <button type="button" onclick="filterAchievementsTab('all')" id="ach-tab-all" class="ach-tab-btn active">
           Все ({{ detailed_achievements|length }})
         </button>
-        <button type="button" onclick="filterAchievementsTab('unlocked')" id="ach-tab-unlocked" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+        <button type="button" onclick="filterAchievementsTab('unlocked')" id="ach-tab-unlocked" class="ach-tab-btn">
           Полученные ({{ unlocked_ach_cnt }})
         </button>
-        <button type="button" onclick="filterAchievementsTab('in_progress')" id="ach-tab-in_progress" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+        <button type="button" onclick="filterAchievementsTab('in_progress')" id="ach-tab-in_progress" class="ach-tab-btn">
           В процессе ({{ in_progress_ach_cnt }})
         </button>
-        <button type="button" onclick="filterAchievementsTab('locked')" id="ach-tab-locked" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap">
+        <button type="button" onclick="filterAchievementsTab('locked')" id="ach-tab-locked" class="ach-tab-btn">
           Недоступные ({{ locked_ach_cnt }})
         </button>
-        <button type="button" onclick="filterAchievementsTab('secret')" id="ach-tab-secret" class="py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap flex items-center gap-1">
+        <button type="button" onclick="filterAchievementsTab('secret')" id="ach-tab-secret" class="ach-tab-btn">
           <i class="ph-bold ph-mask-happy text-purple-500"></i>
           <span>Секретные ({{ secret_ach_cnt }})</span>
-        </button>
-      </div>
-
-      <!-- Sorting Pill -->
-      <div class="relative shrink-0 self-end sm:self-auto">
-        <button type="button" class="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs cursor-pointer border-0">
-          <i class="ph-fill ph-star text-amber-400"></i>
-          <span>По редкости</span>
-          <i class="ph-bold ph-caret-down text-xs text-slate-400"></i>
         </button>
       </div>
     </div>
 
     <!-- Modal Content: 2 Columns (Left: 3x3 Grid, Right: 4 Bento Cards) -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto pr-1 custom-scrollbar flex-1 pt-1 pb-2">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto pr-1 custom-scrollbar flex-1 min-h-0 pt-1 pb-2">
       
       <!-- LEFT: 3 Columns Grid for Achievements (Cols 8) -->
       <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 auto-rows-max" id="achievements-cards-grid">
@@ -1165,7 +1469,7 @@
     </div>
 
     <!-- Activity Timeline List -->
-    <div class="flex-1 overflow-y-auto pr-1 py-4 space-y-3 custom-scrollbar">
+    <div class="flex-1 min-h-0 overflow-y-auto pr-1 py-4 space-y-3 custom-scrollbar">
       {% if all_activities %}
         {% for act in all_activities %}
         <div class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 flex items-center justify-between gap-4 transition-colors">
@@ -1226,7 +1530,7 @@
     </div>
 
     <!-- Goals Editor List -->
-    <div class="flex-1 overflow-y-auto pr-1 py-4 space-y-3 custom-scrollbar" id="modal-goals-list">
+    <div class="flex-1 min-h-0 overflow-y-auto pr-1 py-4 space-y-3 custom-scrollbar" id="modal-goals-list">
       {% for g in formatted_goals %}
       <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5" id="goal-row-{{ g.item_id }}">
         <div class="flex items-center gap-2">
@@ -1292,138 +1596,221 @@
 </div>
 
 <!-- BENTO 3D EDIT PROFILE MODAL -->
-<div id="profile-edit-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
-  <div id="profile-edit-card" class="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] w-full max-w-xl max-h-[92vh] overflow-y-auto p-6 sm:p-8 space-y-6 relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
+<div id="profile-edit-modal" class="fixed inset-0 hidden flex items-center justify-center p-3 sm:p-5">
+  <div id="profile-edit-card" class="bg-white border-2 border-slate-300 shadow-[0_25px_65px_-12px_rgba(15,23,42,0.55),0_8px_0_#CBD5E1] w-full max-w-2xl max-h-[calc(100vh-2rem)] flex flex-col relative overflow-hidden transform transition-all scale-95 opacity-0 duration-300">
     
-    <!-- Modal Header -->
-    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xl shadow-xs">
+    <!-- Modal Header (Sticky Top) -->
+    <div class="px-6 py-5 sm:px-7 sm:py-5 border-b-2 border-slate-100 flex items-center justify-between shrink-0 bg-white">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-2xl bg-indigo-50 border-2 border-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xl shadow-[0_2px_0_#C7D2FE]">
           <i class="ph-bold ph-pencil-simple"></i>
         </div>
         <div>
-          <h3 class="text-lg font-black text-slate-800 font-display mb-0">Редактирование профиля</h3>
-          <p class="text-xs font-medium text-slate-400 mb-0">Личные данные, класс, аватар и контакты</p>
+          <h3 class="text-lg sm:text-xl font-black text-slate-900 font-display mb-0">Редактирование профиля</h3>
+          <p class="text-xs font-bold text-slate-400 mb-0">Личные данные, класс, аватар и контакты</p>
         </div>
       </div>
-      <button onclick="closeProfileEditModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+      <button type="button" onclick="closeProfileEditModal()" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition-all cursor-pointer border-0 active:translate-y-0.5" title="Закрыть">
         <i class="ph-bold ph-x text-base"></i>
       </button>
     </div>
 
-    <!-- Modal Form -->
-    <form id="profile-edit-form" class="space-y-4" enctype="multipart/form-data">
+    <!-- Modal Form (Flex Column) -->
+    <form id="profile-edit-form" class="flex flex-col flex-1 min-h-0 overflow-hidden" enctype="multipart/form-data">
       <input type="hidden" name="target_user_id" value="{{ display_user.id }}">
       
-      <!-- Full Name & Class Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="space-y-1.5">
-          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Имя и фамилия</label>
-          <input type="text" name="full_name" id="edit-full-name" value="{{ user_name }}" placeholder="Имя и Фамилия" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Класс / Обучение</label>
-          <select name="school_class" id="edit-school-class" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-            <option value="" {% if not school_class_display %}selected{% endif %}>Не указано (Ученик)</option>
-            <option value="9" {% if school_class_display == '9' %}selected{% endif %}>9 класс</option>
-            <option value="10" {% if school_class_display == '10' %}selected{% endif %}>10 класс</option>
-            <option value="11" {% if school_class_display == '11' %}selected{% endif %}>11 класс</option>
-            <option value="university" {% if school_class_display == 'Университет' or (student_obj and student_obj.school_class == 12) %}selected{% endif %}>Университет (ВУЗ)</option>
-          </select>
-        </div>
-      </div>
+      <!-- Scrollable Form Body -->
+      <div class="p-6 sm:p-7 overflow-y-auto flex-1 min-h-0 space-y-5 custom-scrollbar">
 
-      <!-- Telegram Username / Link -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Telegram (юзернейм без @)</label>
-        <div class="relative">
-          <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">@</span>
-          <input type="text" name="telegram_link" id="edit-telegram-link" value="{{ (student_obj.telegram_username if (student_obj and student_obj.telegram_username) else (student_obj.telegram if (student_obj and student_obj.telegram) else (display_user.telegram_username or display_user.telegram_link))) or '' }}" placeholder="username" class="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-        </div>
-      </div>
-
-      <!-- Avatar Upload & URL -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Аватар (Загрузить файл или Ссылка)</label>
-        <input type="file" name="avatar_file" id="edit-avatar-file" accept="image/*" onchange="beginImageCrop(this, 'avatar')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-black file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
-        <input type="text" name="avatar_url" id="edit-avatar-url" value="{{ user_avatar }}" placeholder="Или вставьте URL ссылки" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 mt-1">
-      </div>
-
-      <!-- Cover Upload & URL -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Обложка / Баннер (Загрузить файл или Ссылка)</label>
-        <input type="file" name="cover_file" id="edit-cover-file" accept="image/*" onchange="beginImageCrop(this, 'cover')" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-black file:bg-indigo-100 file:text-indigo-700 hover:file:bg-indigo-200 cursor-pointer">
-        <input type="text" name="cover_url" id="edit-cover-url" value="{{ user_cover if user_cover else '' }}" placeholder="Или вставьте URL (или оставьте пустым для градиента)" class="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 mt-1">
-      </div>
-
-      <!-- Bio / About Me -->
-      <div class="space-y-1.5">
-        <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">О себе (Био)</label>
-        <textarea name="about_me" id="edit-about-me" rows="3" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-indigo-500 resize-none">{{ user_bio }}</textarea>
-      </div>
-
-      <!-- Goal Text & Target Score Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="space-y-1.5">
-          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Главная цель обучения</label>
-          <input type="text" name="goal_text" id="edit-goal-text" value="{{ student_obj.goal_text if (student_obj and student_obj.goal_text) else '' }}" placeholder="Например: сдать КЕГЭ на 85 баллов" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-        </div>
-        <div class="space-y-1.5">
-          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Целевой балл КЕГЭ</label>
-          <input type="number" name="target_score" id="edit-target-score" min="0" max="100" value="{{ student_obj.target_score if (student_obj and student_obj.target_score) else 80 }}" placeholder="80" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-        </div>
-      </div>
-
-      <!-- Timezone & Password Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between mb-1">
-            <label class="text-xs font-black text-slate-700 uppercase tracking-wider block">Часовой пояс</label>
-            <span id="tz-current-time-indicator" class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100"></span>
+        <!-- Full Name & Class Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block">Имя и фамилия</label>
+            <input type="text" name="full_name" id="edit-full-name" value="{{ user_name }}" placeholder="Имя и Фамилия" class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border-2 border-slate-200/90 focus:border-indigo-500 rounded-xl text-xs font-black text-slate-800 shadow-[0_2px_0_#DAE1E9] focus:shadow-[0_2px_0_#6366F1] focus:outline-none transition-all">
           </div>
-          <div class="flex items-center gap-3 mb-2">
-            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer">
-              <input type="radio" name="timezone_mode" value="auto" id="tz-mode-auto" {% if (user_timezone_mode or 'auto') == 'auto' %}checked{% endif %} onchange="toggleTimezoneSelectMode(this.value)" class="text-indigo-600 focus:ring-indigo-500">
-              <span>Авто (из браузера)</span>
-            </label>
-            <label class="flex items-center gap-1.5 text-xs font-bold text-slate-600 cursor-pointer">
-              <input type="radio" name="timezone_mode" value="manual" id="tz-mode-manual" {% if user_timezone_mode == 'manual' %}checked{% endif %} onchange="toggleTimezoneSelectMode(this.value)" class="text-indigo-600 focus:ring-indigo-500">
-              <span>Вручную</span>
-            </label>
+          <div class="space-y-1.5 relative">
+            <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block">Класс / Обучение</label>
+            <input type="hidden" name="school_class" id="edit-school-class-input" value="{{ '9' if school_class_display == '9' else ('10' if school_class_display == '10' else ('11' if school_class_display == '11' else ('university' if (school_class_display == 'Университет' or (student_obj and student_obj.school_class == 12)) else ''))) }}">
+            
+            <div class="relative" id="custom-class-dropdown">
+              <button type="button" onclick="toggleCustomDropdown('custom-class-dropdown')" class="bs-custom-trigger">
+                <span id="custom-class-label" class="truncate">
+                  {% if school_class_display == '9' %}9 класс
+                  {% elif school_class_display == '10' %}10 класс
+                  {% elif school_class_display == '11' %}11 класс
+                  {% elif school_class_display == 'Университет' or (student_obj and student_obj.school_class == 12) %}Университет (ВУЗ)
+                  {% else %}Не указано (Ученик){% endif %}
+                </span>
+                <i class="ph-bold ph-caret-down text-slate-400 text-sm transition-transform duration-200"></i>
+              </button>
+
+              <div class="bs-custom-menu hidden custom-scrollbar">
+                <button type="button" onclick="selectCustomClass('', 'Не указано (Ученик)')" class="bs-custom-option">
+                  <span>Не указано (Ученик)</span>
+                  <i class="ph-bold ph-check text-indigo-600 check-icon {% if school_class_display in ['9','10','11','Университет'] %}hidden{% endif %}"></i>
+                </button>
+                <button type="button" onclick="selectCustomClass('9', '9 класс')" class="bs-custom-option">
+                  <span>9 класс</span>
+                  <i class="ph-bold ph-check text-indigo-600 check-icon {% if school_class_display != '9' %}hidden{% endif %}"></i>
+                </button>
+                <button type="button" onclick="selectCustomClass('10', '10 класс')" class="bs-custom-option">
+                  <span>10 класс</span>
+                  <i class="ph-bold ph-check text-indigo-600 check-icon {% if school_class_display != '10' %}hidden{% endif %}"></i>
+                </button>
+                <button type="button" onclick="selectCustomClass('11', '11 класс')" class="bs-custom-option">
+                  <span>11 класс</span>
+                  <i class="ph-bold ph-check text-indigo-600 check-icon {% if school_class_display != '11' %}hidden{% endif %}"></i>
+                </button>
+                <button type="button" onclick="selectCustomClass('university', 'Университет (ВУЗ)')" class="bs-custom-option">
+                  <span>Университет (ВУЗ)</span>
+                  <i class="ph-bold ph-check text-indigo-600 check-icon {% if not (school_class_display == 'Университет' or (student_obj and student_obj.school_class == 12)) %}hidden{% endif %}"></i>
+                </button>
+              </div>
+            </div>
           </div>
-          <select name="timezone_iana" id="edit-timezone" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 transition-all {% if (user_timezone_mode or 'auto') == 'auto' %}opacity-60 cursor-not-allowed{% endif %}" {% if (user_timezone_mode or 'auto') == 'auto' %}disabled{% endif %}>
+        </div>
+
+        <!-- Telegram Username / Link -->
+        <div class="space-y-1.5">
+          <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block">Telegram (юзернейм без @)</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-4 pointer-events-none text-slate-400 font-bold text-sm">@</span>
+            <input type="text" name="telegram_link" id="edit-telegram-link" value="{{ (student_obj.telegram_username if (student_obj and student_obj.telegram_username) else (student_obj.telegram if (student_obj and student_obj.telegram) else (display_user.telegram_username or display_user.telegram_link))) or '' }}" placeholder="username" style="padding-left: 42px !important;" class="w-full pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border-2 border-slate-200/90 focus:border-indigo-500 rounded-xl text-xs font-black text-slate-800 shadow-[0_2px_0_#DAE1E9] focus:shadow-[0_2px_0_#6366F1] focus:outline-none transition-all">
+          </div>
+        </div>
+
+        <!-- Avatar Upload & URL -->
+        <div class="space-y-1.5">
+          <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block">Аватар</label>
+          <div class="flex items-center gap-3.5 p-3.5 bg-slate-50 border-2 border-slate-200/90 rounded-2xl shadow-[0_2px_0_#DAE1E9]">
+            <img src="{{ user_avatar }}" id="edit-avatar-preview" alt="Avatar Preview" class="w-12 h-12 rounded-xl object-cover border-2 border-indigo-200 shrink-0 shadow-xs">
+            <div class="flex-1 min-w-0 flex flex-col gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="document.getElementById('edit-avatar-file').click()" class="px-3.5 py-1.5 bg-white hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 border-2 border-indigo-200/90 rounded-xl text-xs font-black shadow-[0_2px_0_#C7D2FE] active:translate-y-0.5 transition-all flex items-center gap-1.5 cursor-pointer">
+                  <i class="ph-bold ph-upload-simple"></i> <span>Выбрать файл</span>
+                </button>
+                <span class="text-[11px] font-bold text-slate-400 truncate" id="edit-avatar-filename">или URL картинки:</span>
+              </div>
+              <input type="file" name="avatar_file" id="edit-avatar-file" accept="image/*" onchange="handleAvatarFileSelect(this)" class="hidden">
+              <input type="text" name="avatar_url" id="edit-avatar-url" value="{{ user_avatar }}" placeholder="https://example.com/avatar.png" class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Bio / About Me -->
+        <div class="space-y-1.5">
+          <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block">О себе (Био)</label>
+          <textarea name="about_me" id="edit-about-me" rows="3" placeholder="Расскажи немного о себе, своих интересах и целях..." class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border-2 border-slate-200/90 focus:border-indigo-500 rounded-xl text-xs font-medium text-slate-800 shadow-[0_2px_0_#DAE1E9] focus:shadow-[0_2px_0_#6366F1] focus:outline-none transition-all resize-none">{{ user_bio }}</textarea>
+        </div>
+
+        <!-- Goal Text & Target Score Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block">Главная цель обучения</label>
+            <input type="text" name="goal_text" id="edit-goal-text" value="{{ student_obj.goal_text if (student_obj and student_obj.goal_text) else '' }}" placeholder="Например: сдать КЕГЭ на 85 баллов" class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border-2 border-slate-200/90 focus:border-indigo-500 rounded-xl text-xs font-black text-slate-800 shadow-[0_2px_0_#DAE1E9] focus:shadow-[0_2px_0_#6366F1] focus:outline-none transition-all">
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block">Целевой балл КЕГЭ</label>
+            <input type="number" name="target_score" id="edit-target-score" min="0" max="100" value="{{ student_obj.target_score if (student_obj and student_obj.target_score) else 80 }}" placeholder="80" class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border-2 border-slate-200/90 focus:border-indigo-500 rounded-xl text-xs font-black text-slate-800 shadow-[0_2px_0_#DAE1E9] focus:shadow-[0_2px_0_#6366F1] focus:outline-none transition-all">
+          </div>
+        </div>
+
+        <!-- Timezone & Password Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block">Часовой пояс</label>
+              <span id="tz-current-time-indicator" class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100"></span>
+            </div>
+            
+            <!-- Mode Switcher Pill Tabs -->
+            <div class="inline-flex p-1 bg-slate-100 border border-slate-200 rounded-xl gap-1 mb-2">
+              <label class="cursor-pointer m-0">
+                <input type="radio" name="timezone_mode" value="auto" id="tz-mode-auto" {% if (user_timezone_mode or 'auto') == 'auto' %}checked{% endif %} onchange="toggleTimezoneSelectMode(this.value)" class="tz-mode-radio sr-only">
+                <span class="tz-mode-tab">
+                  <i class="ph-bold ph-magic-wand text-xs"></i> Авто
+                </span>
+              </label>
+              <label class="cursor-pointer m-0">
+                <input type="radio" name="timezone_mode" value="manual" id="tz-mode-manual" {% if user_timezone_mode == 'manual' %}checked{% endif %} onchange="toggleTimezoneSelectMode(this.value)" class="tz-mode-radio sr-only">
+                <span class="tz-mode-tab">
+                  <i class="ph-bold ph-sliders-horizontal text-xs"></i> Вручную
+                </span>
+              </label>
+            </div>
+
+            <!-- Custom Styled Timezone Select Dropdown -->
+            {% set current_tz = user_timezone_iana or profile_timezone or user_timezone_effective or 'Europe/Moscow' %}
+            {% set found_label = namespace(val='Москва, Санкт-Петербург (МСК / UTC+3)') %}
             {% if available_timezones_grouped %}
               {% for grp in available_timezones_grouped %}
-              <optgroup label="{{ grp.group }}">
                 {% for z in grp.zones %}
-                <option value="{{ z.key }}" {% if (user_timezone_iana or profile_timezone or user_timezone_effective) == z.key %}selected{% endif %}>{{ z.full_label }}</option>
+                  {% if z.key == current_tz %}{% set found_label.val = z.full_label %}{% endif %}
                 {% endfor %}
-              </optgroup>
               {% endfor %}
-            {% else %}
-              <option value="Europe/Moscow" selected>Москва, Санкт-Петербург (МСК / UTC+3)</option>
-              <option value="Asia/Yekaterinburg">Екатеринбург (МСК+2 / UTC+5)</option>
-              <option value="Asia/Novosibirsk">Новосибирск (МСК+4 / UTC+7)</option>
-              <option value="UTC">UTC (Всемирное время)</option>
             {% endif %}
-          </select>
+
+            <input type="hidden" name="timezone_iana" id="edit-timezone-input" value="{{ current_tz }}">
+
+            <div class="relative" id="custom-timezone-dropdown">
+              <button type="button" id="custom-timezone-trigger" onclick="toggleCustomDropdown('custom-timezone-dropdown')" class="bs-custom-trigger {% if (user_timezone_mode or 'auto') == 'auto' %}opacity-60 cursor-not-allowed pointer-events-none{% endif %}">
+                <span id="custom-timezone-label" class="truncate">{{ found_label.val }}</span>
+                <i class="ph-bold ph-caret-down text-slate-400 text-sm transition-transform duration-200"></i>
+              </button>
+
+              <div class="bs-custom-menu hidden custom-scrollbar">
+                {% if available_timezones_grouped %}
+                  {% for grp in available_timezones_grouped %}
+                    <div class="px-3 pt-2.5 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50/90 rounded-lg my-1 select-none">
+                      {{ grp.group }}
+                    </div>
+                    {% for z in grp.zones %}
+                      <button type="button" onclick="selectCustomTimezone('{{ z.key }}', '{{ z.full_label|replace('\'', '\\\'') }}')" data-tz="{{ z.key }}" class="bs-custom-option bs-tz-option {% if z.key == current_tz %}selected{% endif %}">
+                        <span class="truncate">{{ z.full_label }}</span>
+                        <i class="ph-bold ph-check text-indigo-600 check-icon {% if z.key != current_tz %}hidden{% endif %}"></i>
+                      </button>
+                    {% endfor %}
+                  {% endfor %}
+                {% else %}
+                  <button type="button" onclick="selectCustomTimezone('Europe/Moscow', 'Москва, Санкт-Петербург (МСК / UTC+3)')" data-tz="Europe/Moscow" class="bs-custom-option bs-tz-option selected">
+                    <span>Москва, Санкт-Петербург (МСК / UTC+3)</span>
+                    <i class="ph-bold ph-check text-indigo-600 check-icon"></i>
+                  </button>
+                  <button type="button" onclick="selectCustomTimezone('Asia/Yekaterinburg', 'Екатеринбург (МСК+2 / UTC+5)')" data-tz="Asia/Yekaterinburg" class="bs-custom-option bs-tz-option">
+                    <span>Екатеринбург (МСК+2 / UTC+5)</span>
+                    <i class="ph-bold ph-check text-indigo-600 check-icon hidden"></i>
+                  </button>
+                  <button type="button" onclick="selectCustomTimezone('Asia/Novosibirsk', 'Новосибирск (МСК+4 / UTC+7)')" data-tz="Asia/Novosibirsk" class="bs-custom-option bs-tz-option">
+                    <span>Новосибирск (МСК+4 / UTC+7)</span>
+                    <i class="ph-bold ph-check text-indigo-600 check-icon hidden"></i>
+                  </button>
+                  <button type="button" onclick="selectCustomTimezone('UTC', 'UTC (Всемирное время)')" data-tz="UTC" class="bs-custom-option bs-tz-option">
+                    <span>UTC (Всемирное время)</span>
+                    <i class="ph-bold ph-check text-indigo-600 check-icon hidden"></i>
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-[11px] font-black text-slate-600 uppercase tracking-wider block mb-1">Новый пароль (опционально)</label>
+            <input type="password" name="password" id="edit-password" placeholder="••••••••" class="w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border-2 border-slate-200/90 focus:border-indigo-500 rounded-xl text-xs font-black text-slate-800 shadow-[0_2px_0_#DAE1E9] focus:shadow-[0_2px_0_#6366F1] focus:outline-none transition-all">
+          </div>
         </div>
-        <div class="space-y-1.5">
-          <label class="text-xs font-black text-slate-700 uppercase tracking-wider block mb-1">Новый Пароль (опционально)</label>
-          <input type="password" name="password" id="edit-password" placeholder="••••••••" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500">
-        </div>
+
       </div>
 
-      <!-- Submit & Action Buttons -->
-      <div class="pt-4 flex items-center justify-between border-t border-slate-100">
-        <a href="{{ url_for('auth.logout') }}" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 font-bold text-xs rounded-xl border border-rose-200/80 transition-all flex items-center gap-1.5 no-underline cursor-pointer" title="Выйти из текущей учетной записи">
-          <i class="ph-bold ph-sign-out text-sm"></i> <span>Выйти из аккаунта</span>
+      <!-- Submit & Action Buttons (Sticky Footer) -->
+      <div class="px-6 py-4 sm:px-7 sm:py-4.5 border-t-2 border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/70">
+        <a href="{{ url_for('auth.logout') }}" class="px-3.5 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 font-black text-xs rounded-xl border-2 border-rose-200/80 shadow-[0_2px_0_#FECDD3] active:translate-y-0.5 transition-all flex items-center gap-1.5 no-underline cursor-pointer" title="Выйти из текущей учетной записи">
+          <i class="ph-bold ph-sign-out text-sm"></i> <span>Выйти</span>
         </a>
-        <div class="flex items-center gap-2">
-          <button type="button" onclick="closeProfileEditModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition-all cursor-pointer border-0">
+        <div class="flex items-center gap-2.5">
+          <button type="button" onclick="closeProfileEditModal()" class="px-5 py-2.5 bg-white hover:bg-slate-100 border-2 border-slate-200 text-slate-600 font-black text-xs rounded-xl shadow-[0_2px_0_#DAE1E9] active:translate-y-0.5 transition-all cursor-pointer">
             Отмена
           </button>
-          <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl border-b-4 border-indigo-800 active:translate-y-0.5 transition-all shadow-md flex items-center gap-2 cursor-pointer border-0 uppercase tracking-wider">
+          <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-[0_3px_0_#4338CA] active:translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer border-0 uppercase tracking-wider">
             <i class="ph-bold ph-floppy-disk text-base"></i> Сохранить
           </button>
         </div>
@@ -1945,7 +2332,18 @@ function submitManageStudyTime() {
 }
 
 function updateProfileTimezoneClocks() {
-  const effectiveTz = document.querySelector('meta[name="user-timezone-effective"]')?.getAttribute('content') || 'Europe/Moscow';
+  const metaMode = document.querySelector('meta[name="user-timezone-mode"]')?.getAttribute('content') || 'auto';
+  const autoRadio = document.getElementById('tz-mode-auto');
+  const isAuto = autoRadio ? autoRadio.checked : (metaMode === 'auto');
+  const browserTz = (window.Intl && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
+  const effectiveMeta = document.querySelector('meta[name="user-timezone-effective"]')?.getAttribute('content') || 'Europe/Moscow';
+  const effectiveTz = (isAuto && browserTz) ? browserTz : effectiveMeta;
+
+  // Update header badge text
+  const headerName = document.getElementById('profile-tz-header-name');
+  if (headerName && isAuto && browserTz) {
+    headerName.textContent = browserTz;
+  }
 
   // Update header clock
   const headerClock = document.getElementById('profile-tz-header-clock');
@@ -1960,10 +2358,9 @@ function updateProfileTimezoneClocks() {
 
   // Update modal preview clock
   const modalClock = document.getElementById('tz-current-time-indicator');
+  const selInput = document.getElementById('edit-timezone-input');
   const sel = document.getElementById('edit-timezone');
-  const autoRadio = document.getElementById('tz-mode-auto');
-  const isAuto = autoRadio ? autoRadio.checked : true;
-  const targetTz = isAuto ? (Intl.DateTimeFormat().resolvedOptions().timeZone || effectiveTz) : (sel ? sel.value : effectiveTz);
+  const targetTz = isAuto ? (browserTz || effectiveTz) : ((selInput && selInput.value) || (sel ? sel.value : effectiveTz));
 
   if (modalClock) {
     try {
@@ -1975,25 +2372,117 @@ function updateProfileTimezoneClocks() {
     }
   }
 }
+window.addEventListener('boostudy:timezone-changed', updateProfileTimezoneClocks);
+
+function toggleCustomDropdown(dropdownId) {
+  const dropdown = document.getElementById(dropdownId);
+  if (!dropdown) return;
+  const menu = dropdown.querySelector('.bs-custom-menu');
+  if (!menu) return;
+  const isHidden = menu.classList.contains('hidden');
+  
+  // Close all other custom menus
+  document.querySelectorAll('.bs-custom-menu').forEach(m => {
+    if (m !== menu) m.classList.add('hidden');
+  });
+
+  if (isHidden) {
+    menu.classList.remove('hidden');
+  } else {
+    menu.classList.add('hidden');
+  }
+}
+
+function selectCustomClass(val, label) {
+  const input = document.getElementById('edit-school-class-input');
+  if (input) input.value = val;
+  const labelEl = document.getElementById('custom-class-label');
+  if (labelEl) labelEl.textContent = label;
+
+  const dropdown = document.getElementById('custom-class-dropdown');
+  if (dropdown) {
+    dropdown.querySelectorAll('.bs-custom-option').forEach(btn => {
+      const isMatch = btn.getAttribute('onclick')?.includes(`'${val}'`);
+      const check = btn.querySelector('.check-icon');
+      if (isMatch) {
+        btn.classList.add('selected');
+        if (check) check.classList.remove('hidden');
+      } else {
+        btn.classList.remove('selected');
+        if (check) check.classList.add('hidden');
+      }
+    });
+    const menu = dropdown.querySelector('.bs-custom-menu');
+    if (menu) menu.classList.add('hidden');
+  }
+}
+
+function selectCustomTimezone(val, label, closeMenu = true) {
+  const input = document.getElementById('edit-timezone-input');
+  if (input) input.value = val;
+  const labelEl = document.getElementById('custom-timezone-label');
+  if (labelEl) labelEl.textContent = label;
+
+  const dropdown = document.getElementById('custom-timezone-dropdown');
+  if (dropdown) {
+    dropdown.querySelectorAll('.bs-tz-option').forEach(btn => {
+      const isMatch = btn.getAttribute('data-tz') === val;
+      const check = btn.querySelector('.check-icon');
+      if (isMatch) {
+        btn.classList.add('selected');
+        if (check) check.classList.remove('hidden');
+      } else {
+        btn.classList.remove('selected');
+        if (check) check.classList.add('hidden');
+      }
+    });
+    if (closeMenu) {
+      const menu = dropdown.querySelector('.bs-custom-menu');
+      if (menu) menu.classList.add('hidden');
+    }
+  }
+  updateProfileTimezoneClocks();
+}
+
+// Global click-outside listener to close open custom dropdown menus
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#custom-class-dropdown') && !e.target.closest('#custom-timezone-dropdown')) {
+    document.querySelectorAll('.bs-custom-menu').forEach(menu => menu.classList.add('hidden'));
+  }
+});
 
 function toggleTimezoneSelectMode(mode) {
+  const trigger = document.getElementById('custom-timezone-trigger');
+  const dropdownMenu = document.querySelector('#custom-timezone-dropdown .bs-custom-menu');
   const sel = document.getElementById('edit-timezone');
-  if (!sel) return;
+
   if (mode === 'auto') {
-    sel.disabled = true;
-    sel.classList.add('opacity-60', 'cursor-not-allowed');
-    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (trigger) {
+      trigger.classList.add('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+    }
+    if (dropdownMenu) {
+      dropdownMenu.classList.add('hidden');
+    }
+    if (sel) {
+      sel.disabled = true;
+      sel.classList.add('opacity-60', 'cursor-not-allowed');
+    }
+    const browserTz = (window.Intl && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : null;
     if (browserTz) {
-      for (let i = 0; i < sel.options.length; i++) {
-        if (sel.options[i].value === browserTz) {
-          sel.selectedIndex = i;
-          break;
-        }
+      const optBtn = document.querySelector(`.bs-tz-option[data-tz="${browserTz}"]`);
+      if (optBtn) {
+        const label = optBtn.querySelector('span')?.textContent || browserTz;
+        selectCustomTimezone(browserTz, label, false);
       }
     }
   } else {
-    sel.disabled = false;
-    sel.classList.remove('opacity-60', 'cursor-not-allowed');
+    if (trigger) {
+      trigger.classList.remove('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+    }
+    if (sel) {
+      sel.disabled = false;
+      sel.classList.remove('opacity-60', 'cursor-not-allowed');
+    }
   }
   updateProfileTimezoneClocks();
 }
@@ -2042,9 +2531,9 @@ function filterRanksTab(group) {
     const btn = document.getElementById('rank-tab-' + t);
     if (btn) {
       if (t === group) {
-        btn.className = 'py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-2xs whitespace-nowrap';
+        btn.classList.add('active');
       } else {
-        btn.className = 'py-1 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap';
+        btn.classList.remove('active');
       }
     }
   });
@@ -2094,6 +2583,7 @@ function openAchievementsModal() {
   if (!modal || !card) return;
   setModalScrollLock(true);
   modal.classList.remove('hidden');
+  filterAchievementsTab('all');
   setTimeout(() => {
     card.classList.remove('scale-95', 'opacity-0');
     card.classList.add('scale-100', 'opacity-100');
@@ -2119,9 +2609,9 @@ function filterAchievementsTab(type) {
     const btn = document.getElementById('ach-tab-' + t);
     if (btn) {
       if (t === type) {
-        btn.className = 'py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 bg-indigo-600 text-white shadow-sm whitespace-nowrap' + (t === 'secret' ? ' flex items-center gap-1' : '');
+        btn.classList.add('active');
       } else {
-        btn.className = 'py-1.5 px-4 text-xs font-bold rounded-xl transition-all cursor-pointer border-0 text-slate-600 hover:text-slate-900 whitespace-nowrap' + (t === 'secret' ? ' flex items-center gap-1' : '');
+        btn.classList.remove('active');
       }
     }
   });
@@ -2482,7 +2972,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const isAuto = document.getElementById('tz-mode-auto')?.checked;
       const isManual = document.getElementById('tz-mode-manual')?.checked;
-      const selTz = document.getElementById('edit-timezone');
+      const selTz = document.getElementById('edit-timezone-input') || document.getElementById('edit-timezone');
       if (isAuto) {
         formData.set('timezone_mode', 'auto');
         const browserTz = (window.Intl && Intl.DateTimeFormat) ? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Moscow') : 'Europe/Moscow';
@@ -2613,51 +3103,10 @@ function renderTelegramConnection(status) {
 }
 
 async function refreshTelegramStatus() {
-  const pill = document.getElementById('tg-status-pill');
-  try {
-    if (pill) pill.textContent = 'Проверяем статус…';
-    const response = await fetch('/api/telegram/status', { headers: profileApiHeaders() });
-    const data = await response.json();
-    if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось получить статус');
-    renderTelegramConnection(data);
-    return data;
-  } catch (error) {
-    if (pill) {
-      pill.className = 'inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-extrabold text-rose-700';
-      pill.textContent = 'Статус недоступен';
-    }
-    telegramNotify('error', error.message || 'Не удалось получить статус Telegram');
-    return null;
-  }
+  return null; // Telegram feature marked as Скоро
 }
 
 async function startTelegramConnection() {
-  const button = document.getElementById('tg-connect-button');
-  const panel = document.getElementById('tg-link-panel');
-  try {
-    if (button) button.disabled = true;
-    const response = await fetch('/api/telegram/link-code', {
-      method: 'POST',
-      headers: profileApiHeaders('application/json'),
-      body: '{}',
-    });
-    const data = await response.json();
-    if (!response.ok || !data.success || !data.code) throw new Error(data.error || 'Не удалось создать код');
-
-    telegramConnectionState.code = data.code;
-    document.getElementById('tg-link-code').textContent = data.code;
-    document.getElementById('tg-link-expiry').textContent = 'Действует 15 минут';
-    const deepLink = document.getElementById('tg-deep-link');
-    deepLink.hidden = !data.deep_link;
-    if (data.deep_link) deepLink.href = data.deep_link;
-    panel.hidden = false;
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    telegramNotify('info', data.deep_link ? 'Откройте бота по ссылке — привязка выполнится автоматически.' : 'Скопируйте код и отправьте его боту.');
-  } catch (error) {
-    telegramNotify('error', error.message || 'Не удалось начать привязку Telegram');
-  } finally {
-    if (button) button.disabled = false;
-  }
 }
 
 async function copyTelegramLinkCode() {
@@ -2721,6 +3170,23 @@ document.addEventListener('DOMContentLoaded', () => {
 const cropState = { image: null, input: null, mode: 'avatar', scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0 };
 const cropCanvas = document.getElementById('image-crop-canvas');
 const cropContext = cropCanvas.getContext('2d');
+
+function handleAvatarFileSelect(input) {
+  if (!input.files || !input.files[0]) return;
+  const fileName = input.files[0].name;
+  const label = document.getElementById('edit-avatar-filename');
+  if (label) label.textContent = fileName;
+  beginImageCrop(input, 'avatar');
+}
+
+function handleCoverFileSelect(input) {
+  if (!input.files || !input.files[0]) return;
+  const fileName = input.files[0].name;
+  const label = document.getElementById('edit-cover-filename');
+  if (label) label.textContent = fileName;
+  beginImageCrop(input, 'cover');
+}
+
 function beginImageCrop(input, mode) {
   const file = input.files && input.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -2745,6 +3211,24 @@ function closeImageCrop() {
   document.getElementById('image-crop-modal').classList.remove('flex');
   setModalScrollLock(false);
 }
-function applyImageCrop() { cropCanvas.toBlob(blob => { const original = cropState.input.files[0]; const file = new File([blob], `profile-${cropState.mode}.jpg`, { type: 'image/jpeg' }); const transfer = new DataTransfer(); transfer.items.add(file); cropState.input.files = transfer.files; closeImageCrop(); }, 'image/jpeg', .92); }
+function applyImageCrop() {
+  cropCanvas.toBlob(blob => {
+    const file = new File([blob], `profile-${cropState.mode}.jpg`, { type: 'image/jpeg' });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    cropState.input.files = transfer.files;
+    const previewUrl = URL.createObjectURL(blob);
+    if (cropState.mode === 'avatar') {
+      const prev = document.getElementById('edit-avatar-preview');
+      if (prev) prev.src = previewUrl;
+    } else {
+      const box = document.getElementById('edit-cover-preview-box');
+      if (box) {
+        box.innerHTML = `<img src="${previewUrl}" id="edit-cover-preview" alt="Cover Preview" class="w-full h-full object-cover">`;
+      }
+    }
+    closeImageCrop();
+  }, 'image/jpeg', 0.92);
+}
 </script>
 {% endblock %}
