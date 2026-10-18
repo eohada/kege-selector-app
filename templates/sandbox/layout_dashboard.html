@@ -18,7 +18,8 @@
   {% block extra_head %}{% endblock %}
 </head>
 {% set dashboard_admin_shell = request.path.startswith('/admin') and current_user is defined and current_user and current_user.is_authenticated %}
-{% set is_student_shell = (current_user is defined and current_user and current_user.is_authenticated and (current_user.is_student() or not (current_user.is_tutor() or current_user.is_admin() or current_user.is_creator()))) %}
+{% set active_shell_role = (get_active_role() if get_active_role is defined else (current_user.role if current_user is defined and current_user and current_user.is_authenticated else 'student'))|lower %}
+{% set is_student_shell = (active_shell_role == 'student') or (current_user is defined and current_user and current_user.is_authenticated and (current_user.is_student() and not (current_user.is_tutor() or current_user.is_admin() or current_user.is_creator() or current_user.role in ['teacher', 'tutor', 'admin', 'chief_admin', 'creator']))) %}
 <body class="bs-dashboard-shell{% if is_student_shell %} bs-student-shell{% if dashboard_showcase|default(false) %} bs-showcase-shell{% endif %}{% elif not dashboard_admin_shell %} bs-teacher-shell{% endif %}{% if dashboard_admin_shell %} bs-admin-shell{% endif %}{% if room_mode|default(false) %} bs-lesson-room{% endif %}{% if embedded_answer|default(false) %} tw-embedded-answer{% if workspace.presentation_mode == 'code' %} tw-embedded-code{% endif %}{% endif %}">
   <aside id="dashboard-sidebar" class="bs-dashboard-sidebar" aria-label="Основная навигация">
     <a class="bs-dashboard-brand" href="{{ '/admin/users' if dashboard_admin_shell else url_for('main.dashboard') }}" aria-label="BooStudy, главная">
@@ -68,8 +69,8 @@
 
   <div id="dashboard-main" class="bs-dashboard-main">
     {% set dashboard_student_profile = current_user.student_profile if is_student_shell else none %}
-    {% set dashboard_profile_name = dashboard_student_profile.name if dashboard_student_profile and dashboard_student_profile.name else current_user.username %}
-    {% set dashboard_profile_meta = (dashboard_student_profile.school_class ~ ' класс') if dashboard_student_profile and dashboard_student_profile.school_class else ('Ученик' if is_student_shell else ('Администратор' if dashboard_admin_shell else 'Преподаватель')) %}
+    {% set dashboard_profile_name = dashboard_student_profile.name if dashboard_student_profile and dashboard_student_profile.name else (current_user.full_name or current_user.username) %}
+    {% set dashboard_profile_meta = (dashboard_student_profile.school_class ~ ' класс') if dashboard_student_profile and dashboard_student_profile.school_class and is_student_shell else ('Ученик' if is_student_shell else ('Создатель' if (current_user.role == 'creator' or (current_user.is_creator is defined and current_user.is_creator())) else ('Администратор' if dashboard_admin_shell else 'Преподаватель'))) %}
     <header class="bs-dashboard-topbar{% if is_student_shell %} bs-dashboard-topbar-student{% endif %}{% if request.path.startswith('/lesson/') %} bs-dashboard-topbar-room{% endif %}">
       <div class="bs-dashboard-search" role="search" title="Глобальный поиск по доступным данным" data-search-shell>
         <i class="ph ph-magnifying-glass" aria-hidden="true"></i>

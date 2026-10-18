@@ -1,4 +1,6 @@
-{% extends "sandbox/layout_student.html" %}
+{% extends layout_template|default("sandbox/layout_student.html") %}
+
+{% block title %}{{ user_name|default('Профиль') }} · BooStudy{% endblock %}
 
 {% block sandbox_content %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -298,10 +300,10 @@
 }
 </style>
 {% set display_user = target_user if (target_user is defined and target_user) else current_user %}
-{% set is_student = (target_role is defined and target_role == 'student') or (display_user is defined and display_user and display_user.is_student is defined and display_user.is_student()) or (display_user is defined and display_user and display_user.role == 'student') or (display_user is not defined or not display_user or not display_user.is_authenticated) %}
-{% set is_tutor = (display_user is defined and display_user and display_user.is_tutor is defined and display_user.is_tutor()) or (display_user is defined and display_user and display_user.role in ['tutor', 'teacher']) %}
-{% set is_creator = (display_user is defined and display_user and display_user.is_creator is defined and display_user.is_creator()) or (display_user is defined and display_user and display_user.role == 'creator') %}
-{% set is_admin = (display_user is defined and display_user and display_user.is_admin is defined and display_user.is_admin()) or (display_user is defined and display_user and display_user.role == 'admin') %}
+{% set is_creator = (target_role is defined and target_role == 'creator') or ((target_role is not defined or not target_role) and display_user is defined and display_user and (display_user.role == 'creator' or (display_user.is_creator is defined and display_user.is_creator()))) %}
+{% set is_admin = not is_creator and ((target_role is defined and target_role in ['admin', 'chief_admin']) or ((target_role is not defined or not target_role) and display_user is defined and display_user and (display_user.role in ['admin', 'chief_admin'] or (display_user.is_admin is defined and display_user.is_admin())))) %}
+{% set is_tutor = not (is_creator or is_admin) and ((target_role is defined and target_role in ['tutor', 'teacher']) or ((target_role is not defined or not target_role) and display_user is defined and display_user and (display_user.role in ['tutor', 'teacher'] or (display_user.is_tutor is defined and display_user.is_tutor())))) %}
+{% set is_student = not (is_creator or is_admin or is_tutor) %}
 
 {% set student_obj = linked_student if (linked_student is defined and linked_student) else (student if (student is defined and student) else (display_user.student_profile if (display_user is defined and display_user and display_user.student_profile) else none)) %}
 
@@ -421,7 +423,13 @@
 
               <!-- Subtitle: Role & Class -->
               <p class="text-xs sm:text-sm font-semibold text-slate-500 mb-0">
-                {% if school_class_display == 'Университет' or school_class_display == '12' %}
+                {% if is_creator %}
+                  Создатель платформы
+                {% elif is_admin %}
+                  Администратор
+                {% elif is_tutor %}
+                  Преподаватель
+                {% elif school_class_display == 'Университет' or school_class_display == '12' %}
                   Студент • Университет
                 {% elif school_class_display and school_class_display != '—' %}
                   Ученик • {{ school_class_display }} класс
@@ -443,11 +451,26 @@
                   <span class="truncate max-w-[140px] sm:max-w-none">{{ display_user.email }}</span>
                 </span>
 
-                <!-- Class Tag -->
-                {% if school_class_display and school_class_display != '—' %}
+                <!-- Role / Class Tag -->
+                {% if is_student and school_class_display and school_class_display != '—' %}
                 <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200 font-medium shadow-xs">
                   <i class="ph-bold ph-graduation-cap text-slate-400"></i>
                   <span>{% if school_class_display == 'Университет' or school_class_display == '12' %}Университет{% else %}Класс {{ school_class_display }}{% endif %}</span>
+                </span>
+                {% elif is_creator %}
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-bold shadow-xs">
+                  <i class="ph-fill ph-crown text-amber-500"></i>
+                  <span>Создатель</span>
+                </span>
+                {% elif is_admin %}
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold shadow-xs">
+                  <i class="ph-fill ph-shield-check text-red-500"></i>
+                  <span>Администратор</span>
+                </span>
+                {% elif is_tutor %}
+                <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold shadow-xs">
+                  <i class="ph-fill ph-chalkboard-teacher text-indigo-500"></i>
+                  <span>Преподаватель</span>
                 </span>
                 {% endif %}
 
@@ -798,7 +821,13 @@
 
           <div class="space-y-1">
             <h4 class="text-sm font-bold text-slate-800 mb-0">
-              {% if school_class_display == 'Университет' or school_class_display == '12' %}
+              {% if is_creator %}
+                Создатель платформы
+              {% elif is_admin %}
+                Администратор
+              {% elif is_tutor %}
+                Преподаватель
+              {% elif school_class_display == 'Университет' or school_class_display == '12' %}
                 Студент (Университет)
               {% elif school_class_display and school_class_display != '—' %}
                 Ученик ({{ school_class_display }} класс)
@@ -807,7 +836,7 @@
               {% endif %}
             </h4>
             <p id="user-bio-text" class="text-xs text-slate-500 font-medium leading-relaxed mb-0 break-words break-all [overflow-wrap:anywhere] whitespace-pre-wrap">
-              {{ user_bio if user_bio else 'Расскажи немного о себе — это поможет преподавателям лучше тебя узнать.' }}
+              {{ user_bio if user_bio else ('Создатель платформы BooStudy' if is_creator else ('Расскажи немного о себе.' if (is_admin or is_tutor) else 'Расскажи немного о себе — это поможет преподавателям лучше тебя узнать.')) }}
             </p>
           </div>
         </div>

@@ -1495,15 +1495,32 @@ class User(db.Model):
 
     def is_student(self):
         """Проверка, является ли пользователь учеником"""
-        if self.role == 'student' or 'student' in self.roles():
+        try:
+            from flask import session
+            if session.get('sandbox_role') == 'student':
+                return True
+            if session.get('sandbox_role') in ('creator', 'admin', 'chief_admin', 'tutor', 'teacher'):
+                return False
+        except RuntimeError:
+            pass
+
+        if self.role == 'student':
+            return True
+        if self.role in ('creator', 'admin', 'chief_admin', 'tutor', 'teacher'):
+            return False
+
+        r = self.roles()
+        if any(role in r for role in ('creator', 'admin', 'chief_admin', 'tutor', 'teacher')):
+            return False
+
+        if 'student' in r:
             return True
         try:
             if getattr(self, 'student_profile', None) is not None:
                 return True
         except Exception:
             pass
-        r = self.roles()
-        if not any(role in r for role in ('tutor', 'teacher', 'creator', 'admin', 'chief_admin', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker')):
+        if not any(role in r for role in ('parent', 'tester', 'chief_tester', 'designer', 'content_maker')):
             return True
         return False
 

@@ -544,14 +544,14 @@ def ui_showcase():
 @login_required
 def dashboard():
     """Главная страница (dashboard) со списком студентов или дашбордом преподавателя"""
-    if request.path == '/teacher/dashboard' and current_user.is_student():
+    active_role = get_active_role()
+    if request.path == '/teacher/dashboard' and active_role == 'student':
         return redirect(url_for('main.dashboard'))
 
-    active_role = get_active_role()
-    if active_role == 'parent' or (current_user.is_parent() and active_role not in ['tutor', 'admin', 'creator']):
+    if active_role == 'parent' or (current_user.is_parent() and active_role not in ['tutor', 'teacher', 'admin', 'creator']):
         return parents_dashboard()
     
-    if current_user.is_student() or not (current_user.is_tutor() or current_user.is_admin() or current_user.is_creator()):
+    if active_role == 'student' or (current_user.role == 'student' and active_role not in ['tutor', 'teacher', 'admin', 'creator']):
         return student_dashboard()
 
     # Дашборд преподавателя при переходе на /dashboard (без параметров поиска по ученикам)
