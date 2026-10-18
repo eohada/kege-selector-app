@@ -948,18 +948,12 @@
     clip-path: none !important;
   }
 
-  .room-lesson-os #dock-icon-task-window { background: #4f46e5 !important; }
-  .room-lesson-os #dock-icon-terminal-window { background: #0f172a !important; }
-  .room-lesson-os #dock-icon-lesson-info-window { background: #0ea5e9 !important; }
-  .room-lesson-os #dock-icon-teacher-notes-window { background: #d97706 !important; }
-  .room-lesson-os #dock-icon-notes-window { background: #d97706 !important; }
-  .room-lesson-os #dock-icon-theory-window { background: #2563eb !important; }
   .room-lesson-os #dock-icon-reference-window { display: none !important; }
   .room-lesson-os #board-dock { height: 64px; gap: .6rem; padding-inline: .7rem; border: 1px solid #dbe3ef; background: rgba(255,255,255,.94); box-shadow: 0 12px 28px rgba(30,41,59,.16); }
-  .room-lesson-os #board-dock > .board-dock-item { flex: 0 0 40px; width: 40px !important; height: 40px !important; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; border: 1px solid #dbe3ef; border-radius: .75rem; background: #f8fafc !important; color: #64748b !important; box-shadow: 0 2px 0 rgba(148,163,184,.25); transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .room-lesson-os #board-dock > .board-dock-item { flex: 0 0 40px; width: 40px !important; height: 40px !important; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; border: 1.5px solid #dbe3ef; border-radius: .75rem; background: #ffffff !important; color: #64748b !important; box-shadow: 0 2px 0 rgba(148,163,184,.2); transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease; }
   .room-lesson-os #board-dock > .board-dock-item:hover,
-  .room-lesson-os #board-dock > .board-dock-item:focus-visible { border-color: #a5b4fc; background: #eef2ff !important; color: #4f46e5 !important; box-shadow: 0 3px 0 rgba(99,102,241,.2); outline: none; }
-  .room-lesson-os #board-dock > .board-dock-item.is-active { border-color: #4f46e5; background: #4f46e5 !important; color: #fff !important; box-shadow: 0 3px 0 #3730a3; }
+  .room-lesson-os #board-dock > .board-dock-item:focus-visible { border-color: #a5b4fc; background: #f5f7ff !important; color: #4f46e5 !important; box-shadow: 0 2px 4px rgba(99,102,241,.18); outline: none; }
+  .room-lesson-os #board-dock > .board-dock-item.is-active { border-color: #6366f1 !important; border-width: 2px !important; background: #fdfdfe !important; color: #4f46e5 !important; box-shadow: 0 0 0 2px rgba(99,102,241,.2), 0 3px 6px rgba(99,102,241,.12) !important; }
   .room-lesson-os #board-dock > .board-dock-divider { width: 1px; height: 28px; background: #dbe3ef; }
 
   .room-lesson-os.room-board-mode > .w-full.h-full {
@@ -3122,37 +3116,6 @@
         <div class="window-resize-handle absolute bottom-0 right-0 w-4 h-4 opacity-60 flex items-center justify-center select-none font-bold text-[10px]">⇲</div>
       </div>
 
-      <!-- TEACHER WORKSPACE SCRATCHPAD -->
-      <div id="teacher-scratchpad-window"
-        class="glass-os-window hidden absolute top-20 left-[35%] w-[420px] h-[360px] bg-white/95 backdrop-blur-2xl border border-indigo-200 shadow-2xl rounded-2xl overflow-hidden z-46 text-slate-800 font-sans flex flex-col">
-        <div id="teacher-scratchpad-window-header" class="h-10 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between px-4 select-none cursor-grab shrink-0">
-          <div class="flex items-center gap-2">
-            <div onclick="closeWindow('teacher-scratchpad-window')" class="os-window-dot bg-[#FF5F56] border-[#E0443E]" title="Закрыть"></div>
-            <div onclick="toggleMaximizeWindow('teacher-scratchpad-window')" class="os-window-dot bg-[#27C93F] border-[#1AAB29]" title="Развернуть"></div>
-          </div>
-          <span class="text-xs font-black text-indigo-900 flex items-center gap-1.5"><i class="ph-bold ph-pencil-simple-slash text-indigo-600"></i> Черновик стола (Учитель)</span>
-          <span class="text-[10px] font-bold text-indigo-400">Приватно</span>
-        </div>
-        <textarea id="teacher-scratchpad-textarea" class="w-full flex-1 p-3 text-xs leading-relaxed font-mono resize-none focus:outline-none bg-transparent" placeholder="Приватные расчёты или заметки для текущего рабочего стола..."></textarea>
-        <div class="window-resize-handle absolute bottom-0 right-0 w-4 h-4 opacity-60 flex items-center justify-center select-none font-bold text-[10px]">⇲</div>
-      </div>
-      {% endif %}
-
-      {% if not is_studio_teacher|default(false) and room_mode %}
-      <!-- STUDENT WORKSPACE SCRATCHPAD -->
-      <div id="student-scratchpad-window"
-        class="glass-os-window hidden absolute top-20 left-[35%] w-[420px] h-[360px] bg-white/95 backdrop-blur-2xl border border-indigo-200 shadow-2xl rounded-2xl overflow-hidden z-46 text-slate-800 font-sans flex flex-col">
-        <div id="student-scratchpad-window-header" class="h-10 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between px-4 select-none cursor-grab shrink-0">
-          <div class="flex items-center gap-2">
-            <div onclick="closeWindow('student-scratchpad-window')" class="os-window-dot bg-[#FF5F56] border-[#E0443E]" title="Закрыть"></div>
-            <div onclick="toggleMaximizeWindow('student-scratchpad-window')" class="os-window-dot bg-[#27C93F] border-[#1AAB29]" title="Развернуть"></div>
-          </div>
-          <span class="text-xs font-black text-indigo-900 flex items-center gap-1.5"><i class="ph-bold ph-pencil-simple-slash text-indigo-600"></i> Черновик стола (Ученик)</span>
-          <span class="text-[10px] font-bold text-indigo-400">Приватно</span>
-        </div>
-        <textarea id="student-scratchpad-textarea" class="w-full flex-1 p-3 text-xs leading-relaxed font-mono resize-none focus:outline-none bg-transparent" placeholder="Твои личные расчёты или черновик для текущего рабочего стола..."></textarea>
-        <div class="window-resize-handle absolute bottom-0 right-0 w-4 h-4 opacity-60 flex items-center justify-center select-none font-bold text-[10px]">⇲</div>
-      </div>
       {% endif %}
 
       <!-- 3. NOTES APP WINDOW (Заметки Ученика) -->
@@ -3877,17 +3840,6 @@
         <div id="dock-icon-teacher-task-bank-window" class="board-dock-item group relative teacher-dock-neon" role="button" tabindex="0" aria-label="Банк заданий (Только учитель)" title="Банк заданий (Только учитель)" onclick="toggleDockWindow('teacher-task-bank-window')">
           <i class="ph-bold ph-database text-lg text-amber-500"></i>
           <span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Банк заданий (Приватно)</span>
-        </div>
-        <!-- Teacher Workspace Scratchpad -->
-        <div id="dock-icon-teacher-scratchpad-window" class="board-dock-item group relative" role="button" tabindex="0" aria-label="Черновик стола" title="Черновик стола" onclick="toggleDockWindow('teacher-scratchpad-window')">
-          <i class="ph-bold ph-pencil-simple-slash text-lg text-indigo-500"></i>
-          <span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Черновик стола</span>
-        </div>
-        {% endif %}
-        {% if not is_studio_teacher|default(false) and room_mode %}
-        <div id="dock-icon-student-scratchpad-window" class="board-dock-item group relative" role="button" tabindex="0" aria-label="Черновик стола" title="Черновик стола" onclick="toggleDockWindow('student-scratchpad-window')">
-          <i class="ph-bold ph-pencil-simple-slash text-lg text-indigo-500"></i>
-          <span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Черновик стола</span>
         </div>
         {% endif %}
         {% if linked_homework_url %}<a class="board-dock-item group relative" data-room-label="Домашняя OS" href="{{ linked_homework_url }}" aria-label="Открыть домашнюю OS" title="Открыть домашнюю OS"><i class="ph-bold ph-notebook text-lg" aria-hidden="true"></i></a>{% endif %}
@@ -4918,18 +4870,16 @@
   // 3. HARDWARE ACCELERATED OS WINDOW MANAGER (60 FPS Smooth Drag, Resize & Z-Elevation)
   // ----------------------------------------------------------------------
   function isPrivateWindow(windowId) {
-    return ['teacher-task-bank-window', 'teacher-notes-window', 'teacher-scratchpad-window', 'student-scratchpad-window'].includes(windowId);
+    return ['teacher-task-bank-window', 'teacher-notes-window'].includes(windowId);
   }
 
   function canUserInteractWindow(windowId) {
     if (!trainerOsConfig.room_mode) return true;
+    if (trainerOsConfig.homework_mode) return true;
     if (['chat-window', 'video-window'].includes(windowId)) return true;
     const isTeacher = Boolean(trainerOsConfig.is_studio_teacher);
-    if (['teacher-task-bank-window', 'teacher-notes-window', 'teacher-scratchpad-window'].includes(windowId)) {
+    if (['teacher-task-bank-window', 'teacher-notes-window'].includes(windowId)) {
       return isTeacher;
-    }
-    if (windowId === 'student-scratchpad-window') {
-      return !isTeacher;
     }
     const ctrl = window.boostudyLessonControl?.getControl?.() || {};
     const mode = ctrl.windows_mode || (ctrl.windows_sync === false ? 'independent' : 'teacher');
@@ -4942,6 +4892,7 @@
 
   function shouldSyncWindowAction(windowId) {
     if (!trainerOsConfig.room_mode) return false;
+    if (trainerOsConfig.homework_mode) return false;
     if (isPrivateWindow(windowId)) return false;
     if (['chat-window', 'video-window'].includes(windowId)) return false;
     const ctrl = window.boostudyLessonControl?.getControl?.() || {};
@@ -5583,7 +5534,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    ['code-window', 'task-window', 'terminal-window', 'notes-window', 'lesson-info-window', 'teacher-notes-window', 'teacher-task-bank-window', 'teacher-scratchpad-window', 'student-scratchpad-window', 'theory-window', 'files-window', 'chat-window', 'reference-window', 'homework-answer-window', 'homework-files-window', 'video-window'].forEach(id => {
+    ['code-window', 'task-window', 'terminal-window', 'notes-window', 'lesson-info-window', 'teacher-notes-window', 'teacher-task-bank-window', 'theory-window', 'files-window', 'chat-window', 'reference-window', 'homework-answer-window', 'homework-files-window', 'video-window'].forEach(id => {
       windowManager.registerWindow(id);
     });
     if (trainerOsConfig.room_mode) {
@@ -8258,6 +8209,8 @@
         const image = document.createElement('img');
         image.src = item.data?.url || '';
         image.alt = item.data?.name || 'Материал доски';
+        image.draggable = false;
+        image.style.pointerEvents = 'none';
         element.appendChild(image);
       } else if (item.type === 'file') {
         element.innerHTML = '<i class="ph-bold ph-file-pdf text-xl text-rose-500"></i>';
@@ -8771,6 +8724,7 @@
     }
 
     function canStudentWindow(windowId) {
+      if (trainerOsConfig.homework_mode) return true;
       if (state.role !== 'student') return true;
       const control = controlState();
       if (control.windows_sync === false) return true;
@@ -9273,7 +9227,10 @@
       state.document = clone(document);
       state.version = Number(version || 0);
       if (Number.isFinite(Number(options.serverNow))) state.serverOffset = Number(options.serverNow) - Date.now();
-      state.currentPageId = state.document.active_page_id;
+      const pageExists = state.document.pages?.some((p) => p.id === state.currentPageId);
+      if (!pageExists) {
+        state.currentPageId = state.document.active_page_id;
+      }
       state.followPaused = false;
       setSelection([]);
       state.outbox = [];
@@ -9400,6 +9357,7 @@
     function startObjectDrag(event, item) {
       if (state.tool !== 'select' || event.button !== 0 || isGlobalSpacePressed) return;
       if (state.dragging) return;
+      event.preventDefault();
       event.stopPropagation();
       if (event.shiftKey) toggleSelection(item.id);
       else if (!state.selectedIds.includes(item.id)) setSelection([item.id], item.id);
@@ -11827,6 +11785,16 @@
         content.innerHTML = task.description || '<p>Условие задания пока не заполнено.</p>';
         if (typeof window.formatTaskCondition === 'function') {
           window.formatTaskCondition(content);
+        } else if (typeof renderMathInElement === 'function') {
+          renderMathInElement(content, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+              { left: '\\(', right: '\\)', display: false },
+              { left: '\\[', right: '\\]', display: true }
+            ],
+            throwOnError: false
+          });
         }
       }
       highlightTaskCodeBlocks();
@@ -12355,5 +12323,5 @@
   })();
 </script>
 {% endif %}
-{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261018-engine-v9"></script><script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261018-v2"></script>{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
+{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261018-engine-v9"></script><script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261018-v2"></script>{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
 {% endblock %}

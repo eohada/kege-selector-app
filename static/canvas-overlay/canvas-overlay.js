@@ -5635,7 +5635,16 @@
 
     // Select Tool
     if (tool === 'select') {
-      const hit = hitTest(screenX, screenY);
+      let hit = hitTest(screenX, screenY);
+      // If clicking inside current selection bounding box, treat as hit on the selected items!
+      if (!hit && selectedIds.size > 0) {
+        const selBox = getSelectionScreenBox();
+        if (selBox && screenX >= selBox.x && screenX <= selBox.x + selBox.width &&
+            screenY >= selBox.y && screenY <= selBox.y + selBox.height) {
+          const firstId = selectedIds.values().next().value;
+          hit = strokes.find((s) => s.id === firstId);
+        }
+      }
       if (hit) {
         if (e.shiftKey) {
           if (selectedIds.has(hit.id)) selectedIds.delete(hit.id);
@@ -6434,7 +6443,7 @@
         const mime = 'image/jpeg';
         const dataUrl = offCanvas.toDataURL(mime, 0.82);
 
-        const space = embeddedTarget ? null : getActiveTaskContentRect();
+        const space = (embeddedTarget || document.getElementById('canvas-window')) ? null : getActiveTaskContentRect();
         const origin = canvasOrigin();
         const posX = clientX !== undefined ? clientX : (origin.left + window.innerWidth / 3);
         const posY = clientY !== undefined ? clientY : (origin.top + window.innerHeight / 3);
@@ -8198,7 +8207,9 @@
     }
     const idx = targetPage.strokes.findIndex((s) => s.id === remoteStroke.id);
     if (idx >= 0) {
-      targetPage.strokes[idx] = remoteStroke;
+      const existingSrc = targetPage.strokes[idx].src;
+      targetPage.strokes[idx] = { ...targetPage.strokes[idx], ...remoteStroke };
+      if (!remoteStroke.src && existingSrc) targetPage.strokes[idx].src = existingSrc;
     } else {
       targetPage.strokes.push(remoteStroke);
     }
@@ -8303,10 +8314,20 @@
         page = { id: pid, title: pid === 'page_1' ? 'Страница 1' : `Страница ${pages.length + 1}`, background: 'dots', strokes: [] };
         pages.push(page);
       }
-      page.strokes = pStrokes;
-    });
-    pages.forEach((p) => {
-      if (!pageMap.has(p.id)) p.strokes = [];
+      const strokeMap = new Map();
+      (page.strokes || []).forEach((item) => {
+        if (item && item.id) strokeMap.set(item.id, item);
+      });
+      pStrokes.forEach((s) => {
+        if (!s || !s.id) return;
+        const local = strokeMap.get(s.id);
+        if (local) {
+          strokeMap.set(s.id, { ...local, ...s, src: s.src || local.src });
+        } else {
+          strokeMap.set(s.id, s);
+        }
+      });
+      page.strokes = Array.from(strokeMap.values());
     });
 
     syncPageStrokes();

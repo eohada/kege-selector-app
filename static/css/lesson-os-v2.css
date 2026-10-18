@@ -503,9 +503,10 @@ body.bs-lesson-room main.room-lesson-shell {
   box-shadow: 0 4px 10px rgba(57, 66, 137, .1);
 }
 .room-lesson-os #board-dock > .board-dock-item.is-active > i {
-  border-color: #6957f5;
-  background: linear-gradient(145deg, #715eff, #5744eb);
-  box-shadow: 0 5px 12px rgba(92, 73, 235, .28);
+  border: 2px solid #6366f1;
+  background: #fdfdfe;
+  color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, .2), 0 3px 8px rgba(92, 73, 235, .15);
 }
 .room-lesson-os #board-tool-rail,
 .room-lesson-os #board-command-bar > .board-command-group:first-child {
@@ -736,7 +737,7 @@ body.bs-lesson-room main.room-lesson-shell {
 .room-lesson-os #board-dock > .board-dock-item::after { content: attr(data-room-label); }
 .room-lesson-os #board-dock > .board-dock-item > i,
 .room-lesson-os #lesson-os-add > summary.board-dock-item > i { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid #e0e5f8; border-radius: 10px; background: #fff; color: #253fa7; box-shadow: 0 4px 9px rgba(38,52,115,.12); }
-.room-lesson-os #board-dock > .board-dock-item.is-active > i { background: #5446ed; color: #fff; border-color: #5446ed; }
+.room-lesson-os #board-dock > .board-dock-item.is-active > i { border: 2px solid #6366f1; background: #fdfdfe; color: #4f46e5; box-shadow: 0 0 0 2px rgba(99, 102, 241, .2); }
 .room-lesson-os #board-dock > .board-dock-item > span { display: none; }
 .room-lesson-os #board-dock > button.board-dock-item,
 .room-lesson-os #lesson-os-add > summary.board-dock-item {
@@ -1044,7 +1045,7 @@ body.bs-lesson-room main.room-lesson-shell {
   box-shadow: 0 4px 10px rgba(58, 42, 110, .085);
 }
 .room-lesson-os #board-dock > .board-dock-item.is-active > i {
-  color: #fff;
+  color: #4f46e5;
 }
 
 @media (min-width: 1200px) and (max-width: 1340px) {

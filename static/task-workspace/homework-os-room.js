@@ -273,8 +273,10 @@
     window.boostudyHighlightPythonSyntax = highlightPythonCode;
   }
 
-  function formatTaskCondition() {
-    const content = document.getElementById('task-current-content');
+  function formatTaskCondition(targetEl) {
+    const content = (targetEl instanceof HTMLElement)
+      ? targetEl
+      : (document.getElementById('task-current-content') || document.getElementById('task-window-content'));
     if (!content) return;
 
     // 1. Python syntax highlighting for code blocks
@@ -318,7 +320,10 @@
           delimiters: [
             { left: '$$', right: '$$', display: true },
             { left: '$', right: '$', display: false },
+            { left: '\\(', right: '\\)', display: false },
+            { left: '\\[', right: '\\]', display: true },
           ],
+          throwOnError: false,
         });
       } catch (e) {
         console.warn('KaTeX render error:', e);
