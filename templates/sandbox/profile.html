@@ -337,7 +337,7 @@
 <!-- Canvas Master Container -->
 <main id="profile-page-shell" class="min-h-screen flex-1 relative z-10 bg-[#F8FAFC] font-sans p-3 sm:p-5 lg:pl-28 lg:pr-6 pb-20 lg:pb-12 pt-4 sm:pt-6 overflow-x-hidden">
   <div class="max-w-[1600px] mx-auto w-full space-y-4">
-    {% if can_manage_student %}
+    {% if can_manage_student and not current_user.is_student() %}
     <!-- STAFF MANAGEMENT BANNER (Режим просмотра и управления со стороны преподавателя/админа) -->
     <div class="w-full bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 rounded-[2rem] p-4 sm:p-5 shadow-[0_5px_0_#312E81] text-white flex flex-col sm:flex-row items-center justify-between gap-4 border-2 border-indigo-500/50 relative overflow-hidden">
       <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>

@@ -440,7 +440,7 @@ body.bs-lesson-room main.room-lesson-shell {
   border: 1px solid rgba(216, 222, 244, .88) !important;
   border-radius: var(--bs-radius-md, 14px) !important;
   background: rgba(255, 255, 255, .96) !important;
-  box-shadow: var(--bs-shadow-e2, 0 12px 28px rgba(96, 75, 91, .12)) !important;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04) !important;
 }
 .room-lesson-os #terminal-window {
   border-color: #e2e8f0 !important;
@@ -772,10 +772,10 @@ body.bs-lesson-room main.room-lesson-shell {
   --lesson-window-accent: var(--bs-primary, #5b35f5);
 }
 .room-lesson-os .glass-os-window:not(#canvas-window):not(#terminal-window) {
-  border-color: var(--lesson-window-border) !important;
+  border: 1px solid #dce4f4 !important;
   border-radius: var(--bs-radius-lg, 20px) !important;
-  background: #fffefd !important;
-  box-shadow: 0 20px 48px rgba(58, 42, 110, .13), 0 3px 10px rgba(58, 42, 110, .055) !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04) !important;
 }
 .room-lesson-os .glass-os-window:not(#canvas-window):not(#terminal-window) :is(.lesson-os-code-titlebar, #task-window-header, #theory-window-header, #lesson-info-window-header, #files-window-header, #notes-window-header) {
   border-bottom-color: var(--lesson-window-border) !important;
@@ -1432,59 +1432,6 @@ body.bs-lesson-room main.room-lesson-shell {
 .task-content-preview pre .syn-decorator { color: #fde047 !important; font-weight: 700; }
 .task-content-preview pre .syn-operator { color: #f472b6 !important; font-weight: 700; }
 
-/* Virtual Desktops Compact Bar & Dropdown */
-.lesson-virtual-desktops-bar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  user-select: none;
-}
-.lesson-virtual-desktops-bar #lesson-desktop-trigger {
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  max-width: 160px;
-}
-.lesson-virtual-desktops-bar #lesson-desktop-trigger:hover {
-  border-color: #818cf8;
-}
-#lesson-desktop-dropdown {
-  position: absolute !important;
-  top: calc(100% + 8px) !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: 270px !important;
-  max-width: 90vw !important;
-  background: #ffffff !important;
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 1rem !important;
-  box-shadow: 0 20px 35px -5px rgba(15, 23, 42, 0.15), 0 10px 15px -5px rgba(15, 23, 42, 0.08) !important;
-  z-index: 3500 !important;
-  padding: 0.6rem !important;
-}
-#lesson-desktop-dropdown.hidden {
-  display: none !important;
-}
-.desktop-dropdown-item {
-  transition: all 0.12s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.65rem;
-  border-radius: 0.75rem;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-.desktop-dropdown-item.is-active {
-  background: #eef2ff !important;
-  color: #4338ca !important;
-  border-color: #c7d2fe !important;
-}
-.desktop-dropdown-item:not(.is-active):hover {
-  background: #f8fafc;
-  color: #0f172a;
-}
 
 /* ==========================================================================
    Task Bank & Task Window IDE Code Blocks & Syntax Highlighting
@@ -1617,10 +1564,5 @@ body.bs-lesson-room main.room-lesson-shell {
   box-shadow: 0 1px 0 #9f1239 !important;
 }
 
-/* Ensure Desktop Dropdown always opens downwards from the topbar */
-#lesson-desktop-dropdown {
-  top: calc(100% + 8px) !important;
-  bottom: auto !important;
-  max-height: calc(100vh - 80px) !important;
-}
+
 

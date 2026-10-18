@@ -208,7 +208,7 @@ def test_board_sync_persists_across_student_reconnect(app, role_users):
                 connection.disconnect(namespace='/lesson')
 
 
-def test_desktop_workspaces_isolation_and_sync(app, role_users):
+def test_live_stroke_and_room_ui_sync(app, role_users):
     lesson_id, _ = _create_lesson_context(app, role_users)
     teacher_http, student_http = app.test_client(), app.test_client()
     login_as(teacher_http, role_users['tutor_id'], 'tutor')
@@ -231,63 +231,73 @@ def test_desktop_workspaces_isolation_and_sync(app, role_users):
     try:
         teacher, student = connect(teacher_http), connect(student_http)
 
-        # 1. Stroke on Desktop 1 (page_1)
-        stroke1 = {'id': 'strk_desk1_1', 'page_id': 'page_1', 'points': [{'x': 10, 'y': 10}]}
-        teacher.emit('board_stroke', {'lesson_id': lesson_id, 'stroke': stroke1}, namespace='/lesson')
-        received_stroke1 = event(student, 'board_stroke')
-        assert received_stroke1['stroke']['id'] == 'strk_desk1_1'
-        assert received_stroke1['stroke']['page_id'] == 'page_1'
+        # 1. Live stroke during drag (whiteboard_live_stroke: start & move)
+        teacher.emit('whiteboard_live_stroke', {
+            'lesson_id': lesson_id,
+            'stroke_id': 'strk_live_1',
+            'action': 'start',
+            'point': {'x': 20, 'y': 25},
+            'color': '#ef4444',
+            'width': 3,
+        }, namespace='/lesson')
+        live_start = event(student, 'whiteboard_live_stroke')
+        assert live_start['stroke_id'] == 'strk_live_1'
+        assert live_start['action'] == 'start'
+        page_id = live_start['page_id']
+        assert page_id
 
-        # 2. Teacher switches to Desktop 2 with distinct layout and codeState
-        desk2_state = {
-            'id': 'desktop-2',
-            'name': 'Стол 2',
-            'pageId': 'page_desk2',
-            'layouts': {'canvas-window': {'open': True}, 'code-window': {'open': False}},
-            'codeState': {'virtualFS': {'main.py': 'print("desktop 2 code")'}, 'activeFileName': 'main.py', 'openTabs': ['main.py']},
-            'taskId': 42,
-            'scratchpad': 'Desktop 2 notes'
+        # Live move during drag without waiting for mouse release
+        teacher.emit('whiteboard_live_stroke', {
+            'lesson_id': lesson_id,
+            'stroke_id': 'strk_live_1',
+            'action': 'move',
+            'point': {'x': 30, 'y': 40},
+            'page_id': page_id,
+        }, namespace='/lesson')
+        live_move = event(student, 'whiteboard_live_stroke')
+        assert live_move['stroke_id'] == 'strk_live_1'
+        assert live_move['action'] == 'move'
+
+        # 2. End of stroke on mouse release (board_stroke)
+        completed_stroke = {
+            'id': 'strk_live_1',
+            'tool': 'pen',
+            'color': '#ef4444',
+            'width': 3,
+            'points': [{'x': 20, 'y': 25}, {'x': 30, 'y': 40}],
+            'page_id': page_id,
         }
+        teacher.emit('board_stroke', {'lesson_id': lesson_id, 'stroke': completed_stroke}, namespace='/lesson')
+        received_stroke = event(student, 'board_stroke')
+        assert received_stroke['stroke']['id'] == 'strk_live_1'
+        assert received_stroke['stroke']['page_id'] == page_id
+
+        # 3. Room UI sync (window minimize/open)
         teacher.emit('lesson_room_ui', {
             'lesson_id': lesson_id,
-            'kind': 'workspace',
-            'action': 'switch',
-            'desktopId': 'desktop-2',
-            'pageId': 'page_desk2',
-            'desktop': desk2_state
+            'kind': 'window',
+            'window_id': 'code-window',
+            'action': 'open',
         }, namespace='/lesson')
+        ui_event = event(student, 'lesson_room_ui')
+        assert ui_event['kind'] == 'window'
+        assert ui_event['window_id'] == 'code-window'
+        assert ui_event['action'] == 'open'
 
-        student_ui = event(student, 'lesson_room_ui')
-        assert student_ui['kind'] == 'workspace'
-        assert student_ui['action'] == 'switch'
-        assert student_ui['desktopId'] == 'desktop-2'
-        assert student_ui['desktop']['codeState']['virtualFS']['main.py'] == 'print("desktop 2 code")'
-        assert student_ui['desktop']['pageId'] == 'page_desk2'
-        assert student_ui['desktop']['taskId'] == 42
-
-        # 3. Stroke on Desktop 2 (page_desk2)
-        stroke2 = {'id': 'strk_desk2_1', 'page_id': 'page_desk2', 'points': [{'x': 100, 'y': 100}]}
-        teacher.emit('board_stroke', {'lesson_id': lesson_id, 'stroke': stroke2}, namespace='/lesson')
-        received_stroke2 = event(student, 'board_stroke')
-        assert received_stroke2['stroke']['id'] == 'strk_desk2_1'
-        assert received_stroke2['stroke']['page_id'] == 'page_desk2'
-
-        # 4. Clear Desktop 2 only
-        teacher.emit('board_action', {'lesson_id': lesson_id, 'action': 'clear', 'page_id': 'page_desk2'}, namespace='/lesson')
-        clear_event = event(student, 'board_action')
-        assert clear_event['action'] == 'clear'
-        assert clear_event['page_id'] == 'page_desk2'
-
-        # 5. Reconnecting student gets snapshot with stroke1 still preserved, stroke2 cleared!
+        # 4. Reconnecting student gets board snapshot with completed stroke and UI state
         student.disconnect(namespace='/lesson')
         student2 = connect(student_http)
-        snap = event(student2, 'board_snapshot')
+        received_events = student2.get_received('/lesson')
+        event_names = [e['name'] for e in received_events]
+
+        assert 'board_snapshot' in event_names
+        snap = [e['args'][0] for e in received_events if e['name'] == 'board_snapshot'][-1]
         stroke_ids = [s['id'] for s in snap['strokes']]
-        assert 'strk_desk1_1' in stroke_ids
-        assert 'strk_desk2_1' not in stroke_ids
+        assert 'strk_live_1' in stroke_ids
 
     finally:
         for connection in sockets:
             if connection.is_connected('/lesson'):
                 connection.disconnect(namespace='/lesson')
+
 

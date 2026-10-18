@@ -551,7 +551,7 @@ def dashboard():
     if active_role == 'parent' or (current_user.is_parent() and active_role not in ['tutor', 'admin', 'creator']):
         return parents_dashboard()
     
-    if current_user.is_student():
+    if current_user.is_student() or not (current_user.is_tutor() or current_user.is_admin() or current_user.is_creator()):
         return student_dashboard()
 
     # Дашборд преподавателя при переходе на /dashboard (без параметров поиска по ученикам)

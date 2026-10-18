@@ -6891,6 +6891,9 @@
   }
 
   async function loadFromServer() {
+    const isLessonRoom = contextType === 'lesson' || contextType === 'lesson_task' || Boolean(embeddedTarget) || Boolean(document.getElementById('canvas-window'));
+    if (isLessonRoom) return;
+
     if (!taskId) {
       pages = [{ id: 'page_1', title: 'Страница 1', background: 'dots', strokes: [] }];
       currentPageId = 'page_1';
@@ -7541,6 +7544,7 @@
 
   function close() {
     if (!isOpen) return;
+    if (embeddedTarget || document.getElementById('canvas-window')) return;
     if (textEditor) finishTextEntry(true);
     if (dirty) saveToServer();
     isOpen = false;
@@ -7619,17 +7623,22 @@
     contextId = normalizedContextId;
     syncFabVisibility();
     if (!hasValidContext() && isOpen) {
-      close();
-      strokes = [];
-      redoStack = [];
-      redraw();
-      updateSelectionBox();
-      updateBadge();
-      return;
+      if (!embeddedTarget && !document.getElementById('canvas-window')) {
+        close();
+        strokes = [];
+        redoStack = [];
+        redraw();
+        updateSelectionBox();
+        updateBadge();
+        return;
+      }
     }
-    if (changed && isOpen) loadFromServer();
-    if (changed && !isOpen) {
-      scheduleExistingDrawingCheck();
+    const isLessonRoom = contextType === 'lesson' || contextType === 'lesson_task' || Boolean(embeddedTarget) || Boolean(document.getElementById('canvas-window'));
+    if (!isLessonRoom) {
+      if (changed && isOpen) loadFromServer();
+      if (changed && !isOpen) {
+        scheduleExistingDrawingCheck();
+      }
     }
   }
 
@@ -8129,12 +8138,12 @@
     if (!payload) return;
     const strokeId = payload.stroke_id || payload.stroke?.id;
     if (!strokeId) return;
-    const pageId = payload.page_id || payload.stroke?.page_id;
+    const pageId = payload.page_id || payload.stroke?.page_id || currentPageId;
     if (payload.phase === 'cancel') {
       remoteLiveStrokes.delete(strokeId);
     } else if (payload.phase === 'end') {
       if (payload.stroke) {
-        if (pageId) payload.stroke.page_id = pageId;
+        payload.stroke.page_id = pageId;
         remoteLiveStrokes.set(strokeId, payload.stroke);
       }
       setTimeout(() => {
@@ -8143,15 +8152,15 @@
           redraw();
         }
       }, 1000);
-    } else if (payload.stroke) {
-      if (pageId) payload.stroke.page_id = pageId;
+    } else if (payload.stroke && Array.isArray(payload.stroke.points) && payload.stroke.points.length > 0) {
+      payload.stroke.page_id = pageId;
       remoteLiveStrokes.set(strokeId, payload.stroke);
     } else {
       let existing = remoteLiveStrokes.get(strokeId);
       if (!existing) {
         existing = {
           id: strokeId,
-          page_id: pageId || currentPageId,
+          page_id: pageId,
           tool: payload.style?.eraser ? 'eraser' : 'pen',
           points: [],
           color: payload.style?.color || '#4f46e5',
@@ -8161,7 +8170,6 @@
         };
         remoteLiveStrokes.set(strokeId, existing);
       }
-      if (pageId && !existing.page_id) existing.page_id = pageId;
       if (Array.isArray(payload.points)) {
         existing.points.push(...payload.points);
       }

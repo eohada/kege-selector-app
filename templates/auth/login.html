@@ -6,6 +6,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
+    darkMode: 'class',
     theme: {
       extend: {
         colors: {
@@ -23,7 +24,29 @@
     }
   }
 </script>
-<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<script src="https://unpkg.com/@phosphor-icons/web" defer></script>
+<style>
+  :root, html, body {
+    color-scheme: light !important;
+    background-color: #F8FAFC !important;
+    color: #0F172A !important;
+  }
+  input, select, textarea {
+    color-scheme: light !important;
+    color: #0F172A !important;
+    background-color: #F4F7FA !important;
+    -webkit-text-fill-color: #0F172A !important;
+  }
+  input:focus, select:focus, textarea:focus {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    -webkit-text-fill-color: #0F172A !important;
+  }
+  input::placeholder {
+    color: #94A3B8 !important;
+    -webkit-text-fill-color: #94A3B8 !important;
+  }
+</style>
 {% endblock %}
 
 {% block body %}

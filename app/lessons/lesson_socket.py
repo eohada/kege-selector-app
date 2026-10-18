@@ -534,7 +534,7 @@ def register_lesson_socket(socketio) -> None:
             if not role:
                 _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
             kind = str((data or {}).get("kind") or "")
-            if kind not in {"mode", "window", "window_layout", "workspace", "run", "run_start", "terminal_output", "terminal_tab"}:
+            if kind not in {"mode", "window", "window_layout", "run", "run_start", "terminal_output", "terminal_tab"}:
                 return
             control = _room_control(lesson_id)
             win_mode = control.get("windows_mode") or ("independent" if control.get("windows_sync") is False else "teacher")
@@ -544,7 +544,6 @@ def register_lesson_socket(socketio) -> None:
                 and kind in {"run", "run_start", "terminal_output", "terminal_tab"}
             )
             is_window_action = kind in {"window", "window_layout"}
-            is_workspace_action = kind == "workspace"
             
             if is_window_action:
                 if win_mode == "independent":
@@ -561,15 +560,7 @@ def register_lesson_socket(socketio) -> None:
                 if allowed_ctrl and (data or {}).get("window_id") not in allowed_ctrl:
                     return
 
-            if is_workspace_action:
-                if control.get("workspace_sync") is False and role != "teacher":
-                    return
-                action_type = str((data or {}).get("action") or "")
-                if role != "teacher" and action_type in {"sync_all", "create", "rename", "delete"}:
-                    socketio.emit("whiteboard_error", {"message": "Управлять рабочими столами может только преподаватель"}, room=request.sid, namespace="/lesson")
-                    return
-
-            if not (is_window_action or is_workspace_action or is_student_run or role == "teacher"):
+            if not (is_window_action or is_student_run or role == "teacher"):
                 socketio.emit("whiteboard_error", {"message": "Недостаточно прав для управления интерфейсом комнаты"}, room=request.sid, namespace="/lesson")
                 return
 
@@ -620,41 +611,6 @@ def register_lesson_socket(socketio) -> None:
                     "exit_code": int((data or {}).get("exit_code") or 0),
                     "is_error": bool((data or {}).get("is_error")),
                 })
-            elif kind == "workspace":
-                action = str((data or {}).get("action") or "")[:32]
-                payload["action"] = action
-                raw_workspaces = (data or {}).get("workspaces")
-                if isinstance(raw_workspaces, list):
-                    clean_workspaces = []
-                    for w in raw_workspaces[:25]:
-                        if isinstance(w, dict) and w.get("id"):
-                            clean_workspaces.append({
-                                "id": str(w.get("id"))[:64],
-                                "name": str(w.get("name") or "Стол")[:60],
-                                "layouts": dict(w.get("layouts") or {}),
-                                "codeState": dict(w.get("codeState") or {}),
-                                "taskId": w.get("taskId"),
-                                "scratchpad": str(w.get("scratchpad") or "")[:50000],
-                                "pageId": str(w.get("pageId") or w.get("page_id") or "")[:64],
-                            })
-                    payload["workspaces"] = clean_workspaces
-
-                if action == "switch":
-                    payload["desktopId"] = str((data or {}).get("desktopId") or "")[:64]
-                    payload["pageId"] = str((data or {}).get("pageId") or "")[:64]
-                    raw_desktop = (data or {}).get("desktop")
-                    if isinstance(raw_desktop, dict):
-                        payload["desktop"] = {
-                            "id": str(raw_desktop.get("id") or payload["desktopId"])[:64],
-                            "name": str(raw_desktop.get("name") or "Стол")[:60],
-                            "pageId": str(raw_desktop.get("pageId") or payload["pageId"])[:64],
-                            "layouts": dict(raw_desktop.get("layouts") or {}),
-                            "codeState": dict(raw_desktop.get("codeState") or {}),
-                            "taskId": raw_desktop.get("taskId"),
-                            "scratchpad": str(raw_desktop.get("scratchpad") or "")[:50000],
-                        }
-                elif action == "sync_all":
-                    payload["activeDesktopId"] = str((data or {}).get("activeDesktopId") or "")[:64]
             else:
                 code = str((data or {}).get("code") or "")[:100000]
                 payload.update({"file_name": str((data or {}).get("file_name") or "main.py")[:120], "code": code})
@@ -663,33 +619,13 @@ def register_lesson_socket(socketio) -> None:
                 room_state = _lesson_room_ui.setdefault(lesson_id, {})
                 state_key = (
                     "mode" if kind == "mode"
-                    else "workspace" if kind == "workspace"
                     else "terminal_output" if kind == "terminal_output"
                     else "terminal_tab" if kind == "terminal_tab"
                     else f"window_layout:{payload['window_id']}" if kind == "window_layout"
                     else f"window:{payload['window_id']}" if kind == "window"
                     else f"{kind}:{payload.get('id', 'default')}"
                 )
-                if kind == "workspace" and payload.get("action") == "switch":
-                    ws_state = room_state.setdefault("workspace", {
-                        "lesson_id": lesson_id,
-                        "kind": "workspace",
-                        "action": "sync_all",
-                        "workspaces": [],
-                        "activeDesktopId": payload.get("desktopId"),
-                    })
-                    ws_state["activeDesktopId"] = payload.get("desktopId")
-                    if payload.get("desktop"):
-                        d_id = payload["desktop"].get("id")
-                        existing_d = next((w for w in ws_state["workspaces"] if w.get("id") == d_id), None)
-                        if existing_d:
-                            existing_d.update(payload["desktop"])
-                        else:
-                            ws_state["workspaces"].append(payload["desktop"])
-                elif kind == "workspace" and payload.get("action") == "sync_all":
-                    room_state["workspace"] = payload
-                else:
-                    room_state[state_key] = payload
+                room_state[state_key] = payload
             socketio.emit("lesson_room_ui", payload, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
             logger.warning("lesson_room_ui failed: %s", error)
@@ -934,7 +870,7 @@ def register_lesson_socket(socketio) -> None:
         try:
             payload = data or {}
             lesson_id = int(payload.get("lesson_id"))
-            phase = str(payload.get("phase") or "")
+            phase = str(payload.get("phase") or payload.get("action") or "")
             if phase not in {"start", "move", "end", "cancel"}:
                 raise WhiteboardOperationError("Некорректная фаза live-штриха")
             stroke_id = str(payload.get("stroke_id") or "")[:96]
@@ -942,9 +878,9 @@ def register_lesson_socket(socketio) -> None:
             if not page_id:
                 try:
                     board_doc = normalize_document(get_or_create_board(lesson_id).document_state)
-                    page_id = str(board_doc.get("active_page_id") or (board_doc.get("pages", [{}])[0].get("id") or "default"))
+                    page_id = str(board_doc.get("active_page_id") or (board_doc.get("pages", [{}])[0].get("id") or "page_1"))
                 except Exception:
-                    page_id = "default"
+                    page_id = "page_1"
             if not stroke_id:
                 raise WhiteboardOperationError("Live-штрих не содержит идентификатор")
             key = f"{current_user.id}:{stroke_id}"
@@ -964,7 +900,13 @@ def register_lesson_socket(socketio) -> None:
                 role = existing.get("role", "student")
                 if _room_control(lesson_id).get("live_strokes") is False:
                     return
-            points = payload.get("points") if isinstance(payload.get("points"), list) else []
+            raw_points = payload.get("points")
+            if isinstance(raw_points, list):
+                points = raw_points
+            elif isinstance(payload.get("point"), dict):
+                points = [payload.get("point")]
+            else:
+                points = []
             if len(points) > 128:
                 points = points[-128:]
             safe_points = []
@@ -985,8 +927,8 @@ def register_lesson_socket(socketio) -> None:
             else:
                 style_payload = payload.get("style") if isinstance(payload.get("style"), dict) else {}
                 style = {
-                    "color": str(style_payload.get("color") or "#4f46e5")[:16],
-                    "size": min(48, max(1, float(style_payload.get("size") or 4))),
+                    "color": str(style_payload.get("color") or payload.get("color") or "#4f46e5")[:16],
+                    "size": min(48, max(1, float(style_payload.get("size") or payload.get("width") or 4))),
                     "opacity": min(1, max(.1, float(style_payload.get("opacity") if style_payload.get("opacity") is not None else 1))),
                     "eraser": bool(style_payload.get("eraser")),
                 }
@@ -999,11 +941,9 @@ def register_lesson_socket(socketio) -> None:
             sequence = int(payload.get("seq") or 0)
             if existing and sequence > 0 and sequence <= existing.get("seq", 0):
                 return
-            if phase == "start":
+            if phase == "start" or not existing:
                 existing = {"user_id": current_user.id, "sid": request.sid, "role": role, "seq": sequence or 1, "points": 0, "style": style, "page_id": page_id, "frame_id": payload.get("frame_id")}
                 lesson_strokes[key] = existing
-            elif not existing:
-                return
             else:
                 existing["seq"] = sequence if sequence > 0 else (existing.get("seq", 0) + 1)
             existing["points"] += len(safe_points)
@@ -1017,6 +957,7 @@ def register_lesson_socket(socketio) -> None:
                 "page_id": page_id,
                 "frame_id": payload.get("frame_id"),
                 "phase": phase,
+                "action": phase,
                 "seq": existing.get("seq", sequence),
                 "points": safe_points,
                 "style": style,

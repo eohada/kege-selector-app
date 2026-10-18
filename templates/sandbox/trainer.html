@@ -410,7 +410,7 @@
     filter: none !important;
     will-change: auto;
     border-color: #d6deeb !important;
-    box-shadow: 0 14px 28px rgba(38, 48, 77, .12) !important;
+    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04) !important;
   }
 
   /* Room windows stay crisp while opening. Blur belongs to the old glass shell,
@@ -449,14 +449,14 @@
 
   .room-lesson-os #task-window .window-resize-handle {
     display: flex !important;
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
     right: 2px;
     bottom: 2px;
-    opacity: .72;
-    border-radius: .55rem;
-    background: #eef2ff;
-    color: #4f46e5;
+    opacity: .35;
+    border-radius: 4px;
+    background: transparent;
+    color: #94a3b8;
     pointer-events: auto;
     touch-action: none;
   }
@@ -2220,32 +2220,6 @@
         box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06) !important;
         font-weight: 800 !important;
       }
-      .desktop-tab {
-        padding: 0.25rem 0.65rem;
-        border-radius: 0.65rem;
-        font-size: 11px;
-        font-weight: 700;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        transition: all 0.15s ease;
-        border: 1px solid transparent;
-        white-space: nowrap;
-      }
-      .desktop-tab.is-active {
-        background: #4f46e5;
-        color: #ffffff;
-        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
-      }
-      .desktop-tab:not(.is-active) {
-        background: #f1f5f9;
-        color: #475569;
-      }
-      .desktop-tab:not(.is-active):hover {
-        background: #e2e8f0;
-        color: #0f172a;
-      }
     </style>
     {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261018-desktops-sync-v2"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261018-sync-v2"><link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261018-v2">{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
 
@@ -2286,49 +2260,7 @@
             <span class="lesson-os-brand-mark" aria-hidden="true"><i class="ph-bold ph-brain"></i></span>
             <div class="lesson-os-system-title"><strong>{{ room_lesson.topic or 'Комната урока' }}</strong><span>{% if room_lesson.subject %}{{ room_lesson.subject }}{% else %}BooStudy OS{% endif %}</span></div>
           </div>
-          {% if room_mode and not homework_mode %}
-          <div class="h-6 w-px bg-slate-200/80 mx-1"></div>
-          <div id="lesson-virtual-desktops-bar" class="lesson-virtual-desktops-bar relative flex items-center gap-1 select-none text-xs">
-            <button type="button" id="lesson-desktop-prev-btn" class="w-7 h-7 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors border border-slate-200/80 cursor-pointer" title="Предыдущий стол (Alt + ←)">
-              <i class="ph-bold ph-caret-left text-xs"></i>
-            </button>
-            <button type="button" id="lesson-desktop-trigger" class="h-7 px-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-all border border-slate-200/90 shadow-2xs cursor-pointer min-w-[90px] justify-between" title="Выбор и управление рабочим столом">
-              <span class="flex items-center gap-1.5 truncate">
-                <i class="ph-bold ph-squares-four text-indigo-600 text-sm"></i>
-                <span id="lesson-desktop-current-name" class="truncate font-black max-w-[110px]">Стол 1</span>
-              </span>
-              <i class="ph-bold ph-caret-down text-[10px] text-slate-400"></i>
-            </button>
-            <button type="button" id="lesson-desktop-next-btn" class="w-7 h-7 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors border border-slate-200/80 cursor-pointer" title="Следующий стол (Alt + →)">
-              <i class="ph-bold ph-caret-right text-xs"></i>
-            </button>
 
-            <!-- Dropdown Popover -->
-            <div id="lesson-desktop-dropdown" style="top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 3500; min-width: 270px;" class="hidden absolute rounded-2xl bg-white border border-slate-200/90 shadow-xl p-2 space-y-2 animate-in fade-in zoom-in-95 duration-100">
-              <div class="flex items-center justify-between px-2 pt-1 pb-1 border-b border-slate-100 text-[11px] font-bold text-slate-500">
-                <span class="flex items-center gap-1.5">
-                  <i class="ph-bold ph-squares-four text-indigo-500"></i>
-                  <span>Рабочие столы</span>
-                </span>
-                <span id="lesson-desktops-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-50 text-indigo-600 font-mono font-bold">1</span>
-              </div>
-              <div id="lesson-desktops-list" class="max-h-56 overflow-y-auto no-scrollbar space-y-1">
-                <!-- Dynamically populated table items -->
-              </div>
-              {% if is_studio_teacher|default(false) %}
-              <div class="pt-1 border-t border-slate-100">
-                <button type="button" id="lesson-desktop-add-btn" class="w-full h-8 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-indigo-200/70 cursor-pointer shadow-2xs">
-                  <i class="ph-bold ph-plus text-xs"></i>
-                  <span>Создать новый стол</span>
-                </button>
-              </div>
-              {% endif %}
-              <div class="text-[10px] text-slate-400 text-center font-medium px-1">
-                <kbd class="px-1 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 font-mono">Alt</kbd> + <kbd class="px-1 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 font-mono">←</kbd> / <kbd class="px-1 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 font-mono">→</kbd>
-              </div>
-            </div>
-          </div>
-          {% endif %}
         </div>
         <div class="lesson-os-system-right">
           {% if linked_homework_url %}<a class="lesson-os-system-action" href="{{ linked_homework_url }}"><i class="ph-bold ph-notebook" aria-hidden="true"></i><span>Домашняя OS</span></a>{% endif %}
@@ -2373,13 +2305,7 @@
                     <span>Синхронизировать координаты перетаскивания и размеры окон</span>
                   </div>
                 </label>
-                <label class="lesson-os-control-toggle-row">
-                  <input type="checkbox" id="control-sync-workspaces" checked>
-                  <div class="lesson-os-control-text">
-                    <strong>Синхронизация рабочих столов</strong>
-                    <span>Ученик переключает рабочие столы вслед за преподавателем</span>
-                  </div>
-                </label>
+
               </div>
               <div class="lesson-os-control-section">
                 <div class="lesson-os-control-subtitle">Синхронизировать окна:</div>
@@ -5187,13 +5113,6 @@
       if (!element) return;
       this.globalZIndex += 1;
       element.style.zIndex = this.globalZIndex;
-
-      document.querySelectorAll('.glass-os-window').forEach(w => {
-        w.classList.remove('shadow-[0_25px_60px_rgba(0,0,0,0.18)]');
-        w.classList.add('shadow-2xl');
-      });
-      element.classList.remove('shadow-2xl');
-      element.classList.add('shadow-[0_25px_60px_rgba(0,0,0,0.18)]');
     }
 
     initWindowResize(windowEl) {
@@ -5846,6 +5765,21 @@
     const roomBridge = window.boostudyLessonControl;
     if (trainerOsConfig.room_mode && !options.remote && !canUserInteractWindow(windowId)) return;
 
+    const dockIcon = document.getElementById(`dock-icon-${windowId}`) || document.querySelector(`.room-dock-icon[data-window-id="${windowId}"]`);
+    dockIcon?.classList.add('is-active');
+
+    if (options.instant) {
+      win.style.display = 'flex';
+      win.classList.remove('hidden', 'pointer-events-none', 'window-minimized');
+      win.style.pointerEvents = 'auto';
+      win.style.opacity = '1';
+      win.style.transform = 'none';
+      win.style.transition = 'none';
+      win.dataset.isMinimized = 'false';
+      windowManager.bringToFront(win);
+      return;
+    }
+
     win.style.display = 'flex';
     win.classList.remove('hidden', 'pointer-events-none', 'window-minimized');
     win.style.pointerEvents = 'auto';
@@ -5926,7 +5860,7 @@
 
   function minimizeToDock(windowId, options = {}) {
     const windowEl = document.getElementById(windowId);
-    const dockIconEl = document.getElementById(`dock-icon-${windowId}`);
+    const dockIconEl = document.getElementById(`dock-icon-${windowId}`) || document.querySelector(`.room-dock-icon[data-window-id="${windowId}"]`);
     if (!windowEl) return;
     const roomBridge = window.boostudyLessonControl;
     if (trainerOsConfig.room_mode && !options.remote && !canUserInteractWindow(windowId)) return;
@@ -5934,6 +5868,16 @@
       roomBridge?.sendUi?.({ kind: 'window', window_id: windowId, action: 'minimize' });
     }
     if (trainerOsConfig.room_mode && !options.remote) windowManager.saveWindowVisibility(windowEl, false);
+    dockIconEl?.classList.remove('is-active');
+
+    if (options.instant) {
+      windowEl.dataset.isMinimized = 'true';
+      windowEl.style.opacity = '0';
+      windowEl.style.display = 'none';
+      windowEl.style.pointerEvents = 'none';
+      windowEl.classList.add('hidden', 'window-minimized');
+      return;
+    }
 
     if (!dockIconEl) {
       windowEl.dataset.isMinimized = 'true';
@@ -8882,7 +8826,6 @@
 
     function syncCurrentRoomUi(control = controlState()) {
       if (state.role !== 'teacher' || !state.socket) return;
-      window.lessonVirtualWorkspaces?.syncAll?.();
       if (_teacherControlEnabled(control, 'teacher_controls_mode')) {
         const activeMode = [...document.querySelectorAll('.room-mode-button.is-active[data-room-mode]')]
           .find((button) => button.offsetParent !== null)?.dataset.roomMode;
@@ -8913,7 +8856,8 @@
     let codePersistTimer = null;
 
     function queueCodeSync(code = virtualFS[activeFileName] || '', fileName = activeFileName) {
-      if (trainerOsConfig.room_mode && (state.role === 'teacher' || controlState().student_code_editing === true)) {
+      const isTeacherUser = Boolean(trainerOsConfig.is_studio_teacher || state.role === 'teacher');
+      if (trainerOsConfig.room_mode && (isTeacherUser || controlState().student_code_editing === true)) {
         clearTimeout(codePersistTimer);
         codePersistTimer = setTimeout(() => {
           fetch(`/lesson/${encodeURIComponent(lessonId)}/studio/os-code`, {
@@ -8923,7 +8867,7 @@
           }).catch(() => {});
         }, 2500);
       }
-      if (!state.socket || controlState().code_sync === false || (state.role !== 'teacher' && controlState().student_code_editing !== true)) return;
+      if (!state.socket || controlState().code_sync === false || (!isTeacherUser && controlState().student_code_editing !== true)) return;
       clearTimeout(codeSyncTimer);
       codeSyncTimer = setTimeout(() => {
         state.socket?.emit('lesson_code_update', { lesson_id: lessonId, file_name: fileName, code: String(code || '') });
@@ -9133,15 +9077,6 @@
       const ctrl = controlState();
       const isTeacher = state.role === 'teacher';
       const winMode = ctrl.windows_mode || (ctrl.windows_sync === false ? 'independent' : 'teacher');
-
-      if (payload.kind === 'workspace' && ctrl.workspace_sync !== false) {
-        if (window.lessonVirtualWorkspaces?.applyRemoteWorkspace) {
-          window.lessonVirtualWorkspaces.applyRemoteWorkspace(payload);
-        } else {
-          window._pendingWorkspacePayload = payload;
-        }
-        return;
-      }
 
       const isCodeKind = ['run', 'run_start', 'terminal_output', 'terminal_tab'].includes(payload.kind);
       const isWindowKind = ['window', 'window_layout'].includes(payload.kind);
@@ -9816,7 +9751,10 @@
     }
 
     function receiveLiveStroke(payload) {
-      if (!payload?.stroke_id || Number(payload.lesson_id) !== Number(lessonId) || (payload.page_id && payload.page_id !== state.currentPageId)) return;
+      if (!payload?.stroke_id || Number(payload.lesson_id) !== Number(lessonId)) return;
+      if (payload.page_id && state.currentPageId && payload.page_id !== state.currentPageId) {
+        state.currentPageId = payload.page_id;
+      }
       const id = payload.stroke_id;
       const points = Array.isArray(payload.points) ? payload.points : [];
       if (payload.phase === 'cancel') {
@@ -10115,10 +10053,11 @@
             opacity: Number(stroke?.opacity ?? 1),
             eraser: stroke?.tool === 'eraser',
           };
+          const pageId = stroke?.page_id || window.BooCanvasOverlay?.getCurrentPageId?.() || state.currentPageId || 'page_1';
           state.socket.emit('whiteboard_live_stroke', {
             lesson_id: lessonId,
             client_id: clientId,
-            page_id: state.currentPageId,
+            page_id: pageId,
             stroke_id: strokeId,
             phase: phase,
             seq: state.strokeLiveSeq,
@@ -10199,9 +10138,6 @@
           state.socket.emit('lesson_code_join', { lesson_id: lessonId, file_name: activeFileName, code: virtualFS[activeFileName] || '' });
           flushOutbox();
           connectCanvasOverlaySync();
-          if (trainerOsConfig.is_studio_teacher) {
-            window.lessonVirtualWorkspaces?.syncAll?.();
-          }
         });
         state.socket.on('disconnect', () => { state.connected = false; setSaveState('offline', 'Ожидаем сеть'); });
         state.socket.on('whiteboard_snapshot', (payload) => { if (payload.document) applySnapshot(payload.document, payload.version, { serverNow: payload.server_now, preserveOutbox: Boolean(state.outbox.length || state.inFlight) }); });
@@ -10404,8 +10340,14 @@
           const pageChanged = payload.page_id && payload.page_id !== state.currentPageId;
           if (pageChanged) {
             state.currentPageId = payload.page_id;
-            state.document.active_page_id = payload.page_id;
+            if (state.document) {
+              if (!state.document.pages.some((p) => p.id === payload.page_id)) {
+                state.document.pages.push({ id: payload.page_id, title: 'Стол', order: state.document.pages.length, objects: [] });
+              }
+              state.document.active_page_id = payload.page_id;
+            }
             setSelection([]);
+            window.BooCanvasOverlay?.switchPage?.(payload.page_id);
           }
           const cam = payload.camera || {};
           const panX = Number(cam.pan_x !== undefined ? cam.pan_x : cam.offsetX) || 0;
@@ -11166,7 +11108,6 @@
 
       const syncCanvasInput = document.getElementById('control-sync-canvas');
       const syncWindowPosInput = document.getElementById('control-sync-window-positions');
-      const syncWorkspacesInput = document.getElementById('control-sync-workspaces');
       const studentWhiteboardInput = document.getElementById('control-student-whiteboard-edit');
       const studentCodeEditInput = document.getElementById('control-student-code-edit');
       const winCheckboxes = popover.querySelectorAll('.control-win-checkbox');
@@ -11175,7 +11116,6 @@
         const ctrl = controlState();
         if (syncCanvasInput) syncCanvasInput.checked = ctrl.canvas_sync !== false;
         if (syncWindowPosInput) syncWindowPosInput.checked = ctrl.window_positions_sync !== false;
-        if (syncWorkspacesInput) syncWorkspacesInput.checked = ctrl.workspace_sync !== false;
         if (studentWhiteboardInput) studentWhiteboardInput.checked = ctrl.student_editing !== false;
         if (studentCodeEditInput) studentCodeEditInput.checked = ctrl.student_code_editing === true;
 
@@ -11219,7 +11159,6 @@
           canvas_sync: syncCanvasInput ? syncCanvasInput.checked : true,
           windows_mode: mode,
           windows_sync: mode !== 'independent',
-          workspace_sync: syncWorkspacesInput ? syncWorkspacesInput.checked : true,
           student_editing: studentWhiteboardInput ? studentWhiteboardInput.checked : true,
           window_positions_sync: syncWindowPosInput ? syncWindowPosInput.checked : true,
           student_code_editing: studentCodeEditInput ? studentCodeEditInput.checked : false,
@@ -11263,10 +11202,15 @@
         state: state,
         activatePage: (pageId) => {
           if (!pageId) return;
+          state.currentPageId = pageId;
+          if (state.document) {
+            if (!state.document.pages.some((p) => p.id === pageId)) {
+              state.document.pages.push({ id: pageId, title: 'Стол', order: state.document.pages.length, objects: [] });
+            }
+            state.document.active_page_id = pageId;
+          }
           if (state.canPresent) commit({ type: 'page.activate', page_id: pageId });
           else {
-            state.currentPageId = pageId;
-            if (state.document) state.document.active_page_id = pageId;
             setSelection([]);
             renderDocument();
           }
@@ -12400,508 +12344,6 @@
 
     // Initial search
     loadTeacherBankTasks(1);
-  })();
-
-  // ----------------------------------------------------------------------
-  // VIRTUAL WORKSPACES CONTROLLER (Item 8)
-  // ----------------------------------------------------------------------
-  (() => {
-    const config = (() => {
-      try { return JSON.parse(document.getElementById('trainer-os-config')?.textContent || '{}'); }
-      catch (error) { return {}; }
-    })();
-    const lessonId = Number(config.lesson_id || 0);
-    if (!config.room_mode || !lessonId) return;
-
-    const isTeacher = Boolean(config.is_studio_teacher);
-    const viewerId = config.viewer_id || (isTeacher ? 'teacher' : 'student');
-    const storageKey = `boostudy_desktops_${lessonId}_${viewerId}`;
-
-    const barEl = document.getElementById('lesson-virtual-desktops-bar');
-    const triggerBtn = document.getElementById('lesson-desktop-trigger');
-    const dropdownEl = document.getElementById('lesson-desktop-dropdown');
-    const currentNameEl = document.getElementById('lesson-desktop-current-name');
-    const countBadgeEl = document.getElementById('lesson-desktops-count-badge');
-    const listContainer = document.getElementById('lesson-desktops-list');
-    const prevBtn = document.getElementById('lesson-desktop-prev-btn');
-    const nextBtn = document.getElementById('lesson-desktop-next-btn');
-    const addBtn = document.getElementById('lesson-desktop-add-btn');
-
-    let workspaces = [
-      {
-        id: 'desktop-1',
-        name: 'Стол 1',
-        pageId: 'page_1',
-        layouts: { 'canvas-window': { open: true } },
-        codeState: { virtualFS: { 'main.py': '' }, activeFileName: 'main.py', openTabs: ['main.py'] },
-        taskId: null,
-        scratchpad: ''
-      }
-    ];
-    let activeDesktopId = 'desktop-1';
-
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
-      if (saved && Array.isArray(saved.workspaces) && saved.workspaces.length) {
-        workspaces = saved.workspaces;
-        if (saved.activeDesktopId && workspaces.some(w => w.id === saved.activeDesktopId)) {
-          activeDesktopId = saved.activeDesktopId;
-        }
-      }
-    } catch (_) {}
-
-    function saveToStorage() {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify({ workspaces, activeDesktopId }));
-      } catch (_) {}
-    }
-
-    function getScratchpadEl() {
-      return document.getElementById(isTeacher ? 'teacher-scratchpad-textarea' : 'student-scratchpad-textarea');
-    }
-
-    function captureCurrentDesktopState() {
-      const current = workspaces.find(w => w.id === activeDesktopId);
-      if (!current) return;
-      const scratch = getScratchpadEl();
-      if (scratch) current.scratchpad = scratch.value || '';
-
-      current.codeState = {
-        virtualFS: JSON.parse(JSON.stringify(virtualFS || {})),
-        activeFileName: activeFileName || 'main.py',
-        openTabs: Array.isArray(openTabs) ? [...openTabs] : ['main.py']
-      };
-
-      current.taskId = window.lessonTasksController?.getActiveTaskId?.() || null;
-
-      const layouts = {};
-      const winManager = window.windowManager;
-      if (winManager?.registeredWindows) {
-        for (const [id, { windowEl }] of winManager.registeredWindows) {
-          if (!windowEl || (typeof window.isPrivateWindow === 'function' && window.isPrivateWindow(id)) || id === 'canvas-window') continue;
-          const rect = windowEl.getBoundingClientRect();
-          const parentRect = windowEl.parentElement?.getBoundingClientRect() || { left: 0, top: 0 };
-          const computedLeft = windowEl.style.left || (rect.left > 0 ? `${Math.round(rect.left - parentRect.left)}px` : '');
-          const computedTop = windowEl.style.top || (rect.top > 0 ? `${Math.round(rect.top - parentRect.top)}px` : '');
-          const computedWidth = windowEl.style.width || (rect.width > 0 ? `${Math.round(rect.width)}px` : '');
-          const computedHeight = windowEl.style.height || (rect.height > 0 ? `${Math.round(rect.height)}px` : '');
-          layouts[id] = {
-            open: !windowEl.classList.contains('hidden') && windowEl.dataset.isMinimized !== 'true',
-            left: computedLeft,
-            top: computedTop,
-            width: computedWidth,
-            height: computedHeight,
-            is_maximized: windowEl.dataset.isMaximized === 'true',
-          };
-        }
-      }
-      current.layouts = layouts;
-      saveToStorage();
-    }
-
-    function restoreDesktopState(desktop) {
-      if (!desktop) return;
-
-      // 1. Scratchpad
-      const scratch = getScratchpadEl();
-      if (scratch) scratch.value = desktop.scratchpad || '';
-
-      // 2. Code state
-      if (desktop.codeState && desktop.codeState.virtualFS) {
-        Object.keys(virtualFS).forEach(k => delete virtualFS[k]);
-        Object.assign(virtualFS, desktop.codeState.virtualFS);
-        activeFileName = desktop.codeState.activeFileName || 'main.py';
-        if (!virtualFS[activeFileName]) virtualFS[activeFileName] = '';
-        openTabs = Array.isArray(desktop.codeState.openTabs) && desktop.codeState.openTabs.length ? [...desktop.codeState.openTabs] : [activeFileName];
-      } else {
-        Object.keys(virtualFS).forEach(k => delete virtualFS[k]);
-        virtualFS['main.py'] = '';
-        activeFileName = 'main.py';
-        openTabs = ['main.py'];
-      }
-      const editorArea = document.getElementById('code-editor-textarea');
-      if (editorArea) {
-        editorArea.value = virtualFS[activeFileName] || '';
-      }
-      renderEditorTabs();
-      renderExplorerFileList();
-      renderSourceControlList();
-      updateCodeHighlight();
-      updateStatusBarCursorPos();
-      if (isTeacher) {
-        window.boostudyLessonControl?.queueCodeSync?.(virtualFS[activeFileName] || '', activeFileName);
-      }
-
-      // 3. Task state
-      window.lessonTasksController?.selectTaskById?.(desktop.taskId || null);
-
-      // 4. Ensure canvas surface remains visible and active
-      const canvasWin = document.getElementById('canvas-window');
-      if (canvasWin) {
-        canvasWin.classList.remove('hidden', 'window-minimized', 'pointer-events-none');
-        canvasWin.style.display = 'flex';
-        canvasWin.style.opacity = '1';
-        canvasWin.dataset.isMinimized = 'false';
-      }
-
-      // 5. Window layouts
-      const winManager = window.windowManager;
-      if (winManager?.registeredWindows) {
-        for (const [id, { windowEl }] of winManager.registeredWindows) {
-          if (!windowEl || (typeof window.isPrivateWindow === 'function' && window.isPrivateWindow(id)) || id === 'canvas-window') continue;
-          const layout = desktop.layouts ? desktop.layouts[id] : null;
-          if (layout) {
-            if (layout.left) windowEl.style.setProperty('left', layout.left, 'important');
-            else windowEl.style.removeProperty('left');
-            if (layout.top) windowEl.style.setProperty('top', layout.top, 'important');
-            else windowEl.style.removeProperty('top');
-            if (layout.width) windowEl.style.setProperty('width', layout.width, 'important');
-            else windowEl.style.removeProperty('width');
-            if (layout.height) windowEl.style.setProperty('height', layout.height, 'important');
-            else windowEl.style.removeProperty('height');
-
-            if (layout.open) {
-              openWindow(id, { remote: true });
-            } else {
-              minimizeToDock(id, { remote: true });
-            }
-          } else {
-            minimizeToDock(id, { remote: true });
-          }
-        }
-      }
-    }
-
-    function toggleDropdown(show) {
-      if (!dropdownEl) return;
-      const willShow = typeof show === 'boolean' ? show : dropdownEl.classList.contains('hidden');
-      dropdownEl.classList.toggle('hidden', !willShow);
-    }
-
-    function renderUI() {
-      const active = workspaces.find(w => w.id === activeDesktopId) || workspaces[0];
-      if (active) activeDesktopId = active.id;
-      if (currentNameEl && active) currentNameEl.textContent = active.name;
-      if (countBadgeEl) countBadgeEl.textContent = String(workspaces.length);
-
-      if (listContainer) {
-        listContainer.innerHTML = workspaces.map((w) => {
-          const isActive = w.id === activeDesktopId;
-          const activeClass = isActive
-            ? 'bg-indigo-50/90 text-indigo-900 border-indigo-200'
-            : 'bg-slate-50/60 hover:bg-slate-100 text-slate-700 border-transparent';
-          const checkIcon = isActive
-            ? '<i class="ph-bold ph-check text-indigo-600 text-xs shrink-0"></i>'
-            : '<span class="w-3 shrink-0"></span>';
-
-          const actions = isTeacher ? `
-            <div class="flex items-center gap-1 ml-auto shrink-0">
-              <button type="button" class="btn-rename-desktop p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 cursor-pointer transition-colors" data-id="${w.id}" title="Переименовать стол"><i class="ph-bold ph-pencil-simple text-xs"></i></button>
-              ${workspaces.length > 1 ? `<button type="button" class="btn-del-desktop p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors" data-id="${w.id}" title="Удалить стол"><i class="ph-bold ph-trash text-xs"></i></button>` : ''}
-            </div>
-          ` : '';
-
-          return `
-            <div class="desktop-dropdown-item flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${activeClass}" data-id="${w.id}">
-              ${checkIcon}
-              <span class="truncate max-w-[130px]">${escapeHtml(w.name)}</span>
-              ${actions}
-            </div>
-          `;
-        }).join('');
-      }
-    }
-
-    function ensureDesktopPage(workspace) {
-      if (!workspace) return;
-      if (!workspace.pageId) {
-        if (workspace.id === 'desktop-1' || workspaces[0]?.id === workspace.id) {
-          workspace.pageId = 'page_1';
-        } else {
-          workspace.pageId = `page_${workspace.id}`;
-        }
-      }
-    }
-
-    function syncWorkspacesToRoom() {
-      if (!isTeacher) return;
-      const ctrl = window.boostudyLessonControl?.getControl?.() || {};
-      if (ctrl.workspace_sync !== false) {
-        window.boostudyLessonControl?.sendUi?.({
-          kind: 'workspace',
-          action: 'sync_all',
-          workspaces,
-          activeDesktopId,
-        });
-      }
-    }
-
-    function switchDesktop(nextId, options = {}) {
-      if (nextId === activeDesktopId && !options.force) return;
-      if (!options.remote) {
-        captureCurrentDesktopState();
-      }
-      activeDesktopId = nextId;
-      const target = workspaces.find(w => w.id === nextId);
-      if (target) {
-        ensureDesktopPage(target);
-        restoreDesktopState(target);
-        if (target.pageId) {
-          if (state) state.currentPageId = target.pageId;
-          if (window.BooCanvasOverlay) {
-            const pages = window.BooCanvasOverlay.getPages?.() || [];
-            if (!pages.some(p => p.id === target.pageId) && window.BooCanvasOverlay.addNewPage) {
-              window.BooCanvasOverlay.addNewPage(target.name, target.pageId);
-            } else if (window.BooCanvasOverlay.switchPage) {
-              window.BooCanvasOverlay.switchPage(target.pageId);
-            }
-          }
-          if (window.boostudyWhiteboard?.activatePage) {
-            window.boostudyWhiteboard.activatePage(target.pageId);
-          }
-        }
-      }
-      renderUI();
-      saveToStorage();
-
-      if (!options.remote && isTeacher) {
-        const ctrl = window.boostudyLessonControl?.getControl?.() || {};
-        if (ctrl.workspace_sync !== false) {
-          window.boostudyLessonControl?.sendUi?.({
-            kind: 'workspace',
-            action: 'switch',
-            desktopId: nextId,
-            pageId: target?.pageId,
-            desktop: target ? {
-              id: target.id,
-              name: target.name,
-              pageId: target.pageId,
-              layouts: target.layouts,
-              codeState: target.codeState,
-              taskId: target.taskId,
-              scratchpad: target.scratchpad,
-            } : null,
-            workspaces: workspaces,
-          });
-        }
-      }
-    }
-
-    function createDesktop() {
-      if (!isTeacher) return;
-      const newName = `Стол ${workspaces.length + 1}`;
-      const newId = `desktop-${Date.now()}`;
-      let newPageId = `page_${newId}`;
-      if (window.BooCanvasOverlay?.addNewPage) {
-        newPageId = window.BooCanvasOverlay.addNewPage(newName, newPageId);
-      } else if (window.boostudyWhiteboard?.createPage) {
-        newPageId = window.boostudyWhiteboard.createPage(newName);
-      }
-      const defaultLayouts = {};
-      if (window.windowManager?.registeredWindows) {
-        for (const [id] of window.windowManager.registeredWindows) {
-          if (id !== 'canvas-window') defaultLayouts[id] = { open: false };
-        }
-      }
-      const freshCode = {
-        virtualFS: { 'main.py': '' },
-        activeFileName: 'main.py',
-        openTabs: ['main.py']
-      };
-      workspaces.push({
-        id: newId,
-        name: newName,
-        pageId: newPageId,
-        layouts: defaultLayouts,
-        codeState: freshCode,
-        taskId: null,
-        scratchpad: ''
-      });
-      switchDesktop(newId);
-      syncWorkspacesToRoom();
-    }
-
-    function renameDesktop(desktopId) {
-      if (!isTeacher) return;
-      const desktop = workspaces.find(w => w.id === desktopId);
-      if (!desktop) return;
-      toggleDropdown(false);
-      showGlassPrompt({
-        title: 'Название рабочего стола',
-        placeholder: 'Например: Стол 1',
-        initialValue: desktop.name,
-        onConfirm: (newName) => {
-          if (!newName || !newName.trim()) return;
-          desktop.name = newName.trim();
-          if (desktop.pageId && window.boostudyWhiteboard?.renamePage) {
-            window.boostudyWhiteboard.renamePage(desktop.pageId, desktop.name);
-          }
-          renderUI();
-          saveToStorage();
-          syncWorkspacesToRoom();
-        }
-      });
-    }
-
-    function deleteDesktop(desktopId) {
-      if (!isTeacher || workspaces.length <= 1) return;
-      const desktop = workspaces.find(w => w.id === desktopId);
-      if (!desktop) return;
-      toggleDropdown(false);
-      showGlassConfirm({
-        title: 'Удалить рабочий стол?',
-        message: `Стол «${desktop.name}» будет удалён. Все открытые окна на нём закроются.`,
-        confirmDanger: true,
-        confirmText: 'Удалить',
-        onConfirm: () => {
-          if (desktop.pageId) {
-            if (window.BooCanvasOverlay?.deletePage) {
-              window.BooCanvasOverlay.deletePage(desktop.pageId);
-            }
-            if (window.boostudyWhiteboard?.deletePage) {
-              window.boostudyWhiteboard.deletePage(desktop.pageId);
-            }
-          }
-          workspaces = workspaces.filter(w => w.id !== desktopId);
-          if (activeDesktopId === desktopId) {
-            activeDesktopId = workspaces[0].id;
-            restoreDesktopState(workspaces[0]);
-            if (workspaces[0].pageId) {
-              if (window.BooCanvasOverlay?.switchPage) {
-                window.BooCanvasOverlay.switchPage(workspaces[0].pageId);
-              }
-              if (window.boostudyWhiteboard?.activatePage) {
-                window.boostudyWhiteboard.activatePage(workspaces[0].pageId);
-              }
-            }
-          }
-          renderUI();
-          saveToStorage();
-          syncWorkspacesToRoom();
-        }
-      });
-    }
-
-    document.addEventListener('click', (e) => {
-      if (barEl && !barEl.contains(e.target) && dropdownEl && !dropdownEl.classList.contains('hidden')) {
-        toggleDropdown(false);
-      }
-    });
-
-    triggerBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleDropdown();
-    });
-
-    prevBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const idx = workspaces.findIndex(w => w.id === activeDesktopId);
-      if (idx !== -1) {
-        const nextIdx = (idx - 1 + workspaces.length) % workspaces.length;
-        switchDesktop(workspaces[nextIdx].id);
-      }
-    });
-
-    nextBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const idx = workspaces.findIndex(w => w.id === activeDesktopId);
-      if (idx !== -1) {
-        const nextIdx = (idx + 1) % workspaces.length;
-        switchDesktop(workspaces[nextIdx].id);
-      }
-    });
-
-    listContainer?.addEventListener('click', (e) => {
-      const renameBtn = e.target.closest('.btn-rename-desktop');
-      if (renameBtn) {
-        e.stopPropagation();
-        renameDesktop(renameBtn.dataset.id);
-        return;
-      }
-      const delBtn = e.target.closest('.btn-del-desktop');
-      if (delBtn) {
-        e.stopPropagation();
-        deleteDesktop(delBtn.dataset.id);
-        return;
-      }
-      const item = e.target.closest('.desktop-dropdown-item');
-      if (item && item.dataset.id) {
-        switchDesktop(item.dataset.id);
-        toggleDropdown(false);
-      }
-    });
-
-    if (isTeacher) {
-      addBtn?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        createDesktop();
-      });
-    } else if (addBtn) {
-      addBtn.classList.add('hidden');
-    }
-
-    // Keyboard navigation: Alt + ArrowLeft / ArrowRight
-    document.addEventListener('keydown', (e) => {
-      if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
-        e.preventDefault();
-        const currentIdx = workspaces.findIndex(w => w.id === activeDesktopId);
-        if (currentIdx === -1) return;
-        const nextIdx = e.key === 'ArrowRight'
-          ? (currentIdx + 1) % workspaces.length
-          : (currentIdx - 1 + workspaces.length) % workspaces.length;
-        switchDesktop(workspaces[nextIdx].id);
-      }
-    });
-
-    window.lessonVirtualWorkspaces = {
-      syncAll: syncWorkspacesToRoom,
-      applyRemoteWorkspace(payload) {
-        if (!payload) return;
-        if (Array.isArray(payload.workspaces) && payload.workspaces.length) {
-          workspaces = payload.workspaces;
-        }
-        if (payload.action === 'switch' && payload.desktopId) {
-          let target = workspaces.find(w => w.id === payload.desktopId);
-          if (!target) {
-            target = payload.desktop ? { ...payload.desktop } : {
-              id: payload.desktopId,
-              name: payload.name || `Стол ${workspaces.length + 1}`,
-              pageId: payload.pageId || `page_${payload.desktopId}`,
-              layouts: payload.layouts || {},
-              codeState: payload.codeState || null,
-              taskId: payload.taskId || null,
-              scratchpad: payload.scratchpad || '',
-            };
-            workspaces.push(target);
-          } else if (payload.desktop) {
-            Object.assign(target, payload.desktop);
-          } else {
-            if (payload.pageId && !target.pageId) target.pageId = payload.pageId;
-            if (payload.layouts) target.layouts = payload.layouts;
-            if (payload.codeState) target.codeState = payload.codeState;
-            if (payload.taskId !== undefined) target.taskId = payload.taskId;
-            if (payload.scratchpad !== undefined) target.scratchpad = payload.scratchpad;
-          }
-          switchDesktop(payload.desktopId, { remote: true, force: true });
-        } else if (payload.action === 'sync_all' && Array.isArray(payload.workspaces)) {
-          workspaces = payload.workspaces;
-          if (payload.activeDesktopId) {
-            switchDesktop(payload.activeDesktopId, { remote: true, force: true });
-          } else {
-            renderUI();
-          }
-        }
-      }
-    };
-
-    if (window._pendingWorkspacePayload) {
-      window.lessonVirtualWorkspaces.applyRemoteWorkspace(window._pendingWorkspacePayload);
-      window._pendingWorkspacePayload = null;
-    } else if (isTeacher) {
-      syncWorkspacesToRoom();
-    }
-
-    renderUI();
   })();
 </script>
 {% endif %}

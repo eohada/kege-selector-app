@@ -18,16 +18,17 @@
   {% block extra_head %}{% endblock %}
 </head>
 {% set dashboard_admin_shell = request.path.startswith('/admin') and current_user is defined and current_user and current_user.is_authenticated %}
-<body class="bs-dashboard-shell{% if current_user.is_student() %} bs-student-shell{% if dashboard_showcase|default(false) %} bs-showcase-shell{% endif %}{% elif not dashboard_admin_shell %} bs-teacher-shell{% endif %}{% if dashboard_admin_shell %} bs-admin-shell{% endif %}{% if room_mode|default(false) %} bs-lesson-room{% endif %}{% if embedded_answer|default(false) %} tw-embedded-answer{% if workspace.presentation_mode == 'code' %} tw-embedded-code{% endif %}{% endif %}">
+{% set is_student_shell = (current_user is defined and current_user and current_user.is_authenticated and (current_user.is_student() or not (current_user.is_tutor() or current_user.is_admin() or current_user.is_creator()))) %}
+<body class="bs-dashboard-shell{% if is_student_shell %} bs-student-shell{% if dashboard_showcase|default(false) %} bs-showcase-shell{% endif %}{% elif not dashboard_admin_shell %} bs-teacher-shell{% endif %}{% if dashboard_admin_shell %} bs-admin-shell{% endif %}{% if room_mode|default(false) %} bs-lesson-room{% endif %}{% if embedded_answer|default(false) %} tw-embedded-answer{% if workspace.presentation_mode == 'code' %} tw-embedded-code{% endif %}{% endif %}">
   <aside id="dashboard-sidebar" class="bs-dashboard-sidebar" aria-label="Основная навигация">
     <a class="bs-dashboard-brand" href="{{ '/admin/users' if dashboard_admin_shell else url_for('main.dashboard') }}" aria-label="BooStudy, главная">
       <span class="bs-dashboard-brand-mark"><i class="ph-bold ph-graduation-cap"></i></span>
       <span class="bs-dashboard-brand-name">BooStudy</span>
     </a>
 
-    <p class="bs-dashboard-nav-label">{% if current_user.is_student() %}Учебное пространство{% elif dashboard_admin_shell %}Администрирование{% else %}Рабочее пространство{% endif %}</p>
+    <p class="bs-dashboard-nav-label">{% if is_student_shell %}Учебное пространство{% elif dashboard_admin_shell %}Администрирование{% else %}Рабочее пространство{% endif %}</p>
     <nav class="bs-dashboard-nav" aria-label="Разделы BooStudy">
-      {% if current_user.is_student() %}
+      {% if is_student_shell %}
         {% set student_nav_profile = student if (student is defined and student) else current_user.student_profile %}
         <a class="bs-dashboard-nav-link {% if request.path == '/dashboard' %}is-active{% endif %}" href="{{ url_for('main.dashboard') }}"><i class="ph ph-house"></i><span>Главная</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes') %}is-active{% endif %}" href="/submissions"><i class="ph ph-check-square"></i><span>Задания</span></a>
@@ -66,14 +67,14 @@
   </aside>
 
   <div id="dashboard-main" class="bs-dashboard-main">
-    {% set dashboard_student_profile = current_user.student_profile if current_user.is_student() else none %}
+    {% set dashboard_student_profile = current_user.student_profile if is_student_shell else none %}
     {% set dashboard_profile_name = dashboard_student_profile.name if dashboard_student_profile and dashboard_student_profile.name else current_user.username %}
-    {% set dashboard_profile_meta = (dashboard_student_profile.school_class ~ ' класс') if dashboard_student_profile and dashboard_student_profile.school_class else ('Ученик' if current_user.is_student() else ('Администратор' if dashboard_admin_shell else 'Преподаватель')) %}
-    <header class="bs-dashboard-topbar{% if current_user.is_student() %} bs-dashboard-topbar-student{% endif %}{% if request.path.startswith('/lesson/') %} bs-dashboard-topbar-room{% endif %}">
+    {% set dashboard_profile_meta = (dashboard_student_profile.school_class ~ ' класс') if dashboard_student_profile and dashboard_student_profile.school_class else ('Ученик' if is_student_shell else ('Администратор' if dashboard_admin_shell else 'Преподаватель')) %}
+    <header class="bs-dashboard-topbar{% if is_student_shell %} bs-dashboard-topbar-student{% endif %}{% if request.path.startswith('/lesson/') %} bs-dashboard-topbar-room{% endif %}">
       <div class="bs-dashboard-search" role="search" title="Глобальный поиск по доступным данным" data-search-shell>
         <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
-        <input type="search" aria-label="Глобальный поиск по BooStudy" placeholder="{% if current_user.is_student() %}Поиск по заданиям, темам и материалам...{% else %}Поиск по BooStudy: ученики, уроки, задания...{% endif %}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="dashboardSearchResults" data-ui-ready-search>
-        <button type="button" class="bs-dashboard-search-shortcut" aria-label="Открыть глобальный поиск" title="Открыть поиск" data-search-trigger>{% if not current_user.is_student() %}<span>Поиск</span>{% endif %}<kbd>{% if current_user.is_student() %}Ctrl K{% else %}⌘ K{% endif %}</kbd></button>
+        <input type="search" aria-label="Глобальный поиск по BooStudy" placeholder="{% if is_student_shell %}Поиск по заданиям, темам и материалам...{% else %}Поиск по BooStudy: ученики, уроки, задания...{% endif %}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="dashboardSearchResults" data-ui-ready-search>
+        <button type="button" class="bs-dashboard-search-shortcut" aria-label="Открыть глобальный поиск" title="Открыть поиск" data-search-trigger>{% if not is_student_shell %}<span>Поиск</span>{% endif %}<kbd>{% if is_student_shell %}Ctrl K{% else %}⌘ K{% endif %}</kbd></button>
         <div class="bs-dashboard-search-panel" id="dashboardSearchResults" role="listbox" hidden data-search-panel>
           <p class="bs-dashboard-search-status" data-search-status>Введите запрос: поиск охватывает учеников, уроки, работы, теорию и материалы.</p>
           <div class="bs-dashboard-search-results" data-search-results></div>
@@ -108,10 +109,10 @@
     <a href="/admin/diagnostics" class="{% if request.path.startswith('/admin/diagnostics') %}is-active{% endif %}"><i class="ph ph-wrench"></i><span>Диагностика</span></a>
     {% else %}
     <a href="{{ url_for('main.dashboard') }}" class="{% if request.path in ['/dashboard', '/teacher/dashboard'] %}is-active{% endif %}"><i class="ph ph-house"></i><span>Главная</span></a>
-    {% if not current_user.is_student() %}
+    {% if not is_student_shell %}
     <a href="/teacher/students" class="{% if request.path in ['/students', '/teacher/students'] or request.path.startswith('/teacher/students') or request.path.startswith('/student/') %}is-active{% endif %}"><i class="ph ph-users"></i><span>Ученики</span></a>
     {% endif %}
-    <a href="{% if current_user.is_student() %}/submissions{% else %}/assignments{% endif %}" class="{% if (current_user.is_student() and (request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes'))) or (not current_user.is_student() and request.path.startswith('/assignments')) %}is-active{% endif %}"><i class="ph ph-check-square"></i><span>Задания</span></a>
+    <a href="{% if is_student_shell %}/submissions{% else %}/assignments{% endif %}" class="{% if (is_student_shell and (request.path.startswith('/submissions') or request.path.startswith('/lesson/') or request.path.startswith('/student/mistakes'))) or (not is_student_shell and request.path.startswith('/assignments')) %}is-active{% endif %}"><i class="ph ph-check-square"></i><span>Задания</span></a>
     <div class="bs-mobile-schedule-disabled" aria-disabled="true" title="Расписание: Технические неполадки"><i class="ph ph-calendar-blank"></i><span>Расписание</span><small class="bs-mobile-schedule-badge">Неполадки</small></div>
     {% endif %}
     <a href="/workspace/profile" class="{% if request.path.startswith('/workspace/profile') %}is-active{% endif %}"><i class="ph ph-user-circle"></i><span>Профиль</span></a>
@@ -123,7 +124,7 @@
   {% include 'sandbox/components/_qa_widget.html' ignore missing %}
   {% include 'sandbox/components/_feedback_system.html' %}
   {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
-  {% if current_user.is_student() %}
+  {% if is_student_shell %}
   <script>
     (function () {
       let activeSeconds = 0;

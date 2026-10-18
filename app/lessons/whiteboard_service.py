@@ -547,6 +547,10 @@ def _page(document: dict[str, Any], page_id: str | None) -> dict[str, Any]:
     for page in document["pages"]:
         if page.get("id") == requested:
             return page
+    if requested:
+        new_page = {"id": requested, "title": "Страница", "order": len(document["pages"]), "objects": []}
+        document["pages"].append(new_page)
+        return new_page
     raise WhiteboardOperationError("Страница доски не найдена")
 
 

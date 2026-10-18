@@ -1467,12 +1467,19 @@ class User(db.Model):
         if self.role:
             roles_set.add(self.role)
         try:
+            if getattr(self, 'student_profile', None) is not None:
+                roles_set.add('student')
+        except Exception:
+            pass
+        try:
             from flask import session
             sandbox_role = session.get('sandbox_role')
             if sandbox_role:
                 roles_set.add(sandbox_role)
         except RuntimeError:
             pass
+        if not roles_set:
+            roles_set.add('student')
         return list(roles_set)
 
     def is_admin(self):
@@ -1482,11 +1489,23 @@ class User(db.Model):
     def is_tutor(self):
         """Проверка, является ли пользователь тьютором (creator также может работать как tutor)"""
         r = self.roles()
+        if 'student' in r and not any(role in r for role in ('creator', 'admin', 'chief_admin')):
+            return False
         return 'tutor' in r or 'teacher' in r or 'creator' in r
 
     def is_student(self):
         """Проверка, является ли пользователь учеником"""
-        return 'student' in self.roles()
+        if self.role == 'student' or 'student' in self.roles():
+            return True
+        try:
+            if getattr(self, 'student_profile', None) is not None:
+                return True
+        except Exception:
+            pass
+        r = self.roles()
+        if not any(role in r for role in ('tutor', 'teacher', 'creator', 'admin', 'chief_admin', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker')):
+            return True
+        return False
 
     def is_parent(self):
         """Проверка, является ли пользователь родителем"""
@@ -1514,6 +1533,7 @@ class User(db.Model):
 
     def get_role_display(self):
         """Возвращает отображаемое название основной роли."""
+        effective_role = self.role or ('student' if self.is_student() else '')
         role_map = {
             'creator': 'Создатель',
             'chief_admin': 'Старший администратор',
@@ -1526,7 +1546,7 @@ class User(db.Model):
             'student': 'Ученик',
             'parent': 'Родитель',
         }
-        return role_map.get(self.role, self.role)
+        return role_map.get(effective_role, effective_role)
 
     def get_roles_display(self):
         """Возвращает список отображаемых названий всех ролей пользователя."""
