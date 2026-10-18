@@ -8171,7 +8171,16 @@
         remoteLiveStrokes.set(strokeId, existing);
       }
       if (Array.isArray(payload.points)) {
-        existing.points.push(...payload.points);
+        if (!existing.points || existing.points.length === 0) {
+          existing.points = payload.points.slice();
+        } else {
+          const lastPt = existing.points[existing.points.length - 1];
+          payload.points.forEach((pt) => {
+            if (!lastPt || Math.abs(lastPt.x - pt.x) > 0.001 || Math.abs(lastPt.y - pt.y) > 0.001) {
+              existing.points.push(pt);
+            }
+          });
+        }
       }
     }
     redraw();

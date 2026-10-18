@@ -29,7 +29,7 @@ from core.db_models import (
     TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent,
     Subject, KnowledgeNode, UserMastery, AnalyticsEvent, UserTaskMMR, RematchQueue,
     ReferralCode, ReferralUsage, UserAchievement, PromoCode, PromoCodeUsage,
-    SystemSetting,
+    SystemSetting, TaskBookmark,
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
@@ -2632,7 +2632,7 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
         Course as ExamCourse, CourseTaskTemplate, StudentCourseEnrollment,
         GradingScale, Student, Tasks, TheoryBlock, StudentTheoryAccess,
         StudentTaskStatistics, CallRequest, StudentTheoryState, TheoryFeedback,
-        TheoryGroup, TheoryFeedbackHistory,
+        TheoryGroup, TheoryFeedbackHistory, TaskBookmark,
     )
     try:
         for model in [
@@ -2645,6 +2645,7 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
             TheoryFeedback,
             TheoryGroup,
             TheoryFeedbackHistory,
+            TaskBookmark,
         ]:
             tname = model.__tablename__
             if tname.lower() not in [t.lower() for t in table_names]:

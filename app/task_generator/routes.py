@@ -32,6 +32,7 @@ from app.models import (
     db,
     TaskTemplate,
     TemplateTask,
+    TaskBookmark,
     Course,
     CourseTaskTemplate,
     TaskSolution,
@@ -45,6 +46,7 @@ from app.models import (
     UserTaskMMR,
     task_topics,
 )
+from core.db_models import moscow_now
 from app.auth.rbac_utils import has_permission
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
@@ -1069,7 +1071,19 @@ def task_generator_bank_picker_list():
         bq = bq.filter(or_(Tasks.content_html.ilike(f'%{search_query}%'), Tasks.source_prototype.in_(matched_keys)))
     if only_my:
         bq = bq.filter(Tasks.bank_origin == 'manual', Tasks.created_by_id == current_user.id)
-    bq = bq.order_by(Tasks.task_id.desc())
+    only_bookmarked = str(data.get('only_bookmarked') or '').lower() in ('true', '1', 'yes')
+    if only_bookmarked:
+        bq = bq.join(TaskBookmark, TaskBookmark.task_id == Tasks.task_id).filter(TaskBookmark.user_id == current_user.id)
+
+    sort = (data.get('sort') or 'recent').strip().lower()
+    if sort == 'number_asc':
+        bq = bq.order_by(Tasks.task_number.asc(), Tasks.task_id.desc())
+    elif sort == 'difficulty_asc':
+        bq = bq.order_by(Tasks.difficulty_level.asc(), Tasks.task_id.desc())
+    elif sort == 'difficulty_desc':
+        bq = bq.order_by(Tasks.difficulty_level.desc(), Tasks.task_id.desc())
+    else:
+        bq = bq.order_by(Tasks.task_id.desc())
 
     total = bq.count()
     rows = bq.offset((page - 1) * per_page).limit(per_page).all()
@@ -1083,6 +1097,30 @@ def task_generator_bank_picker_list():
         exposures_by_pair = {(row.student_id, row.task_id): row for row in exposures}
     from app.task_bank.exposure import exposure_state_for_row
 
+    # Batch query bookmarks and usage counts
+    bookmarked_ids = set()
+    if current_user and current_user.is_authenticated and rows:
+        bms = TaskBookmark.query.filter(
+            TaskBookmark.user_id == current_user.id,
+            TaskBookmark.task_id.in_([row.task_id for row in rows])
+        ).all()
+        bookmarked_ids = {b.task_id for b in bms}
+
+    usage_counts = {}
+    if rows:
+        try:
+            uc_rows = db.session.query(
+                AssignmentTask.task_id, func.count(AssignmentTask.assignment_task_id)
+            ).filter(
+                AssignmentTask.task_id.in_([row.task_id for row in rows])
+            ).group_by(AssignmentTask.task_id).all()
+            usage_counts = {r[0]: r[1] for r in uc_rows}
+        except Exception as ex:
+            logger.warning(f"Error querying usage counts: {ex}")
+            usage_counts = {}
+
+    months_ru = ['', 'янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
+
     items = []
     for t in rows:
         tid = t.task_id
@@ -1093,6 +1131,13 @@ def task_generator_bank_picker_list():
         ]
         blocked_states = [state for state in recipient_states if state['blocked']]
         active_until = max((state['active_until'] for state in blocked_states), default=None)
+
+        dt = getattr(t, 'updated_at', None) or getattr(t, 'created_at', None) or getattr(t, 'last_scraped', None)
+        if dt:
+            updated_at_formatted = f"{dt.day} {months_ru[dt.month]} {dt.year}"
+        else:
+            updated_at_formatted = "Недавно"
+
         items.append({
             'task_id': tid,
             'course_id': getattr(t, 'course_id', None),
@@ -1131,6 +1176,10 @@ def task_generator_bank_picker_list():
             'student_task_mmr': None if getattr(t, 'bank_category', 'exam') == 'python_practice' else _get_user_task_mmr(target_user_id, getattr(t, 'task_number', None)),
             'content_html': normalize_task_content_assets(getattr(t, 'content_html', '') or '', getattr(t, 'attached_files', None), getattr(t, 'source_url', None)),
             'already_added': fully,
+            'is_bookmarked': (tid in bookmarked_ids),
+            'usage_count': usage_counts.get(tid, 0),
+            'updated_at_formatted': updated_at_formatted,
+            'test_cases': getattr(getattr(t, 'code_test_suite', None), 'test_cases', None) or [],
             'student_exposure': {
                 'blocked': bool(blocked_states),
                 'previously_used': any(state['seen_before'] for state in recipient_states),
@@ -1140,6 +1189,12 @@ def task_generator_bank_picker_list():
             } if target_student_ids else None,
         })
 
+    stats = {
+        'total': Tasks.query.filter(Tasks.is_active.is_(True)).count(),
+        'my_tasks': Tasks.query.filter(Tasks.is_active.is_(True), Tasks.bank_origin == 'manual', Tasks.created_by_id == current_user.id).count() if current_user.is_authenticated else 0,
+        'bookmarked': TaskBookmark.query.filter(TaskBookmark.user_id == current_user.id).count() if current_user.is_authenticated else 0,
+    }
+
     return jsonify({
         'success': True,
         'items': items,
@@ -1147,6 +1202,7 @@ def task_generator_bank_picker_list():
         'total': total,
         'page': page,
         'per_page': per_page,
+        'stats': stats,
         'courses': [{'id': course.id, 'title': course.title, 'slug': course.slug} for course in Course.query.filter_by(is_active=True).order_by(Course.title).all()],
         'modules': list(dict.fromkeys(
             meta['module']
@@ -1272,6 +1328,219 @@ def task_generator_bank_picker_add():
     )
 
     return jsonify({'success': True, 'message': message}), 200
+
+
+@task_generator_bp.route('/task-generator/bank/structure', methods=['GET'])
+@login_required
+def task_generator_bank_structure():
+    """Древовидная структура разделов и статистика для Task Studio."""
+    _require_manual_task_create_access()
+    from app.utils.python_bank_import import foundations_metadata
+    from app.utils.python_ege_curriculum_import import curriculum_metadata
+    from app.utils.python_practice_bank import python_bank_metadata
+    thematic = {**foundations_metadata(), **curriculum_metadata(), **python_bank_metadata()}
+
+    active_courses = Course.query.filter_by(is_active=True).order_by(Course.id.asc()).all()
+    courses_data = []
+    for c in active_courses:
+        cnt = Tasks.query.filter_by(course_id=c.id, is_active=True).count()
+        courses_data.append({
+            'id': c.id,
+            'title': c.title,
+            'slug': c.slug,
+            'task_count': cnt,
+        })
+
+    total_tasks = Tasks.query.filter(Tasks.is_active.is_(True)).count()
+    my_tasks = Tasks.query.filter(
+        Tasks.is_active.is_(True),
+        Tasks.bank_origin == 'manual',
+        Tasks.created_by_id == current_user.id
+    ).count() if current_user.is_authenticated else 0
+    bookmarked = TaskBookmark.query.filter(
+        TaskBookmark.user_id == current_user.id
+    ).count() if current_user.is_authenticated else 0
+
+    task_number_counts = dict(
+        db.session.query(Tasks.task_number, func.count(Tasks.task_id))
+        .filter(Tasks.is_active.is_(True), Tasks.bank_category == 'exam')
+        .group_by(Tasks.task_number)
+        .all()
+    )
+
+    exam_templates = CourseTaskTemplate.query.filter_by(course_id=1).order_by(CourseTaskTemplate.task_number.asc()).all()
+    exam_tree = []
+    if exam_templates:
+        for tpl in exam_templates:
+            num = tpl.task_number
+            exam_tree.append({
+                'id': f'exam_{num}',
+                'task_number': num,
+                'title': f'Задание №{num}',
+                'description': tpl.description or f'Тема задания №{num}',
+                'task_count': task_number_counts.get(num, 0),
+            })
+    else:
+        for num in range(1, 28):
+            exam_tree.append({
+                'id': f'exam_{num}',
+                'task_number': num,
+                'title': f'Задание №{num}',
+                'description': f'Тема задания №{num}',
+                'task_count': task_number_counts.get(num, 0),
+            })
+
+    python_modules_map = {}
+    for key, meta in thematic.items():
+        mod = meta.get('module')
+        if not mod:
+            continue
+        if mod not in python_modules_map:
+            python_modules_map[mod] = []
+        python_modules_map[mod].append(key)
+
+    python_tree = []
+    for mod_name, keys in python_modules_map.items():
+        cnt = Tasks.query.filter(Tasks.is_active.is_(True), Tasks.source_prototype.in_(keys)).count()
+        python_tree.append({
+            'id': f'python_{mod_name}',
+            'module': mod_name,
+            'title': mod_name,
+            'task_count': cnt,
+        })
+
+    return jsonify({
+        'success': True,
+        'stats': {
+            'total_tasks': total_tasks,
+            'my_tasks': my_tasks,
+            'bookmarked_tasks': bookmarked,
+        },
+        'courses': courses_data,
+        'exam_tree': exam_tree,
+        'python_tree': python_tree,
+    })
+
+
+@task_generator_bp.route('/task-generator/bank/toggle-bookmark', methods=['POST'])
+@login_required
+def task_generator_bank_toggle_bookmark():
+    """Переключить статус закладки задания для текущего преподавателя."""
+    _require_manual_task_create_access()
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    try:
+        task_id = int(data.get('task_id'))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректный task_id'}), 400
+
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    bm = TaskBookmark.query.filter_by(user_id=current_user.id, task_id=task_id).first()
+    if bm:
+        db.session.delete(bm)
+        db.session.commit()
+        is_bookmarked = False
+    else:
+        new_bm = TaskBookmark(user_id=current_user.id, task_id=task_id)
+        db.session.add(new_bm)
+        db.session.commit()
+        is_bookmarked = True
+
+    total_bookmarks = TaskBookmark.query.filter_by(user_id=current_user.id).count()
+    return jsonify({
+        'success': True,
+        'task_id': task_id,
+        'is_bookmarked': is_bookmarked,
+        'bookmarked_count': total_bookmarks,
+    })
+
+
+@task_generator_bp.route('/task-generator/bank/save-set', methods=['POST'])
+@login_required
+def task_generator_bank_save_set():
+    """Сохранить подборку выбранных заданий в шаблон (TaskTemplate + TemplateTask)."""
+    _require_manual_task_create_access()
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    title = (data.get('title') or '').strip()
+    if not title:
+        title = f"Подборка от {moscow_now().strftime('%d.%m.%Y %H:%M')}"
+    description = (data.get('description') or '').strip() or None
+    raw_task_ids = data.get('task_ids') or []
+    if isinstance(raw_task_ids, str):
+        try:
+            raw_task_ids = json.loads(raw_task_ids)
+        except Exception:
+            raw_task_ids = [x.strip() for x in raw_task_ids.split(',') if x.strip()]
+
+    task_ids = []
+    for tid in raw_task_ids:
+        try:
+            task_ids.append(int(tid))
+        except (TypeError, ValueError):
+            continue
+
+    if not task_ids:
+        return jsonify({'success': False, 'error': 'Выберите хотя бы одно задание для подборки'}), 400
+
+    valid_tasks = Tasks.query.filter(Tasks.task_id.in_(task_ids)).all()
+    if not valid_tasks:
+        return jsonify({'success': False, 'error': 'Задания не найдены'}), 404
+
+    tpl = TaskTemplate(
+        name=title,
+        description=description,
+        template_type='homework',
+        created_by=current_user.id,
+    )
+    db.session.add(tpl)
+    db.session.flush()
+
+    for idx, tid in enumerate(task_ids):
+        db.session.add(TemplateTask(
+            template_id=tpl.template_id,
+            task_id=tid,
+            order=idx,
+        ))
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'template_id': tpl.template_id,
+        'title': tpl.name,
+        'tasks_count': len(task_ids),
+        'message': f'Подборка «{tpl.name}» успешно сохранена в ваши шаблоны'
+    })
+
+
+@task_generator_bp.route('/task-generator/bank/<int:task_id>/update-solution', methods=['POST'])
+@login_required
+def task_generator_bank_update_solution(task_id: int):
+    """Обновить решение задания."""
+    _require_manual_task_create_access()
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    solution_text = (data.get('solution') or data.get('solution_text') or '').strip()
+
+    solution = TaskSolution.query.filter_by(task_id=task.task_id).first()
+    if solution:
+        solution.solution_text = solution_text
+        solution.source = 'manual'
+        solution.needs_manual_review = False
+    elif solution_text:
+        solution = TaskSolution(task_id=task.task_id, solution_text=solution_text, source='manual', needs_manual_review=False)
+        db.session.add(solution)
+
+    db.session.commit()
+    return jsonify({
+        'success': True,
+        'task_id': task.task_id,
+        'solution': solution_text,
+    })
 
 
 @task_generator_bp.route('/task-generator/stream/start', methods=['POST'])

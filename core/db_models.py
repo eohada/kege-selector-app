@@ -2197,6 +2197,24 @@ class TemplateTask(db.Model):
     def __repr__(self):
         return f'<TemplateTask template_id={self.template_id} task_id={self.task_id}>'
 
+class TaskBookmark(db.Model):
+    """Избранные задания преподавателя в Task Studio"""
+    __tablename__ = 'TaskBookmarks'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    
+    user = db.relationship('User', foreign_keys=[user_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+    
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'task_id', name='uq_user_task_bookmark'),
+    )
+
+    def __repr__(self):
+        return f'<TaskBookmark user_id={self.user_id} task_id={self.task_id}>'
+
 class MaintenanceMode(db.Model):
     """Модель для управления режимом технических работ"""
     __tablename__ = 'MaintenanceMode'

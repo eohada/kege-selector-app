@@ -9778,7 +9778,11 @@
       const sequence = Number(payload.seq ?? 0);
       if (sequence > 0 && sequence <= stroke.lastSeq && payload.phase !== 'end') return;
       if (sequence > 0) stroke.lastSeq = sequence;
-      stroke.points.push(...points.filter((point) => Number.isFinite(Number(point.x)) && Number.isFinite(Number(point.y))).map((point) => ({ x: Number(point.x), y: Number(point.y) })));
+      if (payload.stroke && Array.isArray(payload.stroke.points) && payload.stroke.points.length > 0) {
+        stroke.points = payload.stroke.points.filter((point) => Number.isFinite(Number(point.x)) && Number.isFinite(Number(point.y))).map((point) => ({ x: Number(point.x), y: Number(point.y) }));
+      } else {
+        stroke.points.push(...points.filter((point) => Number.isFinite(Number(point.x)) && Number.isFinite(Number(point.y))).map((point) => ({ x: Number(point.x), y: Number(point.y) })));
+      }
       if (payload.phase === 'end') {
         clearTimeout(state.liveStrokeTimers[id]);
         state.liveStrokeTimers[id] = setTimeout(() => {
@@ -11174,7 +11178,7 @@
           pushControlUpdate(btn.dataset.mode);
         });
       });
-      [syncCanvasInput, syncWindowPosInput, syncWorkspacesInput, studentWhiteboardInput, studentCodeEditInput].forEach((input) => {
+      [syncCanvasInput, syncWindowPosInput, studentWhiteboardInput, studentCodeEditInput].forEach((input) => {
         input?.addEventListener('change', () => pushControlUpdate());
       });
       winCheckboxes.forEach((cb) => cb.addEventListener('change', () => pushControlUpdate()));
@@ -11238,7 +11242,11 @@
       loadBoard();
       connectCanvasOverlaySync();
       if (trainerOsConfig.is_studio_teacher) {
-        initTeacherControlPopover();
+        try {
+          initTeacherControlPopover();
+        } catch (e) {
+          console.warn('[trainer] Failed to init teacher control popover:', e);
+        }
       }
       if (typeof window.io === 'function') {
         setupSocket();

@@ -62,13 +62,13 @@
           </div>
 
           <!-- KPI 3: Warm Peach (Подборки) -->
-          <div onclick="returnToBuilder()" class="ts-kpi-card ts-kpi-peach flex items-center gap-3.5 px-4 py-3 rounded-2xl min-w-[160px] cursor-pointer hover:border-amber-300 transition-all" title="Перейти к выбранным заданиям">
+          <div onclick="openQueueDrawer()" class="ts-kpi-card ts-kpi-peach flex items-center gap-3.5 px-4 py-3 rounded-2xl min-w-[160px] cursor-pointer hover:border-amber-300 transition-all" title="Открыть текущую подборку">
             <div class="ts-kpi-icon w-11 h-11 rounded-xl flex items-center justify-center shrink-0">
               <i class="ph-bold ph-folder-open text-xl"></i>
             </div>
             <div>
               <div id="stat-queued-tasks" class="text-2xl font-black text-slate-900 leading-none">0</div>
-              <div class="text-xs text-slate-400 font-semibold mt-1">подборки</div>
+              <div class="text-xs text-slate-400 font-semibold mt-1">в подборке</div>
             </div>
           </div>
 
@@ -262,6 +262,10 @@
             <div>
               <p class="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Специальные выборки</p>
               <div class="space-y-1">
+                <button id="bank-only-bookmarked" type="button" onclick="toggleBookmarkedBankTasks()" class="ts-filter-pill">
+                  <span class="flex items-center gap-1.5"><i class="ph-bold ph-bookmark text-[#5046E5]"></i> <span>В закладках</span></span>
+                  <i class="ph-bold ph-check text-xs opacity-0"></i>
+                </button>
                 <button id="bank-only-my" type="button" onclick="toggleOnlyMyBankTasks()" class="ts-filter-pill">
                   <span>Мои авторские</span>
                   <i class="ph-bold ph-check text-xs opacity-0"></i>
@@ -359,8 +363,8 @@
           </div>
 
           <div class="flex items-center gap-2 shrink-0">
-            <button type="button" onclick="toggleInspectorBookmark()" id="btn-inspector-bookmark" class="w-8 h-8 rounded-xl bg-white border border-[#FCDDC7] text-slate-400 hover:text-indigo-600 flex items-center justify-center text-xs transition-colors cursor-pointer shadow-2xs" title="В закладки">
-              <i class="ph-bold ph-bookmark text-sm"></i>
+            <button type="button" onclick="toggleTaskBookmark(selectedBankTaskId)" id="btn-inspector-bookmark" class="w-8 h-8 rounded-xl bg-white border border-[#FCDDC7] text-slate-400 hover:text-indigo-600 flex items-center justify-center text-xs transition-colors cursor-pointer shadow-2xs" title="В закладки">
+              <i id="insp-bookmark-icon" class="ph-bold ph-bookmark text-sm"></i>
             </button>
             <button type="button" onclick="openInspectorMenu()" class="w-8 h-8 rounded-xl bg-white border border-[#FCDDC7] text-slate-400 hover:text-slate-600 flex items-center justify-center text-xs transition-colors cursor-pointer shadow-2xs" title="Действия">
               <i class="ph-bold ph-dots-three text-sm"></i>
@@ -446,7 +450,13 @@
             <!-- Tab 2: Решение / Разбор -->
             <div id="panel-insp-solution" class="hidden space-y-2.5">
               <div class="bg-white border border-[#F6EAE1] rounded-2xl p-4 shadow-2xs space-y-2">
-                <h4 class="text-[10px] font-black tracking-tight m-0 uppercase text-slate-400">Эталонное решение и разбор</h4>
+                <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <h4 class="text-[10px] font-black tracking-tight m-0 uppercase text-slate-400">Эталонное решение и разбор</h4>
+                  <button type="button" onclick="openSolutionEditor()" class="text-xs font-bold text-[#5046E5] hover:text-[#4338CA] flex items-center gap-1 cursor-pointer bg-transparent border-0" title="Изменить решение">
+                    <i class="ph-bold ph-pencil-simple text-xs"></i>
+                    <span>Изменить</span>
+                  </button>
+                </div>
                 <div id="insp-solution-content" class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
                   Разбор для этого задания пока не добавлен.
                 </div>
@@ -516,6 +526,96 @@
 
   </div>
 </div>
+
+<!-- ==================== SELECTION QUEUE DRAWER ==================== -->
+<aside id="studio-queue-drawer" class="hidden fixed inset-0 z-50 overflow-hidden">
+  <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onclick="closeQueueDrawer()"></div>
+  <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+    <div class="w-screen max-w-md bg-white border-l border-slate-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+      
+      <!-- Drawer Header -->
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/60">
+        <div class="flex items-center gap-2.5">
+          <span class="w-9 h-9 rounded-xl bg-[#EDE9FE] text-[#5046E5] flex items-center justify-center text-lg shadow-2xs">
+            <i class="ph-bold ph-tray"></i>
+          </span>
+          <div>
+            <h3 class="text-sm font-black text-slate-900 m-0">Текущая подборка</h3>
+            <p class="text-xs text-slate-400 m-0 mt-0.5"><span id="drawer-task-count">0</span> заданий выбрано</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="clearAllQueuedTasks()" class="px-2.5 py-1 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border-0 bg-transparent cursor-pointer" title="Очистить всю подборку">
+            Очистить
+          </button>
+          <button type="button" onclick="closeQueueDrawer()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
+            <i class="ph-bold ph-x text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Drawer Task List (Scrollable) -->
+      <div id="drawer-tasks-list" class="flex-1 overflow-y-auto studio-scroll p-4 space-y-2.5">
+        <!-- Dynamically rendered -->
+      </div>
+
+      <!-- Save Set Inline Box (Collapsible) -->
+      <div id="drawer-save-box" class="hidden p-4 border-t border-slate-200 bg-amber-50/50 space-y-2">
+        <label class="block text-xs font-bold text-slate-700">Название подборки для шаблонов</label>
+        <input id="drawer-set-title" type="text" placeholder="Например: Разбор заданий 17-24 к уроку" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:border-indigo-500 font-medium">
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button type="button" onclick="toggleSaveSetBox(false)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold border-0 cursor-pointer">Отмена</button>
+          <button type="button" onclick="submitSaveSet()" class="ts-btn-primary px-4 py-1.5 text-xs font-bold cursor-pointer">Сохранить</button>
+        </div>
+      </div>
+
+      <!-- Drawer Footer Action Buttons -->
+      <div class="p-4 sm:p-5 border-t border-slate-100 bg-white space-y-2 shrink-0">
+        <button type="button" onclick="createAssignmentFromQueue()" class="ts-btn-primary w-full h-11 text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer shadow-md rounded-xl">
+          <i class="ph-bold ph-rocket-launch text-base"></i>
+          <span>Создать домашнюю работу</span>
+        </button>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="toggleSaveSetBox(true)" class="ts-btn-secondary h-10 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer rounded-xl">
+            <i class="ph-bold ph-floppy-disk text-sm text-[#5046E5]"></i>
+            <span>Сохранить набор</span>
+          </button>
+          <button type="button" onclick="insertQueueToLesson()" class="ts-btn-secondary h-10 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer rounded-xl">
+            <i class="ph-bold ph-chalkboard-teacher text-sm text-[#5046E5]"></i>
+            <span>Вставить в урок</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</aside>
+
+<!-- ==================== MODAL SOLUTION EDITOR ==================== -->
+<aside id="bank-solution-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+  <div class="bg-white border-2 border-slate-200 shadow-2xl rounded-2xl w-full max-w-xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="w-8 h-8 rounded-xl bg-[#EDE9FE] text-[#5046E5] flex items-center justify-center text-sm">
+          <i class="ph-bold ph-lightbulb"></i>
+        </span>
+        <h3 class="text-sm font-black text-slate-900 m-0">Редактирование решения и разбора</h3>
+      </div>
+      <button type="button" onclick="closeSolutionEditor()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer border-0">
+        <i class="ph-bold ph-x text-sm"></i>
+      </button>
+    </div>
+    <div class="p-4 sm:p-5 space-y-3">
+      <p class="text-xs text-slate-500 m-0">Разбор сохраняется в базе и отображается ученикам после сдачи задания или преподавателю при проверке.</p>
+      <textarea id="modal-solution-text" rows="8" placeholder="Введите разбор, эталонный код или пояснение критериев..." class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-3 text-xs outline-none leading-relaxed font-mono"></textarea>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button type="button" onclick="closeSolutionEditor()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl cursor-pointer border-0">Отмена</button>
+        <button type="button" onclick="saveSolutionEditor()" class="ts-btn-primary px-5 py-2 text-xs cursor-pointer">Сохранить решение</button>
+      </div>
+    </div>
+  </div>
+</aside>
 
 <!-- ==================== MODAL TASK EDITOR ==================== -->
 <aside id="bank-task-editor-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
@@ -1319,7 +1419,8 @@ function taskRowTemplate(task) {
   
   const rawSnippet = conditionSummary(task.content_html);
   const snippet = rawSnippet ? rawSnippet.slice(0, 130) : 'Напишите программу, которая обрабатывает последовательность целых чисел, записанных в файле.';
-  const solvedCount = task.usage_count || (task.task_id * 19 % 380 + 120);
+  const solvedCount = task.usage_count != null ? task.usage_count : 0;
+  const isBookmarked = Boolean(task.is_bookmarked);
 
   // Icon themes matching reference
   let iconClass = 'ph-file-code';
@@ -1391,8 +1492,8 @@ function taskRowTemplate(task) {
               <i class="ph-bold ph-users text-xs"></i>
               <span>${solvedCount}</span>
             </div>
-            <button type="button" onclick="event.stopPropagation(); toggleRowBookmark(this)" class="text-slate-400 hover:text-indigo-600 transition-colors p-0.5 border-0 bg-transparent cursor-pointer" title="В закладки">
-              <i class="ph-bold ph-bookmark text-sm"></i>
+            <button type="button" onclick="event.stopPropagation(); toggleTaskBookmark(${task.task_id})" class="text-slate-400 hover:text-indigo-600 transition-colors p-0.5 border-0 bg-transparent cursor-pointer" title="${isBookmarked ? 'Убрать из закладок' : 'В закладки'}">
+              <i class="ph-bold ${isBookmarked ? 'ph-fill ph-bookmark text-[#5046E5]' : 'ph-bookmark'} text-sm"></i>
             </button>
             <button type="button" onclick="event.stopPropagation(); openTaskEditor(${task.task_id})" class="text-slate-400 hover:text-slate-700 transition-colors p-0.5 border-0 bg-transparent cursor-pointer" title="Действия">
               <i class="ph-bold ph-dots-three text-sm"></i>
@@ -1518,17 +1619,23 @@ function selectBankTask(taskId) {
     });
   }
 
-  // Examples (always show clean examples like reference mockup)
+  // Adaptive examples: only show if task has starter_code or real test cases!
   const examplesWrap = document.getElementById('insp-examples-wrap');
-  examplesWrap.classList.remove('hidden');
-  const inputPre = document.getElementById('insp-example-input-text');
-  const outputPre = document.getElementById('insp-example-output-text');
-  inputPre.textContent = task.starter_code || '5\n12 7 19 4 18';
-  outputPre.textContent = task.answer || '3';
+  const hasStarter = Boolean(task.starter_code && task.starter_code.trim());
+  const hasTests = Boolean(task.test_cases && task.test_cases.length > 0);
+  if (hasStarter || hasTests) {
+    examplesWrap.classList.remove('hidden');
+    const inputPre = document.getElementById('insp-example-input-text');
+    const outputPre = document.getElementById('insp-example-output-text');
+    inputPre.textContent = task.starter_code || (task.test_cases?.[0]?.input || '');
+    outputPre.textContent = task.answer || (task.test_cases?.[0]?.output || '');
+  } else {
+    examplesWrap.classList.add('hidden');
+  }
 
   // Solution tab
   const solEl = document.getElementById('insp-solution-content');
-  solEl.textContent = task.solution || 'Разбор преподавателя для этого задания пока не добавлен.';
+  solEl.textContent = task.solution || 'Разбор для этого задания пока не добавлен.';
 
   // Rubric / Grading tab
   const rubEl = document.getElementById('insp-rubric-content');
@@ -1553,11 +1660,17 @@ function selectBankTask(taskId) {
     ? `Задание уже выдавалось ученику. Повтор возможен после ${new Date(task.student_exposure.active_until).toLocaleDateString('ru-RU')}.`
     : 'Задание готово к добавлению в подборки и домашние работы.';
 
-  // 4 Metadata cards
+  // 4 Metadata cards with real data
   document.getElementById('insp-meta-format').textContent = format.full || 'Целое число';
-  document.getElementById('insp-meta-source').textContent = task.source_name || task.source || 'ФИПИ';
-  document.getElementById('insp-meta-updated').textContent = task.source_year ? `${task.source_year} г.` : '12 окт 2026';
-  document.getElementById('insp-meta-used').textContent = `${task.usage_count || 432} раза`;
+  document.getElementById('insp-meta-source').textContent = task.source_name || task.source || 'Банк заданий';
+  document.getElementById('insp-meta-updated').textContent = task.updated_at_formatted || 'Недавно';
+  document.getElementById('insp-meta-used').textContent = `${task.usage_count || 0} раз`;
+
+  // Sync inspector bookmark star
+  const inspBm = document.getElementById('insp-bookmark-icon');
+  if (inspBm) {
+    inspBm.className = task.is_bookmarked ? 'ph-bold ph-fill ph-bookmark text-[#5046E5] text-sm' : 'ph-bold ph-bookmark text-sm';
+  }
 
   updateInspectorButtonState();
 }
@@ -1717,27 +1830,138 @@ function setViewMode(mode) {
   }
 }
 
-function handleSortChange(sortVal) {
-  currentSort = sortVal;
-  resetAndLoad();
-}
+let bankOnlyBookmarked = false;
+let bankTaskNumber = null;
+let structureData = null;
 
-function toggleRowBookmark(btn) {
-  const icon = btn.querySelector('i');
-  if (icon.classList.contains('ph-fill')) {
-    icon.classList.remove('ph-fill');
-    icon.classList.add('ph-bold');
-    btn.classList.remove('text-[#5046E5]');
-  } else {
-    icon.classList.remove('ph-bold');
-    icon.classList.add('ph-fill');
-    btn.classList.add('text-[#5046E5]');
+async function loadStructureData() {
+  try {
+    const res = await fetch('/task-generator/bank/structure');
+    const data = await res.json();
+    if (!res.ok || !data.success) return;
+    structureData = data;
+
+    // Real DB stats for KPIs
+    if (data.stats) {
+      const totalEl = document.getElementById('stat-total-tasks');
+      if (totalEl) totalEl.textContent = Number(data.stats.total_tasks || 0).toLocaleString('ru-RU');
+      const myEl = document.getElementById('stat-my-tasks');
+      if (myEl) myEl.textContent = Number(data.stats.my_tasks || 0).toLocaleString('ru-RU');
+    }
+
+    renderStructureTree();
+  } catch (err) {
+    console.error('Failed to load structure:', err);
   }
 }
 
-function toggleInspectorBookmark() {
-  const btn = document.getElementById('btn-inspector-bookmark');
-  toggleRowBookmark(btn);
+function renderStructureTree() {
+  if (!structureData) return;
+  const container = document.getElementById('dynamic-nav-modules');
+  if (!container) return;
+
+  const isExam = (bankCategory === 'exam' || !bankCategory || bankCategory === 'all');
+  const items = isExam ? (structureData.exam_tree || []) : (structureData.python_tree || []);
+
+  if (!items.length) {
+    container.innerHTML = `<div class="p-2 text-[11px] text-slate-400">Нет доступных разделов</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map(item => {
+    const isActive = (isExam && bankTaskNumber === item.task_number) || (!isExam && bankModule === item.module);
+    const count = item.task_count || 0;
+    const name = item.module || item.title;
+    return `
+      <div onclick="selectNavTopic(this, '${escapeHtml(name)}', ${item.task_number || 'null'})"
+           data-topic-name="${escapeHtml(name)}"
+           data-task-num="${item.task_number || ''}"
+           class="nav-topic-item ${isActive ? 'active py-1.5 px-2.5 rounded-xl bg-[#EDE8FE] text-[#5046E5] font-black shadow-2xs' : 'py-1 px-2 rounded-lg text-slate-600 font-medium hover:text-indigo-600'} text-[11px] cursor-pointer flex items-center justify-between gap-1 transition-colors">
+        <span class="flex items-center gap-1.5 truncate">
+          <i class="ph-bold ${isActive ? 'ph-caret-right text-[#5046E5]' : 'ph-file-text text-slate-400'} text-xs shrink-0"></i>
+          <span class="truncate">${escapeHtml(item.title)}</span>
+        </span>
+        <span class="ts-badge-count shrink-0">${count.toLocaleString('ru-RU')}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectNavTopic(el, moduleName, taskNumber) {
+  document.querySelectorAll('#dynamic-nav-modules .nav-topic-item').forEach(item => {
+    item.className = 'nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors';
+    const icon = item.querySelector('i');
+    if (icon) icon.className = 'ph-bold ph-file-text text-slate-400 text-xs shrink-0';
+  });
+
+  el.className = 'nav-topic-item active py-1.5 px-2.5 rounded-xl bg-[#EDE8FE] text-[#5046E5] text-[11px] font-black cursor-pointer flex items-center justify-between gap-1 shadow-2xs';
+  const icon = el.querySelector('i');
+  if (icon) icon.className = 'ph-bold ph-caret-right text-[#5046E5] text-xs shrink-0';
+
+  if (taskNumber) {
+    bankTaskNumber = Number(taskNumber);
+    bankModule = '';
+  } else {
+    bankTaskNumber = null;
+    bankModule = moduleName || '';
+  }
+  resetAndLoad();
+}
+
+function toggleBookmarkedBankTasks() {
+  bankOnlyBookmarked = !bankOnlyBookmarked;
+  const btn = document.getElementById('bank-only-bookmarked');
+  const icon = btn?.querySelector('.ph-check');
+  if (bankOnlyBookmarked) {
+    btn?.classList.add('is-active');
+    if (icon) icon.style.opacity = '1';
+  } else {
+    btn?.classList.remove('is-active');
+    if (icon) icon.style.opacity = '0';
+  }
+  resetAndLoad();
+}
+
+async function toggleTaskBookmark(taskId) {
+  const id = Number(taskId);
+  if (!id) return;
+  const task = bankTasksById[id];
+
+  try {
+    const res = await fetch('/task-generator/bank/toggle-bookmark', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ task_id: id })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка обновления закладки');
+
+    if (task) task.is_bookmarked = data.is_bookmarked;
+
+    // Update row icon
+    const rowEl = document.querySelector(`.studio-task-row[data-task-id="${id}"]`);
+    if (rowEl) {
+      const bmBtn = rowEl.querySelector('button[title*="закладк"] i');
+      if (bmBtn) {
+        bmBtn.className = data.is_bookmarked ? 'ph-bold ph-fill ph-bookmark text-[#5046E5] text-sm' : 'ph-bold ph-bookmark text-sm';
+      }
+    }
+
+    // Update inspector icon if selected
+    if (selectedBankTaskId === id) {
+      const inspBm = document.getElementById('insp-bookmark-icon');
+      if (inspBm) {
+        inspBm.className = data.is_bookmarked ? 'ph-bold ph-fill ph-bookmark text-[#5046E5] text-sm' : 'ph-bold ph-bookmark text-sm';
+      }
+    }
+
+    showToast(data.is_bookmarked ? 'Задание добавлено в закладки' : 'Задание убрано из закладок');
+  } catch (err) {
+    showToast(err.message || 'Ошибка обновления закладки', true);
+  }
 }
 
 function openInspectorMenu() {
@@ -1746,29 +1970,190 @@ function openInspectorMenu() {
   }
 }
 
-function selectNavTopic(el, moduleName) {
-  document.querySelectorAll('#dynamic-nav-modules .nav-topic-item').forEach(item => {
-    item.className = 'nav-topic-item py-1 px-2 rounded-lg text-[11px] font-medium text-slate-600 hover:text-indigo-600 cursor-pointer flex items-center justify-between gap-1 transition-colors';
-    const badge = item.querySelector('.ts-badge-count, .nav-count-badge');
-    if (badge) badge.remove();
-    const caret = item.querySelector('.ph-caret-right');
-    if (caret) caret.remove();
-  });
-
-  el.className = 'nav-topic-item active py-1.5 px-2.5 rounded-xl bg-[#EDE8FE] text-[#5046E5] text-[11px] font-black cursor-pointer flex items-center justify-between gap-1 shadow-2xs';
-  const span = el.querySelector('span');
-  if (span && !span.querySelector('.ph-caret-right')) {
-    span.innerHTML = `<i class="ph-bold ph-caret-right text-xs text-[#5046E5] mr-1"></i>` + span.innerHTML;
+function openQueueDrawer() {
+  const drawer = document.getElementById('studio-queue-drawer');
+  const listEl = document.getElementById('drawer-tasks-list');
+  const countEl = document.getElementById('drawer-task-count');
+  
+  const tasks = [...queuedTasks.values()];
+  countEl.textContent = tasks.length;
+  
+  if (!tasks.length) {
+    listEl.innerHTML = `
+      <div class="h-64 flex flex-col items-center justify-center text-center p-6 text-slate-400 space-y-2">
+        <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-300 text-2xl">
+          <i class="ph-bold ph-tray"></i>
+        </div>
+        <div class="font-bold text-xs text-slate-600">Подборка пуста</div>
+        <p class="text-[11px] max-w-[240px] leading-relaxed">
+          Нажимайте «Добавить в работу» или используйте чекбоксы карточек, чтобы собрать задания.
+        </p>
+      </div>
+    `;
+  } else {
+    listEl.innerHTML = tasks.map((t, index) => {
+      const fullTask = bankTasksById[t.task_id] || t;
+      const num = fullTask.task_number ? `№${fullTask.task_number}` : `Задание ${index + 1}`;
+      const diff = getDifficultyMeta(fullTask);
+      let title = fullTask.title || '';
+      if (!title || /^Задание\s*№?\d+$/i.test(title)) {
+        title = getCanonicalTopicTitle(fullTask.task_number) || 'Задание из банка';
+      }
+      return `
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] font-black text-[#5046E5] bg-indigo-50 px-1.5 py-0.5 rounded-md">${num}</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${diff.class}">${diff.label}</span>
+            </div>
+            <p class="text-xs font-bold text-slate-900 truncate m-0 mt-1">${escapeHtml(title)}</p>
+          </div>
+          <button type="button" onclick="removeQueuedTask(${t.task_id})" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition-colors border-0 bg-transparent cursor-pointer" title="Удалить из подборки">
+            <i class="ph-bold ph-trash text-sm"></i>
+          </button>
+        </div>
+      `;
+    }).join('');
   }
-  if (!el.querySelector('.ts-badge-count')) {
-    el.insertAdjacentHTML('beforeend', '<span class="ts-badge-count">1 842</span>');
-  }
 
-  setBankModule(moduleName);
+  drawer.classList.remove('hidden');
+}
+
+function closeQueueDrawer() {
+  document.getElementById('studio-queue-drawer')?.classList.add('hidden');
+  toggleSaveSetBox(false);
+}
+
+function removeQueuedTask(taskId) {
+  const id = Number(taskId);
+  queuedTasks.delete(id);
+  persistQueuedTasks();
+  updateActiveRowHighlight();
+  openQueueDrawer();
+  showToast('Задание удалено из подборки');
+}
+
+function clearAllQueuedTasks() {
+  if (!queuedTasks.size) return;
+  queuedTasks.clear();
+  persistQueuedTasks();
+  updateActiveRowHighlight();
+  openQueueDrawer();
+  showToast('Подборка очищена');
+}
+
+function createAssignmentFromQueue() {
+  if (!queuedTasks.size) {
+    showToast('Добавьте задания в подборку перед созданием работы', true);
+    return;
+  }
+  const taskIds = [...queuedTasks.keys()].join(',');
+  window.location.href = `/assignments/create?source=manual&task_ids=${taskIds}`;
+}
+
+function toggleSaveSetBox(show) {
+  const box = document.getElementById('drawer-save-box');
+  if (!box) return;
+  if (show) {
+    box.classList.remove('hidden');
+    const input = document.getElementById('drawer-set-title');
+    if (input) {
+      input.value = `Подборка заданий (${queuedTasks.size} шт.)`;
+      input.focus();
+    }
+  } else {
+    box.classList.add('hidden');
+  }
+}
+
+async function submitSaveSet() {
+  if (!queuedTasks.size) {
+    showToast('Подборка пуста', true);
+    return;
+  }
+  const title = (document.getElementById('drawer-set-title')?.value || '').trim();
+  const taskIds = [...queuedTasks.keys()];
+
+  try {
+    const res = await fetch('/task-generator/bank/save-set', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ title, task_ids: taskIds })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка при сохранении подборки');
+
+    showToast(data.message || 'Подборка успешно сохранена в ваши шаблоны');
+    toggleSaveSetBox(false);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+function insertQueueToLesson() {
+  if (!queuedTasks.size) {
+    showToast('Подборка пуста', true);
+    return;
+  }
+  const ids = [...queuedTasks.keys()].join(', ');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(ids).then(() => {
+      showToast(`ID заданий скопированы: ${ids}`);
+    }).catch(() => {
+      showToast(`Выбрано заданий: ${queuedTasks.size}`);
+    });
+  } else {
+    showToast(`Выбрано заданий: ${queuedTasks.size}`);
+  }
+}
+
+function openSolutionEditor() {
+  if (!selectedBankTaskId) return;
+  const task = bankTasksById[selectedBankTaskId];
+  if (!task) return;
+  const modal = document.getElementById('bank-solution-modal');
+  const textarea = document.getElementById('modal-solution-text');
+  if (textarea) textarea.value = task.solution || '';
+  modal?.classList.remove('hidden');
+}
+
+function closeSolutionEditor() {
+  document.getElementById('bank-solution-modal')?.classList.add('hidden');
+}
+
+async function saveSolutionEditor() {
+  if (!selectedBankTaskId) return;
+  const task = bankTasksById[selectedBankTaskId];
+  const textarea = document.getElementById('modal-solution-text');
+  const solutionText = textarea?.value || '';
+
+  try {
+    const res = await fetch(`/task-generator/bank/${selectedBankTaskId}/update-solution`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ solution: solutionText })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Ошибка сохранения решения');
+
+    if (task) task.solution = data.solution;
+    const solEl = document.getElementById('insp-solution-content');
+    if (solEl) solEl.textContent = data.solution || 'Разбор для этого задания пока не добавлен.';
+
+    showToast('Решение успешно обновлено');
+    closeSolutionEditor();
+  } catch (err) {
+    showToast(err.message, true);
+  }
 }
 
 function populateNavAndChips(data) {
-  // Quick Chips (Matching reference numbers 24, 25, 26, 27, 28)
   const chipsContainer = document.getElementById('dynamic-quick-chips');
   if (chipsContainer && !chipsContainer.children.length) {
     let chipsHtml = '';
@@ -1834,7 +2219,10 @@ async function loadBankTasks({ append = false } = {}) {
   if (targetStudents) params.set('recipient_ids', targetStudents);
   if (bankCourseId) params.set('exam_course_id', bankCourseId);
   if (bankModule) params.set('module', bankModule);
+  if (bankTaskNumber) params.set('task_number', String(bankTaskNumber));
   if (bankCategory && bankCategory !== 'all') params.set('bank_category', bankCategory);
+  if (bankOnlyBookmarked) params.set('only_bookmarked', 'true');
+  if (currentSort) params.set('sort', currentSort);
   
   const query = document.getElementById('bank-search').value.trim();
   if (query) params.set('q', query);
@@ -1851,10 +2239,12 @@ async function loadBankTasks({ append = false } = {}) {
     bankTotal = Number(data.total || 0);
 
     document.getElementById('bank-result-count').textContent = bankTotal.toLocaleString('ru-RU');
-    document.getElementById('stat-total-tasks').textContent = bankTotal.toLocaleString('ru-RU');
     
-    const myCount = tasks.filter(t => t.can_edit || t.bank_origin === 'manual').length;
-    document.getElementById('stat-my-tasks').textContent = myCount > 0 ? myCount : '143';
+    // Live stats from API
+    if (data.stats) {
+      document.getElementById('stat-total-tasks').textContent = Number(data.stats.total || 0).toLocaleString('ru-RU');
+      document.getElementById('stat-my-tasks').textContent = Number(data.stats.my_tasks || 0).toLocaleString('ru-RU');
+    }
 
     populateNavAndChips(data);
     renderBankTasks(tasks, append);
@@ -1873,6 +2263,7 @@ function resetAndLoad() {
 function setBankCourse(courseId) {
   bankCourseId = String(courseId || '');
   bankModule = '';
+  bankTaskNumber = null;
   resetAndLoad();
 }
 
@@ -1880,11 +2271,14 @@ function setBankCategory(category) {
   bankCategory = category || '';
   bankCourseId = '';
   bankModule = '';
+  bankTaskNumber = null;
+  renderStructureTree();
   resetAndLoad();
 }
 
 function setBankModule(module) {
   bankModule = module || '';
+  bankTaskNumber = null;
   resetAndLoad();
 }
 
@@ -1933,58 +2327,84 @@ function loadMoreBankTasks() {
 function openTaskEditor(taskId = null) {
   const source = taskId ? bankTasksById[Number(taskId)] : null;
   const isEdit = Boolean(source?.can_edit);
-  const courses = [...new Map(Object.values(bankTasksById).map(t => [String(t.course_id), t.course_title]).filter(([id]) => id && id !== 'undefined')).entries()];
+  
+  // Use all active courses from structureData if available, fallback to tasks
+  let courses = [];
+  if (structureData && structureData.courses) {
+    courses = structureData.courses.map(c => [String(c.id), c.title]);
+  } else {
+    courses = [...new Map(Object.values(bankTasksById).map(t => [String(t.course_id), t.course_title]).filter(([id]) => id && id !== 'undefined')).entries()];
+  }
   const courseOptions = courses.map(([id, title]) => `<option value="${escapeHtml(id)}" ${String(source?.course_id || bankCourseId) === id ? 'selected' : ''}>${escapeHtml(title)}</option>`).join('');
 
   const modal = document.getElementById('bank-task-editor-modal');
   const content = document.getElementById('bank-task-editor-content');
   modal.classList.remove('hidden');
 
+  const initialDifficulty = source?.difficulty_level || 2;
+
   content.innerHTML = `
     <form id="bank-task-editor" class="space-y-4">
       <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
-          <span class="text-[10px] font-black uppercase tracking-wider text-[#5046E5]">${isEdit ? 'Редактирование' : source ? 'Копия в личный банк' : 'Новое авторское задание'}</span>
-          <h3 class="text-lg font-black text-slate-900 mt-0.5">${isEdit ? 'Изменить задание' : 'Создать задание'}</h3>
+          <span class="text-[10px] font-black uppercase tracking-wider text-[#5046E5]">${isEdit ? 'Редактирование задания' : source ? 'Копия в личный банк' : 'Новое авторское задание'}</span>
+          <h3 class="text-base sm:text-lg font-black text-slate-900 mt-0.5">${isEdit ? 'Изменить задание' : 'Создать задание в банке'}</h3>
         </div>
         <button type="button" onclick="closeTaskEditor()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer border-0">
           <i class="ph-bold ph-x"></i>
         </button>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <label class="block text-xs font-bold text-slate-700">Курс
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label class="block text-xs font-bold text-slate-700">Программа / курс
           <select name="course_id" ${isEdit ? 'disabled' : ''} required class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none">
-            ${courseOptions || '<option value="">Выберите курс</option>'}
+            ${courseOptions || '<option value="1">ЕГЭ Информатика</option>'}
           </select>
         </label>
-        <label class="block text-xs font-bold text-slate-700">Баллы
+        <label class="block text-xs font-bold text-slate-700">Номер в КИМ (1-27)
+          <input name="task_number" type="number" min="1" max="100" value="${escapeHtml(source?.task_number || '1')}" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none font-bold">
+        </label>
+        <label class="block text-xs font-bold text-slate-700">Сложность
+          <select name="difficulty_level" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none font-bold">
+            <option value="1" ${initialDifficulty === 1 ? 'selected' : ''}>1 — Лёгкая (Базовый)</option>
+            <option value="2" ${initialDifficulty === 2 ? 'selected' : ''}>2 — Средняя (Стандарт)</option>
+            <option value="3" ${initialDifficulty === 3 ? 'selected' : ''}>3 — Сложная (Углублённый)</option>
+          </select>
+        </label>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs font-bold text-slate-700">Условие задания (поддерживает Markdown и формулы KaTeX: $...$)</label>
+          <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold">
+            <button type="button" id="btn-editor-tab-edit" onclick="switchEditorConditionTab('edit')" class="px-2 py-1 rounded-md bg-white text-indigo-700 shadow-2xs border-0 cursor-pointer">Текст</button>
+            <button type="button" id="btn-editor-tab-prev" onclick="switchEditorConditionTab('preview')" class="px-2 py-1 rounded-md text-slate-500 hover:text-slate-800 border-0 bg-transparent cursor-pointer">Предпросмотр</button>
+          </div>
+        </div>
+        <textarea id="editor-condition-textarea" name="content" required rows="6" placeholder="Введите условие задачи. Например: В файле содержится последовательность... $x^2 + y^2 = r^2$" class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-3 text-xs outline-none leading-relaxed">${escapeHtml(source ? plainText(source.content_html) : '')}</textarea>
+        <div id="editor-condition-preview" class="hidden min-h-[140px] max-h-[220px] overflow-y-auto studio-scroll p-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 leading-relaxed"></div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label class="block text-xs font-bold text-slate-700 sm:col-span-2">Правильный ответ
+          <input name="answer" value="${escapeHtml(source?.answer || '')}" placeholder="Точный ответ (число или строка)" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none font-mono">
+        </label>
+        <label class="block text-xs font-bold text-slate-700">Макс. балл
           <input name="max_score" type="number" min="1" max="100" value="${escapeHtml(source?.max_score || '1')}" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none">
         </label>
       </div>
 
-      <input name="task_number" type="hidden" value="${escapeHtml(source?.task_number || '1')}">
-
-      <label class="block text-xs font-bold text-slate-700">Условие задания
-        <textarea name="content" required rows="6" placeholder="Напишите условие задачи…" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-3 text-xs outline-none leading-relaxed">${escapeHtml(source ? plainText(source.content_html) : '')}</textarea>
+      <label class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+        <input id="editor-manual-grading" type="checkbox" class="accent-indigo-600" ${source && !source.answer ? 'checked' : ''}>
+        <span>Требует ручной проверки преподавателем (развёрнутый ответ)</span>
       </label>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <label class="block text-xs font-bold text-slate-700">Правильный ответ
-          <input name="answer" value="${escapeHtml(source?.answer || '')}" placeholder="Ответ для проверки" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none">
-        </label>
-        <label class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 mt-5">
-          <input id="editor-manual-grading" type="checkbox" class="accent-indigo-600" ${source && !source.answer ? 'checked' : ''}>
-          <span>Проверю вручную</span>
-        </label>
-      </div>
-
-      <label class="block text-xs font-bold text-slate-700">Стартовый код (Python)
-        <textarea name="starter_code" rows="3" placeholder="for x in range(1, 20):" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-3 text-xs font-mono outline-none">${escapeHtml(source?.starter_code || '')}</textarea>
+      <label class="block text-xs font-bold text-slate-700">Стартовый код / шаблон (опционально)
+        <textarea name="starter_code" rows="2" placeholder="# Шаблон функции или чтения данных" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-2.5 text-xs font-mono outline-none">${escapeHtml(source?.starter_code || '')}</textarea>
       </label>
 
-      <label class="block text-xs font-bold text-slate-700">Разбор и пояснение для преподавателя
-        <textarea name="solution" rows="3" placeholder="Критерии или подсказки…" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-3 text-xs outline-none">${escapeHtml(source?.solution || '')}</textarea>
+      <label class="block text-xs font-bold text-slate-700">Разбор, эталонное решение или критерии
+        <textarea name="solution" rows="3" placeholder="Подробный разбор решения для проверки..." class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl p-2.5 text-xs outline-none">${escapeHtml(source?.solution || '')}</textarea>
       </label>
 
       <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
@@ -1997,6 +2417,38 @@ function openTaskEditor(taskId = null) {
   `;
 
   document.getElementById('bank-task-editor').addEventListener('submit', event => saveTaskEditor(event, source, isEdit));
+}
+
+function switchEditorConditionTab(tab) {
+  const isEdit = tab === 'edit';
+  const textarea = document.getElementById('editor-condition-textarea');
+  const preview = document.getElementById('editor-condition-preview');
+  const btnEdit = document.getElementById('btn-editor-tab-edit');
+  const btnPrev = document.getElementById('btn-editor-tab-prev');
+
+  if (isEdit) {
+    textarea.classList.remove('hidden');
+    preview.classList.add('hidden');
+    btnEdit.className = 'px-2 py-1 rounded-md bg-white text-indigo-700 shadow-2xs border-0 cursor-pointer';
+    btnPrev.className = 'px-2 py-1 rounded-md text-slate-500 hover:text-slate-800 border-0 bg-transparent cursor-pointer';
+  } else {
+    textarea.classList.add('hidden');
+    preview.classList.remove('hidden');
+    preview.innerHTML = escapeHtml(textarea.value || '').replace(/\n/g, '<br>');
+    if (typeof renderMathInElement === 'function') {
+      renderMathInElement(preview, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '\\(', right: '\\)', display: false },
+          { left: '$', right: '$', display: false }
+        ],
+        throwOnError: false
+      });
+    }
+    btnPrev.className = 'px-2 py-1 rounded-md bg-white text-indigo-700 shadow-2xs border-0 cursor-pointer';
+    btnEdit.className = 'px-2 py-1 rounded-md text-slate-500 hover:text-slate-800 border-0 bg-transparent cursor-pointer';
+  }
 }
 
 function closeTaskEditor() {
@@ -2023,11 +2475,14 @@ async function saveTaskEditor(event, source, isEdit) {
           answer: (formData.get('answer') || '').trim() || null,
           solution: formData.get('solution'),
           starter_code: formData.get('starter_code'),
-          max_score: formData.get('max_score')
+          max_score: formData.get('max_score'),
+          task_number: formData.get('task_number'),
+          difficulty_level: formData.get('difficulty_level'),
         })
       });
     } else {
       formData.set('manual_grading', manual ? 'true' : 'false');
+      formData.set('exam_course_id', formData.get('course_id') || '1');
       response = await fetch('/task-generator/bank/create', {
         method: 'POST',
         headers: { 'X-CSRFToken': getCsrfToken() },
@@ -2041,6 +2496,7 @@ async function saveTaskEditor(event, source, isEdit) {
     showToast(isEdit ? 'Изменения сохранены' : 'Задание сохранено в личном банке');
     closeTaskEditor();
     resetAndLoad();
+    loadStructureData();
     if (!isEdit && payload.task_id) selectedBankTaskId = Number(payload.task_id);
   } catch (error) {
     showToast(error.message || 'Ошибка сохранения задания', true);
@@ -2063,6 +2519,7 @@ function showToast(message, isError = false) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadQueuedTasks();
+  loadStructureData();
   loadBankTasks();
 });
 </script>
