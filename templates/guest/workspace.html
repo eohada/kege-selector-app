@@ -30,7 +30,10 @@
 
       <div class="guest-tool-tabs" role="tablist" aria-label="Инструменты решения">
         <button type="button" class="is-active" data-tool-tab="answer">Ответ</button>
+        {% if not (guest_session.template_key or '').startswith(('trial_math', 'trial_prog')) and guest_session.settings.get('allow_code', True) %}
         <button type="button" data-tool-tab="code">Python</button>
+        {% endif %}
+        <button type="button" data-tool-tab="photos">Фото решения</button>
         {% if guest_session.settings.get('allow_drawings', True) %}<button type="button" data-tool-tab="board">Холст</button>{% endif %}
         <button type="button" data-tool-tab="notes">Черновик</button>
       </div>
@@ -38,12 +41,49 @@
         {% if task.task_type in ['choice', 'boolean'] %}
         <div class="guest-answer-options">{% for option in task.options %}<label><input type="radio" name="task-{{ task.id }}" value="{{ option }}"><span>{{ option }}</span></label>{% endfor %}</div>
         {% else %}<label class="guest-field-label">Ответ для проверки<input data-answer placeholder="Введите ответ"></label>{% endif %}
+        
+        <div class="guest-photo-upload-zone" data-photo-zone data-upload-url="{{ url_for('guest.upload_file', token=token, task_id=task.id) }}">
+          <div class="guest-photo-upload-bar">
+            <span class="guest-photo-upload-title">📷 Фотографии решения</span>
+            <label class="guest-photo-btn">
+              <span>+ Прикрепить фото</span>
+              <input type="file" accept="image/*,application/pdf" multiple hidden data-photo-input>
+            </label>
+          </div>
+          <div class="guest-photo-list" data-photo-list></div>
+          <div class="guest-photo-empty" data-photo-empty>
+            <span>Нажмите <strong>«+ Прикрепить фото»</strong>, чтобы прикрепить фото решения или черновика</span>
+          </div>
+        </div>
+
         <p class="guest-save-state" data-save-state>Ответ ещё не сохранён</p>
       </section>
+      {% if not (guest_session.template_key or '').startswith(('trial_math', 'trial_prog')) and guest_session.settings.get('allow_code', True) %}
       <section class="guest-tool-pane" data-tool-pane="code">
         <div class="guest-code-head"><div><strong>Python для ЕГЭ</strong><small>math · re · itertools · collections · functools · ipaddress · fnmatch · sys · turtle</small></div><button class="guest-run-button" type="button" data-run-url="{{ url_for('guest.run_guest_code', token=token, task_id=task.id) }}">▶ Запустить</button></div>
         <div class="guest-code-shell"><pre class="guest-code-gutter" data-code-gutter aria-hidden="true">1</pre><pre class="guest-code-highlight" data-code-highlight aria-hidden="true"></pre><textarea class="guest-code-editor" data-code spellcheck="false" aria-label="Редактор Python" placeholder="# Напишите и проверьте решение&#10;print('Привет, BooStudy!')"></textarea></div>
         <pre class="guest-code-output" data-code-output aria-live="polite">Результат запуска появится здесь.</pre>
+      </section>
+      {% endif %}
+      <section class="guest-tool-pane" data-tool-pane="photos">
+        <div class="guest-photos-pane" data-photo-zone data-upload-url="{{ url_for('guest.upload_file', token=token, task_id=task.id) }}">
+          <div class="guest-photos-pane-head">
+            <div>
+              <strong>Фотографии и файлы решения</strong>
+              <small>Сфотографируйте решение на телефон или загрузите файлы с компьютера (JPG, PNG, PDF)</small>
+            </div>
+            <label class="guest-photo-btn-primary">
+              <span>📷 Загрузить фото</span>
+              <input type="file" accept="image/*,application/pdf" multiple hidden data-photo-input>
+            </label>
+          </div>
+          <div class="guest-photo-list guest-photo-list-large" data-photo-list></div>
+          <div class="guest-photo-empty guest-photo-empty-large" data-photo-empty>
+            <div class="guest-empty-photo-icon">📷</div>
+            <p><strong>Фотографии пока не добавлены</strong></p>
+            <p class="guest-muted">Нажмите кнопку выше или перетащите фото сюда</p>
+          </div>
+        </div>
       </section>
       {% if guest_session.settings.get('allow_drawings', True) %}
       <section class="guest-tool-pane" data-tool-pane="board">
@@ -56,13 +96,24 @@
       {% endif %}
       <section class="guest-tool-pane" data-tool-pane="notes">
         {% if guest_session.settings.get('allow_comments', True) %}<label class="guest-field-label">Ход решения и заметки<textarea data-comment placeholder="Зафиксируйте рассуждение, формулы или что нужно спросить преподавателя"></textarea></label>{% else %}<p class="guest-muted">Комментарии отключены преподавателем для этой сессии.</p>{% endif %}
-        {% if guest_session.settings.get('allow_photos', True) %}<div class="guest-upload"><input data-file type="file" multiple hidden><button type="button" data-file-select>Выбрать файлы</button><span data-file-state>Файлы не выбраны</span><button type="button" data-upload-url="{{ url_for('guest.upload_file', token=token, task_id=task.id) }}">Прикрепить</button></div>{% endif %}
       </section>
       <div class="guest-task-footer"><button class="guest-secondary-button" type="button" data-save-url="{{ url_for('guest.save_response', token=token, task_id=task.id) }}">Сохранить решение</button><span data-save-state>Автосохранение включено</span><div><button type="button" data-prev-task>← Назад</button><button type="button" data-next-task>Дальше →</button></div></div>
     </article>
     {% endfor %}
   </div>
 </section>
+
+<dialog id="photo-viewer-modal" class="guest-photo-modal" aria-label="Просмотр фотографии">
+  <div class="guest-photo-modal-content">
+    <div class="guest-photo-modal-head">
+      <span id="photo-modal-title">Просмотр фото</span>
+      <button type="button" id="photo-modal-close" class="guest-modal-close" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="guest-photo-modal-body">
+      <img id="photo-modal-img" alt="Фото решения" src="">
+    </div>
+  </div>
+</dialog>
 
 <dialog id="submit-modal" class="guest-dialog" aria-labelledby="submit-modal-title"><h2 id="submit-modal-title">Сдать работу?</h2><p id="submit-modal-text">После сдачи ответы нельзя будет изменить.</p><div><button id="submit-cancel" class="guest-secondary-button" type="button">Вернуться к работе</button><button id="submit-confirm" class="guest-submit-button" type="button">Сдать</button></div></dialog>
 {% endblock %}

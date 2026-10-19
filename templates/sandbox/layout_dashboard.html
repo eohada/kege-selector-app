@@ -56,6 +56,9 @@
           <i class="ph ph-books"></i><span>Мои уроки</span><small class="bs-dashboard-nav-badge">Скоро</small>
         </div>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/assignments') %}is-active{% endif %}" href="/assignments"><i class="ph ph-check-square"></i><span>Задания</span></a>
+        {% if current_user.role in ['teacher', 'tutor', 'creator', 'admin', 'chief_admin'] %}
+        <a class="bs-dashboard-nav-link {% if request.path.startswith('/teacher/guest-sessions') %}is-active{% endif %}" href="{{ url_for('guest.teacher_sessions') }}"><i class="ph ph-link-simple"></i><span>Гостевые сессии</span></a>
+        {% endif %}
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/task-generator/bank') or request.path.startswith('/task-generator') %}is-active{% endif %}" href="/task-generator/bank"><i class="ph ph-books"></i><span>Банк задач</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/theory') %}is-active{% endif %}" href="{{ url_for('theory.manage_list') if (current_user.is_creator() or current_user.is_tutor() or current_user.is_admin() or current_user.role in ['creator', 'teacher', 'tutor', 'admin', 'chief_admin']) else url_for('theory.theory_index') }}"><i class="ph ph-notebook"></i><span>Теория</span></a>
         <a class="bs-dashboard-nav-link {% if request.path.startswith('/courses') %}is-active{% endif %}" href="/courses"><i class="ph ph-grid-four"></i><span>Программа</span></a>

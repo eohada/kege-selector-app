@@ -10,6 +10,7 @@ from app.billing import billing_bp
 from app.models import db, TariffGroup, TariffPlan, UserSubscription, User
 from app.auth.rbac_utils import has_permission
 from core.audit_logger import audit_logger
+from app import csrf
 
 logger = logging.getLogger(__name__)
 
@@ -524,6 +525,58 @@ def billing_plans_buy_simulate():
         flash(f"Ошибка при обработке платежа: {str(e)}", "danger")
 
     return redirect(url_for('main.dashboard'))
+
+
+@billing_bp.route('/billing/promocode/validate-public', methods=['POST'])
+@csrf.exempt
+def billing_promocode_validate_public():
+    """Публичная проверка промокода для корзины (работает для гостей и авторизованных)."""
+    data = request.get_json(silent=True) or request.form
+    raw_code = (data.get('code') or '').strip().upper()
+    if not raw_code:
+        return jsonify({'success': False, 'message': 'Введите промокод.'}), 400
+
+    try:
+        cart_total = max(0, int(data.get('cart_total') or 0))
+    except (TypeError, ValueError):
+        cart_total = 0
+
+    from app.models import PromoCode, PromoCodeUsage
+
+    promo = PromoCode.query.filter_by(code=raw_code).first()
+    if not promo or not promo.is_active:
+        return jsonify({'success': False, 'message': f'Промокод «{raw_code}» не найден или неактивен.'}), 404
+
+    now = datetime.utcnow()
+    if promo.starts_at and promo.starts_at > now:
+        return jsonify({'success': False, 'message': 'Срок действия промокода ещё не начался.'}), 400
+    if promo.expires_at and promo.expires_at < now:
+        return jsonify({'success': False, 'message': 'Срок действия промокода истёк.'}), 400
+    if promo.usage_limit is not None and int(promo.usage_count or 0) >= promo.usage_limit:
+        return jsonify({'success': False, 'message': 'Лимит использований промокода исчерпан.'}), 400
+
+    if current_user.is_authenticated:
+        if PromoCodeUsage.query.filter_by(promocode_id=promo.id, user_id=current_user.id).first():
+            return jsonify({'success': False, 'message': 'Этот промокод уже был использован вашим аккаунтом.'}), 400
+
+    discount_percent = min(100, max(0, int(promo.discount_percent or 0)))
+    discount_rub = max(0, int(promo.discount_rub or 0))
+
+    percent_discount_amount = (cart_total * discount_percent) // 100 if discount_percent else 0
+    total_discount = min(cart_total, percent_discount_amount + discount_rub)
+    final_total = max(0, cart_total - total_discount)
+
+    return jsonify({
+        'success': True,
+        'code': promo.code,
+        'discount_percent': discount_percent,
+        'discount_rub': discount_rub,
+        'discount_amount': total_discount,
+        'final_total': final_total,
+        'bonus_lessons': promo.bonus_lessons or 0,
+        'bonus_days': promo.bonus_days or 0,
+        'message': f'Промокод «{promo.code}» успешно применён!'
+    })
 
 
 @billing_bp.route('/billing/promocode/check', methods=['POST'])

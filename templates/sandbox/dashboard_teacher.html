@@ -13,6 +13,7 @@
         <p>Соберите день вокруг главного: поддержать учеников, проверить работы и спокойно провести ближайшие занятия.</p>
         <div class="bs-teacher-hero-actions">
           <a href="/teacher/students" class="bs-button bs-button-primary"><span>Ученики и поток</span><i class="ph ph-users"></i></a>
+          <a href="{{ url_for('guest.teacher_sessions') }}" class="bs-button bs-button-soft"><span>Гостевые пробники</span><i class="ph ph-link-simple"></i></a>
           <a href="{{ url_for('main.teacher_analytics_view') }}" class="bs-button bs-button-soft"><span>Открыть аналитику</span><i class="ph ph-arrow-up-right"></i></a>
           <span class="bs-teacher-hero-note"><i class="ph ph-sparkle"></i> Маленькие шаги дают большой результат</span>
         </div>
@@ -87,7 +88,7 @@
     </article>
 
     <div class="bs-teacher-actions-stack">
-      <article class="bs-dashboard-card bs-teacher-actions-card"><div class="bs-dashboard-card-header"><div><h2>Быстрые действия</h2><p class="bs-dashboard-card-subtitle">Инструменты на сегодня</p></div><span class="bs-summary-icon is-warning"><i class="ph ph-lightning"></i></span></div><div class="bs-dashboard-action-grid bs-teacher-action-grid"><a href="/assignments/create" class="bs-dashboard-action"><i class="ph ph-file-plus"></i><span>Создать работу</span></a><button type="button" class="bs-dashboard-action" onclick="openAssignMockModal()"><i class="ph ph-target"></i><span>Назначить пробник</span></button><a href="/task-generator/bank" class="bs-dashboard-action"><i class="ph ph-books"></i><span>Открыть банк задач</span></a><button type="button" class="bs-dashboard-action" onclick="openAddStudentModal()"><i class="ph ph-user-plus"></i><span>Добавить ученика</span></button></div><div class="bs-teacher-todo-inline"><div class="bs-teacher-todo-inline-head"><strong>Не забыть</strong><button type="button" class="bs-icon-button" onclick="promptAddTodo()" title="Добавить заметку" aria-label="Добавить заметку"><i class="ph ph-plus"></i></button></div><div id="todoListContainer" class="bs-teacher-todo-list">{% for todo in todos[:2] %}<label class="bs-teacher-todo-item"><span><input type="checkbox" onchange="toggleTodo({{ todo.id }}, this)" {% if todo.done %}checked{% endif %}><span class="{% if todo.done %}is-done{% endif %}">{{ todo.text }}</span></span><button type="button" onclick="deleteTodo({{ todo.id }}, this)" title="Удалить"><i class="ph ph-trash"></i></button></label>{% endfor %}</div></div></article>
+      <article class="bs-dashboard-card bs-teacher-actions-card"><div class="bs-dashboard-card-header"><div><h2>Быстрые действия</h2><p class="bs-dashboard-card-subtitle">Инструменты на сегодня</p></div><span class="bs-summary-icon is-warning"><i class="ph ph-lightning"></i></span></div><div class="bs-dashboard-action-grid bs-teacher-action-grid"><a href="/assignments/create" class="bs-dashboard-action"><i class="ph ph-file-plus"></i><span>Создать работу</span></a><button type="button" class="bs-dashboard-action" onclick="openAssignMockModal()"><i class="ph ph-target"></i><span>Назначить пробник</span></button><a href="{{ url_for('guest.teacher_sessions') }}" class="bs-dashboard-action"><i class="ph ph-link-simple"></i><span>Гостевой пробник</span></a><a href="/task-generator/bank" class="bs-dashboard-action"><i class="ph ph-books"></i><span>Открыть банк задач</span></a><button type="button" class="bs-dashboard-action" onclick="openAddStudentModal()"><i class="ph ph-user-plus"></i><span>Добавить ученика</span></button></div><div class="bs-teacher-todo-inline"><div class="bs-teacher-todo-inline-head"><strong>Не забыть</strong><button type="button" class="bs-icon-button" onclick="promptAddTodo()" title="Добавить заметку" aria-label="Добавить заметку"><i class="ph ph-plus"></i></button></div><div id="todoListContainer" class="bs-teacher-todo-list">{% for todo in todos[:2] %}<label class="bs-teacher-todo-item"><span><input type="checkbox" onchange="toggleTodo({{ todo.id }}, this)" {% if todo.done %}checked{% endif %}><span class="{% if todo.done %}is-done{% endif %}">{{ todo.text }}</span></span><button type="button" onclick="deleteTodo({{ todo.id }}, this)" title="Удалить"><i class="ph ph-trash"></i></button></label>{% endfor %}</div></div></article>
     </div>
   </section>
 
@@ -429,16 +430,23 @@
               <span class="text-[11px] font-black leading-tight">Назначить пробник</span>
             </button>
 
-            <!-- 3. Открыть банк задач -->
+            <!-- 3. Гостевой пробник (без регистрации) -->
+            <a href="{{ url_for('guest.teacher_sessions') }}"
+               class="p-3 rounded-2xl bg-purple-50/60 hover:bg-purple-100/70 border border-purple-200 text-purple-700 flex flex-col items-center justify-center text-center gap-1.5 no-underline transition group">
+              <i class="ph-bold ph-link-simple text-xl group-hover:scale-110 transition-transform"></i>
+              <span class="text-[11px] font-black leading-tight">Гостевой пробник</span>
+            </a>
+
+            <!-- 4. Открыть банк задач -->
             <a href="/task-generator/bank"
                class="p-3 rounded-2xl bg-emerald-50/60 hover:bg-emerald-100/70 border border-emerald-200 text-emerald-700 flex flex-col items-center justify-center text-center gap-1.5 no-underline transition group">
               <i class="ph-bold ph-book-open text-xl group-hover:scale-110 transition-transform"></i>
-              <span class="text-[11px] font-black leading-tight">Открыть банк задач</span>
+              <span class="text-[11px] font-black leading-tight">Банк задач</span>
             </a>
 
-            <!-- 4. Добавить ученика -->
+            <!-- 5. Добавить ученика -->
             <button type="button" onclick="openAddStudentModal()"
-                    class="p-3 rounded-2xl bg-amber-50/60 hover:bg-amber-100/70 border border-amber-200 text-amber-700 flex flex-col items-center justify-center text-center gap-1.5 transition group cursor-pointer">
+                    class="col-span-2 p-3 rounded-2xl bg-amber-50/60 hover:bg-amber-100/70 border border-amber-200 text-amber-700 flex flex-row items-center justify-center text-center gap-2 transition group cursor-pointer">
               <i class="ph-bold ph-user-plus text-xl group-hover:scale-110 transition-transform"></i>
               <span class="text-[11px] font-black leading-tight">Добавить ученика</span>
             </button>
@@ -722,6 +730,14 @@
         <input type="date" name="deadline" id="mockDeadlineInput" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 bg-[#F8FAFC]">
       </div>
 
+      <div class="p-3 rounded-xl bg-purple-50/70 border border-purple-200 text-xs flex items-center justify-between gap-3">
+        <div>
+          <strong class="text-purple-950 block">Нужно проверить уровень без регистрации?</strong>
+          <span class="text-slate-600">Создайте гостевую ссылку на пробник по информатике, математике или Python.</span>
+        </div>
+        <a href="{{ url_for('guest.teacher_sessions') }}" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black whitespace-nowrap">Гостевой пробник →</a>
+      </div>
+
       <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
         <button type="button" onclick="closeAssignMockModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Отмена</button>
         <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs border border-indigo-700 border-b-[3px] active:border-b active:translate-y-[1px] shadow-xs cursor-pointer">
@@ -771,6 +787,14 @@
             Копировать
           </button>
         </div>
+      </div>
+
+      <div class="p-3 rounded-xl bg-purple-50/70 border border-purple-200 text-xs flex items-center justify-between gap-3">
+        <div>
+          <strong class="text-purple-950 block">Диагностика без регистрации</strong>
+          <span class="text-slate-600">Отправьте ученику ссылку на пробник (КЕГЭ, математика, Python) без создания профиля.</span>
+        </div>
+        <a href="{{ url_for('guest.teacher_sessions') }}" class="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black whitespace-nowrap">Гостевой пробник →</a>
       </div>
 
       <div class="pt-3 border-t border-slate-100 flex justify-between items-center gap-2">

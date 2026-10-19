@@ -427,3 +427,113 @@ def test_timed_trial_force_submits_on_next_guest_request(app, role_users):
     assert guest.post(f"/guest/s/{created['code']}/api/responses/{task_id}", json={'answer_text': 'int'}).status_code == 409
     with app.app_context():
         assert GuestReview.query.filter_by(session_id=created['id'], participant_id=participant_id).one().status == 'pending'
+
+
+def test_math_profile_trial_templates_have_20_tasks_and_comma_tolerance(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+
+    # Test all 3 math profile variations (20 tasks each according to 2027 КИМ model)
+    for template_key in ('trial_math_prof_1', 'trial_math_prof_2', 'trial_math_prof_3'):
+        res = teacher.post('/teacher/guest-sessions', json={
+            'session_type': 'TRIAL_EXAM',
+            'template_key': template_key,
+        })
+        assert res.status_code == 200, f"Failed to create {template_key}: {res.get_json()}"
+        data = res.get_json()
+        assert data['task_count'] == 20
+        assert data['expected_duration_minutes'] == 235
+
+    # Test student answering with comma decimal (e.g. 0,3 vs 0.3) on variant 1
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'TRIAL_EXAM',
+        'template_key': 'trial_math_prof_1',
+    }).get_json()
+
+    guest = app.test_client()
+    guest.post(f"/guest/s/{created['code']}/join", json={'display_name': 'Математик'})
+    with app.app_context():
+        session_obj = GuestSession.query.get(created['id'])
+        task_id = session_obj.tasks[3].id  # Task 4 is probability with answer 0.3
+
+    # Submit with Russian decimal comma '0,3'
+    save_res = guest.post(f"/guest/s/{created['code']}/api/responses/{task_id}", json={'answer_text': '0,3'})
+    assert save_res.status_code == 200
+
+    # Submit exam
+    sub = guest.post(f"/guest/s/{created['code']}/submit", json={'force': True})
+    assert sub.status_code == 200
+    assert sub.get_json()['total_score'] >= 1
+
+
+def test_programming_20_trial_templates_have_20_tasks_from_theory(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+
+    # Test all 3 programming variations
+    for template_key in ('trial_prog_20_1', 'trial_prog_20_2', 'trial_prog_20_3'):
+        res = teacher.post('/teacher/guest-sessions', json={
+            'session_type': 'TRIAL_EXAM',
+            'template_key': template_key,
+        })
+        assert res.status_code == 200, f"Failed to create {template_key}: {res.get_json()}"
+        data = res.get_json()
+        assert data['task_count'] == 20
+        assert data['expected_duration_minutes'] == 90
+
+    # Verify tasks are all based on python 30 theory topics (101-130)
+    with app.app_context():
+        created_session = GuestSession.query.filter_by(template_key='trial_prog_20_1').first()
+        assert len(created_session.tasks) == 20
+        for task in created_session.tasks:
+            assert task.skill_key.startswith('python.topic_1')
+
+
+def test_teacher_navigation_has_guest_sessions_links(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+
+    dashboard_html = teacher.get('/dashboard').get_data(as_text=True)
+    assert '/teacher/guest-sessions' in dashboard_html
+    assert 'Гостевые сессии' in dashboard_html or 'Гостевой пробник' in dashboard_html
+
+
+def test_programming_trial_blocks_code_running_and_teacher_sees_all_tasks_sorted(app, role_users):
+    teacher = app.test_client()
+    login_as(teacher, role_users['tutor_id'], 'tutor')
+
+    created = teacher.post('/teacher/guest-sessions', json={
+        'session_type': 'TRIAL_EXAM',
+        'template_key': 'trial_prog_20_1',
+    }).get_json()
+
+    guest = app.test_client()
+    join_res = guest.post(f"/guest/s/{created['code']}/join", json={'display_name': 'Тестер'})
+    assert join_res.status_code == 200
+
+    with app.app_context():
+        session_obj = GuestSession.query.get(created['id'])
+        first_task = session_obj.tasks[0]
+
+    # Workspace must NOT contain Python editor tab for programming trial
+    workspace_html = guest.get(f"/guest/s/{created['code']}").get_data(as_text=True)
+    assert 'data-tool-tab="code"' not in workspace_html
+
+    # Direct run-code API must be blocked with 403
+    run_res = guest.post(
+        f"/guest/s/{created['code']}/api/responses/{first_task.id}/run-code",
+        json={'code': 'print(42)'},
+    )
+    assert run_res.status_code == 403
+    assert 'Запуск кода недоступен' in run_res.get_json()['error']
+
+    # Answer only 1 task and force-submit
+    guest.post(f"/guest/s/{created['code']}/api/responses/{first_task.id}", json={'answer_text': '123'})
+    sub = guest.post(f"/guest/s/{created['code']}/submit", json={'force': True})
+    assert sub.status_code == 200
+
+    # Teacher reviews session: all 20 tasks must exist in order, and header must say "Ответов: 1 из 20"
+    detail_html = teacher.get(f"/teacher/guest-sessions/{created['id']}").get_data(as_text=True)
+    assert 'Ответов: 1 из 20' in detail_html
+    for i in range(1, 21):
+        assert f'Задание №{i}' in detail_html

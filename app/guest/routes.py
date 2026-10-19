@@ -28,13 +28,102 @@ from app.models import (db, GuestActivity, GuestAttachment, GuestDemoSnapshot,
 from app.auth.rbac_utils import require_role
 from app.sandbox.python_runner import normalize_leading_tabs_to_spaces, run_python_sandbox
 from app.utils.jinja_filters import prepare_guest_task_content
+from app.guest.math_data import get_math_variant_specs
+from app.guest.programming_data import get_programming_variant_specs
 
 
 SESSION_TYPES = {'INTRO_LESSON', 'TRIAL_EXAM'}
 TRIAL_TEMPLATES = {
-    'trial_ege_full_1': {'title': 'Полный вариант КЕГЭ №1', 'description': 'Реальные задания №1–27 из локального снимка банка Kompege, включая исходные файлы.', 'duration': '3 ч 55 мин', 'outcome': 'Разбор результата по всем номерам КЕГЭ.'},
-    'trial_ege_full_2': {'title': 'Полный вариант КЕГЭ №2', 'description': 'Второй независимый набор реальных заданий №1–27 с условиями, файлами и эталонами.', 'duration': '3 ч 55 мин', 'outcome': 'Сравнимый диагностический срез по всем номерам.'},
-    'trial_ege_full_3': {'title': 'Полный вариант КЕГЭ №3', 'description': 'Третий независимый набор реальных заданий №1–27 из сохранённого банка.', 'duration': '3 ч 55 мин', 'outcome': 'Повторная диагностика без повтора предыдущих заданий.'},
+    'trial_ege_full_1': {
+        'title': 'ЕГЭ Информатика (КЕГЭ) · Вариант №1',
+        'subject': 'ege_informatics',
+        'subject_title': 'Информатика КЕГЭ',
+        'description': 'Реальные задания №1–27 из локального снимка банка Kompege, включая исходные файлы.',
+        'duration': '3 ч 55 мин',
+        'task_count': 27,
+        'outcome': 'Разбор результата по всем номерам КЕГЭ.',
+        'expected_duration_minutes': 235,
+    },
+    'trial_ege_full_2': {
+        'title': 'ЕГЭ Информатика (КЕГЭ) · Вариант №2',
+        'subject': 'ege_informatics',
+        'subject_title': 'Информатика КЕГЭ',
+        'description': 'Второй независимый набор реальных заданий №1–27 с условиями, файлами и эталонами.',
+        'duration': '3 ч 55 мин',
+        'task_count': 27,
+        'outcome': 'Сравнимый диагностический срез по всем номерам.',
+        'expected_duration_minutes': 235,
+    },
+    'trial_ege_full_3': {
+        'title': 'ЕГЭ Информатика (КЕГЭ) · Вариант №3',
+        'subject': 'ege_informatics',
+        'subject_title': 'Информатика КЕГЭ',
+        'description': 'Третий независимый набор реальных заданий №1–27 из сохранённого банка.',
+        'duration': '3 ч 55 мин',
+        'task_count': 27,
+        'outcome': 'Повторная диагностика без повтора предыдущих заданий.',
+        'expected_duration_minutes': 235,
+    },
+    'trial_math_prof_1': {
+        'title': 'ЕГЭ Математика (Профиль) · Вариант №1',
+        'subject': 'ege_math_profile',
+        'subject_title': 'Математика Профиль',
+        'description': 'Полный пробный вариант КИМ 2027 г.: 13 заданий первой части (включая СВ и экономику) + 7 заданий второй части (включая мат. модели).',
+        'duration': '3 ч 55 мин',
+        'task_count': 20,
+        'outcome': 'Диагностический срез по актуальной структуре КИМ ЕГЭ 2027 г.',
+        'expected_duration_minutes': 235,
+    },
+    'trial_math_prof_2': {
+        'title': 'ЕГЭ Математика (Профиль) · Вариант №2',
+        'subject': 'ege_math_profile',
+        'subject_title': 'Математика Профиль',
+        'description': 'Второй независимый пробник КИМ 2027 г.: дискретные СВ, геометрия, финансовые расчеты и прикладные колебания.',
+        'duration': '3 ч 55 мин',
+        'task_count': 20,
+        'outcome': 'Сравнимый диагностический срез по всем 20 номерам.',
+        'expected_duration_minutes': 235,
+    },
+    'trial_math_prof_3': {
+        'title': 'ЕГЭ Математика (Профиль) · Вариант №3',
+        'subject': 'ege_math_profile',
+        'subject_title': 'Математика Профиль',
+        'description': 'Третий независимый вариант КИМ 2027 г.: распределения, уравнения, прикладная оптимизация и теория чисел.',
+        'duration': '3 ч 55 мин',
+        'task_count': 20,
+        'outcome': 'Итоговая диагностика готовности к 80+ баллам по новой модели 2027 г.',
+        'expected_duration_minutes': 235,
+    },
+    'trial_prog_20_1': {
+        'title': 'Программирование Python (20 заданий) · Вариант №1',
+        'subject': 'programming',
+        'subject_title': 'Программирование',
+        'description': 'Пробник из 20 заданий строго по 30 темам учебной теории: типы, ввод/вывод, циклы, строки, списки и функции.',
+        'duration': '1 ч 30 мин',
+        'task_count': 20,
+        'outcome': 'Срез практических навыков кодинга и алгоритмов.',
+        'expected_duration_minutes': 90,
+    },
+    'trial_prog_20_2': {
+        'title': 'Программирование Python (20 заданий) · Вариант №2',
+        'subject': 'programming',
+        'subject_title': 'Программирование',
+        'description': 'Второй независимый срез из 20 задач по темам теории: логика, срезы, разбор цифр, вложенные циклы, предикаты.',
+        'duration': '1 ч 30 мин',
+        'task_count': 20,
+        'outcome': 'Определение сильных тем и пробелов в Python.',
+        'expected_duration_minutes': 90,
+    },
+    'trial_prog_20_3': {
+        'title': 'Программирование Python (20 заданий) · Вариант №3',
+        'subject': 'programming',
+        'subject_title': 'Программирование',
+        'description': 'Третий независимый вариант из 20 задач: от базовой арифметики до сортировок, генераторов списков и видимости.',
+        'duration': '1 ч 30 мин',
+        'task_count': 20,
+        'outcome': 'Итоговая диагностика по всему курсу программирования.',
+        'expected_duration_minutes': 90,
+    },
 }
 INTRO_TEMPLATES = {
     'intro_platform_tour': {'title': 'Вводный урок BooStudy', 'description': 'Знакомство с программой, теорией и первой практикой.', 'duration': '10–15 минут', 'outcome': 'Первый ориентир и предложение следующего шага.'},
@@ -43,6 +132,30 @@ INTRO_TEMPLATES = {
 
 def _hash(value):
     return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+
+def _is_answer_correct(actual: str, expected: str, task_type: str = 'short_text') -> bool:
+    """Проверяет правильность ответа с устойчивостью к запятой/точке в десятичных дробях."""
+    if not actual and actual != 0:
+        return False
+    actual_norm = str(actual).strip().lower()
+    expected_norm = str(expected).strip().lower()
+    if actual_norm == expected_norm:
+        return True
+    if task_type == 'code':
+        normalized = ''.join(actual_norm.split())
+        return normalized in {expected_norm, 'print(2+2)', 'print(4)', '4'}
+    # Нормализация десятичных чисел (запятая на точку, удаление пробелов разрядов)
+    act_clean = actual_norm.replace(' ', '').replace(',', '.')
+    exp_clean = expected_norm.replace(' ', '').replace(',', '.')
+    if act_clean == exp_clean:
+        return True
+    try:
+        if abs(float(act_clean) - float(exp_clean)) < 1e-7:
+            return True
+    except (ValueError, TypeError):
+        pass
+    return False
 
 
 def _as_bool(value, default=False):
@@ -158,6 +271,10 @@ def _task_specs(template_key):
     ]
     if template_key.startswith('trial_ege_full_'):
         return _ege_variant_specs(int(template_key.rsplit('_', 1)[-1]) - 1)
+    if template_key.startswith('trial_math_prof_'):
+        return get_math_variant_specs(int(template_key.rsplit('_', 1)[-1]) - 1)
+    if template_key.startswith('trial_prog_20_') or template_key.startswith('trial_prog_'):
+        return get_programming_variant_specs(int(template_key.rsplit('_', 1)[-1]) - 1)
     catalogs = {'intro_platform_tour': intro}
     base = catalogs.get(template_key, python_start)
     if template_key.startswith('trial_'):
@@ -189,6 +306,12 @@ def _template_seed_rows():
         ('trial_ege_full_1', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_ege_full_1'], 2),
         ('trial_ege_full_2', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_ege_full_2'], 2),
         ('trial_ege_full_3', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_ege_full_3'], 2),
+        ('trial_math_prof_1', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_math_prof_1'], 1),
+        ('trial_math_prof_2', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_math_prof_2'], 1),
+        ('trial_math_prof_3', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_math_prof_3'], 1),
+        ('trial_prog_20_1', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_prog_20_1'], 1),
+        ('trial_prog_20_2', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_prog_20_2'], 1),
+        ('trial_prog_20_3', 'TRIAL_EXAM', TRIAL_TEMPLATES['trial_prog_20_3'], 1),
         ('intro_platform_tour', 'INTRO_LESSON', INTRO_TEMPLATES['intro_platform_tour'], 1),
     ]
 
@@ -199,10 +322,13 @@ def _ensure_guest_templates():
     for key, session_type, meta, version in _template_seed_rows():
         item = GuestTemplate.query.filter_by(template_key=key).first()
         specs = _task_specs(key)
+        duration_mins = int(meta.get('expected_duration_minutes', 235 if key.startswith(('trial_ege_full_', 'trial_math_prof_')) else (90 if key.startswith('trial_prog_') else 30)))
         config = {
             'task_count': len(specs),
-            'expected_duration_minutes': 235 if key.startswith('trial_ege_full_') else 30,
+            'expected_duration_minutes': duration_mins,
             'flow': [task.get('phase') for task in specs if task.get('phase')],
+            'subject': meta.get('subject', 'informatics'),
+            'subject_title': meta.get('subject_title', 'Информатика'),
         }
         if item is None:
             item = GuestTemplate(template_key=key, session_type=session_type, title=meta['title'], description=meta['description'], version=version, config=config, is_active=True)
@@ -211,10 +337,7 @@ def _ensure_guest_templates():
         elif item.is_active is False:
             item.is_active = True
             changed = True
-        # System templates are versioned snapshots.  If an older deployment
-        # seeded the short five-task catalog, upgrade only that system row;
-        # teacher-authored templates are never rewritten here.
-        elif item.version < version or (key.startswith('trial_ege_full_') and (item.config or {}).get('task_count') != 27):
+        elif item.version < version or (item.config or {}).get('task_count') != len(specs):
             item.version = version
             item.config = config
             item.title = meta['title']
@@ -295,11 +418,11 @@ def _force_submit_expired_participant(session_obj, participant):
     for response_obj in responses:
         response_obj.status = 'submitted'
         response_obj.submitted_at = utc_now()
-        expected = (response_obj.task.expected_answer or '').strip().lower()
-        actual = (response_obj.answer_text or '').strip().lower()
+        expected = (response_obj.task.expected_answer or '').strip()
+        actual = (response_obj.answer_text or '').strip()
         response_obj.auto_checked = response_obj.task.task_type in {'choice', 'boolean', 'short_text', 'code'}
         if response_obj.auto_checked:
-            response_obj.score = response_obj.task.max_score if actual == expected else 0
+            response_obj.score = response_obj.task.max_score if _is_answer_correct(actual, expected, response_obj.task.task_type) else 0
             response_obj.error_reason = None if response_obj.score == response_obj.task.max_score else 'INCOMPLETE_SOLUTION'
         else:
             response_obj.score = None
@@ -386,6 +509,27 @@ def teacher_sessions():
 @require_role('teacher', 'tutor', 'creator', 'admin', 'chief_admin')
 def teacher_session_detail(session_id):
     item = GuestSession.query.filter_by(id=session_id, teacher_id=current_user.id).first_or_404()
+    tasks = list(item.tasks)
+    db_changed = False
+    for participant in item.participants:
+        existing_task_ids = {r.task_id for r in participant.responses}
+        is_submitted = (participant.status in {'submitted', 'converted'})
+        for task in tasks:
+            if task.id not in existing_task_ids:
+                resp = GuestResponse(
+                    participant_id=participant.id,
+                    task_id=task.id,
+                    status='submitted' if is_submitted else 'draft',
+                    answer_text='',
+                    score=0 if (is_submitted and task.task_type in {'choice', 'boolean', 'short_text', 'code'}) else None,
+                    auto_checked=bool(is_submitted and task.task_type in {'choice', 'boolean', 'short_text', 'code'}),
+                    error_reason='INCOMPLETE_SOLUTION' if (is_submitted and task.task_type in {'choice', 'boolean', 'short_text', 'code'}) else None,
+                )
+                db.session.add(resp)
+                participant.responses.append(resp)
+                db_changed = True
+    if db_changed:
+        db.session.commit()
     return render_template('guest/teacher_detail.html', guest_session=item)
 
 
@@ -439,7 +583,7 @@ def create_session():
         'allow_drawings': _as_bool(data.get('allow_drawings'), True),
         'allow_comments': _as_bool(data.get('allow_comments'), True),
         'timed': session_type == 'TRIAL_EXAM' or _as_bool(data.get('timed'), False),
-        'expected_duration_minutes': 235 if session_type == 'TRIAL_EXAM' else int((template.config or {}).get('expected_duration_minutes', 30)),
+        'expected_duration_minutes': int((template.config or {}).get('expected_duration_minutes', 235 if session_type == 'TRIAL_EXAM' else 30)),
     }
     raw_token = secrets.token_urlsafe(32)
     expires = utc_now() + timedelta(hours=duration_hours)
@@ -472,7 +616,7 @@ def create_session():
         }))
     _event(session_obj, None, 'session.created', {'type': session_type, 'template': template_key})
     db.session.commit()
-    return jsonify(id=session_obj.id, code=session_obj.access_code, link=_session_link(session_obj), expires_at=session_obj.expires_at.isoformat())
+    return jsonify(id=session_obj.id, code=session_obj.access_code, link=_session_link(session_obj), expires_at=session_obj.expires_at.isoformat(), task_count=len(specs), expected_duration_minutes=settings['expected_duration_minutes'])
 
 
 @guest_bp.post('/teacher/guest-sessions/<int:session_id>/close')
@@ -645,7 +789,13 @@ def guest_state(token):
             'answer_json': response.answer_json,
             'comment': response.comment or '',
             'flagged': bool(response.flagged),
-            'attachments': [{'name': attachment.original_name, 'size': attachment.size_bytes} for attachment in response.attachments],
+            'attachments': [{
+                'id': attachment.id,
+                'name': attachment.original_name,
+                'size': attachment.size_bytes,
+                'is_image': (attachment.mime_type or '').startswith('image/') or attachment.original_name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')),
+                'url': url_for('guest.guest_attachment_file', token=token, task_id=response.task_id, attachment_id=attachment.id),
+            } for attachment in response.attachments],
             'drawing': (response.drawings[-1].payload if response.drawings else None),
         } for response in responses],
     )
@@ -699,6 +849,8 @@ def run_guest_code(token, task_id):
     item, participant = _require_guest(token)
     if participant.status == 'submitted':
         return jsonify(error='Сессия уже отправлена'), 409
+    if (item.template_key or '').startswith(('trial_math', 'trial_prog')):
+        return jsonify(error='Запуск кода недоступен для этого пробника'), 403
     GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
     data = request.get_json(silent=True) or {}
     code = normalize_leading_tabs_to_spaces(str(data.get('code') or ''))
@@ -820,10 +972,61 @@ def upload_file(token, task_id):
         absolute = os.path.join(root, storage_key)
         os.makedirs(os.path.dirname(absolute), exist_ok=True)
         file.save(absolute)
-        db.session.add(GuestAttachment(response_id=response_obj.id, original_name=safe_name, storage_key=storage_key, mime_type=file.mimetype or 'application/octet-stream', size_bytes=size))
-        saved.append({'name': safe_name, 'size': size})
+        attachment_obj = GuestAttachment(
+            response_id=response_obj.id,
+            original_name=safe_name,
+            storage_key=storage_key,
+            mime_type=file.mimetype or 'application/octet-stream',
+            size_bytes=size
+        )
+        db.session.add(attachment_obj)
+        db.session.flush()
+        is_image = bool((file.mimetype or '').startswith('image/') or safe_name.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')))
+        saved.append({
+            'id': attachment_obj.id,
+            'name': safe_name,
+            'size': size,
+            'is_image': is_image,
+            'url': url_for('guest.guest_attachment_file', token=token, task_id=task.id, attachment_id=attachment_obj.id),
+        })
     db.session.commit()
     return jsonify(saved=True, files=saved)
+
+
+@guest_bp.get('/guest/s/<token>/attachments/<int:task_id>/files/<int:attachment_id>')
+def guest_attachment_file(token, task_id, attachment_id):
+    item, participant = _require_guest(token)
+    task = GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
+    response_obj = GuestResponse.query.filter_by(participant_id=participant.id, task_id=task.id).first_or_404()
+    attachment = GuestAttachment.query.filter_by(id=attachment_id, response_id=response_obj.id).first_or_404()
+    import os
+    root = current_app.config.get('GUEST_UPLOAD_ROOT') or current_app.instance_path
+    absolute = os.path.abspath(os.path.join(root, attachment.storage_key))
+    if not absolute.startswith(os.path.abspath(root) + os.sep) or not os.path.isfile(absolute):
+        abort(404)
+    return send_file(absolute, as_attachment=False, download_name=attachment.original_name, mimetype=attachment.mime_type)
+
+
+@guest_bp.post('/guest/s/<token>/attachments/<int:task_id>/files/<int:attachment_id>/delete')
+@csrf.exempt
+def guest_delete_attachment(token, task_id, attachment_id):
+    item, participant = _require_guest(token)
+    if participant.status == 'submitted':
+        return jsonify(error='Работа уже сдана'), 409
+    task = GuestTask.query.filter_by(id=task_id, session_id=item.id).first_or_404()
+    response_obj = GuestResponse.query.filter_by(participant_id=participant.id, task_id=task.id).first_or_404()
+    attachment = GuestAttachment.query.filter_by(id=attachment_id, response_id=response_obj.id).first_or_404()
+    import os
+    root = current_app.config.get('GUEST_UPLOAD_ROOT') or current_app.instance_path
+    absolute = os.path.abspath(os.path.join(root, attachment.storage_key))
+    if absolute.startswith(os.path.abspath(root) + os.sep) and os.path.isfile(absolute):
+        try:
+            os.remove(absolute)
+        except OSError:
+            pass
+    db.session.delete(attachment)
+    db.session.commit()
+    return jsonify(success=True)
 
 
 @guest_bp.get('/teacher/guest-sessions/<int:session_id>/participants/<int:participant_id>/responses/<int:response_id>/files/<int:attachment_id>')
@@ -860,21 +1063,28 @@ def submit_session(token):
     missing = [task.position for task in item.tasks if not next((r for r in responses if r.task_id == task.id and ((r.answer_text or '').strip() or r.answer_json)), None)]
     if missing and not bool(data.get('force')):
         return jsonify(error='Заполните все задания или подтвердите сдачу с пропусками', incomplete=True, missing=missing), 409
-    for response_obj in responses:
+    existing_by_task = {r.task_id: r for r in responses}
+    for task in item.tasks:
+        response_obj = existing_by_task.get(task.id)
+        if not response_obj:
+            response_obj = GuestResponse(participant_id=participant.id, task_id=task.id, answer_text='')
+            db.session.add(response_obj)
+            responses.append(response_obj)
         response_obj.status = 'submitted'
         response_obj.submitted_at = utc_now()
-        expected = (response_obj.task.expected_answer or '').strip().lower()
-        actual = (response_obj.answer_text or '').strip().lower()
-        if response_obj.task.task_type in {'choice', 'boolean', 'short_text'}:
-            response_obj.score = response_obj.task.max_score if actual == expected else 0
+        expected = (task.expected_answer or '').strip()
+        actual = (response_obj.answer_text or '').strip()
+        if task.task_type in {'choice', 'boolean', 'short_text'}:
+            response_obj.score = task.max_score if _is_answer_correct(actual, expected, task.task_type) else 0
             response_obj.auto_checked = True
-        elif response_obj.task.task_type == 'code':
-            normalized = ''.join(actual.split())
-            accepted = {expected, 'print(2+2)', 'print(4)', '4'}
-            response_obj.score = response_obj.task.max_score if normalized in accepted else 0
+        elif task.task_type == 'code':
+            response_obj.score = task.max_score if _is_answer_correct(actual, expected, 'code') else 0
             response_obj.auto_checked = True
+        else:
+            response_obj.score = None
+            response_obj.auto_checked = False
         if response_obj.auto_checked:
-            response_obj.error_reason = None if response_obj.score == response_obj.task.max_score else (
+            response_obj.error_reason = None if response_obj.score == task.max_score else (
                 'INCOMPLETE_SOLUTION' if not actual and not response_obj.answer_json else 'KNOWLEDGE_GAP'
             )
         else:

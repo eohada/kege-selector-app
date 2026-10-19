@@ -3824,6 +3824,10 @@ class GuestParticipant(db.Model):
     responses = db.relationship('GuestResponse', back_populates='participant', cascade='all, delete-orphan')
     activities = db.relationship('GuestActivity', back_populates='participant', cascade='all, delete-orphan')
 
+    @property
+    def answered_count(self):
+        return sum(1 for r in self.responses if getattr(r, 'has_answer', False))
+
 
 class GuestTask(db.Model):
     """Снимок задания в гостевой сессии, чтобы банк не менял попытку задним числом."""
@@ -3867,6 +3871,14 @@ class GuestResponse(db.Model):
     attachments = db.relationship('GuestAttachment', back_populates='response', cascade='all, delete-orphan')
     drawings = db.relationship('GuestDrawing', back_populates='response', cascade='all, delete-orphan')
     __table_args__ = (UniqueConstraint('participant_id', 'task_id', name='uq_guest_response_participant_task'),)
+
+    @property
+    def has_answer(self):
+        text_ok = bool((self.answer_text or '').strip())
+        json_ok = bool(self.answer_json)
+        att_ok = bool(self.attachments)
+        draw_ok = bool(self.drawings)
+        return text_ok or json_ok or att_ok or draw_ok
 
 
 class GuestAttachment(db.Model):

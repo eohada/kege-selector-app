@@ -86,7 +86,7 @@
 
     <!-- Main Content Canvas -->
     <main class="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        {% block content %}{% endblock %}
+        {% block content %}{% block body %}{% endblock %}{% endblock %}
     </main>
 
 

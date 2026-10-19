@@ -32,8 +32,9 @@
   };
   const syncProgressFromFields = (card) => {
     const current = payload(card);
-    card.dataset.done = current.answer_text ? '1' : '0';
-    card.dataset.draft = !current.answer_text && (current.comment || current.answer_json?.workspace_code) ? '1' : '0';
+    const hasPhotos = (card._attachments || []).length > 0;
+    card.dataset.done = (current.answer_text || hasPhotos) ? '1' : '0';
+    card.dataset.draft = !current.answer_text && (current.comment || current.answer_json?.workspace_code || hasPhotos) ? '1' : '0';
     updateProgress();
   };
   const save = async (card, silent = false) => {
@@ -42,10 +43,34 @@
     card.dataset.saving = '1';
     try {
       await guestJson(button.dataset.saveUrl, {method:'POST', body:JSON.stringify(payload(card))});
-      const p = payload(card); card.dataset.done = p.answer_text ? '1' : '0'; card.dataset.draft = !p.answer_text && (p.comment || p.answer_json?.workspace_code) ? '1' : '0';
+      const p = payload(card);
+      const hasPhotos = (card._attachments || []).length > 0;
+      card.dataset.done = (p.answer_text || hasPhotos) ? '1' : '0';
+      card.dataset.draft = !p.answer_text && (p.comment || p.answer_json?.workspace_code || hasPhotos) ? '1' : '0';
       if (!silent) setStatus(card, 'Сохранено'); updateProgress();
     } catch (error) { setStatus(card, error.message); }
     finally { delete card.dataset.saving; }
+  };
+  const renderMath = (target = root) => {
+    if (typeof renderMathInElement === 'function') {
+      renderMathInElement(target, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false},
+          {left: "\\[", right: "\\]", display: true}
+        ],
+        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+        throwOnError: false
+      });
+    }
+  };
+  const highlightConditionCode = (target = root) => {
+    target.querySelectorAll('.guest-task-condition pre code').forEach((block) => {
+      if (block.dataset.highlighted) return;
+      block.innerHTML = paintPython(block.textContent.trim());
+      block.dataset.highlighted = '1';
+    });
   };
   const activate = async (id) => {
     const next = cards.find((card) => String(card.dataset.task) === String(id));
@@ -53,15 +78,137 @@
     await save(activeCard, true);
     activeCard.hidden = true; next.hidden = false; activeCard = next;
     switches.forEach((button) => button.setAttribute('aria-selected', String(button.dataset.taskTarget === String(id))));
-    initBoard(next); next.scrollIntoView({behavior:'smooth', block:'start'});
+    initBoard(next);
+    renderMath(next);
+    highlightConditionCode(next);
+    next.scrollIntoView({behavior:'smooth', block:'start'});
   };
   switches.forEach((button) => button.addEventListener('click', () => activate(button.dataset.taskTarget)));
 
   const escapeHtml = (value) => value.replace(/[&<>]/g, (symbol) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[symbol]));
-  const paintPython = (code) => escapeHtml(code || ' ').replace(/(#[^\n]*|(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(?:and|as|assert|break|class|continue|def|elif|else|except|False|finally|for|from|if|import|in|is|lambda|None|not|or|pass|raise|return|True|try|while|with|yield)\b|\b(?:print|input|len|range|sum|min|max|sorted|enumerate|zip|int|str|float|list|dict|set)\b|\b\d+(?:\.\d+)?\b)/g, (token) => {
-    const type = token.startsWith('#') ? 'comment' : /^["']/.test(token) ? 'string' : /^\d/.test(token) ? 'number' : /^(print|input|len|range|sum|min|max|sorted|enumerate|zip|int|str|float|list|dict|set)$/.test(token) ? 'builtin' : 'keyword';
-    return `<span class="guest-token-${type}">${token}</span>`;
+  const paintPython = (code) => escapeHtml(code || ' ').replace(/(#[^\n]*|(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(?:and|as|assert|break|class|continue|def|del|elif|else|except|False|finally|for|from|global|if|import|in|is|lambda|None|nonlocal|not|or|pass|raise|return|True|try|while|with|yield)\b|\b(?:print|input|len|range|sum|min|max|sorted|enumerate|zip|int|str|float|list|dict|set|tuple|abs|map|filter|all|any|round)\b|\b\d+(?:\.\d+)?\b|[+\-*/%]=?|==|!=|<=|>=|[=<>])/g, (token) => {
+    if (token.startsWith('#')) return `<span class="guest-token-comment">${token}</span>`;
+    if (/^["']/.test(token)) return `<span class="guest-token-string">${token}</span>`;
+    if (/^\d/.test(token)) return `<span class="guest-token-number">${token}</span>`;
+    if (/^(print|input|len|range|sum|min|max|sorted|enumerate|zip|int|str|float|list|dict|set|tuple|abs|map|filter|all|any|round)$/.test(token)) return `<span class="guest-token-builtin">${token}</span>`;
+    if (/^[+\-*/%=<>!]+$/.test(token)) return `<span class="guest-token-operator">${token}</span>`;
+    return `<span class="guest-token-keyword">${token}</span>`;
   });
+
+  const formatSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} Б`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+  };
+
+  const setupPhotos = (card) => {
+    card._attachments = card._attachments || [];
+    const render = () => {
+      const lists = card.querySelectorAll('[data-photo-list]');
+      const empties = card.querySelectorAll('[data-photo-empty]');
+      const has = card._attachments.length > 0;
+      empties.forEach((el) => { el.style.display = has ? 'none' : 'block'; });
+      lists.forEach((list) => {
+        list.innerHTML = '';
+        if (!has) return;
+        card._attachments.forEach((att) => {
+          const item = document.createElement('div');
+          item.className = 'guest-photo-item';
+          item.title = `${att.name} (${formatSize(att.size)})`;
+          if (att.is_image) {
+            const img = document.createElement('img');
+            img.src = att.url;
+            img.alt = att.name;
+            img.loading = 'lazy';
+            item.appendChild(img);
+            item.addEventListener('click', (e) => {
+              if (e.target.closest('.guest-photo-del')) return;
+              const modal = document.querySelector('#photo-viewer-modal');
+              if (modal) {
+                document.querySelector('#photo-modal-img').src = att.url;
+                document.querySelector('#photo-modal-title').textContent = att.name;
+                modal.showModal();
+              }
+            });
+          } else {
+            const icon = document.createElement('span');
+            icon.className = 'guest-photo-file-icon';
+            icon.textContent = '📄';
+            item.appendChild(icon);
+            item.addEventListener('click', (e) => {
+              if (e.target.closest('.guest-photo-del')) return;
+              window.open(att.url, '_blank');
+            });
+          }
+          const badge = document.createElement('span');
+          badge.className = 'guest-photo-badge';
+          badge.textContent = formatSize(att.size);
+          item.appendChild(badge);
+
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'guest-photo-del';
+          del.title = 'Удалить';
+          del.textContent = '✕';
+          del.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+              const baseParts = location.pathname.split('/');
+              const tokenIdx = baseParts.indexOf('s') + 1;
+              const token = tokenIdx > 0 ? baseParts[tokenIdx] : '';
+              await guestJson(`/guest/s/${token}/attachments/${card.dataset.task}/files/${att.id}/delete`, {method: 'POST'});
+              card._attachments = card._attachments.filter((x) => x.id !== att.id);
+              render();
+              syncProgressFromFields(card);
+            } catch (err) {
+              alert(err.message || 'Не удалось удалить');
+            }
+          });
+          item.appendChild(del);
+          list.appendChild(item);
+        });
+      });
+    };
+    card._renderPhotos = render;
+
+    const handleFiles = async (files) => {
+      if (!files || !files.length) return;
+      const uploadUrl = card.querySelector('[data-photo-zone]')?.dataset.uploadUrl;
+      if (!uploadUrl) return;
+      const body = new FormData();
+      [...files].forEach((f) => body.append('file', f));
+      setStatus(card, 'Загружаем фото…');
+      try {
+        const res = await guestJson(uploadUrl, {method: 'POST', body});
+        if (res.files && res.files.length) {
+          card._attachments = [...card._attachments, ...res.files];
+          render();
+          setStatus(card, 'Фото сохранено');
+          syncProgressFromFields(card);
+        }
+      } catch (err) {
+        setStatus(card, err.message || 'Ошибка загрузки');
+      }
+    };
+
+    card.querySelectorAll('[data-photo-input]').forEach((input) => {
+      input.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+        input.value = '';
+      });
+    });
+
+    card.querySelectorAll('[data-photo-zone]').forEach((zone) => {
+      zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('is-dragover'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('is-dragover'));
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('is-dragover');
+        if (e.dataTransfer?.files?.length) handleFiles(e.dataTransfer.files);
+      });
+    });
+  };
   const renderCodeEditor = (card) => {
     const editor = card.querySelector('[data-code]'); const highlight = card.querySelector('[data-code-highlight]'); const gutter = card.querySelector('[data-code-gutter]');
     if (!editor || !highlight || !gutter) return;
@@ -86,6 +233,7 @@
   };
   cards.forEach((card, index) => {
     initCodeEditor(card);
+    setupPhotos(card);
     card.querySelectorAll('[data-tool-tab]').forEach((button) => button.addEventListener('click', () => {
       card.querySelectorAll('[data-tool-tab]').forEach((item) => item.classList.toggle('is-active', item === button));
       card.querySelectorAll('[data-tool-pane]').forEach((item) => item.classList.toggle('is-active', item.dataset.toolPane === button.dataset.toolTab));
@@ -102,15 +250,6 @@
       try { const result = await guestJson(event.currentTarget.dataset.runUrl, {method:'POST', body:JSON.stringify({code})}); output.textContent = result.stderr || result.stdout || 'Код выполнен без вывода.'; output.classList.toggle('is-error', Boolean(result.stderr)); if (result.turtle_image_b64) output.textContent += '\n\n[turtle] Рисунок сформирован.'; }
       catch (error) { output.textContent = error.message; output.classList.add('is-error'); }
     });
-    const uploadFiles = async () => {
-      const input = card.querySelector('[data-file]'); const note = card.querySelector('[data-file-state]'); const button = card.querySelector('[data-upload-url]'); if (!input?.files.length || !button) { if (note) note.textContent = 'Выберите файл'; return; }
-      const body = new FormData(); [...input.files].forEach((file) => body.append('file', file)); note.textContent = 'Сохраняем файлы…';
-      try { const result = await guestJson(button.dataset.uploadUrl, {method:'POST', body}); note.textContent = `Файлов сохранено: ${(result.files || []).length}`; input.value = ''; } catch (error) { note.textContent = error.message; }
-    };
-    card._uploadFiles = uploadFiles;
-    card.querySelector('[data-file-select]')?.addEventListener('click', () => card.querySelector('[data-file]')?.click());
-    card.querySelector('[data-file]')?.addEventListener('change', (event) => { const note = card.querySelector('[data-file-state]'); const count = event.currentTarget.files.length; if (note) note.textContent = count ? `Выбрано файлов: ${count}` : 'Файлы не выбраны'; if (count) uploadFiles(); });
-    card.querySelector('[data-upload-url]')?.addEventListener('click', uploadFiles);
   });
 
   const boardState = new WeakMap();
@@ -142,9 +281,74 @@
   }
 
   guestJson(root.dataset.stateUrl).then((snapshot) => {
-    (snapshot.responses || []).forEach((response) => { const card = cards.find((item) => String(item.dataset.task) === String(response.task_id)); if (!card) return; const f = fields(card); const radio = [...card.querySelectorAll('input[type=radio]')].find((item) => item.value === response.answer_text); if (radio) radio.checked = true; if (f.answer) f.answer.value = response.answer_text || ''; if (f.comment) f.comment.value = response.comment || ''; if (f.code && response.answer_json?.workspace_code) { f.code.value = response.answer_json.workspace_code; renderCodeEditor(card); } if (f.flag) f.flag.setAttribute('aria-pressed', String(Boolean(response.flagged))); card.dataset.done = response.answer_text ? '1' : '0'; card.dataset.draft = !response.answer_text && (response.comment || response.answer_json?.workspace_code) ? '1' : '0'; }); updateProgress(); initBoard(activeCard);
-  }).catch(() => initBoard(activeCard));
-  guestJson(root.dataset.presenceUrl, {method:'POST', body:'{}'}).catch(() => {}); setInterval(() => guestJson(root.dataset.presenceUrl, {method:'POST', body:'{}'}).catch(() => {}), 60000);
-  let force = false; const modal = document.querySelector('#submit-modal'); const submit = async () => { try { const result = await guestJson(config.submitUrl, {method:'POST', body:JSON.stringify(force ? {force:true} : {})}); location.href = result.result_url; } catch (error) { if (error.message.includes('Заполните') && !force) { force = true; document.querySelector('#submit-modal-title').textContent = 'Есть незаполненные задания'; document.querySelector('#submit-modal-text').textContent = 'Сдать работу с пропусками?'; modal.showModal(); } } };
-  document.querySelector('#submit').addEventListener('click', () => { force = false; document.querySelector('#submit-modal-title').textContent = 'Сдать работу?'; document.querySelector('#submit-modal-text').textContent = 'После сдачи ответы нельзя будет изменить.'; modal.showModal(); }); document.querySelector('#submit-cancel').addEventListener('click', () => modal.close()); document.querySelector('#submit-confirm').addEventListener('click', () => { modal.close(); submit(); });
+    (snapshot.responses || []).forEach((response) => {
+      const card = cards.find((item) => String(item.dataset.task) === String(response.task_id));
+      if (!card) return;
+      card._attachments = response.attachments || [];
+      card._renderPhotos?.();
+      const f = fields(card);
+      const radio = [...card.querySelectorAll('input[type=radio]')].find((item) => item.value === response.answer_text);
+      if (radio) radio.checked = true;
+      if (f.answer) f.answer.value = response.answer_text || '';
+      if (f.comment) f.comment.value = response.comment || '';
+      if (f.code && response.answer_json?.workspace_code) {
+        f.code.value = response.answer_json.workspace_code;
+        renderCodeEditor(card);
+      }
+      if (f.flag) f.flag.setAttribute('aria-pressed', String(Boolean(response.flagged)));
+      const hasPhotos = (card._attachments || []).length > 0;
+      card.dataset.done = (response.answer_text || hasPhotos) ? '1' : '0';
+      card.dataset.draft = !response.answer_text && (response.comment || response.answer_json?.workspace_code || hasPhotos) ? '1' : '0';
+    });
+    updateProgress();
+    initBoard(activeCard);
+    renderMath(root);
+    highlightConditionCode(root);
+  }).catch(() => {
+    initBoard(activeCard);
+    renderMath(root);
+    highlightConditionCode(root);
+  });
+
+  // Modal dialog close events
+  document.querySelector('#photo-modal-close')?.addEventListener('click', () => {
+    document.querySelector('#photo-viewer-modal')?.close();
+  });
+  document.querySelector('#photo-viewer-modal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) e.currentTarget.close();
+  });
+
+  // Run renderMath and syntax highlighting when DOM or KaTeX is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { renderMath(root); highlightConditionCode(root); });
+  } else {
+    renderMath(root);
+    highlightConditionCode(root);
+  }
+
+  guestJson(root.dataset.presenceUrl, {method:'POST', body:'{}'}).catch(() => {});
+  setInterval(() => guestJson(root.dataset.presenceUrl, {method:'POST', body:'{}'}).catch(() => {}), 60000);
+  let force = false;
+  const modal = document.querySelector('#submit-modal');
+  const submit = async () => {
+    try {
+      const result = await guestJson(config.submitUrl, {method:'POST', body:JSON.stringify(force ? {force:true} : {})});
+      location.href = result.result_url;
+    } catch (error) {
+      if (error.message.includes('Заполните') && !force) {
+        force = true;
+        document.querySelector('#submit-modal-title').textContent = 'Есть незаполненные задания';
+        document.querySelector('#submit-modal-text').textContent = 'Сдать работу с пропусками?';
+        modal.showModal();
+      }
+    }
+  };
+  document.querySelector('#submit').addEventListener('click', () => {
+    force = false;
+    document.querySelector('#submit-modal-title').textContent = 'Сдать работу?';
+    document.querySelector('#submit-modal-text').textContent = 'После сдачи ответы нельзя будет изменить.';
+    modal.showModal();
+  });
+  document.querySelector('#submit-cancel').addEventListener('click', () => modal.close());
+  document.querySelector('#submit-confirm').addEventListener('click', () => { modal.close(); submit(); });
 })();

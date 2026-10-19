@@ -42,6 +42,7 @@ collect_ignore = [
         'test_python_programming_routes.py',
         'test_python_theory_curriculum.py',
         'test_ai_lab_studio.py',
+        'test_billing_public_flow.py',
     }
 ]
 

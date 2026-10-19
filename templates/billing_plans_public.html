@@ -1,48 +1,62 @@
 {% extends 'base_public.html' %}
-{% block title %}Тарифы BooStudy{% endblock %}
+{% block title %}Тарифы и курсы — BooStudy{% endblock %}
 
 {% block head_css %}
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
     :root {
-        --bill-bg: #F8F9FA;
-        --bill-text-main: #111418;
-        --bill-text-muted: #6B7280;
+        --bill-bg: #F8FAFC;
+        --bill-text-main: #0F172A;
+        --bill-text-muted: #64748B;
         --bill-card-bg: #FFFFFF;
-        --bill-card-border: #E5E7EB;
-        --bill-card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
-        --bill-card-shadow-hover: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
-        --bill-accent: #6366F1;
-        --bill-accent-glow: rgba(99, 102, 241, 0.1);
-        --bill-tag-hot-bg: #FEE2E2;
-        --bill-tag-hot-text: #DC2626;
-        --bill-toggle-bg: #E5E7EB;
+        --bill-card-border: #E2E8F0;
+        --bill-card-border-b: #CBD5E1;
+        --bill-card-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+        --bill-accent: #4F46E5;
+        --bill-accent-hover: #4338CA;
+        --bill-accent-light: #EEF2FF;
+        --bill-accent-border-b: #3730A3;
+        --bill-green: #10B981;
+        --bill-green-hover: #059669;
+        --bill-green-border-b: #047857;
+        --bill-green-light: #ECFDF5;
+        --bill-slider-track: #E2E8F0;
+        --bill-slider-fill: #4F46E5;
+        --bill-tag-bg: #F1F5F9;
+        --bill-tag-text: #475569;
+        --bill-toggle-bg: #E2E8F0;
         --bill-toggle-active: #FFFFFF;
-        --bill-toggle-text: #111418;
     }
 
     [data-theme="dark"] {
-        --bill-bg: #0A0A0C;
-        --bill-text-main: #F9FAFB;
-        --bill-text-muted: #9CA3AF;
-        --bill-card-bg: #141518;
-        --bill-card-border: #272A30;
-        --bill-card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
-        --bill-card-shadow-hover: 0 20px 40px -10px rgba(0, 0, 0, 0.8);
-        --bill-accent: #818CF8;
-        --bill-accent-glow: rgba(129, 140, 248, 0.15);
-        --bill-tag-hot-bg: rgba(220, 38, 38, 0.15);
-        --bill-tag-hot-text: #FCA5A5;
-        --bill-toggle-bg: #272A30;
-        --bill-toggle-active: #374151;
-        --bill-toggle-text: #F9FAFB;
+        --bill-bg: #0B0F19;
+        --bill-text-main: #F8FAFC;
+        --bill-text-muted: #94A3B8;
+        --bill-card-bg: #131A29;
+        --bill-card-border: #1E293B;
+        --bill-card-border-b: #0F172A;
+        --bill-card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        --bill-accent: #6366F1;
+        --bill-accent-hover: #4F46E5;
+        --bill-accent-light: rgba(99, 102, 241, 0.15);
+        --bill-accent-border-b: #3730A3;
+        --bill-green: #10B981;
+        --bill-green-hover: #059669;
+        --bill-green-border-b: #047857;
+        --bill-green-light: rgba(16, 185, 129, 0.15);
+        --bill-slider-track: #1E293B;
+        --bill-slider-fill: #6366F1;
+        --bill-tag-bg: #1E293B;
+        --bill-tag-text: #CBD5E1;
+        --bill-toggle-bg: #1E293B;
+        --bill-toggle-active: #334155;
     }
 
     body {
         background-color: var(--bill-bg) !important;
         color: var(--bill-text-main) !important;
         font-family: 'Inter', sans-serif !important;
-        transition: background-color 0.4s ease, color 0.4s ease;
+        transition: background-color 0.3s ease, color 0.3s ease;
     }
 
     .bill-layout {
@@ -50,30 +64,34 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 40px 20px 100px;
-        max-width: 1040px;
+        padding: 32px 16px 140px;
+        max-width: 900px;
         margin: 0 auto;
         width: 100%;
+        box-sizing: border-box;
     }
 
     .bill-header {
         text-align: center;
-        margin-bottom: 48px;
+        margin-bottom: 36px;
+        width: 100%;
     }
 
     .bill-header h1 {
-        font-size: 40px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-bottom: 12px;
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-size: clamp(28px, 5vw, 40px);
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        margin-bottom: 10px;
         color: var(--bill-text-main);
+        line-height: 1.2;
     }
 
     .bill-header p {
-        font-size: 16px;
+        font-size: clamp(14px, 2.5vw, 16px);
         color: var(--bill-text-muted);
-        max-width: 500px;
-        margin: 0 auto 32px;
+        max-width: 520px;
+        margin: 0 auto 24px;
         line-height: 1.5;
     }
 
@@ -81,311 +99,857 @@
         display: flex;
         justify-content: center;
         gap: 8px;
+        margin-top: 16px;
     }
 
     .progress span {
         display: block;
-        width: 32px;
-        height: 4px;
+        width: 36px;
+        height: 5px;
         background-color: var(--bill-card-border);
-        border-radius: 2px;
-        transition: background-color 0.3s ease;
+        border-radius: 9999px;
+        transition: all 0.3s ease;
     }
 
     .progress span.active {
         background-color: var(--bill-accent);
+        box-shadow: 0 0 10px var(--bill-accent-light);
     }
 
     .section-title {
         text-align: center;
-        font-size: 20px;
-        font-weight: 600;
-        margin-bottom: 32px;
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-size: clamp(20px, 3.5vw, 24px);
+        font-weight: 700;
+        margin-bottom: 24px;
         color: var(--bill-text-main);
+    }
+
+    .section-subtitle {
+        text-align: center;
+        font-size: 14px;
+        color: var(--bill-text-muted);
+        margin-top: -16px;
+        margin-bottom: 24px;
     }
 
     .bill-step {
         display: none;
         width: 100%;
-        animation: fadeSlideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        animation: fadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
+
     .bill-step.active {
         display: block;
     }
+
     @keyframes fadeSlideUp {
-        0% { opacity: 0; transform: translateY(15px) scale(0.99); }
+        0% { opacity: 0; transform: translateY(12px) scale(0.99); }
         100% { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* Cards Layout */
-    .cards-row-top {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 24px;
-        margin-bottom: 24px;
-    }
-
-    .cards-row-bottom {
-        display: flex;
-        justify-content: center;
-        gap: 24px;
-        margin-bottom: 48px;
-    }
-
-    .cards-row-bottom .card {
-        flex: 0 1 calc(33.333% - 16px);
-        min-width: 300px;
-    }
-
-    /* Для первых экранов используем обычную сетку */
+    /* Grid Layouts */
     .cards-grid-auto {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 24px;
-        margin-bottom: 48px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+        width: 100%;
     }
 
-    /* Card Styling */
+    /* 3D Tactile Card */
     .card {
         background-color: var(--bill-card-bg);
-        border: 1px solid var(--bill-card-border);
-        border-radius: 24px;
-        padding: 32px;
+        border: 2px solid var(--bill-card-border);
+        border-bottom: 4px solid var(--bill-card-border-b);
+        border-radius: 20px;
+        padding: 24px;
         cursor: pointer;
-        position: relative;
+        transition: all 0.15s ease-out;
+        box-shadow: var(--bill-card-shadow);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        min-height: 260px;
-        box-shadow: var(--bill-card-shadow);
-        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), 
-                    box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
-                    border-color 0.3s ease,
-                    background-color 0.4s ease;
-        text-align: left;
+        min-height: 160px;
+        user-select: none;
+        position: relative;
     }
 
     .card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--bill-card-shadow-hover);
+        transform: translateY(-2px);
         border-color: var(--bill-accent);
     }
 
     .card:active {
-        transform: translateY(1px) scale(0.98);
-        box-shadow: var(--bill-card-shadow);
+        transform: translateY(2px);
+        border-bottom-width: 2px;
     }
 
     .card.selected {
         border-color: var(--bill-accent);
-        box-shadow: 0 0 0 1px var(--bill-accent), var(--bill-card-shadow-hover);
-        background-color: var(--bill-accent-glow);
+        border-bottom-color: var(--bill-accent-border-b);
+        box-shadow: 0 0 0 1px var(--bill-accent), 0 8px 20px var(--bill-accent-light);
+        background: linear-gradient(to bottom, var(--bill-card-bg), var(--bill-accent-light));
     }
 
-    .card-header {
+    .card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: var(--bill-accent-light);
+        color: var(--bill-accent);
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
         margin-bottom: 16px;
     }
 
     .card-title {
-        font-size: 24px;
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-size: 19px;
         font-weight: 700;
-        letter-spacing: -0.01em;
+        margin-bottom: 8px;
         color: var(--bill-text-main);
-    }
-
-    .tags-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 6px;
-    }
-
-    .tag {
-        font-size: 11px;
-        font-weight: 600;
-        padding: 4px 10px;
-        border-radius: 20px;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-    }
-
-    .tag-hot {
-        background-color: var(--bill-tag-hot-bg);
-        color: var(--bill-tag-hot-text);
     }
 
     .card-desc {
         font-size: 14px;
-        color: var(--bill-text-muted);
         line-height: 1.5;
-        margin-bottom: 32px;
-    }
-
-    .card-price-wrapper {
-        margin-top: auto;
-    }
-
-    .card-price {
-        font-size: 32px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        display: flex;
-        align-items: baseline;
-        gap: 4px;
-        color: var(--bill-text-main);
-    }
-
-    .card-price span {
-        font-size: 20px;
-        font-weight: 500;
         color: var(--bill-text-muted);
     }
 
-    /* Theme Toggle */
-    .theme-toggle-float {
-        position: fixed;
-        bottom: 32px;
-        right: 32px;
-        display: flex;
-        background-color: var(--bill-toggle-bg);
-        padding: 4px;
-        border-radius: 30px;
-        cursor: pointer;
-        border: 1px solid var(--bill-card-border);
-        transition: background-color 0.4s ease, border-color 0.4s ease;
-        z-index: 1000;
-    }
-
-    .theme-toggle-float .toggle-btn {
-        padding: 8px 16px;
-        border-radius: 24px;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--bill-text-muted);
-        transition: all 0.3s ease;
-    }
-
-    .theme-toggle-float .toggle-btn.active {
-        background-color: var(--bill-toggle-active);
-        color: var(--bill-toggle-text);
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-
-    /* Navigation Buttons */
-    .bill-controls {
-        display: flex;
+    /* Tactile Buttons */
+    .btn-3d {
+        display: inline-flex;
+        align-items: center;
         justify-content: center;
-        gap: 16px;
-        margin-top: 32px;
-        width: 100%;
+        gap: 8px;
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-weight: 700;
+        font-size: 15px;
+        padding: 13px 26px;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: all 0.12s ease-in-out;
+        user-select: none;
+        text-decoration: none;
+        border: none;
+        outline: none;
+        min-height: 48px;
     }
 
-    .btn-back {
-        background: transparent;
-        border: none;
-        color: var(--bill-text-muted);
-        font-size: 15px;
-        font-weight: 500;
-        cursor: pointer;
-        padding: 12px 24px;
-        border-radius: 100px;
-        transition: all 0.2s ease;
-    }
-    .btn-back:hover {
-        background: var(--bill-card-border);
-        color: var(--bill-text-main);
+    .btn-3d-primary {
+        background-color: var(--bill-accent);
+        color: #FFFFFF !important;
+        border-bottom: 4px solid var(--bill-accent-border-b);
+        box-shadow: 0 4px 12px var(--bill-accent-light);
     }
 
-    .btn-next {
-        background: var(--bill-accent);
-        color: #ffffff;
-        border: none;
-        font-size: 15px;
-        font-weight: 600;
-        cursor: pointer;
-        padding: 12px 32px;
-        border-radius: 100px;
-        transition: all 0.2s ease;
-        box-shadow: 0 4px 15px var(--bill-accent-glow);
+    .btn-3d-primary:hover:not(:disabled) {
+        background-color: var(--bill-accent-hover);
+        transform: translateY(-1px);
     }
-    .btn-next:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px var(--bill-accent-glow);
+
+    .btn-3d-primary:active:not(:disabled) {
+        transform: translateY(2px);
+        border-bottom-width: 2px;
     }
-    .btn-next:disabled {
-        opacity: 0.5;
+
+    .btn-3d-primary:disabled {
+        opacity: 0.45;
         cursor: not-allowed;
         transform: none;
-    }
-    [data-theme="dark"] .btn-next {
-        color: #000;
+        box-shadow: none;
     }
 
-    /* Summary & Checkout */
-    .summary-box {
+    .btn-3d-green {
+        background-color: var(--bill-green);
+        color: #FFFFFF !important;
+        border-bottom: 4px solid var(--bill-green-border-b);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
+        font-size: 16px;
+        padding: 16px 28px;
+        width: 100%;
+    }
+
+    .btn-3d-green:hover {
+        background-color: var(--bill-green-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-3d-green:active {
+        transform: translateY(2px);
+        border-bottom-width: 2px;
+    }
+
+    .btn-3d-secondary {
         background-color: var(--bill-card-bg);
-        border: 1px solid var(--bill-card-border);
-        border-radius: 24px;
-        padding: 40px;
-        max-width: 500px;
-        margin: 0 auto;
-        box-shadow: var(--bill-card-shadow);
-        text-align: center;
+        color: var(--bill-text-main);
+        border: 2px solid var(--bill-card-border);
+        border-bottom: 4px solid var(--bill-card-border-b);
     }
 
-    .summary-path {
+    .btn-3d-secondary:hover {
+        border-color: var(--bill-accent);
+        transform: translateY(-1px);
+    }
+
+    .btn-3d-secondary:active {
+        transform: translateY(2px);
+        border-bottom-width: 2px;
+    }
+
+    .bill-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 24px;
+        width: 100%;
+    }
+
+    /* Slider Container */
+    .slider-builder-card {
+        background-color: var(--bill-card-bg);
+        border: 2px solid var(--bill-card-border);
+        border-bottom: 4px solid var(--bill-card-border-b);
+        border-radius: 24px;
+        padding: clamp(20px, 4vw, 36px);
+        box-shadow: var(--bill-card-shadow);
+        width: 100%;
+        margin-bottom: 24px;
+        box-sizing: border-box;
+    }
+
+    .slider-hero-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--bill-card-border);
+    }
+
+    .target-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        background: var(--bill-accent-light);
+        color: var(--bill-accent);
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .lessons-counter-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        margin: 28px 0;
+    }
+
+    .counter-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: var(--bill-card-bg);
+        border: 2px solid var(--bill-card-border);
+        border-bottom: 3px solid var(--bill-card-border-b);
+        color: var(--bill-text-main);
+        font-size: 20px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.12s ease;
+        user-select: none;
+    }
+
+    .counter-btn:hover {
+        border-color: var(--bill-accent);
+        color: var(--bill-accent);
+        transform: translateY(-1px);
+    }
+
+    .counter-btn:active {
+        transform: translateY(2px);
+        border-bottom-width: 2px;
+    }
+
+    .counter-display {
+        text-align: center;
+        min-width: 170px;
+    }
+
+    .counter-number {
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-size: clamp(36px, 8vw, 56px);
+        font-weight: 800;
+        line-height: 1;
+        color: var(--bill-text-main);
+        letter-spacing: -0.03em;
+    }
+
+    .counter-label {
         font-size: 14px;
         color: var(--bill-text-muted);
-        margin-bottom: 12px;
+        font-weight: 600;
+        margin-top: 4px;
     }
 
-    .summary-price {
-        font-size: 48px;
-        font-weight: 700;
-        color: var(--bill-text-main);
-        letter-spacing: -0.02em;
-        margin-bottom: 32px;
-    }
-    
-    .checkout-form {
-        text-align: left;
-        margin-top: 24px;
-    }
-
-    .neo-input {
+    /* Range Slider Styling */
+    .range-wrap {
+        position: relative;
+        margin: 28px 0 16px;
         width: 100%;
-        padding: 14px 16px;
-        border-radius: 12px;
+    }
+
+    .range-input {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 10px;
+        border-radius: 5px;
+        background: var(--bill-slider-track);
+        outline: none;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .range-input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--bill-accent);
+        border: 3px solid #FFFFFF;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--bill-accent);
+        cursor: grab;
+        transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .range-input::-webkit-slider-thumb:hover {
+        transform: scale(1.15);
+        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+    }
+
+    .range-input::-webkit-slider-thumb:active {
+        cursor: grabbing;
+        transform: scale(1.05);
+    }
+
+    .range-input::-moz-range-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--bill-accent);
+        border: 3px solid #FFFFFF;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        cursor: grab;
+    }
+
+    /* Quick Notch Pills */
+    .notch-pills {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 14px;
+    }
+
+    .notch-pill {
+        padding: 6px 11px;
+        font-size: 13px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: var(--bill-card-bg);
+        border: 1px solid var(--bill-card-border);
+        color: var(--bill-text-muted);
+        cursor: pointer;
+        transition: all 0.12s ease;
+        user-select: none;
+    }
+
+    .notch-pill:hover {
+        border-color: var(--bill-accent);
+        color: var(--bill-accent);
+    }
+
+    .notch-pill.active {
+        background: var(--bill-accent);
+        border-color: var(--bill-accent);
+        color: #FFFFFF;
+        font-weight: 700;
+    }
+
+    /* Live Rate Details Box */
+    .rate-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
         background: var(--bill-bg);
         border: 1px solid var(--bill-card-border);
+        border-radius: 16px;
+        padding: 20px;
+        margin-top: 28px;
+    }
+
+    .rate-stat-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .rate-stat-title {
+        font-size: 13px;
+        color: var(--bill-text-muted);
+        font-weight: 500;
+    }
+
+    .rate-stat-val {
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-size: 20px;
+        font-weight: 700;
         color: var(--bill-text-main);
+    }
+
+    .rate-stat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--bill-green);
+        font-weight: 700;
+    }
+
+    /* Mentor Perks List */
+    .mentor-perks {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px dashed var(--bill-card-border);
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+    }
+
+    .perk-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+        color: var(--bill-text-muted);
+    }
+
+    .perk-item i {
+        color: var(--bill-green);
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    /* Cart Step & Summary */
+    .cart-box {
+        background-color: var(--bill-card-bg);
+        border: 2px solid var(--bill-card-border);
+        border-bottom: 4px solid var(--bill-card-border-b);
+        border-radius: 24px;
+        padding: clamp(20px, 4vw, 36px);
+        box-shadow: var(--bill-card-shadow);
+        width: 100%;
+        margin-bottom: 24px;
+        box-sizing: border-box;
+    }
+
+    .cart-items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .cart-item-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-radius: 16px;
+        background: var(--bill-bg);
+        border: 1px solid var(--bill-card-border);
+        gap: 16px;
+        transition: all 0.2s ease;
+    }
+
+    .cart-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .cart-item-title {
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-weight: 700;
+        font-size: 16px;
+        color: var(--bill-text-main);
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .cart-item-meta {
+        font-size: 13px;
+        color: var(--bill-text-muted);
+    }
+
+    .cart-item-price {
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--bill-text-main);
+        white-space: nowrap;
+    }
+
+    .btn-remove-item {
+        background: none;
+        border: none;
+        color: var(--bill-text-muted);
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        font-size: 18px;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-remove-item:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #EF4444;
+    }
+
+    /* Promo code box */
+    .promocode-box {
+        display: flex;
+        gap: 10px;
+        margin: 20px 0;
+        flex-wrap: wrap;
+    }
+
+    .promocode-input {
+        flex: 1;
+        min-width: 180px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        background: var(--bill-bg);
+        border: 1.5px solid var(--bill-card-border);
+        color: var(--bill-text-main);
+        font-family: 'JetBrains Mono', monospace;
         font-size: 15px;
-        margin-bottom: 16px;
+        font-weight: 600;
+        text-transform: uppercase;
         outline: none;
         transition: border-color 0.2s ease;
     }
-    .neo-input:focus {
+
+    .promocode-input:focus {
         border-color: var(--bill-accent);
     }
 
-    /* Mobile Adaptations */
-    @media (max-width: 960px) {
-        .cards-row-top { grid-template-columns: repeat(2, 1fr); }
-        .cards-row-bottom { flex-wrap: wrap; }
-        .cards-row-bottom .card { flex: 1 1 calc(50% - 12px); }
+    .promocode-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 12px;
+        background: var(--bill-green-light);
+        color: var(--bill-green);
+        font-size: 14px;
+        font-weight: 600;
+        margin-top: 10px;
     }
+
+    .promocode-error {
+        font-size: 13px;
+        color: #EF4444;
+        margin-top: 8px;
+        display: none;
+    }
+
+    /* Requisites Card */
+    .requisites-container {
+        background: linear-gradient(145deg, var(--bill-card-bg), var(--bill-bg));
+        border: 2px solid var(--bill-card-border);
+        border-radius: 20px;
+        padding: 24px;
+        margin: 24px 0;
+        text-align: left;
+    }
+
+    .requisites-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .requisites-header h3 {
+        font-family: 'Golos Text', 'Inter', sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0;
+        color: var(--bill-text-main);
+    }
+
+    .req-item {
+        background: var(--bill-card-bg);
+        border: 1px solid var(--bill-card-border);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .req-item-info {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .req-item-label {
+        font-size: 12px;
+        color: var(--bill-text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+    }
+
+    .req-item-val {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--bill-text-main);
+        word-break: break-all;
+    }
+
+    .req-item-sub {
+        font-size: 13px;
+        color: var(--bill-text-muted);
+        margin-top: 4px;
+    }
+
+    .btn-copy {
+        background: var(--bill-accent-light);
+        color: var(--bill-accent);
+        border: 1px solid transparent;
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.12s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .btn-copy:hover {
+        background: var(--bill-accent);
+        color: #FFFFFF;
+        transform: translateY(-1px);
+    }
+
+    .btn-copy.copied {
+        background: var(--bill-green-light);
+        color: var(--bill-green);
+    }
+
+    /* Floating Cart Sticky Bar */
+    .floating-cart-bar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(120px);
+        width: calc(100% - 32px);
+        max-width: 600px;
+        background: var(--bill-card-bg);
+        border: 2px solid var(--bill-accent);
+        border-bottom: 4px solid var(--bill-accent-border-b);
+        border-radius: 20px;
+        padding: 12px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        z-index: 999;
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        box-sizing: border-box;
+    }
+
+    .floating-cart-bar.visible {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .floating-cart-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .cart-icon-bubble {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: var(--bill-accent);
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .floating-cart-text {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--bill-text-main);
+    }
+
+    .floating-cart-sub {
+        font-size: 12px;
+        color: var(--bill-text-muted);
+        font-weight: 500;
+    }
+
+    /* Theme Switcher */
+    .theme-toggle-float {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 100;
+        display: flex;
+        background: var(--bill-toggle-bg);
+        padding: 4px;
+        border-radius: 100px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border: 1px solid var(--bill-card-border);
+    }
+
+    .theme-toggle-float .toggle-btn {
+        padding: 6px 14px;
+        border-radius: 100px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--bill-text-muted);
+        transition: all 0.2s ease;
+    }
+
+    .theme-toggle-float .toggle-btn.active {
+        background: var(--bill-toggle-active);
+        color: var(--bill-text-main);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    /* Toast Notification */
+    .bill-toast {
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-100px);
+        background: #0F172A;
+        color: #FFFFFF;
+        padding: 12px 24px;
+        border-radius: 100px;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+        z-index: 1000;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        pointer-events: none;
+    }
+
+    .bill-toast.show {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    /* Responsive Adjustments */
     @media (max-width: 640px) {
-        .cards-row-top { grid-template-columns: 1fr; }
-        .cards-row-bottom .card { flex: 1 1 100%; }
-        .theme-toggle-float { bottom: 16px; right: 16px; }
+        .bill-layout {
+            padding: 20px 12px 140px;
+        }
+
+        .cards-grid-auto {
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        .card {
+            padding: 18px;
+            min-height: auto;
+        }
+
+        .slider-builder-card {
+            padding: 18px 14px;
+        }
+
+        .rate-summary-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+            padding: 14px;
+        }
+
+        .bill-controls {
+            flex-direction: column-reverse;
+            gap: 10px;
+        }
+
+        .bill-controls button {
+            width: 100%;
+        }
+
+        .theme-toggle-float {
+            bottom: auto;
+            top: 16px;
+            right: 16px;
+            transform: scale(0.9);
+        }
+
+        .floating-cart-bar {
+            bottom: 12px;
+            width: calc(100% - 24px);
+            padding: 10px 14px;
+        }
     }
 </style>
 {% endblock %}
 
-{% block body %}
+{% block content %}
+<!-- Toast -->
+<div id="bill-toast" class="bill-toast">
+    <i class="ph-bold ph-check-circle" style="color: #10B981;"></i>
+    <span id="toast-text">Уведомление</span>
+</div>
+
+<!-- Theme toggle float -->
 <div class="theme-toggle-float">
     <div class="toggle-btn active" id="btn-theme-light" onclick="setTheme('light')">Светлая</div>
     <div class="toggle-btn" id="btn-theme-dark" onclick="setTheme('dark')">Тёмная</div>
@@ -393,15 +957,13 @@
 
 <div class="bill-layout">
     <header class="bill-header">
-        <h1>Собери свой тариф</h1>
-        <p>Персонализированный план подготовки, который адаптируется под твои цели и темп.</p>
+        <h1>Собери своё обучение</h1>
+        <p>Персональный трек с наставником. Выбирай экзамен, предмет и точное количество уроков.</p>
         <div class="progress">
             <span class="active" id="dot-1"></span>
             <span id="dot-2"></span>
             <span id="dot-3"></span>
             <span id="dot-4"></span>
-            <span id="dot-5"></span>
-            <span id="dot-6"></span>
         </div>
     </header>
 
@@ -409,21 +971,24 @@
     <div id="step-1" class="bill-step active">
         <h2 class="section-title">Выбери экзамен</h2>
         <div class="cards-grid-auto">
-            <div class="card" onclick="selectCard(this); selectExam('oge', 'ОГЭ (9 класс)')">
+            <div class="card" onclick="selectExam('oge', 'ОГЭ (9 класс)', this)">
                 <div>
-                    <div class="card-header"><div class="card-title">ОГЭ</div></div>
-                    <div class="card-desc">9 класс. Закладываем надежную базу знаний и сдаем первый серьезный экзамен на отлично.</div>
+                    <div class="card-icon"><i class="ph-bold ph-student"></i></div>
+                    <div class="card-title">ОГЭ · 9 класс</div>
+                    <div class="card-desc">Закладываем фундаментальную базу знаний, закрываем пробелы и сдаем первый серьезный экзамен на максимальный балл.</div>
                 </div>
             </div>
-            <div class="card" onclick="selectCard(this); selectExam('ege', 'ЕГЭ (11 класс)')">
+            <div class="card" onclick="selectExam('ege', 'ЕГЭ (11 класс)', this)">
                 <div>
-                    <div class="card-header"><div class="card-title">ЕГЭ</div></div>
-                    <div class="card-desc">11 класс. Уверенная подготовка к поступлению в топовые вузы страны.</div>
+                    <div class="card-icon"><i class="ph-bold ph-graduation-cap"></i></div>
+                    <div class="card-title">ЕГЭ · 11 класс</div>
+                    <div class="card-desc">Интенсивная и системная подготовка к поступлению на бюджет в ведущие технические вузы страны.</div>
                 </div>
             </div>
         </div>
         <div class="bill-controls">
-            <button class="btn-next" id="btn-next-1" disabled onclick="goNext(2)">Далее</button>
+            <div></div>
+            <button class="btn-3d btn-3d-primary" id="btn-next-1" disabled onclick="goNext(2)">Далее <i class="ph-bold ph-arrow-right"></i></button>
         </div>
     </div>
 
@@ -431,120 +996,251 @@
     <div id="step-2" class="bill-step">
         <h2 class="section-title">Выбери предмет</h2>
         <div class="cards-grid-auto">
-            <div class="card" onclick="selectCard(this); selectSubject('inf', 'Информатика')">
+            <div class="card" onclick="selectSubject('inf', 'Информатика', this)">
                 <div>
-                    <div class="card-header"><div class="card-title">Информатика</div></div>
-                    <div class="card-desc">Программирование, логика и алгоритмы для будущих IT-специалистов.</div>
+                    <div class="card-icon"><i class="ph-bold ph-code"></i></div>
+                    <div class="card-title">Информатика</div>
+                    <div class="card-desc">Программирование на Python, алгоритмы, базы данных, электронные таблицы и решение задач любой сложности.</div>
                 </div>
             </div>
-            <div class="card" onclick="selectCard(this); selectSubject('math', 'Математика')">
+            <div class="card" onclick="selectSubject('math', 'Математика', this)">
                 <div>
-                    <div class="card-header"><div class="card-title">Математика</div></div>
-                    <div class="card-desc">Фундаментальная подготовка, алгебра и геометрия.</div>
+                    <div class="card-icon"><i class="ph-bold ph-function"></i></div>
+                    <div class="card-title">Математика</div>
+                    <div class="card-desc">Алгебра, начала анализа, геометрия и теория вероятностей с понятным объяснением логики формул.</div>
                 </div>
             </div>
         </div>
         <div class="bill-controls">
-            <button class="btn-back" onclick="goBack()">Назад</button>
-            <button class="btn-next" id="btn-next-2" disabled onclick="handleSubjectNext()">Далее</button>
+            <button class="btn-3d btn-3d-secondary" onclick="goBack()"><i class="ph-bold ph-arrow-left"></i> Назад</button>
+            <button class="btn-3d btn-3d-primary" id="btn-next-2" disabled onclick="handleSubjectNext()">Далее <i class="ph-bold ph-arrow-right"></i></button>
         </div>
     </div>
 
-    <!-- ШАГ 3: Уровень математики -->
+    <!-- ШАГ 3: Уровень (только для ЕГЭ Математика) -->
     <div id="step-3" class="bill-step">
         <h2 class="section-title">Какой уровень математики?</h2>
         <div class="cards-grid-auto">
-            <div class="card" onclick="selectCard(this); selectLevel('prof', 'Профиль')">
+            <div class="card" onclick="selectLevel('prof', 'Профиль', this)">
                 <div>
-                    <div class="card-header"><div class="card-title">Профильный уровень</div></div>
-                    <div class="card-desc">Мощная математика для технических и IT-специальностей.</div>
+                    <div class="card-icon"><i class="ph-bold ph-rocket-launch"></i></div>
+                    <div class="card-title">Профильный уровень</div>
+                    <div class="card-desc">Глубокая математика для поступления на IT, инженерные и экономические специальности.</div>
                 </div>
             </div>
-            <div class="card" onclick="selectCard(this); selectLevel('base', 'Базовый уровень')">
+            <div class="card" onclick="selectLevel('base', 'Базовый', this)">
                 <div>
-                    <div class="card-header"><div class="card-title">Базовый уровень</div></div>
-                    <div class="card-desc">Спокойная и надежная сдача для гуманитарных направлений.</div>
+                    <div class="card-icon"><i class="ph-bold ph-check-square-offset"></i></div>
+                    <div class="card-title">Базовый уровень</div>
+                    <div class="card-desc">Спокойная, методичная подготовка для успешного получения аттестата и поступления на гуманитарные треки.</div>
                 </div>
             </div>
         </div>
         <div class="bill-controls">
-            <button class="btn-back" onclick="goBack()">Назад</button>
-            <button class="btn-next" id="btn-next-3" disabled onclick="goNext(4)">Далее</button>
+            <button class="btn-3d btn-3d-secondary" onclick="goBack()"><i class="ph-bold ph-arrow-left"></i> Назад</button>
+            <button class="btn-3d btn-3d-primary" id="btn-next-3" disabled onclick="goNext(4)">Далее <i class="ph-bold ph-arrow-right"></i></button>
         </div>
     </div>
 
-    <!-- ШАГ 4: Формат -->
+    <!-- ШАГ 4: Слайдер настройки уроков Ментора -->
     <div id="step-4" class="bill-step">
-        <h2 class="section-title">Выбери формат подготовки</h2>
-        <div class="cards-grid-auto">
-            <div class="card" onclick="selectCard(this); selectFormat('solo', 'Solo')">
-                <div>
-                    <div class="card-header"><div class="card-title">Solo (Инди-трек)</div></div>
-                    <div class="card-desc">Самостоятельная подготовка. Полный доступ к тренажёру, теории и автопроверке.</div>
+        <h2 class="section-title">Настрой количество уроков</h2>
+        <p class="section-subtitle">Формат: <strong>Mentor</strong> — живые занятия 1-на-1 с преподавателем, персональный куратор и ручная проверка ДЗ</p>
+        
+        <div class="slider-builder-card">
+            <div class="slider-hero-header">
+                <span class="target-badge" id="slider-course-title">ЕГЭ · Информатика · Ментор</span>
+                <span style="font-size: 13px; font-weight: 600; color: var(--bill-text-muted);">
+                    <i class="ph-bold ph-sparkle" style="color: #F59E0B;"></i> Индивидуальный темп
+                </span>
+            </div>
+
+            <!-- Большой счетчик уроков с кнопками +/- -->
+            <div class="lessons-counter-box">
+                <button type="button" class="counter-btn" onclick="stepLessons(-1)" aria-label="Меньше уроков">−</button>
+                <div class="counter-display">
+                    <div class="counter-number" id="lessons-val-display">24</div>
+                    <div class="counter-label" id="lessons-val-label">урока с преподавателем</div>
+                </div>
+                <button type="button" class="counter-btn" onclick="stepLessons(1)" aria-label="Больше уроков">+</button>
+            </div>
+
+            <!-- Ползунок от 8 до 72 -->
+            <div class="range-wrap">
+                <input type="range" class="range-input" id="lessons-range" min="8" max="72" value="24" step="1" oninput="onSliderInput(this.value)">
+            </div>
+
+            <!-- Граничные значения и быстрые метки (16, 24, 32, 40, 48, 56, 64) -->
+            <div class="notch-pills" id="notch-pills-container">
+                <div class="notch-pill" onclick="setLessonsExact(8)">8 ур</div>
+                <div class="notch-pill" onclick="setLessonsExact(16)">16 ур</div>
+                <div class="notch-pill active" onclick="setLessonsExact(24)">24 ур</div>
+                <div class="notch-pill" onclick="setLessonsExact(32)">32 ур</div>
+                <div class="notch-pill" onclick="setLessonsExact(40)">40 ур</div>
+                <div class="notch-pill" onclick="setLessonsExact(48)">48 ур</div>
+                <div class="notch-pill" onclick="setLessonsExact(56)">56 ур</div>
+                <div class="notch-pill" onclick="setLessonsExact(64)">64 ур</div>
+                <div class="notch-pill" onclick="setLessonsExact(72)">72 ур</div>
+            </div>
+
+            <!-- Динамический пересчет ставки и общей стоимости -->
+            <div class="rate-summary-grid">
+                <div class="rate-stat-item">
+                    <span class="rate-stat-title">Ставка за урок (в час)</span>
+                    <span class="rate-stat-val" id="stat-rate-val">1 700 ₽</span>
+                    <span class="rate-stat-badge" id="stat-rate-badge"><i class="ph-bold ph-trend-down"></i> Выгодная цена</span>
+                </div>
+                <div class="rate-stat-item">
+                    <span class="rate-stat-title">Ориентир по времени</span>
+                    <span class="rate-stat-val" id="stat-time-val">≈ 3 месяца</span>
+                    <span style="font-size: 12px; color: var(--bill-text-muted);">по 2 занятия в неделю</span>
+                </div>
+                <div class="rate-stat-item">
+                    <span class="rate-stat-title">Стоимость курса</span>
+                    <span class="rate-stat-val" id="stat-price-val" style="color: var(--bill-accent); font-size: 24px;">40 800 ₽</span>
+                    <span style="font-size: 12px; color: var(--bill-text-muted);" id="stat-savings-text">Экономия 4 800 ₽</span>
                 </div>
             </div>
-            <div class="card" onclick="selectCard(this); selectFormat('mentor', 'Mentor')">
-                <div>
-                    <div class="card-header"><div class="card-title">Mentor (Классика)</div></div>
-                    <div class="card-desc">Только живые уроки с преподавателем и ручная проверка ДЗ. Без тренажёра.</div>
-                </div>
-            </div>
-            <div class="card" onclick="selectCard(this); selectFormat('godmode', 'God Mode')">
-                <div>
-                    <div class="card-header"><div class="card-title">God Mode</div></div>
-                    <div class="card-desc">Всё включено. Живые уроки + безлимитная практика в тренажёре.</div>
-                </div>
+
+            <!-- Что входит в тариф Ментор -->
+            <div class="mentor-perks">
+                <div class="perk-item"><i class="ph-bold ph-check-circle"></i> Индивидуальные онлайн-уроки</div>
+                <div class="perk-item"><i class="ph-bold ph-check-circle"></i> Персональный план подготовки</div>
+                <div class="perk-item"><i class="ph-bold ph-check-circle"></i> Ручная проверка домашних заданий</div>
+                <div class="perk-item"><i class="ph-bold ph-check-circle"></i> Поддержка наставника в чате 24/7</div>
             </div>
         </div>
+
         <div class="bill-controls">
-            <button class="btn-back" onclick="goBack()">Назад</button>
-            <button class="btn-next" id="btn-next-4" disabled onclick="handleFormatNext()">Далее</button>
+            <button class="btn-3d btn-3d-secondary" onclick="goBack()"><i class="ph-bold ph-arrow-left"></i> Назад</button>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn-3d btn-3d-secondary" onclick="addToCartCurrent(false)"><i class="ph-bold ph-shopping-cart-simple"></i> В корзину</button>
+                <button class="btn-3d btn-3d-primary" onclick="addToCartCurrent(true)">Перейти к оплате <i class="ph-bold ph-arrow-right"></i></button>
+            </div>
         </div>
     </div>
 
-    <!-- ШАГ 5: Пакет -->
+    <!-- ШАГ 5: Корзина и Оплата (без техработ) -->
     <div id="step-5" class="bill-step">
-        <h2 class="section-title" id="step-5-title">Выбери пакет</h2>
+        <h2 class="section-title">Оформление заказа</h2>
         
-        <div id="dynamic-packages-container">
-            <!-- Верхний ряд (до 3 карт) -->
-            <div class="cards-row-top" id="packages-top"></div>
-            <!-- Нижний ряд (до 2 карт, по центру) -->
-            <div class="cards-row-bottom" id="packages-bottom"></div>
-        </div>
+        <div class="cart-box">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                <h3 style="font-family: 'Golos Text', sans-serif; font-size: 18px; font-weight: 700; margin: 0; color: var(--bill-text-main);">
+                    <i class="ph-bold ph-shopping-bag" style="color: var(--bill-accent);"></i> Выбранные курсы
+                </h3>
+                <button type="button" class="btn-3d btn-3d-secondary" style="padding: 7px 14px; font-size: 13px; min-height: 36px;" onclick="goToStartToAddMore()">
+                    <i class="ph-bold ph-plus"></i> Добавить ещё курс
+                </button>
+            </div>
 
-        <div class="bill-controls">
-            <button class="btn-back" onclick="goBack()">Назад</button>
-            <button class="btn-next" id="btn-next-5" disabled onclick="goNext(6)">Завершить сборку</button>
-        </div>
-    </div>
+            <!-- Список товаров корзины -->
+            <div class="cart-items-list" id="cart-items-container">
+                <!-- Заполняется через JS -->
+            </div>
 
-    <!-- ШАГ 6: Итог и оплата -->
-    <div id="step-6" class="bill-step">
-        <h2 class="section-title">Программа готова</h2>
-        <div class="summary-box">
-            <div class="summary-path" id="summary-path">ЕГЭ / Информатика / Mentor / Junior</div>
-            <div class="summary-price" id="summary-price">15 000 ₽</div>
-            
-            <div style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); padding: 24px; border-radius: 16px; margin-bottom: 24px; text-align: left;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                    <i class="ph-bold ph-wrench" style="font-size: 20px; color: #D97706;"></i>
-                    <span style="font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #D97706;">Технические работы</span>
+            <!-- Промокод из базы -->
+            <div style="border-top: 1px solid var(--bill-card-border); padding-top: 20px; margin-top: 20px;">
+                <label style="font-size: 13px; font-weight: 600; color: var(--bill-text-muted); display: block; margin-bottom: 8px;">
+                    Есть промокод?
+                </label>
+                <div class="promocode-box">
+                    <input type="text" class="promocode-input" id="promocode-input" placeholder="ВВЕДИТЕ ПРОМОКОД" maxlength="30">
+                    <button type="button" class="btn-3d btn-3d-secondary" id="btn-apply-promo" style="min-height: 46px;" onclick="applyPromoCode()">
+                        Применить
+                    </button>
                 </div>
-                <p style="font-size: 14px; color: var(--bill-text-main); margin-bottom: 0; line-height: 1.5;">
-                    Автоматическая система оплаты временно отключена для проведения технического обслуживания. Страница работает в режиме ознакомления с тарифами.
+                <div id="promocode-badge" class="promocode-badge" style="display: none;">
+                    <i class="ph-bold ph-tag"></i>
+                    <span id="promocode-badge-text">Промокод применён</span>
+                    <button type="button" style="background: none; border: none; cursor: pointer; color: inherit; padding: 0 4px; font-weight: bold;" onclick="removePromoCode()">✕</button>
+                </div>
+                <div id="promocode-error" class="promocode-error"></div>
+            </div>
+
+            <!-- Итоговая сумма -->
+            <div style="border-top: 1px solid var(--bill-card-border); padding-top: 20px; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; color: var(--bill-text-muted);">
+                    <span>Сумма курсов:</span>
+                    <span id="summary-subtotal-val" style="font-weight: 600; color: var(--bill-text-main);">0 ₽</span>
+                </div>
+                <div id="summary-discount-row" style="display: none; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; color: var(--bill-green);">
+                    <span>Скидка по промокоду:</span>
+                    <span id="summary-discount-val" style="font-weight: 700;">-0 ₽</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--bill-card-border);">
+                    <span style="font-family: 'Golos Text', sans-serif; font-size: 18px; font-weight: 700; color: var(--bill-text-main);">Итого к оплате:</span>
+                    <span id="summary-final-val" style="font-family: 'Golos Text', sans-serif; font-size: 32px; font-weight: 800; color: var(--bill-accent); letter-spacing: -0.02em;">0 ₽</span>
+                </div>
+            </div>
+
+            <!-- Реквизиты для оплаты (Тех работы сняты) -->
+            <div class="requisites-container">
+                <div class="requisites-header">
+                    <i class="ph-bold ph-shield-check" style="font-size: 24px; color: var(--bill-accent);"></i>
+                    <div>
+                        <h3>Реквизиты для оплаты</h3>
+                        <p style="font-size: 13px; color: var(--bill-text-muted); margin: 2px 0 0;">Переведите точную сумму заказа удобным способом:</p>
+                    </div>
+                </div>
+
+                <!-- Реквизит 1: Карта -->
+                <div class="req-item">
+                    <div class="req-item-info">
+                        <div class="req-item-label">Номер банковской карты</div>
+                        <div class="req-item-val" id="req-card-num">2200240286200924</div>
+                        <div class="req-item-sub">Получатель: <strong>Король Александр Евгеньевич</strong></div>
+                    </div>
+                    <button type="button" class="btn-copy" onclick="copyToClipboard('2200240286200924', this, 'Номер карты скопирован!')">
+                        <i class="ph-bold ph-copy"></i> Скопировать
+                    </button>
+                </div>
+
+                <!-- Реквизит 2: Альтернативный способ СБП ВТБ -->
+                <div class="req-item">
+                    <div class="req-item-info">
+                        <div class="req-item-label">Альтернативный способ · СБП (Банк ВТБ)</div>
+                        <div class="req-item-val" id="req-phone-num">89039530615</div>
+                        <div class="req-item-sub">Банк: <strong>ВТБ</strong> · Получатель: <strong>Король Александр Евгеньевич</strong></div>
+                    </div>
+                    <button type="button" class="btn-copy" onclick="copyToClipboard('89039530615', this, 'Номер телефона скопирован!')">
+                        <i class="ph-bold ph-copy"></i> Скопировать
+                    </button>
+                </div>
+            </div>
+
+            <!-- Аккуратная зеленая кнопка «Я оплатил(а)» -->
+            <div style="margin-top: 24px;">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="btn-3d btn-3d-green" id="btn-tg-paid" onclick="return handlePaidClick(event)">
+                    <i class="ph-bold ph-telegram-logo" style="font-size: 22px;"></i> Я оплатил(а) · Подтвердить в Telegram
+                </a>
+                <p style="font-size: 12.5px; text-align: center; color: var(--bill-text-muted); margin-top: 10px;">
+                    После нажатия откроется чат с наставником <strong>@eohada</strong> с готовым чеком заказа. Прикрепите скриншот оплаты для моментальной активации!
                 </p>
-                <p style="font-size: 14px; color: var(--bill-text-muted); margin-top: 12px; margin-bottom: 0; line-height: 1.5;">
-                    Если вы хотите приобрести тариф прямо сейчас, свяжитесь с нами напрямую:
-                </p>
-                <a href="#" target="_blank" rel="noopener noreferrer" class="btn-next" id="tg-pay-link" style="display: block; text-align: center; text-decoration: none; margin-top: 16px;">Написать в Telegram</a>
             </div>
         </div>
-        
+
         <div class="bill-controls">
-            <button class="btn-back" onclick="goBack()">Изменить выбор</button>
+            <button class="btn-3d btn-3d-secondary" onclick="goBack()"><i class="ph-bold ph-arrow-left"></i> Изменить выбор</button>
+            <div></div>
         </div>
     </div>
+</div>
+
+<!-- Плавающая мобильная/десктопная полоса корзины -->
+<div class="floating-cart-bar" id="floating-cart-bar">
+    <div class="floating-cart-info">
+        <div class="cart-icon-bubble">
+            <i class="ph-bold ph-shopping-bag"></i>
+        </div>
+        <div>
+            <div class="floating-cart-text" id="floating-cart-count">В корзине 1 курс</div>
+            <div class="floating-cart-sub" id="floating-cart-sum">40 800 ₽</div>
+        </div>
+    </div>
+    <button type="button" class="btn-3d btn-3d-primary" style="padding: 10px 18px; font-size: 14px; min-height: 40px;" onclick="openCheckoutStep()">
+        Оформить <i class="ph-bold ph-arrow-right"></i>
+    </button>
 </div>
 
 <script>
@@ -553,282 +1249,655 @@
         if (theme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
             localStorage.setItem('ui.themeMode', 'dark');
-            document.getElementById('btn-theme-dark').classList.add('active');
-            document.getElementById('btn-theme-light').classList.remove('active');
+            const dBtn = document.getElementById('btn-theme-dark');
+            const lBtn = document.getElementById('btn-theme-light');
+            if (dBtn) dBtn.classList.add('active');
+            if (lBtn) lBtn.classList.remove('active');
         } else {
             document.documentElement.removeAttribute('data-theme');
             localStorage.setItem('ui.themeMode', 'light');
-            document.getElementById('btn-theme-light').classList.add('active');
-            document.getElementById('btn-theme-dark').classList.remove('active');
+            const dBtn = document.getElementById('btn-theme-dark');
+            const lBtn = document.getElementById('btn-theme-light');
+            if (lBtn) lBtn.classList.add('active');
+            if (dBtn) dBtn.classList.remove('active');
         }
     }
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const currentTheme = localStorage.getItem('ui.themeMode') || document.documentElement.getAttribute('data-theme') || 'light';
     setTheme(currentTheme);
 
-    // Wizard State
-    const state = { 
-        step: 1,
+    // Toast helper
+    let toastTimer = null;
+    function showToast(text) {
+        const toast = document.getElementById('bill-toast');
+        const span = document.getElementById('toast-text');
+        if (!toast || !span) return;
+        span.textContent = text;
+        toast.classList.add('show');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2500);
+    }
+
+    // Copy to clipboard helper
+    function copyToClipboard(text, btnElement, successMsg) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(successMsg || 'Скопировано в буфер обмена!');
+                if (btnElement) {
+                    const originalHtml = btnElement.innerHTML;
+                    btnElement.innerHTML = '<i class="ph-bold ph-check"></i> Скопировано!';
+                    btnElement.classList.add('copied');
+                    setTimeout(() => {
+                        btnElement.innerHTML = originalHtml;
+                        btnElement.classList.remove('copied');
+                    }, 2000);
+                }
+            }).catch(() => fallbackCopy(text, btnElement, successMsg));
+        } else {
+            fallbackCopy(text, btnElement, successMsg);
+        }
+    }
+
+    function fallbackCopy(text, btnElement, successMsg) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast(successMsg || 'Скопировано в буфер обмена!');
+        } catch (err) {
+            showToast('Не удалось скопировать');
+        }
+        document.body.removeChild(textArea);
+    }
+
+    // Wizard Current Selection State
+    const currentSelection = {
         exam: null, examLabel: null,
         subject: null, subjectLabel: null,
         level: null, levelLabel: null,
-        format: null, formatLabel: null,
-        volumeLabel: null, price: null,
-        history: [1]
+        lessons: 24
     };
 
-    // Helper: Select Card UI
-    function selectCard(clickedCard) {
-        const parent = clickedCard.closest('.cards-grid-auto, .cards-row-top, .cards-row-bottom');
-        if (!parent) return;
-        
-        // Remove from all siblings in both top/bottom rows if it's step 5
-        if (state.step === 5) {
-            document.querySelectorAll('#dynamic-packages-container .card').forEach(card => card.classList.remove('selected'));
-        } else {
-            parent.querySelectorAll('.card').forEach(card => card.classList.remove('selected'));
+    let wizardHistory = [1];
+    let currentStep = 1;
+
+    // Cart State (stored in localStorage)
+    let cart = [];
+    try {
+        const savedCart = localStorage.getItem('boostudy.billing.cart');
+        if (savedCart) {
+            cart = JSON.parse(savedCart);
+            if (!Array.isArray(cart)) cart = [];
         }
-        
-        clickedCard.classList.add('selected');
-        
-        // Enable Next button
-        const nextBtn = document.getElementById('btn-next-' + state.step);
+    } catch(e) {
+        cart = [];
+    }
+
+    // Promo Code State
+    let activePromo = null; // { code, discount_percent, discount_rub, discount_amount, final_total }
+
+    // Rate Anchor Calculations
+    function getDBKey(exam, subject, level) {
+        if (exam === 'oge') return 'oge';
+        if (exam === 'ege' && subject === 'inf') return 'ege';
+        if (exam === 'ege' && subject === 'math') {
+            return level === 'prof' ? 'ege_prof' : 'ege_base';
+        }
+        return 'oge';
+    }
+
+    function calculateRate(dbKey, lessons) {
+        lessons = Math.max(8, Math.min(72, lessons));
+        let anchors;
+        if (dbKey === 'ege_prof') {
+            anchors = [
+                { n: 8, r: 2100 },
+                { n: 16, r: 2025 },
+                { n: 24, r: 1950 },
+                { n: 32, r: 1875 },
+                { n: 72, r: 1800 }
+            ];
+        } else if (dbKey === 'ege') {
+            anchors = [
+                { n: 8, r: 1900 },
+                { n: 16, r: 1800 },
+                { n: 24, r: 1700 },
+                { n: 32, r: 1600 },
+                { n: 72, r: 1500 }
+            ];
+        } else { // 'oge' or 'ege_base'
+            anchors = [
+                { n: 8, r: 1600 },
+                { n: 16, r: 1525 },
+                { n: 24, r: 1450 },
+                { n: 32, r: 1375 },
+                { n: 72, r: 1300 }
+            ];
+        }
+
+        // Piecewise linear interpolation
+        for (let i = 0; i < anchors.length - 1; i++) {
+            const a1 = anchors[i];
+            const a2 = anchors[i + 1];
+            if (lessons >= a1.n && lessons <= a2.n) {
+                const t = (lessons - a1.n) / (a2.n - a1.n);
+                return Math.round(a1.r + t * (a2.r - a1.r));
+            }
+        }
+        return anchors[anchors.length - 1].r;
+    }
+
+    function calculatePrice(dbKey, lessons) {
+        const rate = calculateRate(dbKey, lessons);
+        return lessons * rate;
+    }
+
+    // Helper: Select Card UI
+    function markSelected(cardElement) {
+        const parent = cardElement.closest('.cards-grid-auto');
+        if (!parent) return;
+        parent.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+        cardElement.classList.add('selected');
+    }
+
+    // Step 1: Exam
+    function selectExam(val, label, el) {
+        currentSelection.exam = val;
+        currentSelection.examLabel = label;
+        markSelected(el);
+        const nextBtn = document.getElementById('btn-next-1');
         if (nextBtn) nextBtn.disabled = false;
     }
 
-    // Setters
-    function selectExam(val, label) { state.exam = val; state.examLabel = label; }
-    function selectSubject(val, label) { state.subject = val; state.subjectLabel = label; }
-    function selectLevel(val, label) { state.level = val; state.levelLabel = label; }
-    function selectFormat(val, label) { state.format = val; state.formatLabel = label; }
-    
-    function selectPackage(price, label) { 
-        state.price = price; 
-        state.volumeLabel = label;
-        
-        // Prepare summary immediately
-        let fullPath = `${state.examLabel} / ${state.subjectLabel}`;
-        if (state.levelLabel) fullPath += ` (${state.levelLabel})`;
-        fullPath += ` / ${state.formatLabel} / ${label.split('(')[0].trim()}`;
-        const formattedPrice = state.price.toLocaleString('ru-RU') + ' ₽';
-        
-        document.getElementById('summary-path').textContent = fullPath;
-        document.getElementById('summary-price').textContent = formattedPrice;
-        
-        const dbKey = getDBKey();
-        const gInp = document.getElementById('selected-goal');
-        if (gInp) {
-            gInp.value = dbKey;
-            document.getElementById('selected-format').value = state.format;
-            document.getElementById('selected-volume').value = state.volumeLabel;
-            document.getElementById('selected-price').value = state.price;
-        }
+    // Step 2: Subject
+    function selectSubject(val, label, el) {
+        currentSelection.subject = val;
+        currentSelection.subjectLabel = label;
+        markSelected(el);
+        const nextBtn = document.getElementById('btn-next-2');
+        if (nextBtn) nextBtn.disabled = false;
+    }
 
-        const tgLink = document.getElementById('tg-pay-link');
-        if (tgLink) {
-            const msg = `Здравствуйте, я по поводу оплаты тарифа!\nМой выбор: ${fullPath}\nЦена: ${formattedPrice}`;
-            tgLink.href = `https://t.me/eohada?text=${encodeURIComponent(msg)}`;
+    function handleSubjectNext() {
+        if (currentSelection.exam === 'ege' && currentSelection.subject === 'math') {
+            goNext(3); // Profil / Base
+        } else {
+            currentSelection.level = null;
+            currentSelection.levelLabel = null;
+            initSliderStep();
+            goNext(4); // Skip level, go directly to Mentor Slider
         }
     }
 
-    // Navigation Flow
-    function updateDots(activeStep) {
-        for(let i=1; i<=6; i++) {
-            const dot = document.getElementById('dot-' + i);
-            if (dot) {
-                if(i <= activeStep) dot.classList.add('active');
-                else dot.classList.remove('active');
+    // Step 3: Math Level
+    function selectLevel(val, label, el) {
+        currentSelection.level = val;
+        currentSelection.levelLabel = label;
+        markSelected(el);
+        const nextBtn = document.getElementById('btn-next-3');
+        if (nextBtn) nextBtn.disabled = false;
+    }
+
+    // Step 4: Slider Init & Handling
+    function initSliderStep() {
+        const titleBadge = document.getElementById('slider-course-title');
+        let fullTitle = `${currentSelection.exam === 'ege' ? 'ЕГЭ' : 'ОГЭ'} · ${currentSelection.subjectLabel}`;
+        if (currentSelection.levelLabel) {
+            fullTitle += ` (${currentSelection.levelLabel})`;
+        }
+        fullTitle += ' · Ментор';
+        if (titleBadge) titleBadge.textContent = fullTitle;
+
+        // Set default lessons if not set
+        if (!currentSelection.lessons) currentSelection.lessons = 24;
+        const range = document.getElementById('lessons-range');
+        if (range) range.value = currentSelection.lessons;
+        updateSliderUI(currentSelection.lessons);
+    }
+
+    function stepLessons(delta) {
+        const nextVal = Math.max(8, Math.min(72, currentSelection.lessons + delta));
+        setLessonsExact(nextVal);
+    }
+
+    function setLessonsExact(val) {
+        currentSelection.lessons = parseInt(val, 10);
+        const range = document.getElementById('lessons-range');
+        if (range) range.value = currentSelection.lessons;
+        updateSliderUI(currentSelection.lessons);
+    }
+
+    function onSliderInput(val) {
+        currentSelection.lessons = parseInt(val, 10);
+        updateSliderUI(currentSelection.lessons);
+    }
+
+    function getLessonsPlural(n) {
+        const rem10 = n % 10;
+        const rem100 = n % 100;
+        if (rem100 >= 11 && rem100 <= 19) return 'уроков с преподавателем';
+        if (rem10 === 1) return 'урок с преподавателем';
+        if (rem10 >= 2 && rem10 <= 4) return 'урока с преподавателем';
+        return 'уроков с преподавателем';
+    }
+
+    function updateSliderUI(lessons) {
+        const display = document.getElementById('lessons-val-display');
+        const label = document.getElementById('lessons-val-label');
+        if (display) display.textContent = lessons;
+        if (label) label.textContent = getLessonsPlural(lessons);
+
+        // Highlight active notch pill
+        document.querySelectorAll('#notch-pills-container .notch-pill').forEach(pill => {
+            const count = parseInt(pill.textContent, 10);
+            if (count === lessons) pill.classList.add('active');
+            else pill.classList.remove('active');
+        });
+
+        // Calculate rate and price
+        const dbKey = getDBKey(currentSelection.exam, currentSelection.subject, currentSelection.level);
+        const rate = calculateRate(dbKey, lessons);
+        const totalPrice = calculatePrice(dbKey, lessons);
+
+        // Base rate at 8 lessons for comparison
+        const baseRate = calculateRate(dbKey, 8);
+        const fullPriceWithoutDiscount = lessons * baseRate;
+        const savings = Math.max(0, fullPriceWithoutDiscount - totalPrice);
+
+        const rateVal = document.getElementById('stat-rate-val');
+        if (rateVal) rateVal.textContent = rate.toLocaleString('ru-RU') + ' ₽';
+
+        const priceVal = document.getElementById('stat-price-val');
+        if (priceVal) priceVal.textContent = totalPrice.toLocaleString('ru-RU') + ' ₽';
+
+        // Time estimate (2 lessons/week)
+        const weeks = Math.round(lessons / 2);
+        const months = Math.max(1, Math.round(weeks / 4));
+        const timeVal = document.getElementById('stat-time-val');
+        if (timeVal) timeVal.textContent = `≈ ${months} ${months === 1 ? 'месяц' : (months < 5 ? 'месяца' : 'месяцев')}`;
+
+        const savingsText = document.getElementById('stat-savings-text');
+        if (savingsText) {
+            if (savings > 0) {
+                savingsText.textContent = `Экономия ${savings.toLocaleString('ru-RU')} ₽`;
+                savingsText.style.display = 'block';
+            } else {
+                savingsText.style.display = 'none';
             }
+        }
+    }
+
+    // Cart Management
+    function saveCart() {
+        try {
+            localStorage.setItem('boostudy.billing.cart', JSON.stringify(cart));
+        } catch(e) {}
+        updateFloatingCart();
+    }
+
+    function addToCartCurrent(goToCheckout) {
+        const dbKey = getDBKey(currentSelection.exam, currentSelection.subject, currentSelection.level);
+        const lessons = currentSelection.lessons;
+        const rate = calculateRate(dbKey, lessons);
+        const price = calculatePrice(dbKey, lessons);
+
+        let title = `${currentSelection.exam === 'ege' ? 'ЕГЭ' : 'ОГЭ'} · ${currentSelection.subjectLabel}`;
+        if (currentSelection.levelLabel) {
+            title += ` (${currentSelection.levelLabel})`;
+        }
+
+        const cartItemId = `${currentSelection.exam}_${currentSelection.subject}_${currentSelection.level || 'all'}_mentor`;
+        
+        // Check if an item for the same course already exists; update it or add
+        const existingIdx = cart.findIndex(item => item.id === cartItemId);
+        if (existingIdx >= 0) {
+            cart[existingIdx].lessons = lessons;
+            cart[existingIdx].rate = rate;
+            cart[existingIdx].price = price;
+        } else {
+            cart.push({
+                id: cartItemId,
+                exam: currentSelection.exam,
+                subject: currentSelection.subject,
+                level: currentSelection.level,
+                title: title,
+                format: 'mentor',
+                formatLabel: 'Ментор',
+                lessons: lessons,
+                rate: rate,
+                price: price
+            });
+        }
+
+        saveCart();
+        showToast(`Курс «${title}» добавлен в корзину!`);
+
+        if (goToCheckout) {
+            openCheckoutStep();
+        } else {
+            // Offer to choose another subject or stay
+            updateFloatingCart();
+        }
+    }
+
+    function removeFromCart(index) {
+        if (index >= 0 && index < cart.length) {
+            const removed = cart.splice(index, 1);
+            saveCart();
+            renderCartItems();
+            recalculateCartTotals();
+            if (removed.length > 0) {
+                showToast(`Курс удалён из корзины`);
+            }
+        }
+    }
+
+    function getCartTotal() {
+        return cart.reduce((sum, item) => sum + (item.price || 0), 0);
+    }
+
+    function updateFloatingCart() {
+        const bar = document.getElementById('floating-cart-bar');
+        const countEl = document.getElementById('floating-cart-count');
+        const sumEl = document.getElementById('floating-cart-sum');
+        if (!bar || !countEl || !sumEl) return;
+
+        if (cart.length > 0 && currentStep < 5) {
+            bar.classList.add('visible');
+            const total = getCartTotal();
+            const count = cart.length;
+            countEl.textContent = `В корзине ${count} ${count === 1 ? 'курс' : (count < 5 ? 'курса' : 'курсов')}`;
+            sumEl.textContent = `${total.toLocaleString('ru-RU')} ₽`;
+        } else {
+            bar.classList.remove('visible');
+        }
+    }
+
+    function goToStartToAddMore() {
+        // Reset selection for next course
+        currentSelection.exam = null;
+        currentSelection.examLabel = null;
+        currentSelection.subject = null;
+        currentSelection.subjectLabel = null;
+        currentSelection.level = null;
+        currentSelection.levelLabel = null;
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+        const n1 = document.getElementById('btn-next-1');
+        const n2 = document.getElementById('btn-next-2');
+        const n3 = document.getElementById('btn-next-3');
+        if (n1) n1.disabled = true;
+        if (n2) n2.disabled = true;
+        if (n3) n3.disabled = true;
+        jumpTo(1);
+    }
+
+    // Step 5: Render Cart & Recalculate
+    function openCheckoutStep() {
+        if (cart.length === 0 && currentSelection.exam && currentSelection.subject) {
+            // If cart is empty but user configured current step, auto-add it
+            addToCartCurrent(false);
+        }
+        renderCartItems();
+        recalculateCartTotals();
+        goNext(5);
+    }
+
+    function renderCartItems() {
+        const container = document.getElementById('cart-items-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (cart.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 32px 16px; color: var(--bill-text-muted);">
+                    <i class="ph-bold ph-shopping-cart" style="font-size: 40px; margin-bottom: 12px; color: var(--bill-card-border-b); display: block;"></i>
+                    <p style="font-size: 16px; font-weight: 600; color: var(--bill-text-main); margin-bottom: 8px;">В корзине пока нет курсов</p>
+                    <p style="font-size: 14px; margin-bottom: 20px;">Соберите свой первый курс с персональным ментором</p>
+                    <button type="button" class="btn-3d btn-3d-primary" onclick="goToStartToAddMore()">
+                        <i class="ph-bold ph-plus"></i> Выбрать курс
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        cart.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'cart-item-card';
+            row.innerHTML = `
+                <div class="cart-item-info">
+                    <div class="cart-item-title">
+                        ${item.title}
+                        <span style="font-size: 11px; padding: 2px 8px; border-radius: 6px; background: var(--bill-accent-light); color: var(--bill-accent); text-transform: uppercase;">Ментор</span>
+                    </div>
+                    <div class="cart-item-meta">
+                        ${item.lessons} уроков · по ${item.rate.toLocaleString('ru-RU')} ₽ / урок
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div class="cart-item-price">${item.price.toLocaleString('ru-RU')} ₽</div>
+                    <button type="button" class="btn-remove-item" onclick="removeFromCart(${index})" title="Удалить позицию" aria-label="Удалить позицию">
+                        <i class="ph-bold ph-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    function recalculateCartTotals() {
+        const subtotal = getCartTotal();
+        const subtotalEl = document.getElementById('summary-subtotal-val');
+        if (subtotalEl) subtotalEl.textContent = `${subtotal.toLocaleString('ru-RU')} ₽`;
+
+        let discount = 0;
+        if (activePromo && subtotal > 0) {
+            if (activePromo.discount_percent) {
+                discount += Math.round((subtotal * activePromo.discount_percent) / 100);
+            }
+            if (activePromo.discount_rub) {
+                discount += activePromo.discount_rub;
+            }
+            discount = Math.min(subtotal, discount);
+        }
+
+        const finalTotal = Math.max(0, subtotal - discount);
+
+        const discountRow = document.getElementById('summary-discount-row');
+        const discountVal = document.getElementById('summary-discount-val');
+        if (discountRow && discountVal) {
+            if (discount > 0) {
+                discountRow.style.display = 'flex';
+                discountVal.textContent = `-${discount.toLocaleString('ru-RU')} ₽`;
+            } else {
+                discountRow.style.display = 'none';
+            }
+        }
+
+        const finalEl = document.getElementById('summary-final-val');
+        if (finalEl) finalEl.textContent = `${finalTotal.toLocaleString('ru-RU')} ₽`;
+
+        updateTelegramLink(subtotal, discount, finalTotal);
+    }
+
+    // Promo Code API Integration
+    async function applyPromoCode() {
+        const input = document.getElementById('promocode-input');
+        const errEl = document.getElementById('promocode-error');
+        const badge = document.getElementById('promocode-badge');
+        const badgeText = document.getElementById('promocode-badge-text');
+        const btn = document.getElementById('btn-apply-promo');
+        if (!input || !errEl || !badge || !badgeText) return;
+
+        const rawCode = input.value.trim().toUpperCase();
+        errEl.style.display = 'none';
+        errEl.textContent = '';
+
+        if (!rawCode) {
+            errEl.textContent = 'Пожалуйста, введите промокод';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        const subtotal = getCartTotal();
+        if (subtotal <= 0) {
+            errEl.textContent = 'Сначала добавьте хотя бы один курс в корзину';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Проверка...';
+        }
+
+        try {
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+            const response = await fetch('/billing/promocode/validate-public', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    code: rawCode,
+                    cart_total: subtotal
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                activePromo = data;
+                badgeText.textContent = `Промокод «${data.code}» применён! ${data.discount_percent ? '-' + data.discount_percent + '%' : ''} ${data.discount_rub ? '-' + data.discount_rub + ' ₽' : ''}`;
+                badge.style.display = 'inline-flex';
+                input.value = '';
+                showToast(`Промокод «${data.code}» успешно применён!`);
+                recalculateCartTotals();
+            } else {
+                activePromo = null;
+                badge.style.display = 'none';
+                errEl.textContent = data.message || 'Промокод не найден или истёк срок действия';
+                errEl.style.display = 'block';
+                recalculateCartTotals();
+            }
+        } catch (e) {
+            errEl.textContent = 'Ошибка соединения при проверке промокода';
+            errEl.style.display = 'block';
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Применить';
+            }
+        }
+    }
+
+    function removePromoCode() {
+        activePromo = null;
+        const badge = document.getElementById('promocode-badge');
+        const errEl = document.getElementById('promocode-error');
+        if (badge) badge.style.display = 'none';
+        if (errEl) errEl.style.display = 'none';
+        showToast('Промокод удалён');
+        recalculateCartTotals();
+    }
+
+    // Telegram "Я оплатил(а)" link builder
+    function updateTelegramLink(subtotal, discount, finalTotal) {
+        const tgBtn = document.getElementById('btn-tg-paid');
+        if (!tgBtn) return;
+
+        if (cart.length === 0) {
+            tgBtn.href = '#';
+            return;
+        }
+
+        let coursesListText = '';
+        cart.forEach((item, i) => {
+            coursesListText += `${i + 1}. ${item.title} — ${item.lessons} ур. (${item.price.toLocaleString('ru-RU')} ₽)\n`;
+        });
+
+        let promoInfo = '';
+        if (activePromo && discount > 0) {
+            promoInfo = `\n🏷 Промокод: ${activePromo.code} (-${discount.toLocaleString('ru-RU')} ₽)\n`;
+        }
+
+        const message = 
+`Привет! 🚀 Я выбрал(а) обучение в BooStudy и оплатил(а) заказ:
+
+📚 Выбранные курсы:
+${coursesListText}${promoInfo}
+💰 Итого оплачено: ${finalTotal.toLocaleString('ru-RU')} ₽
+
+Чек об оплате прикрепил(а) ниже, готов(а) заниматься! 🔥`;
+
+        tgBtn.href = `https://t.me/eohada?text=${encodeURIComponent(message)}`;
+    }
+
+    function handlePaidClick(event) {
+        if (cart.length === 0) {
+            event.preventDefault();
+            showToast('Сначала добавьте курс в корзину!');
+            return false;
+        }
+        return true;
+    }
+
+    // Navigation & Dots Flow
+    function updateDots(activeStep) {
+        // Map wizard step (1..5) to visual dots (1..4)
+        for (let i = 1; i <= 4; i++) {
+            const dot = document.getElementById('dot-' + i);
+            if (!dot) continue;
+            let targetActive = false;
+            if (activeStep === 1 && i === 1) targetActive = true;
+            else if (activeStep === 2 && i <= 2) targetActive = true;
+            else if (activeStep === 3 && i <= 2) targetActive = true;
+            else if (activeStep === 4 && i <= 3) targetActive = true;
+            else if (activeStep === 5 && i <= 4) targetActive = true;
+            
+            if (targetActive) dot.classList.add('active');
+            else dot.classList.remove('active');
         }
     }
 
     function jumpTo(step) {
         document.querySelectorAll('.bill-step').forEach(el => el.classList.remove('active'));
-        document.getElementById('step-' + step).classList.add('active');
+        const nextStepEl = document.getElementById('step-' + step);
+        if (nextStepEl) nextStepEl.classList.add('active');
+        currentStep = step;
         updateDots(step);
-        state.step = step;
-        window.scrollTo({top: 0, behavior: 'smooth'});
+        updateFloatingCart();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function goNext(targetStep) {
-        state.history.push(targetStep);
+        if (targetStep === 4) {
+            initSliderStep();
+        }
+        wizardHistory.push(targetStep);
         jumpTo(targetStep);
     }
 
     function goBack() {
-        if (state.history.length > 1) {
-            state.history.pop();
-            const prev = state.history[state.history.length - 1];
+        if (wizardHistory.length > 1) {
+            wizardHistory.pop();
+            const prev = wizardHistory[wizardHistory.length - 1];
             jumpTo(prev);
-        }
-    }
-
-    function handleSubjectNext() {
-        if (state.exam === 'ege' && state.subject === 'math') {
-            goNext(3); // Profil/Base
         } else {
-            state.level = null;
-            state.levelLabel = null;
-            goNext(4); // Skip to Format
+            jumpTo(1);
         }
     }
 
-    function handleFormatNext() {
-        document.getElementById('step-5-title').textContent = (state.format === 'solo') ? 'На какой срок нужен доступ?' : 'Выбери пакет уроков';
-        renderPackages();
-        
-        // Reset package selection when entering step 5
-        const nextBtn = document.getElementById('btn-next-5');
-        if (nextBtn) nextBtn.disabled = true;
-        
-        goNext(5);
-    }
-
-    // Pricing Data
-    const PRICING_DB = {
-        'ege_prof': {
-            'solo': [
-                { label: 'Sprint (1 мес)', price: 4000, desc: 'Быстрый старт. Только тренажёр.' },
-                { label: 'Season Pass (3 мес)', price: 11000, desc: 'Идеально для рывка.' },
-                { label: 'Career Mode (4 мес)', price: 12800, desc: 'Мощная подготовка.', hot: true },
-                { label: 'Lead (9 мес)', price: 25200, desc: 'Весь учебный год.', hot: true }
-            ],
-            'mentor': [
-                { label: 'Junior (1 мес / 8 ур)', price: 16800, desc: '8 уроков по математике профиль' },
-                { label: 'Middle (2 мес / 16 ур)', price: 32400, desc: '16 уроков' },
-                { label: 'Advanced (3 мес / 24 ур)', price: 46800, desc: '24 урока' },
-                { label: 'Senior (4 мес / 32 ур)', price: 60000, desc: '32 урока.', hot: true },
-                { label: 'Lead (9 мес / 72 ур)', price: 129600, desc: '72 урока.', hot: true }
-            ],
-            'godmode': [
-                { label: 'Junior+ (1 мес / 8 ур)', price: 19000, desc: 'Уроки + Тренажер' },
-                { label: 'Middle+ (2 мес / 16 ур)', price: 36000, desc: 'Уроки + Тренажер' },
-                { label: 'Advanced+ (3 мес / 24 ур)', price: 52000, desc: 'Уроки + Тренажер' },
-                { label: 'Senior+ (4 мес / 32 ур)', price: 65600, desc: 'Уроки + Тренажер.', hot: true },
-                { label: 'Lead+ (9 мес / 72 ур)', price: 139500, desc: 'Уроки + Тренажер.', hot: true }
-            ]
-        },
-        'ege': {
-            'solo': [
-                { label: 'Sprint (1 мес)', price: 4000, desc: 'Быстрый старт. Только тренажёр.' },
-                { label: 'Season Pass (3 мес)', price: 11000, desc: 'Идеально для рывка.' },
-                { label: 'Career Mode (4 мес)', price: 12800, desc: 'Мощная подготовка.', hot: true },
-                { label: 'Lead (9 мес)', price: 25200, desc: 'Весь учебный год.', hot: true }
-            ],
-            'mentor': [
-                { label: 'Junior (1 мес / 8 ур)', price: 15200, desc: '8 уроков по информатике' },
-                { label: 'Middle (2 мес / 16 ур)', price: 28800, desc: '16 уроков' },
-                { label: 'Advanced (3 мес / 24 ур)', price: 40800, desc: '24 урока' },
-                { label: 'Senior (4 мес / 32 ур)', price: 51200, desc: '32 урока.', hot: true },
-                { label: 'Lead (9 мес / 72 ур)', price: 108000, desc: '72 урока.', hot: true }
-            ],
-            'godmode': [
-                { label: 'Junior+ (1 мес / 8 ур)', price: 17200, desc: 'Уроки + Тренажер' },
-                { label: 'Middle+ (2 мес / 16 ур)', price: 32000, desc: 'Уроки + Тренажер' },
-                { label: 'Advanced+ (3 мес / 24 ур)', price: 46000, desc: 'Уроки + Тренажер' },
-                { label: 'Senior+ (4 мес / 32 ур)', price: 57600, desc: 'Уроки + Тренажер.', hot: true },
-                { label: 'Lead+ (9 мес / 72 ур)', price: 121500, desc: 'Уроки + Тренажер.', hot: true }
-            ]
-        },
-        'oge': {
-            'solo': [
-                { label: 'Sprint (1 мес)', price: 3000, desc: 'Только тренажёр' },
-                { label: 'Season Pass (3 мес)', price: 8000, desc: 'Идеально для рывка.' },
-                { label: 'Career Mode (4 мес)', price: 10400, desc: 'Мощная подготовка.', hot: true },
-                { label: 'Lead (9 мес)', price: 18000, desc: 'Весь учебный год.', hot: true }
-            ],
-            'mentor': [
-                { label: 'Junior (1 мес / 8 ур)', price: 12800, desc: '8 уроков' },
-                { label: 'Middle (2 мес / 16 ур)', price: 24400, desc: '16 уроков' },
-                { label: 'Advanced (3 мес / 24 ур)', price: 34800, desc: '24 урока' },
-                { label: 'Senior (4 мес / 32 ур)', price: 44000, desc: '32 урока.', hot: true },
-                { label: 'Lead (9 мес / 72 ур)', price: 93600, desc: '72 урока.', hot: true }
-            ],
-            'godmode': [
-                { label: 'Junior+ (1 мес / 8 ур)', price: 14300, desc: 'Уроки + Тренажер' },
-                { label: 'Middle+ (2 мес / 16 ур)', price: 27000, desc: 'Уроки + Тренажер' },
-                { label: 'Advanced+ (3 мес / 24 ур)', price: 39000, desc: 'Уроки + Тренажер' },
-                { label: 'Senior+ (4 мес / 32 ур)', price: 48800, desc: 'Уроки + Тренажер.', hot: true },
-                { label: 'Lead+ (9 мес / 72 ур)', price: 103500, desc: 'Уроки + Тренажер.', hot: true }
-            ]
-        }
-    };
-    PRICING_DB['ege_base'] = PRICING_DB['oge'];
-
-    {% if dynamic_pricing %}
-    const SERVER_PRICING = {{ dynamic_pricing | tojson }};
-    if (SERVER_PRICING && typeof SERVER_PRICING === 'object') {
-        for (const k in SERVER_PRICING) {
-            if (!PRICING_DB[k]) PRICING_DB[k] = {};
-            for (const f in SERVER_PRICING[k]) {
-                if (SERVER_PRICING[k][f] && SERVER_PRICING[k][f].length > 0) {
-                    PRICING_DB[k][f] = SERVER_PRICING[k][f];
-                }
-            }
-        }
-    }
-    {% endif %}
-
-    function getDBKey() {
-        if (state.exam === 'oge') return 'oge';
-        if (state.exam === 'ege' && state.subject === 'inf') return 'ege';
-        if (state.exam === 'ege' && state.subject === 'math') {
-            return state.level === 'prof' ? 'ege_prof' : 'ege_base';
-        }
-        return 'oge';
-    }
-
-    function renderPackages() {
-        const topRow = document.getElementById('packages-top');
-        const bottomRow = document.getElementById('packages-bottom');
-        topRow.innerHTML = ''; 
-        bottomRow.innerHTML = '';
-        
-        const dbKey = getDBKey();
-        const packages = PRICING_DB[dbKey][state.format];
-        if (!packages) return;
-
-        packages.forEach((pkg, index) => {
-            const btn = document.createElement('div');
-            btn.className = 'card';
-            
-            let tagsHtml = '';
-            const badgeText = pkg.badge || (pkg.hot ? 'HOT' : '');
-            if (badgeText) {
-                tagsHtml = `
-                    <div class="tags-wrapper">
-                        <div class="tag tag-hot">${badgeText}</div>
-                    </div>
-                `;
-            }
-            
-            const titleParts = pkg.label.split('(');
-            const mainTitle = titleParts[0].trim();
-            const subTitle = titleParts.length > 1 ? '(' + titleParts[1] : '';
-            
-            btn.innerHTML = `
-                <div>
-                    <div class="card-header">
-                        <div class="card-title">${mainTitle}</div>
-                        ${tagsHtml}
-                    </div>
-                    <div class="card-desc">${pkg.desc}<br>${subTitle}</div>
-                </div>
-                <div class="card-price-wrapper">
-                    <div class="card-price">${pkg.price.toLocaleString('ru-RU')} <span>₽</span></div>
-                </div>
-            `;
-            
-            btn.onclick = function() {
-                selectCard(this);
-                selectPackage(pkg.price, pkg.label);
-            };
-            
-            if (index < 3) {
-                topRow.appendChild(btn);
-            } else {
-                bottomRow.appendChild(btn);
-            }
-        });
-    }
+    // Initialize floating cart state on page load
+    updateFloatingCart();
 </script>
 {% endblock %}

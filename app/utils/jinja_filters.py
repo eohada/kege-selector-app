@@ -412,6 +412,9 @@ def prepare_guest_task_content(html, task_number=None, source_url=None):
                 cleaned = cleaned[markers[20].start():end.start() if end else None]
             elif number == 21 and 21 in markers:
                 cleaned = cleaned[markers[21].start():]
+        # Удаляем упоминание номера темы (например: "(Тема 106: ...)" -> "(...)")
+        cleaned = re.sub(r'\(Тема\s+\d+:\s*([^\)]+)\)', r'(\1)', cleaned)
+        cleaned = re.sub(r'Тема\s+\d+:\s*', '', cleaned)
         return strip_attachment_links(cleaned)
     except Exception:
         return strip_attachment_links(html)
@@ -428,24 +431,29 @@ _BLEACH_ALLOWED_TAGS = [
     'math', 'semantics', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub',
     'mfrac', 'mroot', 'msqrt', 'munder', 'mover', 'mtable', 'mtr', 'mtd',
     'annotation',
-    'svg', 'path', 'line', 'circle', 'rect', 'g', 'use', 'defs', 'symbol',
+    'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'text', 'tspan', 'g', 'use', 'defs', 'symbol', 'marker',
 ]
 
 _BLEACH_ALLOWED_ATTRS = {
     '*': ['class', 'id', 'style', 'data-*', 'role', 'aria-label', 'aria-hidden', 'title', 'dir', 'lang'],
     'a': ['href', 'target', 'rel', 'download'],
-    'img': ['src', 'alt', 'width', 'height', 'loading'],
+    'img': ['src', 'alt', 'width', 'height', 'loading', 'class'],
     'table': ['border', 'cellpadding', 'cellspacing', 'align', 'valign'],
     'tr': ['align', 'valign'],
     'td': ['colspan', 'rowspan', 'align', 'valign'],
     'th': ['colspan', 'rowspan', 'scope', 'align', 'valign'],
     'col': ['span'],
     'colgroup': ['span'],
-    'svg': ['viewBox', 'width', 'height', 'fill', 'xmlns'],
-    'path': ['d', 'fill', 'stroke', 'stroke-width'],
-    'line': ['x1', 'y1', 'x2', 'y2', 'stroke'],
-    'circle': ['cx', 'cy', 'r', 'fill', 'stroke'],
-    'rect': ['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke'],
+    'svg': ['viewBox', 'width', 'height', 'fill', 'stroke', 'xmlns', 'style', 'class'],
+    'path': ['d', 'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'opacity', 'fill-opacity'],
+    'line': ['x1', 'y1', 'x2', 'y2', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity'],
+    'circle': ['cx', 'cy', 'r', 'fill', 'stroke', 'stroke-width', 'opacity'],
+    'rect': ['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke', 'stroke-width', 'opacity'],
+    'polygon': ['points', 'fill', 'stroke', 'stroke-width', 'opacity'],
+    'polyline': ['points', 'fill', 'stroke', 'stroke-width', 'opacity'],
+    'text': ['x', 'y', 'dx', 'dy', 'font-size', 'font-weight', 'font-family', 'fill', 'text-anchor', 'dominant-baseline', 'opacity'],
+    'tspan': ['x', 'y', 'dx', 'dy', 'font-size', 'font-weight', 'fill', 'text-anchor'],
+    'marker': ['id', 'viewBox', 'refX', 'refY', 'markerWidth', 'markerHeight', 'orient'],
     'use': ['href', 'xlink:href'],
     'annotation': ['encoding'],
 }
