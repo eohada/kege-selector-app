@@ -1366,7 +1366,28 @@ const BANK_GROUPS = {{ (groups_data if groups_data is defined else []) | tojson 
 const BANK_INITIAL_MODE = {{ (initial_mode if initial_mode is defined else 'explore') | tojson }};
 const BANK_INITIAL_RECIPIENT_IDS = {{ (initial_recipient_ids if initial_recipient_ids is defined else []) | tojson }};
 
-let bankStudioMode = (BANK_INITIAL_MODE === 'assignment') ? 'assignment' : (localStorage.getItem('boostudy_bank_studio_mode') || 'explore');
+function safeGetStorage(storage, key, fallback = null) {
+  try {
+    const val = storage ? storage.getItem(key) : null;
+    return val !== null ? val : fallback;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function safeSetStorage(storage, key, val) {
+  try {
+    if (storage) storage.setItem(key, val);
+  } catch (_) {}
+}
+
+function safeRemoveStorage(storage, key) {
+  try {
+    if (storage) storage.removeItem(key);
+  } catch (_) {}
+}
+
+let bankStudioMode = (BANK_INITIAL_MODE === 'assignment') ? 'assignment' : (safeGetStorage(window.localStorage, 'boostudy_bank_studio_mode', 'explore'));
 let selectedAssignmentStudentIds = new Set(BANK_INITIAL_RECIPIENT_IDS);
 
 let bankCourseId = '';
@@ -1387,7 +1408,7 @@ let quickNumberFilter = '';
 
 function setBankStudioMode(mode) {
   bankStudioMode = (mode === 'assignment') ? 'assignment' : 'explore';
-  localStorage.setItem('boostudy_bank_studio_mode', bankStudioMode);
+  safeSetStorage(window.localStorage, 'boostudy_bank_studio_mode', bankStudioMode);
 
   const exploreBtn = document.getElementById('bank-mode-explore-btn');
   const assignmentBtn = document.getElementById('bank-mode-assignment-btn');
@@ -1589,18 +1610,19 @@ function taskForBuilder(task) {
 
 function loadQueuedTasks() {
   try {
-    const saved = JSON.parse(sessionStorage.getItem(BANK_SELECTION_KEY) || '[]');
+    const raw = safeGetStorage(window.sessionStorage, BANK_SELECTION_KEY, '[]');
+    const saved = JSON.parse(raw || '[]');
     if (Array.isArray(saved)) {
       saved.forEach(task => task?.task_id && queuedTasks.set(Number(task.task_id), task));
     }
   } catch (_) {
-    sessionStorage.removeItem(BANK_SELECTION_KEY);
+    safeRemoveStorage(window.sessionStorage, BANK_SELECTION_KEY);
   }
   updateSelectedCount();
 }
 
 function persistQueuedTasks() {
-  sessionStorage.setItem(BANK_SELECTION_KEY, JSON.stringify([...queuedTasks.values()]));
+  safeSetStorage(window.sessionStorage, BANK_SELECTION_KEY, JSON.stringify([...queuedTasks.values()]));
   updateSelectedCount();
 }
 
