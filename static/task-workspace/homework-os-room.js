@@ -1,7 +1,7 @@
 (() => {
   const config = JSON.parse(document.getElementById('trainer-os-config')?.textContent || '{}');
-  if (!config.room_mode && !config.homework_mode) return;
-  const isHomework = Boolean(config.homework_mode && config.homework_workspace);
+  if (!config.homework_mode && !config.review_mode) return;
+  const isHomework = Boolean((config.homework_mode || config.review_mode) && config.homework_workspace);
   const ws = isHomework ? config.homework_workspace : null;
   const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const scope = ws ? {
@@ -32,6 +32,7 @@
   let notesTimer = 0;
   let codeSave = Promise.resolve();
   let notesSave = Promise.resolve();
+  let codeTouched = false;
   let notesTouched = false;
   let sources = null;
 
@@ -48,10 +49,12 @@
   function flushCode() {
     if (!isHomework || !ws || !ws.can_edit) return codeSave;
     clearTimeout(codeTimer);
+    codeTimer = 0;
     const code = codeEditor?.value || '';
     syncAnswerCode();
     codeSave = codeSave.catch(() => {}).then(() => post('/task-workspace/api/code', { ...scope, code }));
     codeSave.then(() => {
+      codeTouched = false;
       const badge = document.getElementById('hw-answer-code-status');
       if (badge) badge.textContent = `Код сохранён автоматически (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })})`;
     }).catch((error) => notify(error.message || 'Код не сохранён', true));
@@ -78,9 +81,11 @@
   function flushNotes() {
     if (!ws.can_edit) return notesSave;
     clearTimeout(notesTimer);
+    notesTimer = 0;
     const notes = notesEditor?.value || '';
     notesSave = notesSave.catch(() => {}).then(() => post('/task-workspace/api/notes', { ...scope, notes }));
     notesSave.then(() => {
+      notesTouched = false;
       const status = document.getElementById('notes-status-text');
       if (status) status.textContent = 'Сохранено';
     }).catch((error) => notify(error.message || 'Заметки не сохранены', true));
@@ -88,13 +93,21 @@
   }
 
   async function saveAll() {
-    if (!ws.can_edit) return;
+    if (!ws || (!ws.can_edit && !ws.can_review)) return;
     try {
-      await flushCode();
-      const saved = await answerFrame?.contentWindow?.BooTaskWorkspace?.save?.();
-      if (saved === false) console.warn('Ответ не сохранён');
-      await flushNotes();
-      await window.BooCanvasOverlay?.save?.();
+      const promises = [];
+      if (ws.can_edit) {
+        if (codeTimer || codeTouched) promises.push(flushCode());
+        if (notesTimer || notesTouched) promises.push(flushNotes());
+        const afSave = answerFrame?.contentWindow?.BooTaskWorkspace?.save?.();
+        if (afSave && typeof afSave.then === 'function') promises.push(afSave);
+      }
+      if (typeof window.BooCanvasOverlay?.save === 'function') {
+        promises.push(window.BooCanvasOverlay.save());
+      }
+      if (promises.length > 0) {
+        await Promise.allSettled(promises);
+      }
     } catch (err) {
       console.warn('saveAll warning:', err);
     }
@@ -331,11 +344,469 @@
     }
   }
 
+  function initLessonNotesViewer(lessonId) {
+    const windowEl = document.getElementById('lesson-notes-window');
+    if (!windowEl || !lessonId) return;
+
+    const dockIcon = document.getElementById('dock-icon-lesson-notes-window');
+    const titleEl = document.getElementById('lesson-notes-title');
+    const pagesListEl = document.getElementById('lesson-notes-pages-list');
+    const viewportEl = document.getElementById('lesson-notes-viewport');
+    const wrapEl = document.getElementById('lesson-notes-canvas-wrap');
+    const canvas = document.getElementById('lesson-notes-canvas');
+    const emptyEl = document.getElementById('lesson-notes-empty');
+    const loadingEl = document.getElementById('lesson-notes-loading');
+    const zoomInBtn = document.getElementById('lesson-notes-zoom-in');
+    const zoomOutBtn = document.getElementById('lesson-notes-zoom-out');
+    const zoomResetBtn = document.getElementById('lesson-notes-zoom-reset');
+    const zoomValEl = document.getElementById('lesson-notes-zoom-val');
+
+    if (!canvas || !viewportEl || !wrapEl) return;
+
+    let pages = [];
+    let strokes = [];
+    let activePageId = 'page_1';
+    let currentZoom = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let isLoaded = false;
+    let isLoading = false;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    const imageCache = new Map();
+
+    function updateTransform() {
+      wrapEl.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom})`;
+      if (zoomValEl) zoomValEl.textContent = `${Math.round(currentZoom * 100)}%`;
+    }
+
+    function setZoom(newZoom) {
+      currentZoom = Math.min(3.5, Math.max(0.25, newZoom));
+      updateTransform();
+    }
+
+    function resetZoom() {
+      currentZoom = 1.0;
+      panX = 0;
+      panY = 0;
+      updateTransform();
+    }
+
+    function renderBackground(ctx, width, height, bgType) {
+      if (bgType === 'dark') {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#334155';
+        for (let x = 24; x < width; x += 24) {
+          for (let y = 24; y < height; y += 24) {
+            ctx.fillRect(x, y, 1.5, 1.5);
+          }
+        }
+        return;
+      }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+
+      if (bgType === 'grid') {
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = 24; x < width; x += 24) {
+          ctx.moveTo(x, 0); ctx.lineTo(x, height);
+        }
+        for (let y = 24; y < height; y += 24) {
+          ctx.moveTo(0, y); ctx.lineTo(width, y);
+        }
+        ctx.stroke();
+      } else if (bgType === 'lines') {
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let y = 28; y < height; y += 28) {
+          ctx.moveTo(0, y); ctx.lineTo(width, y);
+        }
+        ctx.stroke();
+      } else if (bgType === 'dots' || !bgType) {
+        ctx.fillStyle = '#cbd5e1';
+        for (let x = 24; x < width; x += 24) {
+          for (let y = 24; y < height; y += 24) {
+            ctx.fillRect(x, y, 1.5, 1.5);
+          }
+        }
+      }
+    }
+
+    function drawStroke(ctx, s) {
+      if (!s) return;
+      const points = Array.isArray(s.points) ? s.points : [];
+      if (points.length === 0) return;
+
+      ctx.save();
+
+      // Eraser
+      if (s.eraser) {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+        ctx.lineWidth = s.width || 20;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        points.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = s.color || '#1e293b';
+      ctx.lineWidth = s.width || 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      if (s.style === 'dashed') ctx.setLineDash([8, 6]);
+      else if (s.style === 'dotted') ctx.setLineDash([2, 4]);
+      else ctx.setLineDash([]);
+
+      // Highlighter
+      if (s.type === 'highlighter' || s.highlighter) {
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalAlpha = s.opacity || 0.38;
+        ctx.lineWidth = Math.max(14, (s.width || 6) * 3);
+      }
+
+      // Text
+      if (s.type === 'text') {
+        ctx.fillStyle = s.color || '#0f172a';
+        const fontSize = Math.max(12, Number(s.fontSize) || 18);
+        ctx.font = `600 ${fontSize}px system-ui, sans-serif`;
+        ctx.textBaseline = 'top';
+        ctx.fillText(String(s.text || ''), points[0].x, points[0].y);
+        ctx.restore();
+        return;
+      }
+
+      // Sticky Note
+      if (s.type === 'note') {
+        const p1 = points[0];
+        const p2 = points[1] || { x: p1.x + 160, y: p1.y + 120 };
+        const x = Math.min(p1.x, p2.x);
+        const y = Math.min(p1.y, p2.y);
+        const w = Math.max(100, Math.abs(p2.x - p1.x));
+        const h = Math.max(60, Math.abs(p2.y - p1.y));
+        ctx.fillStyle = s.colorTheme === 'blue' ? '#dbeafe' : s.colorTheme === 'pink' ? '#fce7f3' : s.colorTheme === 'green' ? '#dcfce7' : '#fef9c3';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        if (ctx.roundRect) ctx.roundRect(x, y, w, h, 8);
+        else ctx.rect(x, y, w, h);
+        ctx.fill();
+        ctx.stroke();
+        if (s.text) {
+          ctx.fillStyle = '#1e293b';
+          ctx.font = '13px system-ui, sans-serif';
+          ctx.textBaseline = 'top';
+          const words = String(s.text).split(' ');
+          let line = '';
+          let lineY = y + 8;
+          for (const word of words) {
+            const testLine = line ? line + ' ' + word : word;
+            if (ctx.measureText(testLine).width > w - 16) {
+              ctx.fillText(line, x + 8, lineY);
+              line = word;
+              lineY += 16;
+              if (lineY > y + h - 16) break;
+            } else {
+              line = testLine;
+            }
+          }
+          if (line && lineY <= y + h - 16) ctx.fillText(line, x + 8, lineY);
+        }
+        ctx.restore();
+        return;
+      }
+
+      // Image
+      if (s.type === 'image' && s.src) {
+        const p1 = points[0];
+        const p2 = points[1] || { x: p1.x + 200, y: p1.y + 150 };
+        const x = Math.min(p1.x, p2.x);
+        const y = Math.min(p1.y, p2.y);
+        const w = Math.max(20, Math.abs(p2.x - p1.x));
+        const h = Math.max(20, Math.abs(p2.y - p1.y));
+        let cached = imageCache.get(s.src);
+        if (!cached) {
+          cached = new Image();
+          cached.src = s.src;
+          cached.onload = () => renderPage();
+          imageCache.set(s.src, cached);
+        }
+        if (cached && cached.complete && cached.naturalWidth > 0) {
+          try { ctx.drawImage(cached, x, y, w, h); } catch (_) {}
+        }
+        ctx.restore();
+        return;
+      }
+
+      // Shapes & Connectors
+      if (s.type === 'connector' || ['line', 'arrow', 'double-arrow'].includes(s.shape)) {
+        const p1 = points[0];
+        const p2 = points[points.length - 1];
+        if (p1 && p2) {
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+
+          if (s.shape === 'arrow' || s.shape === 'double-arrow') {
+            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            const headLen = Math.max(10, (s.width || 3) * 3);
+            ctx.beginPath();
+            ctx.moveTo(p2.x, p2.y);
+            ctx.lineTo(p2.x - headLen * Math.cos(angle - Math.PI / 6), p2.y - headLen * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(p2.x, p2.y);
+            ctx.lineTo(p2.x - headLen * Math.cos(angle + Math.PI / 6), p2.y - headLen * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+          }
+          if (s.shape === 'double-arrow') {
+            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            const headLen = Math.max(10, (s.width || 3) * 3);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p1.x + headLen * Math.cos(angle - Math.PI / 6), p1.y + headLen * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p1.x + headLen * Math.cos(angle + Math.PI / 6), p1.y + headLen * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+        return;
+      }
+
+      if (s.type === 'shape') {
+        const p1 = points[0];
+        const p2 = points[1] || p1;
+        const x = Math.min(p1.x, p2.x);
+        const y = Math.min(p1.y, p2.y);
+        const w = Math.max(1, Math.abs(p2.x - p1.x));
+        const h = Math.max(1, Math.abs(p2.y - p1.y));
+        ctx.beginPath();
+        if (s.shape === 'circle') {
+          const rad = Math.min(w, h) / 2;
+          ctx.arc(x + rad, y + rad, Math.max(0.5, rad), 0, Math.PI * 2);
+        } else if (s.shape === 'ellipse') {
+          ctx.ellipse(x + w / 2, y + h / 2, Math.max(0.5, w / 2), Math.max(0.5, h / 2), 0, 0, Math.PI * 2);
+        } else if (s.shape === 'triangle') {
+          ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); ctx.closePath();
+        } else if (s.shape === 'rounded-rect') {
+          const r = Math.min(12, w / 2, h / 2);
+          if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
+          else ctx.rect(x, y, w, h);
+        } else {
+          ctx.rect(x, y, w, h);
+        }
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
+
+      // Freehand drawing stroke
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function renderPage() {
+      const page = pages.find((p) => p.id === activePageId) || pages[0];
+      const pageId = page ? page.id : 'page_1';
+      const bgType = page?.background || 'dots';
+
+      const pageStrokes = strokes.filter((s) => {
+        if (s.page_id) return s.page_id === pageId;
+        return pageId === (pages[0]?.id || 'page_1');
+      });
+
+      let minX = 0, minY = 0, maxX = 1200, maxY = 800;
+      let hasPoints = false;
+      for (const s of pageStrokes) {
+        for (const p of s.points || []) {
+          if (Number.isFinite(p.x) && Number.isFinite(p.y)) {
+            if (!hasPoints) {
+              minX = p.x; maxX = p.x;
+              minY = p.y; maxY = p.y;
+              hasPoints = true;
+            } else {
+              if (p.x < minX) minX = p.x;
+              if (p.x > maxX) maxX = p.x;
+              if (p.y < minY) minY = p.y;
+              if (p.y > maxY) maxY = p.y;
+            }
+          }
+        }
+      }
+
+      const vpW = Math.max(800, viewportEl.clientWidth || 800);
+      const vpH = Math.max(600, viewportEl.clientHeight || 600);
+      const canvasW = Math.max(vpW, Math.ceil(maxX + 120), 1400);
+      const canvasH = Math.max(vpH, Math.ceil(maxY + 120), 900);
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(canvasW * dpr);
+      canvas.height = Math.floor(canvasH * dpr);
+      canvas.style.width = `${canvasW}px`;
+      canvas.style.height = `${canvasH}px`;
+      wrapEl.style.width = `${canvasW}px`;
+      wrapEl.style.height = `${canvasH}px`;
+
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      renderBackground(ctx, canvasW, canvasH, bgType);
+
+      if (pageStrokes.length === 0 && strokes.length === 0) {
+        if (emptyEl) emptyEl.classList.remove('hidden');
+      } else {
+        if (emptyEl) emptyEl.classList.add('hidden');
+        pageStrokes.forEach((s) => drawStroke(ctx, s));
+      }
+    }
+
+    function renderPageTabs() {
+      if (!pagesListEl) return;
+      pagesListEl.replaceChildren();
+
+      if (pages.length === 0) {
+        pages = [{ id: 'page_1', title: 'Страница 1', background: 'dots' }];
+      }
+
+      pages.forEach((p, idx) => {
+        const isActive = p.id === activePageId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `px-2.5 py-1 text-xs rounded-lg transition-all flex items-center gap-1.5 border font-medium ${
+          isActive
+            ? 'bg-white text-emerald-700 font-bold shadow-sm border-slate-300'
+            : 'text-slate-600 bg-transparent hover:bg-slate-200/60 border-transparent'
+        }`;
+        btn.innerHTML = `<i class="ph-bold ph-file-text text-[11px] ${isActive ? 'text-emerald-500' : 'text-slate-400'}"></i><span>${p.title || `Страница ${idx + 1}`}</span>`;
+        btn.addEventListener('click', () => {
+          activePageId = p.id;
+          renderPageTabs();
+          renderPage();
+        });
+        pagesListEl.appendChild(btn);
+      });
+    }
+
+    async function loadSummary() {
+      if (isLoading) return;
+      isLoading = true;
+      if (loadingEl) loadingEl.classList.remove('hidden');
+      if (emptyEl) emptyEl.classList.add('hidden');
+
+      try {
+        const resp = await fetch(`/api/lessons/${lessonId}/board-summary`, { credentials: 'same-origin' });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success) throw new Error(data.error || 'Ошибка загрузки данных');
+
+        pages = Array.isArray(data.pages) && data.pages.length ? data.pages : [{ id: 'page_1', title: 'Страница 1', background: 'dots' }];
+        strokes = Array.isArray(data.strokes) ? data.strokes : [];
+        activePageId = data.active_page_id && pages.some((p) => p.id === data.active_page_id) ? data.active_page_id : pages[0].id;
+
+        if (titleEl && data.title) {
+          titleEl.textContent = `Конспект · ${data.title}`;
+        }
+
+        isLoaded = true;
+        renderPageTabs();
+        renderPage();
+        resetZoom();
+      } catch (err) {
+        console.warn('Lesson notes load error:', err);
+        if (emptyEl) {
+          emptyEl.classList.remove('hidden');
+          const span = emptyEl.querySelector('span');
+          if (span) span.textContent = 'Не удалось загрузить конспект урока.';
+        }
+      } finally {
+        isLoading = false;
+        if (loadingEl) loadingEl.classList.add('hidden');
+      }
+    }
+
+    // Attach zoom controls
+    zoomInBtn?.addEventListener('click', () => setZoom(currentZoom * 1.25));
+    zoomOutBtn?.addEventListener('click', () => setZoom(currentZoom / 1.25));
+    zoomResetBtn?.addEventListener('click', resetZoom);
+
+    // Mouse wheel zoom
+    viewportEl.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+        setZoom(currentZoom * factor);
+      }
+    }, { passive: false });
+
+    // Drag to pan
+    viewportEl.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      isDragging = true;
+      dragStartX = e.clientX - panX;
+      dragStartY = e.clientY - panY;
+      viewportEl.setPointerCapture?.(e.pointerId);
+    });
+
+    viewportEl.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      panX = e.clientX - dragStartX;
+      panY = e.clientY - dragStartY;
+      updateTransform();
+    });
+
+    const stopDrag = (e) => {
+      if (isDragging) {
+        isDragging = false;
+        viewportEl.releasePointerCapture?.(e.pointerId);
+      }
+    };
+    viewportEl.addEventListener('pointerup', stopDrag);
+    viewportEl.addEventListener('pointercancel', stopDrag);
+
+    // Trigger load when dock icon clicked or window opened
+    dockIcon?.addEventListener('click', () => {
+      if (!isLoaded && !isLoading) loadSummary();
+    });
+
+    // Observer for window visibility
+    const observer = new MutationObserver(() => {
+      const isVisible = !windowEl.classList.contains('hidden') && windowEl.style.display !== 'none';
+      if (isVisible && !isLoaded && !isLoading) {
+        loadSummary();
+      }
+    });
+    observer.observe(windowEl, { attributes: true, attributeFilter: ['class', 'style'] });
+
+    window.refreshLessonNotes = loadSummary;
+  }
+
   function init() {
     window.formatTaskCondition = formatTaskCondition;
 
     if (isHomework) {
       initFiles();
+      if (config.linked_lesson_id) {
+        initLessonNotesViewer(config.linked_lesson_id);
+      }
     }
     formatTaskCondition();
 
@@ -357,28 +828,18 @@
     }
 
     const board = document.getElementById('whiteboard-canvas-viewport');
-    if (board && window.BooCanvasOverlay) {
-      if (isHomework && ws) {
-        window.BooCanvasOverlay.setContext(ws.task_id, `submission_task_${ws.assignment_task_id}`, ws.context_id);
+    if (board && window.BooCanvasOverlay && isHomework && ws) {
+      window.BooCanvasOverlay.setContext(ws.task_id, `submission_task_${ws.assignment_task_id}`, ws.context_id);
+      window.BooCanvasOverlay.openIn(board);
+      if (config.review_mode) {
+        if (typeof window.BooCanvasOverlay.setReviewMode === 'function') {
+          window.BooCanvasOverlay.setReviewMode(true);
+        }
       } else {
-        // Lesson room whiteboard context
-        let initialTaskId = config.lesson_id;
-        let initialContextType = 'lesson';
-        let initialContextId = config.lesson_id;
-        try {
-          const rawTasks = typeof config.classwork_tasks === 'string' ? JSON.parse(config.classwork_tasks || '[]') : config.classwork_tasks;
-          const tasks = Array.isArray(rawTasks) ? rawTasks : [];
-          if (tasks.length > 0 && tasks[0]) {
-            initialTaskId = tasks[0].task_id || tasks[0].lesson_task_id || config.lesson_id;
-            initialContextType = 'lesson_task';
-            initialContextId = tasks[0].lesson_task_id || config.lesson_id;
-          }
-        } catch (_) {}
-        if (initialTaskId) {
-          window.BooCanvasOverlay.setContext(Number(initialTaskId), initialContextType, initialContextId ? Number(initialContextId) : null);
+        if (typeof window.BooCanvasOverlay.setReadOnly === 'function') {
+          window.BooCanvasOverlay.setReadOnly(!ws.can_edit);
         }
       }
-      window.BooCanvasOverlay.openIn(board);
     }
 
     if (isHomework && ws) {
@@ -395,6 +856,7 @@
         });
       }
       if (ws.can_edit) window.addEventListener('boostudy:homework-code-input', () => {
+        codeTouched = true;
         syncAnswerCode();
         clearTimeout(codeTimer);
         codeTimer = setTimeout(flushCode, 750);
@@ -446,11 +908,161 @@
       });
     }
 
+    // ======================================================================
+    // Code Gutter Line Comments (Review & Feedback Notes)
+    // ======================================================================
+    const getSubmissionId = () => ws?.submission_id || (ws?.context_type && ws?.context_type.startsWith('submission') ? ws?.context_id : null) || config.homework_workspace?.submission_id;
+
+    async function loadLineComments(targetTaskId) {
+      const subId = getSubmissionId();
+      if (!subId) return;
+      const tid = targetTaskId || ws?.assignment_task_id;
+      if (!tid) return;
+
+      try {
+        const url = `/submissions/${subId}/comments?assignment_task_id=${tid}`;
+        const res = await fetch(url, { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success) return;
+
+        window.codeLineCommentsMap = {};
+        (data.comments || []).forEach(c => {
+          const text = c.text || '';
+          const m = text.match(/^\[line:(\d+)\]\s*([\s\S]*)$/);
+          if (m) {
+            const lineNum = parseInt(m[1], 10);
+            if (!window.codeLineCommentsMap[lineNum]) window.codeLineCommentsMap[lineNum] = [];
+            window.codeLineCommentsMap[lineNum].push({
+              id: c.id,
+              line: lineNum,
+              text: m[2],
+              rawText: text,
+              author: c.author,
+              created_human: c.created_human
+            });
+          }
+        });
+
+        if (typeof window.updateLineNumbers === 'function') {
+          window.updateLineNumbers();
+        }
+        if (window.activeGutterLine && typeof window.renderGutterLineComments === 'function') {
+          window.renderGutterLineComments(window.activeGutterLine);
+        }
+      } catch (e) {
+        console.warn('[LineComments] failed to load:', e);
+      }
+    }
+
+    async function saveLineComment(line, text) {
+      const subId = getSubmissionId();
+      if (!subId || !text || !text.trim()) return;
+      const currentTaskId = ws?.assignment_task_id;
+      const formattedText = `[line:${line}] ${text.trim()}`;
+      try {
+        const res = await fetch(`/submissions/${subId}/comments`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': token
+          },
+          body: JSON.stringify({
+            text: formattedText,
+            assignment_task_id: currentTaskId
+          })
+        });
+        const data = await res.json();
+        if (data.success && data.comment) {
+          notify('Пометка к строке сохранена');
+          await loadLineComments(currentTaskId);
+          if (window.activeGutterLine && typeof window.renderGutterLineComments === 'function') {
+            window.renderGutterLineComments(window.activeGutterLine);
+          }
+        } else {
+          notify(data.error || 'Ошибка при сохранении пометки', true);
+        }
+      } catch (e) {
+        notify('Ошибка при сохранении: ' + e.message, true);
+      }
+    }
+
+    async function deleteLineComment(commentId, line) {
+      const subId = getSubmissionId();
+      if (!subId || !commentId) return;
+      try {
+        const res = await fetch(`/submissions/${subId}/comments/${commentId}`, {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          headers: {
+            'X-CSRFToken': token
+          }
+        });
+        const data = await res.json();
+        if (data.success) {
+          notify('Пометка удалена');
+          await loadLineComments(ws?.assignment_task_id);
+          if (window.activeGutterLine && typeof window.renderGutterLineComments === 'function') {
+            window.renderGutterLineComments(window.activeGutterLine);
+          }
+        } else {
+          notify(data.error || 'Ошибка при удалении пометки', true);
+        }
+      } catch (e) {
+        notify('Ошибка при удалении: ' + e.message, true);
+      }
+    }
+
+    window.saveCodeLineComment = saveLineComment;
+    window.deleteCodeLineComment = deleteLineComment;
+    window.loadCodeLineComments = loadLineComments;
+
+    // Popover UI binding
+    const popoverSaveBtn = document.getElementById('code-line-popover-save-btn');
+    const popoverInput = document.getElementById('code-line-popover-input');
+    if (popoverSaveBtn) {
+      popoverSaveBtn.addEventListener('click', async () => {
+        if (!window.activeGutterLine) return;
+        const text = popoverInput?.value?.trim();
+        if (!text) {
+          popoverInput?.focus();
+          return;
+        }
+        popoverSaveBtn.disabled = true;
+        const origText = popoverSaveBtn.innerHTML;
+        popoverSaveBtn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i>';
+        try {
+          await saveLineComment(window.activeGutterLine, text);
+          if (popoverInput) popoverInput.value = '';
+        } finally {
+          popoverSaveBtn.disabled = false;
+          popoverSaveBtn.innerHTML = origText;
+        }
+      });
+    }
+
+    popoverInput?.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        popoverSaveBtn?.click();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        window.closeCodeLinePopover?.();
+      }
+    });
+
+    if (getSubmissionId() && ws?.assignment_task_id) {
+      loadLineComments(ws.assignment_task_id);
+    }
+
     function initReorderableDock() {
       const dock = document.getElementById('board-dock');
       if (!dock) return;
 
-      const storageKey = isHomework ? 'boostudy_dock_order_homework_v2' : 'boostudy_dock_order_lesson_v2';
+      const storageKey = isHomework
+        ? (config.review_mode ? 'boostudy_dock_order_review_v2' : 'boostudy_dock_order_homework_v2')
+        : 'boostudy_dock_order_lesson_v2';
 
       function getDraggableItems() {
         return Array.from(dock.querySelectorAll('.board-dock-item')).filter((el) => {
@@ -462,7 +1074,7 @@
 
       // 1. Restore saved dock order
       try {
-        const savedRaw = localStorage.getItem(storageKey) || localStorage.getItem('boostudy_dock_order_v1');
+        const savedRaw = localStorage.getItem(storageKey);
         const savedDock = JSON.parse(savedRaw || '[]');
         if (Array.isArray(savedDock) && savedDock.length > 0) {
           const itemMap = new Map();
@@ -655,7 +1267,6 @@
           try {
             const currentOrder = getDraggableItems().map((i) => i.id).filter(Boolean);
             localStorage.setItem(storageKey, JSON.stringify(currentOrder));
-            localStorage.setItem('boostudy_dock_order_v1', JSON.stringify(currentOrder));
           } catch (err) {
             console.warn('Не удалось сохранить порядок dock', err);
           }
@@ -707,14 +1318,29 @@
       isSwitchingTask = true;
       console.log('[switchTaskSeamless] starting switch to:', newAssignmentTaskId);
 
+      // 1. Instant optimistic tab feedback: highlight clicked tab immediately
+      document.querySelectorAll('.homework-os-task-tab').forEach((tab) => {
+        const isCurrent = String(tab.dataset.taskId) === String(newAssignmentTaskId);
+        tab.classList.toggle('is-active', isCurrent);
+        tab.setAttribute('aria-current', isCurrent ? 'page' : 'false');
+      });
+
       const contentEl = document.getElementById('task-current-content');
-      if (contentEl) contentEl.style.opacity = '0.4';
+      if (contentEl) contentEl.style.opacity = '0.5';
 
       try {
-        await saveAll();
+        if (ws.can_edit && typeof window.getEditorMainPyCode === 'function') {
+          ws.code = window.getEditorMainPyCode();
+        }
 
+        // 2. Parallel execution: run dirty flushes and fetch new task context concurrently
         const apiUrl = `/task-workspace/api/context?context_type=submission_task&context_id=${ws.context_id}&assignment_task_id=${newAssignmentTaskId}`;
-        const data = await readJson(fetch(apiUrl, { credentials: 'same-origin' }));
+        const fetchPromise = readJson(fetch(apiUrl, { credentials: 'same-origin' }));
+        const [_, data] = await Promise.all([
+          saveAll(),
+          fetchPromise
+        ]);
+
         const newWs = data.workspace;
         if (!newWs) throw new Error('Данные задания не получены');
 
@@ -737,6 +1363,15 @@
         const board = document.getElementById('whiteboard-canvas-viewport');
         if (board && window.BooCanvasOverlay) {
           window.BooCanvasOverlay.setContext(ws.task_id, `submission_task_${ws.assignment_task_id}`, ws.context_id);
+          if (config.review_mode) {
+            if (typeof window.BooCanvasOverlay.setReviewMode === 'function') {
+              window.BooCanvasOverlay.setReviewMode(true);
+            }
+          } else {
+            if (typeof window.BooCanvasOverlay.setReadOnly === 'function') {
+              window.BooCanvasOverlay.setReadOnly(!ws.can_edit);
+            }
+          }
         }
 
         // Update task tabs active indicator
@@ -760,13 +1395,16 @@
           formatTaskCondition();
         }
 
-        // Update code editor
-        if (codeEditor) {
-          codeEditor.value = newWs.code || newWs.starter_code || '';
+        // Update code editor & virtualFS isolated per task
+        const taskCode = newWs.code || newWs.starter_code || '';
+        if (typeof window.setEditorMainPyCode === 'function') {
+          window.setEditorMainPyCode(taskCode);
+        } else if (codeEditor) {
+          codeEditor.value = taskCode;
           if (typeof onCodeEditorInput === 'function') onCodeEditorInput(codeEditor.value);
           else if (typeof updateCodeHighlight === 'function') updateCodeHighlight();
-          syncAnswerCode();
         }
+        syncAnswerCode();
 
         // Update notes
         if (notesEditor) {
@@ -834,6 +1472,17 @@
         // Reload transfer sources
         loadSources().catch(() => {});
 
+        // Update Teacher Review OS UI
+        if (window.reviewGradeManager?.updateForTask) {
+          window.reviewGradeManager.updateForTask(newWs);
+        }
+
+        // Reload line comments for new task
+        loadLineComments(newAssignmentTaskId);
+        if (typeof window.closeCodeLinePopover === 'function') {
+          window.closeCodeLinePopover();
+        }
+
         console.log('[switchTaskSeamless] success for:', newAssignmentTaskId);
       } catch (error) {
         console.error('Seamless switch error:', error);
@@ -844,7 +1493,406 @@
       }
     }
 
+    function initReviewGradeManager(ws, notify) {
+      const isReview = Boolean(window.trainerOsConfig?.review_mode || config.review_mode);
+      if (!isReview) return null;
+
+      console.log('[initReviewGradeManager] initializing for submission:', ws.submission_id);
+
+      const reviewState = {
+        submissionId: ws.submission_id,
+        currentAssignmentTaskId: ws.assignment_task_id,
+        scores: {},
+        teacherFeedback: ws.submission_meta?.teacher_feedback || '',
+        status: ws.submission_meta?.status || 'SUBMITTED',
+        isSaving: false,
+        saveTimer: null,
+        playback: {
+          frames: Array.isArray(ws.playback?.frames) ? ws.playback.frames.slice() : [],
+          index: 0,
+          timer: null,
+          isPlaying: false
+        }
+      };
+
+      (ws.tasks_nav || []).forEach(item => {
+        const isCur = String(item.assignment_task_id) === String(ws.assignment_task_id);
+        reviewState.scores[item.assignment_task_id] = {
+          score: (item.score !== undefined && item.score !== null) ? Number(item.score) : null,
+          comment: isCur ? (ws.teacher_comment || '') : '',
+          max_score: Number(item.max_score || 1),
+          nav_status: item.nav_status || 'pending_review'
+        };
+      });
+
+      const statusBadge = document.getElementById('review-task-status-badge');
+      const scoreInput = document.getElementById('review-task-score-input');
+      const maxScoreEl = document.getElementById('review-task-max-score');
+      const quickScoresContainer = document.getElementById('review-quick-scores');
+      const commentInput = document.getElementById('review-task-comment');
+      const commentStatus = document.getElementById('review-task-comment-status');
+      const feedbackInput = document.getElementById('review-general-feedback');
+      const totalScoreDisplay = document.getElementById('review-total-score-display');
+      const maxScoreDisplay = document.getElementById('review-max-score-display');
+      const percentDisplay = document.getElementById('review-percent-display');
+      const returnBtn = document.getElementById('review-action-return-btn');
+      const gradeBtn = document.getElementById('review-action-grade-btn');
+      const topGradeBtn = document.getElementById('hw-review-top-grade-btn');
+
+      const playbackContainer = document.getElementById('review-playback-container');
+      const playbackPlayBtn = document.getElementById('review-playback-play-btn');
+      const playbackRange = document.getElementById('review-playback-range');
+      const playbackStepCounter = document.getElementById('review-playback-step-counter');
+      const playbackResetBtn = document.getElementById('review-playback-reset-btn');
+
+      function calculateTotals() {
+        let total = 0;
+        let maxTotal = 0;
+        Object.values(reviewState.scores).forEach(entry => {
+          if (entry.score !== null && entry.score !== undefined) {
+            total += Number(entry.score);
+          }
+          maxTotal += Number(entry.max_score || 1);
+        });
+        const pct = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+        if (totalScoreDisplay) totalScoreDisplay.textContent = total;
+        if (maxScoreDisplay) maxScoreDisplay.textContent = maxTotal;
+        if (percentDisplay) percentDisplay.textContent = `(${pct}%)`;
+      }
+
+      function updateTabBadge(assignmentTaskId, score, maxScore) {
+        const tab = document.querySelector(`.homework-os-task-tab[data-task-id="${assignmentTaskId}"]`);
+        if (!tab) return;
+        let badge = tab.querySelector('.homework-task-badge');
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'homework-task-badge';
+          tab.appendChild(badge);
+        }
+        badge.className = 'homework-task-badge';
+        if (score !== null && score !== undefined) {
+          if (score >= maxScore && maxScore > 0) {
+            badge.classList.add('is-correct');
+            badge.title = `Верно (+${score})`;
+            badge.innerHTML = '<i class="ph-bold ph-check"></i>';
+          } else if (score === 0) {
+            badge.classList.add('is-wrong');
+            badge.title = 'Неверно (0)';
+            badge.innerHTML = '<i class="ph-bold ph-x"></i>';
+          } else {
+            badge.classList.add('is-partial');
+            badge.title = `Частично (${score}/${maxScore})`;
+            badge.innerHTML = '<i class="ph-bold ph-minus"></i>';
+          }
+        } else {
+          badge.classList.add('is-manual');
+          badge.title = 'Ждёт проверки';
+          badge.innerHTML = '<i class="ph-bold ph-pencil-simple"></i>';
+        }
+      }
+
+      function renderQuickScores(maxScore, currentScore) {
+        if (!quickScoresContainer) return;
+        quickScoresContainer.innerHTML = '';
+        const numMax = Math.max(1, Number(maxScore) || 1);
+        for (let s = 0; s <= numMax; s++) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.score = s;
+          const isAct = (currentScore !== null && currentScore !== undefined && Number(currentScore) === s);
+          btn.className = `review-score-btn px-3 py-1.5 rounded-lg border font-bold text-xs transition-all ${
+            isAct
+              ? (s > 0 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs is-active' : 'bg-rose-600 text-white border-rose-600 shadow-xs is-active')
+              : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
+          }`;
+          btn.textContent = s;
+          btn.addEventListener('click', () => {
+            setScoreForCurrentTask(s);
+          });
+          quickScoresContainer.appendChild(btn);
+        }
+      }
+
+      function updateStatusBadge(score, maxScore, navStatus) {
+        if (!statusBadge) return;
+        if (score !== null && score !== undefined) {
+          if (score >= maxScore && maxScore > 0) {
+            statusBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 bg-emerald-50 text-emerald-700 border-emerald-200';
+            statusBadge.innerHTML = `<i class="ph-bold ph-check-circle text-emerald-600"></i> <span>Верно (+${score})</span>`;
+          } else if (score === 0) {
+            statusBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 bg-rose-50 text-rose-700 border-rose-200';
+            statusBadge.innerHTML = `<i class="ph-bold ph-x-circle text-rose-600"></i> <span>Неверно (0)</span>`;
+          } else {
+            statusBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 bg-amber-50 text-amber-700 border-amber-200';
+            statusBadge.innerHTML = `<i class="ph-bold ph-minus-circle text-amber-600"></i> <span>Частично (+${score})</span>`;
+          }
+        } else {
+          statusBadge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 bg-slate-100 text-slate-600 border-slate-200';
+          statusBadge.innerHTML = '<i class="ph-bold ph-clock text-slate-400"></i> <span>Ждёт проверки</span>';
+        }
+      }
+
+      function setScoreForCurrentTask(val) {
+        const atId = reviewState.currentAssignmentTaskId;
+        const numVal = (val === '' || val === null || val === undefined) ? null : Math.max(0, Number(val));
+        const entry = reviewState.scores[atId] || { max_score: 1, comment: '' };
+        entry.score = numVal;
+        reviewState.scores[atId] = entry;
+
+        if (scoreInput) scoreInput.value = (numVal !== null) ? numVal : '';
+        renderQuickScores(entry.max_score, numVal);
+        updateStatusBadge(numVal, entry.max_score, entry.nav_status);
+        updateTabBadge(atId, numVal, entry.max_score);
+        calculateTotals();
+        scheduleAutosave();
+      }
+
+      function setupPlayback(frames) {
+        reviewState.playback.frames = Array.isArray(frames) ? frames.slice() : [];
+        reviewState.playback.index = reviewState.playback.frames.length ? reviewState.playback.frames.length - 1 : 0;
+        if (reviewState.playback.timer) {
+          clearInterval(reviewState.playback.timer);
+          reviewState.playback.timer = null;
+          reviewState.playback.isPlaying = false;
+        }
+        if (playbackPlayBtn) playbackPlayBtn.innerHTML = '<i class="ph-bold ph-play"></i>';
+        if (!playbackContainer) return;
+        if (!reviewState.playback.frames.length) {
+          playbackContainer.style.display = 'none';
+          return;
+        }
+        playbackContainer.style.display = 'block';
+        if (playbackRange) {
+          playbackRange.max = reviewState.playback.frames.length - 1;
+          playbackRange.value = reviewState.playback.frames.length - 1;
+        }
+        if (playbackStepCounter) {
+          playbackStepCounter.textContent = `${reviewState.playback.frames.length} / ${reviewState.playback.frames.length}`;
+        }
+      }
+
+      function applyPlaybackFrame(idx) {
+        if (!reviewState.playback.frames.length) return;
+        const clamped = Math.max(0, Math.min(idx, reviewState.playback.frames.length - 1));
+        reviewState.playback.index = clamped;
+        const frame = reviewState.playback.frames[clamped];
+        if (frame && typeof window.setEditorMainPyCode === 'function') {
+          window.setEditorMainPyCode(frame.code || '');
+        }
+        if (playbackRange) playbackRange.value = clamped;
+        if (playbackStepCounter) playbackStepCounter.textContent = `${clamped + 1} / ${reviewState.playback.frames.length}`;
+      }
+
+      function togglePlaybackPlay() {
+        if (!reviewState.playback.frames.length) return;
+        if (reviewState.playback.isPlaying) {
+          clearInterval(reviewState.playback.timer);
+          reviewState.playback.timer = null;
+          reviewState.playback.isPlaying = false;
+          if (playbackPlayBtn) playbackPlayBtn.innerHTML = '<i class="ph-bold ph-play"></i>';
+        } else {
+          if (reviewState.playback.index >= reviewState.playback.frames.length - 1) {
+            applyPlaybackFrame(0);
+          }
+          reviewState.playback.isPlaying = true;
+          if (playbackPlayBtn) playbackPlayBtn.innerHTML = '<i class="ph-bold ph-pause"></i>';
+          reviewState.playback.timer = setInterval(() => {
+            if (reviewState.playback.index < reviewState.playback.frames.length - 1) {
+              applyPlaybackFrame(reviewState.playback.index + 1);
+            } else {
+              togglePlaybackPlay();
+            }
+          }, 120);
+        }
+      }
+
+      function updateForTask(newWs) {
+        reviewState.currentAssignmentTaskId = newWs.assignment_task_id;
+        const atId = newWs.assignment_task_id;
+        const curEntry = reviewState.scores[atId] || {
+          score: (newWs.answer_score !== undefined && newWs.answer_score !== null) ? Number(newWs.answer_score) : null,
+          comment: newWs.teacher_comment || '',
+          max_score: Number(newWs.answer_max_score || newWs.max_score || 1),
+          nav_status: newWs.nav_status || 'pending_review'
+        };
+        if (newWs.teacher_comment) curEntry.comment = newWs.teacher_comment;
+        reviewState.scores[atId] = curEntry;
+
+        const titleEl = document.getElementById('review-window-task-title');
+        if (titleEl) titleEl.textContent = `Проверка · Задание ${newWs.task_position}`;
+
+        if (maxScoreEl) maxScoreEl.textContent = curEntry.max_score;
+        if (scoreInput) scoreInput.value = (curEntry.score !== null) ? curEntry.score : '';
+        renderQuickScores(curEntry.max_score, curEntry.score);
+        updateStatusBadge(curEntry.score, curEntry.max_score, curEntry.nav_status);
+
+        if (commentInput) commentInput.value = curEntry.comment || '';
+
+        const isCode = newWs.answer_spec?.type === 'code' || newWs.presentation_mode === 'code';
+        const codeSec = document.getElementById('review-code-answer-section');
+        const stdSec = document.getElementById('review-standard-answer-section');
+        const chip = document.getElementById('review-task-type-chip');
+        if (chip) chip.textContent = isCode ? 'Кодовое решение' : 'Поле ввода';
+        if (codeSec) codeSec.style.display = isCode ? 'block' : 'none';
+        if (stdSec) stdSec.style.display = isCode ? 'none' : 'grid';
+
+        if (!isCode) {
+          const studentBox = document.getElementById('review-student-answer-box');
+          const correctBox = document.getElementById('review-correct-answer-box');
+          if (studentBox) studentBox.textContent = newWs.plain_answer || '—';
+          if (correctBox) correctBox.textContent = newWs.correct_answer || '—';
+        }
+
+        setupPlayback(newWs.playback?.frames);
+        calculateTotals();
+      }
+
+      function buildPayload(status, scoresOnly = false) {
+        const scores = Object.entries(reviewState.scores).map(([atId, data]) => ({
+          assignment_task_id: Number(atId),
+          score: (data.score !== null && data.score !== undefined) ? Number(data.score) : 0,
+          comment: data.comment || ''
+        }));
+        return {
+          scores,
+          teacher_feedback: reviewState.teacherFeedback,
+          status: status || reviewState.status || 'GRADED',
+          scores_only: Boolean(scoresOnly)
+        };
+      }
+
+      async function submitGrade(status) {
+        if (reviewState.isSaving) return;
+        reviewState.isSaving = true;
+        if (gradeBtn) gradeBtn.disabled = true;
+        if (returnBtn) returnBtn.disabled = true;
+        if (topGradeBtn) topGradeBtn.disabled = true;
+
+        try {
+          const payload = buildPayload(status, false);
+          const res = await fetch(`/submissions/${reviewState.submissionId}/grade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            throw new Error(data.error || 'Ошибка при сохранении оценки');
+          }
+
+          const isReturned = (status === 'RETURNED');
+          notify(isReturned ? 'Работа возвращена на доработку ученику!' : 'Проверка завершена! Оценки сохранены.', false);
+
+          setTimeout(() => {
+            window.location.href = ws.return_url || '/submissions';
+          }, 1200);
+        } catch (err) {
+          console.error('Submit grade error:', err);
+          notify(err.message || 'Не удалось сохранить оценку', true);
+        } finally {
+          reviewState.isSaving = false;
+          if (gradeBtn) gradeBtn.disabled = false;
+          if (returnBtn) returnBtn.disabled = false;
+          if (topGradeBtn) topGradeBtn.disabled = false;
+        }
+      }
+
+      function scheduleAutosave() {
+        clearTimeout(reviewState.saveTimer);
+        reviewState.saveTimer = setTimeout(async () => {
+          try {
+            const payload = buildPayload(reviewState.status, true);
+            await fetch(`/submissions/${reviewState.submissionId}/grade`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+              credentials: 'same-origin',
+              body: JSON.stringify(payload)
+            });
+            if (commentStatus) {
+              commentStatus.style.opacity = '1';
+              setTimeout(() => { commentStatus.style.opacity = '0'; }, 1800);
+            }
+          } catch (err) {
+            console.warn('Review grade autosave failed:', err);
+          }
+        }, 1000);
+      }
+
+      if (scoreInput) {
+        scoreInput.addEventListener('input', (e) => {
+          setScoreForCurrentTask(e.target.value);
+        });
+      }
+
+      if (commentInput) {
+        commentInput.addEventListener('input', (e) => {
+          const atId = reviewState.currentAssignmentTaskId;
+          if (!reviewState.scores[atId]) reviewState.scores[atId] = { max_score: 1, score: null, comment: '' };
+          reviewState.scores[atId].comment = e.target.value;
+          scheduleAutosave();
+        });
+      }
+
+      if (feedbackInput) {
+        feedbackInput.addEventListener('input', (e) => {
+          reviewState.teacherFeedback = e.target.value;
+          scheduleAutosave();
+        });
+      }
+
+      if (returnBtn) {
+        returnBtn.addEventListener('click', () => {
+          if (confirm('Вернуть эту работу на доработку ученику?')) {
+            submitGrade('RETURNED');
+          }
+        });
+      }
+
+      if (gradeBtn) {
+        gradeBtn.addEventListener('click', () => {
+          submitGrade('GRADED');
+        });
+      }
+
+      if (topGradeBtn) {
+        topGradeBtn.addEventListener('click', () => {
+          submitGrade('GRADED');
+        });
+      }
+
+      if (playbackPlayBtn) {
+        playbackPlayBtn.addEventListener('click', togglePlaybackPlay);
+      }
+      if (playbackRange) {
+        playbackRange.addEventListener('input', (e) => {
+          applyPlaybackFrame(Number(e.target.value));
+        });
+      }
+      if (playbackResetBtn) {
+        playbackResetBtn.addEventListener('click', () => {
+          if (reviewState.playback.frames.length) {
+            applyPlaybackFrame(reviewState.playback.frames.length - 1);
+          }
+        });
+      }
+
+      renderQuickScores(ws.answer_max_score || 1, ws.answer_score);
+      updateStatusBadge(ws.answer_score, ws.answer_max_score || 1, ws.nav_status);
+      setupPlayback(ws.playback?.frames);
+      calculateTotals();
+
+      return {
+        updateForTask,
+        setScoreForCurrentTask,
+        submitGrade,
+        state: reviewState
+      };
+    }
+
     if (isHomework) {
+      window.reviewGradeManager = initReviewGradeManager(ws, notify);
+
       // Static sequential task tabs without drag-and-drop
       document.querySelectorAll('.homework-os-task-tab').forEach((link) => {
         link.removeAttribute('draggable');
@@ -864,10 +1912,31 @@
       });
 
       document.getElementById('homework-submit')?.addEventListener('click', async () => {
+        const codeAnswer = ws.answer_spec?.type === 'code' || ws.presentation_mode === 'code';
+        const submitButton = document.getElementById('homework-submit');
+        if (codeAnswer) {
+          if (submitButton?.dataset.submitting === 'true') return;
+          if (submitButton) {
+            submitButton.dataset.submitting = 'true';
+            submitButton.disabled = true;
+          }
+        }
         try {
           await saveAll();
+          if (codeAnswer) {
+            await codeSave;
+            await post(`/submissions/${ws.context_id}/submit`, {});
+            window.location.href = ws.return_url || '/submissions';
+            return;
+          }
           answerFrame?.contentWindow?.document?.getElementById('tw-submit-work')?.click();
-        } catch (error) { notify(error.message || 'Не удалось сдать работу', true); }
+        } catch (error) {
+          if (codeAnswer && submitButton) {
+            submitButton.disabled = false;
+            delete submitButton.dataset.submitting;
+          }
+          notify(error.message || 'Не удалось сдать работу', true);
+        }
       });
     }
   }

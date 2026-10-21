@@ -66,6 +66,7 @@
   left: 0;
   z-index: 1;
   border-radius: inherit;
+  background-color: #ffffff !important;
 }
 
 /* Main Left Vertical Toolbar */
@@ -1103,6 +1104,24 @@ html.dark .boo-canvas-save-status {
 }
 
 /* Background Patterns */
+.boo-bg-dots,
+.boo-bg-grid,
+.boo-bg-ruled,
+.boo-bg-millimeter,
+.boo-bg-coord,
+.boo-bg-plain {
+  background-color: #ffffff !important;
+}
+[data-theme="dark"] .boo-canvas-overlay.is-embedded,
+html.dark .boo-canvas-overlay.is-embedded,
+[data-theme="dark"] .boo-bg-dots,
+[data-theme="dark"] .boo-bg-grid,
+[data-theme="dark"] .boo-bg-ruled,
+[data-theme="dark"] .boo-bg-millimeter,
+[data-theme="dark"] .boo-bg-coord,
+[data-theme="dark"] .boo-bg-plain {
+  background-color: #0f172a !important;
+}
 .boo-bg-dots {
   background-image: radial-gradient(var(--stroke-1, #cbd5e1) 1.2px, transparent 1.2px) !important;
   background-size: 24px 24px;
@@ -1153,6 +1172,12 @@ html.dark .boo-canvas-save-status {
   position: absolute;
   bottom: 14px;
   z-index: 5;
+}
+body:has(#board-dock) .boo-canvas-pages-bar,
+body.has-board-dock .boo-canvas-pages-bar,
+.boo-canvas-pages-bar.has-board-dock {
+  bottom: calc(1rem + 64px + 10px) !important;
+  z-index: 55 !important;
 }
 .boo-page-tab {
   padding: 4px 10px;
@@ -2984,4 +3009,52 @@ html.dark .tb-brush-desc {
   background: var(--stroke-1, #e2e8f0);
   margin: 4px 6px;
 }
+
+/* --- Read-Only Canvas Mode Styles --- */
+.boo-canvas-toolbar.is-read-only #boo-tb-pen,
+.boo-canvas-toolbar.is-read-only #boo-tb-props,
+.boo-canvas-toolbar.is-read-only #boo-tb-shape,
+.boo-canvas-toolbar.is-read-only #boo-tb-eraser,
+.boo-canvas-toolbar.is-read-only #boo-tb-more,
+.boo-canvas-toolbar.is-read-only #boo-tb-undo,
+.boo-canvas-toolbar.is-read-only #boo-tb-redo,
+.boo-canvas-toolbar.is-read-only #boo-tb-clear,
+.boo-canvas-toolbar.is-read-only .tb-sep,
+.canvas-read-only .boo-canvas-toolbar #boo-tb-pen,
+.canvas-read-only .boo-canvas-toolbar #boo-tb-props,
+.canvas-read-only .boo-canvas-toolbar #boo-tb-shape,
+.canvas-read-only .boo-canvas-toolbar #boo-tb-eraser,
+.canvas-read-only .boo-canvas-toolbar #boo-tb-more,
+.canvas-read-only .boo-canvas-toolbar #boo-tb-undo,
+.canvas-read-only .boo-canvas-toolbar #boo-tb-redo,
+.canvas-read-only .boo-canvas-toolbar #boo-tb-clear,
+.canvas-read-only .boo-canvas-toolbar .tb-sep {
+  display: none !important;
+}
+
+.canvas-read-only .boo-canvas-flyout,
+.canvas-read-only .boo-canvas-popover,
+.canvas-read-only .boo-canvas-clear-confirm,
+.canvas-read-only #boo-catalog-modal,
+.canvas-read-only #boo-math-modal,
+.canvas-read-only .boo-math-edit-btn,
+.canvas-read-only .boo-btn-del,
+.canvas-read-only .boo-canvas-handle,
+.canvas-read-only .boo-canvas-selection-box,
+.canvas-read-only .boo-pages-add-btn,
+.canvas-read-only .boo-page-del-btn,
+.boo-canvas-overlay.is-read-only .boo-math-edit-btn,
+.boo-canvas-overlay.is-read-only .boo-btn-del,
+.boo-canvas-overlay.is-read-only .boo-canvas-handle,
+.boo-canvas-overlay.is-read-only .boo-canvas-selection-box,
+.boo-canvas-overlay.is-read-only .boo-pages-add-btn,
+.boo-canvas-overlay.is-read-only .boo-page-del-btn {
+  display: none !important;
+}
+
+.canvas-read-only .boo-canvas-sticky-note textarea,
+.boo-canvas-overlay.is-read-only .boo-canvas-sticky-note textarea {
+  cursor: default !important;
+}
+
 

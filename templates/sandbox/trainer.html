@@ -1,5 +1,6 @@
 {% set room_mode = room_mode|default(false) %}
 {% set homework_mode = homework_mode|default(false) %}
+{% set review_mode = review_mode|default(false) or (homework_mode and homework_workspace and homework_workspace.can_review and not homework_workspace.can_edit) %}
 {% set room_lesson = lesson|default(none) %}
 {% set room_task = (classwork_tasks[0] if classwork_tasks else none) if room_mode else none %}
 {% set room_task_title = (room_task.task.title if room_task and room_task.task and room_task.task.title else 'Фокус урока') %}
@@ -18,6 +19,7 @@
   'trainer_token': trainer_token|default(none),
   'room_mode': room_mode,
   'homework_mode': homework_mode,
+  'review_mode': review_mode|default(false),
   'homework_workspace': homework_workspace|default(none),
   'lesson_id': lesson_id|default(none),
   'viewer_id': current_user.id if current_user.is_authenticated else none,
@@ -136,16 +138,28 @@
     z-index: 0;
     tab-size: 4;
     color: #1e293b;
-    font-size: 13px;
-    line-height: 1.7;
+    font-size: 13px !important;
+    line-height: 22px !important;
+    white-space: pre !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    padding-top: 24px !important;
+    padding-bottom: 24px !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
     font-weight: 600;
   }
 
   .room-lesson-os #code-editor-textarea {
     z-index: 1;
     tab-size: 4;
-    font-size: 13px;
-    line-height: 1.7;
+    font-size: 13px !important;
+    line-height: 22px !important;
+    white-space: pre !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    padding-top: 24px !important;
+    padding-bottom: 24px !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
     font-weight: 600;
     color: transparent !important;
     -webkit-text-fill-color: transparent;
@@ -268,6 +282,27 @@
   #line-numbers-gutter {
     -ms-overflow-style: none;
     scrollbar-width: none;
+    padding-top: 24px !important;
+    padding-bottom: 24px !important;
+    box-sizing: border-box !important;
+  }
+
+  .room-lesson-os #line-numbers-gutter {
+    padding-top: 24px !important;
+    padding-bottom: 24px !important;
+    box-sizing: border-box !important;
+  }
+
+  .room-lesson-os #line-numbers-gutter > div,
+  .room-lesson-os #line-numbers-gutter .gutter-line {
+    height: 22px !important;
+    min-height: 22px !important;
+    max-height: 22px !important;
+    line-height: 22px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
   }
 
   .room-lesson-os {
@@ -949,11 +984,14 @@
   }
 
   .room-lesson-os #dock-icon-reference-window { display: none !important; }
-  .room-lesson-os #board-dock { height: 64px; gap: .6rem; padding-inline: .7rem; border: 1px solid #dbe3ef; background: rgba(255,255,255,.94); box-shadow: 0 12px 28px rgba(30,41,59,.16); }
-  .room-lesson-os #board-dock > .board-dock-item { flex: 0 0 40px; width: 40px !important; height: 40px !important; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; border: 1.5px solid #dbe3ef; border-radius: .75rem; background: #ffffff !important; color: #64748b !important; box-shadow: 0 2px 0 rgba(148,163,184,.2); transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .room-lesson-os #board-dock { height: 68px; gap: .5rem; padding: 4px 10px; border: 1px solid #dbe3ef; background: rgba(255,255,255,.94); box-shadow: 0 12px 28px rgba(30,41,59,.16); }
+  .room-lesson-os #board-dock > .board-dock-item { flex: 0 0 74px; width: 74px !important; height: 58px !important; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; box-sizing: border-box; border: 1.5px solid transparent; border-radius: .75rem; background: transparent !important; color: #64748b !important; box-shadow: none !important; transition: all .15s ease; cursor: pointer; }
+  .room-lesson-os #board-dock > .board-dock-item::after { content: attr(data-room-label); font-size: 10.5px; font-weight: 750; line-height: 1.1; color: inherit; }
+  .room-lesson-os #board-dock > .board-dock-item > i { display: flex; align-items: center; justify-content: center; width: auto !important; height: auto !important; border: none !important; background: transparent !important; box-shadow: none !important; color: inherit !important; font-size: 20px !important; }
   .room-lesson-os #board-dock > .board-dock-item:hover,
-  .room-lesson-os #board-dock > .board-dock-item:focus-visible { border-color: #a5b4fc; background: #f5f7ff !important; color: #4f46e5 !important; box-shadow: 0 2px 4px rgba(99,102,241,.18); outline: none; }
-  .room-lesson-os #board-dock > .board-dock-item.is-active { border-color: #6366f1 !important; border-width: 2px !important; background: #fdfdfe !important; color: #4f46e5 !important; box-shadow: 0 0 0 2px rgba(99,102,241,.2), 0 3px 6px rgba(99,102,241,.12) !important; }
+  .room-lesson-os #board-dock > .board-dock-item:focus-visible { border-color: #e2e8f0; background: #f8faff !important; color: #4338ca !important; box-shadow: 0 2px 5px rgba(30,41,59,.06); outline: none; }
+  .room-lesson-os #board-dock > .board-dock-item.is-active { border-color: #6366f1 !important; border-width: 2px !important; background: #eef2ff !important; color: #4f46e5 !important; box-shadow: 0 0 0 2px rgba(99,102,241,.18), 0 3px 6px rgba(99,102,241,.12) !important; }
+  .room-lesson-os #board-dock > .board-dock-item.is-active > i { border: none !important; background: transparent !important; box-shadow: none !important; color: #4f46e5 !important; }
   .room-lesson-os #board-dock > .board-dock-divider { width: 1px; height: 28px; background: #dbe3ef; }
 
   .room-lesson-os.room-board-mode > .w-full.h-full {
@@ -2215,18 +2253,24 @@
         font-weight: 800 !important;
       }
     </style>
-    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261018-desktops-sync-v2"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261018-sync-v2"><link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261018-v2">{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
+    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261020-clean-board-v3"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261018-sync-v2">{% if homework_mode or review_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261020-v1">{% endif %}{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
 
     <!-- 3. РЕЖИМ 2: АРЕНА НАРЕШИВАНИЯ (REAL GLASS OS 8.0 ULTRA WORKSPACE) -->
     <div id="trainer-arena-view"
-      class="{% if not room_mode %}hidden {% endif %}w-full h-[calc(100vh-3rem)] overflow-hidden relative bg-[#F8FAFC] rounded-[2rem] border-2 border-slate-200/80 shadow-2xl font-mono text-slate-800{% if room_mode %} room-lesson-os{% endif %}{% if homework_mode %} homework-os{% if not homework_workspace.can_edit %} homework-os-review{% endif %}{% endif %}">
+      data-boostudy-mode="{% if review_mode %}review{% elif homework_mode %}homework{% elif room_mode %}lesson{% else %}trainer{% endif %}"
+      class="{% if not room_mode %}hidden {% endif %}w-full h-[calc(100vh-3rem)] overflow-hidden relative bg-[#F8FAFC] rounded-[2rem] border-2 border-slate-200/80 shadow-2xl font-mono text-slate-800 room-lesson-os{% if room_mode and not homework_mode and not review_mode %} boostudy-mode-lesson{% endif %}{% if homework_mode or review_mode %} homework-os boostudy-mode-homework{% if review_mode %} homework-os-review boostudy-mode-review{% endif %}{% endif %}">
 
       {% if homework_mode %}
       <header class="lesson-os-system-bar homework-os-system-bar" aria-label="Панель домашней работы">
         <div class="lesson-os-system-left"><a class="lesson-os-system-action" href="{{ homework_workspace.return_url or url_for('submissions.list_submissions') }}"><i class="ph-bold ph-arrow-left" aria-hidden="true"></i><span>К списку работ</span></a></div>
         <div class="lesson-os-system-center"><span class="lesson-os-brand-mark" aria-hidden="true"><i class="ph-bold ph-brain"></i></span><div class="lesson-os-system-title"><strong>{{ homework_workspace.assignment_title }}</strong><span>Домашняя OS · {{ homework_workspace.completed_task_count }} из {{ homework_workspace.task_count }} заданий</span></div></div>
         <div class="lesson-os-system-right">
-          {% if homework_workspace.can_review %}<span class="lesson-os-system-action"><i class="ph-bold ph-eye"></i> Просмотр ученика</span>{% endif %}
+          {% if review_mode %}
+          <button type="button" class="lesson-os-system-action boo-review-layer-toggle" onclick="window.BooCanvasOverlay?.toggleTeacherLayer?.()" title="Скрыть / показать пометки учителя (горячая клавиша L)">
+            <i class="ph-bold ph-eye text-amber-500"></i><span>Пометки</span>
+          </button>
+          <button id="hw-review-top-grade-btn" type="button" class="lesson-os-system-action bg-amber-500 hover:bg-amber-600 text-white font-bold"><i class="ph-bold ph-seal-check"></i><span>Завершить проверку</span></button>
+          {% elif homework_workspace.can_review %}<span class="lesson-os-system-action"><i class="ph-bold ph-eye"></i> Просмотр ученика</span>{% endif %}
           {% if homework_workspace.can_edit %}<button id="hw-os-transfer-open" type="button" class="lesson-os-system-action"><i class="ph-bold ph-copy"></i><span>Клонировать пространство</span></button><button id="hw-os-send-lesson" type="button" class="lesson-os-system-action" hidden><i class="ph-bold ph-upload-simple"></i><span>В OS урока</span></button><button id="homework-submit" type="button" class="lesson-os-system-action"><i class="ph-bold ph-paper-plane-tilt"></i><span>Сдать работу</span></button>{% endif %}
           <a id="hw-os-lesson-link" class="lesson-os-system-action" href="#" hidden><i class="ph-bold ph-chalkboard-teacher"></i><span>OS урока</span></a>
         </div>
@@ -2234,6 +2278,30 @@
       <nav class="homework-os-task-tabs" aria-label="Пространства заданий">
         {% for item in homework_workspace.tasks_nav %}<a href="{{ item.url }}" class="homework-os-task-tab{% if item.assignment_task_id == homework_workspace.assignment_task_id %} is-active{% endif %}" data-task-id="{{ item.assignment_task_id }}" aria-current="{{ 'page' if item.assignment_task_id == homework_workspace.assignment_task_id else 'false' }}">Задание {{ item.position }}</a>{% endfor %}
       </nav>
+      {% if homework_workspace.ai_lab_review and not homework_workspace.can_edit %}
+      <section class="homework-os-ai-review-panel mx-4 mb-4 rounded-2xl border border-indigo-200 bg-white p-4 shadow-sm sm:mx-6" aria-labelledby="ai-lab-review-title" aria-live="polite">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div><p class="text-xs font-bold uppercase tracking-wide text-indigo-600">AI Homework · Code Judge + GigaChat</p><h2 id="ai-lab-review-title" class="mt-1 text-base font-bold text-slate-900">Результат проверки</h2></div>
+          <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">{{ 'Комментарий готов' if homework_workspace.ai_lab_review.status == 'completed' else 'Нужна проверка преподавателя' }}</span>
+        </div>
+        <p class="mt-2 text-sm text-slate-700">{{ homework_workspace.ai_lab_review.summary }}</p>
+        {% if homework_workspace.ai_lab_review.error_message %}<p class="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{{ homework_workspace.ai_lab_review.error_message }}</p>{% endif %}
+        {% for item in homework_workspace.ai_lab_review.tasks %}
+          {% if item.student_feedback %}<p class="mt-3 whitespace-pre-line text-sm leading-6 text-slate-800">{{ item.student_feedback }}</p>{% endif %}
+          {% if item.technical.rubric is defined and item.technical.rubric.criteria is defined %}
+          <ul class="mt-3 grid gap-2 sm:grid-cols-2" aria-label="Подтверждения по критериям">
+            {% for criterion in item.technical.rubric.criteria %}
+            <li class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div class="flex items-start justify-between gap-2"><strong class="text-sm text-slate-900">{{ criterion.title }}</strong><span class="shrink-0 text-sm font-bold text-slate-800">{% if criterion.score_awarded is not none %}{{ criterion.score_awarded|int }}/{{ criterion.max_score|int }}{% else %}не подтверждено{% endif %}</span></div>
+              <p class="mt-1 text-xs leading-5 text-slate-600">{{ criterion.rationale }}</p>
+            </li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        {% endfor %}
+        <p class="mt-3 text-xs leading-5 text-slate-500">Code Judge проверяет только сохранённый набор тестов. Его прохождение не доказывает корректность программы для всех возможных входов; комментарий GigaChat предварительный и не меняет баллы.</p>
+      </section>
+      {% endif %}
       {% elif room_mode %}
       <header class="lesson-os-system-bar" aria-label="Панель комнаты урока">
         <div class="lesson-os-system-left">
@@ -2579,8 +2647,33 @@
             id="editor-canvas-container">
             <!-- Блок нумерации строк (Line Numbers Gutter) -->
             <div id="line-numbers-gutter"
-              class="w-11 text-right pr-3 pl-2 py-6 select-none text-slate-400 font-mono text-xs leading-relaxed bg-slate-50/70 border-r border-slate-200/80 font-medium shrink-0 overflow-hidden transition-colors duration-200">
+              class="w-14 text-right pr-2.5 pl-1.5 py-6 select-none text-slate-400 font-mono text-xs leading-relaxed bg-slate-50/70 border-r border-slate-200/80 font-medium shrink-0 overflow-hidden transition-colors duration-200">
               <div>1</div>
+            </div>
+
+            <!-- Popover для построчных пометок преподавателя к коду -->
+            <div id="code-line-comment-popover" class="hidden absolute left-16 z-30 w-80 max-w-[calc(100%-5rem)] bg-white/95 backdrop-blur-xl border border-amber-200/90 shadow-2xl rounded-2xl overflow-hidden font-sans text-xs flex flex-col transition-all duration-150">
+              <div class="px-3.5 py-2.5 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent border-b border-amber-100 flex items-center justify-between">
+                <span class="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                  <i class="ph-bold ph-chat-circle-dots text-amber-600"></i>
+                  <span id="code-line-popover-title">Строка 1 · Пометка</span>
+                </span>
+                <button type="button" class="w-5 h-5 rounded-full hover:bg-slate-200/60 flex items-center justify-center text-slate-500" onclick="window.closeCodeLinePopover?.()">
+                  <i class="ph-bold ph-x text-xs"></i>
+                </button>
+              </div>
+              <div id="code-line-popover-list" class="max-h-48 overflow-y-auto p-3 space-y-2 divide-y divide-slate-100">
+                <!-- Existing comments rendered here -->
+              </div>
+              <div id="code-line-popover-form" class="p-3 bg-slate-50/70 border-t border-slate-100 space-y-2">
+                <textarea id="code-line-popover-input" rows="2" placeholder="Замечание к этой строке кода..." class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-white focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none resize-none"></textarea>
+                <div class="flex items-center justify-end gap-1.5">
+                  <button type="button" class="px-2.5 py-1 rounded-lg text-slate-600 hover:bg-slate-200/60 font-semibold text-[11px]" onclick="window.closeCodeLinePopover?.()">Отмена</button>
+                  <button id="code-line-popover-save-btn" type="button" class="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shadow-xs flex items-center gap-1">
+                    <i class="ph-bold ph-check"></i> Сохранить
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Область редактирования и подложки -->
@@ -2797,11 +2890,17 @@
 
           <!-- Поле Ввода Ответа -->
           {% if homework_mode %}
-          <div class="pt-3 border-t border-slate-200/80">
+          <div class="pt-3 border-t border-slate-200/80 flex items-center gap-2 flex-wrap">
             <button type="button" class="hw-open-answer-btn" onclick="openWindow('homework-answer-window')">
               <i class="ph-bold ph-check-square"></i>
               <span>Открыть окно ответа</span>
             </button>
+            {% if review_mode %}
+            <button type="button" class="hw-open-answer-btn !bg-amber-50 !text-amber-800 !border-amber-300 hover:!bg-amber-100" onclick="openWindow('review-grade-window')">
+              <i class="ph-bold ph-seal-check text-amber-600"></i>
+              <span>Окно проверки</span>
+            </button>
+            {% endif %}
           </div>
           {% elif room_mode %}
           <div class="space-y-2 pt-3 border-t border-slate-200/60">
@@ -3410,6 +3509,9 @@
             <span id="board-save-state" class="board-save-state is-ready"><span class="board-save-dot"></span>Синхронизировано</span>
           </div>
           <div class="flex items-center gap-2">
+            <button type="button" class="boo-review-layer-toggle px-2.5 py-1 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-[11px] flex items-center gap-1.5 transition-colors shadow-xs" onclick="window.BooCanvasOverlay?.toggleTeacherLayer?.()" title="Скрыть / показать пометки преподавателя (горячая клавиша L)">
+              <i class="ph-bold ph-eye text-amber-600"></i><span>Пометки учителя</span>
+            </button>
           </div>
         </div>
 
@@ -3421,6 +3523,7 @@
             <span class="board-command-label">Вид</span>
             <button id="board-grid-toggle" class="board-command-btn is-active" type="button" aria-label="Сетка: показать или скрыть фоновые линии" aria-pressed="true" title="Сетка: показать или скрыть фоновые линии"><i class="ph-bold ph-grid-four"></i><span>Сетка</span></button>
             <button id="board-snap-toggle" class="board-command-btn is-active" type="button" aria-label="Привязка: округлять координаты и размеры к сетке" aria-pressed="true" title="Привязка: округлять координаты и размеры к сетке"><i class="ph-bold ph-magnet"></i><span>Привязка</span></button>
+            <button id="board-teacher-layer-toggle" class="board-command-btn boo-review-layer-toggle is-active !bg-amber-50 hover:!bg-amber-100 !text-amber-800 !border-amber-300" type="button" aria-label="Слой проверки (L): показать или скрыть пометки преподавателя" aria-pressed="true" title="Слой проверки (горячая клавиша L): скрыть / показать пометки преподавателя" onclick="window.BooCanvasOverlay?.toggleTeacherLayer?.()"><i class="ph-bold ph-eye text-amber-600"></i><span>Пометки учителя</span></button>
             <span class="board-shortcuts-hint" title="Горячие клавиши: V выбор, H рука, P перо, M маркер, E ластик, T текст, S стикер, A стрелка, F фрейм" aria-label="Горячие клавиши: V выбор, H рука, P перо, M маркер, E ластик, T текст, S стикер, A стрелка, F фрейм">V выбор · H рука · P перо · M маркер · E ластик · T текст · S стикер · A стрелка · F фрейм</span>
           </div>
           <div class="board-page-current">
@@ -3761,15 +3864,172 @@
         <div id="hw-os-transfer-status" role="status" aria-live="polite"></div>
         <button id="hw-os-transfer-confirm" type="button" class="lesson-os-system-action"><i class="ph-bold ph-copy"></i> Клонировать</button>
       </dialog>
+
+      {% if review_mode %}
+      <!-- 6b. TEACHER REVIEW & GRADING OS WINDOW -->
+      <div id="review-grade-window"
+        class="glass-os-window homework-review-grade-window absolute hidden bg-white border border-amber-200/90 shadow-2xl rounded-2xl overflow-hidden text-slate-800 font-sans flex flex-col"
+        aria-label="Проверка и оценивание"
+        role="region">
+        <div id="review-grade-window-header" class="lesson-os-code-titlebar select-none cursor-grab bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent border-b border-amber-100 flex items-center justify-between px-3 py-2">
+          <div class="lesson-os-window-controls flex items-center gap-1.5">
+            <button type="button" class="lesson-os-window-dot is-close" onclick="closeWindow('review-grade-window')" aria-label="Закрыть панель проверки"></button>
+            <button type="button" class="lesson-os-window-dot is-maximize" onclick="toggleMaximizeWindow('review-grade-window')" aria-label="Развернуть панель проверки"></button>
+          </div>
+          <span class="flex items-center gap-2 font-bold text-xs text-amber-950 tracking-wide">
+            <i class="ph-bold ph-seal-check text-amber-600 text-sm" aria-hidden="true"></i>
+            <span id="review-window-task-title">Проверка · Задание {{ homework_workspace.task_position }}</span>
+          </span>
+          <span class="lesson-os-titlebar-spacer"></span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs font-sans">
+          <!-- Task Scoring & Status Card -->
+          <div class="rounded-xl border border-amber-200/70 bg-amber-50/40 p-3.5 space-y-3 shadow-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Балл за текущее задание</span>
+              <div id="review-task-status-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 bg-slate-100 text-slate-600 border-slate-200">
+                <i class="ph-bold ph-clock text-slate-400"></i> <span>Ждёт проверки</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 shadow-xs">
+                <label for="review-task-score-input" class="text-slate-400 font-semibold text-xs">Балл:</label>
+                <input id="review-task-score-input" type="number" min="0" max="{{ homework_workspace.answer_max_score|default(1) }}" step="1"
+                  class="w-12 text-center font-bold text-slate-900 bg-transparent border-none outline-none focus:ring-0 text-sm p-0"
+                  placeholder="0" value="{{ homework_workspace.answer_score|default('', true) }}" />
+                <span class="text-slate-400 font-bold">/</span>
+                <span id="review-task-max-score" class="font-bold text-slate-600">{{ homework_workspace.answer_max_score|default(1) }}</span>
+              </div>
+
+              <!-- Quick Score Buttons (0..max) -->
+              <div id="review-quick-scores" class="flex items-center gap-1.5 flex-wrap"></div>
+            </div>
+          </div>
+
+          <!-- Student Answer vs Correct Answer Card -->
+          <div class="rounded-xl border border-slate-200 bg-white p-3.5 space-y-2.5 shadow-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                <i class="ph-bold ph-eye text-indigo-600"></i> Ответ ученика
+              </span>
+              <span id="review-task-type-chip" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                {% if homework_workspace.answer_spec.type == 'code' or homework_workspace.presentation_mode == 'code' %}Кодовое решение{% else %}Поле ввода{% endif %}
+              </span>
+            </div>
+
+            <!-- Standard answer comparison -->
+            <div id="review-standard-answer-section" class="grid grid-cols-2 gap-2" {% if homework_workspace.answer_spec.type == 'code' or homework_workspace.presentation_mode == 'code' %}style="display:none;"{% endif %}>
+              <div class="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <span class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Сдано:</span>
+                <div id="review-student-answer-box" class="font-mono text-xs font-semibold text-slate-800 break-all select-all">
+                  {{ homework_workspace.plain_answer|default('—', true) }}
+                </div>
+              </div>
+              <div class="p-2.5 rounded-lg bg-emerald-50/50 border border-emerald-200">
+                <span class="block text-[10px] uppercase font-bold text-emerald-600 mb-1">Эталон:</span>
+                <div id="review-correct-answer-box" class="font-mono text-xs font-semibold text-emerald-800 break-all select-all">
+                  {{ homework_workspace.correct_answer|default('—', true) }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Code answer section & keystroke playback -->
+            <div id="review-code-answer-section" class="space-y-2" {% if homework_workspace.answer_spec.type != 'code' and homework_workspace.presentation_mode != 'code' %}style="display:none;"{% endif %}>
+              <div class="p-2.5 rounded-lg bg-indigo-50/50 border border-indigo-200 flex items-center justify-between">
+                <span class="text-indigo-800 font-medium">Код решения отображается в окне <strong>«Код»</strong></span>
+                <button type="button" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs" onclick="openWindow('code-window')">
+                  <i class="ph-bold ph-code"></i> Открыть код
+                </button>
+              </div>
+
+              <!-- Keystroke / Snapshots Playback -->
+              <div id="review-playback-container" class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 space-y-2" style="display:none;">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <i class="ph-bold ph-clock-counter-clockwise text-indigo-600"></i> История написания кода
+                  </span>
+                  <span id="review-playback-step-counter" class="text-[10px] font-mono font-bold text-slate-500">0 / 0</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button id="review-playback-play-btn" type="button" class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-xs shadow-xs" title="Воспроизвести / Пауза">
+                    <i class="ph-bold ph-play"></i>
+                  </button>
+                  <input id="review-playback-range" type="range" min="0" max="0" value="0" class="flex-1 accent-indigo-600 cursor-pointer h-1.5" />
+                  <button id="review-playback-reset-btn" type="button" class="w-7 h-7 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-xs shadow-xs" title="В конец истории">
+                    <i class="ph-bold ph-fast-forward"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-task teacher comment -->
+          <div class="rounded-xl border border-slate-200 bg-white p-3.5 space-y-1.5 shadow-xs">
+            <div class="flex items-center justify-between">
+              <label for="review-task-comment" class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                <i class="ph-bold ph-chat-teardrop-text text-amber-600"></i> Комментарий к заданию
+              </label>
+              <span id="review-task-comment-status" class="text-[10px] text-emerald-600 font-medium transition-opacity opacity-0 flex items-center gap-1">
+                <i class="ph-bold ph-check"></i> Сохранено
+              </span>
+            </div>
+            <textarea id="review-task-comment" rows="2"
+              placeholder="Пояснение для ученика по этому заданию..."
+              class="w-full text-xs rounded-lg border border-slate-200 p-2.5 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none resize-y text-slate-800 placeholder-slate-400"></textarea>
+          </div>
+
+          <!-- General submission feedback -->
+          <div class="rounded-xl border border-slate-200 bg-white p-3.5 space-y-1.5 shadow-xs">
+            <label for="review-general-feedback" class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+              <i class="ph-bold ph-note-pencil text-indigo-600"></i> Общий отзыв о всей работе
+            </label>
+            <textarea id="review-general-feedback" rows="3"
+              placeholder="Итоги проверки, рекомендации и общие замечания..."
+              class="w-full text-xs rounded-lg border border-slate-200 p-2.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none resize-y text-slate-800 placeholder-slate-400">{{ homework_workspace.submission_meta.teacher_feedback|default('', true) if homework_workspace.submission_meta else '' }}</textarea>
+          </div>
+
+          <!-- Total Score Summary & Actions -->
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-700 text-xs">Итог по работе:</span>
+              <div class="text-sm font-bold text-slate-900 flex items-center gap-1">
+                <span id="review-total-score-display" class="text-amber-600 font-extrabold text-base">0</span>
+                <span class="text-slate-400">/</span>
+                <span id="review-max-score-display" class="text-slate-700">0</span>
+                <span id="review-percent-display" class="text-xs text-slate-500 font-normal ml-1">(0%)</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button id="review-action-return-btn" type="button"
+                class="w-full py-2 px-3 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs">
+                <i class="ph-bold ph-arrow-u-up-left"></i> На доработку
+              </button>
+              <button id="review-action-grade-btn" type="button"
+                class="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs">
+                <i class="ph-bold ph-check-circle"></i> Завершить проверку
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="window-resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center text-slate-400 hover:text-amber-600 select-none font-bold text-[10px]" title="Изменить размер">⇲</div>
+      </div>
+      {% endif %}
       {% endif %}
 
       <!-- 7. SYSTEM GLASS DOCK (Нижняя панель 6 приложений OS) -->
       <div id="board-dock"
-        class="absolute bottom-4 left-1/2 -translate-x-1/2 h-16 bg-white/60 backdrop-blur-3xl border border-white/80 shadow-2xl rounded-2xl flex items-center px-4 gap-3 z-50 font-sans select-none">
+        class="absolute bottom-4 left-0 right-0 mx-auto w-max max-w-[calc(100vw-32px)] h-16 bg-white/95 border border-slate-200 shadow-2xl rounded-2xl flex items-center px-4 gap-3 z-50 font-sans select-none antialiased">
 
         {% if homework_mode %}
-        <div id="dock-icon-homework-answer-window" class="board-dock-item group relative" data-room-label="Ответ" role="button" tabindex="0" aria-label="Открыть ответ" title="Ответ" onclick="toggleDockWindow('homework-answer-window')"><i class="ph-bold ph-check-square text-lg"></i></div>
-        <div id="dock-icon-homework-files-window" class="board-dock-item group relative" data-room-label="Файлы" role="button" tabindex="0" aria-label="Открыть файлы задания" title="Файлы" onclick="toggleDockWindow('homework-files-window')"><i class="ph-bold ph-folder text-lg"></i></div>
+        <div id="dock-icon-homework-answer-window" class="board-dock-item group relative" data-room-label="Ответ" role="button" tabindex="0" aria-label="Открыть ответ" title="Ответ" onclick="toggleDockWindow('homework-answer-window')"><i class="ph-bold ph-check-square text-lg"></i><span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Ответ</span></div>
+        <div id="dock-icon-homework-files-window" class="board-dock-item group relative" data-room-label="Файлы" role="button" tabindex="0" aria-label="Открыть файлы задания" title="Файлы" onclick="toggleDockWindow('homework-files-window')"><i class="ph-bold ph-folder text-lg"></i><span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Файлы</span></div>
+        {% endif %}
+        {% if review_mode %}
+        <div id="dock-icon-review-grade-window" class="board-dock-item group relative" data-room-label="Проверка" role="button" tabindex="0" aria-label="Открыть окно проверки" title="Проверка" onclick="toggleDockWindow('review-grade-window')"><i class="ph-bold ph-seal-check text-lg"></i><span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Проверка</span></div>
         {% endif %}
         {% if room_mode %}
         <div id="dock-icon-code-window" class="board-dock-item group relative" data-room-label="Код" role="button" tabindex="0" aria-label="Открыть редактор кода" title="Код" onclick="toggleDockWindow('code-window')">
@@ -3854,16 +4114,7 @@
           </span>
         </div>
 
-        <div class="board-dock-divider"></div>
 
-        <!-- App 6: BooAI Assistant -->
-        <div id="dock-icon-booai" class="board-dock-item group relative" role="button" tabindex="0" aria-label="Открыть помощника BooAI" title="Открыть помощника BooAI" onclick="toggleBooAICopilot()">
-          <i class="ph-bold ph-sparkle text-lg"></i>
-          <span
-            class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-            BooAI (Ctrl+K)
-          </span>
-        </div>
 
       </div>
 
@@ -4124,6 +4375,7 @@
       return {};
     }
   })();
+  window.trainerOsConfig = trainerOsConfig;
 
   const configuredRoomStarterCode = (trainerOsConfig.room_mode && typeof trainerOsConfig.starter_code === 'string')
     ? trainerOsConfig.starter_code.trim()
@@ -4354,7 +4606,7 @@
         return;
       }
 
-      // Backspace: Delete matching pair if cursor is directly between (|)
+      // Backspace: Delete matching pair if cursor is directly between (|) OR smart unindent
       if (e.key === 'Backspace' && start === end && start > 0) {
         const charBefore = val[start - 1];
         const charAfter = val[start];
@@ -4364,6 +4616,17 @@
           e.preventDefault();
           this.value = val.substring(0, start - 1) + val.substring(start + 1);
           this.selectionStart = this.selectionEnd = start - 1;
+          onCodeEditorInput(this.value);
+          return;
+        }
+
+        const lineStart = val.lastIndexOf('\n', start - 1) + 1;
+        const linePrefix = val.substring(lineStart, start);
+        if (/^ +$/.test(linePrefix)) {
+          e.preventDefault();
+          const spacesToDelete = ((linePrefix.length - 1) % 4) + 1;
+          this.value = val.substring(0, start - spacesToDelete) + val.substring(start);
+          this.selectionStart = this.selectionEnd = start - spacesToDelete;
           onCodeEditorInput(this.value);
           return;
         }
@@ -4401,19 +4664,115 @@
       .replace(/>/g, '&gt;');
   }
 
+  window.codeLineCommentsMap = window.codeLineCommentsMap || {};
+  window.activeGutterLine = null;
+
   function updateLineNumbers() {
     const gutter = document.getElementById('line-numbers-gutter');
     const textarea = document.getElementById('code-editor-textarea');
     if (!gutter || !textarea) return;
 
     const lineCount = (textarea.value.match(/\n/g) || []).length + 1;
+    const commentsMap = window.codeLineCommentsMap || {};
+    const isReview = !!(trainerOsConfig.review_mode || window.trainerOsConfig?.review_mode);
     let numbersHtml = '';
+
     for (let i = 1; i <= lineCount; i++) {
-      numbersHtml += `<div>${i}</div>`;
+      const lineComments = commentsMap[i] || [];
+      const hasComment = lineComments.length > 0;
+
+      let badgeHtml = '';
+      if (hasComment) {
+        badgeHtml = `<span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-500 text-white text-[9px] font-bold shadow-xs hover:scale-110 transition-transform" title="${lineComments.length} помет."><i class="ph-bold ph-chat-circle-dots"></i></span>`;
+      } else if (isReview) {
+        badgeHtml = `<span class="opacity-0 group-hover:opacity-100 text-amber-500 hover:text-amber-600 transition-opacity text-[11px]" title="Добавить пометку к строке ${i}"><i class="ph-bold ph-plus"></i></span>`;
+      }
+
+      numbersHtml += `<div class="gutter-line group flex items-center justify-between cursor-pointer hover:text-amber-600 select-none transition-colors" data-line="${i}" onclick="window.onGutterLineClick?.(${i}, event)">` +
+        `<span class="w-3.5 h-3.5 flex items-center justify-center shrink-0">${badgeHtml}</span>` +
+        `<span class="font-mono text-xs leading-[22px] ${hasComment ? 'text-amber-600 font-bold' : ''}">${i}</span>` +
+      `</div>`;
     }
     gutter.innerHTML = numbersHtml;
     gutter.scrollTop = textarea.scrollTop;
   }
+  window.updateLineNumbers = updateLineNumbers;
+
+  function renderGutterLineComments(line) {
+    const listEl = document.getElementById('code-line-popover-list');
+    if (!listEl) return;
+    const comments = (window.codeLineCommentsMap && window.codeLineCommentsMap[line]) || [];
+    const isReview = !!(trainerOsConfig.review_mode || window.trainerOsConfig?.review_mode);
+
+    if (comments.length === 0) {
+      listEl.innerHTML = `<div class="text-slate-400 italic text-[11px] py-2 text-center">${isReview ? 'Нет замечаний. Добавьте замечание ниже.' : 'К этой строке нет замечаний.'}</div>`;
+      return;
+    }
+
+    listEl.innerHTML = comments.map(c => {
+      const authorName = escapeHtml(c.author?.name || 'Преподаватель');
+      const timeStr = escapeHtml(c.created_human || '');
+      const textHtml = escapeHtml(c.text || '').replace(/\n/g, '<br>');
+      const canDelete = isReview;
+      return `
+        <div class="pt-2 first:pt-0">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-slate-700 text-[11px] flex items-center gap-1">
+              <i class="ph-bold ph-user text-amber-600"></i> ${authorName}
+            </span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
+              ${canDelete ? `<button type="button" class="text-slate-400 hover:text-rose-500 transition-colors p-0.5 rounded" title="Удалить пометку" onclick="window.deleteCodeLineComment?.(${c.id}, ${line})"><i class="ph-bold ph-trash text-xs"></i></button>` : ''}
+            </div>
+          </div>
+          <div class="mt-1 text-slate-800 text-xs leading-relaxed bg-amber-50/50 rounded-lg p-2 border border-amber-100/60 font-sans">${textHtml}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  window.renderGutterLineComments = renderGutterLineComments;
+
+  window.onGutterLineClick = function(line, event) {
+    const popover = document.getElementById('code-line-comment-popover');
+    const container = document.getElementById('editor-canvas-container');
+    const gutter = document.getElementById('line-numbers-gutter');
+    if (!popover || !container) return;
+
+    window.activeGutterLine = line;
+    const titleEl = document.getElementById('code-line-popover-title');
+    if (titleEl) titleEl.textContent = `Строка ${line} · Замечания`;
+
+    renderGutterLineComments(line);
+
+    const isReview = !!(trainerOsConfig.review_mode || window.trainerOsConfig?.review_mode);
+    const formEl = document.getElementById('code-line-popover-form');
+    if (formEl) formEl.classList.toggle('hidden', !isReview);
+
+    const containerRect = container.getBoundingClientRect();
+    const lineEl = (event && event.currentTarget) || (gutter ? gutter.querySelector(`[data-line="${line}"]`) : null);
+    let top = 20;
+    if (lineEl) {
+      const lineRect = lineEl.getBoundingClientRect();
+      top = lineRect.top - containerRect.top;
+    }
+    top = Math.max(8, Math.min(containerRect.height - 240, top - 8));
+    popover.style.top = `${top}px`;
+    popover.classList.remove('hidden');
+
+    if (isReview) {
+      const input = document.getElementById('code-line-popover-input');
+      if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 50);
+      }
+    }
+  };
+
+  window.closeCodeLinePopover = function() {
+    const popover = document.getElementById('code-line-comment-popover');
+    if (popover) popover.classList.add('hidden');
+    window.activeGutterLine = null;
+  };
 
   function highlightPythonSyntax(code) {
     if (!code) return '';
@@ -4498,6 +4857,7 @@
     const textarea = document.getElementById('code-editor-textarea');
     const gutter = document.getElementById('line-numbers-gutter');
     const cursorStage = document.getElementById('code-remote-cursor-stage');
+    const popover = document.getElementById('code-line-comment-popover');
     if (textarea) {
       if (highlightPre) {
         highlightPre.scrollTop = textarea.scrollTop;
@@ -4508,6 +4868,16 @@
       }
       if (cursorStage) {
         cursorStage.style.transform = `translate(${-textarea.scrollLeft}px, ${-textarea.scrollTop}px)`;
+      }
+      if (popover && !popover.classList.contains('hidden') && window.activeGutterLine) {
+        const lineEl = gutter?.querySelector(`[data-line="${window.activeGutterLine}"]`);
+        const container = document.getElementById('editor-canvas-container');
+        if (lineEl && container) {
+          const containerRect = container.getBoundingClientRect();
+          const lineRect = lineEl.getBoundingClientRect();
+          const top = Math.max(8, Math.min(containerRect.height - 240, lineRect.top - containerRect.top - 8));
+          popover.style.top = `${top}px`;
+        }
       }
     }
   }
@@ -4718,6 +5088,21 @@
     updateStatusBarCursorPos();
     window.boostudyLessonControl?.queueCodeSync?.(virtualFS[filename] || '', filename);
   }
+
+  window.setEditorMainPyCode = function(newCode) {
+    virtualFS['main.py'] = newCode || '';
+    const editorArea = document.getElementById('code-editor-textarea');
+    if (editorArea && activeFileName === 'main.py') {
+      editorArea.value = newCode || '';
+    }
+    updateCodeHighlight();
+    updateStatusBarCursorPos();
+  };
+
+  window.getEditorMainPyCode = function() {
+    const editorArea = document.getElementById('code-editor-textarea');
+    return editorArea ? editorArea.value : (virtualFS['main.py'] || '');
+  };
 
   function closeEditorTab(e, filename) {
     e.stopPropagation();
@@ -4971,7 +5356,7 @@
       for (const [id, { windowEl }] of this.registeredWindows) {
         const saved = layouts[id];
         const defaultOpen = trainerOsConfig.homework_mode
-          ? (id === 'homework-answer-window' || (!compact && id === 'task-window'))
+          ? (id === 'homework-answer-window' || (!compact && id === 'task-window') || (trainerOsConfig.review_mode && id === 'review-grade-window'))
           : (id === 'code-window' || (!compact && id === 'task-window'));
         const savedOpen = compact ? saved?.open_compact : saved?.open;
         const open = typeof savedOpen === 'boolean' ? savedOpen : defaultOpen;
@@ -5063,7 +5448,7 @@
     bringToFront(element) {
       if (!element) return;
       this.globalZIndex += 1;
-      element.style.zIndex = this.globalZIndex;
+      element.style.setProperty('z-index', String(this.globalZIndex), 'important');
     }
 
     initWindowResize(windowEl) {
@@ -5247,7 +5632,7 @@
 
       windowEl.addEventListener('pointerdown', () => {
         this.bringToFront(windowEl);
-      });
+      }, true);
 
       if (!headerEl) return;
 
@@ -5534,7 +5919,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    ['code-window', 'task-window', 'terminal-window', 'notes-window', 'lesson-info-window', 'teacher-notes-window', 'teacher-task-bank-window', 'theory-window', 'files-window', 'chat-window', 'reference-window', 'homework-answer-window', 'homework-files-window', 'video-window'].forEach(id => {
+    ['code-window', 'task-window', 'terminal-window', 'notes-window', 'lesson-info-window', 'teacher-notes-window', 'teacher-task-bank-window', 'theory-window', 'files-window', 'chat-window', 'reference-window', 'homework-answer-window', 'homework-files-window', 'video-window', 'review-grade-window'].forEach(id => {
       windowManager.registerWindow(id);
     });
     if (trainerOsConfig.room_mode) {
@@ -8627,6 +9012,7 @@
     }
 
     function renderRemotePointer(payload) {
+      if (trainerOsConfig.room_mode) return; // Disable permanent remote cursor overlays in lesson room
       const pointer = payload?.pointer;
       const layer = $('#board-cursor-layer');
       if (!layer || !pointer) return;
@@ -8688,6 +9074,7 @@
     }
 
     function renderRemoteLaser(payload) {
+      if (trainerOsConfig.room_mode) return; // Handled directly by BooCanvasOverlay in lesson room
       const pointer = payload?.pointer;
       const layer = getLaserLayer();
       if (!layer || !pointer) return;
@@ -9778,7 +10165,7 @@
       }
       const point = worldPoint(event);
       state.pointerLatest = point;
-      if (state.socket && controlState().cursor_sync !== false && !state.pointerRaf) {
+      if (state.socket && !trainerOsConfig.room_mode && controlState().cursor_sync !== false && !state.pointerRaf) {
         state.pointerRaf = requestAnimationFrame(() => {
           state.pointerRaf = null;
           const now = performance.now();
@@ -9974,24 +10361,74 @@
       renderDocument();
     }
 
+    function mountLessonCanvasOverlay() {
+      if (!trainerOsConfig.room_mode || trainerOsConfig.homework_mode) return;
+      const board = document.getElementById('whiteboard-canvas-viewport');
+      if (!board) return;
+      if (!window.BooCanvasOverlay || typeof window.BooCanvasOverlay.openIn !== 'function') {
+        setTimeout(mountLessonCanvasOverlay, 60);
+        return;
+      }
+      board.classList.add('has-overlay');
+      const legacyLiveCanvas = document.getElementById('board-live-canvas');
+      if (legacyLiveCanvas) legacyLiveCanvas.style.display = 'none';
+      const legacyCanvas = document.getElementById('whiteboard-canvas');
+      if (legacyCanvas) legacyCanvas.style.display = 'none';
+      const cursorLayer = document.getElementById('board-cursor-layer');
+      if (cursorLayer) cursorLayer.style.display = 'none';
+
+      let initialTaskId = trainerOsConfig.lesson_id;
+      let initialContextType = 'lesson';
+      let initialContextId = trainerOsConfig.lesson_id;
+      try {
+        const rawTasks = typeof trainerOsConfig.classwork_tasks === 'string'
+          ? JSON.parse(trainerOsConfig.classwork_tasks || '[]')
+          : trainerOsConfig.classwork_tasks;
+        const tasks = Array.isArray(rawTasks) ? rawTasks : [];
+        if (tasks.length > 0 && tasks[0]) {
+          initialTaskId = tasks[0].task_id || tasks[0].lesson_task_id || trainerOsConfig.lesson_id;
+          initialContextType = 'lesson_task';
+          initialContextId = tasks[0].lesson_task_id || trainerOsConfig.lesson_id;
+        }
+      } catch (_) {}
+      if (initialTaskId) {
+        window.BooCanvasOverlay.setContext(Number(initialTaskId), initialContextType, initialContextId ? Number(initialContextId) : null);
+      }
+      window.BooCanvasOverlay.openIn(board);
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
+    }
+
     function connectCanvasOverlaySync() {
       if (!window.BooCanvasOverlay?.setRealtimeSync) {
         setTimeout(connectCanvasOverlaySync, 150);
         return;
       }
+      mountLessonCanvasOverlay();
       const handleLaser = (pointer, visible, meta = {}) => {
         if (!state.socket || !state.connected) return;
+        const activePid = window.BooCanvasOverlay?.getActivePageId?.() || state.currentPageId || 'page_1';
+        state.currentPageId = activePid;
+        const now = performance.now();
+        if (visible && !meta?.isStart && state.lastLaserSentAt && (now - state.lastLaserSentAt < 25)) {
+          return;
+        }
+        state.lastLaserSentAt = now;
         state.socket.emit('whiteboard_live_laser', {
           lesson_id: lessonId,
           client_id: clientId,
-          page_id: state.currentPageId,
+          page_id: activePid,
           pointer: pointer,
           visible: visible !== false,
           color: meta?.color,
           width: meta?.width,
-          is_start: meta?.isStart,
+          is_start: Boolean(meta?.isStart),
+          is_hover: Boolean(meta?.isHover),
         });
+        return;
       };
+
 
       window.BooCanvasOverlay.setRealtimeSync({
         onLaserMove: handleLaser,
@@ -10059,22 +10496,75 @@
             action: 'clear',
           });
         },
+        onPageCreate: (page) => {
+          if (!state.socket || !state.connected) return;
+          state.socket.emit('board_action', {
+            lesson_id: lessonId,
+            action: 'page_create',
+            page: page,
+          });
+        },
+        onPageDelete: (pageId) => {
+          if (!state.socket || !state.connected) return;
+          state.socket.emit('board_action', {
+            lesson_id: lessonId,
+            action: 'page_delete',
+            page_id: pageId,
+          });
+        },
+        onPageSwitch: (pageId) => {
+          state.currentPageId = pageId;
+          if (!state.socket || !state.connected) return;
+          state.socket.emit('board_action', {
+            lesson_id: lessonId,
+            action: 'page_switch',
+            page_id: pageId,
+          });
+        },
+        onPageBackground: (pageId, background) => {
+          if (!state.socket || !state.connected) return;
+          state.socket.emit('board_action', {
+            lesson_id: lessonId,
+            action: 'page_bg',
+            page_id: pageId,
+            background: background,
+          });
+        },
+        onPageRename: (pageId, title) => {
+          if (!state.socket || !state.connected) return;
+          state.socket.emit('board_action', {
+            lesson_id: lessonId,
+            action: 'page_rename',
+            page_id: pageId,
+            title: title,
+          });
+        },
         onCameraChange: (panX, panY, scale) => {
           state.panX = panX;
           state.panY = panY;
           state.scale = scale;
           renderTransform();
           if (!state.socket || !state.connected) return;
-          if (state.role !== 'teacher' && !state.canPresent) return;
+          if (state.role !== 'teacher' && !state.canPresent && controlState().student_editing === false) return;
           if (controlState().canvas_sync === false) return;
-          state.liveCameraSeq = (state.liveCameraSeq || 0) + 1;
-          state.socket.emit('whiteboard_live_camera', {
-            lesson_id: lessonId,
-            client_id: clientId,
-            page_id: state.currentPageId,
-            camera: { pan_x: panX, pan_y: panY, scale: scale },
-            seq: state.liveCameraSeq,
-          });
+          clearTimeout(state.trailingCameraTimer);
+          const now = performance.now();
+          const emitCamera = () => {
+            state.lastLiveCameraSentAt = performance.now();
+            state.liveCameraSeq = (state.liveCameraSeq || 0) + 1;
+            state.socket.emit('whiteboard_live_camera', {
+              lesson_id: lessonId,
+              client_id: clientId,
+              page_id: state.currentPageId,
+              camera: { pan_x: panX, pan_y: panY, scale: scale },
+              seq: state.liveCameraSeq,
+            });
+          };
+          if (!state.lastLiveCameraSentAt || (now - state.lastLiveCameraSentAt >= 25)) {
+            emitCamera();
+          } else {
+            state.trailingCameraTimer = setTimeout(emitCamera, 30);
+          }
         },
       });
       window.BooCanvasOverlay.setReadOnly(!state.canEdit);
@@ -10233,26 +10723,43 @@
             window.BooCanvasOverlay?.applyRemoteStrokesDelete?.(ids);
           } else if (payload.action === 'clear') {
             window.BooCanvasOverlay?.applyRemoteBoardClear?.();
+          } else if (payload.action === 'page_create' && payload.page) {
+            window.BooCanvasOverlay?.remoteAddPage?.(payload.page);
+          } else if (payload.action === 'page_delete' && payload.page_id) {
+            window.BooCanvasOverlay?.remoteDeletePage?.(payload.page_id);
+          } else if (payload.action === 'page_switch' && payload.page_id) {
+            state.currentPageId = payload.page_id;
+            window.BooCanvasOverlay?.remoteSwitchPage?.(payload.page_id);
+          } else if (payload.action === 'page_bg' && payload.page_id) {
+            window.BooCanvasOverlay?.remoteSetPageBackground?.(payload.page_id, payload.background);
+          } else if (payload.action === 'page_rename' && payload.page_id) {
+            window.BooCanvasOverlay?.remoteRenamePage?.(payload.page_id, payload.title);
           }
         });
         state.socket.on('board_snapshot', (payload) => {
-          if (Number(payload.lesson_id) === Number(lessonId) && payload.strokes) {
-            window.BooCanvasOverlay?.setAllStrokes?.(payload.strokes);
+          if (Number(payload.lesson_id) === Number(lessonId) && (payload.strokes || payload.pages)) {
+            window.BooCanvasOverlay?.setAllStrokes?.(payload.strokes, payload.pages, payload.active_page_id);
           }
         });
-        state.socket.on('whiteboard_pointer', (payload) => { if (Number(payload.lesson_id) === Number(lessonId) && (!payload.page_id || payload.page_id === state.currentPageId)) renderRemotePointer(payload); });
+        state.socket.on('whiteboard_pointer', (payload) => { if (!trainerOsConfig.room_mode && Number(payload.lesson_id) === Number(lessonId) && (!payload.page_id || payload.page_id === state.currentPageId)) renderRemotePointer(payload); });
         state.socket.on('whiteboard_live_stroke', (payload) => {
-          receiveLiveStroke(payload);
+          if (!trainerOsConfig.room_mode) {
+            receiveLiveStroke(payload);
+          }
           window.BooCanvasOverlay?.applyRemoteStrokeLive?.(payload);
         });
         state.socket.on('whiteboard_live_laser', (payload) => {
-          if (Number(payload.lesson_id) === Number(lessonId) && (!payload.page_id || payload.page_id === state.currentPageId)) {
-            if (payload.visible !== false) renderRemoteLaser(payload);
-            window.BooCanvasOverlay?.applyRemoteLaser?.(payload.pointer, payload.visible !== false, {
-              color: payload.color,
-              width: payload.width,
-              isStart: payload.is_start,
-            });
+          if (Number(payload.lesson_id) === Number(lessonId)) {
+            const currentPid = window.BooCanvasOverlay?.getActivePageId?.() || state.currentPageId;
+            if (!payload.page_id || payload.page_id === currentPid) {
+              if (!trainerOsConfig.room_mode && payload.visible !== false) renderRemoteLaser(payload);
+              window.BooCanvasOverlay?.applyRemoteLaser?.(payload.pointer, payload.visible !== false, {
+                color: payload.color,
+                width: payload.width,
+                isStart: payload.is_start,
+                isHover: payload.is_hover,
+              });
+            }
           }
         });
         state.socket.on('lesson_room_ui_state', applyRoomUi);
@@ -10286,7 +10793,8 @@
           }, 3500);
         });
         state.socket.on('whiteboard_live_camera', (payload) => {
-          if (Number(payload.lesson_id) !== Number(lessonId) || state.canPresent || state.role === 'teacher') return;
+          if (Number(payload.lesson_id) !== Number(lessonId)) return;
+          if (payload.client_id && payload.client_id === clientId) return;
           if (controlState().canvas_sync === false) return;
           const seq = Number(payload.seq || 0);
           const senderClientId = payload.client_id || payload.sender_id || null;
@@ -10309,7 +10817,7 @@
               state.document.active_page_id = payload.page_id;
             }
             setSelection([]);
-            window.BooCanvasOverlay?.switchPage?.(payload.page_id);
+            window.BooCanvasOverlay?.remoteSwitchPage?.(payload.page_id);
           }
           const cam = payload.camera || {};
           const panX = Number(cam.pan_x !== undefined ? cam.pan_x : cam.offsetX) || 0;
@@ -10521,6 +11029,7 @@
     }
 
     function undo() {
+      if (trainerOsConfig.homework_mode && !trainerOsConfig.homework_workspace?.can_edit && !trainerOsConfig.review_mode) return;
       if (state.historyIndex <= 0 || !state.document) return;
       state.historyIndex -= 1;
       const document = clone(state.history[state.historyIndex]);
@@ -10530,6 +11039,7 @@
     }
 
     function redo() {
+      if (trainerOsConfig.homework_mode && !trainerOsConfig.homework_workspace?.can_edit && !trainerOsConfig.review_mode) return;
       if (state.historyIndex >= state.history.length - 1 || !state.document) return;
       state.historyIndex += 1;
       const document = clone(state.history[state.historyIndex]);
@@ -10547,6 +11057,7 @@
     }
 
     function pasteObject(offset = 32) {
+      if (trainerOsConfig.homework_mode && !trainerOsConfig.homework_workspace?.can_edit && !trainerOsConfig.review_mode) return;
       const source = state.clipboardObjects?.length ? state.clipboardObjects : (state.clipboardObject ? [state.clipboardObject] : []);
       if (!source.length || !state.canEdit) return;
       const ids = new Map(source.map((item) => [item.id, uid('object')]));
@@ -10557,13 +11068,19 @@
     }
 
     function duplicateSelectedObject() {
+      if (trainerOsConfig.homework_mode && !trainerOsConfig.homework_workspace?.can_edit && !trainerOsConfig.review_mode) return;
       copySelectedObject();
       pasteObject();
     }
 
     function deleteSelectedObjects() {
+      if (trainerOsConfig.homework_mode && !trainerOsConfig.homework_workspace?.can_edit && !trainerOsConfig.review_mode) return;
       const selected = selectedItems();
-      const deletable = selected.filter((item) => !item.locked);
+      const deletable = selected.filter((item) => {
+        if (item.locked) return false;
+        if (state.role !== 'teacher' && (item.layer === 'teacher' || item.data?.layer === 'teacher')) return false;
+        return true;
+      });
       if (!deletable.length) { showReaction('Выбранные объекты заблокированы'); return; }
       const deletes = deletable.map((item) => item.id);
       const updates = [];
@@ -10998,11 +11515,16 @@
           if (state.selectedIds.length) { setSelection([]); renderObjects(); }
           return;
         }
+        if (trainerOsConfig.room_mode) return;
         if (event.target.closest('input,textarea,select,[contenteditable="true"],.glass-os-window')) return;
+        const isBoardReadOnly = trainerOsConfig.homework_mode && !trainerOsConfig.homework_workspace?.can_edit && !trainerOsConfig.review_mode;
         if (!event.ctrlKey && !event.metaKey && !event.altKey) {
-          const shortcutTools = { v: 'select', h: 'pan', p: 'pen', m: 'highlighter', e: 'eraser', t: 'text', s: 'sticky', a: 'arrow', f: 'frame' };
+          const shortcutTools = isBoardReadOnly ? { h: 'pan' } : { v: 'select', h: 'pan', p: 'pen', m: 'highlighter', e: 'eraser', t: 'text', s: 'sticky', a: 'arrow', f: 'frame' };
           const nextTool = shortcutTools[event.key.toLowerCase()];
           if (nextTool) { event.preventDefault(); updateTool(nextTool); return; }
+        }
+        if (isBoardReadOnly && ((event.ctrlKey || event.metaKey) && ['z', 'y', 'v', 'd', 'x'].includes(event.key.toLowerCase()))) {
+          event.preventDefault(); event.stopImmediatePropagation(); return;
         }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); event.stopImmediatePropagation(); event.shiftKey ? redo() : undo(); }
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') { event.preventDefault(); event.stopImmediatePropagation(); redo(); }
@@ -11023,7 +11545,7 @@
         if (event.key === '+' || event.key === '=') { event.preventDefault(); state.scale = Math.min(2.5, state.scale + .1); renderTransform(); }
         if (event.key === '-') { event.preventDefault(); state.scale = Math.max(.35, state.scale - .1); renderTransform(); }
         if (event.key === '0') { event.preventDefault(); state.scale = 1; state.panX = 0; state.panY = 0; renderTransform(); }
-        if ((event.key === 'Delete' || event.key === 'Backspace') && state.selectedIds.length) { event.preventDefault(); deleteSelectedObjects(); }
+        if ((event.key === 'Delete' || event.key === 'Backspace') && state.selectedIds.length) { event.preventDefault(); if (!isBoardReadOnly) deleteSelectedObjects(); }
         if (state.selectedId && (event.key === '[' || event.key === ']')) { const item = objectById(); if (item) commit({ type: 'object.update', page_id: state.currentPageId, object_id: item.id, patch: { rotation: (item.rotation || 0) + (event.key === ']' ? 15 : -15) } }); }
       }, true);
       document.addEventListener('pointerdown', (event) => {
@@ -11198,6 +11720,7 @@
       };
       bindBoardEvents();
       loadBoard();
+      mountLessonCanvasOverlay();
       connectCanvasOverlaySync();
       if (trainerOsConfig.is_studio_teacher) {
         try {
@@ -12323,5 +12846,5 @@
   })();
 </script>
 {% endif %}
-{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261018-engine-v9"></script><script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261018-v2"></script>{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
+{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261018-engine-v9"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
 {% endblock %}

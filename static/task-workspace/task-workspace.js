@@ -1154,7 +1154,7 @@
                     const end = target.getBoundingClientRect();
                     const x1 = start.left + start.width / 2 - stageRect.left;
                     const y1 = start.top + start.height / 2 - stageRect.top;
-                    const x2 = end.left - 2 - stageRect.left;
+                    const x2 = end.left - stageRect.left;
                     const y2 = end.top + end.height / 2 - stageRect.top;
                     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                     path.setAttribute('d', `M ${x1} ${y1} C ${x1 + 28} ${y1}, ${x2 - 28} ${y2}, ${x2} ${y2}`);

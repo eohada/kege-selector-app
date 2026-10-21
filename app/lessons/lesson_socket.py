@@ -27,13 +27,19 @@ _lesson_operation_locks: dict[int, RLock] = {}
 _pointer_colors = ('#4f46e5', '#0f766e', '#c2410c', '#be123c', '#7c3aed', '#0369a1')
 
 
+_lesson_board_pages: dict[int, list[dict[str, Any]]] = {}
+_lesson_board_active_page: dict[int, str] = {}
+
+
 def _room(lesson_id: int) -> str:
     return f"lesson:{lesson_id}"
 
 
-def _load_cached_board_strokes(lesson_id: int) -> dict[str, Any]:
+def _load_cached_board_data(lesson_id: int) -> tuple[dict[str, Any], list[dict[str, Any]], str]:
     if lesson_id not in _lesson_board_strokes:
         _lesson_board_strokes[lesson_id] = {}
+        _lesson_board_pages[lesson_id] = [{"id": "page_1", "title": "Страница 1", "background": "dots"}]
+        _lesson_board_active_page[lesson_id] = "page_1"
         try:
             from app.models import Lesson
             lesson = Lesson.query.get(lesson_id)
@@ -46,30 +52,95 @@ def _load_cached_board_strokes(lesson_id: int) -> dict[str, Any]:
                     if isinstance(s, dict):
                         sid = str(s.get("id") or s.get("stroke_id") or len(_lesson_board_strokes[lesson_id]))
                         _lesson_board_strokes[lesson_id][sid] = s
+                pages = board.get("pages")
+                if isinstance(pages, list) and pages:
+                    _lesson_board_pages[lesson_id] = pages
+                active = board.get("active_page_id")
+                if active:
+                    _lesson_board_active_page[lesson_id] = str(active)
         except Exception as e:
-            logger.warning("Error loading cached board strokes for lesson %s: %s", lesson_id, e)
-    return _lesson_board_strokes[lesson_id]
+            logger.warning("Error loading cached board data for lesson %s: %s", lesson_id, e)
+    return (
+        _lesson_board_strokes[lesson_id],
+        _lesson_board_pages.get(lesson_id) or [{"id": "page_1", "title": "Страница 1", "background": "dots"}],
+        _lesson_board_active_page.get(lesson_id) or "page_1",
+    )
+
+
+def _load_cached_board_strokes(lesson_id: int) -> dict[str, Any]:
+    return _load_cached_board_data(lesson_id)[0]
+
+
+def _load_cached_board_pages(lesson_id: int) -> list[dict[str, Any]]:
+    return _load_cached_board_data(lesson_id)[1]
+
+
+def _load_cached_board_active_page(lesson_id: int) -> str:
+    return _load_cached_board_data(lesson_id)[2]
+
+
+_flask_app = None
+_lesson_persist_timers: dict[int, Any] = {}
+_lesson_persist_lock = RLock()
+
+
+def _schedule_persist_cached_board_strokes(lesson_id: int, delay: float = 1.2) -> None:
+    from threading import Timer
+    with _lesson_persist_lock:
+        existing = _lesson_persist_timers.get(lesson_id)
+        if existing:
+            try:
+                existing.cancel()
+            except Exception:
+                pass
+        t = Timer(delay, _persist_cached_board_strokes, args=[lesson_id])
+        t.daemon = True
+        _lesson_persist_timers[lesson_id] = t
+        t.start()
 
 
 def _persist_cached_board_strokes(lesson_id: int) -> None:
-    try:
-        from app.models import Lesson, db, moscow_now
-        lesson = Lesson.query.get(lesson_id)
-        if lesson:
-            from app.lessons.routes import _lesson_studio_state, _save_lesson_studio_state
-            state = _lesson_studio_state(lesson)
-            strokes = list(_lesson_board_strokes.get(lesson_id, {}).values())
-            board = state.get("board") or {}
-            rev = int(board.get("revision") or 0) + 1
-            state["board"] = {
-                "strokes": strokes,
-                "revision": rev,
-                "updated_at": moscow_now().isoformat(),
-            }
-            _save_lesson_studio_state(lesson, state)
-            db.session.commit()
-    except Exception as e:
-        logger.warning("Error persisting cached board strokes for lesson %s: %s", lesson_id, e)
+    with _lesson_persist_lock:
+        _lesson_persist_timers.pop(lesson_id, None)
+
+    def _do_persist():
+        try:
+            from app.models import Lesson, db, moscow_now
+            lesson = Lesson.query.get(lesson_id)
+            if lesson:
+                from app.lessons.routes import _lesson_studio_state, _save_lesson_studio_state
+                state = _lesson_studio_state(lesson)
+                strokes = list(_lesson_board_strokes.get(lesson_id, {}).values())
+                pages = _lesson_board_pages.get(lesson_id) or [{"id": "page_1", "title": "Страница 1", "background": "dots"}]
+                active_page_id = _lesson_board_active_page.get(lesson_id) or "page_1"
+                board = state.get("board") or {}
+                rev = int(board.get("revision") or 0) + 1
+                state["board"] = {
+                    "strokes": strokes,
+                    "pages": pages,
+                    "active_page_id": active_page_id,
+                    "revision": rev,
+                    "updated_at": moscow_now().isoformat(),
+                }
+                _save_lesson_studio_state(lesson, state)
+                db.session.commit()
+        except Exception as e:
+            logger.warning("Error persisting cached board strokes for lesson %s: %s", lesson_id, e)
+
+    global _flask_app
+    if _flask_app:
+        with _flask_app.app_context():
+            _do_persist()
+    else:
+        try:
+            from flask import current_app
+            if current_app:
+                with current_app.app_context():
+                    _do_persist()
+            else:
+                _do_persist()
+        except Exception:
+            _do_persist()
 
 
 
@@ -123,7 +194,17 @@ def _resolve_user_presence_info(user) -> dict[str, Any]:
     }
 
 
-def register_lesson_socket(socketio) -> None:
+def register_lesson_socket(socketio, app=None) -> None:
+    global _flask_app
+    if app is not None:
+        _flask_app = app
+    else:
+        try:
+            from flask import current_app
+            _flask_app = getattr(socketio, 'app', None) or (current_app._get_current_object() if current_app else None)
+        except Exception:
+            _flask_app = getattr(socketio, 'app', None)
+
     from flask import request
     from flask_login import current_user
     from app.utils.relationship_scope import get_confirmed_student_user_ids_for_parent
@@ -286,10 +367,21 @@ def register_lesson_socket(socketio) -> None:
         room_ui = _lesson_room_ui.get(lesson_id) or {}
         for ui_payload in room_ui.values():
             socketio.emit("lesson_room_ui_state", ui_payload, room=request.sid, namespace="/lesson")
-        # Воспроизвести текущие штрихи доски
+        # Воспроизвести текущие штрихи и страницы доски
         board_strokes = list(_load_cached_board_strokes(lesson_id).values())
-        if board_strokes:
-            socketio.emit("board_snapshot", {"lesson_id": lesson_id, "strokes": board_strokes}, room=request.sid, namespace="/lesson")
+        board_pages = _load_cached_board_pages(lesson_id)
+        active_page_id = _load_cached_board_active_page(lesson_id)
+        socketio.emit(
+            "board_snapshot",
+            {
+                "lesson_id": lesson_id,
+                "strokes": board_strokes,
+                "pages": board_pages,
+                "active_page_id": active_page_id,
+            },
+            room=request.sid,
+            namespace="/lesson",
+        )
         # Воспроизвести текущую позицию камеры доски
         camera_state = _lesson_camera_state.get(lesson_id)
         if camera_state:
@@ -346,8 +438,13 @@ def register_lesson_socket(socketio) -> None:
         if stroke_id:
             if not stroke.get("page_id"):
                 stroke["page_id"] = "page_1"
-            _load_cached_board_strokes(lesson_id)[stroke_id] = stroke
-            _persist_cached_board_strokes(lesson_id)
+            cached = _load_cached_board_strokes(lesson_id)
+            if stroke_id in cached:
+                existing = cached[stroke_id]
+                cached[stroke_id] = {**stroke, **existing, "src": stroke.get("src") or existing.get("src")}
+            else:
+                cached[stroke_id] = stroke
+            _schedule_persist_cached_board_strokes(lesson_id)
         socketio.emit(
             "board_stroke",
             {
@@ -387,12 +484,12 @@ def register_lesson_socket(socketio) -> None:
                     elif not (s or {}).get("page_id"):
                         s["page_id"] = "page_1"
                     board_strokes[sid] = s
-            _persist_cached_board_strokes(lesson_id)
+            _schedule_persist_cached_board_strokes(lesson_id)
         elif action == "delete":
             del_ids = data.get("strokes") or data.get("stroke_ids") or []
             for sid in del_ids:
                 board_strokes.pop(str(sid), None)
-            _persist_cached_board_strokes(lesson_id)
+            _schedule_persist_cached_board_strokes(lesson_id)
         elif action == "clear":
             target_page_id = data.get("page_id")
             if target_page_id:
@@ -401,7 +498,52 @@ def register_lesson_socket(socketio) -> None:
                     board_strokes.pop(sid, None)
             else:
                 _lesson_board_strokes[lesson_id] = {}
-            _persist_cached_board_strokes(lesson_id)
+            _schedule_persist_cached_board_strokes(lesson_id)
+        elif action == "page_create":
+            new_page = data.get("page")
+            if isinstance(new_page, dict) and new_page.get("id"):
+                pages = _load_cached_board_pages(lesson_id)
+                if not any(p.get("id") == new_page.get("id") for p in pages):
+                    pages.append({
+                        "id": str(new_page.get("id")),
+                        "title": str(new_page.get("title") or f"Страница {len(pages) + 1}"),
+                        "background": str(new_page.get("background") or "dots"),
+                    })
+                    _lesson_board_pages[lesson_id] = pages
+                    _schedule_persist_cached_board_strokes(lesson_id)
+        elif action == "page_delete":
+            del_page_id = str(data.get("page_id") or "")
+            if del_page_id:
+                pages = _load_cached_board_pages(lesson_id)
+                if len(pages) > 1:
+                    _lesson_board_pages[lesson_id] = [p for p in pages if p.get("id") != del_page_id]
+                    to_delete = [sid for sid, s in board_strokes.items() if s.get("page_id") == del_page_id]
+                    for sid in to_delete:
+                        board_strokes.pop(sid, None)
+                    _schedule_persist_cached_board_strokes(lesson_id)
+        elif action == "page_switch":
+            sw_page_id = str(data.get("page_id") or "")
+            if sw_page_id:
+                _lesson_board_active_page[lesson_id] = sw_page_id
+                _schedule_persist_cached_board_strokes(lesson_id)
+        elif action == "page_bg":
+            bg_page_id = str(data.get("page_id") or "")
+            bg_val = str(data.get("background") or "dots")
+            if bg_page_id:
+                pages = _load_cached_board_pages(lesson_id)
+                for p in pages:
+                    if p.get("id") == bg_page_id:
+                        p["background"] = bg_val
+                _schedule_persist_cached_board_strokes(lesson_id)
+        elif action == "page_rename":
+            rn_page_id = str(data.get("page_id") or "")
+            rn_title = str(data.get("title") or "").strip()
+            if rn_page_id and rn_title:
+                pages = _load_cached_board_pages(lesson_id)
+                for p in pages:
+                    if p.get("id") == rn_page_id:
+                        p["title"] = rn_title[:120]
+                _schedule_persist_cached_board_strokes(lesson_id)
 
         socketio.emit(
             "board_action",
@@ -415,6 +557,9 @@ def register_lesson_socket(socketio) -> None:
                 "width": data.get("width"),
                 "height": data.get("height"),
                 "page_id": data.get("page_id"),
+                "page": data.get("page"),
+                "title": data.get("title"),
+                "background": data.get("background"),
             },
             room=_room(lesson_id),
             namespace="/lesson",
@@ -428,6 +573,8 @@ def register_lesson_socket(socketio) -> None:
             return
         try:
             lesson_id = int((data or {}).get("lesson_id"))
+            from flask_socketio import join_room
+            join_room(_room(lesson_id))
             from app.lessons.routes import _whiteboard_access
             _lesson, role = _whiteboard_access(lesson_id)
             from app.lessons.whiteboard_service import board_payload, get_or_create_board, can_student_edit_page
@@ -470,8 +617,19 @@ def register_lesson_socket(socketio) -> None:
             for ui_payload in room_ui.values():
                 socketio.emit("lesson_room_ui_state", ui_payload, room=request.sid, namespace="/lesson")
             board_strokes = list(_load_cached_board_strokes(lesson_id).values())
-            if board_strokes:
-                socketio.emit("board_snapshot", {"lesson_id": lesson_id, "strokes": board_strokes}, room=request.sid, namespace="/lesson")
+            board_pages = _load_cached_board_pages(lesson_id)
+            active_page_id = _load_cached_board_active_page(lesson_id)
+            socketio.emit(
+                "board_snapshot",
+                {
+                    "lesson_id": lesson_id,
+                    "strokes": board_strokes,
+                    "pages": board_pages,
+                    "active_page_id": active_page_id,
+                },
+                room=request.sid,
+                namespace="/lesson",
+            )
             camera_state = _lesson_camera_state.get(lesson_id)
             if camera_state:
                 socketio.emit("whiteboard_live_camera", camera_state, room=request.sid, namespace="/lesson")
@@ -729,6 +887,8 @@ def register_lesson_socket(socketio) -> None:
             return
         try:
             lesson_id = int((data or {}).get("lesson_id"))
+            from flask_socketio import join_room
+            join_room(_room(lesson_id))
             from app.lessons.routes import _whiteboard_access
             _lesson, role = _whiteboard_access(lesson_id)
             if role == "parent":
@@ -995,8 +1155,6 @@ def register_lesson_socket(socketio) -> None:
             if role == "student" and _room_control(lesson_id).get("student_editing") is False:
                 socketio.emit("whiteboard_error", {"message": "Рисование на доске отключено"}, room=request.sid, namespace="/lesson")
                 return
-            if _room_control(lesson_id).get("cursor_sync") is False:
-                return
             pointer = payload.get("pointer") if isinstance(payload.get("pointer"), dict) else {}
             socketio.emit(
                 "whiteboard_live_laser",
@@ -1010,6 +1168,7 @@ def register_lesson_socket(socketio) -> None:
                     "color": payload.get("color"),
                     "width": payload.get("width") or payload.get("size"),
                     "is_start": bool(payload.get("is_start")),
+                    "is_hover": bool(payload.get("is_hover")),
                 },
                 room=_room(lesson_id),
                 namespace="/lesson",
@@ -1029,7 +1188,9 @@ def register_lesson_socket(socketio) -> None:
             role = (_lesson_presence.get(lesson_id, {}).get(current_user.id) or {}).get("role")
             if not role:
                 _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
-            if role != "teacher":
+            if role not in ("teacher", "student"):
+                return
+            if role == "student" and _room_control(lesson_id).get("student_editing") is False:
                 return
             camera = payload.get("camera") if isinstance(payload.get("camera"), dict) else {}
             outgoing = {
@@ -1056,6 +1217,8 @@ def register_lesson_socket(socketio) -> None:
             return
         try:
             lesson_id = int((data or {}).get("lesson_id"))
+            from flask_socketio import join_room
+            join_room(_room(lesson_id))
             from app.lessons.routes import _whiteboard_access
             _whiteboard_access(lesson_id)
         except Exception:

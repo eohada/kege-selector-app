@@ -345,6 +345,7 @@ class WorkspaceContext:
     solution_code: str | None = None
     parsed_answer: Any = None
     parsed_correct_answer: Any = None
+    linked_lesson_id: int | None = None
 
     def as_payload(self) -> dict[str, Any]:
         answer_spec = _normalize_answer_spec(self.task) if self.task else {"default_workspace_mode": "code", "fields": []}
@@ -376,6 +377,7 @@ class WorkspaceContext:
             "lesson_task_id": self.lesson_task_id,
             "submission_id": self.submission_id,
             "assignment_task_id": self.assignment_task_id,
+            "linked_lesson_id": self.linked_lesson_id,
             "answer_id": self.answer_id,
             "code": self.code,
             "plain_answer": self.plain_answer,
@@ -761,7 +763,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         "is_manual": current_is_manual,
         "score": current_answer_score,
         "teacher_comment": teacher_comment,
-        "correct_answer": correct_ans if current_is_reviewed else "",
+        "correct_answer": correct_ans if (current_is_reviewed or can_review) else "",
         "attempts_used": task_attempts_used,
         "max_attempts": task_max_attempts,
         "can_submit_separately": can_submit_separately,
@@ -807,6 +809,7 @@ def _resolve_submission_task_context(user, submission_id: int, assignment_task_i
         solution_html=solution_html,
         parsed_answer=parsed_student_ans,
         parsed_correct_answer=parsed_correct_ans,
+        linked_lesson_id=getattr(submission.assignment, "lesson_id", None),
     )
 
 

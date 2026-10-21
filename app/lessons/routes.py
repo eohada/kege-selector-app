@@ -662,6 +662,42 @@ def check_lesson_room_task_api():
     })
 
 
+@lessons_bp.route('/api/lessons/<int:lesson_id>/board-summary', methods=['GET'])
+@login_required
+def get_lesson_board_summary_api(lesson_id: int):
+    """Возвращает актуальный конспект (доску) онлайн-урока в режиме только для чтения."""
+    try:
+        lesson, role = _whiteboard_access(lesson_id)
+    except Exception:
+        abort(403)
+
+    from app.lessons.lesson_socket import (
+        _load_cached_board_strokes,
+        _load_cached_board_pages,
+        _load_cached_board_active_page,
+    )
+    strokes = list(_load_cached_board_strokes(lesson_id).values())
+    pages = _load_cached_board_pages(lesson_id)
+    active_page_id = _load_cached_board_active_page(lesson_id)
+
+    clean_strokes = []
+    for s in strokes:
+        if isinstance(s, dict):
+            cp = dict(s)
+            cp.pop('_cacheCanvas', None)
+            cp.pop('_cacheOrigin', None)
+            clean_strokes.append(cp)
+
+    return jsonify({
+        'success': True,
+        'lesson_id': lesson_id,
+        'title': lesson.title or f"Урок #{lesson_id}",
+        'pages': pages,
+        'active_page_id': active_page_id,
+        'strokes': clean_strokes,
+    })
+
+
 def _lesson_studio_is_teacher() -> bool:
     from flask import session
     if not current_user or not current_user.is_authenticated:

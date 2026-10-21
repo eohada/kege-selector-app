@@ -623,17 +623,18 @@ body:has(.tw-split-focus) .bs-dashboard-content { padding-bottom: 0; }
 .tw-split-focus #tw-answer-workspace .tw-match-row,
 .tw-split-focus .tw-matching-option {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 28px;
+  grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   min-height: 62px;
-  padding: 7px 12px;
+  padding: 7px 16px 7px 12px;
   border: 1px solid var(--bs-border, #dce5f4);
   border-radius: 12px;
   background: white;
   box-shadow: none;
   color: #0e1a3e;
   font-size: 14px;
+  position: relative;
 }
 .tw-split-focus #tw-answer-workspace .tw-match-row > strong,
 .tw-split-focus .tw-matching-option > span {
@@ -648,15 +649,58 @@ body:has(.tw-split-focus) .bs-dashboard-content { padding-bottom: 0; }
   font-weight: 800;
 }
 .tw-split-focus .tw-matching-option { position: relative; grid-template-columns: 44px minmax(0, 1fr); }
-.tw-split-focus .tw-matching-option::before { content: ''; position: absolute; left: -9px; top: calc(50% - 7px); width: 14px; height: 14px; border: 1px solid var(--bs-primary, #5546f4); border-radius: 50%; background: white; }
+.tw-split-focus .tw-matching-option::before {
+  content: '';
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--bs-primary, #5546f4);
+  border-radius: 50%;
+  background: white;
+  z-index: 2;
+  box-sizing: border-box;
+  transition: background .15s ease, border-color .15s ease;
+}
 .tw-split-focus #tw-answer-workspace .tw-match-row.is-linked,
 .tw-split-focus .tw-matching-option.is-linked { border-color: #8c83ff; background: #f7f6ff; }
 .tw-split-focus .tw-matching-option.is-linked::before { background: var(--bs-primary, #5546f4); }
-.tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select { width: 28px; }
-.tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select-trigger { position: relative; left: 22px; z-index: 2; width: 16px !important; min-width: 16px !important; height: 16px !important; min-height: 16px !important; padding: 0 !important; border: 1.5px solid var(--bs-primary, #5546f4) !important; border-radius: 50% !important; background: white !important; box-shadow: none !important; }
+.tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select {
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  z-index: 5;
+}
+.tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select-trigger {
+  position: relative;
+  z-index: 2;
+  width: 14px !important;
+  min-width: 14px !important;
+  height: 14px !important;
+  min-height: 14px !important;
+  padding: 0 !important;
+  border: 2px solid var(--bs-primary, #5546f4) !important;
+  border-radius: 50% !important;
+  background: white !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+  box-sizing: border-box !important;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
 .tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select-label,
 .tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select-arrow { display: none; }
+.tw-split-focus #tw-answer-workspace .tw-match-row.is-linked .tw-custom-select-trigger,
 .tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select:has(option:checked:not([value=""])) .tw-custom-select-trigger { background: var(--bs-primary, #5546f4) !important; }
+.tw-split-focus #tw-answer-workspace .tw-match-row .tw-choice-result-badge {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+}
 .tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select-menu { right: 0; left: auto; min-width: 180px; border: 1px solid #dce5f4 !important; border-bottom: 2px solid #bdcbe2 !important; border-radius: 12px !important; box-shadow: 0 12px 26px rgba(47, 62, 120, .13) !important; }
 .tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select-option .tw-check-icon { visibility: hidden; }
 .tw-split-focus #tw-answer-workspace .tw-match-row .tw-custom-select-option.is-selected .tw-check-icon { visibility: visible; }

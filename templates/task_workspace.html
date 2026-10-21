@@ -16,7 +16,7 @@
 {% block sandbox_content %}
 <main class="tw-shell tw-split-focus w-full min-h-screen max-w-[1400px] xl:max-w-[1600px] 2xl:max-w-[1720px] mx-auto px-4 py-6 lg:pl-[5.5rem] lg:pr-6" data-context-type="{{ workspace.context_type }}" data-context-id="{{ workspace.context_id or '' }}" data-assignment-task-id="{{ workspace.assignment_task_id or '' }}">
     <div class="tw-back-row mb-3">
-        {% if workspace.return_url %}
+        {% if workspace.return_url and not embedded_answer|default(false) %}
         <a class="tw-btn-tactile-back" href="{{ workspace.return_url }}"><i class="ph-bold ph-arrow-left"></i> <span>К списку работ</span></a>
         {% endif %}
     </div>
@@ -136,7 +136,7 @@
                 <span style="width: {{ task_progress }}%"></span>
             </div>
             <div class="tw-hero-progress-actions">
-                {% if workspace.return_url %}
+                {% if workspace.return_url and not embedded_answer|default(false) %}
                 <a href="{{ workspace.return_url }}" class="tw-btn-tactile-back"><i class="ph-bold ph-list-dashes"></i> <span>К списку</span></a>
                 {% endif %}
                 {% if workspace.can_edit and workspace.context_type == 'submission_task' %}
@@ -194,7 +194,7 @@
                         <summary class="tw-icon-button" title="Действия с работой" aria-label="Действия с работой"><i class="ph-bold ph-dots-three"></i></summary>
                         <div class="tw-task-more-menu">
                             {% if workspace.context_type == 'submission_task' and workspace.can_edit %}<button type="button" onclick="document.getElementById('tw-submit-work')?.click()"><i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу</button>{% endif %}
-                            {% if workspace.return_url %}<a href="{{ workspace.return_url }}"><i class="ph-bold ph-arrow-left"></i> К списку работ</a>{% endif %}
+                            {% if workspace.return_url and not embedded_answer|default(false) %}<a href="{{ workspace.return_url }}"><i class="ph-bold ph-arrow-left"></i> К списку работ</a>{% endif %}
                         </div>
                     </details>
                 </div>
@@ -1082,13 +1082,13 @@
         </div>
         <div class="tw-bottom-actions">
             {% if not workspace.can_edit %}
-            {% if workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary"><i class="ph-bold ph-arrow-left"></i> Вернуться к списку заданий</a>{% endif %}
+            {% if workspace.return_url and not embedded_answer|default(false) %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary"><i class="ph-bold ph-arrow-left"></i> Вернуться к списку заданий</a>{% endif %}
             {% else %}
             <button type="button" class="tw-btn-tactile-save" onclick="window.BooTaskWorkspace?.save?.()"><i class="ph-bold ph-bookmark-simple"></i> <span>Сохранить черновик</span></button>
             {% if workspace.context_type == 'submission_task' and workspace.task_meta and workspace.task_meta.can_submit_separately %}
             <button id="tw-submit-current-task" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Отправить ответ</button>
             {% endif %}
-            {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" data-demo-target="task-submit" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу</button>{% elif workspace.return_url %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
+            {% if workspace.context_type == 'submission_task' %}<button id="tw-submit-work" data-demo-target="task-submit" type="button" class="tw-btn tw-btn-primary"><i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу</button>{% elif workspace.return_url and not embedded_answer|default(false) %}<a href="{{ workspace.return_url }}" class="tw-btn tw-btn-primary">Вернуться к работе</a>{% endif %}
             {% endif %}
         </div>
     </footer>
@@ -1117,7 +1117,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok || !data.success) throw new Error(data.error || 'Не удалось сдать работу');
-            window.location.href = window.TASK_WORKSPACE.return_url || '/submissions';
+            const targetWindow = (window.top && window.top !== window) ? window.top : window;
+            targetWindow.location.href = window.TASK_WORKSPACE.return_url || '/submissions';
         } catch (error) {
             submit.disabled = false;
             submit.innerHTML = '<i class="ph-bold ph-paper-plane-tilt"></i> Сдать работу';

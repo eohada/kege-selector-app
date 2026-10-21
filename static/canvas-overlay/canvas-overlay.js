@@ -126,7 +126,6 @@
   let laserCanvas = null;
   let laserCtx = null;
   let laserCleared = true;
-  let lastLaserHover = null;
   let laserColor = '#ef4444';
   try {
     const savedLColor = localStorage.getItem('boo_whiteboard_laser_color');
@@ -140,12 +139,15 @@
   let laserMenu = null;
   let remoteLaserColor = null;
   let remoteLaserWidth = null;
+  let lastPointerPos = null;
   let currentBrush = 'pen'; // 'pen' | 'pencil' | 'brush' | 'highlighter'
 
   // Realtime Sync Adapter & Remote State
   let realtimeSyncAdapter = null;
   const remoteLiveStrokes = new Map();
   let isReadOnly = false;
+  let isReviewMode = false;
+  let showTeacherLayer = true;
 
   // DOM Elements
   let overlay = null;
@@ -366,6 +368,7 @@
     hiddenFileInput.accept = 'image/*,application/pdf';
     hiddenFileInput.style.display = 'none';
     hiddenFileInput.addEventListener('change', (e) => {
+      if (isReadOnly) { e.target.value = ''; return; }
       if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
         if (file.type.startsWith('image/')) {
@@ -397,6 +400,7 @@
   function createOverlay() {
     overlay = document.createElement('div');
     overlay.className = 'boo-canvas-overlay boo-bg-dots';
+    if (isReadOnly) overlay.classList.add('is-read-only');
     overlay.dataset.tool = tool;
 
     canvas = document.createElement('canvas');
@@ -464,13 +468,13 @@
     window.addEventListener('pointerup', onPointerUp);
     window.addEventListener('pointercancel', onPointerUp);
     canvas.addEventListener('pointerleave', () => {
-      if (tool === 'laser' && !isPointerDown) {
-        lastLaserHover = null;
-        drawLaserTop();
+      if (tool === 'laser' && isPointerDown) {
+        realtimeSyncAdapter?.onLaserMove?.(null, false);
       }
     });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('dblclick', (e) => {
+      if (isReadOnly) return;
       const origin = canvasOrigin();
       const screenX = e.clientX - origin.left;
       const screenY = e.clientY - origin.top;
@@ -496,6 +500,7 @@
     });
     overlay.addEventListener('drop', (e) => {
       e.preventDefault();
+      if (isReadOnly) return;
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         compressAndInsertImage(e.dataTransfer.files[0], e.clientX, e.clientY);
       }
@@ -527,6 +532,15 @@
     const panBtn = mkBtn('ph-hand', 'Рука / Перемещение (H)', () => setTool('pan'));
     panBtn.id = 'boo-tb-pan';
     toolbar.appendChild(panBtn);
+
+    // 2b. Review Layer Toggle (L)
+    const reviewLayerBtn = mkBtn('ph-eye', 'Пометки проверки (L) — скрыть / показать слой учителя', () => {
+      toggleTeacherLayer();
+    });
+    reviewLayerBtn.id = 'boo-tb-review-layer';
+    reviewLayerBtn.classList.add('tb-review-layer-btn');
+    reviewLayerBtn.style.display = 'none';
+    toolbar.appendChild(reviewLayerBtn);
 
     // 3. Pen / Brush Flyout (P)
     const penBtn = mkBtn('ph-pencil-simple-line', 'Кисти и перья (P) — нажмите для выбора', () => {
@@ -621,6 +635,7 @@
     toolbar.appendChild(closeBtn);
 
     document.body.appendChild(toolbar);
+    if (isReadOnly) toolbar.classList.add('is-read-only');
     toolbar.style.display = 'none';
     setTool(tool);
     updateShapeIcon();
@@ -1124,9 +1139,6 @@
       localStorage.setItem('boo_whiteboard_laser_color', c);
     } catch (_) {}
     updateLaserUi();
-    if (tool === 'laser' && lastLaserHover) {
-      drawLaserTop(lastLaserHover);
-    }
   }
 
   function setLaserWidth(w) {
@@ -1136,9 +1148,6 @@
       localStorage.setItem('boo_whiteboard_laser_width', String(laserWidth));
     } catch (_) {}
     updateLaserUi();
-    if (tool === 'laser' && lastLaserHover) {
-      drawLaserTop(lastLaserHover);
-    }
   }
 
   function updateLaserUi() {
@@ -1552,6 +1561,10 @@
   function createPagesBar() {
     pagesBar = document.createElement('div');
     pagesBar.className = 'boo-canvas-pages-bar';
+    if (document.getElementById('board-dock')) {
+      pagesBar.classList.add('has-board-dock');
+      document.body.classList.add('has-board-dock');
+    }
 
     renderPageTabs();
     document.body.appendChild(pagesBar);
@@ -1598,7 +1611,7 @@
     pagesBar.appendChild(bgBtn);
   }
 
-  function switchPage(pageId) {
+  function switchPage(pageId, skipSync = false) {
     if (!pageId) return;
     let target = pages.find((p) => p.id === pageId);
     if (!target) {
@@ -1609,19 +1622,24 @@
     remoteLiveStrokes.clear();
     syncPageStrokes();
     selectedIds.clear();
-    applyCanvasBackground(target.background || 'dots');
+    applyCanvasBackground(target.background || 'dots', true);
     renderPageTabs();
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
     updateMinimap();
+    if (!skipSync) {
+      realtimeSyncAdapter?.onPageSwitch?.(pageId);
+    }
   }
 
-  function addNewPage(customTitle, customId) {
+  function addNewPage(customTitle, customId, skipSync = false) {
+    if (isReadOnly) return null;
     const newId = customId || generateId('page');
     const existing = pages.find((p) => p.id === newId);
     if (existing) {
-      switchPage(newId);
+      switchPage(newId, skipSync);
       return newId;
     }
     const newPage = {
@@ -1631,34 +1649,38 @@
       strokes: []
     };
     pages.push(newPage);
-    switchPage(newId);
+    switchPage(newId, skipSync);
     dirty = true;
     saveLocal();
     scheduleSave();
+    if (!skipSync) realtimeSyncAdapter?.onPageCreate?.(newPage);
     return newId;
   }
 
-  function deletePage(pageId) {
+  function deletePage(pageId, skipSync = false) {
+    if (isReadOnly) return;
     if (!pageId || pages.length <= 1) return;
     const idx = pages.findIndex((p) => p.id === pageId);
     if (idx >= 0) {
       pages.splice(idx, 1);
       if (currentPageId === pageId) {
-        switchPage(pages[0].id);
+        switchPage(pages[0].id, skipSync);
       } else {
         renderPageTabs();
       }
       dirty = true;
       saveLocal();
       scheduleSave();
+      if (!skipSync) realtimeSyncAdapter?.onPageDelete?.(pageId);
     }
   }
 
-  function applyCanvasBackground(bgType) {
-    if (!overlay) return;
+  function applyCanvasBackground(bgType, skipSync = false) {
+    if (isReadOnly || !overlay) return;
     overlay.className = `boo-canvas-overlay boo-bg-${bgType || 'dots'}` + (embeddedTarget ? ' is-embedded' : '') + (isOpen ? ' active' : '');
     const curPage = getActivePage();
     curPage.background = bgType;
+    if (!skipSync) realtimeSyncAdapter?.onPageBackground?.(curPage.id, bgType);
   }
 
   function createBgSelectorPopover() {
@@ -1944,6 +1966,7 @@
   }
 
   function openCatalogModal() {
+    if (isReadOnly) return;
     if (catalogModal) {
       catalogModal.style.display = 'flex';
       catalogModal.classList.add('active');
@@ -1960,6 +1983,7 @@
   // --- Interactive Widgets Insertion & Logic ---
 
   function insertInteractiveWidget(type) {
+    if (isReadOnly) return;
     const space = getActiveTaskContentRect();
     const origin = canvasOrigin();
     const centerEv = { pageX: origin.left + window.innerWidth / 3, pageY: origin.top + window.innerHeight / 3 };
@@ -2125,6 +2149,7 @@
     if (!eraserMenu || !toolbar) return;
     const isCurrentlyActive = eraserMenu.classList.contains('active') && eraserMenu.style.display !== 'none';
     const next = typeof show === 'boolean' ? show : !isCurrentlyActive;
+    if (isReadOnly && next) return;
     if (next) {
       toggleBrushMenu(false);
       toggleShapesMenu(false);
@@ -2256,6 +2281,7 @@
     if (!moreMenu || !toolbar) return;
     const isCurrentlyActive = moreMenu.classList.contains('active') && moreMenu.style.display !== 'none';
     const next = typeof show === 'boolean' ? show : !isCurrentlyActive;
+    if (isReadOnly && next) return;
     if (next) {
       toggleBrushMenu(false);
       toggleShapesMenu(false);
@@ -2420,6 +2446,7 @@
   }
 
   function openMathModal(mathObj) {
+    if (isReadOnly) return;
     editingMathObj = mathObj || null;
     const input = mathModal?.querySelector('#boo-math-latex-input');
     const insertBtn = mathModal?.querySelector('#boo-math-insert-btn');
@@ -2463,6 +2490,7 @@
   }
 
   function insertMathFormula(latex, existingId) {
+    if (isReadOnly) return;
     if (existingId) {
       const existing = strokes.find((s) => s.id === existingId);
       if (existing) {
@@ -2534,6 +2562,7 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
     scheduleSave();
     realtimeSyncAdapter?.onStrokeCommit?.(mathObj);
   }
@@ -2661,7 +2690,9 @@
       laserCanvas.style.height = canvas.style.height;
     }
 
-    if (laserTrail.length === 0) {
+    const hasTrail = laserTrail.length > 0;
+
+    if (!hasTrail) {
       if (!laserCleared) {
         laserCtx.setTransform(1, 0, 0, 1, 0, 0);
         laserCtx.clearRect(0, 0, laserCanvas.width, laserCanvas.height);
@@ -2692,46 +2723,67 @@
     const baseWidth = Math.max(3, (interactionMode === 'laser' ? laserWidth : (remoteLaserWidth || laserWidth || 6)));
 
     if (laserTrail.length > 1) {
-      // Pass 1: Outer neon glowing bloom
+      // Group points into continuous segments by isStart
+      const segments = [];
+      let currentSeg = [];
+      for (let i = 0; i < laserTrail.length; i++) {
+        const pt = laserTrail[i];
+        if (pt.isStart && currentSeg.length > 0) {
+          segments.push(currentSeg);
+          currentSeg = [];
+        }
+        currentSeg.push(pt);
+      }
+      if (currentSeg.length > 0) segments.push(currentSeg);
+
+      // Pre-chunk segments into batches of ~8 points with 1 overlapping point
+      // to eliminate per-point stroke() calls while preserving smooth opacity fade
+      const segmentBatches = segments.map((seg) => {
+        if (seg.length < 2) return [];
+        const chunkSize = 8;
+        const chunks = [];
+        for (let i = 0; i < seg.length; i += (chunkSize - 1)) {
+          const chunk = seg.slice(i, i + chunkSize);
+          if (chunk.length >= 2) {
+            const avgAge = chunk.reduce((sum, p) => sum + (now - p.t), 0) / chunk.length;
+            if (avgAge < 1200) {
+              const alpha = Math.max(0.04, 1 - avgAge / 1200);
+              chunks.push({ points: chunk, alpha });
+            }
+          }
+          if (i + chunkSize >= seg.length) break;
+        }
+        return chunks;
+      });
+
+      // Pass 1: Outer smooth glowing neon bloom (chunked B-spline for 60-144 FPS)
       laserCtx.save();
       laserCtx.shadowColor = lColor;
-      laserCtx.shadowBlur = 14;
-      for (let i = 0; i < laserTrail.length - 1; i++) {
-        const p1 = laserTrail[i];
-        const p2 = laserTrail[i + 1];
-        if (p2.isStart) continue;
-        const age = now - p2.t;
-        if (age >= 1200) continue;
-        const alpha = Math.max(0, 1 - age / 1200);
-
-        laserCtx.beginPath();
-        laserCtx.strokeStyle = hexToRgba(lColor, alpha * 0.7);
-        laserCtx.lineWidth = Math.max(2, baseWidth * 1.5 * alpha);
-        laserCtx.moveTo(p1.x + offsetX, p1.y + offsetY);
-        laserCtx.lineTo(p2.x + offsetX, p2.y + offsetY);
-        laserCtx.stroke();
-      }
+      laserCtx.shadowBlur = 16;
+      segmentBatches.forEach((chunks) => {
+        chunks.forEach(({ points, alpha }) => {
+          laserCtx.beginPath();
+          laserCtx.strokeStyle = hexToRgba(lColor, alpha * 0.78);
+          laserCtx.lineWidth = Math.max(2.5, baseWidth * 1.55 * alpha);
+          drawSmoothSpline(laserCtx, points, offsetX, offsetY);
+          laserCtx.stroke();
+        });
+      });
       laserCtx.restore();
 
-      // Pass 2: Intense white-hot core
+      // Pass 2: Inner white-hot smooth core
       laserCtx.save();
       laserCtx.shadowColor = '#ffffff';
-      laserCtx.shadowBlur = 6;
-      for (let i = 0; i < laserTrail.length - 1; i++) {
-        const p1 = laserTrail[i];
-        const p2 = laserTrail[i + 1];
-        if (p2.isStart) continue;
-        const age = now - p2.t;
-        if (age >= 1200) continue;
-        const alpha = Math.max(0, 1 - age / 1200);
-
-        laserCtx.beginPath();
-        laserCtx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
-        laserCtx.lineWidth = Math.max(1, baseWidth * 0.45 * alpha);
-        laserCtx.moveTo(p1.x + offsetX, p1.y + offsetY);
-        laserCtx.lineTo(p2.x + offsetX, p2.y + offsetY);
-        laserCtx.stroke();
-      }
+      laserCtx.shadowBlur = 4;
+      segmentBatches.forEach((chunks) => {
+        chunks.forEach(({ points, alpha }) => {
+          laserCtx.beginPath();
+          laserCtx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.95})`;
+          laserCtx.lineWidth = Math.max(1.2, baseWidth * 0.45 * alpha);
+          drawSmoothSpline(laserCtx, points, offsetX, offsetY);
+          laserCtx.stroke();
+        });
+      });
       laserCtx.restore();
     }
 
@@ -2740,19 +2792,39 @@
       const tip = laserTrail[laserTrail.length - 1];
       laserCtx.save();
       laserCtx.beginPath();
-      laserCtx.arc(tip.x + offsetX, tip.y + offsetY, baseWidth * 0.85, 0, Math.PI * 2);
+      laserCtx.arc(tip.x + offsetX, tip.y + offsetY, baseWidth * 0.95, 0, Math.PI * 2);
       laserCtx.fillStyle = '#ffffff';
       laserCtx.shadowColor = lColor;
-      laserCtx.shadowBlur = 16;
+      laserCtx.shadowBlur = 18;
       laserCtx.fill();
       laserCtx.restore();
     }
   }
 
+  function drawSmoothSpline(c, pts, offX, offY) {
+    if (!pts || pts.length < 2) return;
+    if (pts.length === 2) {
+      c.moveTo(pts[0].x + offX, pts[0].y + offY);
+      c.lineTo(pts[1].x + offX, pts[1].y + offY);
+      return;
+    }
+    c.moveTo(pts[0].x + offX, pts[0].y + offY);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const pCurr = pts[i];
+      const pNext = pts[i + 1];
+      const midX = (pCurr.x + pNext.x) / 2 + offX;
+      const midY = (pCurr.y + pNext.y) / 2 + offY;
+      c.quadraticCurveTo(pCurr.x + offX, pCurr.y + offY, midX, midY);
+    }
+    const last = pts[pts.length - 1];
+    c.lineTo(last.x + offX, last.y + offY);
+  }
+
   function startLaserLoop() {
     function loop() {
       const now = Date.now();
-      if (laserTrail.length > 0) {
+      const hasTrail = laserTrail.length > 0;
+      if (hasTrail) {
         laserTrail = laserTrail.filter((p) => now - p.t < 1200);
         drawLaserTop();
       } else if (!laserCleared) {
@@ -2796,6 +2868,16 @@
     overlay.style.backgroundSize = (bgType === 'ruled') ? `100% ${curSize}px` : `${curSize}px ${curSize}px`;
   }
 
+  let redrawPending = false;
+  function scheduleRedraw() {
+    if (redrawPending) return;
+    redrawPending = true;
+    requestAnimationFrame(() => {
+      redrawPending = false;
+      redraw();
+    });
+  }
+
   function redraw() {
     if (!ctx) return;
     syncCanvasBackgroundTransform();
@@ -2810,6 +2892,7 @@
 
     // 1. Draw strokes & shapes on canvas
     strokes.forEach((s) => {
+      if (s.layer === 'teacher' && !showTeacherLayer) return;
       if (s.type === 'note' || s.type === 'widget' || s.type === 'math') return;
       drawStroke(s, activeRect);
     });
@@ -2817,6 +2900,7 @@
     if (remoteLiveStrokes.size > 0) {
       remoteLiveStrokes.forEach((s) => {
         if (s.page_id && s.page_id !== currentPageId) return;
+        if (strokes.some((existing) => existing.id === s.id)) return;
         if (s.type === 'note' || s.type === 'widget' || s.type === 'math') return;
         drawStroke(s, activeRect);
       });
@@ -3785,6 +3869,13 @@
         updateMathCardContent(el, item);
       }
 
+      if (item.layer === 'teacher' && !showTeacherLayer) {
+        el.style.display = 'none';
+        return;
+      } else {
+        el.style.display = '';
+      }
+
       // Update position and dimensions
       const p1 = pointToScreen(item.points[0], item, curActiveRect);
       const p2 = pointToScreen(item.points[1] || item.points[0], item, curActiveRect);
@@ -3832,10 +3923,12 @@
 
     el.addEventListener('dblclick', (e) => {
       e.stopPropagation();
+      if (isReadOnly) return;
       openMathModal(item);
     });
 
     el.addEventListener('pointerdown', (e) => {
+      if (isReadOnly) return;
       if (e.target.closest('.boo-math-edit-btn')) return;
       if (tool === 'laser') {
         onPointerDown(e);
@@ -3883,8 +3976,12 @@
     `;
     const btn = el.querySelector('.boo-math-edit-btn');
     if (btn) {
+      if (isReadOnly) {
+        btn.style.display = 'none';
+      }
       btn.addEventListener('click', (ev) => {
         ev.stopPropagation();
+        if (isReadOnly) return;
         openMathModal(item);
       });
     }
@@ -3896,9 +3993,14 @@
     el.dataset.objId = note.id;
 
     const ta = document.createElement('textarea');
-    ta.placeholder = 'Введите текст заметки...';
+    ta.placeholder = isReadOnly ? '' : 'Введите текст заметки...';
     ta.value = note.text || '';
+    ta.readOnly = isReadOnly;
+    if (isReadOnly) {
+      ta.style.cursor = 'default';
+    }
     ta.addEventListener('input', (ev) => {
+      if (isReadOnly) return;
       note.text = ev.target.value;
       dirty = true;
       saveLocal();
@@ -3914,6 +4016,7 @@
     ta.addEventListener('blur', () => el.classList.remove('is-editing'));
 
     el.addEventListener('pointerdown', (ev) => {
+      if (isReadOnly) return;
       if (tool === 'laser') {
         onPointerDown(ev);
         return;
@@ -3977,6 +4080,7 @@
       </div>
     `;
     header.addEventListener('pointerdown', (e) => {
+      if (isReadOnly) return;
       if (tool === 'laser') {
         onPointerDown(e);
         return;
@@ -3997,6 +4101,7 @@
     });
     header.querySelector('.boo-btn-del').addEventListener('click', (e) => {
       e.stopPropagation();
+      if (isReadOnly) return;
       deleteSingleStroke(item.id);
     });
     el.appendChild(header);
@@ -5478,7 +5583,7 @@
 
   function updateSelectionBox() {
     if (!selectionBox) return;
-    if (tool !== 'select' || selectedIds.size === 0) {
+    if (isReadOnly || tool !== 'select' || selectedIds.size === 0) {
       selectionBox.style.display = 'none';
       if (contextBar) contextBar.style.display = 'none';
       return;
@@ -5618,6 +5723,7 @@
       interactionMode = 'laser';
       laserTrail.push({ x: screenX, y: screenY, t: Date.now(), isStart: true });
       drawLaserTop();
+      updateCursor();
       realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true, { color: laserColor, width: laserWidth, isStart: true });
       canvas.setPointerCapture?.(e.pointerId);
       e.preventDefault();
@@ -5635,6 +5741,10 @@
 
     // Select Tool
     if (tool === 'select') {
+      if (isReadOnly) {
+        e.preventDefault();
+        return;
+      }
       let hit = hitTest(screenX, screenY);
       // If clicking inside current selection bounding box, treat as hit on the selected items!
       if (!hit && selectedIds.size > 0) {
@@ -5674,11 +5784,15 @@
       return;
     }
 
-    // Eraser Object tool
-    if (tool === 'eraser_object') {
+    // Eraser Object tool & Review Mode Eraser
+    if (tool === 'eraser_object' || (tool === 'eraser_stroke' && isReviewMode)) {
       const hit = hitTest(screenX, screenY);
-      if (hit) {
+      if (hit && (!isReviewMode || hit.layer === 'teacher')) {
         deleteSingleStroke(hit.id);
+        e.preventDefault();
+        return;
+      }
+      if (isReviewMode && tool === 'eraser_stroke') {
         e.preventDefault();
         return;
       }
@@ -5715,6 +5829,7 @@
       id: generateId(shape ? 'shp' : (isHighlighter ? 'hl' : 'strk')),
       page_id: currentPageId,
       type: isConnector ? 'connector' : (shape ? 'shape' : (isHighlighter ? 'highlighter' : 'stroke')),
+      layer: isReviewMode ? 'teacher' : 'student',
       brush: bId || 'ballpoint',
       shape: shape || 'rectangle',
       color: tool === 'eraser_stroke' ? null : (isHighlighter ? highlighterColor : penColor),
@@ -5744,9 +5859,20 @@
   }
 
   function onPointerMove(e) {
+    lastPointerPos = { clientX: e.clientX, clientY: e.clientY };
     const origin = canvasOrigin();
     const screenX = e.clientX - origin.left;
     const screenY = e.clientY - origin.top;
+
+    // Laser pointer (active only on click/drag, rendered via requestAnimationFrame)
+    if (tool === 'laser') {
+      if (isPointerDown && interactionMode === 'laser') {
+        laserTrail.push({ x: screenX, y: screenY, t: Date.now(), isStart: false });
+        realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true, { color: laserColor, width: laserWidth, isStart: false });
+      }
+      e.preventDefault();
+      return;
+    }
 
     if (!isPointerDown) {
       return;
@@ -5756,18 +5882,9 @@
     if (interactionMode === 'pan' && panStart) {
       viewOffsetX = panStart.offsetX + e.clientX - panStart.x;
       viewOffsetY = panStart.offsetY + e.clientY - panStart.y;
-      redraw();
+      scheduleRedraw();
       updateSelectionBox();
       realtimeSyncAdapter?.onCameraChange?.(viewOffsetX, viewOffsetY, viewScale);
-      e.preventDefault();
-      return;
-    }
-
-    // Laser pointer
-    if (interactionMode === 'laser') {
-      laserTrail.push({ x: screenX, y: screenY, t: Date.now(), isStart: false });
-      drawLaserTop();
-      realtimeSyncAdapter?.onLaserMove?.({ x: (screenX - viewOffsetX) / viewScale, y: (screenY - viewOffsetY) / viewScale }, true, { color: laserColor, width: laserWidth, isStart: false });
       e.preventDefault();
       return;
     }
@@ -5900,7 +6017,7 @@
       } else {
         currentStroke.points.push(point);
       }
-      redraw();
+      scheduleRedraw();
       realtimeSyncAdapter?.onStrokeLive?.('move', { stroke_id: currentStroke.id, stroke: currentStroke });
       e.preventDefault();
     }
@@ -5922,6 +6039,7 @@
 
     if (interactionMode === 'laser') {
       interactionMode = null;
+      updateCursor();
       realtimeSyncAdapter?.onLaserMove?.(null, false);
       return;
     }
@@ -6026,7 +6144,7 @@
       scheduleSave();
       if (finished) {
         finished.page_id = finished.page_id || currentPageId;
-        realtimeSyncAdapter?.onStrokeLive?.('end', { stroke_id: finished.id, page_id: finished.page_id });
+        realtimeSyncAdapter?.onStrokeLive?.('end', { stroke_id: finished.id, page_id: finished.page_id, stroke: finished });
         realtimeSyncAdapter?.onStrokeCommit?.(finished);
       }
     }
@@ -6080,6 +6198,7 @@
   // --- Move, Resize & Rotate Operations ---
 
   function startMoveSelection(e) {
+    if (isReadOnly) return;
     interactionMode = 'move';
     isPointerDown = true;
     dragStartPos = { x: e.clientX, y: e.clientY };
@@ -6136,6 +6255,7 @@
   let resizeStartWorldBounds = null;
 
   function onHandlePointerDown(e, handle) {
+    if (isReadOnly) return;
     e.stopPropagation();
     e.preventDefault();
     interactionMode = 'resize';
@@ -6195,7 +6315,10 @@
     let scaleX = newW / origW;
     let scaleY = newH / origH;
 
-    if (e.shiftKey) {
+    const isCorner = ['tl', 'tr', 'bl', 'br'].includes(resizeHandle);
+    const hasImage = selectedIds.size > 0 && Array.from(selectedIds).some((id) => strokes.find((s) => s.id === id)?.type === 'image');
+
+    if (e.shiftKey || (hasImage && isCorner)) {
       const s = Math.max(scaleX, scaleY);
       scaleX = s;
       scaleY = s;
@@ -6267,6 +6390,7 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
 
     const now = performance.now();
     if (now - (lastResizeSyncTime || 0) > 28) {
@@ -6286,6 +6410,7 @@
   }
 
   function onRotatePointerDown(e) {
+    if (isReadOnly) return;
     e.stopPropagation();
     e.preventDefault();
     interactionMode = 'rotate';
@@ -6336,6 +6461,7 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
   }
 
   function flipSelected(direction = 'h') {
@@ -6381,21 +6507,24 @@
   // --- Sticky Note Creation ---
 
   function createStickyNoteAt(e) {
-    const space = getActiveTaskContentRect();
+    const space = (embeddedTarget || document.getElementById('canvas-window')) ? null : getActiveTaskContentRect();
     const p1 = pointForEvent(e, space);
     const noteW = 180 / viewScale;
     const noteH = 140 / viewScale;
     const p2 = {
       x: p1.x + noteW,
       y: p1.y + noteH,
-      rx: space ? (p1.x + noteW - space.left) / space.width : 0,
-      ry: space ? (p1.y + noteH - space.top) / space.height : 0,
+      ...(space ? {
+        rx: (p1.x + noteW - space.left) / space.width,
+        ry: (p1.y + noteH - space.top) / space.height,
+      } : {})
     };
 
     const newNote = {
       id: generateId('note'),
       page_id: currentPageId,
       type: 'note',
+      layer: isReviewMode ? 'teacher' : 'student',
       text: '',
       colorTheme: 'yellow',
       points: [p1, p2],
@@ -6422,6 +6551,7 @@
   // --- Image Compression & Insertion ---
 
   function compressAndInsertImage(file, clientX, clientY) {
+    if (isReadOnly) return;
     if (!file || !file.type.startsWith('image/')) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -6445,22 +6575,41 @@
 
         const space = (embeddedTarget || document.getElementById('canvas-window')) ? null : getActiveTaskContentRect();
         const origin = canvasOrigin();
-        const posX = clientX !== undefined ? clientX : (origin.left + window.innerWidth / 3);
-        const posY = clientY !== undefined ? clientY : (origin.top + window.innerHeight / 3);
+        const canvasW = canvas.width / Math.max(dpr, 1);
+        const canvasH = canvas.height / Math.max(dpr, 1);
 
-        const clickEv = { pageX: posX + window.scrollX, pageY: posY + window.scrollY };
-        const p1 = pointForEvent(clickEv, space);
-
-        const targetDisplayW = Math.min(360, w);
+        const targetDisplayW = Math.min(420, w);
         const targetDisplayH = Math.round((targetDisplayW * h) / w);
         const worldW = targetDisplayW / viewScale;
         const worldH = targetDisplayH / viewScale;
 
+        let p1;
+        if (clientX !== undefined && clientY !== undefined &&
+            clientX >= origin.left - window.scrollX && clientX <= origin.left - window.scrollX + canvasW &&
+            clientY >= origin.top - window.scrollY && clientY <= origin.top - window.scrollY + canvasH) {
+          const clickEv = { pageX: clientX + window.scrollX, pageY: clientY + window.scrollY };
+          p1 = pointForEvent(clickEv, space);
+        } else {
+          // Centered directly in the visible board viewport
+          const worldCenterX = (-viewOffsetX) / viewScale + canvasW / 2;
+          const worldCenterY = (-viewOffsetY) / viewScale + canvasH / 2;
+          p1 = {
+            x: worldCenterX - worldW / 2,
+            y: worldCenterY - worldH / 2,
+          };
+          if (space) {
+            p1.rx = (p1.x - space.left) / Math.max(space.width, 1);
+            p1.ry = (p1.y - space.top) / Math.max(space.height, 1);
+          }
+        }
+
         const p2 = {
           x: p1.x + worldW,
           y: p1.y + worldH,
-          rx: space ? (p1.x + worldW - space.left) / space.width : 0,
-          ry: space ? (p1.y + worldH - space.top) / space.height : 0,
+          ...(space ? {
+            rx: (p1.x + worldW - space.left) / space.width,
+            ry: (p1.y + worldH - space.top) / space.height,
+          } : {})
         };
 
         const newImgStroke = {
@@ -6489,6 +6638,7 @@
   }
 
   function insertPdfPlaceholder(file) {
+    if (isReadOnly) return;
     const space = getActiveTaskContentRect();
     const origin = canvasOrigin();
     const p1 = pointForEvent({ pageX: origin.left + 200, pageY: origin.top + 200 }, space);
@@ -6556,6 +6706,7 @@
   }
 
   function beginTextEntry(e, space, point, existingTextObj) {
+    if (isReadOnly) return;
     finishTextEntry(true);
     const input = document.createElement('input');
     input.type = 'text';
@@ -6601,11 +6752,13 @@
   }
 
   function cutSelected() {
+    if (isReadOnly) return;
     copySelected();
     deleteSelected();
   }
 
   function pasteClipboardObjects() {
+    if (isReadOnly) return;
     if (!clipboardObjects || clipboardObjects.length === 0) return;
     const newSelected = new Set();
     const offset = 24 / viewScale;
@@ -6639,26 +6792,42 @@
   }
 
   function duplicateSelected() {
+    if (isReadOnly) return;
     copySelected();
     pasteClipboardObjects();
   }
 
   function deleteSelected() {
+    if (isReadOnly) return;
     if (selectedIds.size === 0) return;
-    const deletedIds = Array.from(selectedIds);
-    strokes = strokes.filter((s) => !selectedIds.has(s.id));
+    const deletedIds = Array.from(selectedIds).filter((id) => {
+      const s = strokes.find((item) => item.id === id);
+      if (!s) return false;
+      if (!isReviewMode && s.layer === 'teacher') return false;
+      if (isReviewMode && s.layer !== 'teacher') return false;
+      return true;
+    });
+    if (deletedIds.length === 0) return;
+    const delSet = new Set(deletedIds);
+    strokes = strokes.filter((s) => !delSet.has(s.id));
     getActivePage().strokes = strokes;
-    selectedIds.clear();
+    deletedIds.forEach((id) => selectedIds.delete(id));
     dirty = true;
     saveLocal();
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
     scheduleSave();
     realtimeSyncAdapter?.onStrokesDelete?.(deletedIds);
   }
 
   function deleteSingleStroke(id) {
+    if (isReadOnly) return;
+    const s = strokes.find((item) => item.id === id);
+    if (!s) return;
+    if (!isReviewMode && s.layer === 'teacher') return;
+    if (isReviewMode && s.layer !== 'teacher') return;
     strokes = strokes.filter((s) => s.id !== id);
     getActivePage().strokes = strokes;
     selectedIds.delete(id);
@@ -6667,6 +6836,7 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
     scheduleSave();
     realtimeSyncAdapter?.onStrokesDelete?.([id]);
   }
@@ -6686,6 +6856,7 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
     scheduleSave();
   }
 
@@ -6704,6 +6875,7 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
     scheduleSave();
   }
 
@@ -6722,6 +6894,7 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
     scheduleSave();
   }
 
@@ -6740,12 +6913,26 @@
     redraw();
     syncDomWidgets();
     updateSelectionBox();
+    updateReviewLayerUI();
     scheduleSave();
   }
 
   function undo() {
+    if (isReadOnly) return;
     if (!strokes.length) return;
-    const popped = strokes.pop();
+
+    let idx = -1;
+    for (let i = strokes.length - 1; i >= 0; i--) {
+      const s = strokes[i];
+      if (isReviewMode) {
+        if (s.layer === 'teacher') { idx = i; break; }
+      } else {
+        if (s.layer !== 'teacher') { idx = i; break; }
+      }
+    }
+    if (idx === -1) return;
+
+    const [popped] = strokes.splice(idx, 1);
     redoStack.push(popped);
     selectedIds.clear();
     dirty = true;
@@ -6759,8 +6946,21 @@
   }
 
   function redo() {
+    if (isReadOnly) return;
     if (!redoStack.length) return;
-    const restored = redoStack.pop();
+
+    let idx = -1;
+    for (let i = redoStack.length - 1; i >= 0; i--) {
+      const s = redoStack[i];
+      if (isReviewMode) {
+        if (s.layer === 'teacher') { idx = i; break; }
+      } else {
+        if (s.layer !== 'teacher') { idx = i; break; }
+      }
+    }
+    if (idx === -1) return;
+
+    const [restored] = redoStack.splice(idx, 1);
     strokes.push(restored);
     dirty = true;
     redraw();
@@ -6773,6 +6973,7 @@
   }
 
   function executeClearAll() {
+    if (isReadOnly) return;
     strokes.length = 0;
     redoStack = [];
     selectedIds.clear();
@@ -6900,7 +7101,7 @@
   }
 
   async function loadFromServer() {
-    const isLessonRoom = contextType === 'lesson' || contextType === 'lesson_task' || Boolean(embeddedTarget) || Boolean(document.getElementById('canvas-window'));
+    const isLessonRoom = (contextType === 'lesson' || contextType === 'lesson_task') && !Boolean(window.trainerOsConfig?.homework_mode);
     if (isLessonRoom) return;
 
     if (!taskId) {
@@ -6938,6 +7139,7 @@
     redraw();
     updateSelectionBox();
     updateBadge();
+    updateReviewLayerUI();
   }
 
   function unpackLoadedData(parsed) {
@@ -7126,20 +7328,18 @@
 
   function resolvePointForRender(p, stroke, activeRect) {
     if (!p) return { x: 0, y: 0 };
-    const hasRelative = Number.isFinite(Number(p.rx)) && Number.isFinite(Number(p.ry));
+    const hasRelative = Boolean(stroke && stroke.space) && Number.isFinite(Number(p.rx)) && Number.isFinite(Number(p.ry));
     if (hasRelative) {
-      if (activeRect && (!stroke.space || !stroke.space.task_id || Number(stroke.space.task_id) === Number(activeRect.task_id))) {
+      if (activeRect && (!stroke.space.task_id || Number(stroke.space.task_id) === Number(activeRect.task_id))) {
         return {
           x: activeRect.left + Number(p.rx) * activeRect.width,
           y: activeRect.top + Number(p.ry) * activeRect.height,
         };
       }
-      if (stroke.space) {
-        return {
-          x: Number(stroke.space.left || 0) + Number(p.rx) * Number(stroke.space.width || 1),
-          y: Number(stroke.space.top || 0) + Number(p.ry) * Number(stroke.space.height || 1),
-        };
-      }
+      return {
+        x: Number(stroke.space.left || 0) + Number(p.rx) * Number(stroke.space.width || 1),
+        y: Number(stroke.space.top || 0) + Number(p.ry) * Number(stroke.space.height || 1),
+      };
     }
     return {
       x: Number.isFinite(Number(p.x)) ? Number(p.x) : 0,
@@ -7209,6 +7409,9 @@
   // --- Keyboard Shortcuts & Tool Selection ---
 
   function setTool(t) {
+    if (isReadOnly && !['select', 'pan'].includes(t)) {
+      t = 'select';
+    }
     if (textEditor && t !== 'text') finishTextEntry(true);
     if (ALL_SHAPE_IDS.includes(t)) {
       tool = 'shape';
@@ -7232,7 +7435,6 @@
     }
     if (tool !== 'laser') {
       toggleLaserMenu(false);
-      lastLaserHover = null;
       laserTrail = [];
       if (laserCtx && laserCanvas) {
         laserCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -7290,7 +7492,7 @@
     } else if (tool === 'text') {
       canvas.style.cursor = 'text';
     } else if (tool === 'laser') {
-      canvas.style.cursor = 'pointer';
+      canvas.style.cursor = isPointerDown ? 'none' : 'crosshair';
     } else if (tool === 'eyedropper') {
       canvas.style.cursor = 'copy';
     } else {
@@ -7336,14 +7538,14 @@
 
       // Ctrl+Z: Undo (excluding shift)
       if ((code === 'KeyZ' || key === 'z' || key === 'я') && !e.shiftKey) {
-        undo();
+        if (!isReadOnly) undo();
         e.preventDefault();
         return;
       }
 
       // Ctrl+Y or Ctrl+Shift+Z: Redo
       if (code === 'KeyY' || key === 'y' || key === 'н' || ((code === 'KeyZ' || key === 'z' || key === 'я') && e.shiftKey)) {
-        redo();
+        if (!isReadOnly) redo();
         e.preventDefault();
         return;
       }
@@ -7360,7 +7562,7 @@
       // Ctrl+X: Cut
       if (code === 'KeyX' || key === 'x' || key === 'ч') {
         if (selectedIds.size > 0) {
-          cutSelected();
+          if (!isReadOnly) cutSelected();
           e.preventDefault();
           return;
         }
@@ -7368,6 +7570,7 @@
 
       // Ctrl+V: Paste
       if (code === 'KeyV' || key === 'v' || key === 'м') {
+        if (isReadOnly) { e.preventDefault(); return; }
         if (clipboardObjects && clipboardObjects.length > 0) {
           pasteClipboardObjects();
           e.preventDefault();
@@ -7380,7 +7583,7 @@
       // Ctrl+D: Duplicate
       if (code === 'KeyD' || key === 'd' || key === 'в') {
         if (selectedIds.size > 0) {
-          duplicateSelected();
+          if (!isReadOnly) duplicateSelected();
           e.preventDefault();
           return;
         }
@@ -7404,13 +7607,23 @@
     // 2. Delete / Backspace
     if ((code === 'Delete' || code === 'Backspace' || key === 'delete' || key === 'backspace') && !isTypingInInput(e.target)) {
       if (selectedIds.size > 0) {
-        deleteSelected();
+        if (!isReadOnly) deleteSelected();
         e.preventDefault();
         return;
       }
     }
 
     if (isTypingInInput(e.target)) return;
+
+    if (isReadOnly) {
+      if (code === 'KeyV' || key === 'v' || key === 'м') { setTool('select'); e.preventDefault(); }
+      else if (code === 'KeyH' || key === 'h' || key === 'р') { setTool('pan'); e.preventDefault(); }
+      else if (code === 'KeyL' || key === 'l' || key === 'д') {
+        if (isReviewMode || hasTeacherLayer()) toggleTeacherLayer();
+        e.preventDefault();
+      }
+      return;
+    }
 
     // 3. Single-Key Tool Selection (support both physical code and Latin/Cyrillic characters)
     if (code === 'KeyV' || key === 'v' || key === 'м') { setTool('select'); e.preventDefault(); }
@@ -7429,7 +7642,14 @@
       }
       e.preventDefault();
     }
-    else if (code === 'KeyL' || key === 'l' || key === 'д') { setTool('laser'); e.preventDefault(); }
+    else if (code === 'KeyL' || key === 'l' || key === 'д') {
+      if (isReviewMode || hasTeacherLayer()) {
+        toggleTeacherLayer();
+      } else {
+        setTool('laser');
+      }
+      e.preventDefault();
+    }
     else if (code === 'BracketLeft' || key === '[' || key === 'х') {
       if (tool === 'eraser_stroke' || tool === 'eraser_object') {
         setEraserSize(Math.max(6, eraserSize - 4));
@@ -7473,15 +7693,31 @@
   }
 
   function onPaste(e) {
-    if (!isOpen || isTypingInInput(e.target)) return;
+    if (!isOpen || isReadOnly || isTypingInInput(e.target)) return;
 
-    if (e.clipboardData && e.clipboardData.items) {
-      for (let i = 0; i < e.clipboardData.items.length; i++) {
-        const item = e.clipboardData.items[i];
-        if (item.type.indexOf('image') !== -1) {
-          const file = item.getAsFile();
-          if (file) {
-            compressAndInsertImage(file);
+    if (e.clipboardData) {
+      if (e.clipboardData.items) {
+        for (let i = 0; i < e.clipboardData.items.length; i++) {
+          const item = e.clipboardData.items[i];
+          if (item && item.type && item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            if (file) {
+              const clientX = lastPointerPos ? lastPointerPos.clientX : undefined;
+              const clientY = lastPointerPos ? lastPointerPos.clientY : undefined;
+              compressAndInsertImage(file, clientX, clientY);
+              e.preventDefault();
+              return;
+            }
+          }
+        }
+      }
+      if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+        for (let i = 0; i < e.clipboardData.files.length; i++) {
+          const file = e.clipboardData.files[i];
+          if (file && file.type && file.type.startsWith('image/')) {
+            const clientX = lastPointerPos ? lastPointerPos.clientX : undefined;
+            const clientY = lastPointerPos ? lastPointerPos.clientY : undefined;
+            compressAndInsertImage(file, clientX, clientY);
             e.preventDefault();
             return;
           }
@@ -7642,12 +7878,9 @@
         return;
       }
     }
-    const isLessonRoom = contextType === 'lesson' || contextType === 'lesson_task' || Boolean(embeddedTarget) || Boolean(document.getElementById('canvas-window'));
+    const isLessonRoom = (contextType === 'lesson' || contextType === 'lesson_task') && !Boolean(window.trainerOsConfig?.homework_mode);
     if (!isLessonRoom) {
-      if (changed && isOpen) loadFromServer();
-      if (changed && !isOpen) {
-        scheduleExistingDrawingCheck();
-      }
+      if (changed) loadFromServer();
     }
   }
 
@@ -7905,6 +8138,7 @@
     if (!brushMenu || !toolbar) return;
     const isCurrentlyActive = brushMenu.classList.contains('active') && brushMenu.style.display !== 'none';
     const next = typeof show === 'boolean' ? show : !isCurrentlyActive;
+    if (isReadOnly && next) return;
     if (next) {
       toggleShapesMenu(false);
       toggleLaserMenu(false);
@@ -7954,6 +8188,7 @@
     if (!shapesMenu || !toolbar) return;
     const isCurrentlyActive = shapesMenu.classList.contains('active') && shapesMenu.style.display !== 'none';
     const next = typeof show === 'boolean' ? show : !isCurrentlyActive;
+    if (isReadOnly && next) return;
     if (next) {
       toggleBrushMenu(false);
       toggleLaserMenu(false);
@@ -7991,6 +8226,7 @@
     if (!laserMenu || !toolbar) return;
     const isCurrentlyActive = laserMenu.classList.contains('active') && laserMenu.style.display !== 'none';
     const next = typeof show === 'boolean' ? show : !isCurrentlyActive;
+    if (isReadOnly && next) return;
     if (next) {
       toggleBrushMenu(false);
       toggleShapesMenu(false);
@@ -8012,6 +8248,7 @@
   function togglePropPopover(show) {
     if (!propPopover || !toolbar) return;
     const next = typeof show === 'boolean' ? show : (propPopover.style.display === 'none' || !propPopover.classList.contains('active'));
+    if (isReadOnly && next) return;
     if (next) {
       toggleBrushMenu(false);
       toggleShapesMenu(false);
@@ -8031,6 +8268,7 @@
   function toggleClearConfirm(show) {
     if (!clearConfirm || !toolbar) return;
     const next = typeof show === 'boolean' ? show : (clearConfirm.style.display === 'none' || !clearConfirm.classList.contains('active'));
+    if (isReadOnly && next) return;
     if (next) {
       toggleBrushMenu(false);
       toggleShapesMenu(false);
@@ -8148,6 +8386,14 @@
     const strokeId = payload.stroke_id || payload.stroke?.id;
     if (!strokeId) return;
     const pageId = payload.page_id || payload.stroke?.page_id || currentPageId;
+
+    // If stroke is already committed locally on this page, do not resurrect as live stroke
+    let targetPage = pages.find((p) => p.id === pageId);
+    if (targetPage && targetPage.strokes.some((s) => s.id === strokeId)) {
+      remoteLiveStrokes.delete(strokeId);
+      return;
+    }
+
     if (payload.phase === 'cancel') {
       remoteLiveStrokes.delete(strokeId);
     } else if (payload.phase === 'end') {
@@ -8155,12 +8401,20 @@
         payload.stroke.page_id = pageId;
         remoteLiveStrokes.set(strokeId, payload.stroke);
       }
+      // Fail-safe auto-commit: if board_stroke was delayed or dropped over network,
+      // never let the drawn stroke vanish from the screen!
       setTimeout(() => {
         if (remoteLiveStrokes.has(strokeId)) {
+          const fallbackStroke = remoteLiveStrokes.get(strokeId);
           remoteLiveStrokes.delete(strokeId);
+          let curPg = pages.find((p) => p.id === pageId);
+          if (fallbackStroke && curPg && !curPg.strokes.some((s) => s.id === strokeId)) {
+            curPg.strokes.push(fallbackStroke);
+            if (currentPageId === pageId) strokes = curPg.strokes;
+          }
           redraw();
         }
-      }, 1000);
+      }, 4000);
     } else if (payload.stroke && Array.isArray(payload.stroke.points) && payload.stroke.points.length > 0) {
       payload.stroke.page_id = pageId;
       remoteLiveStrokes.set(strokeId, payload.stroke);
@@ -8183,8 +8437,8 @@
         if (!existing.points || existing.points.length === 0) {
           existing.points = payload.points.slice();
         } else {
-          const lastPt = existing.points[existing.points.length - 1];
           payload.points.forEach((pt) => {
+            const lastPt = existing.points[existing.points.length - 1];
             if (!lastPt || Math.abs(lastPt.x - pt.x) > 0.001 || Math.abs(lastPt.y - pt.y) > 0.001) {
               existing.points.push(pt);
             }
@@ -8192,7 +8446,7 @@
         }
       }
     }
-    redraw();
+    scheduleRedraw();
   }
 
   function applyRemoteStrokeCommit(remoteStroke) {
@@ -8207,9 +8461,13 @@
     }
     const idx = targetPage.strokes.findIndex((s) => s.id === remoteStroke.id);
     if (idx >= 0) {
-      const existingSrc = targetPage.strokes[idx].src;
-      targetPage.strokes[idx] = { ...targetPage.strokes[idx], ...remoteStroke };
-      if (!remoteStroke.src && existingSrc) targetPage.strokes[idx].src = existingSrc;
+      const existing = targetPage.strokes[idx];
+      // Keep newer coordinates/points from any preceding update actions, but apply src and properties
+      targetPage.strokes[idx] = {
+        ...remoteStroke,
+        ...existing,
+        src: remoteStroke.src || existing.src,
+      };
     } else {
       targetPage.strokes.push(remoteStroke);
     }
@@ -8225,9 +8483,11 @@
     let shouldRedraw = false;
     updatedStrokes.forEach((s) => {
       if (!s || !s.id) return;
+      let found = false;
       pages.forEach((pg) => {
         const idx = pg.strokes.findIndex((item) => item.id === s.id);
         if (idx >= 0) {
+          found = true;
           const existingSrc = pg.strokes[idx].src;
           const existingPageId = pg.strokes[idx].page_id;
           pg.strokes[idx] = { ...pg.strokes[idx], ...s };
@@ -8236,11 +8496,23 @@
           if (pg.id === currentPageId) shouldRedraw = true;
         }
       });
+      if (!found) {
+        // If stroke wasn't found (update arrived before initial commit), store it so it isn't lost
+        const targetPid = s.page_id || currentPageId;
+        let pg = pages.find((p) => p.id === targetPid);
+        if (!pg) {
+          pg = { id: targetPid, title: `Страница ${pages.length + 1}`, background: 'dots', strokes: [] };
+          pages.push(pg);
+        }
+        pg.strokes.push(s);
+        if (targetPid === currentPageId) shouldRedraw = true;
+      }
     });
     if (shouldRedraw) {
       strokes = getActivePage().strokes;
       redraw();
       syncDomWidgets();
+      updateSelectionBox();
     }
   }
 
@@ -8258,6 +8530,7 @@
       strokes = getActivePage().strokes;
       redraw();
       syncDomWidgets();
+      updateSelectionBox();
     }
   }
 
@@ -8279,25 +8552,70 @@
     const opts = (typeof visible === 'object' && visible !== null) ? visible : (options || {});
     const isVisible = (typeof visible === 'boolean') ? visible : (opts.visible !== false);
     if (!isVisible || !worldPoint) {
-      laserTrail.length = 0;
-      drawLaserTop();
       return;
     }
     if (opts.color) remoteLaserColor = opts.color;
     if (opts.width || opts.size) remoteLaserWidth = Number(opts.width || opts.size);
     const screenX = Number(worldPoint.x) * viewScale + viewOffsetX;
     const screenY = Number(worldPoint.y) * viewScale + viewOffsetY;
-    laserTrail.push({
-      x: screenX,
-      y: screenY,
-      t: Date.now(),
-      isStart: Boolean(opts.isStart),
-    });
-    drawLaserTop();
+    const now = Date.now();
+
+    if (opts.isStart || laserTrail.length === 0) {
+      laserTrail.push({
+        x: screenX,
+        y: screenY,
+        t: now,
+        isStart: true,
+      });
+    } else {
+      const lastPt = laserTrail[laserTrail.length - 1];
+      const dx = screenX - lastPt.x;
+      const dy = screenY - lastPt.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      // Sub-point interpolation: fills network gaps with silky smooth trajectory
+      if (dist > 6) {
+        const steps = Math.min(6, Math.max(1, Math.floor(dist / 6)));
+        for (let s = 1; s <= steps; s++) {
+          const ratio = s / steps;
+          laserTrail.push({
+            x: lastPt.x + dx * ratio,
+            y: lastPt.y + dy * ratio,
+            t: lastPt.t + (now - lastPt.t) * ratio,
+            isStart: false,
+          });
+        }
+      } else {
+        laserTrail.push({
+          x: screenX,
+          y: screenY,
+          t: now,
+          isStart: false,
+        });
+      }
+    }
   }
 
-  function setAllStrokes(strokesList) {
+  function setAllStrokes(strokesList, pagesList, activePageId) {
     remoteLiveStrokes.clear();
+    if (Array.isArray(pagesList) && pagesList.length > 0) {
+      pagesList.forEach((remotePg) => {
+        if (!remotePg || !remotePg.id) return;
+        let localPg = pages.find((p) => p.id === remotePg.id);
+        if (!localPg) {
+          localPg = {
+            id: remotePg.id,
+            title: remotePg.title || `Страница ${pages.length + 1}`,
+            background: remotePg.background || 'dots',
+            strokes: []
+          };
+          pages.push(localPg);
+        } else {
+          if (remotePg.title) localPg.title = remotePg.title;
+          if (remotePg.background) localPg.background = remotePg.background;
+        }
+      });
+    }
+
     const list = Array.isArray(strokesList) ? strokesList : [];
     const pageMap = new Map();
     list.forEach((s) => {
@@ -8308,39 +8626,154 @@
       pageMap.get(pid).push(s);
     });
 
-    pageMap.forEach((pStrokes, pid) => {
-      let page = pages.find((p) => p.id === pid);
-      if (!page) {
-        page = { id: pid, title: pid === 'page_1' ? 'Страница 1' : `Страница ${pages.length + 1}`, background: 'dots', strokes: [] };
-        pages.push(page);
-      }
-      const strokeMap = new Map();
+    // Authoritative snapshot synchronization: all pages receive exact server strokes,
+    // preserving local cached heavy data like base64 image src, and clearing deleted strokes.
+    pages.forEach((page) => {
+      const pStrokes = pageMap.get(page.id) || [];
+      const localStrokesMap = new Map();
       (page.strokes || []).forEach((item) => {
-        if (item && item.id) strokeMap.set(item.id, item);
+        if (item && item.id) localStrokesMap.set(item.id, item);
       });
-      pStrokes.forEach((s) => {
-        if (!s || !s.id) return;
-        const local = strokeMap.get(s.id);
-        if (local) {
-          strokeMap.set(s.id, { ...local, ...s, src: s.src || local.src });
-        } else {
-          strokeMap.set(s.id, s);
+      page.strokes = pStrokes.map((s) => {
+        if (!s || !s.id) return s;
+        const local = localStrokesMap.get(s.id);
+        if (local && local.src && !s.src) {
+          return { ...s, src: local.src };
         }
+        return s;
       });
-      page.strokes = Array.from(strokeMap.values());
     });
+
+    if (activePageId && activePageId !== currentPageId && pages.some((p) => p.id === activePageId)) {
+      currentPageId = activePageId;
+    }
 
     syncPageStrokes();
     renderPageTabs();
     redraw();
     syncDomWidgets();
+    updateSelectionBox();
+    updateReviewLayerUI();
+  }
+
+  function remoteAddPage(pageData) {
+    if (!pageData || !pageData.id) return;
+    const existing = pages.find((p) => p.id === pageData.id);
+    if (!existing) {
+      pages.push({
+        id: pageData.id,
+        title: pageData.title || `Страница ${pages.length + 1}`,
+        background: pageData.background || 'dots',
+        strokes: []
+      });
+      renderPageTabs();
+    }
+  }
+
+  function remoteDeletePage(pageId) {
+    if (!pageId || pages.length <= 1) return;
+    const idx = pages.findIndex((p) => p.id === pageId);
+    if (idx >= 0) {
+      pages.splice(idx, 1);
+      if (currentPageId === pageId) {
+        switchPage(pages[0].id, true);
+      } else {
+        renderPageTabs();
+      }
+    }
+  }
+
+  function remoteSwitchPage(pageId) {
+    if (pageId) {
+      switchPage(pageId, true);
+    }
+  }
+
+  function remoteSetPageBackground(pageId, bgType) {
+    const p = pages.find((x) => x.id === pageId);
+    if (p) {
+      p.background = bgType || 'dots';
+      if (currentPageId === pageId) {
+        applyCanvasBackground(p.background, true);
+      }
+    }
+  }
+
+  function remoteRenamePage(pageId, title) {
+    const p = pages.find((x) => x.id === pageId);
+    if (p && title) {
+      p.title = title;
+      renderPageTabs();
+    }
   }
 
   function setReadOnly(ro) {
     isReadOnly = Boolean(ro);
-    if (isReadOnly && tool !== 'select' && tool !== 'pan') {
-      setTool('select');
+    if (overlay) overlay.classList.toggle('is-read-only', isReadOnly);
+    if (toolbar) toolbar.classList.toggle('is-read-only', isReadOnly);
+    document.body.classList.toggle('canvas-read-only', isReadOnly);
+    if (isReadOnly) {
+      if (tool !== 'select' && tool !== 'pan') setTool('select');
+      closeMathModal();
+      closeCatalogModal();
+      toggleBrushMenu(false);
+      toggleShapesMenu(false);
+      toggleLaserMenu(false);
+      toggleEraserMenu(false);
+      toggleMoreMenu(false);
+      togglePropPopover(false);
+      toggleClearConfirm(false);
+      selectedIds.clear();
+      updateSelectionBox();
     }
+    syncDomWidgets();
+  }
+
+  function toggleTeacherLayer(force) {
+    if (typeof force === 'boolean') showTeacherLayer = force;
+    else showTeacherLayer = !showTeacherLayer;
+    const btn = document.getElementById('boo-tb-review-layer');
+    if (btn) {
+      btn.classList.toggle('is-off', !showTeacherLayer);
+      btn.innerHTML = showTeacherLayer ? '<i class="ph-bold ph-eye"></i>' : '<i class="ph-bold ph-eye-slash"></i>';
+      btn.title = showTeacherLayer ? 'Скрыть пометки проверки' : 'Показать пометки проверки';
+    }
+    document.querySelectorAll('.boo-review-layer-toggle').forEach((el) => {
+      el.classList.toggle('is-layer-hidden', !showTeacherLayer);
+      const icon = el.querySelector('i');
+      if (icon) icon.className = showTeacherLayer ? 'ph-bold ph-eye text-amber-600' : 'ph-bold ph-eye-slash text-slate-400';
+      const label = el.querySelector('span');
+      if (label) label.textContent = showTeacherLayer ? 'Пометки учителя' : 'Пометки скрыты';
+    });
+    redraw();
+    return showTeacherLayer;
+  }
+
+  function setReviewMode(rm) {
+    isReviewMode = Boolean(rm);
+    if (isReviewMode) {
+      setReadOnly(false);
+      strokes.forEach((s) => {
+        if (!s.layer) s.layer = 'student';
+      });
+      if (!penColor || penColor === '#1e293b' || penColor === '#000000') {
+        setPenColor('#ef4444');
+      }
+    }
+    updateReviewLayerUI();
+  }
+
+  function hasTeacherLayer() {
+    return strokes.some((s) => s.layer === 'teacher');
+  }
+
+  function updateReviewLayerUI() {
+    const show = isReviewMode || hasTeacherLayer();
+    document.querySelectorAll('.boo-review-layer-toggle').forEach((el) => {
+      el.style.display = show ? '' : 'none';
+    });
+    const tbBtn = document.getElementById('boo-tb-review-layer');
+    if (tbBtn) tbBtn.style.display = show ? '' : 'none';
   }
 
   function setRealtimeSync(adapter) {
@@ -8355,6 +8788,10 @@
     setContext,
     setTool,
     setPenColor,
+    setReviewMode,
+    toggleTeacherLayer,
+    hasTeacherLayer,
+    isTeacherLayerVisible: () => showTeacherLayer,
     insertInteractiveWidget,
     zoomIn: () => zoomBy(1.2),
     zoomOut: () => zoomBy(1 / 1.2),
@@ -8394,5 +8831,10 @@
     applyRemoteBoardClear,
     applyRemoteLaser,
     setAllStrokes,
+    remoteAddPage,
+    remoteDeletePage,
+    remoteSwitchPage,
+    remoteSetPageBackground,
+    remoteRenamePage,
   };
 })();

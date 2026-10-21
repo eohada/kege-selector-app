@@ -241,7 +241,20 @@
 
         if (data.success && data.exists) {
           var strokes = typeof data.strokes === 'string' ? JSON.parse(data.strokes) : data.strokes;
-          if (Array.isArray(strokes) && strokes.length > 0) {
+          var strokeList = [];
+          if (Array.isArray(strokes)) {
+            strokeList = strokes;
+          } else if (strokes && typeof strokes === 'object') {
+            if (Array.isArray(strokes.strokes) && strokes.strokes.length > 0) {
+              strokeList = strokes.strokes;
+            } else if (Array.isArray(strokes.pages)) {
+              strokes.pages.forEach(function(p) {
+                if (p && Array.isArray(p.strokes)) strokeList = strokeList.concat(p.strokes);
+              });
+            }
+          }
+          if (strokeList.length > 0) {
+            strokes = strokeList;
             var refStroke = strokes.find(function(s) {
               return s && s.space && Number.isFinite(Number(s.space.width)) && Number.isFinite(Number(s.space.height));
             });

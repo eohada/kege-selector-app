@@ -9,7 +9,7 @@ from flask import Blueprint, abort, current_app, jsonify, render_template, reque
 from flask_login import login_required
 
 from app.models import db
-from core.db_models import User, Lesson, LessonTask, Submission, AssignmentTask, Answer, StudentWorkspaceFile, TaskCanvasDrawing
+from core.db_models import User, Lesson, LessonTask, Submission, SubmissionAiReview, AssignmentTask, Answer, StudentWorkspaceFile, TaskCanvasDrawing
 
 from app.assignments.routes import _collect_sandbox_files
 from app.limiter import limiter
@@ -53,15 +53,25 @@ def workspace_page():
         abort(400, "Workspace открывается из задания или урока.")
     context_id = request.args.get("context_id", type=int)
     assignment_task_id = request.args.get("assignment_task_id", type=int)
-    ctx = resolve_workspace_context(_workspace_actor(), context_type, context_id, assignment_task_id)
+    actor = _workspace_actor()
+    ctx = resolve_workspace_context(actor, context_type, context_id, assignment_task_id)
     payload = ctx.as_payload()
+    if context_type == "submission_task" and actor.is_student() and not ctx.can_edit and ctx.submission_id:
+        review = SubmissionAiReview.query.filter_by(submission_id=ctx.submission_id).order_by(
+            SubmissionAiReview.revision_no.desc()
+        ).first()
+        if review and review.provider in {"gigachat", "code_judge"}:
+            from app.ai_lab.platform_homework import student_review_payload
+            payload["ai_lab_review"] = student_review_payload(review)
     if request.args.get("embedded") == "answer":
         return render_template("task_workspace.html", workspace=payload, embedded_answer=True)
     if context_type == "submission_task":
+        is_review_mode = bool(request.args.get("review") == "1" or (ctx.can_review and not ctx.can_edit))
         return render_template(
             "sandbox/trainer.html",
             room_mode=True,
             homework_mode=True,
+            review_mode=is_review_mode,
             homework_workspace=payload,
             room_os_code=payload.get("code") or payload.get("starter_code") or "",
             room_student_notes="",
@@ -73,6 +83,7 @@ def workspace_page():
             studio_state={},
             is_studio_teacher=False,
             linked_homework_url=None,
+            linked_lesson_id=payload.get("linked_lesson_id"),
         )
     return render_template("task_workspace.html", workspace=payload)
 

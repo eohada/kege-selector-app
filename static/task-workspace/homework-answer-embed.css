@@ -71,3 +71,18 @@ body.tw-embedded-code .tw-code-sidebar,
 body.tw-embedded-code #tw-code-answer-box { display: block !important; width: 100% !important; max-width: none !important; min-height: 0 !important; margin: 0 !important; box-shadow: none !important; }
 body.tw-embedded-code .tw-code-main,
 body.tw-embedded-code .tw-code-sidebar > :not(#tw-code-answer-box) { display: none !important; }
+
+body.tw-embedded-answer .tw-back-row,
+body.tw-embedded-answer .tw-btn-tactile-back,
+body.tw-embedded-answer .tw-hero-bento,
+body.tw-embedded-answer .hw-os-bar,
+body.tw-embedded-answer .tw-task-meta-top,
+body.tw-embedded-answer .tw-hero-progress-actions,
+body.tw-embedded-answer .tw-bottom-actions a,
+body.tw-embedded-answer a[href*="assignments"],
+body.tw-embedded-answer a[href*="/student"],
+body.tw-embedded-answer a[href*="/teacher"],
+body.tw-embedded-answer a[href*="/workspace"] {
+  display: none !important;
+  pointer-events: none !important;
+}
