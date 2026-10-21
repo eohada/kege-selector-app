@@ -24,6 +24,11 @@
             <span id="draft-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-widest shadow-xs">
               {% if is_edit_mode %}Работа #{{ assignment_id }}{% elif assignment_id %}Черновик ID #{{ assignment_id }}{% else %}Новая работа{% endif %}
             </span>
+            {% if lesson_id or (source_meta and source_meta.lesson_id) %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold shadow-xs">
+              <i class="ph-bold ph-notebook text-emerald-600"></i> К уроку #{{ source_meta.lesson_id if source_meta and source_meta.lesson_id else lesson_id }}{% if source_meta and source_meta.lesson_topic %} ({{ source_meta.lesson_topic }}){% endif %}
+            </span>
+            {% endif %}
           </div>
           <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight font-display flex items-center gap-3">
             {% if is_edit_mode %}✏️ Редактирование работы{% else %}🛠️ Создайте и отправьте работу{% endif %}
@@ -694,7 +699,9 @@
   "existingAssignment": {{ (existing_assignment if existing_assignment is defined else None) | tojson | safe }},
   "initialTasks": {{ (initial_tasks if initial_tasks is defined else []) | tojson | safe }},
   "assignmentId": {{ ((source_meta.assignment_id if (source_meta is defined and source_meta and source_meta.assignment_id) else (assignment_id if assignment_id is defined else None))) | tojson | safe }},
-  "isEditMode": {{ (is_edit_mode if is_edit_mode is defined else false) | tojson | safe }}
+  "isEditMode": {{ (is_edit_mode if is_edit_mode is defined else false) | tojson | safe }},
+  "lessonId": {{ ((source_meta.lesson_id if (source_meta is defined and source_meta and source_meta.lesson_id) else (lesson_id if lesson_id is defined else None))) | tojson | safe }},
+  "defaultRecipientIds": {{ (default_recipient_ids if default_recipient_ids is defined else []) | tojson | safe }}
 }
 </script>
 
@@ -2401,6 +2408,7 @@ async function saveAssignmentDraft(showAlert = true) {
 
   const body = {
     assignment_id: pageData.assignmentId,
+    lesson_id: pageData.lessonId || null,
     title: document.getElementById('assignment-title').value,
     description: document.getElementById('assignment-description').value,
     assignment_type: presetType,
@@ -2451,6 +2459,7 @@ async function submitAssignmentForm() {
   const body = {
     draft_id: pageData.assignmentId,
     assignment_id: pageData.assignmentId,
+    lesson_id: pageData.lessonId || null,
     title,
     description: document.getElementById('assignment-description').value,
     type: presetType,
@@ -2580,6 +2589,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (parsed.groups) parsed.groups.forEach(id => selectedGroupIds.add(Number(id)));
       } catch (e) {}
     }
+  }
+
+  if (Array.isArray(pageData.defaultRecipientIds) && pageData.defaultRecipientIds.length) {
+    pageData.defaultRecipientIds.forEach(id => selectedStudentIds.add(Number(id)));
+    if (typeof switchRecipientTab === 'function') switchRecipientTab('students');
   }
 
   renderAttachedTasks();

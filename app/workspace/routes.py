@@ -127,11 +127,13 @@ def _workspace_context_scope(task_id: int, context_type: str | None, context_id:
             abort(403)
         if submission.assignment and not submission.assignment.is_active:
             abort(403)
+        is_teacher = can_user_access_student(current_user, student_user_id=int(student.user_id)) and not current_user.is_student() and not _is_parent_user()
+        can_write = (int(current_user.id) == int(student.user_id) or is_teacher) and not _is_parent_user()
         return {
             'owner_user_id': int(student.user_id),
             'context_type': context_type if submission_slot_id is not None else 'submission',
             'context_id': int(context_id),
-            'can_write': int(current_user.id) == int(student.user_id) and not _is_parent_user(),
+            'can_write': can_write,
             'legacy_safe': submission_slot_id is not None and sum(int(getattr(item, 'task_id', 0) or 0) == int(task_id) for item in assignment_tasks) == 1,
         }
 
@@ -1043,6 +1045,14 @@ def canvas_load():
             context_type='submission', context_id=scope['context_id'],
         ).first()
 
+    if not drawing and str(scope.get('context_type', '')).startswith('submission'):
+        drawing = TaskCanvasDrawing.query.filter(
+            TaskCanvasDrawing.user_id == scope['owner_user_id'],
+            TaskCanvasDrawing.task_id == task_id,
+            TaskCanvasDrawing.context_id == scope['context_id'],
+            TaskCanvasDrawing.context_type.like('submission%'),
+        ).order_by(TaskCanvasDrawing.updated_at.desc()).first()
+
     if not drawing:
         return jsonify({'success': True, 'strokes': '[]', 'exists': False})
 
@@ -1075,6 +1085,14 @@ def canvas_view(target_user_id):
         context_type=scope['context_type'],
         context_id=scope['context_id'],
     ).first()
+
+    if not drawing and str(scope.get('context_type', '')).startswith('submission'):
+        drawing = TaskCanvasDrawing.query.filter(
+            TaskCanvasDrawing.user_id == scope['owner_user_id'],
+            TaskCanvasDrawing.task_id == task_id,
+            TaskCanvasDrawing.context_id == scope['context_id'],
+            TaskCanvasDrawing.context_type.like('submission%'),
+        ).order_by(TaskCanvasDrawing.updated_at.desc()).first()
 
     if not drawing:
         return jsonify({'success': True, 'exists': False, 'strokes': '[]'})

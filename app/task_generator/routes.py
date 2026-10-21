@@ -1089,6 +1089,10 @@ def task_generator_bank_picker_list():
     rows = bq.offset((page - 1) * per_page).limit(per_page).all()
 
     exposures_by_pair = {}
+    student_names_map = {}
+    if target_student_ids and rows:
+        st_rows = Student.query.filter(Student.student_id.in_(target_student_ids)).all()
+        student_names_map = {s.student_id: (s.name or f"Ученик #{s.student_id}") for s in st_rows}
     if target_student_ids and rows:
         exposures = StudentTaskSeen.query.filter(
             StudentTaskSeen.student_id.in_(target_student_ids),
@@ -1125,10 +1129,22 @@ def task_generator_bank_picker_list():
     for t in rows:
         tid = t.task_id
         fully = _picker_fully_added(tid, lesson_id, template_id, assignment_type, lesson_ids, template_ids)
-        recipient_states = [
-            exposure_state_for_row(exposures_by_pair.get((student_id, tid)))
-            for student_id in target_student_ids
-        ]
+        recipient_states = []
+        by_student = []
+        for student_id in target_student_ids:
+            st = exposure_state_for_row(exposures_by_pair.get((student_id, tid)))
+            recipient_states.append(st)
+            st_name = student_names_map.get(student_id, f"Ученик #{student_id}")
+            status_label = 'В работе' if st.get('blocked') else ('Решалось ранее' if st.get('seen_before') else 'Не отправлялось')
+            by_student.append({
+                'student_id': student_id,
+                'student_name': st_name,
+                'blocked': bool(st.get('blocked')),
+                'seen_before': bool(st.get('seen_before')),
+                'expired': bool(st.get('expired')),
+                'active_until': st['active_until'].isoformat() if st.get('active_until') else None,
+                'status_label': status_label,
+            })
         blocked_states = [state for state in recipient_states if state['blocked']]
         active_until = max((state['active_until'] for state in blocked_states), default=None)
 
@@ -1186,6 +1202,7 @@ def task_generator_bank_picker_list():
                 'expired': any(state['expired'] for state in recipient_states),
                 'active_until': active_until.isoformat() if active_until else None,
                 'recipient_count': len(target_student_ids),
+                'by_student': by_student,
             } if target_student_ids else None,
         })
 
@@ -2362,9 +2379,89 @@ def task_generator_bank():
     if not return_to.startswith('/') or return_to.startswith('//'):
         return_to = url_for('task_generator.task_generator')
 
+    platform_code_creation_enabled = False
+    try:
+        from app.ai_lab.platform_homework import platform_homework_enabled
+        platform_code_creation_enabled = bool(platform_homework_enabled(int(current_user.id)))
+    except Exception:
+        platform_code_creation_enabled = False
+    from app.assignments.routes import get_user_scope, get_students_for_tutor
+    from app.models import SchoolGroup, GroupStudent
+
+    scope = get_user_scope(current_user)
+    if scope.get('can_see_all'):
+        recipient_options = (
+            Student.query.filter(Student.is_active.is_(True))
+            .order_by(Student.name.asc(), Student.student_id.asc())
+            .limit(500)
+            .all()
+        )
+    else:
+        tutor_students = get_students_for_tutor(current_user.id) or []
+        ids = [int(s.student_id) for s in tutor_students if getattr(s, 'student_id', None)]
+        recipient_options = (
+            Student.query.filter(Student.student_id.in_(ids))
+            .order_by(Student.name.asc(), Student.student_id.asc())
+            .limit(500)
+            .all()
+        ) if ids else []
+
+    if scope.get('can_see_all'):
+        available_groups = SchoolGroup.query.filter_by(status='active').order_by(SchoolGroup.title.asc()).all()
+    else:
+        available_groups = SchoolGroup.query.filter_by(
+            status='active', owner_user_id=current_user.id
+        ).order_by(SchoolGroup.title.asc()).all()
+
+    group_members_map = {}
+    try:
+        for _g in available_groups or []:
+            _gid = getattr(_g, 'group_id', None)
+            if _gid is None:
+                continue
+            rows = GroupStudent.query.filter_by(group_id=int(_gid)).all()
+            group_members_map[str(_gid)] = [int(r.student_id) for r in rows if getattr(r, 'student_id', None)]
+    except Exception:
+        group_members_map = {}
+
+    students_data = [
+        {
+            'student_id': s.student_id,
+            'name': s.name or f"Ученик #{s.student_id}",
+            'tg_username': getattr(s, 'tg_username', '') or '',
+            'school_class': getattr(s, 'school_class', '') or '',
+        }
+        for s in recipient_options
+    ]
+    groups_data = [
+        {
+            'group_id': g.group_id,
+            'title': g.title,
+            'student_ids': group_members_map.get(str(g.group_id), []),
+        }
+        for g in (available_groups or [])
+    ]
+
+    initial_mode = (request.args.get('mode') or 'explore').strip().lower()
+    if initial_mode not in ('explore', 'assignment'):
+        initial_mode = 'explore'
+
+    initial_recipient_ids = []
+    recipients_param = request.args.get('recipient_ids') or ''
+    if recipients_param:
+        try:
+            initial_recipient_ids = [int(x.strip()) for x in recipients_param.split(',') if x.strip().isdigit()]
+        except Exception:
+            initial_recipient_ids = []
+
     return render_template(
         'sandbox/task_bank.html',
         return_to=return_to,
+        platform_code_creation_enabled=platform_code_creation_enabled,
+        students_data=students_data,
+        groups_data=groups_data,
+        initial_mode=initial_mode,
+        initial_recipient_ids=initial_recipient_ids,
     )
 
 

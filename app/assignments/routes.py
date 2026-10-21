@@ -43,6 +43,16 @@ from app.assignments.submission_lifecycle_service import (
     transition_submission_status,
     SubmissionLifecycleError,
 )
+try:
+    from app.ai_lab.platform_homework import (
+        grade_bound_answer,
+        platform_homework_enabled,
+        save_platform_submission_review,
+    )
+except Exception:
+    grade_bound_answer = None
+    platform_homework_enabled = lambda *_: False
+    save_platform_submission_review = None
 from app.sandbox.python_runner import normalize_leading_tabs_to_spaces, run_python_sandbox
 import requests
 from flask import Response, stream_with_context, abort, send_from_directory
@@ -321,6 +331,13 @@ def _apply_assignment_builder_payload(assignment: Assignment, data: dict[str, An
     except (TypeError, ValueError):
         course = None
     assignment.exam_course_id = course.id if course else None
+
+    raw_lesson_id = data.get('lesson_id')
+    if raw_lesson_id:
+        try:
+            assignment.lesson_id = int(raw_lesson_id)
+        except (TypeError, ValueError):
+            pass
 
     raw_tasks = data.get('tasks') if isinstance(data.get('tasks'), list) else []
     task_rows = _expand_tasks_data_for_triplets(raw_tasks)
@@ -2848,14 +2865,17 @@ def assignment_create():
             )
         source = 'generator'
 
-    if source == 'generator' and task_ids_param:
+    if (source in ('generator', 'manual', 'bank') or not tasks) and task_ids_param:
         try:
             ids = [int(x.strip()) for x in task_ids_param.split(',') if x.strip() and x.strip().isdigit()]
             ids = list(dict.fromkeys(ids))[:500]
             if ids:
                 tasks = Tasks.query.filter(Tasks.task_id.in_(ids)).order_by(Tasks.task_id.asc()).all()
                 tasks = sorted(tasks, key=lambda t: ids.index(t.task_id) if t.task_id in ids else 999)
-            source_label = 'Из генератора'
+            if source in ('manual', 'bank'):
+                source_label = 'Из банка заданий'
+            else:
+                source_label = 'Из генератора'
             source_meta = {'task_ids': ids}
         except Exception:
             tasks = []
@@ -3284,6 +3304,13 @@ def assignment_update(assignment_id: int):
         if raw_course_id:
             try:
                 assignment.exam_course_id = int(raw_course_id)
+            except (ValueError, TypeError):
+                pass
+
+        raw_lesson_id = data.get('lesson_id')
+        if raw_lesson_id:
+            try:
+                assignment.lesson_id = int(raw_lesson_id)
             except (ValueError, TypeError):
                 pass
 
@@ -5293,6 +5320,7 @@ def submission_submit(submission_id):
         all_auto_graded = True
         total_score = 0
         max_score = 0
+        platform_code_judge_results = []
         
         for assignment_task in assignment.tasks:
             max_score += assignment_task.max_score
@@ -5324,7 +5352,41 @@ def submission_submit(submission_id):
                     answer.submitted_separately_at = now
             
             if not assignment_task.requires_manual_grading:
-                is_correct, score = auto_grade_answer(answer, assignment_task)
+                answer_spec = assignment_task.task.answer_spec if isinstance(assignment_task.task.answer_spec, dict) else {}
+                platform_binding = answer_spec.get("code_judge_binding")
+                platform_enabled = platform_homework_enabled(int(current_user.id))
+                logger.info(
+                    "Platform homework grading decision",
+                    extra={
+                        "submission_id": int(submission_id),
+                        "assignment_task_id": int(assignment_task.assignment_task_id),
+                        "task_id": int(assignment_task.task.task_id),
+                        "user_id": int(current_user.id),
+                        "answer_type": answer_spec.get("type"),
+                        "grading_mode": answer_spec.get("grading_mode"),
+                        "has_code_judge_binding": bool(platform_binding),
+                        "platform_homework_enabled": platform_enabled,
+                    },
+                )
+                if platform_binding and platform_enabled:
+                    is_correct, score = grade_bound_answer(answer, assignment_task, int(current_user.id))
+                    report = getattr(answer, "_platform_code_judge_report", None)
+                    if report:
+                        platform_code_judge_results.append((answer, report))
+                    logger.info(
+                        "Platform homework grading result",
+                        extra={
+                            "submission_id": int(submission_id),
+                            "assignment_task_id": int(assignment_task.assignment_task_id),
+                            "grade_available": is_correct is not None,
+                            "report_status": (report or {}).get("status"),
+                            "report_error_code": (report or {}).get("error_code"),
+                            "report_error_message": (report or {}).get("error_message"),
+                            "score_awarded": score,
+                        },
+                    )
+                else:
+                    is_correct, score = auto_grade_answer(answer, assignment_task)
                 if is_correct is not None:
                     answer.is_correct = is_correct
                     answer.score = score
@@ -5333,6 +5395,8 @@ def submission_submit(submission_id):
                         # Если задание уже было сдано отдельно, MMR уже начислен в submit_task.
                         # На финальной сдаче не дублируем начисление.
                         if not was_submitted_separately:
+                            if answer.answer_id is None:
+                                db.session.flush()
                             from app.analytics import AnalyticsEngine
                             answer_time_spent_sec = task_times_by_assignment_task_id.get(int(assignment_task.assignment_task_id))
                             if answer_time_spent_sec is None:
@@ -5349,7 +5413,7 @@ def submission_submit(submission_id):
                                 submission_id=submission_id,
                                 answer_id=answer.answer_id,
                                 attempt_no=max(1, int(answer.attempts_used or 1)),
-                                mode='homework_manual',
+                                mode='ai_lab_code_judge' if getattr(answer, "_platform_code_judge_report", None) else 'homework_manual',
                             )
                     except Exception as anal_err:
                         logger.warning("Analytics process_submission failed: %s", anal_err)
@@ -5397,13 +5461,20 @@ def submission_submit(submission_id):
         except Exception:
             logger.warning('on_submission_status_changed after submission_submit failed', exc_info=True)
 
-        try:
-            from app.assignments.ai_review_service import trigger_ai_review_async, submission_has_ai_eligible_tasks, get_ai_review_config
-            cfg = get_ai_review_config()
-            if cfg["enabled"] and submission_has_ai_eligible_tasks(submission):
-                trigger_ai_review_async(submission.submission_id)
-        except Exception as ai_err:
-            logger.warning(f"Could not trigger background AI review for submission {submission_id}: {ai_err}")
+        if platform_code_judge_results and callable(save_platform_submission_review):
+            try:
+                save_platform_submission_review(submission.submission_id, platform_code_judge_results)
+            except Exception as ai_err:
+                db.session.rollback()
+                logger.exception("Could not save local AI Lab review for submission %s: %s", submission_id, ai_err)
+        else:
+            try:
+                from app.assignments.ai_review_service import trigger_ai_review_async, submission_has_ai_eligible_tasks, get_ai_review_config
+                cfg = get_ai_review_config()
+                if cfg["enabled"] and submission_has_ai_eligible_tasks(submission):
+                    trigger_ai_review_async(submission.submission_id)
+            except Exception as ai_err:
+                logger.warning(f"Could not trigger background AI review for submission {submission_id}: {ai_err}")
 
         if creator_id:
             notify_user(
@@ -5619,6 +5690,19 @@ def submission_grade_view(submission_id):
     if not scope['can_see_all'] and assignment.created_by_id != viewer_user_id:
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('assignments.assignments_list'))
+
+    # Редирект в BooStudy OS v3 (режим проверки), если явно не запрошен старый интерфейс
+    if request.args.get('legacy') != '1':
+        ordered_tasks = sorted(assignment.tasks or [], key=lambda t: (getattr(t, 'order_index', 0), t.assignment_task_id))
+        first_task = next((t for t in ordered_tasks if getattr(t, 'task', None) is not None), None)
+        if first_task:
+            return redirect(url_for(
+                'task_workspace.workspace_page',
+                context_type='submission_task',
+                context_id=submission.submission_id,
+                assignment_task_id=first_task.assignment_task_id,
+                review=1,
+            ))
     
     now = utc_now()
     display_status_label = _submission_display_status(submission, assignment, now)
@@ -6577,6 +6661,25 @@ def submission_comment_create(submission_id):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error creating comment: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/comments/<int:comment_id>', methods=['DELETE'])
+@login_required
+def submission_comment_delete(submission_id, comment_id):
+    """Удаление комментария к сдаче (автором или преподавателем)."""
+    submission = Submission.query.get_or_404(submission_id)
+    if not _can_current_user_access_submission(submission):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    comment = SubmissionComment.query.filter_by(submission_id=submission_id, comment_id=comment_id).first_or_404()
+    if comment.author_id != current_user.id and current_user.is_student():
+        return jsonify({'success': False, 'error': 'Нельзя удалить чужой комментарий'}), 403
+    try:
+        db.session.delete(comment)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

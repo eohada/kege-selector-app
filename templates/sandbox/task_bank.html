@@ -32,8 +32,20 @@
           </h1>
           
           <p class="text-[13px] text-slate-500 max-w-xl leading-relaxed m-0 font-medium">
-            Готовые задания, материалы и инструменты для создания новых. Используй банк как отдельный инструмент или добавляй задания в домашние работы.
+            Готовые задания, материалы и инструменты для создания новых. Используй банк как отдельный инструмент или формируй домашние работы под конкретных учеников.
           </p>
+
+          <!-- Studio Mode Segmented Control -->
+          <div class="inline-flex items-center p-1 bg-slate-200/70 rounded-2xl border border-slate-300/70 shadow-inner mt-2">
+            <button type="button" id="bank-mode-explore-btn" onclick="setBankStudioMode('explore')" class="ts-mode-btn active px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer border-0 bg-white text-indigo-700 shadow-sm">
+              <i class="ph-bold ph-compass text-base"></i>
+              <span>Режим исследования</span>
+            </button>
+            <button type="button" id="bank-mode-assignment-btn" onclick="setBankStudioMode('assignment')" class="ts-mode-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer border-0 bg-transparent text-slate-600 hover:text-indigo-600">
+              <i class="ph-bold ph-paper-plane-tilt text-base"></i>
+              <span>Режим создания работы</span>
+            </button>
+          </div>
         </div>
 
         <!-- Right: 3 KPI Cards & Action Button -->
@@ -81,6 +93,66 @@
         </div>
       </div>
     </header>
+
+    <!-- ==================== ASSIGNMENT MODE CONTEXT BAR ==================== -->
+    <section id="bank-assignment-student-bar" class="hidden my-3 p-4 bg-white/95 backdrop-blur-md rounded-2xl border border-indigo-150 shadow-sm transition-all space-y-3">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <!-- Left: Icon, Title, and Group Selector -->
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center text-lg shadow-sm">
+              <i class="ph-bold ph-users-three"></i>
+            </span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-xs sm:text-sm font-black text-slate-900 m-0 leading-tight">Получатели работы</h3>
+                <span id="bank-assignment-students-counter" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">0 выбрано</span>
+              </div>
+              <p class="text-[11px] text-slate-400 m-0">Выберите одного или нескольких учеников для персонального отслеживания выдач</p>
+            </div>
+          </div>
+
+          <!-- Quick Group Selector -->
+          <div class="relative">
+            <select id="bank-group-select" onchange="handleBankGroupSelect(this.value)" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 outline-none cursor-pointer">
+              <option value="">Все группы...</option>
+            </select>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="selectAllAssignmentStudents()" class="px-2.5 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border-0 bg-transparent cursor-pointer">
+              Выбрать всех
+            </button>
+            <span class="text-slate-300">·</span>
+            <button type="button" onclick="clearAllAssignmentStudents()" class="px-2.5 py-1 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border-0 bg-transparent cursor-pointer">
+              Сбросить
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Search student input with dropdown toggle -->
+        <div class="relative min-w-[280px]">
+          <div class="relative">
+            <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+            <input type="text" id="bank-student-search-input" onfocus="openStudentDropdown()" oninput="filterStudentDropdown(this.value)" placeholder="Найти и добавить ученика..." class="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl pl-8 pr-8 py-2 text-xs font-medium outline-none transition-all">
+            <button type="button" onclick="toggleStudentDropdown()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 border-0 bg-transparent cursor-pointer p-1">
+              <i class="ph-bold ph-caret-down text-xs"></i>
+            </button>
+          </div>
+
+          <!-- Dropdown List of Students -->
+          <div id="bank-students-dropdown" class="hidden absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto studio-scroll p-1.5 space-y-1">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected Students Pills Area -->
+      <div id="bank-selected-students-chips" class="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-slate-100">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
 
 
     <!-- ==================== 3-PANEL WORKSPACE ==================== -->
@@ -524,6 +596,34 @@
 
     </section>
 
+  </div>
+</div>
+
+<!-- ==================== ASSIGNMENT MODE PERSISTENT DOCK ==================== -->
+<div id="bank-assignment-action-dock" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md border border-indigo-200/90 shadow-[0_16px_36px_rgba(79,70,229,0.18)] rounded-2xl px-5 py-3 flex items-center gap-5 transition-all">
+  <div class="flex items-center gap-3">
+    <span class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center text-lg shadow-md">
+      <i class="ph-bold ph-clipboard-text"></i>
+    </span>
+    <div>
+      <div class="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+        В работе: <span id="dock-tasks-count" class="text-indigo-600 font-black">0</span> заданий
+      </div>
+      <div class="text-[11px] text-slate-500 font-medium">
+        Получатели: <span id="dock-students-count" class="font-bold text-slate-800">0 учеников</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <button type="button" onclick="openQueueDrawer()" class="h-10 px-4 rounded-xl border border-slate-200 hover:border-indigo-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-2xs">
+      <i class="ph-bold ph-tray text-sm text-indigo-600"></i>
+      <span>Состав работы</span>
+    </button>
+    <button type="button" onclick="createAssignmentFromQueue()" class="ts-btn-primary h-10 px-5 text-xs sm:text-sm font-black flex items-center gap-2 cursor-pointer shadow-md rounded-xl">
+      <i class="ph-bold ph-paper-plane-tilt text-base"></i>
+      <span>Оформить и отправить работу →</span>
+    </button>
   </div>
 </div>
 
@@ -1261,6 +1361,13 @@
 <script>
 const BANK_SELECTION_KEY = 'boostudy.assignment-bank.selection.v1';
 const BANK_RETURN_TO = {{ return_to | tojson }};
+const BANK_STUDENTS = {{ (students_data if students_data is defined else []) | tojson }};
+const BANK_GROUPS = {{ (groups_data if groups_data is defined else []) | tojson }};
+const BANK_INITIAL_MODE = {{ (initial_mode if initial_mode is defined else 'explore') | tojson }};
+const BANK_INITIAL_RECIPIENT_IDS = {{ (initial_recipient_ids if initial_recipient_ids is defined else []) | tojson }};
+
+let bankStudioMode = (BANK_INITIAL_MODE === 'assignment') ? 'assignment' : (localStorage.getItem('boostudy_bank_studio_mode') || 'explore');
+let selectedAssignmentStudentIds = new Set(BANK_INITIAL_RECIPIENT_IDS);
 
 let bankCourseId = '';
 let bankModule = '';
@@ -1277,6 +1384,172 @@ let inspectorTab = 'condition';
 let isNavCollapsed = false;
 let currentSort = 'recent';
 let quickNumberFilter = '';
+
+function setBankStudioMode(mode) {
+  bankStudioMode = (mode === 'assignment') ? 'assignment' : 'explore';
+  localStorage.setItem('boostudy_bank_studio_mode', bankStudioMode);
+
+  const exploreBtn = document.getElementById('bank-mode-explore-btn');
+  const assignmentBtn = document.getElementById('bank-mode-assignment-btn');
+  const studentBar = document.getElementById('bank-assignment-student-bar');
+  const actionDock = document.getElementById('bank-assignment-action-dock');
+
+  if (bankStudioMode === 'assignment') {
+    if (assignmentBtn) {
+      assignmentBtn.className = 'ts-mode-btn active px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer border-0 bg-white text-indigo-700 shadow-sm';
+    }
+    if (exploreBtn) {
+      exploreBtn.className = 'ts-mode-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer border-0 bg-transparent text-slate-600 hover:text-indigo-600';
+    }
+    if (studentBar) studentBar.classList.remove('hidden');
+    if (actionDock) actionDock.classList.remove('hidden');
+    renderAssignmentStudentBar();
+  } else {
+    if (exploreBtn) {
+      exploreBtn.className = 'ts-mode-btn active px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black flex items-center gap-2 transition-all cursor-pointer border-0 bg-white text-indigo-700 shadow-sm';
+    }
+    if (assignmentBtn) {
+      assignmentBtn.className = 'ts-mode-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer border-0 bg-transparent text-slate-600 hover:text-indigo-600';
+    }
+    if (studentBar) studentBar.classList.add('hidden');
+    if (actionDock) actionDock.classList.add('hidden');
+  }
+
+  scheduleBankSearch();
+  updateInspectorButtonState();
+}
+
+function renderAssignmentStudentBar() {
+  const groupSelect = document.getElementById('bank-group-select');
+  if (groupSelect && groupSelect.options.length <= 1) {
+    BANK_GROUPS.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.group_id;
+      opt.textContent = `${g.title} (${g.student_ids?.length || 0} уч.)`;
+      groupSelect.appendChild(opt);
+    });
+  }
+
+  const chipsContainer = document.getElementById('bank-selected-students-chips');
+  if (chipsContainer) {
+    if (!selectedAssignmentStudentIds.size) {
+      chipsContainer.innerHTML = '<span class="text-[11px] text-slate-400 italic">Ученики не выбраны. Выберите учеников из поиска справа или выберите группу.</span>';
+    } else {
+      chipsContainer.innerHTML = [...selectedAssignmentStudentIds].map(id => {
+        const st = BANK_STUDENTS.find(s => s.student_id === id);
+        const name = st ? st.name : `Ученик #${id}`;
+        return `
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/90 shadow-2xs">
+            <i class="ph-bold ph-user text-[11px] text-indigo-500"></i>
+            <span>${escapeHtml(name)}</span>
+            <button type="button" onclick="removeAssignmentStudent(${id})" class="text-indigo-400 hover:text-rose-600 transition-colors p-0.5 border-0 bg-transparent cursor-pointer" title="Убрать ученика">
+              <i class="ph-bold ph-x text-xs"></i>
+            </button>
+          </span>
+        `;
+      }).join('');
+    }
+  }
+
+  const counter = document.getElementById('bank-assignment-students-counter');
+  if (counter) counter.textContent = `${selectedAssignmentStudentIds.size} выбрано`;
+
+  const dockStudents = document.getElementById('dock-students-count');
+  if (dockStudents) dockStudents.textContent = `${selectedAssignmentStudentIds.size} уч.`;
+
+  renderStudentDropdownOptions();
+}
+
+function renderStudentDropdownOptions(filterQuery = '') {
+  const dropdown = document.getElementById('bank-students-dropdown');
+  if (!dropdown) return;
+  const q = filterQuery.toLowerCase().trim();
+  const filtered = BANK_STUDENTS.filter(s => !q || (s.name || '').toLowerCase().includes(q));
+
+  if (!filtered.length) {
+    dropdown.innerHTML = '<div class="p-3 text-center text-xs text-slate-400 font-medium">Ученики не найдены</div>';
+    return;
+  }
+
+  dropdown.innerHTML = filtered.map(st => {
+    const isChecked = selectedAssignmentStudentIds.has(st.student_id);
+    return `
+      <label class="flex items-center justify-between p-2 rounded-lg hover:bg-indigo-50/60 cursor-pointer transition-colors text-xs">
+        <span class="flex items-center gap-2 truncate">
+          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleAssignmentStudent(${st.student_id}, this.checked)" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 accent-indigo-600 cursor-pointer">
+          <span class="font-bold text-slate-800 truncate">${escapeHtml(st.name)}</span>
+        </span>
+        <span class="text-[10px] text-slate-400 shrink-0">${escapeHtml(st.school_class || '')}</span>
+      </label>
+    `;
+  }).join('');
+}
+
+function handleBankGroupSelect(groupId) {
+  if (!groupId) return;
+  const group = BANK_GROUPS.find(g => String(g.group_id) === String(groupId));
+  if (group && Array.isArray(group.student_ids)) {
+    group.student_ids.forEach(id => selectedAssignmentStudentIds.add(Number(id)));
+    renderAssignmentStudentBar();
+    scheduleBankSearch();
+  }
+}
+
+function selectAllAssignmentStudents() {
+  BANK_STUDENTS.forEach(s => selectedAssignmentStudentIds.add(Number(s.student_id)));
+  renderAssignmentStudentBar();
+  scheduleBankSearch();
+}
+
+function clearAllAssignmentStudents() {
+  selectedAssignmentStudentIds.clear();
+  renderAssignmentStudentBar();
+  scheduleBankSearch();
+}
+
+function removeAssignmentStudent(studentId) {
+  selectedAssignmentStudentIds.delete(Number(studentId));
+  renderAssignmentStudentBar();
+  scheduleBankSearch();
+}
+
+function toggleAssignmentStudent(studentId, isChecked) {
+  const id = Number(studentId);
+  if (isChecked) selectedAssignmentStudentIds.add(id);
+  else selectedAssignmentStudentIds.delete(id);
+  renderAssignmentStudentBar();
+  scheduleBankSearch();
+}
+
+function openStudentDropdown() {
+  const dropdown = document.getElementById('bank-students-dropdown');
+  if (dropdown) dropdown.classList.remove('hidden');
+  renderStudentDropdownOptions(document.getElementById('bank-student-search-input')?.value || '');
+}
+
+function closeStudentDropdown() {
+  const dropdown = document.getElementById('bank-students-dropdown');
+  if (dropdown) dropdown.classList.add('hidden');
+}
+
+function toggleStudentDropdown() {
+  const dropdown = document.getElementById('bank-students-dropdown');
+  if (!dropdown) return;
+  if (dropdown.classList.contains('hidden')) openStudentDropdown();
+  else closeStudentDropdown();
+}
+
+function filterStudentDropdown(q) {
+  renderStudentDropdownOptions(q);
+}
+
+document.addEventListener('click', (e) => {
+  const searchBox = document.getElementById('bank-student-search-input');
+  const dropdown = document.getElementById('bank-students-dropdown');
+  if (searchBox && dropdown && !searchBox.contains(e.target) && !dropdown.contains(e.target) && !e.target.closest('#bank-assignment-student-bar button')) {
+    closeStudentDropdown();
+  }
+});
 
 function getCsrfToken() {
   return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -1335,6 +1608,8 @@ function updateSelectedCount() {
   const count = queuedTasks.size;
   const kpiEl = document.getElementById('stat-queued-tasks');
   if (kpiEl) kpiEl.textContent = count;
+  const dockTaskCount = document.getElementById('dock-tasks-count');
+  if (dockTaskCount) dockTaskCount.textContent = count;
   updateInspectorButtonState();
 }
 
@@ -1448,6 +1723,88 @@ function taskRowTemplate(task) {
 
   const checkboxClass = isQueued ? 'is-queued' : isSelected ? 'is-selected' : '';
 
+  let exposureHtml = '';
+  if (bankStudioMode === 'assignment') {
+    if (!selectedAssignmentStudentIds.size) {
+      exposureHtml = `
+        <div class="mt-2.5 py-1.5 px-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-500 font-medium flex items-center gap-2">
+          <i class="ph-bold ph-info text-indigo-500 text-xs"></i>
+          <span>Выберите ученика в панели выше, чтобы видеть статус выдачи</span>
+        </div>
+      `;
+    } else {
+      const exp = task.student_exposure;
+      const byStudent = exp?.by_student || [];
+      if (byStudent.length === 1) {
+        const st = byStudent[0];
+        if (st.blocked) {
+          exposureHtml = `
+            <div class="mt-2.5 py-1.5 px-3 rounded-xl bg-amber-50 border border-amber-300 text-[11px] font-bold text-amber-900 flex items-center justify-between gap-2 shadow-2xs">
+              <span class="flex items-center gap-1.5 truncate">
+                <i class="ph-bold ph-clock text-amber-600 text-xs"></i>
+                <span>Отправлялось: <strong>${escapeHtml(st.student_name)}</strong> (в работе${st.active_until ? ` до ${new Date(st.active_until).toLocaleDateString('ru-RU')}` : ''})</span>
+              </span>
+              <span class="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 text-[10px] uppercase font-black shrink-0">В работе</span>
+            </div>
+          `;
+        } else if (st.seen_before) {
+          exposureHtml = `
+            <div class="mt-2.5 py-1.5 px-3 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] font-bold text-amber-800 flex items-center justify-between gap-2 shadow-2xs">
+              <span class="flex items-center gap-1.5 truncate">
+                <i class="ph-bold ph-warning-circle text-amber-600 text-xs"></i>
+                <span>Решалось ранее: <strong>${escapeHtml(st.student_name)}</strong></span>
+              </span>
+              <span class="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] uppercase font-black shrink-0">Выдавалось</span>
+            </div>
+          `;
+        } else {
+          exposureHtml = `
+            <div class="mt-2.5 py-1.5 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-800 flex items-center justify-between gap-2 shadow-2xs">
+              <span class="flex items-center gap-1.5 truncate">
+                <i class="ph-bold ph-check-circle text-emerald-600 text-xs"></i>
+                <span>Не отправлялось: <strong>${escapeHtml(st.student_name)}</strong></span>
+              </span>
+              <span class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] uppercase font-black shrink-0">Новое</span>
+            </div>
+          `;
+        }
+      } else if (byStudent.length > 1) {
+        const seenList = byStudent.filter(s => s.blocked || s.seen_before);
+        const total = byStudent.length;
+        let summaryPill = '';
+        if (seenList.length === 0) {
+          summaryPill = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="ph-bold ph-check-circle"></i> Не решал никто (${total} из ${total})</span>`;
+        } else if (seenList.length === total) {
+          summaryPill = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300"><i class="ph-bold ph-x-circle"></i> Отправлялось всем (${total} из ${total})</span>`;
+        } else {
+          summaryPill = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300"><i class="ph-bold ph-warning"></i> Отправлялось ${seenList.length} из ${total}</span>`;
+        }
+
+        const studentBadges = byStudent.map(st => {
+          if (st.blocked) {
+            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300" title="${escapeHtml(st.student_name)}: сейчас в работе"><i class="ph-bold ph-clock text-amber-600"></i> ${escapeHtml(st.student_name)}: ⚠ В работе</span>`;
+          }
+          if (st.seen_before) {
+            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200" title="${escapeHtml(st.student_name)}: решал ранее"><i class="ph-bold ph-warning-circle text-amber-600"></i> ${escapeHtml(st.student_name)}: ⚠ Решал</span>`;
+          }
+          return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200" title="${escapeHtml(st.student_name)}: задание не выдавалось"><i class="ph-bold ph-check text-emerald-600"></i> ${escapeHtml(st.student_name)}: ✓ Не решал</span>`;
+        }).join('');
+
+        exposureHtml = `
+          <div class="mt-2.5 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Статус по выбранным ученикам:</span>
+              ${summaryPill}
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+              ${studentBadges}
+            </div>
+          </div>
+        `;
+      }
+    }
+  }
+
   return `
     <article onclick="selectBankTask(${task.task_id})" data-task-id="${task.task_id}" data-task-number="${task.task_number || 1}" class="studio-task-row ${isSelected ? 'is-selected' : ''} p-3.5 sm:p-4 mb-2.5 rounded-2xl cursor-pointer transition-all flex items-start gap-3">
       
@@ -1500,6 +1857,8 @@ function taskRowTemplate(task) {
             </button>
           </div>
         </div>
+
+        ${exposureHtml}
 
       </div>
 
@@ -1656,9 +2015,29 @@ function selectBankTask(taskId) {
 
   // Usage tab
   const usageEl = document.getElementById('insp-usage-content');
-  usageEl.textContent = task.student_exposure?.blocked
-    ? `Задание уже выдавалось ученику. Повтор возможен после ${new Date(task.student_exposure.active_until).toLocaleDateString('ru-RU')}.`
-    : 'Задание готово к добавлению в подборки и домашние работы.';
+  if (bankStudioMode === 'assignment' && selectedAssignmentStudentIds.size > 0 && task.student_exposure?.by_student) {
+    const rows = task.student_exposure.by_student.map(st => {
+      let statusBadge = '';
+      if (st.blocked) {
+        statusBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">В работе${st.active_until ? ` (до ${new Date(st.active_until).toLocaleDateString('ru-RU')})` : ''}</span>`;
+      } else if (st.seen_before) {
+        statusBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200">Решалось ранее</span>`;
+      } else {
+        statusBadge = `<span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200">Не отправлялось</span>`;
+      }
+      return `
+        <div class="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+          <span class="font-bold text-slate-800">${escapeHtml(st.student_name)}</span>
+          ${statusBadge}
+        </div>
+      `;
+    }).join('');
+    usageEl.innerHTML = `<div class="space-y-1">${rows}</div>`;
+  } else {
+    usageEl.textContent = task.student_exposure?.blocked
+      ? `Задание уже выдавалось ученику. Повтор возможен после ${new Date(task.student_exposure.active_until).toLocaleDateString('ru-RU')}.`
+      : 'Задание готово к добавлению в подборки и домашние работы.';
+  }
 
   // 4 Metadata cards with real data
   document.getElementById('insp-meta-format').textContent = format.full || 'Целое число';
@@ -1688,14 +2067,14 @@ function updateInspectorButtonState() {
       workBtn.style.backgroundColor = '#059669';
       workBtn.style.boxShadow = '0 4px 14px rgba(5,150,105,0.3)';
     }
-    if (workLabel) workLabel.textContent = 'Убрать из работы';
+    if (workLabel) workLabel.textContent = (bankStudioMode === 'assignment') ? 'Убрать из работы' : 'Убрать из подборки';
     if (setLabel) setLabel.textContent = 'В подборке ✓';
   } else {
     if (workBtn) {
       workBtn.style.backgroundColor = '#5046E5';
       workBtn.style.boxShadow = '0 4px 14px rgba(80,70,229,0.35)';
     }
-    if (workLabel) workLabel.textContent = 'Добавить в работу';
+    if (workLabel) workLabel.textContent = (bankStudioMode === 'assignment') ? 'Добавить в работу' : 'Добавить в подборку';
     if (setLabel) setLabel.textContent = 'Добавить в подборку';
   }
 }
@@ -2044,11 +2423,21 @@ function clearAllQueuedTasks() {
 
 function createAssignmentFromQueue() {
   if (!queuedTasks.size) {
-    showToast('Добавьте задания в подборку перед созданием работы', true);
+    showToast('Добавьте задания перед созданием работы', true);
     return;
   }
   const taskIds = [...queuedTasks.keys()].join(',');
-  window.location.href = `/assignments/create?source=manual&task_ids=${taskIds}`;
+  let url = `/assignments/create?source=manual&task_ids=${taskIds}`;
+  if (bankStudioMode === 'assignment' && selectedAssignmentStudentIds.size > 0) {
+    const studentIds = [...selectedAssignmentStudentIds].join(',');
+    url += `&recipient_ids=${studentIds}`;
+  }
+  persistQueuedTasks();
+  window.location.href = url;
+}
+
+function goToCreateAssignment() {
+  createAssignmentFromQueue();
 }
 
 function toggleSaveSetBox(show) {
@@ -2215,8 +2604,12 @@ async function loadBankTasks({ append = false } = {}) {
     if (v) params.set(k, v);
   });
   
-  const targetStudents = returnParams.get('recipient_ids') || returnParams.get('student_ids');
-  if (targetStudents) params.set('recipient_ids', targetStudents);
+  if (bankStudioMode === 'assignment' && selectedAssignmentStudentIds.size > 0) {
+    params.set('recipient_ids', [...selectedAssignmentStudentIds].join(','));
+  } else {
+    const targetStudents = returnParams.get('recipient_ids') || returnParams.get('student_ids');
+    if (targetStudents) params.set('recipient_ids', targetStudents);
+  }
   if (bankCourseId) params.set('exam_course_id', bankCourseId);
   if (bankModule) params.set('module', bankModule);
   if (bankTaskNumber) params.set('task_number', String(bankTaskNumber));
@@ -2342,6 +2735,7 @@ function openTaskEditor(taskId = null) {
   modal.classList.remove('hidden');
 
   const initialDifficulty = source?.difficulty_level || 2;
+  const platformCodeCreationEnabled = {{ platform_code_creation_enabled|default(false)|tojson }};
 
   content.innerHTML = `
     <form id="bank-task-editor" class="space-y-4">
@@ -2385,17 +2779,18 @@ function openTaskEditor(taskId = null) {
         <div id="editor-condition-preview" class="hidden min-h-[140px] max-h-[220px] overflow-y-auto studio-scroll p-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 leading-relaxed"></div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <label class="block text-xs font-bold text-slate-700 sm:col-span-2">Правильный ответ
+      ${platformCodeCreationEnabled ? `<label class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700"><input id="editor-code-judge-auto" type="checkbox" class="accent-indigo-600" ${source?.answer_spec?.type === 'code' && source?.answer_spec?.grading_mode === 'auto' ? 'checked' : ''}><span>Python · автопроверка в локальном Code Judge</span></label><p class="text-[11px] text-slate-500">Опция доступна только локальным синтетическим аккаунтам. После сохранения свяжите задание с версией набора Code Judge.</p>` : ''}
+      <div id="editor-short-answer-row" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <label id="editor-short-answer-value-label" class="block text-xs font-bold text-slate-700 sm:col-span-2">Правильный ответ
           <input name="answer" value="${escapeHtml(source?.answer || '')}" placeholder="Точный ответ (число или строка)" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none font-mono">
         </label>
-        <label class="block text-xs font-bold text-slate-700">Макс. балл
+        <label id="editor-max-score-label" class="block text-xs font-bold text-slate-700 sm:col-span-1">Макс. балл
           <input name="max_score" type="number" min="1" max="100" value="${escapeHtml(source?.max_score || '1')}" class="mt-1 w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs outline-none">
         </label>
       </div>
 
-      <label class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
-        <input id="editor-manual-grading" type="checkbox" class="accent-indigo-600" ${source && !source.answer ? 'checked' : ''}>
+      <label id="editor-manual-grading-row" class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700">
+        <input id="editor-manual-grading" type="checkbox" class="accent-indigo-600" ${source && !source.answer && source?.answer_spec?.type !== 'code' ? 'checked' : ''}>
         <span>Требует ручной проверки преподавателем (развёрнутый ответ)</span>
       </label>
 
@@ -2415,6 +2810,17 @@ function openTaskEditor(taskId = null) {
       </div>
     </form>
   `;
+
+  const codeToggle = document.getElementById('editor-code-judge-auto');
+  const syncCodeMode = () => {
+    const codeMode = Boolean(codeToggle?.checked);
+    document.getElementById('editor-short-answer-value-label')?.classList.toggle('hidden', codeMode);
+    document.getElementById('editor-max-score-label')?.classList.toggle('sm:col-span-3', codeMode);
+    document.getElementById('editor-manual-grading-row')?.classList.toggle('hidden', codeMode);
+    if (codeMode) document.getElementById('editor-manual-grading').checked = false;
+  };
+  codeToggle?.addEventListener('change', syncCodeMode);
+  syncCodeMode();
 
   document.getElementById('bank-task-editor').addEventListener('submit', event => saveTaskEditor(event, source, isEdit));
 }
@@ -2460,6 +2866,12 @@ async function saveTaskEditor(event, source, isEdit) {
   const form = event.currentTarget;
   const formData = new FormData(form);
   const manual = document.getElementById('editor-manual-grading')?.checked;
+  const codeToggle = document.getElementById('editor-code-judge-auto');
+  const codeMode = Boolean(codeToggle?.checked);
+  const codeAnswerSpec = {
+    type: 'code', language: 'python', grading_mode: 'auto',
+    prompt: 'Напишите решение на Python. Код будет проверен локальным Code Judge по сохранённому набору тестов.'
+  };
 
   try {
     let response;
@@ -2472,16 +2884,21 @@ async function saveTaskEditor(event, source, isEdit) {
         },
         body: JSON.stringify({
           content: formData.get('content'),
-          answer: (formData.get('answer') || '').trim() || null,
+          answer: codeMode ? null : ((formData.get('answer') || '').trim() || null),
           solution: formData.get('solution'),
           starter_code: formData.get('starter_code'),
           max_score: formData.get('max_score'),
           task_number: formData.get('task_number'),
           difficulty_level: formData.get('difficulty_level'),
+          ...(codeToggle ? { answer_spec: codeMode ? codeAnswerSpec : null } : {}),
         })
       });
     } else {
-      formData.set('manual_grading', manual ? 'true' : 'false');
+      formData.set('manual_grading', codeMode ? 'false' : (manual ? 'true' : 'false'));
+      if (codeMode) {
+        formData.set('answer', '');
+        formData.set('answer_spec', JSON.stringify(codeAnswerSpec));
+      }
       formData.set('exam_course_id', formData.get('course_id') || '1');
       response = await fetch('/task-generator/bank/create', {
         method: 'POST',
@@ -2520,7 +2937,7 @@ function showToast(message, isError = false) {
 document.addEventListener('DOMContentLoaded', () => {
   loadQueuedTasks();
   loadStructureData();
-  loadBankTasks();
+  setBankStudioMode(bankStudioMode);
 });
 </script>
 {% endblock %}
