@@ -67,7 +67,7 @@ def default_control() -> dict[str, Any]:
         "workspace_sync": True,
         "window_positions_sync": True,
         "windows_allowed": [
-            "code-window", "task-window", "terminal-window", "notes-window", "theory-window", "files-window", "lesson-info-window"
+            "code-window", "task-window", "terminal-window", "tracer-window", "notes-window", "theory-window", "files-window", "lesson-info-window"
         ],
         "allowed_page_ids": [],
         "allowed_frame_ids": [],

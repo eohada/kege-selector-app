@@ -148,6 +148,7 @@
   let isReadOnly = false;
   let isReviewMode = false;
   let showTeacherLayer = true;
+  let isTeacherDraftMode = false;
 
   // DOM Elements
   let overlay = null;
@@ -2542,6 +2543,7 @@
       id: generateId('math'),
       page_id: currentPageId,
       type: 'math',
+      layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
       latex,
       fontSize: 22,
       color: '#0f172a',
@@ -2564,7 +2566,9 @@
     updateSelectionBox();
     updateReviewLayerUI();
     scheduleSave();
-    realtimeSyncAdapter?.onStrokeCommit?.(mathObj);
+    if (mathObj.layer !== 'teacher') {
+      realtimeSyncAdapter?.onStrokeCommit?.(mathObj);
+    }
   }
 
   // --- Export Modal (PNG, SVG, PDF, JSON) ---
@@ -2892,16 +2896,25 @@
 
     // 1. Draw strokes & shapes on canvas
     strokes.forEach((s) => {
-      if (s.layer === 'teacher' && !showTeacherLayer) return;
-      if (s.type === 'note' || s.type === 'widget' || s.type === 'math') return;
-      drawStroke(s, activeRect);
+      if (s.layer === 'teacher' && (!showTeacherLayer || isReadOnly)) return;
+      if (s.type === 'note' || s.type === 'widget' || s.type === 'math' || s.type === 'stamp') return;
+      if (s.layer === 'teacher') {
+        ctx.save();
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 14;
+        drawStroke(s, activeRect);
+        ctx.restore();
+      } else {
+        drawStroke(s, activeRect);
+      }
     });
 
     if (remoteLiveStrokes.size > 0) {
       remoteLiveStrokes.forEach((s) => {
+        if (s.layer === 'teacher' && isReadOnly) return;
         if (s.page_id && s.page_id !== currentPageId) return;
         if (strokes.some((existing) => existing.id === s.id)) return;
-        if (s.type === 'note' || s.type === 'widget' || s.type === 'math') return;
+        if (s.type === 'note' || s.type === 'widget' || s.type === 'math' || s.type === 'stamp') return;
         drawStroke(s, activeRect);
       });
     }
@@ -3838,16 +3851,26 @@
     }
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   // --- DOM Widgets Syncing ---
 
   function syncDomWidgets(activeRect) {
     if (!objectLayer) return;
     const curActiveRect = activeRect || getActiveTaskContentRect();
 
-    const domStrokes = strokes.filter((s) => s.type === 'note' || s.type === 'widget' || s.type === 'math');
+    const domStrokes = strokes.filter((s) => s.type === 'note' || s.type === 'widget' || s.type === 'math' || s.type === 'stamp');
     const existingIds = new Set(domStrokes.map((s) => s.id));
 
-    Array.from(objectLayer.querySelectorAll('.boo-canvas-sticky-note, .boo-canvas-widget, .boo-canvas-math-card')).forEach((el) => {
+    Array.from(objectLayer.querySelectorAll('.boo-canvas-sticky-note, .boo-canvas-widget, .boo-canvas-math-card, .boo-canvas-stamp-item')).forEach((el) => {
       if (!existingIds.has(el.dataset.objId)) {
         el.remove();
       }
@@ -3861,6 +3884,8 @@
           el = createNoteDom(item);
         } else if (item.type === 'math') {
           el = createMathDom(item);
+        } else if (item.type === 'stamp') {
+          el = createStampDom(item);
         } else {
           el = createWidgetDom(item);
         }
@@ -3869,7 +3894,7 @@
         updateMathCardContent(el, item);
       }
 
-      if (item.layer === 'teacher' && !showTeacherLayer) {
+      if (item.layer === 'teacher' && (!showTeacherLayer || isReadOnly)) {
         el.style.display = 'none';
         return;
       } else {
@@ -3878,6 +3903,16 @@
 
       // Update position and dimensions
       const p1 = pointToScreen(item.points[0], item, curActiveRect);
+      if (item.type === 'stamp') {
+        el.style.left = `${p1.x}px`;
+        el.style.top = `${p1.y}px`;
+        el.style.transformOrigin = 'top left';
+        el.style.transform = `${item.rotation ? `rotate(${item.rotation}deg) ` : ''}scale(${viewScale})`;
+        el.style.zIndex = `${Math.max(2, strokeIndex + 2)}`;
+        el.classList.toggle('is-selected', selectedIds.has(item.id));
+        return;
+      }
+
       const p2 = pointToScreen(item.points[1] || item.points[0], item, curActiveRect);
       const x = Math.min(p1.x, p2.x);
       const y = Math.min(p1.y, p2.y);
@@ -3913,6 +3948,43 @@
         el._onResize(w, h);
       }
     });
+  }
+
+  function createStampDom(stamp) {
+    const el = document.createElement('div');
+    el.className = `boo-canvas-stamp-item boo-orbit-badge-stamp boo-master-stamp-${stamp.stampType || 'excellent'}`;
+    el.dataset.objId = stamp.id;
+    el.innerHTML = `
+      <i class="ph-bold ${stamp.icon || 'ph-star'}"></i>
+      <span>${escapeHtml(stamp.label || '')}</span>
+      <button type="button" class="boo-stamp-close" aria-label="Удалить"><i class="ph-bold ph-x"></i></button>
+    `;
+
+    const closeBtn = el.querySelector('.boo-stamp-close');
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (isReadOnly) return;
+      deleteSingleStroke(stamp.id);
+    });
+
+    el.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.boo-stamp-close')) return;
+      if (isReadOnly) return;
+      if (tool !== 'select' && tool !== 'eraser_stroke') {
+        setTool('select');
+      }
+      if (tool === 'select') {
+        e.stopPropagation();
+        if (!selectedIds.has(stamp.id)) {
+          if (!e.shiftKey) selectedIds.clear();
+          selectedIds.add(stamp.id);
+          updateSelectionBox();
+        }
+        startMoveSelection(e);
+      }
+    });
+
+    return el;
   }
 
   function createMathDom(item) {
@@ -5607,28 +5679,34 @@
 
   // --- Hit Testing ---
 
-  function hitTest(screenX, screenY) {
+  function hitTest(screenX, screenY, radius = 0) {
     const activeRect = getActiveTaskContentRect();
+    const pad = Math.max(12, radius);
     for (let i = strokes.length - 1; i >= 0; i--) {
       const s = strokes[i];
       const bounds = getStrokeScreenBounds(s, activeRect);
       if (!bounds) continue;
 
-      if (screenX >= bounds.x && screenX <= bounds.x + bounds.width &&
-          screenY >= bounds.y && screenY <= bounds.y + bounds.height) {
+      if (screenX >= bounds.x - pad && screenX <= bounds.x + bounds.width + pad &&
+          screenY >= bounds.y - pad && screenY <= bounds.y + bounds.height + pad) {
 
         if (s.type === 'shape' && (s.shape === 'line' || s.shape === 'arrow')) {
           const p1 = pointToScreen(s.points[0], s, activeRect);
           const p2 = pointToScreen(s.points[1], s, activeRect);
-          if (distToSegment({ x: screenX, y: screenY }, p1, p2) <= 12) return s;
+          if (distToSegment({ x: screenX, y: screenY }, p1, p2) <= Math.max(12, pad)) return s;
           continue;
         }
 
         if (s.type === 'stroke' || !s.type) {
           const pts = s.points.map((p) => pointToScreen(p, s, activeRect));
+          const hitRadius = Math.max(12, (s.width || 3) * viewScale, pad);
+          if (pts.length === 1) {
+            if (Math.hypot(screenX - pts[0].x, screenY - pts[0].y) <= hitRadius) return s;
+            continue;
+          }
           let hit = false;
           for (let j = 0; j < pts.length - 1; j++) {
-            if (distToSegment({ x: screenX, y: screenY }, pts[j], pts[j + 1]) <= Math.max(8, (s.width || 3) * viewScale)) {
+            if (distToSegment({ x: screenX, y: screenY }, pts[j], pts[j + 1]) <= hitRadius) {
               hit = true;
               break;
             }
@@ -5663,6 +5741,18 @@
       if (intersect) inside = !inside;
     }
     return inside;
+  }
+
+  function canDeleteStroke(s) {
+    if (!s) return false;
+    const isTeacherUser = isReviewMode || isTeacherDraftMode || (typeof window !== 'undefined' && window.trainerOsConfig?.role === 'teacher');
+    if (s.layer === 'teacher') {
+      return Boolean(isTeacherUser);
+    }
+    if (isReviewMode && s.layer !== 'teacher') {
+      return false;
+    }
+    return true;
   }
 
   // --- Pointer Handlers ---
@@ -5784,18 +5874,26 @@
       return;
     }
 
-    // Eraser Object tool & Review Mode Eraser
-    if (tool === 'eraser_object' || (tool === 'eraser_stroke' && isReviewMode)) {
-      const hit = hitTest(screenX, screenY);
-      if (hit && (!isReviewMode || hit.layer === 'teacher')) {
+    // Eraser Object tool
+    if (tool === 'eraser_object') {
+      interactionMode = 'erase_object';
+      const eraseRadius = Math.max(14, eraserSize / 2);
+      const hit = hitTest(screenX, screenY, eraseRadius);
+      if (hit && canDeleteStroke(hit)) {
         deleteSingleStroke(hit.id);
-        e.preventDefault();
-        return;
       }
-      if (isReviewMode && tool === 'eraser_stroke') {
-        e.preventDefault();
-        return;
+      canvas.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+      return;
+    }
+
+    if (tool === 'eraser_stroke' && isReviewMode) {
+      const hit = hitTest(screenX, screenY);
+      if (hit && canDeleteStroke(hit)) {
+        deleteSingleStroke(hit.id);
       }
+      e.preventDefault();
+      return;
     }
 
     // Sticky Note Creation
@@ -5829,7 +5927,7 @@
       id: generateId(shape ? 'shp' : (isHighlighter ? 'hl' : 'strk')),
       page_id: currentPageId,
       type: isConnector ? 'connector' : (shape ? 'shape' : (isHighlighter ? 'highlighter' : 'stroke')),
-      layer: isReviewMode ? 'teacher' : 'student',
+      layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
       brush: bId || 'ballpoint',
       shape: shape || 'rectangle',
       color: tool === 'eraser_stroke' ? null : (isHighlighter ? highlighterColor : penColor),
@@ -5853,7 +5951,9 @@
     strokes.push(currentStroke);
     redoStack = [];
     redraw();
-    realtimeSyncAdapter?.onStrokeLive?.('start', currentStroke);
+    if (currentStroke.layer !== 'teacher') {
+      realtimeSyncAdapter?.onStrokeLive?.('start', currentStroke);
+    }
     canvas.setPointerCapture?.(e.pointerId);
     e.preventDefault();
   }
@@ -5878,13 +5978,24 @@
       return;
     }
 
-    // Pan mode
+    // Pan mode (middle-click drag, spacebar drag, or pan tool)
     if (interactionMode === 'pan' && panStart) {
       viewOffsetX = panStart.offsetX + e.clientX - panStart.x;
       viewOffsetY = panStart.offsetY + e.clientY - panStart.y;
       scheduleRedraw();
       updateSelectionBox();
       realtimeSyncAdapter?.onCameraChange?.(viewOffsetX, viewOffsetY, viewScale);
+      e.preventDefault();
+      return;
+    }
+
+    // Object Eraser Drag
+    if (interactionMode === 'erase_object') {
+      const eraseRadius = Math.max(14, eraserSize / 2);
+      const hit = hitTest(screenX, screenY, eraseRadius);
+      if (hit && canDeleteStroke(hit)) {
+        deleteSingleStroke(hit.id);
+      }
       e.preventDefault();
       return;
     }
@@ -5963,7 +6074,7 @@
       const now = performance.now();
       if (now - (lastMoveSyncTime || 0) > 28) {
         lastMoveSyncTime = now;
-        const updated = strokes.filter((s) => selectedIds.has(s.id));
+        const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode));
         if (updated.length) {
           const syncStrokes = updated.map((s) => {
             if (s.type === 'image' && s.src) {
@@ -6018,7 +6129,9 @@
         currentStroke.points.push(point);
       }
       scheduleRedraw();
-      realtimeSyncAdapter?.onStrokeLive?.('move', { stroke_id: currentStroke.id, stroke: currentStroke });
+      if (currentStroke.layer !== 'teacher') {
+        realtimeSyncAdapter?.onStrokeLive?.('move', { stroke_id: currentStroke.id, stroke: currentStroke });
+      }
       e.preventDefault();
     }
   }
@@ -6028,6 +6141,12 @@
     isPointerDown = false;
     middlePanActive = false;
     activeGuides = [];
+
+    if (interactionMode === 'erase_object') {
+      interactionMode = null;
+      updateCursor();
+      return;
+    }
 
     if (interactionMode === 'pan') {
       panStart = null;
@@ -6089,7 +6208,7 @@
     }
 
     if (interactionMode === 'move' || interactionMode === 'resize' || interactionMode === 'rotate') {
-      const updated = strokes.filter((s) => selectedIds.has(s.id));
+      const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode));
       interactionMode = null;
       moveSnapshot = null;
       resizeSnapshot = null;
@@ -6144,8 +6263,10 @@
       scheduleSave();
       if (finished) {
         finished.page_id = finished.page_id || currentPageId;
-        realtimeSyncAdapter?.onStrokeLive?.('end', { stroke_id: finished.id, page_id: finished.page_id, stroke: finished });
-        realtimeSyncAdapter?.onStrokeCommit?.(finished);
+        if (finished.layer !== 'teacher') {
+          realtimeSyncAdapter?.onStrokeLive?.('end', { stroke_id: finished.id, page_id: finished.page_id, stroke: finished });
+          realtimeSyncAdapter?.onStrokeCommit?.(finished);
+        }
       }
     }
 
@@ -6395,7 +6516,7 @@
     const now = performance.now();
     if (now - (lastResizeSyncTime || 0) > 28) {
       lastResizeSyncTime = now;
-      const updated = strokes.filter((s) => selectedIds.has(s.id));
+      const updated = strokes.filter((s) => selectedIds.has(s.id) && (s.layer !== 'teacher' || isReviewMode));
       if (updated.length) {
         const syncStrokes = updated.map((s) => {
           if (s.type === 'image' && s.src) {
@@ -6616,6 +6737,7 @@
           id: generateId('img'),
           page_id: currentPageId,
           type: 'image',
+          layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
           src: dataUrl,
           points: [p1, p2],
           space: space ? { left: space.left, top: space.top, width: space.width, height: space.height, task_id: space.task_id } : null,
@@ -6630,7 +6752,9 @@
         redraw();
         updateSelectionBox();
         scheduleSave();
-        realtimeSyncAdapter?.onStrokeCommit?.(newImgStroke);
+        if (newImgStroke.layer !== 'teacher') {
+          realtimeSyncAdapter?.onStrokeCommit?.(newImgStroke);
+        }
       };
       img.src = ev.target.result;
     };
@@ -6647,6 +6771,7 @@
       page_id: currentPageId,
       type: 'widget',
       widgetType: 'pdf',
+      layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
       points: [p1, { x: p1.x + 280, y: p1.y + 180 }],
       data: { name: file.name, pagesCount: 1 },
       space: space ? { left: space.left, top: space.top, width: space.width, height: space.height, task_id: space.task_id } : null,
@@ -6654,7 +6779,9 @@
     strokes.push(pdfCard);
     setTool('select');
     redraw();
-    realtimeSyncAdapter?.onStrokeCommit?.(pdfCard);
+    if (pdfCard.layer !== 'teacher') {
+      realtimeSyncAdapter?.onStrokeCommit?.(pdfCard);
+    }
   }
 
   // --- Text Editor ---
@@ -6685,6 +6812,7 @@
       id: generateId('txt'),
       page_id: currentPageId,
       type: 'text',
+      layer: (isReviewMode || isTeacherDraftMode) ? 'teacher' : 'student',
       text,
       color: draft.color,
       fontSize: draft.fontSize,
@@ -6702,7 +6830,9 @@
     redraw();
     updateSelectionBox();
     scheduleSave();
-    realtimeSyncAdapter?.onStrokeCommit?.(newText);
+    if (newText.layer !== 'teacher') {
+      realtimeSyncAdapter?.onStrokeCommit?.(newText);
+    }
   }
 
   function beginTextEntry(e, space, point, existingTextObj) {
@@ -6745,10 +6875,22 @@
 
   // --- Operations (Duplicate, Order, Delete) ---
 
+  let pasteLastTargetWorld = null;
+  let pasteCount = 0;
+
   function copySelected() {
     clipboardObjects = strokes
       .filter((s) => selectedIds.has(s.id))
       .map((s) => JSON.parse(JSON.stringify(s)));
+    try {
+      if (clipboardObjects.length > 0 && navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(JSON.stringify({
+          source: 'boostudy_canvas',
+          timestamp: Date.now(),
+          objects: clipboardObjects,
+        }));
+      }
+    } catch (_) {}
   }
 
   function cutSelected() {
@@ -6761,25 +6903,86 @@
     if (isReadOnly) return;
     if (!clipboardObjects || clipboardObjects.length === 0) return;
     const newSelected = new Set();
-    const offset = 24 / viewScale;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let hasPoints = false;
+    clipboardObjects.forEach((orig) => {
+      if (orig && Array.isArray(orig.points)) {
+        orig.points.forEach((p) => {
+          if (typeof p.x === 'number' && typeof p.y === 'number') {
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x);
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y);
+            hasPoints = true;
+          }
+        });
+      }
+    });
+
+    const origCenterX = hasPoints ? (minX + maxX) / 2 : 0;
+    const origCenterY = hasPoints ? (minY + maxY) / 2 : 0;
+
+    let targetWorldX = null;
+    let targetWorldY = null;
+    if (lastPointerPos && typeof lastPointerPos.clientX === 'number') {
+      const origin = canvasOrigin();
+      const canvasW = canvas.width / Math.max(dpr, 1);
+      const canvasH = canvas.height / Math.max(dpr, 1);
+      const cx = lastPointerPos.clientX;
+      const cy = lastPointerPos.clientY;
+      if (cx >= origin.left - window.scrollX && cx <= origin.left - window.scrollX + canvasW &&
+          cy >= origin.top - window.scrollY && cy <= origin.top - window.scrollY + canvasH) {
+        const pt = pointForEvent({ clientX: cx, clientY: cy }, null);
+        targetWorldX = pt.x;
+        targetWorldY = pt.y;
+      }
+    }
+
+    let dx, dy;
+    if (targetWorldX !== null && hasPoints) {
+      dx = targetWorldX - origCenterX;
+      dy = targetWorldY - origCenterY;
+      if (pasteLastTargetWorld && Math.hypot(targetWorldX - pasteLastTargetWorld.x, targetWorldY - pasteLastTargetWorld.y) < 6) {
+        pasteCount += 1;
+        dx += (20 * pasteCount) / viewScale;
+        dy += (20 * pasteCount) / viewScale;
+      } else {
+        pasteCount = 0;
+        pasteLastTargetWorld = { x: targetWorldX, y: targetWorldY };
+        if (Math.hypot(dx, dy) < 8) {
+          dx += 24 / viewScale;
+          dy += 24 / viewScale;
+        }
+      }
+    } else {
+      pasteCount += 1;
+      dx = (24 * pasteCount) / viewScale;
+      dy = (24 * pasteCount) / viewScale;
+    }
 
     clipboardObjects.forEach((orig) => {
       const clone = JSON.parse(JSON.stringify(orig));
       clone.id = generateId(clone.type || 'obj');
+      if (orig.layer === 'teacher' || isTeacherDraftMode) {
+        clone.layer = 'teacher';
+      }
       if (clone.points) {
         clone.points.forEach((p) => {
-          p.x += offset;
-          p.y += offset;
+          p.x += dx;
+          p.y += dy;
           if (clone.space) {
-            p.rx = (p.x - clone.space.left) / clone.space.width;
-            p.ry = (p.y - clone.space.top) / clone.space.height;
+            p.rx = (p.x - clone.space.left) / Math.max(clone.space.width, 1);
+            p.ry = (p.y - clone.space.top) / Math.max(clone.space.height, 1);
           }
         });
       }
       clone.page_id = currentPageId;
       strokes.push(clone);
       newSelected.add(clone.id);
-      realtimeSyncAdapter?.onStrokeCommit?.(clone);
+      if (clone.layer !== 'teacher') {
+        realtimeSyncAdapter?.onStrokeCommit?.(clone);
+      }
     });
 
     selectedIds = newSelected;
@@ -6802,13 +7005,14 @@
     if (selectedIds.size === 0) return;
     const deletedIds = Array.from(selectedIds).filter((id) => {
       const s = strokes.find((item) => item.id === id);
-      if (!s) return false;
-      if (!isReviewMode && s.layer === 'teacher') return false;
-      if (isReviewMode && s.layer !== 'teacher') return false;
-      return true;
+      return canDeleteStroke(s);
     });
     if (deletedIds.length === 0) return;
     const delSet = new Set(deletedIds);
+    const broadcastIds = deletedIds.filter((id) => {
+      const s = strokes.find((item) => item.id === id);
+      return s && (s.layer !== 'teacher' || isReviewMode);
+    });
     strokes = strokes.filter((s) => !delSet.has(s.id));
     getActivePage().strokes = strokes;
     deletedIds.forEach((id) => selectedIds.delete(id));
@@ -6819,16 +7023,17 @@
     updateSelectionBox();
     updateReviewLayerUI();
     scheduleSave();
-    realtimeSyncAdapter?.onStrokesDelete?.(deletedIds);
+    if (broadcastIds.length > 0) {
+      realtimeSyncAdapter?.onStrokesDelete?.(broadcastIds);
+    }
   }
 
   function deleteSingleStroke(id) {
     if (isReadOnly) return;
     const s = strokes.find((item) => item.id === id);
-    if (!s) return;
-    if (!isReviewMode && s.layer === 'teacher') return;
-    if (isReviewMode && s.layer !== 'teacher') return;
-    strokes = strokes.filter((s) => s.id !== id);
+    if (!canDeleteStroke(s)) return;
+    const wasTeacherDraft = (s.layer === 'teacher' && !isReviewMode);
+    strokes = strokes.filter((item) => item.id !== id);
     getActivePage().strokes = strokes;
     selectedIds.delete(id);
     dirty = true;
@@ -6838,7 +7043,9 @@
     updateSelectionBox();
     updateReviewLayerUI();
     scheduleSave();
-    realtimeSyncAdapter?.onStrokesDelete?.([id]);
+    if (!wasTeacherDraft) {
+      realtimeSyncAdapter?.onStrokesDelete?.([id]);
+    }
   }
 
   function bringForward() {
@@ -6924,7 +7131,7 @@
     let idx = -1;
     for (let i = strokes.length - 1; i >= 0; i--) {
       const s = strokes[i];
-      if (isReviewMode) {
+      if (isReviewMode || isTeacherDraftMode) {
         if (s.layer === 'teacher') { idx = i; break; }
       } else {
         if (s.layer !== 'teacher') { idx = i; break; }
@@ -6940,7 +7147,7 @@
     updateSelectionBox();
     saveLocal();
     scheduleSave();
-    if (popped && popped.id) {
+    if (popped && popped.id && (popped.layer !== 'teacher' || isReviewMode)) {
       realtimeSyncAdapter?.onStrokesDelete?.([popped.id]);
     }
   }
@@ -6952,7 +7159,7 @@
     let idx = -1;
     for (let i = redoStack.length - 1; i >= 0; i--) {
       const s = redoStack[i];
-      if (isReviewMode) {
+      if (isReviewMode || isTeacherDraftMode) {
         if (s.layer === 'teacher') { idx = i; break; }
       } else {
         if (s.layer !== 'teacher') { idx = i; break; }
@@ -6967,7 +7174,7 @@
     updateSelectionBox();
     saveLocal();
     scheduleSave();
-    if (restored) {
+    if (restored && (restored.layer !== 'teacher' || isReviewMode)) {
       realtimeSyncAdapter?.onStrokeCommit?.(restored);
     }
   }
@@ -7571,12 +7778,9 @@
       // Ctrl+V: Paste
       if (code === 'KeyV' || key === 'v' || key === 'м') {
         if (isReadOnly) { e.preventDefault(); return; }
-        if (clipboardObjects && clipboardObjects.length > 0) {
-          pasteClipboardObjects();
-          e.preventDefault();
-          return;
-        }
-        // If no internal canvas objects copied, allow browser paste event for external images
+        // Do not preventDefault here! Allow browser to dispatch native 'paste' event,
+        // so onPaste(e) can inspect e.clipboardData for screenshots, images, external text,
+        // and internal canvas objects.
         return;
       }
 
@@ -7723,6 +7927,29 @@
           }
         }
       }
+
+      // Check text in clipboardData
+      try {
+        const text = e.clipboardData.getData('text/plain');
+        if (text && text.trim().length > 0) {
+          let isCanvasJson = false;
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed && parsed.source === 'boostudy_canvas' && Array.isArray(parsed.objects)) {
+              clipboardObjects = parsed.objects;
+              isCanvasJson = true;
+            }
+          } catch (_) {}
+
+          if (!isCanvasJson) {
+            const clientX = lastPointerPos ? lastPointerPos.clientX : undefined;
+            const clientY = lastPointerPos ? lastPointerPos.clientY : undefined;
+            insertNote('yellow', clientX, clientY, text.trim());
+            e.preventDefault();
+            return;
+          }
+        }
+      } catch (_) {}
     }
 
     if (clipboardObjects && clipboardObjects.length > 0) {
@@ -8383,6 +8610,7 @@
 
   function applyRemoteStrokeLive(payload) {
     if (!payload) return;
+    if ((payload.stroke?.layer === 'teacher' || payload.layer === 'teacher') && isReadOnly) return;
     const strokeId = payload.stroke_id || payload.stroke?.id;
     if (!strokeId) return;
     const pageId = payload.page_id || payload.stroke?.page_id || currentPageId;
@@ -8451,6 +8679,7 @@
 
   function applyRemoteStrokeCommit(remoteStroke) {
     if (!remoteStroke || !remoteStroke.id) return;
+    if (remoteStroke.layer === 'teacher' && isReadOnly) return;
     remoteLiveStrokes.delete(remoteStroke.id);
     const targetPageId = remoteStroke.page_id || currentPageId;
     let targetPage = pages.find((p) => p.id === targetPageId);
@@ -8620,6 +8849,7 @@
     const pageMap = new Map();
     list.forEach((s) => {
       if (!s) return;
+      if (s.layer === 'teacher' && isReadOnly) return;
       const pid = s.page_id || 'page_1';
       s.page_id = pid;
       if (!pageMap.has(pid)) pageMap.set(pid, []);
@@ -8776,6 +9006,107 @@
     if (tbBtn) tbBtn.style.display = show ? '' : 'none';
   }
 
+  function toggleTeacherDraftMode(force) {
+    if (typeof force === 'boolean') isTeacherDraftMode = force;
+    else isTeacherDraftMode = !isTeacherDraftMode;
+
+    let banner = document.getElementById('boo-teacher-draft-banner');
+    if (isTeacherDraftMode) {
+      if (!banner && overlay) {
+        banner = document.createElement('div');
+        banner.id = 'boo-teacher-draft-banner';
+        banner.className = 'boo-teacher-draft-banner';
+        banner.innerHTML = '<i class="ph-bold ph-eye-slash"></i> <span>Скрытый черновик активен · Ученик не видит пометки</span>';
+        overlay.appendChild(banner);
+      }
+    } else {
+      if (banner) banner.remove();
+    }
+    redraw();
+    return isTeacherDraftMode;
+  }
+
+  function insertStamp(label, stampType, icon, clientX, clientY) {
+    if (isReadOnly) return;
+    const origin = canvasOrigin();
+    const cx = (clientX !== undefined && clientX > 0) ? clientX : (origin.left + canvas.width / (2 * Math.max(dpr, 1)));
+    const cy = (clientY !== undefined && clientY > 0) ? clientY : (origin.top + canvas.height / (2 * Math.max(dpr, 1)));
+    const space = getActiveTaskContentRect();
+    const centerEv = { pageX: cx + window.scrollX, pageY: cy + window.scrollY };
+    const p1 = pointForEvent(centerEv, space);
+    const stampW = 160 / Math.max(viewScale, 0.1);
+    const stampH = 45 / Math.max(viewScale, 0.1);
+
+    const stampObj = {
+      id: generateId('stamp'),
+      page_id: currentPageId,
+      type: 'stamp',
+      label: label || 'Отлично!',
+      stampType: stampType || 'excellent',
+      icon: icon || 'ph-star',
+      layer: isTeacherDraftMode ? 'teacher' : 'student',
+      points: [p1, { x: p1.x + stampW, y: p1.y + stampH }],
+      space: space ? { left: space.left, top: space.top, width: space.width, height: space.height, task_id: space.task_id } : null,
+    };
+
+    strokes.push(stampObj);
+    selectedIds.clear();
+    selectedIds.add(stampObj.id);
+    setTool('select');
+    dirty = true;
+    saveLocal();
+    redraw();
+    syncDomWidgets();
+    scheduleSave();
+    if (stampObj.layer !== 'teacher') {
+      realtimeSyncAdapter?.onStrokeCommit?.(stampObj);
+    }
+    return stampObj;
+  }
+
+  function insertNote(colorTheme = 'yellow', clientX, clientY, text = '') {
+    if (isReadOnly) return;
+    const origin = canvasOrigin();
+    const cx = (clientX !== undefined && clientX > 0) ? clientX : (origin.left + canvas.width / (2 * Math.max(dpr, 1)));
+    const cy = (clientY !== undefined && clientY > 0) ? clientY : (origin.top + canvas.height / (2 * Math.max(dpr, 1)));
+    const space = getActiveTaskContentRect();
+    const centerEv = { pageX: cx + window.scrollX, pageY: cy + window.scrollY };
+    const p1 = pointForEvent(centerEv, space);
+    const noteW = 180 / Math.max(viewScale, 0.1);
+    const noteH = 120 / Math.max(viewScale, 0.1);
+    const p2 = { x: p1.x + noteW, y: p1.y + noteH };
+
+    const newNote = {
+      id: generateId('note'),
+      page_id: currentPageId,
+      type: 'note',
+      layer: isTeacherDraftMode ? 'teacher' : 'student',
+      text: text || '',
+      colorTheme: colorTheme || 'yellow',
+      points: [p1, p2],
+      space: space ? { left: space.left, top: space.top, width: space.width, height: space.height, task_id: space.task_id } : null,
+    };
+
+    strokes.push(newNote);
+    selectedIds.clear();
+    selectedIds.add(newNote.id);
+    setTool('select');
+    dirty = true;
+    saveLocal();
+    redraw();
+    syncDomWidgets();
+    scheduleSave();
+    if (newNote.layer !== 'teacher') {
+      realtimeSyncAdapter?.onStrokeCommit?.(newNote);
+    }
+
+    setTimeout(() => {
+      const ta = objectLayer?.querySelector(`[data-obj-id="${newNote.id}"] textarea`);
+      if (ta) ta.focus();
+    }, 50);
+    return newNote;
+  }
+
   function setRealtimeSync(adapter) {
     realtimeSyncAdapter = adapter;
   }
@@ -8787,9 +9118,15 @@
     toggle,
     setContext,
     setTool,
+    getTool: () => tool,
     setPenColor,
     setReviewMode,
     toggleTeacherLayer,
+    toggleTeacherDraftMode,
+    isTeacherDraftMode: () => isTeacherDraftMode,
+    setTeacherDraftMode: (v) => toggleTeacherDraftMode(Boolean(v)),
+    insertStamp,
+    insertNote,
     hasTeacherLayer,
     isTeacherLayerVisible: () => showTeacherLayer,
     insertInteractiveWidget,

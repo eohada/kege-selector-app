@@ -692,8 +692,22 @@ def register_lesson_socket(socketio, app=None) -> None:
             if not role:
                 _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
             kind = str((data or {}).get("kind") or "")
-            if kind not in {"mode", "window", "window_layout", "run", "run_start", "terminal_output", "terminal_tab"}:
+
+            standard_kinds = {"mode", "window", "window_layout", "run", "run_start", "terminal_output", "terminal_tab"}
+            tracer_kinds = {"tracer_state", "tracer_window", "tracer_run", "tracer_breakpoint", "tracer_step", "tracer_input_submit"}
+            orbit_kinds = {
+                "orbit_beacon", "orbit_stamp", "orbit_stamp_move", "orbit_stamp_remove",
+                "orbit_sticky", "orbit_sticky_input", "orbit_sticky_move", "orbit_sticky_remove",
+                "orbit_timer_sync", "orbit_calc_sync", "orbit_laser", "orbit_laser_stop", "orbit_cheat_sync"
+            }
+            teacher_master_kinds = {
+                "focus_board", "freeze_student", "free_mode", "teacher_stamp", "teacher_hint",
+                "blitz_start", "blitz_update", "blitz_end", "teacher_answer_vis", "task_switch"
+            }
+
+            if kind not in (standard_kinds | orbit_kinds | teacher_master_kinds | tracer_kinds):
                 return
+
             control = _room_control(lesson_id)
             win_mode = control.get("windows_mode") or ("independent" if control.get("windows_sync") is False else "teacher")
             is_student_run = (
@@ -701,24 +715,42 @@ def register_lesson_socket(socketio, app=None) -> None:
                 and control.get("student_code_editing")
                 and kind in {"run", "run_start", "terminal_output", "terminal_tab"}
             )
+            is_student_tracer = (
+                role == "student"
+                and not control.get("freeze_student")
+                and kind in tracer_kinds
+            )
+            is_tracer_action = kind in tracer_kinds
             is_window_action = kind in {"window", "window_layout"}
-            
-            if is_window_action:
-                if win_mode == "independent":
-                    return
-                if win_mode == "teacher" and role != "teacher":
-                    socketio.emit("whiteboard_error", {"message": "Управление окнами закреплено за преподавателем"}, room=request.sid, namespace="/lesson")
-                    return
-                if win_mode == "student" and role == "teacher":
-                    socketio.emit("whiteboard_error", {"message": "Управление окнами передано ученику"}, room=request.sid, namespace="/lesson")
-                    return
-                if kind == "window_layout" and control.get("window_positions_sync") is False:
-                    return
-                allowed_ctrl = control.get("windows_allowed")
-                if allowed_ctrl and (data or {}).get("window_id") not in allowed_ctrl:
-                    return
+            is_orbit_action = kind in orbit_kinds
+            is_teacher_action = kind in teacher_master_kinds
 
-            if not (is_window_action or is_student_run or role == "teacher"):
+            if is_teacher_action and role != "teacher":
+                socketio.emit("whiteboard_error", {"message": "Недостаточно прав: действие доступно только преподавателю"}, room=request.sid, namespace="/lesson")
+                return
+
+            if role == "student" and is_tracer_action and control.get("freeze_student"):
+                socketio.emit("whiteboard_error", {"message": "Действия заблокированы преподавателем"}, room=request.sid, namespace="/lesson")
+                return
+
+            if is_window_action:
+                target_win = str((data or {}).get("window_id") or "")
+                if target_win != "tracer-window":
+                    if win_mode == "independent":
+                        return
+                    if win_mode == "teacher" and role != "teacher":
+                        socketio.emit("whiteboard_error", {"message": "Управление окнами закреплено за преподавателем"}, room=request.sid, namespace="/lesson")
+                        return
+                    if win_mode == "student" and role == "teacher":
+                        socketio.emit("whiteboard_error", {"message": "Управление окнами передано ученику"}, room=request.sid, namespace="/lesson")
+                        return
+                    if kind == "window_layout" and control.get("window_positions_sync") is False:
+                        return
+                    allowed_ctrl = control.get("windows_allowed")
+                    if allowed_ctrl and target_win not in allowed_ctrl and role != "teacher":
+                        return
+
+            if not (is_window_action or is_student_run or is_student_tracer or is_orbit_action or role == "teacher"):
                 socketio.emit("whiteboard_error", {"message": "Недостаточно прав для управления интерфейсом комнаты"}, room=request.sid, namespace="/lesson")
                 return
 
@@ -728,10 +760,12 @@ def register_lesson_socket(socketio, app=None) -> None:
                 return
             if kind == "terminal_output" and not control.get("terminal_sync"):
                 return
+
             payload = {"lesson_id": lesson_id, "kind": kind, "updated_at": int(time() * 1000)}
             allowed_windows = {
                 "task-window", "terminal-window", "code-window", "lesson-info-window",
-                "teacher-notes-window", "notes-window", "theory-window", "reference-window", "files-window"
+                "teacher-notes-window", "notes-window", "theory-window", "reference-window", "files-window",
+                "tracer-window"
             }
             if kind == "mode":
                 mode = str((data or {}).get("mode") or "code")
@@ -769,21 +803,128 @@ def register_lesson_socket(socketio, app=None) -> None:
                     "exit_code": int((data or {}).get("exit_code") or 0),
                     "is_error": bool((data or {}).get("is_error")),
                 })
-            else:
+            elif kind in {"run", "run_start"}:
                 code = str((data or {}).get("code") or "")[:100000]
                 payload.update({"file_name": str((data or {}).get("file_name") or "main.py")[:120], "code": code})
-            # Transient runs are not replayed, but the latest terminal output, tab, and layout are preserved
-            if kind not in {"run", "run_start"}:
+            elif kind in tracer_kinds:
+                if (data or {}).get("step") is not None:
+                    payload["step"] = int(data["step"])
+                if (data or {}).get("playing") is not None:
+                    payload["playing"] = bool(data["playing"])
+                if (data or {}).get("speed") is not None:
+                    try:
+                        payload["speed"] = float(data["speed"])
+                    except (ValueError, TypeError):
+                        payload["speed"] = 1.0
+                if "file_name" in (data or {}):
+                    payload["file_name"] = str(data["file_name"] or "main.py")[:120]
+                if "is_open" in (data or {}):
+                    payload["is_open"] = bool(data["is_open"])
+                if "is_detached" in (data or {}):
+                    payload["is_detached"] = bool(data["is_detached"])
+                if "code" in (data or {}):
+                    payload["code"] = str(data["code"] or "")[:100000]
+                if "breakpoints" in (data or {}):
+                    raw_bp = data.get("breakpoints")
+                    if isinstance(raw_bp, (list, tuple, set)):
+                        bps = []
+                        for b in raw_bp:
+                            try:
+                                num = int(b)
+                                if 1 <= num <= 50000:
+                                    bps.append(num)
+                            except (ValueError, TypeError):
+                                pass
+                        payload["breakpoints"] = bps[:500]
+                if "inputs" in (data or {}):
+                    raw_in = data.get("inputs")
+                    if isinstance(raw_in, (list, tuple)):
+                        payload["inputs"] = [str(x)[:200] for x in raw_in[:100]]
+                if "input_val" in (data or {}):
+                    payload["input_val"] = str(data["input_val"])[:500]
+                if "action" in (data or {}):
+                    payload["action"] = str(data["action"])[:32]
+                if "line" in (data or {}):
+                    try:
+                        payload["line"] = int(data["line"])
+                    except (ValueError, TypeError):
+                        pass
+            else:
+                # Orbit and Master actions
+                uinfo = _resolve_user_presence_info(current_user)
+                payload["author"] = str((data or {}).get("author") or uinfo.get("name") or "Участник")[:60]
+                payload["author_role"] = role
+                for field in (
+                    "id", "action", "x", "y", "maxW", "maxH", "left", "top",
+                    "label", "type", "typeClass", "icon", "iconClass", "color",
+                    "text", "expr", "val", "points", "duration", "started_at",
+                    "remaining", "hint", "tier", "visible", "answer", "task_id",
+                    "seconds", "isRunning", "isOpen", "mode", "user_name"
+                ):
+                    if field in (data or {}):
+                        payload[field] = data[field]
+
+            # Persistence management for room_ui state
+            persistent_state_kinds = {"orbit_stamp", "teacher_stamp", "orbit_sticky", "orbit_timer_sync", "orbit_calc_sync", "orbit_cheat_sync", "blitz_start", "teacher_answer_vis"}
+            if kind in persistent_state_kinds:
                 room_state = _lesson_room_ui.setdefault(lesson_id, {})
-                state_key = (
-                    "mode" if kind == "mode"
-                    else "terminal_output" if kind == "terminal_output"
-                    else "terminal_tab" if kind == "terminal_tab"
-                    else f"window_layout:{payload['window_id']}" if kind == "window_layout"
-                    else f"window:{payload['window_id']}" if kind == "window"
-                    else f"{kind}:{payload.get('id', 'default')}"
-                )
-                room_state[state_key] = payload
+                action = str(payload.get("action") or "")
+                if action == "close":
+                    if kind == "orbit_timer_sync":
+                        room_state.pop("timer", None)
+                    elif kind == "orbit_calc_sync":
+                        room_state.pop("calc", None)
+                    elif kind == "orbit_cheat_sync":
+                        room_state.pop("cheat", None)
+                else:
+                    item_id = str(payload.get("id") or "default")
+                    state_key = (
+                        "blitz" if kind == "blitz_start"
+                        else "timer" if kind == "orbit_timer_sync"
+                        else "calc" if kind == "orbit_calc_sync"
+                        else "cheat" if kind == "orbit_cheat_sync"
+                        else "answer_vis" if kind == "teacher_answer_vis"
+                        else f"{kind}:{item_id}"
+                    )
+                    room_state[state_key] = payload
+            elif kind in {"orbit_stamp_move", "orbit_sticky_move", "orbit_sticky_input"}:
+                room_state = _lesson_room_ui.setdefault(lesson_id, {})
+                base_kind = "orbit_stamp" if "stamp" in kind else "orbit_sticky"
+                item_id = str(payload.get("id") or "default")
+                state_key = f"{base_kind}:{item_id}"
+                if state_key in room_state:
+                    room_state[state_key].update(payload)
+            elif kind in {"orbit_stamp_remove", "orbit_sticky_remove", "blitz_end"}:
+                room_state = _lesson_room_ui.get(lesson_id, {})
+                if kind == "blitz_end":
+                    room_state.pop("blitz", None)
+                else:
+                    item_id = str(payload.get("id") or "default")
+                    room_state.pop(f"orbit_stamp:{item_id}", None)
+                    room_state.pop(f"teacher_stamp:{item_id}", None)
+                    room_state.pop(f"orbit_sticky:{item_id}", None)
+            elif kind in {"mode", "terminal_output", "terminal_tab", "window", "window_layout", "tracer_state", "tracer_window", "tracer_run", "tracer_breakpoint"}:
+                room_state = _lesson_room_ui.setdefault(lesson_id, {})
+                if kind == "tracer_state" and payload.get("is_open") is False:
+                    room_state.pop("tracer_state", None)
+                elif kind == "tracer_breakpoint":
+                    if "tracer_state" in room_state:
+                        room_state["tracer_state"]["breakpoints"] = payload.get("breakpoints", [])
+                    else:
+                        room_state["tracer_state"] = {"kind": "tracer_state", "breakpoints": payload.get("breakpoints", []), "lesson_id": lesson_id}
+                else:
+                    state_key = (
+                        "mode" if kind == "mode"
+                        else "terminal_output" if kind == "terminal_output"
+                        else "terminal_tab" if kind == "terminal_tab"
+                        else "tracer_state" if kind == "tracer_state"
+                        else "tracer_window" if kind == "tracer_window"
+                        else "tracer_run" if kind == "tracer_run"
+                        else f"window_layout:{payload['window_id']}" if kind == "window_layout"
+                        else f"window:{payload['window_id']}"
+                    )
+                    room_state[state_key] = payload
+
             socketio.emit("lesson_room_ui", payload, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
             logger.warning("lesson_room_ui failed: %s", error)
@@ -802,14 +943,47 @@ def register_lesson_socket(socketio, app=None) -> None:
                 _lesson, role = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access(lesson_id)
             incoming_code = str((data or {}).get("code") or "")[:100000]
             incoming_file = str((data or {}).get("file_name") or "main.py")[:120]
+            incoming_files = (data or {}).get("files")
+            incoming_tabs = (data or {}).get("open_tabs")
             current = _lesson_code_state.get(lesson_id)
             if role == "parent":
                 if current:
                     socketio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, **current}, room=request.sid, namespace="/lesson")
                 return
-            if current is None and role == "teacher" and incoming_code:
-                current = {"file_name": incoming_file, "code": incoming_code, "version": int((current or {}).get("version") or 0) + 1, "updated_at": int(time() * 1000)}
+            if current is None and role == "teacher":
+                initial_files = {}
+                if isinstance(incoming_files, dict) and incoming_files:
+                    initial_files = {str(k)[:120]: str(v)[:100000] for k, v in incoming_files.items()}
+                elif incoming_code:
+                    initial_files[incoming_file] = incoming_code
+                else:
+                    initial_files["main.py"] = ""
+
+                initial_tabs = [incoming_file]
+                if isinstance(incoming_tabs, list) and incoming_tabs:
+                    initial_tabs = [str(t)[:120] for t in incoming_tabs if str(t)[:120] in initial_files]
+                if not initial_tabs:
+                    initial_tabs = list(initial_files.keys())[:1]
+
+                current = {
+                    "file_name": incoming_file,
+                    "code": initial_files.get(incoming_file, incoming_code),
+                    "files": initial_files,
+                    "open_tabs": initial_tabs,
+                    "active_file": incoming_file,
+                    "version": 1,
+                    "updated_at": int(time() * 1000),
+                }
                 _lesson_code_state[lesson_id] = current
+            elif current is not None:
+                # Гарантируем наличие структуры files в current
+                if "files" not in current:
+                    current["files"] = {current.get("file_name", "main.py"): current.get("code", "")}
+                if "open_tabs" not in current:
+                    current["open_tabs"] = [current.get("file_name", "main.py")]
+                if "active_file" not in current:
+                    current["active_file"] = current.get("file_name", "main.py")
+
             if current:
                 socketio.emit("lesson_code_snapshot", {"lesson_id": lesson_id, **current}, room=request.sid, namespace="/lesson")
         except Exception as error:
@@ -834,11 +1008,199 @@ def register_lesson_socket(socketio, app=None) -> None:
             now = monotonic()
             _lesson_code_update_emit_at[throttle_key] = now
             code = str((data or {}).get("code") or "")[:100000]
-            state = {"file_name": str((data or {}).get("file_name") or "main.py")[:120], "code": code, "version": int((_lesson_code_state.get(lesson_id) or {}).get("version") or 0) + 1, "updated_at": int(time() * 1000)}
+            file_name = str((data or {}).get("file_name") or "main.py")[:120]
+
+            curr_state = _lesson_code_state.get(lesson_id) or {}
+            files_dict = dict(curr_state.get("files") or {})
+            files_dict[file_name] = code
+            open_tabs = list(curr_state.get("open_tabs") or [file_name])
+            if file_name not in open_tabs:
+                open_tabs.append(file_name)
+
+            state = {
+                "file_name": file_name,
+                "code": code,
+                "files": files_dict,
+                "open_tabs": open_tabs,
+                "active_file": file_name,
+                "version": int(curr_state.get("version") or 0) + 1,
+                "updated_at": int(time() * 1000),
+            }
             _lesson_code_state[lesson_id] = state
             socketio.emit("lesson_code_update", {"lesson_id": lesson_id, "user_id": current_user.id, **state}, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
             logger.warning("lesson_code_update failed: %s", error)
+
+    @socketio.on("lesson_vfs_file_create", namespace="/lesson")
+    def _on_lesson_vfs_file_create(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        try:
+            lesson_id = int((data or {}).get("lesson_id"))
+            identity = _lesson_presence.get(lesson_id, {}).get(current_user.id)
+            role = identity.get("role", "student") if identity else "student"
+            control = _room_control(lesson_id)
+            if role == "parent" or not control.get("code_sync") or (role != "teacher" and not control.get("student_code_editing")):
+                return
+
+            file_name = str((data or {}).get("file_name") or "").strip()[:120]
+            if not file_name:
+                return
+            code = str((data or {}).get("code") or "")[:100000]
+
+            curr_state = _lesson_code_state.get(lesson_id) or {}
+            files_dict = dict(curr_state.get("files") or {})
+            files_dict[file_name] = code
+            open_tabs = list(curr_state.get("open_tabs") or [])
+            if file_name not in open_tabs:
+                open_tabs.append(file_name)
+
+            state = {
+                "file_name": file_name,
+                "code": code,
+                "files": files_dict,
+                "open_tabs": open_tabs,
+                "active_file": file_name,
+                "version": int(curr_state.get("version") or 0) + 1,
+                "updated_at": int(time() * 1000),
+            }
+            _lesson_code_state[lesson_id] = state
+            socketio.emit("lesson_vfs_file_create", {
+                "lesson_id": lesson_id,
+                "user_id": current_user.id,
+                "file_name": file_name,
+                "code": code,
+                "open_tabs": open_tabs,
+                "active_file": file_name,
+                "files": files_dict,
+            }, room=_room(lesson_id), namespace="/lesson", include_self=False)
+        except Exception as error:
+            logger.warning("lesson_vfs_file_create failed: %s", error)
+
+    @socketio.on("lesson_vfs_file_rename", namespace="/lesson")
+    def _on_lesson_vfs_file_rename(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        try:
+            lesson_id = int((data or {}).get("lesson_id"))
+            identity = _lesson_presence.get(lesson_id, {}).get(current_user.id)
+            role = identity.get("role", "student") if identity else "student"
+            control = _room_control(lesson_id)
+            if role == "parent" or not control.get("code_sync") or (role != "teacher" and not control.get("student_code_editing")):
+                return
+
+            old_name = str((data or {}).get("old_name") or "").strip()[:120]
+            new_name = str((data or {}).get("new_name") or "").strip()[:120]
+            if not old_name or not new_name or old_name == new_name:
+                return
+
+            curr_state = _lesson_code_state.get(lesson_id) or {}
+            files_dict = dict(curr_state.get("files") or {})
+            code = files_dict.pop(old_name, str((data or {}).get("code") or ""))
+            files_dict[new_name] = code
+            open_tabs = [new_name if t == old_name else t for t in (curr_state.get("open_tabs") or [])]
+            active_file = new_name if curr_state.get("active_file") == old_name else curr_state.get("active_file", new_name)
+
+            state = {
+                "file_name": active_file,
+                "code": files_dict.get(active_file, ""),
+                "files": files_dict,
+                "open_tabs": open_tabs,
+                "active_file": active_file,
+                "version": int(curr_state.get("version") or 0) + 1,
+                "updated_at": int(time() * 1000),
+            }
+            _lesson_code_state[lesson_id] = state
+            socketio.emit("lesson_vfs_file_rename", {
+                "lesson_id": lesson_id,
+                "user_id": current_user.id,
+                "old_name": old_name,
+                "new_name": new_name,
+                "open_tabs": open_tabs,
+                "active_file": active_file,
+                "files": files_dict,
+            }, room=_room(lesson_id), namespace="/lesson", include_self=False)
+        except Exception as error:
+            logger.warning("lesson_vfs_file_rename failed: %s", error)
+
+    @socketio.on("lesson_vfs_file_delete", namespace="/lesson")
+    def _on_lesson_vfs_file_delete(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        try:
+            lesson_id = int((data or {}).get("lesson_id"))
+            identity = _lesson_presence.get(lesson_id, {}).get(current_user.id)
+            role = identity.get("role", "student") if identity else "student"
+            control = _room_control(lesson_id)
+            if role == "parent" or not control.get("code_sync") or (role != "teacher" and not control.get("student_code_editing")):
+                return
+
+            file_name = str((data or {}).get("file_name") or "").strip()[:120]
+            if not file_name or file_name == "main.py":
+                return
+
+            curr_state = _lesson_code_state.get(lesson_id) or {}
+            files_dict = dict(curr_state.get("files") or {})
+            files_dict.pop(file_name, None)
+            open_tabs = [t for t in (curr_state.get("open_tabs") or []) if t != file_name]
+            if not open_tabs:
+                open_tabs = ["main.py"]
+            active_file = curr_state.get("active_file")
+            if active_file == file_name:
+                active_file = open_tabs[0]
+
+            state = {
+                "file_name": active_file,
+                "code": files_dict.get(active_file, ""),
+                "files": files_dict,
+                "open_tabs": open_tabs,
+                "active_file": active_file,
+                "version": int(curr_state.get("version") or 0) + 1,
+                "updated_at": int(time() * 1000),
+            }
+            _lesson_code_state[lesson_id] = state
+            socketio.emit("lesson_vfs_file_delete", {
+                "lesson_id": lesson_id,
+                "user_id": current_user.id,
+                "file_name": file_name,
+                "open_tabs": open_tabs,
+                "active_file": active_file,
+                "files": files_dict,
+            }, room=_room(lesson_id), namespace="/lesson", include_self=False)
+        except Exception as error:
+            logger.warning("lesson_vfs_file_delete failed: %s", error)
+
+    @socketio.on("lesson_vfs_tab_switch", namespace="/lesson")
+    def _on_lesson_vfs_tab_switch(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        try:
+            lesson_id = int((data or {}).get("lesson_id"))
+            control = _room_control(lesson_id)
+            if not control.get("code_sync"):
+                return
+
+            file_name = str((data or {}).get("file_name") or "main.py")[:120]
+            curr_state = _lesson_code_state.get(lesson_id) or {}
+            curr_state["active_file"] = file_name
+            curr_state["file_name"] = file_name
+            open_tabs = list(curr_state.get("open_tabs") or [])
+            if file_name not in open_tabs:
+                open_tabs.append(file_name)
+                curr_state["open_tabs"] = open_tabs
+
+            socketio.emit("lesson_vfs_tab_switch", {
+                "lesson_id": lesson_id,
+                "user_id": current_user.id,
+                "file_name": file_name,
+                "open_tabs": open_tabs,
+            }, room=_room(lesson_id), namespace="/lesson", include_self=False)
+        except Exception as error:
+            logger.warning("lesson_vfs_tab_switch failed: %s", error)
 
     @socketio.on("lesson_code_cursor", namespace="/lesson")
     def _on_lesson_code_cursor(data):
@@ -860,6 +1222,9 @@ def register_lesson_socket(socketio, app=None) -> None:
                 _whiteboard_access = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access
                 _whiteboard_access(lesson_id)
             identity = _lesson_presence.get(lesson_id, {}).get(current_user.id, {})
+            raw_start = int((data or {}).get("start", 0))
+            raw_end = int((data or {}).get("end", raw_start))
+            is_hidden = bool((data or {}).get("hidden")) or raw_start < 0
             socketio.emit(
                 "lesson_code_cursor",
                 {
@@ -868,9 +1233,10 @@ def register_lesson_socket(socketio, app=None) -> None:
                     "name": identity.get("name") or getattr(current_user, "username", None) or "Участник",
                     "color": identity.get("color") or _pointer_colors[int(current_user.id) % len(_pointer_colors)],
                     "file_name": str((data or {}).get("file_name") or "main.py")[:120],
+                    "hidden": is_hidden,
                     "cursor": {
-                        "start": max(0, int((data or {}).get("start") or 0)),
-                        "end": max(0, int((data or {}).get("end") or 0)),
+                        "start": -1 if is_hidden else max(0, raw_start),
+                        "end": -1 if is_hidden else max(0, raw_end),
                     },
                 },
                 room=_room(lesson_id),
@@ -1209,6 +1575,42 @@ def register_lesson_socket(socketio, app=None) -> None:
             socketio.emit("whiteboard_live_camera", outgoing, room=_room(lesson_id), namespace="/lesson", include_self=False)
         except Exception as error:
             logger.warning("whiteboard_live_camera failed: %s", error)
+
+    @socketio.on("whiteboard_viewport", namespace="/lesson")
+    def _on_whiteboard_viewport(data):
+        _sync_socket_user()
+        if not current_user.is_authenticated:
+            return
+        try:
+            payload = data or {}
+            lesson_id = int(payload.get("lesson_id"))
+            identity = _lesson_presence.get(lesson_id, {}).get(current_user.id)
+            if not identity:
+                _whiteboard_access = __import__("app.lessons.routes", fromlist=["_whiteboard_access"])._whiteboard_access
+                _whiteboard_access(lesson_id)
+                identity = _lesson_presence.get(lesson_id, {}).get(current_user.id, {})
+            role = identity.get("role", "student")
+            name = identity.get("name") or getattr(current_user, "username", None) or "Участник"
+            color = identity.get("color") or _pointer_colors[int(current_user.id) % len(_pointer_colors)]
+            outgoing = {
+                "lesson_id": lesson_id,
+                "user_id": current_user.id,
+                "role": role,
+                "name": name,
+                "color": color,
+                "page_id": str(payload.get("page_id") or "")[:96],
+                "mode": str(payload.get("mode") or "board")[:16],
+                "viewport": {
+                    "world_x": float(payload.get("world_x") or 0),
+                    "world_y": float(payload.get("world_y") or 0),
+                    "world_w": max(10, float(payload.get("world_w") or 100)),
+                    "world_h": max(10, float(payload.get("world_h") or 100)),
+                },
+                "updated_at": int(time() * 1000),
+            }
+            socketio.emit("whiteboard_viewport", outgoing, room=_room(lesson_id), namespace="/lesson", include_self=False)
+        except Exception as error:
+            logger.warning("whiteboard_viewport failed: %s", error)
 
     @socketio.on("whiteboard_reaction", namespace="/lesson")
     def _on_whiteboard_reaction(data):

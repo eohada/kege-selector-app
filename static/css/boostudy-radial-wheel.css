@@ -1,0 +1,1050 @@
+/**
+ * BooStudy OS — Boo Orbit 2.2 (Орбита)
+ * White Frosted Glass, Generous Sizing, Stable Satellite Petals & Standardized Z-Index
+ */
+
+:root {
+  --boo-orbit-size: 380px;
+  --boo-orbit-radius: 155px;
+  --boo-orbit-inner-radius: 54px;
+  --boo-orbit-hub-size: 96px;
+  --boo-orbit-accent: #4f46e5;
+  --boo-orbit-accent-light: #6366f1;
+  --boo-orbit-accent-glow: rgba(99, 102, 241, 0.22);
+  --boo-orbit-hover-bg: #ede9fe;
+}
+
+/* ==========================================================================
+   Overlay & Backdrop
+   ========================================================================== */
+
+.boo-radial-wheel-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 999999;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.boo-radial-wheel-overlay.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.boo-radial-wheel-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.boo-radial-wheel-overlay.is-active .boo-radial-wheel-backdrop {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   The Radial Orbit Wheel (Generous Scale)
+   ========================================================================== */
+
+.boo-radial-wheel {
+  position: absolute;
+  width: var(--boo-orbit-size);
+  height: var(--boo-orbit-size);
+  transform: translate(-50%, -50%) scale(0.9);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+  will-change: transform, left, top;
+}
+
+.boo-radial-wheel-overlay.is-active .boo-radial-wheel {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.boo-radial-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 18px 42px rgba(15, 23, 42, 0.16)) drop-shadow(0 3px 10px rgba(15, 23, 42, 0.08));
+  overflow: visible;
+}
+
+/* Sectors (Crisp White Glass + Lavender Glow) */
+.boo-wheel-sector {
+  fill: rgba(255, 255, 255, 0.95);
+  stroke: rgba(226, 232, 240, 0.95);
+  stroke-width: 1.5;
+  transition: fill 0.14s ease, stroke 0.14s ease, filter 0.14s ease;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.boo-wheel-sector:hover,
+.boo-wheel-sector.is-selected {
+  fill: #ede9fe;
+  stroke: var(--boo-orbit-accent-light);
+  stroke-width: 2.2;
+  filter: drop-shadow(0 4px 14px rgba(99, 102, 241, 0.3));
+}
+
+/* Sector Icons & Titles */
+.boo-wheel-icon-group {
+  pointer-events: none;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+}
+
+.boo-wheel-icon-group i {
+  color: #334155;
+  font-size: 23px;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.boo-wheel-sector.is-selected ~ .boo-wheel-labels-layer .boo-wheel-icon-group.is-selected i,
+.boo-wheel-icon-group.is-selected i {
+  color: var(--boo-orbit-accent);
+  filter: drop-shadow(0 2px 8px rgba(79, 70, 229, 0.4));
+  transform: scale(1.18);
+}
+
+/* ==========================================================================
+   Satellite Sub-Orbit Petals (Stable, Non-Flickering Arc)
+   ========================================================================== */
+
+.boo-orbit-satellites-layer {
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.boo-orbit-satellites-layer.is-visible {
+  opacity: 1;
+}
+
+.boo-satellite-petal {
+  fill: rgba(255, 255, 255, 0.98);
+  stroke: #cbd5e1;
+  stroke-width: 1.6;
+  cursor: pointer;
+  transition: fill 0.12s ease, stroke 0.12s ease, filter 0.12s ease;
+  filter: drop-shadow(0 8px 20px rgba(15, 23, 42, 0.14));
+}
+
+.boo-satellite-petal:hover,
+.boo-satellite-petal.is-selected {
+  fill: #4f46e5;
+  stroke: #3730a3;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 10px 24px rgba(79, 70, 229, 0.45));
+}
+
+.boo-satellite-icon-group {
+  pointer-events: none;
+}
+
+.boo-satellite-icon-group i {
+  font-size: 18px;
+  color: #1e293b;
+  transition: color 0.12s ease, transform 0.12s ease;
+}
+
+.boo-satellite-petal.is-selected ~ .boo-satellite-labels-layer .boo-satellite-icon-group.is-selected i,
+.boo-satellite-icon-group.is-selected i {
+  color: #ffffff;
+  transform: scale(1.15);
+}
+
+/* ==========================================================================
+   Center Hub (Tactile White Pill)
+   ========================================================================== */
+
+.boo-wheel-center-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--boo-orbit-hub-size);
+  height: var(--boo-orbit-hub-size);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff, #f8fafc);
+  border: 2px solid #e2e8f0;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08), inset 0 1px 2px #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+  text-align: center;
+  padding: 6px;
+  box-sizing: border-box;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.boo-wheel-center-hub.has-selection {
+  border-color: var(--boo-orbit-accent-light);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.24), inset 0 1px 2px #ffffff;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.boo-wheel-hub-icon {
+  font-size: 26px;
+  color: var(--boo-orbit-accent);
+  line-height: 1;
+  margin-bottom: 2px;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.boo-wheel-center-hub.has-selection .boo-wheel-hub-icon {
+  transform: scale(1.12);
+}
+
+.boo-wheel-hub-label {
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.1;
+  color: #0f172a;
+  max-width: 82px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.boo-wheel-hub-hint {
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-top: 1px;
+  letter-spacing: 0.04em;
+}
+
+.boo-wheel-center-hub.has-selection .boo-wheel-hub-hint {
+  color: var(--boo-orbit-accent);
+}
+
+/* ==========================================================================
+   Floating Summon Orb
+   ========================================================================== */
+
+.boo-wheel-trigger-orb {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1), 0 2px 6px rgba(15, 23, 42, 0.04);
+  color: var(--boo-orbit-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 9998;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  touch-action: none;
+}
+
+.boo-wheel-trigger-orb:hover {
+  transform: scale(1.08);
+  background: #ffffff;
+  border-color: var(--boo-orbit-accent-light);
+  box-shadow: 0 10px 28px rgba(99, 102, 241, 0.22);
+}
+
+/* ==========================================================================
+   Toast Notification
+   ========================================================================== */
+
+.boo-wheel-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.05);
+  color: #0f172a;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 750;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.boo-wheel-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.boo-wheel-toast i {
+  color: var(--boo-orbit-accent);
+  font-size: 17px;
+}
+
+/* ==========================================================================
+   Standardized Layering: Floating Cards & Stamps (Base z-index: 50)
+   ========================================================================== */
+
+/* System Dock and System Bar ALWAYS stay above draggable windows & orbit cards */
+.room-lesson-os #board-dock,
+#board-dock,
+.board-dock {
+  z-index: 1100 !important;
+}
+
+.lesson-os-system-bar,
+.homework-os-system-bar {
+  z-index: 1200 !important;
+}
+
+.boo-orbit-card,
+.boo-orbit-sticky-card,
+.boo-orbit-stamp-item {
+  position: absolute;
+  z-index: 50;
+  user-select: none;
+  will-change: transform, left, top;
+}
+
+.boo-orbit-card {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(15, 23, 42, 0.04);
+  font-family: inherit;
+  color: #0f172a;
+  animation: booCardPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes booCardPop {
+  from { opacity: 0; transform: scale(0.92) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.boo-orbit-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: grab;
+  background: #f8fafc;
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+}
+
+.boo-orbit-card-header:active {
+  cursor: grabbing;
+}
+
+.boo-orbit-card-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.boo-orbit-card-title i {
+  color: var(--boo-orbit-accent);
+  font-size: 16px;
+}
+
+.boo-orbit-card-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.boo-orbit-card-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   Tool 1: Focus Timer Widget
+   ========================================================================== */
+
+.boo-orbit-timer-body {
+  padding: 14px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 220px;
+}
+
+.boo-orbit-timer-digits {
+  font-size: 40px;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin: 6px 0 10px;
+}
+
+.boo-orbit-timer-presets {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.boo-orbit-timer-btn {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 750;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.boo-orbit-timer-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.boo-orbit-timer-btn.is-active {
+  background: #ede9fe;
+  color: var(--boo-orbit-accent);
+  border-color: #c7d2fe;
+}
+
+.boo-orbit-timer-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.boo-orbit-timer-action-btn {
+  flex: 1;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.boo-orbit-timer-start {
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+
+.boo-orbit-timer-start:hover {
+  background: #4338ca;
+}
+
+.boo-orbit-timer-reset {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.boo-orbit-timer-reset:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   Tool 2: Full Functional Mini-Calculator
+   ========================================================================== */
+
+.boo-orbit-calc-card {
+  width: 280px;
+}
+
+.boo-orbit-calc-body {
+  padding: 12px 14px 14px;
+}
+
+.boo-orbit-calc-screen {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-height: 56px;
+  box-sizing: border-box;
+}
+
+.boo-orbit-calc-expr {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #64748b;
+  min-height: 16px;
+  word-break: break-all;
+}
+
+.boo-orbit-calc-result {
+  font-size: 22px;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+}
+
+.boo-orbit-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.boo-calc-key {
+  height: 36px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.boo-calc-key:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.boo-calc-key:active {
+  transform: scale(0.95);
+}
+
+.boo-calc-op {
+  background: #f8fafc;
+  color: var(--boo-orbit-accent);
+}
+
+.boo-calc-del {
+  color: #e11d48;
+}
+
+.boo-calc-eq {
+  background: #4f46e5;
+  color: #ffffff;
+  border-color: #4338ca;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  grid-column: span 2;
+}
+
+.boo-calc-eq:hover {
+  background: #4338ca;
+}
+
+.boo-orbit-calc-bases {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 8px;
+}
+
+.boo-calc-base-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.boo-calc-base-row:hover {
+  background: #eef2ff;
+}
+
+.boo-calc-base-tag {
+  font-weight: 800;
+  color: #64748b;
+}
+
+.boo-calc-base-val {
+  font-weight: 850;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   Tool 3: Pulse Beacon (High-Priority Visibility)
+   ========================================================================== */
+
+.boo-orbit-beacon-anchor {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 950000 !important;
+}
+
+.boo-orbit-beacon-core {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4f46e5;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 0 14px rgba(79, 70, 229, 0.8), 0 0 28px rgba(99, 102, 241, 0.5);
+  transform: translate(-50%, -50%);
+  animation: beaconCorePulse 1.2s ease-in-out infinite alternate;
+}
+
+.boo-orbit-beacon-circle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  border: 3.5px solid #6366f1;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, rgba(99, 102, 241, 0.05) 70%, transparent 100%);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+  transform: translate(-50%, -50%) scale(0.2);
+  opacity: 1;
+  animation: beaconPulse 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes beaconCorePulse {
+  0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1.25); opacity: 1; box-shadow: 0 0 20px rgba(79, 70, 229, 1); }
+}
+
+@keyframes beaconPulse {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.6); opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+}
+
+/* ==========================================================================
+   Tool 4: Sticky Note Widget
+   ========================================================================== */
+
+.boo-orbit-sticky-card {
+  width: 230px;
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.04);
+  padding: 10px 12px 12px;
+  animation: booCardPop 0.2s ease;
+}
+
+.boo-sticky-yellow { background: #fef9c3; border: 1px solid #fef08a; color: #713f12; }
+.boo-sticky-lavender { background: #ede9fe; border: 1px solid #ddd6fe; color: #4338ca; }
+.boo-sticky-mint { background: #dcfce7; border: 1px solid #bbf7d0; color: #15803d; }
+
+.boo-orbit-sticky-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  cursor: grab;
+}
+
+.boo-orbit-sticky-header:active {
+  cursor: grabbing;
+}
+
+.boo-orbit-sticky-tag {
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+.boo-orbit-sticky-content {
+  width: 100%;
+  min-height: 80px;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: inherit;
+  line-height: 1.4;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Tool 5: Cheat Sheet Card (Инфо-шпаргалка)
+   ========================================================================== */
+
+.boo-orbit-cheat-card {
+  width: 300px;
+  max-height: 390px;
+}
+
+.boo-orbit-cheat-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px 4px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.boo-cheat-tab-btn {
+  flex: 1;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 750;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.boo-cheat-tab-btn.is-active {
+  background: #ffffff;
+  color: var(--boo-orbit-accent);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.boo-orbit-cheat-body {
+  padding: 10px 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 11.5px;
+}
+
+.boo-cheat-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.boo-cheat-table th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #64748b;
+  padding: 4px 6px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.boo-cheat-table td {
+  padding: 5px 6px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-weight: 700;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* ==========================================================================
+   Tool 6: Laser Tracer (Светящийся след)
+   ========================================================================== */
+
+.boo-orbit-laser-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 950000 !important;
+}
+
+/* ==========================================================================
+   Tool 7: Genuine 2x Optical Loupe (Canvas + Window Content)
+   ========================================================================== */
+
+.boo-orbit-canvas-loupe {
+  position: fixed;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 3.5px solid #4f46e5;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.3), 0 0 24px rgba(99, 102, 241, 0.4);
+  pointer-events: none !important;
+  z-index: 980000 !important;
+  overflow: hidden;
+  background: #ffffff;
+  transform: translate(-50%, -50%);
+  display: block;
+}
+
+.boo-orbit-canvas-loupe canvas.boo-orbit-loupe-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.boo-orbit-loupe-dom-viewport {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  pointer-events: none !important;
+  display: none;
+}
+
+.boo-orbit-loupe-dom-content {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform-origin: 0 0 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  will-change: transform;
+}
+
+/* Neutralize .room-lesson-os inside the 180px loupe circle */
+.boo-orbit-canvas-loupe .room-lesson-os {
+  position: relative !important;
+  inset: auto !important;
+  width: auto !important;
+  height: auto !important;
+  max-height: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  z-index: auto !important;
+}
+
+.boo-orbit-loupe-stage {
+  position: relative !important;
+  display: block !important;
+}
+
+.boo-orbit-loupe-dom-content * {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+.boo-orbit-loupe-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 850;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  z-index: 20;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.boo-orbit-canvas-loupe-cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.boo-orbit-canvas-loupe-cross::before,
+.boo-orbit-canvas-loupe-cross::after {
+  content: '';
+  position: absolute;
+  background: rgba(79, 70, 229, 0.85);
+}
+
+.boo-orbit-canvas-loupe-cross::before {
+  left: 7px;
+  top: 0;
+  width: 2px;
+  height: 16px;
+}
+
+.boo-orbit-canvas-loupe-cross::after {
+  left: 0;
+  top: 7px;
+  width: 16px;
+  height: 2px;
+}
+
+/* ==========================================================================
+   Tool 8: Draggable & Dismissible Stamp Badges
+   ========================================================================== */
+
+.boo-orbit-stamp-item {
+  cursor: grab;
+  animation: stampLand 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.boo-orbit-stamp-item:active {
+  cursor: grabbing;
+}
+
+@keyframes stampLand {
+  from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.boo-orbit-badge-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 850;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.05);
+  border: 2px solid #ffffff;
+  position: relative;
+}
+
+.boo-stamp-close {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15);
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  border: none;
+  margin-left: 2px;
+  transition: background 0.15s ease;
+}
+
+.boo-stamp-close:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.boo-orbit-stamp-success { background: #dcfce7; color: #15803d; }
+.boo-orbit-stamp-danger { background: #fee2e2; color: #b91c1c; }
+.boo-orbit-stamp-star { background: #fef3c7; color: #b45309; }
+.boo-orbit-stamp-question { background: #e0e7ff; color: #4338ca; }
+.boo-orbit-stamp-idea { background: #f3e8ff; color: #7e22ce; }
+
+/* Teacher Pedagogical Stamps for all clients */
+.boo-master-stamp-excellent {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+  color: #065f46 !important;
+  border: 1.5px solid #6ee7b7 !important;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+.boo-master-stamp-warning {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+  color: #92400e !important;
+  border: 1.5px solid #fcd34d !important;
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+.boo-master-stamp-error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+  color: #991b1b !important;
+  border: 1.5px solid #fca5a5 !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+.boo-master-stamp-hint {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%) !important;
+  color: #3730a3 !important;
+  border: 1.5px solid #a5b4fc !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.22), 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.boo-orbit-beacon-tag {
+  position: absolute;
+  top: -38px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.88);
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 99999;
+}
+
+.boo-stamp-author {
+  font-size: 9.5px;
+  font-weight: 700;
+  opacity: 0.75;
+  background: rgba(0, 0, 0, 0.08);
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: 2px;
+}
+
+.boo-sticky-author {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.boo-orbit-remote-laser {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+}
+

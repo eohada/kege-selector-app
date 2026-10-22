@@ -1,0 +1,570 @@
+/**
+ * BooStudy OS — Boo Master Orbit (Преподская Орбита) 1.0
+ * Amber Cyber-Glass Visual Architecture & Specialized Pedagogical Command HUD
+ */
+
+:root {
+  --boo-master-size: 380px;
+  --boo-master-radius: 155px;
+  --boo-master-inner-radius: 54px;
+  --boo-master-hub-size: 96px;
+  --boo-master-accent: #d97706;
+  --boo-master-accent-light: #f59e0b;
+  --boo-master-accent-glow: rgba(245, 158, 11, 0.35);
+  --boo-master-hover-bg: #fef3c7;
+  --boo-master-border: #fcd34d;
+}
+
+/* ==========================================================================
+   Overlay & Backdrop (Amber Mist Blur)
+   ========================================================================== */
+
+.boo-master-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 999998;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.boo-master-overlay.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.boo-master-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(30, 27, 24, 0.22);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.boo-master-overlay.is-active .boo-master-backdrop {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   The Radial Orbit Wheel (Amber Cyber-Glass)
+   ========================================================================== */
+
+.boo-master-wheel {
+  position: absolute;
+  width: var(--boo-master-size);
+  height: var(--boo-master-size);
+  transform: translate(-50%, -50%) scale(0.9);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+  will-change: transform, left, top;
+}
+
+.boo-master-overlay.is-active .boo-master-wheel {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.boo-master-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 20px 45px rgba(217, 119, 6, 0.22)) drop-shadow(0 4px 12px rgba(15, 23, 42, 0.1));
+  overflow: visible;
+}
+
+/* Sectors (Frosted Amber-Tinted Glass) */
+.boo-master-sector {
+  fill: rgba(255, 255, 255, 0.96);
+  stroke: rgba(252, 211, 77, 0.7);
+  stroke-width: 1.5;
+  transition: fill 0.14s ease, stroke 0.14s ease, filter 0.14s ease;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.boo-master-sector:hover,
+.boo-master-sector.is-selected {
+  fill: #fef3c7;
+  stroke: var(--boo-master-accent-light);
+  stroke-width: 2.4;
+  filter: drop-shadow(0 4px 14px rgba(245, 158, 11, 0.45));
+}
+
+/* Sector Icons & Titles */
+.boo-master-icon-group {
+  pointer-events: none;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+}
+
+.boo-master-icon-group i {
+  color: #78350f;
+  font-size: 23px;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.boo-master-sector.is-selected ~ .boo-master-labels-layer .boo-master-icon-group.is-selected i,
+.boo-master-icon-group.is-selected i {
+  color: var(--boo-master-accent);
+  filter: drop-shadow(0 2px 8px rgba(217, 119, 6, 0.5));
+  transform: scale(1.18);
+}
+
+/* ==========================================================================
+   Satellite Sub-Orbit Petals (Amber Arc)
+   ========================================================================== */
+
+.boo-master-satellites-layer {
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.boo-master-satellites-layer.is-visible {
+  opacity: 1;
+}
+
+.boo-master-satellite-petal {
+  fill: rgba(255, 255, 255, 0.98);
+  stroke: #fcd34d;
+  stroke-width: 1.6;
+  cursor: pointer;
+  transition: fill 0.12s ease, stroke 0.12s ease, filter 0.12s ease;
+  filter: drop-shadow(0 8px 20px rgba(15, 23, 42, 0.14));
+}
+
+.boo-master-satellite-petal:hover,
+.boo-master-satellite-petal.is-selected {
+  fill: #f59e0b;
+  stroke: #b45309;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 10px 24px rgba(245, 158, 11, 0.5));
+}
+
+.boo-master-satellite-petal:hover ~ .boo-master-satellite-labels-layer text,
+.boo-master-satellite-petal.is-selected ~ .boo-master-satellite-labels-layer text {
+  fill: #ffffff !important;
+}
+
+.boo-master-satellite-icon-group {
+  pointer-events: none;
+}
+
+.boo-master-satellite-icon-group i {
+  color: #78350f;
+  font-size: 19px;
+  transition: all 0.15s ease;
+}
+
+.boo-master-satellite-petal.is-selected + .boo-master-satellite-icon-group i,
+.boo-master-satellite-petal:hover + .boo-master-satellite-icon-group i {
+  color: #ffffff;
+  transform: scale(1.15);
+}
+
+/* ==========================================================================
+   Central Gold Master Hub (Crown & Status Display)
+   ========================================================================== */
+
+.boo-master-center-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--boo-master-hub-size);
+  height: var(--boo-master-hub-size);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fffbeb 0%, #fef3c7 70%, #fde68a 100%);
+  border: 2.5px solid #f59e0b;
+  box-shadow: 0 10px 28px rgba(217, 119, 6, 0.28), inset 0 2px 6px rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+  text-align: center;
+  padding: 6px;
+  transition: all 0.18s ease;
+}
+
+.boo-master-hub-crown {
+  font-size: 26px;
+  color: #d97706;
+  filter: drop-shadow(0 2px 6px rgba(217, 119, 6, 0.4));
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.boo-master-center-hub.has-selection .boo-master-hub-crown {
+  transform: scale(1.15) translateY(-2px);
+  color: #b45309;
+}
+
+.boo-master-hub-label {
+  font-size: 11px;
+  font-weight: 850;
+  color: #78350f;
+  margin-top: 2px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boo-master-hub-hint {
+  font-size: 9px;
+  font-weight: 700;
+  color: #92400e;
+  margin-top: 1px;
+  letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   Floating Amber Master Orb (Exclusively for Teachers)
+   ========================================================================== */
+
+.boo-master-trigger-orb {
+  position: fixed;
+  bottom: 24px;
+  left: 78px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 2px solid #f59e0b;
+  box-shadow: 0 8px 24px rgba(217, 119, 6, 0.28), 0 2px 6px rgba(15, 23, 42, 0.04);
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 1150 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  touch-action: none;
+}
+
+.boo-master-trigger-orb::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1.5px solid #f59e0b;
+  opacity: 0.6;
+  animation: masterNeonPulse 2.4s infinite ease-in-out;
+}
+
+@keyframes masterNeonPulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0.85; filter: drop-shadow(0 0 6px #f59e0b); }
+}
+
+.boo-master-trigger-orb:hover {
+  transform: scale(1.12);
+  background: #ffffff;
+  border-color: #d97706;
+  box-shadow: 0 10px 30px rgba(217, 119, 6, 0.4);
+  color: #b45309;
+}
+
+/* ==========================================================================
+   Master Toast Notifications
+   ========================================================================== */
+
+.boo-master-toast {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid #fcd34d;
+  box-shadow: 0 14px 34px rgba(217, 119, 6, 0.22), 0 2px 8px rgba(15, 23, 42, 0.06);
+  color: #78350f;
+  padding: 9px 20px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.boo-master-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.boo-master-toast i {
+  color: #d97706;
+  font-size: 19px;
+}
+
+/* ==========================================================================
+   Tool 1: Teacher Master Inspector Card
+   ========================================================================== */
+
+.boo-master-card {
+  position: absolute;
+  z-index: 55;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid #fcd34d;
+  border-radius: 20px;
+  box-shadow: 0 18px 44px rgba(217, 119, 6, 0.18), 0 2px 8px rgba(15, 23, 42, 0.05);
+  font-family: inherit;
+  color: #0f172a;
+  user-select: none;
+  will-change: transform, left, top;
+  animation: booCardPop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.boo-master-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  border-bottom: 1px solid #fef3c7;
+  cursor: grab;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+
+.boo-master-card-header:active {
+  cursor: grabbing;
+}
+
+.boo-master-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 850;
+  color: #78350f;
+}
+
+.boo-master-card-title i {
+  color: #d97706;
+  font-size: 18px;
+}
+
+.boo-master-card-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #92400e;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.boo-master-card-close:hover {
+  background: #fde68a;
+  color: #78350f;
+}
+
+/* Inspector Body */
+.boo-master-inspector-body {
+  padding: 16px;
+  min-width: 320px;
+}
+
+.boo-inspector-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed #fef3c7;
+  font-size: 12px;
+}
+
+.boo-inspector-row:last-child {
+  border-bottom: none;
+}
+
+.boo-inspector-label {
+  font-weight: 700;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.boo-inspector-value {
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.boo-inspector-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.boo-inspector-badge.is-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.boo-inspector-badge.is-idle {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.boo-inspector-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  background: #d97706;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+  transition: all 0.15s ease;
+}
+
+.boo-inspector-btn:hover {
+  background: #b45309;
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Tool 2: Blitz Speed Challenge Card
+   ========================================================================== */
+
+.boo-master-blitz-body {
+  padding: 16px 20px;
+  min-width: 280px;
+  text-align: center;
+}
+
+.boo-blitz-timer-display {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 42px;
+  font-weight: 900;
+  color: #d97706;
+  letter-spacing: -0.04em;
+  margin: 6px 0 12px;
+  text-shadow: 0 2px 10px rgba(245, 158, 11, 0.25);
+}
+
+.boo-blitz-status-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #78350f;
+  margin-bottom: 14px;
+}
+
+.boo-blitz-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.boo-blitz-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.boo-blitz-btn.is-stop {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.boo-blitz-btn.is-stop:hover {
+  background: #fca5a5;
+}
+
+.boo-blitz-btn.is-reset {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.boo-blitz-btn.is-reset:hover {
+  background: #e2e8f0;
+}
+
+/* ==========================================================================
+   Tool 3: Official Answer & Rubric Spoilers
+   ========================================================================== */
+
+.boo-master-answer-body {
+  padding: 16px;
+  max-width: 360px;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.boo-master-answer-badge {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 850;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.boo-master-answer-val {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 10px;
+  user-select: text;
+}
+
+/* ==========================================================================
+   Tool 4: Teacher Pedagogical Stamps
+   ========================================================================== */
+
+.boo-master-stamp-excellent { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.boo-master-stamp-warning { background: #fef3c7; color: #b45309; border-color: #fde68a; }
+.boo-master-stamp-error { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.boo-master-stamp-hint { background: #e0e7ff; color: #4338ca; border-color: #a5b4fc; }

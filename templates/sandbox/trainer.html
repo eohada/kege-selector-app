@@ -11,6 +11,8 @@
 {% block title %}{{ (homework_workspace.assignment_title if homework_mode else (room_lesson.topic if room_mode and room_lesson else 'Тренажёр v2')) }} · BooStudy{% endblock %}
 
 {% block sandbox_content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-tracer.css') }}?v=20261022-v2">
+{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-radial-wheel.css') }}?v=20261022-v1"><link rel="stylesheet" href="{{ url_for('static', filename='css/boostudy-teacher-orbit.css') }}?v=20261022-v1">{% endif %}
 <!-- Skulpt Python Interpreter for KEGE Engine -->
 <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
@@ -1316,6 +1318,14 @@
   .room-lesson-os .board-presentation-banner button { border: 0; background: transparent; color: #64748b; font-size: 10px; font-weight: 800; cursor: pointer; }
   .room-lesson-os .board-presentation-banner button:hover { color: #4338ca; }
   .room-lesson-os .board-presentation-banner .hidden { display: none !important; }
+  .room-lesson-os .board-viewport-indicators { position: absolute; inset: 0; pointer-events: none; z-index: 25; overflow: hidden; }
+  .room-lesson-os .board-student-viewport-box { position: absolute; pointer-events: none; border-radius: 12px; border-width: 2px; border-style: dashed; box-sizing: border-box; transition: opacity 0.2s ease, border-color 0.2s ease; }
+  .room-lesson-os .board-student-viewport-box.is-code-mode { opacity: 0.45; border-style: dotted; }
+  .room-lesson-os .board-student-viewport-badge { position: absolute; top: -34px; left: -2px; pointer-events: auto; user-select: none; display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .65rem; border-radius: 9999px; font-size: 11px; font-weight: 800; white-space: nowrap; box-shadow: 0 4px 12px rgba(15,23,42,.15), 0 2px 0 rgba(0,0,0,.1); border-width: 2px; border-style: solid; background: #fff; }
+  .room-lesson-os .board-student-viewport-jump-btn { display: inline-flex; align-items: center; gap: .25rem; padding: .15rem .45rem; margin-left: .35rem; border-radius: 6px; background: #fff; color: #1e293b; border: 1px solid #cbd5e1; border-bottom: 2px solid #94a3b8; font-size: 10px; font-weight: 800; cursor: pointer; transition: transform .1s ease, background .1s ease; }
+  .room-lesson-os .board-student-viewport-jump-btn:hover { background: #f1f5f9; }
+  .room-lesson-os .board-student-viewport-jump-btn:active { transform: translateY(1px); border-bottom-width: 1px; }
+  .room-lesson-os .board-student-viewport-status-tag { font-size: 9px; font-weight: 800; padding: .1rem .35rem; border-radius: 4px; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
   .room-lesson-os .board-remote-pointer { --pointer-color: #4f46e5; position: absolute; width: 16px; height: 16px; border: 2px solid var(--pointer-color); border-radius: 999px 999px 999px 2px; background: color-mix(in srgb, var(--pointer-color) 18%, transparent); transform: rotate(-45deg); pointer-events: none; }
   .room-lesson-os .board-remote-pointer::after { content: attr(data-label); position: absolute; left: 18px; top: 13px; width: max-content; padding: 2px 5px; border-radius: 4px; background: var(--pointer-color); color: #fff; font-size: 8px; font-weight: 800; transform: rotate(45deg); white-space: nowrap; }
   .room-lesson-os .board-local-laser,
@@ -1519,17 +1529,10 @@
 
     .room-lesson-os #editor-status-bar > div:first-child {
       min-width: 0;
-      gap: .35rem;
+      gap: .65rem;
       flex-wrap: nowrap;
       white-space: nowrap;
       overflow: hidden;
-    }
-
-    .room-lesson-os #editor-status-bar > div:last-child,
-    .room-lesson-os #editor-status-bar #status-bar-cursor-pos,
-    .room-lesson-os #editor-status-bar #status-bar-char-count,
-    .room-lesson-os #editor-status-bar .w-px {
-      display: none;
     }
 
     .room-lesson-os #terminal-window {
@@ -2632,6 +2635,7 @@
               </div>
               {% endif %}
 
+              <button type="button" id="editor-tracer-toggle-btn" onclick="toggleVisualTracer()" aria-label="Бу Трассировщик" title="Бу Трассировщик (Пошаговый визуализатор алгоритма и памяти)" class="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs rounded-xl shadow-md hover:shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"><i class="ph-bold ph-git-commit text-cyan-200"></i><span>Трассировка</span></button>
               <button onclick="executeRunCode()" aria-label="Запустить код" title="Запустить код (Ctrl+Enter)"
                 class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-md hover:shadow-indigo-500/25 transition-all active:scale-95 cursor-pointer flex items-center gap-1.5">
                 <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -2639,6 +2643,51 @@
                 </svg>
                 <span>{% if room_mode %}Запустить{% else %}Run (Ctrl+Enter){% endif %}</span>
               </button>
+            </div>
+          </div>
+
+          <!-- TACTILE 3D MODAL: CREATE NEW FILE (BOOSTUDY UI CANON) -->
+          <div id="lesson-vfs-new-file-modal" class="absolute inset-0 bg-slate-900/60 z-50 flex items-center justify-center hidden select-none transition-opacity duration-150">
+            <div class="w-[400px] max-w-[92vw] bg-[#F8FAFC] border-2 border-slate-300 shadow-[0_12px_28px_rgba(15,23,42,0.22),0_4px_0_#CBD5E1] rounded-[1.5rem] p-6 flex flex-col gap-4.5" id="lesson-vfs-new-file-card">
+              <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-9 h-9 rounded-xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 shadow-xs">
+                    <i class="ph-bold ph-file-plus text-lg"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-extrabold text-slate-800 text-sm">Новый файл</h4>
+                    <p class="text-[11px] text-slate-500 font-medium">Создать файл в виртуальной среде урока</p>
+                  </div>
+                </div>
+                <button type="button" onclick="closeNewFileModal()" class="w-8 h-8 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-200/80 flex items-center justify-center transition-colors cursor-pointer">
+                  <i class="ph-bold ph-x text-sm"></i>
+                </button>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <label for="lesson-vfs-new-filename-input" class="text-xs font-bold text-slate-700">Имя файла</label>
+                <div class="relative flex items-center">
+                  <input type="text" id="lesson-vfs-new-filename-input"
+                    class="w-full px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 bg-white border-2 border-slate-300 rounded-xl focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                    placeholder="например, solution.py или data.txt" spellcheck="false" autocomplete="off">
+                </div>
+                <div class="flex items-center gap-2 pt-1">
+                  <span class="text-[11px] text-slate-600 font-bold">Расширение:</span>
+                  <button type="button" onclick="setNewFileExtension('.py')" class="px-2.5 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-800 border border-indigo-300 border-b-2 text-xs font-mono font-black transition-all cursor-pointer">.py</button>
+                  <button type="button" onclick="setNewFileExtension('.txt')" class="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 border-b-2 text-xs font-mono font-black transition-all cursor-pointer">.txt</button>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-3 pt-3 border-t-2 border-slate-200">
+                <button type="button" onclick="closeNewFileModal()"
+                  class="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 border-b-[4px] shadow-xs active:border-b-[1px] active:translate-y-[2px] transition-all cursor-pointer">
+                  Отмена
+                </button>
+                <button type="button" onclick="submitCreateNewFile()"
+                  class="px-5 py-2 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-500 border border-indigo-700 border-b-[4px] shadow-[0_4px_10px_rgba(79,70,229,0.25)] active:border-b-[1px] active:translate-y-[2px] transition-all flex items-center gap-1.5 cursor-pointer">
+                  <i class="ph-bold ph-check text-sm"></i> Создать
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2682,6 +2731,7 @@
               <!-- Подложка удаленных курсоров и выделений в коде -->
               <div id="code-remote-cursor-layer" class="absolute inset-0 pointer-events-none overflow-hidden z-[4]" aria-hidden="true">
                 <div id="code-remote-cursor-stage" class="absolute inset-0 pointer-events-none"></div>
+                <div id="code-tracer-active-line-overlay" class="absolute left-0 right-0 pointer-events-none transition-all duration-150 ease-out z-[1] hidden bg-cyan-500/15 border-l-4 border-cyan-500 shadow-xs" style="height: 22px;"></div>
               </div>
               <!-- Подложка с подсвеченным кодом -->
               <pre id="code-editor-highlight" aria-hidden="true"
@@ -2692,6 +2742,7 @@
                 onscroll="syncCodeEditorScroll()" spellcheck="false"
                 class="absolute inset-0 py-6 px-4 font-mono text-xs overflow-auto leading-relaxed bg-transparent text-transparent caret-indigo-600 outline-none w-full h-full resize-none border-none focus:ring-0 select-text transition-colors duration-200 m-0 z-[2]"></textarea>
             </div>
+            <div id="editor-tracer-panel" class="boo-tracer-panel hidden"></div>
           </div>
 
           <!-- GLASSY STATUS BAR & STOPWATCH -->
@@ -2934,6 +2985,34 @@
           class="window-resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center text-slate-400 hover:text-indigo-600 select-none font-bold text-[10px]"
           role="button" tabindex="0" aria-label="Изменить размер окна условия"
           title="Изменить размер">⇲</div>
+      </div>
+
+      <!-- TRACER WINDOW (Бу Трассировщик — Открепленное окно Lesson OS) -->
+      <div id="tracer-window"
+        class="glass-os-window absolute hidden top-24 left-[52vw] w-[540px] h-[600px] bg-white/95 backdrop-blur-2xl border border-slate-200/90 shadow-2xl rounded-2xl overflow-hidden z-30 flex flex-col justify-between font-sans text-xs text-slate-800">
+        <div id="tracer-window-header"
+          class="h-10 bg-slate-50/90 border-b border-slate-200 flex items-center justify-between px-4 select-none cursor-grab shrink-0">
+          <div class="flex items-center gap-2 select-none">
+            <div onclick="closeWindow('tracer-window')"
+              class="w-3.5 h-3.5 rounded-full bg-[#FF5F56] border border-[#E0443E] shadow-xs cursor-pointer hover:scale-110 transition-transform"
+              title="Закрыть"></div>
+            <div onclick="toggleMaximizeWindow('tracer-window')"
+              class="w-3.5 h-3.5 rounded-full bg-[#27C93F] border border-[#1AAB29] shadow-xs cursor-pointer hover:scale-110 transition-transform"
+              title="Развернуть"></div>
+            <span class="text-xs font-bold text-cyan-600 ml-2 flex items-center gap-1.5"><i class="ph-bold ph-git-commit"></i> Бу Трассировщик</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" class="text-[11px] text-cyan-700 hover:text-cyan-900 px-2.5 py-1 rounded-lg bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 border-b-2 font-bold cursor-pointer flex items-center gap-1 transition-all active:translate-y-0.5" onclick="window.BooTracer?.restartTrace?.()" title="Перезапустить с актуальным кодом (очистить ввод)">
+              <i class="ph-bold ph-arrows-clockwise"></i> Перезапустить
+            </button>
+            <button type="button" class="text-[11px] text-slate-600 hover:text-slate-900 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 cursor-pointer flex items-center gap-1 font-semibold transition-colors" onclick="window.BooTracer?.toggleDockMode?.()">
+              <i class="ph-bold ph-arrow-line-down-left"></i> Прикрепить к коду
+            </button>
+          </div>
+        </div>
+        <div id="tracer-window-content" class="flex-1 w-full overflow-hidden flex flex-col"></div>
+        <div class="window-resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 opacity-40 hover:opacity-100 transition-opacity flex items-center justify-center text-slate-400 hover:text-cyan-600 select-none font-bold text-[10px]"
+          role="button" tabindex="0" aria-label="Изменить размер окна трассировщика" title="Изменить размер">⇲</div>
       </div>
 
       <!-- 2. TERMINAL WINDOW (Двухзонный терминал) -->
@@ -3555,6 +3634,7 @@
               </div>
             </div>
             <button id="board-present-btn" class="board-command-btn board-command-btn-primary" type="button" aria-label="Показать текущую страницу и фрейм ученикам" title="Показать текущую страницу и фрейм ученикам"><i class="ph-bold ph-presentation"></i><span>Показать ученикам</span></button>
+            <button id="board-student-viewport-btn" class="board-command-btn hidden" type="button" aria-label="Контур видимости ученика" title="Показать/скрыть область экрана, которую сейчас видит ученик" onclick="toggleStudentViewportOutline()"><i class="ph-bold ph-bounding-box"></i><span>Контур ученика</span></button>
             <button id="board-follow-btn" class="board-command-btn" type="button" aria-label="Следовать за страницей, фреймом и камерой преподавателя" title="Следовать за страницей, фреймом и камерой преподавателя"><i class="ph-bold ph-broadcast"></i><span>Следовать</span></button>
             <div class="board-command-popover-wrap">
               <button id="board-reaction-btn" class="board-command-btn" type="button" aria-label="Открыть реакции" aria-expanded="false" title="Отправить реакцию группе"><i class="ph-bold ph-smiley"></i><span>Реакции</span></button>
@@ -3662,6 +3742,7 @@
                 <div id="board-object-layer" aria-label="Объекты доски"></div>
                 <div id="board-cursor-layer" aria-hidden="true"></div>
               </div>
+              <div id="board-viewport-indicators" class="board-viewport-indicators pointer-events-none hidden" aria-hidden="true"></div>
               <div id="board-selection-marquee" class="board-selection-marquee hidden" aria-hidden="true"></div>
               <div id="board-empty-state" class="board-empty-state"><div class="board-empty-icon"><i class="ph-bold ph-chalkboard"></i></div><strong>Начните объяснение с чистого листа</strong><span>Выберите инструмент слева или добавьте материал из файла.</span></div>
               <div id="board-presentation-banner" class="board-presentation-banner hidden"><i class="ph-bold ph-presentation"></i><span id="board-presentation-label">Режим показа</span><button id="board-rejoin-follow" class="hidden" type="button">Вернуться к преподавателю</button><button id="board-exit-present" class="hidden" type="button">Вернуться к работе</button></div>
@@ -4033,7 +4114,7 @@
         {% endif %}
         {% if room_mode %}
         <div id="dock-icon-code-window" class="board-dock-item group relative" data-room-label="Код" role="button" tabindex="0" aria-label="Открыть редактор кода" title="Код" onclick="toggleDockWindow('code-window')">
-          <i class="ph-bold ph-code text-lg"></i><span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Код</span>
+          <i class="ph-bold ph-code text-lg"></i><span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">Код</span></div><div id="dock-icon-tracer-window" class="board-dock-item group relative" data-room-label="Трассировщик" role="button" tabindex="0" aria-label="Открыть Бу Трассировщик" title="Бу Трассировщик" onclick="toggleDockWindow('tracer-window')"><i class="ph-bold ph-git-commit text-lg text-cyan-400"></i><span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-slate-900 text-cyan-300 text-[10px] font-bold px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-md">Трассировщик</span></div><div style="display:none">
         </div>
         {% endif %}
 
@@ -4437,8 +4518,7 @@
       const isActive = (filename === activeFileName);
       const tabEl = document.createElement('div');
       tabEl.id = `tab-${filename}`;
-      tabEl.setAttribute('onclick', `switchEditorTab(this, '${filename}')`);
-      tabEl.className = `editor-tab ${isActive
+      tabEl.className = `editor-tab group ${isActive
           ? 'active bg-white text-indigo-600 font-semibold border-t-2 border-indigo-600 border-x border-slate-200/80 shadow-xs rounded-t-xl px-3.5 py-2'
           : 'bg-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 border-t-2 border-transparent px-3.5 py-2 rounded-t-xl transition-colors'
         } flex items-center gap-2 cursor-pointer select-none text-xs`;
@@ -4449,11 +4529,162 @@
       const canClose = openTabs.length > 1;
 
       tabEl.innerHTML = `
-        <span class="flex items-center gap-1.5">${icon} <span>${filename}</span></span>
-        ${canClose ? `<span onclick="closeEditorTab(event, '${filename}')" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md p-0.5 transition-colors text-[10px]" title="Закрыть вкладку"><i class="ph-bold ph-x"></i></span>` : ''}
+        <span class="flex items-center gap-1.5" onclick="switchEditorTab(this.closest('.editor-tab'), '${escapeHtml(filename)}')">
+          ${icon}
+          <span class="tab-filename" title="Дважды кликните для переименования">${escapeHtml(filename)}</span>
+        </span>
+        <button type="button" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-opacity p-0.5 rounded text-[10px]" title="Переименовать файл" onclick="startTabRename(event, '${escapeHtml(filename)}')">
+          <i class="ph-bold ph-pencil-simple"></i>
+        </button>
+        ${canClose ? `<span onclick="closeEditorTab(event, '${escapeHtml(filename)}')" class="text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-md p-0.5 transition-colors text-[10px]" title="Закрыть вкладку"><i class="ph-bold ph-x"></i></span>` : ''}
       `;
+
+      tabEl.addEventListener('dblclick', (e) => {
+        if (!e.target.closest('button, .ph-x')) {
+          startTabRename(e, filename);
+        }
+      });
+
       tabsList.appendChild(tabEl);
     });
+
+    // Кнопка быстрого добавления файла '+'
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.id = 'editor-tabs-add-btn';
+    addBtn.title = 'Создать новый файл кода или текста';
+    addBtn.className = 'h-7 w-7 my-auto mb-1 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-white/90 border border-dashed border-slate-300 hover:border-indigo-400 hover:shadow-xs transition-all cursor-pointer text-xs shrink-0';
+    addBtn.innerHTML = '<i class="ph-bold ph-plus"></i>';
+    addBtn.onclick = () => promptCreateNewFile();
+    tabsList.appendChild(addBtn);
+  }
+
+  function promptCreateNewFile() {
+    const modal = document.getElementById('lesson-vfs-new-file-modal');
+    const input = document.getElementById('lesson-vfs-new-filename-input');
+    if (!modal || !input) return;
+    const defaultName = `task_${openTabs.length + 1}.py`;
+    input.value = defaultName;
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+      input.focus();
+      const dotIdx = defaultName.lastIndexOf('.');
+      input.setSelectionRange(0, dotIdx !== -1 ? dotIdx : defaultName.length);
+    }, 50);
+
+    input.onkeydown = (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        submitCreateNewFile();
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        closeNewFileModal();
+      }
+    };
+  }
+
+  function closeNewFileModal() {
+    const modal = document.getElementById('lesson-vfs-new-file-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  function setNewFileExtension(ext) {
+    const input = document.getElementById('lesson-vfs-new-filename-input');
+    if (!input) return;
+    let val = input.value.trim();
+    if (!val) {
+      input.value = `solution${ext}`;
+    } else {
+      val = val.replace(/\.[a-zA-Z0-9]+$/, '');
+      input.value = `${val}${ext}`;
+    }
+    input.focus();
+  }
+
+  function submitCreateNewFile() {
+    const input = document.getElementById('lesson-vfs-new-filename-input');
+    if (!input) return;
+    let cleanName = input.value.trim();
+    if (!cleanName) return;
+    if (!cleanName.includes('.')) cleanName += '.py';
+
+    closeNewFileModal();
+
+    if (virtualFS[cleanName] !== undefined) {
+      if (!openTabs.includes(cleanName)) openTabs.push(cleanName);
+      switchEditorTab(null, cleanName);
+      return;
+    }
+
+    const initCode = cleanName.endsWith('.py') ? `# ${cleanName}\n\n` : '';
+    virtualFS[cleanName] = initCode;
+    if (!openTabs.includes(cleanName)) openTabs.push(cleanName);
+    switchEditorTab(null, cleanName);
+    renderEditorTabs();
+    renderExplorerFileList();
+    window.boostudyLessonControl?.createVfsFile?.(cleanName, initCode);
+    window.boostudyLessonControl?.queueCodeSync?.(initCode, cleanName);
+  }
+
+  function startTabRename(e, oldName) {
+    e.stopPropagation();
+    const tabEl = document.getElementById(`tab-${oldName}`);
+    if (!tabEl) return;
+    const nameSpan = tabEl.querySelector('.tab-filename');
+    if (!nameSpan) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = oldName;
+    input.className = 'w-24 px-1 py-0.5 text-xs font-mono font-bold bg-white text-indigo-700 border border-indigo-400 rounded outline-none shadow-xs';
+    nameSpan.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed = false;
+    const commit = () => {
+      if (committed) return;
+      committed = true;
+      let newName = input.value.trim();
+      if (!newName || newName === oldName) {
+        renderEditorTabs();
+        return;
+      }
+      if (!newName.includes('.')) newName += '.py';
+      if (virtualFS[newName] !== undefined && newName !== oldName) {
+        showGlassAlert({
+          title: 'Ошибка переименования',
+          message: `Файл "${newName}" уже существует на VFS!`
+        });
+        renderEditorTabs();
+        return;
+      }
+
+      virtualFS[newName] = virtualFS[oldName] || '';
+      delete virtualFS[oldName];
+
+      const idx = openTabs.indexOf(oldName);
+      if (idx !== -1) openTabs[idx] = newName;
+      if (activeFileName === oldName) activeFileName = newName;
+
+      renderEditorTabs();
+      renderExplorerFileList();
+      updateStatusBarCursorPos();
+      window.boostudyLessonControl?.renameVfsFile?.(oldName, newName, virtualFS[newName]);
+      window.boostudyLessonControl?.queueCodeSync?.(virtualFS[newName], newName);
+    };
+
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        commit();
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        committed = true;
+        renderEditorTabs();
+      }
+    });
+    input.addEventListener('blur', commit);
   }
 
   // ----------------------------------------------------------------------
@@ -4868,6 +5099,7 @@
       }
       if (cursorStage) {
         cursorStage.style.transform = `translate(${-textarea.scrollLeft}px, ${-textarea.scrollTop}px)`;
+        window.BooTracer?.repositionActiveLineOverlay?.();
       }
       if (popover && !popover.classList.contains('hidden') && window.activeGutterLine) {
         const lineEl = gutter?.querySelector(`[data-line="${window.activeGutterLine}"]`);
@@ -4903,7 +5135,10 @@
   let stopwatchRunning = false;
   let stopwatchIdleTimeout = null;
 
-  function updateStatusBarCursorPos() {
+  let activeTypingCursorTimer = null;
+  let hasActiveRemoteCursor = false;
+
+  function updateStatusBarCursorPos(activeInteraction = false) {
     const textarea = document.getElementById('code-editor-textarea');
     const posSpan = document.getElementById('status-bar-cursor-pos');
     const charSpan = document.getElementById('status-bar-char-count');
@@ -4913,6 +5148,7 @@
 
     const val = textarea.value || '';
     const selStart = textarea.selectionStart || 0;
+    const selEnd = textarea.selectionEnd || selStart;
 
     const lines = val.substring(0, selStart).split('\n');
     const lineNum = lines.length;
@@ -4924,7 +5160,31 @@
       const icon = activeFileName.endsWith('.py') ? '<i class="ph-bold ph-file-code text-indigo-600"></i>' : '<i class="ph-bold ph-file-text"></i>';
       fileSpan.innerHTML = `${icon} <span>${activeFileName}</span>`;
     }
-    window.boostudyLessonControl?.sendCodeCursor?.(selStart, textarea.selectionEnd || selStart, activeFileName);
+
+    const isTyping = activeInteraction === true;
+    const hasSelection = selStart !== selEnd;
+
+    // Курсор отправляется ТОЛЬКО при реальном редактировании кода (вводе текста) или непустом выделении
+    if (isTyping) {
+      hasActiveRemoteCursor = true;
+      clearTimeout(activeTypingCursorTimer);
+      window.boostudyLessonControl?.sendCodeCursor?.(selStart, selEnd, activeFileName);
+      activeTypingCursorTimer = setTimeout(() => {
+        if (textarea.selectionStart === textarea.selectionEnd) {
+          hasActiveRemoteCursor = false;
+          window.boostudyLessonControl?.sendCodeCursor?.(-1, -1, activeFileName, { hidden: true });
+        }
+      }, 1200);
+    } else if (hasSelection) {
+      hasActiveRemoteCursor = true;
+      clearTimeout(activeTypingCursorTimer);
+      window.boostudyLessonControl?.sendCodeCursor?.(selStart, selEnd, activeFileName);
+    } else if (hasActiveRemoteCursor) {
+      // Пользователь снял выделение или прекратил действие — немедленно скрываем курсор
+      hasActiveRemoteCursor = false;
+      clearTimeout(activeTypingCursorTimer);
+      window.boostudyLessonControl?.sendCodeCursor?.(-1, -1, activeFileName, { hidden: true });
+    }
   }
 
   function toggleStopwatchMode() {
@@ -5023,13 +5283,18 @@
     const editorArea = document.getElementById('code-editor-textarea');
     if (editorArea) {
       editorArea.value = virtualFS[activeFileName] || '';
-      editorArea.addEventListener('keyup', updateStatusBarCursorPos);
-      editorArea.addEventListener('click', updateStatusBarCursorPos);
-      editorArea.addEventListener('mouseup', updateStatusBarCursorPos);
-      editorArea.addEventListener('select', updateStatusBarCursorPos);
-      editorArea.addEventListener('selectionchange', updateStatusBarCursorPos);
+      editorArea.addEventListener('keyup', () => updateStatusBarCursorPos(false));
+      editorArea.addEventListener('click', () => updateStatusBarCursorPos(false));
+      editorArea.addEventListener('mouseup', () => updateStatusBarCursorPos(false));
+      editorArea.addEventListener('select', () => updateStatusBarCursorPos(false));
+      editorArea.addEventListener('selectionchange', () => updateStatusBarCursorPos(false));
       document.addEventListener('selectionchange', () => {
-        if (document.activeElement === editorArea) updateStatusBarCursorPos();
+        if (document.activeElement === editorArea) updateStatusBarCursorPos(false);
+      });
+      editorArea.addEventListener('blur', () => {
+        hasActiveRemoteCursor = false;
+        clearTimeout(activeTypingCursorTimer);
+        window.boostudyLessonControl?.sendCodeCursor?.(-1, -1, activeFileName, { hidden: true });
       });
       editorArea.addEventListener('keydown', handleAutoStopwatchActivity);
     }
@@ -5061,8 +5326,9 @@
       }
     }
     virtualFS[activeFileName] = value;
+    window.BooCodeAutocomplete?.onInput?.();
     updateCodeHighlight();
-    updateStatusBarCursorPos();
+    updateStatusBarCursorPos(true);
     renderSourceControlList();
     handleAutoStopwatchActivity();
     window.boostudyLessonControl?.queueCodeSync?.(value, activeFileName);
@@ -5086,6 +5352,7 @@
     }
     updateCodeHighlight();
     updateStatusBarCursorPos();
+    window.boostudyLessonControl?.switchVfsTab?.(filename);
     window.boostudyLessonControl?.queueCodeSync?.(virtualFS[filename] || '', filename);
   }
 
@@ -5209,6 +5476,7 @@
 
         renderEditorTabs();
         renderExplorerFileList();
+        window.boostudyLessonControl?.deleteVfsFile?.(filename);
         initCodeEditor();
       }
     });
@@ -5261,7 +5529,7 @@
   function canUserInteractWindow(windowId) {
     if (!trainerOsConfig.room_mode) return true;
     if (trainerOsConfig.homework_mode) return true;
-    if (['chat-window', 'video-window'].includes(windowId)) return true;
+    if (['chat-window', 'video-window', 'tracer-window'].includes(windowId)) return true;
     const isTeacher = Boolean(trainerOsConfig.is_studio_teacher);
     if (['teacher-task-bank-window', 'teacher-notes-window'].includes(windowId)) {
       return isTeacher;
@@ -5280,6 +5548,7 @@
     if (trainerOsConfig.homework_mode) return false;
     if (isPrivateWindow(windowId)) return false;
     if (['chat-window', 'video-window'].includes(windowId)) return false;
+    if (windowId === 'tracer-window') return true;
     const ctrl = window.boostudyLessonControl?.getControl?.() || {};
     const mode = ctrl.windows_mode || (ctrl.windows_sync === false ? 'independent' : 'teacher');
     const isTeacher = Boolean(trainerOsConfig.is_studio_teacher);
@@ -5324,12 +5593,12 @@
       try { localStorage.setItem(this.storageKey, JSON.stringify(layouts)); }
       catch (error) { console.warn('Не удалось сохранить расположение окон урока', error); }
 
-      if (trainerOsConfig.room_mode && trainerOsConfig.is_studio_teacher) {
+      if (trainerOsConfig.room_mode && (trainerOsConfig.is_studio_teacher || windowEl.id === 'tracer-window')) {
         const ctrl = window.boostudyLessonControl?.getControl?.() || {};
         const allowed = Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : [
-          'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+          'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
         ];
-        if (ctrl.window_positions_sync !== false && allowed.includes(windowEl.id)) {
+        if (windowEl.id === 'tracer-window' || (ctrl.window_positions_sync !== false && allowed.includes(windowEl.id))) {
           window.boostudyLessonControl?.sendUi?.({
             kind: 'window_layout',
             window_id: windowEl.id,
@@ -5535,9 +5804,9 @@
             if (trainerOsConfig.room_mode && shouldSyncWindowAction(windowEl.id)) {
               const ctrl = window.boostudyLessonControl?.getControl?.() || {};
               const allowed = Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : [
-                'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+                'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
               ];
-              if (ctrl.window_positions_sync !== false && allowed.includes(windowEl.id)) {
+              if (windowEl.id === 'tracer-window' || (ctrl.window_positions_sync !== false && allowed.includes(windowEl.id))) {
                 window.boostudyLessonControl?.sendUi?.({
                   kind: 'window_layout',
                   window_id: windowEl.id,
@@ -5664,7 +5933,7 @@
 
         windowEl.classList.remove(
           'left-16', 'right-8', 'bottom-24', 'left-[610px]', 'top-8', 'top-12', 'top-16', 'top-20',
-          'left-1/3', 'left-1/4', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2'
+          'left-1/3', 'left-1/4', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2', 'left-[52vw]', 'top-24'
         );
 
         windowEl.style.position = 'absolute';
@@ -5695,9 +5964,9 @@
           if (!force && now - lastSyncTime < 28) return;
           lastSyncTime = now;
           const allowed = Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : [
-            'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+            'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
           ];
-          if (ctrl.window_positions_sync !== false && allowed.includes(windowEl.id)) {
+          if (windowEl.id === 'tracer-window' || (ctrl.window_positions_sync !== false && allowed.includes(windowEl.id))) {
             window.boostudyLessonControl?.sendUi?.({
               kind: 'window_layout',
               window_id: windowEl.id,
@@ -5919,7 +6188,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    ['code-window', 'task-window', 'terminal-window', 'notes-window', 'lesson-info-window', 'teacher-notes-window', 'teacher-task-bank-window', 'theory-window', 'files-window', 'chat-window', 'reference-window', 'homework-answer-window', 'homework-files-window', 'video-window', 'review-grade-window'].forEach(id => {
+    ['code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'lesson-info-window', 'teacher-notes-window', 'teacher-task-bank-window', 'theory-window', 'files-window', 'chat-window', 'reference-window', 'homework-answer-window', 'homework-files-window', 'video-window', 'review-grade-window'].forEach(id => {
       windowManager.registerWindow(id);
     });
     if (trainerOsConfig.room_mode) {
@@ -6192,6 +6461,9 @@
       board.style.pointerEvents = 'none';
     }
     if (!options.remote && trainerOsConfig.is_studio_teacher) roomBridge?.sendUi?.({ kind: 'mode', mode: isBoardMode ? 'board' : 'code' });
+    if (window.boostudyWhiteboard?.sendStudentViewport) {
+      window.boostudyWhiteboard.sendStudentViewport(true);
+    }
   }
 
   function minimizeToDock(windowId, options = {}) {
@@ -6731,9 +7003,10 @@
   function toggleEditorStatusBar(button) {
     const editor = document.getElementById('code-window');
     if (!editor) return;
-    const isOpen = editor.classList.toggle('lesson-os-statusbar-open');
-    button?.setAttribute('aria-pressed', String(isOpen));
-    button?.setAttribute('title', isOpen ? 'Скрыть строку состояния' : 'Показать строку состояния');
+    const isHidden = editor.classList.toggle('lesson-os-statusbar-hidden');
+    const isVisible = !isHidden;
+    button?.setAttribute('aria-pressed', String(isVisible));
+    button?.setAttribute('title', isVisible ? 'Скрыть строку состояния' : 'Показать строку состояния');
   }
 
   if (trainerOsConfig.room_mode) {
@@ -8175,6 +8448,8 @@
       remoteLasers: {},
       remotePointerRaf: null,
       remoteCodeCursorTimers: {},
+      remoteStudentViewports: {},
+      showStudentViewportOutline: false,
       cameraCommitTimer: null,
       liveCameraSeq: 0,
       lastLiveCameraSeq: -1,
@@ -8788,6 +9063,11 @@
           positionLaserElement(laser, screen);
         }
       });
+      if (state.canPresent) {
+        renderStudentViewportIndicators();
+      } else if (state.role === 'student') {
+        sendStudentViewport();
+      }
     }
 
     function animateRemotePointers() {
@@ -8847,7 +9127,7 @@
         workspace_sync: true,
         window_positions_sync: true,
         windows_allowed: [
-          'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+          'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
         ],
         allowed_page_ids: [],
         allowed_frame_ids: [],
@@ -8865,7 +9145,7 @@
         windows_mode: ctrl.windows_mode || (ctrl.windows_sync === false ? 'independent' : base.windows_mode),
         workspace_sync: ctrl.workspace_sync !== undefined ? ctrl.workspace_sync : base.workspace_sync,
         window_positions_sync: ctrl.window_positions_sync !== undefined ? ctrl.window_positions_sync : base.window_positions_sync,
-        windows_allowed: Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : base.windows_allowed,
+        windows_allowed: Array.from(new Set([...(Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : base.windows_allowed), 'tracer-window'])),
       };
     }
 
@@ -8977,6 +9257,12 @@
         present.classList.toggle('hidden', !state.canPresent);
         present.querySelector('span').textContent = presentation.mode === 'present' ? 'Завершить показ' : 'Показать ученикам';
         present.setAttribute('aria-pressed', String(presentation.mode === 'present'));
+      }
+      const viewportBtn = $('#board-student-viewport-btn');
+      if (viewportBtn) {
+        viewportBtn.classList.toggle('hidden', !state.canPresent);
+        viewportBtn.classList.toggle('is-active', Boolean(state.showStudentViewportOutline));
+        viewportBtn.setAttribute('aria-pressed', String(Boolean(state.showStudentViewportOutline)));
       }
       if (follow) {
         follow.classList.toggle('hidden', state.canPresent);
@@ -9104,6 +9390,169 @@
       }, 850);
     }
 
+    // ----------------------------------------------------------------------
+    // STUDENT VIEWPORT OUTLINE (Контур видимости ученика на доске)
+    // ----------------------------------------------------------------------
+    let studentViewportRaf = null;
+    let lastStudentViewportSentAt = 0;
+
+    try {
+      state.showStudentViewportOutline = localStorage.getItem(`boostudy_show_student_viewport_${lessonId}`) === 'true';
+    } catch (_) {
+      state.showStudentViewportOutline = false;
+    }
+
+    function sendStudentViewport(immediate = false) {
+      if (state.role !== 'student' || !state.socket) return;
+      const now = performance.now();
+      const doSend = () => {
+        studentViewportRaf = null;
+        lastStudentViewportSentAt = performance.now();
+        const vp = viewport();
+        if (!vp) return;
+        const isBoardMode = $('#trainer-arena-view')?.classList.contains('room-board-mode');
+        const mode = isBoardMode ? 'board' : 'code';
+        const currentScale = state.scale || 1.0;
+        const worldX = (0 - state.panX) / currentScale;
+        const worldY = (0 - state.panY) / currentScale;
+        const worldW = vp.clientWidth / currentScale;
+        const worldH = vp.clientHeight / currentScale;
+
+        emitRealtime('whiteboard_viewport', {
+          lesson_id: lessonId,
+          page_id: state.currentPageId,
+          mode: mode,
+          world_x: worldX,
+          world_y: worldY,
+          world_w: worldW,
+          world_h: worldH,
+        });
+      };
+
+      if (immediate || now - lastStudentViewportSentAt > 100) {
+        if (studentViewportRaf) cancelAnimationFrame(studentViewportRaf);
+        doSend();
+      } else if (!studentViewportRaf) {
+        studentViewportRaf = requestAnimationFrame(doSend);
+      }
+    }
+
+    function toggleStudentViewportOutline() {
+      state.showStudentViewportOutline = !state.showStudentViewportOutline;
+      try {
+        localStorage.setItem(`boostudy_show_student_viewport_${lessonId}`, String(state.showStudentViewportOutline));
+      } catch (_) {}
+      const btn = document.getElementById('board-student-viewport-btn');
+      if (btn) {
+        btn.classList.toggle('is-active', Boolean(state.showStudentViewportOutline));
+        btn.setAttribute('aria-pressed', String(Boolean(state.showStudentViewportOutline)));
+      }
+      renderStudentViewportIndicators();
+    }
+    window.toggleStudentViewportOutline = toggleStudentViewportOutline;
+
+    function handleRemoteStudentViewport(payload) {
+      if (!payload || Number(payload.lesson_id) !== Number(lessonId)) return;
+      if (String(payload.user_id) === String(trainerOsConfig.user_id)) return;
+      if (!state.canPresent) return;
+
+      const userId = String(payload.user_id || 'student');
+      state.remoteStudentViewports[userId] = payload;
+      renderStudentViewportIndicators();
+    }
+
+    function renderStudentViewportIndicators() {
+      const container = document.getElementById('board-viewport-indicators');
+      if (!container) return;
+      if (!state.canPresent || !state.showStudentViewportOutline) {
+        container.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+
+      const activePageId = state.currentPageId;
+      const entries = Object.entries(state.remoteStudentViewports || {});
+      if (entries.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      entries.forEach(([userId, data]) => {
+        if (!data || data.page_id !== activePageId || !data.viewport) {
+          document.getElementById(`student-viewport-${userId}`)?.remove();
+          return;
+        }
+        const { world_x, world_y, world_w, world_h } = data.viewport;
+        const screenX = world_x * state.scale + state.panX;
+        const screenY = world_y * state.scale + state.panY;
+        const screenW = world_w * state.scale;
+        const screenH = world_h * state.scale;
+
+        const elId = `student-viewport-${userId}`;
+        let box = document.getElementById(elId);
+        if (!box) {
+          box = document.createElement('div');
+          box.id = elId;
+          box.className = 'board-student-viewport-box';
+          container.appendChild(box);
+        }
+
+        const color = data.color || '#4f46e5';
+        const isCodeMode = data.mode === 'code';
+        box.classList.toggle('is-code-mode', isCodeMode);
+        box.style.left = `${screenX}px`;
+        box.style.top = `${screenY}px`;
+        box.style.width = `${screenW}px`;
+        box.style.height = `${screenH}px`;
+        box.style.borderColor = color;
+        box.style.backgroundColor = `${color}0D`;
+
+        let badge = box.querySelector('.board-student-viewport-badge');
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'board-student-viewport-badge';
+          box.appendChild(badge);
+        }
+
+        badge.style.backgroundColor = '#ffffff';
+        badge.style.borderColor = color;
+        badge.style.color = color;
+
+        const name = escapeHtml(data.name || 'Ученик');
+        const modeBadge = isCodeMode
+          ? `<span class="board-student-viewport-status-tag">В редакторе кода</span>`
+          : '';
+
+        badge.innerHTML = `
+          <i class="ph-bold ph-eye"></i>
+          <span>${name}</span>
+          ${modeBadge}
+          <button type="button" class="board-student-viewport-jump-btn" title="Переместить камеру к экрану ученика" onclick="window.focusOnStudentViewport?.('${userId}')">
+            <i class="ph-bold ph-crosshair"></i><span>К ученику</span>
+          </button>
+        `;
+      });
+    }
+
+    function focusOnStudentViewport(userId) {
+      const data = state.remoteStudentViewports?.[userId] || Object.values(state.remoteStudentViewports || {})[0];
+      if (!data || !data.viewport) return;
+      const vp = viewport();
+      if (!vp) return;
+
+      const { world_x, world_y, world_w, world_h } = data.viewport;
+      const centerX = world_x + world_w / 2;
+      const centerY = world_y + world_h / 2;
+
+      state.panX = vp.clientWidth / 2 - centerX * state.scale;
+      state.panY = vp.clientHeight / 2 - centerY * state.scale;
+
+      renderTransform();
+      scheduleCameraCommit();
+    }
+    window.focusOnStudentViewport = focusOnStudentViewport;
+
     function canStudentMode() {
       if (state.role !== 'student') return true;
       const control = controlState();
@@ -9116,7 +9565,7 @@
       const control = controlState();
       if (control.windows_sync === false) return true;
       const allowed = Array.isArray(control.windows_allowed) ? control.windows_allowed : [
-        'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+        'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
       ];
       return allowed.includes(windowId);
     }
@@ -9129,6 +9578,12 @@
       const isCodeKind = ['run', 'run_start', 'terminal_output', 'terminal_tab'].includes(payload.kind);
       const isWindowKind = ['window', 'window_layout'].includes(payload.kind);
       const isWorkspaceKind = payload.kind === 'workspace';
+      const isTracerKind = typeof payload.kind === 'string' && payload.kind.startsWith('tracer_');
+      if (isTracerKind) {
+        if (!isTeacher && control.freeze_student) return;
+        state.socket.emit('lesson_room_ui', { lesson_id: lessonId, ...payload });
+        return;
+      }
 
       if (payload.window_id && isPrivateWindow(payload.window_id)) return;
 
@@ -9138,7 +9593,7 @@
         return;
       }
 
-      if (isWindowKind) {
+      if (isWindowKind && payload.window_id !== 'tracer-window') {
         if (winMode === 'independent') return;
         if (winMode === 'teacher' && !isTeacher) return;
         if (winMode === 'student' && isTeacher) return;
@@ -9146,17 +9601,17 @@
 
       if (!isTeacher && !state.canPresent) {
         if (isCodeKind && control.student_code_editing !== true) return;
-        if (!isCodeKind && !isWindowKind) return;
+        if (!isCodeKind && !isWindowKind && payload.window_id !== 'tracer-window') return;
       }
       const allowedWindows = Array.isArray(control.windows_allowed) ? control.windows_allowed : [
-        'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+        'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
       ];
       if (payload.kind === 'window') {
-        if (!allowedWindows.includes(payload.window_id)) return;
+        if (payload.window_id !== 'tracer-window' && !allowedWindows.includes(payload.window_id)) return;
       }
       if (payload.kind === 'window_layout') {
-        if (control.window_positions_sync === false) return;
-        if (!allowedWindows.includes(payload.window_id)) return;
+        if (payload.window_id !== 'tracer-window' && control.window_positions_sync === false) return;
+        if (payload.window_id !== 'tracer-window' && !allowedWindows.includes(payload.window_id)) return;
       }
       if (payload.kind === 'mode' && !_teacherControlEnabled(control, 'teacher_controls_mode')) return;
       if ((payload.kind === 'run' || payload.kind === 'run_start') && control.auto_open_terminal_on_run !== true && control.terminal_sync !== true) return;
@@ -9174,7 +9629,7 @@
       }
       if (control.windows_sync !== false) {
         const allowed = Array.isArray(control.windows_allowed) ? control.windows_allowed : [
-          'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+          'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
         ];
         allowed.forEach((windowId) => {
           const windowNode = document.getElementById(windowId);
@@ -9217,10 +9672,23 @@
 
     function applyRemoteCode(payload) {
       if (!payload || controlState().code_sync === false) return;
+      if (String(payload.user_id) === String(trainerOsConfig.user_id)) return;
+      if (payload.files && typeof payload.files === 'object') {
+        Object.assign(virtualFS, payload.files);
+      }
+      if (Array.isArray(payload.open_tabs) && payload.open_tabs.length) {
+        openTabs = [...payload.open_tabs];
+        renderEditorTabs();
+        renderExplorerFileList();
+      }
       const fileName = String(payload.file_name || 'main.py');
       const code = String(payload.code || '');
       virtualFS[fileName] = code;
-      if (!openTabs.includes(fileName)) openTabs.push(fileName);
+      if (!openTabs.includes(fileName)) {
+        openTabs.push(fileName);
+        renderEditorTabs();
+        renderExplorerFileList();
+      }
       const editor = $('#code-editor-textarea');
       const followsTeacherFile = state.role !== 'teacher'
         && controlState().student_code_editing !== true
@@ -9237,17 +9705,129 @@
           if (!isFocused || (state.role === 'student' && !controlState().student_code_editing)) {
             editor.value = code;
           } else {
+            // Smart Caret Preservation algorithm
+            const oldVal = editor.value;
+            const newVal = code;
             const start = editor.selectionStart;
             const end = editor.selectionEnd;
-            editor.value = code;
+
+            let prefixLen = 0;
+            const minLen = Math.min(oldVal.length, newVal.length);
+            while (prefixLen < minLen && oldVal[prefixLen] === newVal[prefixLen]) {
+              prefixLen++;
+            }
+
+            let suffixLen = 0;
+            while (
+              suffixLen < (minLen - prefixLen) &&
+              oldVal[oldVal.length - 1 - suffixLen] === newVal[newVal.length - 1 - suffixLen]
+            ) {
+              suffixLen++;
+            }
+
+            const delta = newVal.length - oldVal.length;
+            let newStart = start;
+            let newEnd = end;
+
+            if (start <= prefixLen) {
+              newStart = start;
+            } else if (start >= oldVal.length - suffixLen) {
+              newStart = Math.max(0, start + delta);
+            } else {
+              newStart = Math.max(prefixLen, Math.min(newVal.length - suffixLen, start + delta));
+            }
+
+            if (end <= prefixLen) {
+              newEnd = end;
+            } else if (end >= oldVal.length - suffixLen) {
+              newEnd = Math.max(0, end + delta);
+            } else {
+              newEnd = Math.max(prefixLen, Math.min(newVal.length - suffixLen, end + delta));
+            }
+
+            editor.value = newVal;
             try {
-              editor.setSelectionRange(Math.min(start, code.length), Math.min(end, code.length));
+              editor.setSelectionRange(
+                Math.max(0, Math.min(newStart, newVal.length)),
+                Math.max(0, Math.min(newEnd, newVal.length))
+              );
             } catch (_) {}
           }
         }
         updateCodeHighlight();
         updateStatusBarCursorPos();
       }
+    }
+
+    function handleRemoteVfsCreate(payload) {
+      if (!payload || !payload.file_name) return;
+      if (String(payload.user_id) === String(trainerOsConfig.user_id)) return;
+      virtualFS[payload.file_name] = payload.code || '';
+      if (Array.isArray(payload.open_tabs)) {
+        openTabs = [...payload.open_tabs];
+      } else if (!openTabs.includes(payload.file_name)) {
+        openTabs.push(payload.file_name);
+      }
+      renderEditorTabs();
+      renderExplorerFileList();
+    }
+
+    function handleRemoteVfsRename(payload) {
+      if (!payload || !payload.old_name || !payload.new_name) return;
+      if (String(payload.user_id) === String(trainerOsConfig.user_id)) return;
+      if (virtualFS[payload.old_name] !== undefined) {
+        virtualFS[payload.new_name] = virtualFS[payload.old_name];
+        delete virtualFS[payload.old_name];
+      }
+      if (Array.isArray(payload.open_tabs)) {
+        openTabs = [...payload.open_tabs];
+      } else {
+        const idx = openTabs.indexOf(payload.old_name);
+        if (idx !== -1) openTabs[idx] = payload.new_name;
+      }
+      if (activeFileName === payload.old_name) {
+        activeFileName = payload.new_name;
+        const editor = $('#code-editor-textarea');
+        if (editor) editor.value = virtualFS[payload.new_name] || '';
+        updateCodeHighlight();
+        updateStatusBarCursorPos();
+      }
+      renderEditorTabs();
+      renderExplorerFileList();
+    }
+
+    function handleRemoteVfsDelete(payload) {
+      if (!payload || !payload.file_name) return;
+      if (String(payload.user_id) === String(trainerOsConfig.user_id)) return;
+      delete virtualFS[payload.file_name];
+      if (Array.isArray(payload.open_tabs)) {
+        openTabs = [...payload.open_tabs];
+      } else {
+        openTabs = openTabs.filter(t => t !== payload.file_name);
+      }
+      if (!openTabs.length) openTabs = ['main.py'];
+      if (activeFileName === payload.file_name) {
+        activeFileName = openTabs[0];
+        const editor = $('#code-editor-textarea');
+        if (editor) editor.value = virtualFS[activeFileName] || '';
+        updateCodeHighlight();
+        updateStatusBarCursorPos();
+      }
+      renderEditorTabs();
+      renderExplorerFileList();
+    }
+
+    function handleRemoteVfsTabSwitch(payload) {
+      if (!payload || !payload.file_name) return;
+      if (String(payload.user_id) === String(trainerOsConfig.user_id)) return;
+      if (!openTabs.includes(payload.file_name)) openTabs.push(payload.file_name);
+      activeFileName = payload.file_name;
+      const editor = $('#code-editor-textarea');
+      if (editor) editor.value = virtualFS[activeFileName] || '';
+      renderEditorTabs();
+      renderExplorerFileList();
+      updateCodeHighlight();
+      updateStatusBarCursorPos();
     }
 
     state.remoteCodeCursors = state.remoteCodeCursors || {};
@@ -9337,13 +9917,25 @@
       const chipLayer = $('#code-remote-cursors');
       const stage = $('#code-remote-cursor-stage');
       const textarea = document.getElementById('code-editor-textarea');
-      if (!chipLayer) return;
 
       const userId = String(payload.user_id || 'participant');
+      const start = Number(payload.cursor?.start ?? payload.start ?? 0);
+      const isHidden = Boolean(payload.hidden) || start < 0;
+
+      // Если пользователь прекратил ввод/выделение или окно потеряло фокус — немедленно удаляем курсор
+      if (isHidden) {
+        document.getElementById(`code-remote-cursor-chip-${userId}`)?.remove();
+        document.getElementById(`remote-code-user-${userId}`)?.remove();
+        delete state.remoteCodeCursors[userId];
+        clearTimeout(state.remoteCodeCursorTimers[userId]);
+        delete state.remoteCodeCursorTimers[userId];
+        return;
+      }
+      if (!chipLayer) return;
+
       const fileName = String(payload.file_name || 'main.py');
       const code = String(virtualFS[fileName] || '');
-      const start = Number(payload.cursor?.start) || 0;
-      const end = Number(payload.cursor?.end) || start;
+      const end = Number(payload.cursor?.end ?? payload.end ?? start);
       const offset = Math.max(0, Math.min(code.length, start));
       const line = code.slice(0, offset).split('\n').length;
       const color = payload.color || '#4f46e5';
@@ -9410,7 +10002,7 @@
         if (userGroup) userGroup.remove();
         delete state.remoteCodeCursors[userId];
         delete state.remoteCodeCursorTimers[userId];
-      }, 3500);
+      }, 1400);
     }
 
     function applyRoomUi(payload) {
@@ -9423,34 +10015,47 @@
       const isWindowKind = ['window', 'window_layout'].includes(payload.kind);
 
       if (isWindowKind) {
-        if (winMode === 'independent') return;
-        if (winMode === 'teacher' && isTeacher) return;
-        if (winMode === 'student' && !isTeacher) return;
+        if (payload.window_id !== 'tracer-window') {
+          if (winMode === 'independent') return;
+          if (winMode === 'teacher' && isTeacher) return;
+          if (winMode === 'student' && !isTeacher) return;
+        }
         if (payload.window_id && isPrivateWindow(payload.window_id)) return;
       }
 
-      if (isTeacher && !isCodeKind && !isWindowKind) return;
+      const isTracerKind = typeof payload.kind === 'string' && payload.kind.startsWith('tracer_');
+      if (isTeacher && !isCodeKind && !isWindowKind && !isTracerKind) return;
 
       const allowedWindows = Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : [
-        'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+        'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
       ];
       if (payload.kind === 'mode' && canStudentMode() === false) switchRoomWorkMode(payload.mode, { remote: true });
       if (payload.kind === 'terminal_tab' && ctrl.terminal_sync !== false) {
         switchTerminalTab(payload.tab, { remote: true });
       }
-      if (payload.kind === 'window' && allowedWindows.includes(payload.window_id)) {
+      if (payload.kind === 'window' && (payload.window_id === 'tracer-window' || allowedWindows.includes(payload.window_id))) {
         if (payload.action === 'open') openWindow(payload.window_id, { remote: true });
         else minimizeToDock(payload.window_id, { remote: true });
       }
-      if (payload.kind === 'window_layout' && ctrl.window_positions_sync !== false && allowedWindows.includes(payload.window_id)) {
+      if (payload.kind === 'window_layout' && (payload.window_id === 'tracer-window' || (ctrl.window_positions_sync !== false && allowedWindows.includes(payload.window_id)))) {
         const win = document.getElementById(payload.window_id);
         if (win && (payload.width || payload.left !== undefined)) {
-          win.style.transition = 'left 0.05s linear, top 0.05s linear, width 0.05s linear, height 0.05s linear';
+          win.classList.remove(
+            'left-16', 'right-8', 'bottom-24', 'left-[610px]', 'top-8', 'top-12', 'top-16', 'top-20',
+            'left-1/3', 'left-1/4', 'left-1/2', '-translate-x-1/2', '-translate-y-1/2', 'left-[52vw]', 'top-24'
+          );
+          win.style.position = 'absolute';
+          win.style.transition = 'none';
           if (payload.width) win.style.setProperty('width', payload.width + 'px', 'important');
           if (payload.height) win.style.setProperty('height', payload.height + 'px', 'important');
-          if (payload.left !== undefined) win.style.setProperty('left', payload.left + 'px', 'important');
-          if (payload.top !== undefined) win.style.setProperty('top', payload.top + 'px', 'important');
-          windowManager?.ensureRoomWindowAccessible(win);
+          if (payload.left !== undefined) {
+            win.style.setProperty('left', payload.left + 'px', 'important');
+            win.style.setProperty('right', 'auto', 'important');
+          }
+          if (payload.top !== undefined) {
+            win.style.setProperty('top', payload.top + 'px', 'important');
+            win.style.setProperty('bottom', 'auto', 'important');
+          }
           if (typeof syncCodeEditorScroll === 'function') syncCodeEditorScroll();
         }
       }
@@ -9487,6 +10092,9 @@
           `;
         }
       }
+      if (payload.kind === 'tracer_state' || payload.kind === 'tracer_breakpoint' || payload.kind === 'tracer_run' || payload.kind === 'tracer_step' || payload.kind === 'tracer_input_submit') {
+        window.BooTracer?.applyRemoteState?.(payload);
+      }
       if (payload.kind === 'run' && ctrl.auto_open_terminal_on_run === true) {
         switchRoomWorkMode('code', { remote: true });
         executeRunCode({ remote: true, fileName: payload.file_name, code: payload.code });
@@ -9495,15 +10103,23 @@
 
     let lastCodeCursorSentAt = 0;
     let pendingCodeCursorTimer = null;
-    function sendCodeCursor(start, end, fileName = activeFileName) {
+    function sendCodeCursor(start, end, fileName = activeFileName, options = {}) {
       if (!state.socket || controlState().cursor_sync === false) return;
-      const now = performance.now();
+      const isHidden = Boolean(options.hidden) || Number(start) < 0;
       const payload = {
         lesson_id: lessonId,
         file_name: fileName,
-        start: Number(start) || 0,
-        end: Number(end) || Number(start) || 0,
+        start: isHidden ? -1 : (Number(start) || 0),
+        end: isHidden ? -1 : (Number(end) || Number(start) || 0),
+        hidden: isHidden,
       };
+      if (isHidden) {
+        clearTimeout(pendingCodeCursorTimer);
+        lastCodeCursorSentAt = performance.now();
+        state.socket.emit('lesson_code_cursor', payload);
+        return;
+      }
+      const now = performance.now();
       if (now - lastCodeCursorSentAt < 30) {
         clearTimeout(pendingCodeCursorTimer);
         pendingCodeCursorTimer = setTimeout(() => {
@@ -9992,6 +10608,8 @@
       viewport().style.cursor = '';
       if (state.canPresent && controlState().canvas_sync !== false) {
         commit({ type: 'presentation.update', presentation: { camera: { pan_x: state.panX, pan_y: state.panY, scale: state.scale } } });
+      } else if (state.role === 'student') {
+        sendStudentViewport(true);
       }
     }
 
@@ -10580,6 +11198,11 @@
           path: '/socket.io',
           transports: ['websocket', 'polling'],
           upgrade: true,
+          reconnection: true,
+          reconnectionDelay: 500,
+          reconnectionDelayMax: 2000,
+          reconnectionAttempts: Infinity,
+          timeout: 10000,
         });
         window.boostudyLessonSocket = state.socket;
         state.socket.on('connect', () => {
@@ -10587,9 +11210,31 @@
           setSaveState('ready', 'Синхронизировано');
           state.socket.emit('join_lesson', { lesson_id: lessonId });
           state.socket.emit('whiteboard_join', { lesson_id: lessonId, client_id: clientId, page_id: state.currentPageId, follow: shouldFollowTeacherPage() && !state.followPaused });
-          state.socket.emit('lesson_code_join', { lesson_id: lessonId, file_name: activeFileName, code: virtualFS[activeFileName] || '' });
+          state.socket.emit('lesson_code_join', {
+            lesson_id: lessonId,
+            file_name: activeFileName,
+            code: virtualFS[activeFileName] || '',
+            files: virtualFS,
+            open_tabs: openTabs,
+          });
           flushOutbox();
           connectCanvasOverlaySync();
+          if (state.role === 'student') sendStudentViewport(true);
+        });
+        state.socket.on('reconnect', () => {
+          state.connected = true;
+          setSaveState('ready', 'Синхронизировано');
+          state.socket.emit('join_lesson', { lesson_id: lessonId });
+          state.socket.emit('whiteboard_join', { lesson_id: lessonId, client_id: clientId, page_id: state.currentPageId, follow: shouldFollowTeacherPage() && !state.followPaused });
+          state.socket.emit('lesson_code_join', {
+            lesson_id: lessonId,
+            file_name: activeFileName,
+            code: virtualFS[activeFileName] || '',
+            files: virtualFS,
+            open_tabs: openTabs,
+          });
+          flushOutbox();
+          if (state.role === 'student') sendStudentViewport(true);
         });
         state.socket.on('disconnect', () => { state.connected = false; setSaveState('offline', 'Ожидаем сеть'); });
         state.socket.on('whiteboard_snapshot', (payload) => { if (payload.document) applySnapshot(payload.document, payload.version, { serverNow: payload.server_now, preserveOutbox: Boolean(state.outbox.length || state.inFlight) }); });
@@ -10668,6 +11313,16 @@
 
               list.append(row);
             }
+          }
+          if (state.canPresent) {
+            const currentMembers = new Set((payload.presence || []).map(m => String(m.user_id)));
+            Object.keys(state.remoteStudentViewports || {}).forEach(uid => {
+              if (!currentMembers.has(uid)) {
+                delete state.remoteStudentViewports[uid];
+                document.getElementById(`student-viewport-${uid}`)?.remove();
+              }
+            });
+            renderStudentViewportIndicators();
           }
         });
         state.socket.on('lesson_message_new', (payload) => {
@@ -10766,7 +11421,12 @@
         state.socket.on('lesson_room_ui', applyRoomUi);
         state.socket.on('lesson_code_snapshot', applyRemoteCode);
         state.socket.on('lesson_code_update', applyRemoteCode);
+        state.socket.on('lesson_vfs_file_create', handleRemoteVfsCreate);
+        state.socket.on('lesson_vfs_file_rename', handleRemoteVfsRename);
+        state.socket.on('lesson_vfs_file_delete', handleRemoteVfsDelete);
+        state.socket.on('lesson_vfs_tab_switch', handleRemoteVfsTabSwitch);
         state.socket.on('lesson_code_cursor', renderRemoteCodeCursor);
+        state.socket.on('whiteboard_viewport', handleRemoteStudentViewport);
         state.socket.on('lesson_kicked', () => {
           state.socket.disconnect();
           const modal = document.createElement('div');
@@ -11491,7 +12151,11 @@
         sendLiveCamera();
         scheduleCameraCommit();
       }, { passive: false });
-      window.addEventListener('resize', renderCanvas);
+      window.addEventListener('resize', () => {
+        renderCanvas();
+        if (state.canPresent) renderStudentViewportIndicators();
+        else if (state.role === 'student') sendStudentViewport();
+      });
       window.addEventListener('resize', repositionOpenBoardToolPopover, { passive: true });
       window.visualViewport?.addEventListener('resize', repositionOpenBoardToolPopover, { passive: true });
       window.visualViewport?.addEventListener('scroll', repositionOpenBoardToolPopover, { passive: true });
@@ -11618,7 +12282,7 @@
         if (modeDesc) modeDesc.textContent = descs[currentMode] || descs.teacher;
 
         const allowed = Array.isArray(ctrl.windows_allowed) ? ctrl.windows_allowed : [
-          'code-window', 'task-window', 'terminal-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
+          'code-window', 'task-window', 'terminal-window', 'tracer-window', 'notes-window', 'theory-window', 'files-window', 'lesson-info-window'
         ];
         winCheckboxes.forEach((cb) => {
           cb.checked = allowed.includes(cb.dataset.windowId);
@@ -11646,7 +12310,7 @@
           student_editing: studentWhiteboardInput ? studentWhiteboardInput.checked : true,
           window_positions_sync: syncWindowPosInput ? syncWindowPosInput.checked : true,
           student_code_editing: studentCodeEditInput ? studentCodeEditInput.checked : false,
-          windows_allowed: allowed,
+          windows_allowed: Array.from(new Set([...allowed, 'tracer-window'])),
         };
         commit({ type: 'control.update', control: updated });
         updateUiFromState();
@@ -11679,7 +12343,19 @@
         canEditCode: () => (state.role === 'teacher' || controlState().student_code_editing === true),
         sendUi: (payload) => sendRoomUi(payload),
         queueCodeSync: (code, fileName) => queueCodeSync(code, fileName),
-        sendCodeCursor: (start, end, fileName) => sendCodeCursor(start, end, fileName),
+        sendCodeCursor: (start, end, fileName, options) => sendCodeCursor(start, end, fileName, options),
+        createVfsFile: (fileName, code) => {
+          if (state.socket) state.socket.emit('lesson_vfs_file_create', { lesson_id: lessonId, file_name: fileName, code: code });
+        },
+        renameVfsFile: (oldName, newName, code) => {
+          if (state.socket) state.socket.emit('lesson_vfs_file_rename', { lesson_id: lessonId, old_name: oldName, new_name: newName, code: code });
+        },
+        deleteVfsFile: (fileName) => {
+          if (state.socket) state.socket.emit('lesson_vfs_file_delete', { lesson_id: lessonId, file_name: fileName });
+        },
+        switchVfsTab: (fileName) => {
+          if (state.socket) state.socket.emit('lesson_vfs_tab_switch', { lesson_id: lessonId, file_name: fileName });
+        },
         getControl: () => controlState(),
       };
       window.boostudyWhiteboard = {
@@ -11717,6 +12393,9 @@
         },
         getPages: () => (state.document?.pages || []),
         getActivePageId: () => state.currentPageId,
+        toggleStudentViewportOutline: () => toggleStudentViewportOutline(),
+        focusOnStudentViewport: (userId) => focusOnStudentViewport(userId),
+        sendStudentViewport: (immediate) => sendStudentViewport(immediate),
       };
       bindBoardEvents();
       loadBoard();
@@ -12846,5 +13525,12 @@
   })();
 </script>
 {% endif %}
-{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261018-engine-v9"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
+{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261018-engine-v9"></script><script src="{{ url_for('static', filename='js/boostudy-radial-wheel.js') }}?v=20261022-v1"></script><script src="{{ url_for('static', filename='js/boostudy-teacher-orbit.js') }}?v=20261022-v1"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
+<script src="{{ url_for('static', filename='js/boostudy-code-autocomplete.js') }}?v=20261022-v1"></script>
+<script src="{{ url_for('static', filename='js/boostudy-tracer.js') }}?v=20261022-v2"></script>
+<script>
+  function toggleVisualTracer() {
+    window.BooTracer?.toggle?.();
+  }
+</script>
 {% endblock %}

@@ -1,0 +1,666 @@
+/* ==========================================================================
+   BooStudy Code Tracer (Бу Трассировщик) — Стили светлого интерфейса
+   Дизайн-система: BooStudy Neo-Glass / Tactile 3D / Light Memory Graph
+   ========================================================================== */
+
+/* Общий контейнер панели трассировщика */
+.boo-tracer-panel {
+  display: flex;
+  flex-direction: column;
+  width: 480px;
+  min-width: 360px;
+  max-width: 60%;
+  height: 100%;
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+  position: relative;
+  z-index: 20;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.04);
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s ease;
+}
+
+.boo-tracer-panel.hidden {
+  display: none !important;
+}
+
+.boo-tracer-panel.is-detached {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  border-left: none;
+  box-shadow: none;
+}
+
+/* Шапка панели трассировщика (в пристыкованном виде) */
+.boo-tracer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.boo-tracer-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: #0f172a;
+}
+
+.boo-tracer-title i {
+  font-size: 16px;
+  color: #0284c7;
+  filter: drop-shadow(0 0 6px rgba(2, 132, 199, 0.3));
+}
+
+.boo-tracer-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.boo-tracer-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.boo-tracer-action-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.boo-tracer-action-btn:active {
+  transform: scale(0.96);
+}
+
+/* Панель управления отладчиком (Player Bar) */
+.boo-tracer-controls-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.boo-tracer-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.boo-tracer-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.boo-tracer-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s ease;
+}
+
+.boo-tracer-ctrl-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  color: #0284c7;
+  border-color: #38bdf8;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
+}
+
+.boo-tracer-ctrl-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.96);
+}
+
+.boo-tracer-ctrl-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+#boo-tracer-btn-play {
+  background: linear-gradient(135deg, #06b6d4, #2563eb);
+  border: 1px solid #0284c7;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(6, 182, 212, 0.3);
+}
+
+#boo-tracer-btn-play:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0891b2, #1d4ed8);
+  box-shadow: 0 3px 10px rgba(6, 182, 212, 0.45);
+}
+
+#boo-tracer-btn-play.is-active-play {
+  background: linear-gradient(135deg, #0284c7, #1e40af);
+  box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+  animation: tracer-pulse-btn 1.4s infinite;
+}
+
+@keyframes tracer-pulse-btn {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.5); }
+  70% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(2, 132, 199, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(2, 132, 199, 0); }
+}
+
+.boo-tracer-step-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.boo-tracer-step-badge strong {
+  color: #0284c7;
+  font-size: 12px;
+}
+
+/* Селектор скорости воспроизведения (Pill-tabs) */
+.boo-tracer-speed-group {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 2px;
+  border: 1px solid #e2e8f0;
+}
+
+.boo-tracer-speed-btn {
+  padding: 3px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.boo-tracer-speed-btn:hover {
+  color: #0f172a;
+}
+
+.boo-tracer-speed-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Ползунок шкалы времени (Scrubber slider) */
+.boo-tracer-timeline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.boo-tracer-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: #e2e8f0;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.boo-tracer-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #0284c7;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.4);
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  transition: transform 0.1s ease;
+}
+
+.boo-tracer-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Основная рабочая область визуализации памяти (Scrollable Canvas) */
+.boo-tracer-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #f8fafc;
+}
+
+/* SVG слой для отрисовки динамических связей-стрелок */
+.boo-tracer-svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  overflow: visible;
+}
+
+.boo-tracer-pointer-arrow {
+  fill: none;
+  stroke: #0284c7;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 4 2;
+  animation: tracer-dash 1.2s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(2, 132, 199, 0.4));
+  opacity: 0.9;
+  transition: stroke 0.2s ease, opacity 0.2s ease;
+}
+
+@keyframes tracer-dash {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* Секция стека вызовов (Call Stack & Locals) */
+.boo-tracer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  z-index: 5;
+}
+
+.boo-tracer-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.boo-tracer-section-title span.count {
+  font-size: 10px;
+  background: #e2e8f0;
+  padding: 1px 6px;
+  border-radius: 10px;
+  color: #334155;
+  font-weight: 700;
+}
+
+/* Карточка фрейма стека */
+.boo-tracer-stack-frame {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.boo-tracer-frame-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 11px;
+  color: #0369a1;
+  font-weight: 800;
+}
+
+.boo-tracer-frame-line {
+  font-size: 10px;
+  color: #0284c7;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+/* Сетка переменных внутри фрейма */
+.boo-tracer-vars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.boo-tracer-var-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.boo-tracer-var-row:hover {
+  background: #f1f5f9;
+}
+
+.boo-tracer-var-row.mutated {
+  border-color: #f59e0b;
+  background: #fef3c7;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+  animation: tracer-pulse-var 0.8s ease;
+}
+
+@keyframes tracer-pulse-var {
+  0% { transform: scale(0.98); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.boo-tracer-var-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+.boo-tracer-var-name {
+  font-weight: 800;
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.boo-tracer-var-type {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.boo-tracer-var-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+}
+
+.boo-tracer-var-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0369a1;
+}
+
+.boo-tracer-var-val.is-str {
+  color: #047857;
+}
+
+.boo-tracer-var-val.is-ref {
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  font-weight: 700;
+}
+
+/* Секция кучи (Heap Objects) */
+.boo-tracer-heap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.boo-tracer-heap-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.boo-tracer-heap-card.highlighted-ref {
+  border-color: #0284c7;
+  box-shadow: 0 0 14px rgba(2, 132, 199, 0.35);
+}
+
+.boo-tracer-heap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.boo-tracer-heap-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 9px;
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid #c7d2fe;
+  font-weight: 700;
+}
+
+/* Списочные ячейки (List Array visualizer) */
+.boo-tracer-array-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.boo-tracer-array-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 38px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.boo-tracer-cell-index {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 8px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  width: 100%;
+  text-align: center;
+  padding: 2px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.boo-tracer-cell-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+/* Активный индекс в цикле */
+.boo-tracer-array-cell.is-loop-active {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  box-shadow: 0 0 12px rgba(2, 132, 199, 0.45);
+  transform: translateY(-2px);
+}
+
+.boo-tracer-array-cell.is-loop-active .boo-tracer-cell-index {
+  background: #0284c7;
+  color: #ffffff;
+  border-bottom-color: #0284c7;
+}
+
+/* Мутация ячейки */
+.boo-tracer-array-cell.is-mutated {
+  border-color: #f59e0b;
+  background: #fef3c7;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  animation: tracer-cell-flash 0.8s ease;
+}
+
+@keyframes tracer-cell-flash {
+  0% { transform: scale(1.08); background: #fde68a; }
+  100% { transform: scale(1); }
+}
+
+/* Словарь (Key-Value entries view) */
+.boo-tracer-dict-view {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.boo-tracer-dict-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.boo-tracer-dict-key {
+  color: #0284c7;
+  font-weight: 800;
+}
+
+.boo-tracer-dict-sep {
+  color: #94a3b8;
+}
+
+.boo-tracer-dict-val {
+  color: #047857;
+  font-weight: 700;
+}
+
+/* Секция стандартного вывода (Live Stdout) */
+.boo-tracer-stdout-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 11px;
+  color: #0f172a;
+  max-height: 100px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.boo-tracer-stdout-empty {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 10px;
+}
+
+/* Подсветка активной строки в желобе номеров строк */
+.line-gutter-active-tracer {
+  background: rgba(2, 132, 199, 0.15) !important;
+  color: #0284c7 !important;
+  font-weight: 900 !important;
+  position: relative;
+}
+
+.line-gutter-active-tracer::before {
+  content: '➔';
+  position: absolute;
+  left: 2px;
+  font-size: 10px;
+  color: #0284c7;
+  animation: tracer-arrow-pulse 1s infinite alternate;
+}
+
+@keyframes tracer-arrow-pulse {
+  from { transform: translateX(0); }
+  to { transform: translateX(2px); }
+}
+
+/* Маркер точки останова в желобе номеров строк */
+.line-gutter-breakpoint {
+  position: relative;
+  cursor: pointer;
+}
+
+.line-gutter-breakpoint::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+  z-index: 5;
+}
+
+/* Плавающее окно Lesson OS для открепленного режима (#tracer-window) */
+#tracer-window {
+  min-width: 380px;
+  min-height: 320px;
+}
+
+#tracer-window .boo-tracer-panel {
+  width: 100%;
+  max-width: 100%;
+  border-left: none;
+}

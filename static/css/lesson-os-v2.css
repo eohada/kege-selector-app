@@ -458,8 +458,8 @@ body.bs-lesson-room main.room-lesson-shell {
 }
 .room-lesson-os #sidebar-drawer-panel.translate-x-0 { transform: translateX(0) !important; }
 .room-lesson-os #code-window #editor-canvas-container { flex: 1 1 auto; }
-.room-lesson-os #code-window:not(.lesson-os-statusbar-open) #editor-status-bar { display: none !important; }
-.room-lesson-os #code-window.lesson-os-statusbar-open #editor-status-bar { display: flex !important; flex: 0 0 auto; }
+.room-lesson-os #code-window #editor-status-bar { display: flex !important; flex: 0 0 auto; }
+.room-lesson-os #code-window.lesson-os-statusbar-hidden #editor-status-bar { display: none !important; }
 .room-lesson-os .lesson-os-code-resize { position: absolute; right: 0; bottom: 0; z-index: 10; width: 18px; height: 18px; cursor: se-resize; }
 .room-lesson-os #task-window {
   top: 11.5vh;
@@ -1619,6 +1619,80 @@ body.bs-lesson-room main.room-lesson-shell {
   transform: translateY(2px) !important;
   box-shadow: 0 1px 0 #9f1239 !important;
 }
+
+/* ==========================================================================
+   BOOSTUDY CODE AUTOCOMPLETE (INTELLISENSE)
+   ========================================================================== */
+#code-autocomplete-popup {
+  position: fixed !important;
+  z-index: 999999 !important;
+  width: 17.5rem !important;
+  max-height: 14rem !important;
+  overflow-y: auto !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.16), 0 8px 10px -6px rgba(15, 23, 42, 0.1) !important;
+  border-radius: 0.875rem !important;
+  padding: 0.375rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 0.75rem !important;
+  color: #1e293b !important;
+  user-select: none !important;
+}
+.code-autocomplete-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0.375rem 0.625rem !important;
+  border-radius: 0.5rem !important;
+  cursor: pointer !important;
+  transition: background-color 0.1s ease !important;
+  color: #334155 !important;
+}
+.code-autocomplete-item:hover {
+  background-color: #f1f5f9 !important;
+}
+.code-autocomplete-item.is-selected {
+  background-color: #eef2ff !important;
+  color: #312e81 !important;
+  font-weight: 700 !important;
+  border-left: 3px solid #4f46e5 !important;
+}
+.code-autocomplete-badge {
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+  border-radius: 0.3125rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.625rem !important;
+  font-weight: 700 !important;
+  border: 1px solid transparent !important;
+  flex-shrink: 0 !important;
+}
+.code-autocomplete-badge-var {
+  background-color: #d1fae5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+}
+.code-autocomplete-badge-func {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+}
+.code-autocomplete-badge-builtin {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+  border-color: #fcd34d !important;
+}
+.code-autocomplete-badge-keyword {
+  background-color: #f3e8ff !important;
+  color: #7e22ce !important;
+  border-color: #d8b4fe !important;
+}
+
 
 
 
