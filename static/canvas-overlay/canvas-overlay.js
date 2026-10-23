@@ -1830,7 +1830,20 @@
       fitContentToScreen();
     });
 
-    zoomIsland.append(zoomOut, zoomBadge, zoomIn, fitBtn);
+    const studentViewportBtn = document.createElement('button');
+    studentViewportBtn.type = 'button';
+    studentViewportBtn.className = 'tb-zoom-btn';
+    studentViewportBtn.id = 'boo-tb-student-viewport-btn';
+    studentViewportBtn.title = 'Контур экрана ученика (показать/скрыть)';
+    studentViewportBtn.innerHTML = '<i class="ph-bold ph-bounding-box"></i>';
+    const activeVp = typeof window.isStudentViewportActive === 'function' ? window.isStudentViewportActive() : true;
+    if (activeVp) studentViewportBtn.classList.add('is-active');
+    studentViewportBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.toggleStudentViewportOutline?.();
+    });
+
+    zoomIsland.append(zoomOut, zoomBadge, zoomIn, fitBtn, studentViewportBtn);
     document.body.appendChild(zoomIsland);
   }
 
@@ -2238,6 +2251,17 @@
         badge: 'I',
         action: () => { hiddenFileInput?.click(); toggleMoreMenu(false); },
       },
+      {
+        id: 'student_viewport',
+        icon: 'ph-bounding-box',
+        title: 'Контур экрана ученика',
+        badge: (typeof window.isStudentViewportActive === 'function' ? (window.isStudentViewportActive() ? 'ВКЛ' : 'ВЫКЛ') : 'ВКЛ'),
+        action: () => {
+          window.toggleStudentViewportOutline?.();
+          updateMoreMenuUi();
+          toggleMoreMenu(false);
+        },
+      },
     ];
 
     items.forEach((it) => {
@@ -2307,7 +2331,19 @@
     moreMenu.querySelectorAll('.boo-more-item-btn').forEach((btn) => {
       const tId = btn.dataset.toolId;
       if (!tId) return;
-      btn.classList.toggle('active', tool === tId);
+      if (tId === 'student_viewport') {
+        const active = typeof window.isStudentViewportActive === 'function' ? window.isStudentViewportActive() : true;
+        btn.classList.toggle('active', active);
+        const kbd = btn.querySelector('.boo-more-kbd');
+        if (kbd) {
+          kbd.textContent = active ? 'ВКЛ' : 'ВЫКЛ';
+          kbd.style.color = active ? '#4f46e5' : '';
+          kbd.style.borderColor = active ? '#c7d2fe' : '';
+          kbd.style.backgroundColor = active ? '#eef2ff' : '';
+        }
+      } else {
+        btn.classList.toggle('active', tool === tId);
+      }
     });
     const moreBtn = document.getElementById('boo-tb-more');
     if (moreBtn) {

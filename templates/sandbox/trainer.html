@@ -1318,7 +1318,7 @@
   .room-lesson-os .board-presentation-banner button { border: 0; background: transparent; color: #64748b; font-size: 10px; font-weight: 800; cursor: pointer; }
   .room-lesson-os .board-presentation-banner button:hover { color: #4338ca; }
   .room-lesson-os .board-presentation-banner .hidden { display: none !important; }
-  .room-lesson-os .board-viewport-indicators { position: absolute; inset: 0; pointer-events: none; z-index: 25; overflow: hidden; }
+  .room-lesson-os .board-viewport-indicators { position: absolute; inset: 0; pointer-events: none; z-index: 35 !important; overflow: hidden; }
   .room-lesson-os .board-student-viewport-box { position: absolute; pointer-events: none; border-radius: 12px; border-width: 2px; border-style: dashed; box-sizing: border-box; transition: opacity 0.2s ease, border-color 0.2s ease; }
   .room-lesson-os .board-student-viewport-box.is-code-mode { opacity: 0.45; border-style: dotted; }
   .room-lesson-os .board-student-viewport-badge { position: absolute; top: -34px; left: -2px; pointer-events: auto; user-select: none; display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .65rem; border-radius: 9999px; font-size: 11px; font-weight: 800; white-space: nowrap; box-shadow: 0 4px 12px rgba(15,23,42,.15), 0 2px 0 rgba(0,0,0,.1); border-width: 2px; border-style: solid; background: #fff; }
@@ -2256,7 +2256,7 @@
         font-weight: 800 !important;
       }
     </style>
-    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261020-clean-board-v3"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261018-sync-v2">{% if homework_mode or review_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261020-v1">{% endif %}{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
+    {% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-os-v2.css') }}?v=20261020-clean-board-v3"><link rel="stylesheet" href="{{ url_for('static', filename='canvas-overlay/canvas-overlay.css') }}?v=20261023-sync-v3">{% if homework_mode or review_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='task-workspace/homework-os-room.css') }}?v=20261020-v1">{% endif %}{% if livekit_enabled %}<link rel="stylesheet" href="{{ url_for('static', filename='css/lesson-video.css') }}?v=20261015-livekit-v6">{% endif %}{% endif %}
 
     <!-- 3. РЕЖИМ 2: АРЕНА НАРЕШИВАНИЯ (REAL GLASS OS 8.0 ULTRA WORKSPACE) -->
     <div id="trainer-arena-view"
@@ -2334,6 +2334,10 @@
             <div id="lesson-os-presence-list" class="lesson-os-presence-list hidden" role="region" aria-label="Участники онлайн"></div>
           </div>
           {% if is_studio_teacher|default(false) %}
+          <button type="button" id="lesson-os-student-viewport-toggle" class="lesson-os-system-action is-active" onclick="window.toggleStudentViewportOutline?.()" title="Контур экрана ученика (показать/скрыть область, которую видит ученик)" aria-label="Контур видимости ученика">
+            <i class="ph-bold ph-bounding-box" aria-hidden="true"></i>
+            <span>Контур ученика</span>
+          </button>
           <div class="lesson-os-control-wrap" id="lesson-os-control-wrap">
             <button type="button" id="lesson-os-control-toggle" class="lesson-os-system-action lesson-os-control-action" aria-label="Управление уроком" aria-expanded="false" aria-controls="lesson-os-control-popover" title="Управление следованием и синхронизацией">
               <i class="ph-bold ph-sliders" aria-hidden="true"></i>
@@ -2346,6 +2350,13 @@
                 <span class="text-xs text-slate-500">Управление тем, что видят ученики</span>
               </div>
               <div class="lesson-os-control-section">
+                <label class="lesson-os-control-toggle-row">
+                  <input type="checkbox" id="control-show-student-viewport" checked onchange="window.toggleStudentViewportOutline?.(this.checked)">
+                  <div class="lesson-os-control-text">
+                    <strong>Контур экрана ученика</strong>
+                    <span>Отображать полупрозрачную область, которую сейчас видит ученик</span>
+                  </div>
+                </label>
                 <label class="lesson-os-control-toggle-row">
                   <input type="checkbox" id="control-sync-canvas" checked>
                   <div class="lesson-os-control-text">
@@ -9397,9 +9408,10 @@
     let lastStudentViewportSentAt = 0;
 
     try {
-      state.showStudentViewportOutline = localStorage.getItem(`boostudy_show_student_viewport_${lessonId}`) === 'true';
+      const savedVp = localStorage.getItem(`boostudy_show_student_viewport_${lessonId}`);
+      state.showStudentViewportOutline = savedVp === null ? true : savedVp === 'true';
     } catch (_) {
-      state.showStudentViewportOutline = false;
+      state.showStudentViewportOutline = true;
     }
 
     function sendStudentViewport(immediate = false) {
@@ -9437,24 +9449,69 @@
       }
     }
 
-    function toggleStudentViewportOutline() {
-      state.showStudentViewportOutline = !state.showStudentViewportOutline;
+    function toggleStudentViewportOutline(forceState) {
+      if (typeof forceState === 'boolean') {
+        state.showStudentViewportOutline = forceState;
+      } else {
+        state.showStudentViewportOutline = !state.showStudentViewportOutline;
+      }
       try {
         localStorage.setItem(`boostudy_show_student_viewport_${lessonId}`, String(state.showStudentViewportOutline));
       } catch (_) {}
+
+      const active = Boolean(state.showStudentViewportOutline);
+
+      // Top system bar button
+      const topBtn = document.getElementById('lesson-os-student-viewport-toggle');
+      if (topBtn) {
+        topBtn.classList.toggle('is-active', active);
+        topBtn.setAttribute('aria-pressed', String(active));
+      }
+
+      // Control popover checkbox
+      const controlChk = document.getElementById('control-show-student-viewport');
+      if (controlChk) {
+        controlChk.checked = active;
+      }
+
+      // Zoom island button
+      const zoomBtn = document.getElementById('boo-tb-student-viewport-btn');
+      if (zoomBtn) {
+        zoomBtn.classList.toggle('is-active', active);
+        zoomBtn.setAttribute('aria-pressed', String(active));
+      }
+
+      // More tools menu item
+      const moreItem = document.querySelector('.boo-canvas-more-menu [data-tool-id="student_viewport"]');
+      if (moreItem) {
+        moreItem.classList.toggle('active', active);
+        const kbd = moreItem.querySelector('.boo-more-kbd');
+        if (kbd) {
+          kbd.textContent = active ? 'ВКЛ' : 'ВЫКЛ';
+          kbd.style.color = active ? '#4f46e5' : '';
+          kbd.style.borderColor = active ? '#c7d2fe' : '';
+          kbd.style.backgroundColor = active ? '#eef2ff' : '';
+        }
+      }
+
+      // Legacy command bar button
       const btn = document.getElementById('board-student-viewport-btn');
       if (btn) {
-        btn.classList.toggle('is-active', Boolean(state.showStudentViewportOutline));
-        btn.setAttribute('aria-pressed', String(Boolean(state.showStudentViewportOutline)));
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-pressed', String(active));
       }
+
       renderStudentViewportIndicators();
+      return state.showStudentViewportOutline;
     }
     window.toggleStudentViewportOutline = toggleStudentViewportOutline;
+    window.isStudentViewportActive = () => Boolean(state.showStudentViewportOutline);
 
     function handleRemoteStudentViewport(payload) {
       if (!payload || Number(payload.lesson_id) !== Number(lessonId)) return;
       if (String(payload.user_id) === String(trainerOsConfig.user_id)) return;
-      if (!state.canPresent) return;
+      const isTeacher = state.role === 'teacher' || state.canPresent || trainerOsConfig.is_studio_teacher;
+      if (!isTeacher) return;
 
       const userId = String(payload.user_id || 'student');
       state.remoteStudentViewports[userId] = payload;
@@ -9464,7 +9521,8 @@
     function renderStudentViewportIndicators() {
       const container = document.getElementById('board-viewport-indicators');
       if (!container) return;
-      if (!state.canPresent || !state.showStudentViewportOutline) {
+      const isTeacher = state.role === 'teacher' || state.canPresent || trainerOsConfig.is_studio_teacher;
+      if (!isTeacher || !state.showStudentViewportOutline) {
         container.innerHTML = '';
         container.classList.add('hidden');
         return;
@@ -9549,6 +9607,9 @@
       state.panY = vp.clientHeight / 2 - centerY * state.scale;
 
       renderTransform();
+      if (window.BooCanvasOverlay?.setCamera) {
+        window.BooCanvasOverlay.setCamera(state.panX, state.panY, state.scale, true);
+      }
       scheduleCameraCommit();
     }
     window.focusOnStudentViewport = focusOnStudentViewport;
@@ -13525,7 +13586,7 @@
   })();
 </script>
 {% endif %}
-{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261018-engine-v9"></script><script src="{{ url_for('static', filename='js/boostudy-radial-wheel.js') }}?v=20261022-v1"></script><script src="{{ url_for('static', filename='js/boostudy-teacher-orbit.js') }}?v=20261022-v1"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
+{% if room_mode %}<link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.css') }}"><script src="{{ url_for('static', filename='katex/katex/katex.js') }}"></script><script src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script><script src="{{ url_for('static', filename='canvas-overlay/canvas-overlay.js') }}?v=20261023-engine-v10"></script><script src="{{ url_for('static', filename='js/boostudy-radial-wheel.js') }}?v=20261022-v1"></script><script src="{{ url_for('static', filename='js/boostudy-teacher-orbit.js') }}?v=20261022-v1"></script>{% if homework_mode or review_mode %}<script src="{{ url_for('static', filename='task-workspace/homework-os-room.js') }}?v=20261021-v3"></script>{% endif %}{% if livekit_enabled %}<script src="{{ url_for('static', filename='vendor/livekit-client.umd.min.js') }}"></script><script src="{{ url_for('static', filename='js/lesson-livekit-os.js') }}?v=20261015-livekit-v6"></script>{% endif %}{% endif %}
 <script src="{{ url_for('static', filename='js/boostudy-code-autocomplete.js') }}?v=20261022-v1"></script>
 <script src="{{ url_for('static', filename='js/boostudy-tracer.js') }}?v=20261022-v2"></script>
 <script>
