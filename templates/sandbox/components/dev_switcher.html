@@ -6,14 +6,14 @@
 </button>
 
 <!-- DEV ROLE SWITCHER FLOATING WIDGET (Tactile 3D Bento) -->
-<div id="dev-role-switcher-modal" class="hidden fixed inset-0 z-[99999] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
-  <div class="bg-slate-900/95 backdrop-blur-xl text-white rounded-[2rem] p-5 border-2 border-slate-700/80 shadow-[0_16px_48px_rgba(0,0,0,0.7)] w-80 sm:w-[26rem] flex flex-col gap-4 relative overflow-hidden">
+<div id="dev-role-switcher-modal" onclick="if(event.target === this) window.toggleDevSwitcher()" class="hidden fixed inset-0 z-[99999] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 select-none">
+  <div class="bg-slate-900/95 backdrop-blur-xl text-white rounded-[2rem] p-4 sm:p-5 border-2 border-slate-700/80 shadow-[0_16px_48px_rgba(0,0,0,0.7)] w-full max-w-sm sm:max-w-md max-h-[88vh] my-auto flex flex-col gap-3 relative overflow-hidden">
     
     <!-- Decorative Glow -->
     <div class="absolute -right-12 -top-12 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
     <!-- Header: Title + Close Button -->
-    <div class="flex items-center justify-between pb-3 border-b border-slate-800 relative z-10">
+    <div class="shrink-0 flex items-center justify-between pb-2.5 border-b border-slate-800 relative z-10">
       <div class="flex items-center gap-2">
         <div class="w-8 h-8 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-400 flex items-center justify-center font-bold">
           <i class="ph-fill ph-user-switch text-lg"></i>
@@ -29,7 +29,7 @@
     </div>
 
     <!-- Active Status Card & Revert Button -->
-    <div id="dev-switcher-current-box" class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/80 space-y-2 relative z-10">
+    <div id="dev-switcher-current-box" class="shrink-0 bg-slate-800/80 p-3 rounded-2xl border border-slate-700/80 space-y-2 relative z-10">
       <div class="flex items-center justify-between text-xs font-bold">
         <span class="text-slate-400 text-[10px] uppercase tracking-wider">Текущая сессия:</span>
         <span id="dev-switcher-role-badge" class="px-2.5 py-0.5 bg-indigo-900/60 text-indigo-300 border border-indigo-500/30 rounded-lg text-[10px] uppercase font-black tracking-wider">
@@ -37,15 +37,15 @@
         </span>
       </div>
       <div class="flex items-center gap-2.5">
-        <img id="dev-switcher-user-avatar" src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-9 h-9 rounded-xl object-cover bg-slate-700 border border-slate-600" alt="Аватар пользователя">
-        <div class="overflow-hidden">
+        <img id="dev-switcher-user-avatar" src="{% if current_user is defined and current_user and current_user.avatar_url %}{{ current_user.avatar_url }}{% else %}{{ url_for('static', filename='images/default-avatar.svg') }}{% endif %}" class="w-9 h-9 rounded-xl object-cover bg-slate-700 border border-slate-600 shrink-0" alt="Аватар пользователя">
+        <div class="overflow-hidden min-w-0">
           <h5 id="dev-switcher-user-name" class="text-xs font-bold text-white truncate mb-0">{{ current_user.username if (current_user is defined and current_user and current_user.is_authenticated) else 'Не авторизован' }}</h5>
           <p id="dev-switcher-user-email" class="text-[10px] text-slate-400 truncate mb-0">{{ current_user.email if (current_user is defined and current_user and current_user.is_authenticated) else '' }}</p>
         </div>
       </div>
 
       <!-- Mentor Selection Block for Student Session -->
-      <div id="dev-switcher-mentor-block" class="pt-2 border-t border-slate-700/60 space-y-1">
+      <div id="dev-switcher-mentor-block" class="pt-2 border-t border-slate-700/60 space-y-1 {% if not (current_user is defined and current_user and current_user.role == 'student') %}hidden{% endif %}">
         <div class="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider">
           <span>Назначить наставника:</span>
         </div>
@@ -55,27 +55,27 @@
       </div>
 
       <!-- Bright Red Revert Button if Impersonating -->
-      <a href="/sandbox/impersonate/revert" id="dev-switcher-revert-btn" class="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-4 border-rose-800 shadow-md flex items-center justify-center gap-2 no-underline transition-all active:translate-y-0.5 cursor-pointer uppercase tracking-wider {% if not session.get('impersonator_id') %}hidden{% endif %}">
+      <a href="/sandbox/impersonate/revert" id="dev-switcher-revert-btn" class="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-4 border-rose-800 shadow-md flex items-center justify-center gap-2 no-underline transition-all active:translate-y-0.5 cursor-pointer uppercase tracking-wider {% if not session.get('impersonator_id') %}hidden{% endif %}">
         <i class="ph-bold ph-arrow-u-down-left text-base"></i> Выйти из имперсонации
       </a>
     </div>
 
     <!-- Role Filter Tabs -->
-    <div class="flex items-center gap-1.5 overflow-x-auto pb-1 relative z-10 scrollbar-none">
-      <button type="button" class="dev-role-filter active px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-bold border border-indigo-500 cursor-pointer uppercase tracking-wider" data-filter="all">Все</button>
-      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider" data-filter="student">Ученики</button>
-      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider" data-filter="tutor">Учителя</button>
-      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider" data-filter="parent">Родители</button>
-      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider" data-filter="admin">Админы</button>
+    <div class="shrink-0 flex items-center gap-1.5 overflow-x-auto pb-1 relative z-10 scrollbar-none">
+      <button type="button" class="dev-role-filter active px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-bold border border-indigo-500 cursor-pointer uppercase tracking-wider shrink-0" data-filter="all">Все</button>
+      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider shrink-0" data-filter="student">Ученики</button>
+      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider shrink-0" data-filter="tutor">Учителя</button>
+      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider shrink-0" data-filter="parent">Родители</button>
+      <button type="button" class="dev-role-filter px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[10px] font-bold border border-slate-700 cursor-pointer uppercase tracking-wider shrink-0" data-filter="admin">Админы</button>
     </div>
 
     <!-- User List Scroll Container -->
-    <div id="dev-switcher-user-list" class="max-h-56 overflow-y-auto space-y-2 pr-1 relative z-10">
+    <div id="dev-switcher-user-list" class="flex-1 min-h-0 overflow-y-auto space-y-1.5 pr-1 relative z-10 max-h-56 sm:max-h-64">
       <div class="text-center py-4 text-xs font-bold text-slate-400 animate-pulse">Загрузка пула пользователей...</div>
     </div>
 
     <!-- Footer Note -->
-    <div class="pt-2 border-t border-slate-800/80 text-[10px] text-slate-500 font-bold flex justify-between items-center relative z-10">
+    <div class="shrink-0 pt-2 border-t border-slate-800/80 text-[10px] text-slate-500 font-bold flex justify-between items-center relative z-10">
       <span>Шорткат: <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300">Alt + I</kbd></span>
       <span>BooStudy Dev Tool</span>
     </div>
@@ -154,7 +154,15 @@
             }
           }
 
+          const mentorBlock = document.getElementById('dev-switcher-mentor-block');
           const mentorSelect = document.getElementById('dev-switcher-mentor-select');
+          if (mentorBlock && data.current_user) {
+            if (data.current_user.role === 'student') {
+              mentorBlock.classList.remove('hidden');
+            } else {
+              mentorBlock.classList.add('hidden');
+            }
+          }
           if (mentorSelect && data.teachers) {
             let opts = '<option value="">[Без наставника]</option>';
             data.teachers.forEach(t => {
@@ -213,8 +221,9 @@
       if (u.role === 'student') roleBadgeColor = 'bg-indigo-900/80 text-indigo-300 border border-indigo-500/30';
       else if (u.role === 'tutor' || u.role === 'teacher') roleBadgeColor = 'bg-purple-900/80 text-purple-300 border border-purple-500/30';
       else if (u.role === 'parent') roleBadgeColor = 'bg-emerald-900/80 text-emerald-300 border border-emerald-500/30';
-      else if (u.role === 'admin') roleBadgeColor = 'bg-rose-900/80 text-rose-300 border border-rose-500/30';
+      else if (u.role === 'admin' || u.role === 'chief_admin') roleBadgeColor = 'bg-rose-900/80 text-rose-300 border border-rose-500/30';
       else if (u.role === 'creator') roleBadgeColor = 'bg-amber-900/80 text-amber-300 border border-amber-500/30';
+      else if (u.role === 'tester' || u.role === 'chief_tester') roleBadgeColor = 'bg-cyan-900/80 text-cyan-300 border border-cyan-500/30';
 
       const avatar = u.avatar || {{ url_for('static', filename='images/default-avatar.svg')|tojson }};
       const displayName = u.username || u.name || u.email;

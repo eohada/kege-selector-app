@@ -2,6 +2,8 @@
 Маршруты для системы заданий и сдачи работ
 """
 import logging
+import re
+from html import unescape
 from typing import Optional, Any, Dict, List
 from datetime import datetime, timedelta, timezone
 from flask import render_template, request, jsonify, flash, redirect, url_for, current_app, session
@@ -1461,6 +1463,36 @@ def _is_assignment_task_manual_review(at):
     return False
 
 
+def _has_ambiguous_imported_multi_value_answer(task, correct_answer):
+    """Avoid grading flattened answer keys when the prompt requires separated results."""
+    if getattr(task, 'bank_origin', None) != 'imported':
+        return False
+
+    answer_spec = getattr(task, 'answer_spec', None)
+    if isinstance(answer_spec, str):
+        try:
+            answer_spec = json.loads(answer_spec)
+        except (TypeError, ValueError):
+            answer_spec = None
+    if not isinstance(answer_spec, dict) or answer_spec.get('type') != 'short_answer':
+        return False
+
+    answer_parts = re.findall(r'(?<![\w.])-?\d+(?:[.,]\d+)?', str(correct_answer or ''))
+    if len(answer_parts) < 2:
+        return False
+
+    content = unescape(str(getattr(task, 'content_html', '') or ''))
+    content = re.sub(r'<[^>]+>', ' ', content).casefold()
+    structured_output_requirements = (
+        r'\b(?:в|во|на)\s+перв(?:ой|ую)\s+строк[еуи]\b',
+        r'\bво\s+втор(?:ой|ую)\s+строк[еуи]\b',
+        r'\b(?:по\s+одному|кажд\w*)\s+(?:числ\w*|результат\w*).{0,100}\bстрок[а-я]*\b',
+        r'\b(?:числ\w*|результат\w*).{0,100}\bс\s+новой\s+строк[иу]\b',
+        r'\b(?:в\s+виде\s+таблиц\w*|таблиц\w*).{0,100}\b(?:строк\w*|столбц\w*)\b',
+    )
+    return any(re.search(pattern, content) for pattern in structured_output_requirements)
+
+
 def _assignment_has_manual_review_tasks(assignment):
     """
     Проверяет, есть ли в работе хотя бы одно задание с ручной проверкой.
@@ -1532,6 +1564,9 @@ def auto_grade_answer(answer, assignment_task):
             return False, 0
     except Exception:
         pass
+
+    if _has_ambiguous_imported_multi_value_answer(task, correct_answer):
+        return None, None
 
     normalized_student = normalize_answer_value(student_answer)
     normalized_correct = normalize_answer_value(correct_answer)
@@ -2813,7 +2848,7 @@ def assignment_create():
     lesson_id = request.args.get('lesson_id', type=int, default=None)
     task_ids_param = request.args.get('task_ids', type=str, default=None)
     recipient_ids_param = request.args.get('recipient_ids', type=str, default=None)
-    draft_id = request.args.get('assignment_id', type=int, default=None)
+    draft_id = request.args.get('assignment_id', type=int) or request.args.get('draft_id', type=int, default=None)
 
     tasks: list[Tasks] = []
     source_label = ''
@@ -3190,6 +3225,7 @@ def assignment_edit(assignment_id: int):
         courses_for_probnik = []
 
     recipient_student_ids = [sub.student_id for sub in (assignment.submissions or []) if sub.student_id]
+    has_answers = any(bool(sub.answers) for sub in (assignment.submissions or []))
 
     initial_tasks = []
     for at in assignment_tasks:
@@ -3223,12 +3259,14 @@ def assignment_edit(assignment_id: int):
         'grading_mode': 'rubric' if assignment.rubric_template_id else ('manual' if assignment.assignment_type == 'manual_review' else 'auto'),
         'tasks': initial_tasks,
         'recipient_ids': recipient_student_ids,
+        'has_answers': has_answers,
     }
 
     return render_template(
         'sandbox/create_assignment.html',
         active_page='assignments',
         is_edit_mode=True,
+        has_answers=has_answers,
         source='edit',
         source_label=f'Редактирование работы #{assignment.assignment_id}',
         source_meta={'assignment_id': assignment.assignment_id},
@@ -3349,10 +3387,10 @@ def assignment_update(assignment_id: int):
                 assignment.max_attempts_default = max(1, int(v)) if v is not None and str(v).strip() != '' else 1
             except (TypeError, ValueError):
                 assignment.max_attempts_default = 1
-        tasks_data = data.get('tasks', [])
-        if isinstance(tasks_data, list) and len(tasks_data) > 0:
-            tasks_data = _expand_tasks_data_for_triplets(tasks_data)
-        if isinstance(tasks_data, list) and len(tasks_data) > 0:
+        if 'tasks' in data and isinstance(data['tasks'], list):
+            tasks_data = data['tasks']
+            if len(tasks_data) > 0:
+                tasks_data = _expand_tasks_data_for_triplets(tasks_data)
             new_task_ids = set()
             for t in tasks_data:
                 if isinstance(t, dict) and t.get('task_id') is not None:
@@ -3453,6 +3491,8 @@ def assignment_update(assignment_id: int):
 
         for sub in (assignment.submissions or []):
             sub.max_score = new_total
+            if sub.total_score is not None and new_total > 0:
+                sub.percentage = round((sub.total_score / new_total) * 100, 1)
 
         db.session.commit()
         return jsonify({'success': True, 'redirect': url_for('assignments.assignment_view', assignment_id=assignment.assignment_id)})
@@ -3501,6 +3541,14 @@ def assignment_add_tasks(assignment_id: int):
             db.session.add(at)
             existing_task_ids.add(task_id)
             added += 1
+
+        db.session.flush()
+        new_total = sum(at.max_score for at in (assignment.tasks or [])) or 1
+        for sub in (assignment.submissions or []):
+            sub.max_score = new_total
+            if sub.total_score is not None and new_total > 0:
+                sub.percentage = round((sub.total_score / new_total) * 100, 1)
+
         db.session.commit()
         return jsonify({'success': True, 'added': added, 'redirect': url_for('assignments.assignment_edit', assignment_id=assignment.assignment_id)})
     except Exception as e:
@@ -4370,6 +4418,11 @@ def submission_view(submission_id):
             return redirect(url_for('assignments.submissions_list'))
         student = submission.student
         is_parent_view = bool(getattr(current_user, 'is_parent', lambda: False)())
+        is_student_owner = bool(
+            getattr(current_user, 'is_student', lambda: False)()
+            and student
+            and current_user.id == student.user_id
+        )
         if (submission.status or '').upper() == 'REVOKED':
             flash('Эта работа была отозвана преподавателем.', 'info')
             return redirect(url_for('assignments.submissions_list'))
@@ -4389,12 +4442,12 @@ def submission_view(submission_id):
 
     # Преподаватель не должен видеть устаревший ученический экран task_detail:
     # его каноничная точка входа — V2-проверка с ответами, файлами, кодом и оценками.
-    if not is_parent_view and has_permission(current_user, 'assignment.grade'):
+    if not is_parent_view and not is_student_owner and has_permission(current_user, 'assignment.grade'):
         return redirect(url_for('assignments.submission_grade_view', submission_id=submission.submission_id))
 
     # Ученик (и родитель) просматривает и выполняет работу только в каноничном Workspace V2:
     # там находятся редактор, запуск, вложения, холст, статус проверки и единая навигация карточек.
-    if (getattr(current_user, 'is_student', lambda: False)() and student and current_user.id == student.user_id) or is_parent_view:
+    if is_student_owner or is_parent_view:
         ordered_tasks = sorted(assignment.tasks or [], key=lambda item: (item.order_index, item.assignment_task_id))
         if ordered_tasks:
             requested_task_id = request.args.get('focus_at', type=int)
@@ -5079,6 +5132,18 @@ def submission_autosave(submission_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+def _grade_submission_answer(answer, assignment_task, actor_user_id):
+    """Use the bound Code Judge runner for opt-in local tasks before legacy grading."""
+    task = getattr(assignment_task, 'task', None)
+    spec = getattr(task, 'answer_spec', None) if task else None
+    binding = spec.get('code_judge_binding') if isinstance(spec, dict) else None
+    if binding and platform_homework_enabled(int(actor_user_id)):
+        if grade_bound_answer is None:
+            return None, None
+        return grade_bound_answer(answer, assignment_task, int(actor_user_id))
+    return auto_grade_answer(answer, assignment_task)
+
+
 @assignments_bp.route('/submissions/<int:submission_id>/submit-task', methods=['POST'])
 @login_required
 @limiter.limit("30 per minute")
@@ -5177,10 +5242,22 @@ def submission_submit_task(submission_id):
         is_manual = _is_assignment_task_manual_review(assignment_task)
         details = None
         if not is_manual:
-            is_correct, score = auto_grade_answer(answer, assignment_task)
+            is_correct, score = _grade_submission_answer(answer, assignment_task, int(current_user.id))
             if is_correct is not None:
                 answer.is_correct = is_correct
                 answer.score = score if score is not None else (assignment_task.max_score if is_correct else 0)
+                from app.assignments.evaluation_history import record_answer_evaluation
+                report = getattr(answer, "_platform_code_judge_report", None)
+                answer_spec = getattr(getattr(assignment_task, "task", None), "answer_spec", None)
+                method = ("code_judge" if report else
+                          "python_test_suite" if isinstance(answer_spec, dict) and answer_spec.get("type") == "code"
+                          else "automatic_answer_checker")
+                record_answer_evaluation(
+                    answer, method=method, actor_user_id=int(current_user.id),
+                    score=int(answer.score) if answer.score is not None else None,
+                    max_score=int(assignment_task.max_score) if assignment_task.max_score is not None else None,
+                    is_correct=bool(is_correct),
+                )
                 try:
                     from app.analytics import AnalyticsEngine
                     details = AnalyticsEngine.process_submission_details(
@@ -5209,9 +5286,22 @@ def submission_submit_task(submission_id):
                             process_achievement_event(submission.student, 'task_speedrun', commit=False)
                     except Exception as ach_err:
                         logger.warning("Error processing task achievement: %s", ach_err)
+            else:
+                from app.assignments.evaluation_history import record_answer_evaluation
+                record_answer_evaluation(
+                    answer, method="automatic_check_unavailable", actor_user_id=int(current_user.id),
+                    score=None, max_score=int(assignment_task.max_score) if assignment_task.max_score is not None else None,
+                    is_correct=None,
+                )
         else:
             answer.is_correct = None
             answer.score = None
+            from app.assignments.evaluation_history import record_answer_evaluation
+            record_answer_evaluation(
+                answer, method="awaiting_teacher_review", actor_user_id=None,
+                score=None, max_score=int(assignment_task.max_score) if assignment_task.max_score is not None else None,
+                is_correct=None,
+            )
 
         if normalize_legacy_status(submission.status) == 'ASSIGNED':
             transition_submission_status(submission, 'IN_PROGRESS')
@@ -5390,6 +5480,17 @@ def submission_submit(submission_id):
                 if is_correct is not None:
                     answer.is_correct = is_correct
                     answer.score = score
+                    from app.assignments.evaluation_history import record_answer_evaluation
+                    report = getattr(answer, "_platform_code_judge_report", None)
+                    method = ("code_judge" if report else
+                              "python_test_suite" if answer_spec.get("type") == "code"
+                              else "automatic_answer_checker")
+                    record_answer_evaluation(
+                        answer, method=method, actor_user_id=int(current_user.id),
+                        score=int(score) if score is not None else None,
+                        max_score=int(assignment_task.max_score) if assignment_task.max_score is not None else None,
+                        is_correct=bool(is_correct),
+                    )
                     total_score += score
                     try:
                         # Если задание уже было сдано отдельно, MMR уже начислен в submit_task.
@@ -5419,8 +5520,22 @@ def submission_submit(submission_id):
                         logger.warning("Analytics process_submission failed: %s", anal_err)
                 else:
                     all_auto_graded = False
+                    if _answer_has_meaningful_student_work(answer):
+                        from app.assignments.evaluation_history import record_answer_evaluation
+                        record_answer_evaluation(
+                            answer, method="automatic_check_unavailable", actor_user_id=int(current_user.id),
+                            score=None, max_score=int(assignment_task.max_score) if assignment_task.max_score is not None else None,
+                            is_correct=None,
+                        )
             else:
                 all_auto_graded = False
+                if _answer_has_meaningful_student_work(answer):
+                    from app.assignments.evaluation_history import record_answer_evaluation
+                    record_answer_evaluation(
+                        answer, method="awaiting_teacher_review", actor_user_id=None,
+                        score=None, max_score=int(assignment_task.max_score) if assignment_task.max_score is not None else None,
+                        is_correct=None,
+                    )
         
         submission.total_score = total_score
         submission.max_score = max_score
@@ -5476,14 +5591,48 @@ def submission_submit(submission_id):
             except Exception as ai_err:
                 logger.warning(f"Could not trigger background AI review for submission {submission_id}: {ai_err}")
 
-        if creator_id:
-            notify_user(
-                creator_id,
-                kind='teacher_homework_submitted',
-                title='📤 Ученик сдал работу',
-                body=f'{student_name} сдал(а) работу «{assignment_title}»',
-                link_url=url_for('assignments.submission_view', submission_id=submission_id) if current_app else None,
-                meta={'submission_id': submission_id, 'assignment_id': assignment_id, 'student_id': student_id}
+        try:
+            if creator_id:
+                notify_user(
+                    creator_id,
+                    kind='teacher_homework_submitted',
+                    title='📤 Ученик сдал работу',
+                    body=f'{student_name} сдал(а) работу «{assignment_title}»',
+                    link_url=url_for('assignments.submission_view', submission_id=submission_id) if current_app else None,
+                    meta={
+                        'submission_id': submission_id,
+                        'assignment_id': assignment_id,
+                        'student_id': student_id,
+                        'student_name': student_name,
+                        'assignment_title': assignment_title,
+                        'submitted_at': now,
+                    }
+                )
+            from app.notifications.service import _get_parent_user_ids_for_student_user
+            for pid in _get_parent_user_ids_for_student_user(student_id):
+                notify_user(
+                    pid,
+                    kind='homework_submitted',
+                    title='📤 Ребёнок сдал работу',
+                    body=f'{student_name} сдал(а) работу «{assignment_title}»',
+                    link_url=url_for('assignments.submission_view', submission_id=submission_id) if current_app else None,
+                    meta={
+                        'submission_id': submission_id,
+                        'assignment_id': assignment_id,
+                        'student_id': student_id,
+                        'student_name': student_name,
+                        'assignment_title': assignment_title,
+                        'submitted_at': now,
+                    }
+                )
+            db.session.commit()
+        except Exception as notification_error:
+            db.session.rollback()
+            logger.warning(
+                'Submission %s was saved, but notification persistence failed: %s',
+                submission_id,
+                notification_error,
+                exc_info=True,
             )
         
         audit_logger.log(
@@ -5666,8 +5815,6 @@ def submission_save_code(submission_id):
 @check_access('assignment.grade')
 def submission_grade_view(submission_id):
     """Страница проверки работы учителем"""
-    if current_user.is_student() or current_user.is_parent():  # comment
-        return redirect(url_for('assignments.submission_view', submission_id=submission_id))  # comment
     submission = Submission.query.options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
         joinedload(Submission.answers),
@@ -5675,6 +5822,15 @@ def submission_grade_view(submission_id):
         joinedload(Submission.student),
         joinedload(Submission.comments).joinedload(SubmissionComment.author)
     ).get_or_404(submission_id)
+
+    student = submission.student
+    is_student_owner = bool(
+        current_user.is_student()
+        and student
+        and current_user.id == student.user_id
+    )
+    if current_user.is_parent() or is_student_owner:
+        return redirect(url_for('assignments.submission_view', submission_id=submission_id))
     
     assignment = submission.assignment
     
@@ -6200,8 +6356,10 @@ def submission_grade_save(submission_id):
         "scores_only": true — сохранить баллы/рубрику/отзыв без смены статуса уведомлений; MMR пересчитывается (как при завершении), без повторного суммирования при перезаписи
     }
     """
-    if current_user.is_student() or current_user.is_parent():  # comment
-        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
+    # @check_access verifies the authenticated account's grading permission.
+    # Role checks here are redundant and can reject a privileged creator when
+    # the UI is opened in a student/parent preview persona. Assignment scope
+    # is checked below against the authenticated account.
     submission = Submission.query.options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
         joinedload(Submission.answers),
@@ -6225,7 +6383,8 @@ def submission_grade_save(submission_id):
         data = request.get_json()
         scores_only = data.get('scores_only') in (True, 'true', 'True', 1, '1', 'yes', 'YES')
         scores_data = data.get('scores', [])
-        teacher_feedback = data.get('teacher_feedback', '').strip()
+        teacher_feedback_provided = 'teacher_feedback' in data
+        teacher_feedback = (data.get('teacher_feedback') or '').strip() if teacher_feedback_provided else None
         status = data.get('status', 'GRADED')  # GRADED или RETURNED
         raw_return_task_ids = data.get('return_assignment_task_ids') or []
         raw_reviewed_task_ids = data.get('reviewed_assignment_task_ids') or []
@@ -6263,6 +6422,7 @@ def submission_grade_save(submission_id):
             if getattr(ans, 'assignment_task_id', None) is not None
         }
         processed_task_ids: set[int] = set()
+        evaluation_recorded_task_ids: set[int] = set()
         mmr_override_by_task_id: dict[int, float] = {}
         rating_comment_override_by_task_id: dict[int, str] = {}
 
@@ -6280,7 +6440,8 @@ def submission_grade_save(submission_id):
 
             raw_score = score_data.get('score')
             has_score = raw_score is not None and str(raw_score).strip() != ''
-            comment = str(score_data.get('comment', '') or '').strip()
+            comment_provided = 'comment' in score_data
+            comment = str(score_data.get('comment') or '').strip() if comment_provided else ''
 
             assignment_task = assignment_tasks_by_id.get(assignment_task_id)
             if not assignment_task:
@@ -6305,11 +6466,19 @@ def submission_grade_save(submission_id):
                 continue
 
             sc_num = _coerce_int_score(raw_score) if has_score else None
+            if comment_provided:
+                answer.teacher_comment = comment or None
             if sc_num is not None:
                 answer.score = min(max(0, sc_num), assignment_task.max_score)  # Ограничиваем максимумом
                 # Для ручной проверки считаем задание выполненным корректно, если преподаватель выставил >= 1 балла.
                 answer.is_correct = bool((answer.score or 0) >= 1)
-            answer.teacher_comment = comment or None
+                from app.assignments.evaluation_history import record_answer_evaluation
+                record_answer_evaluation(
+                    answer, method="teacher_manual", actor_user_id=int(current_user.id),
+                    score=int(answer.score), max_score=int(assignment_task.max_score),
+                    is_correct=bool(answer.is_correct), teacher_comment=answer.teacher_comment,
+                )
+                evaluation_recorded_task_ids.add(assignment_task_id)
             if assignment_task_id in reviewed_task_ids:
                 answer.reviewed_at = utc_now()
 
@@ -6347,6 +6516,14 @@ def submission_grade_save(submission_id):
                     pass
                 answers_by_task_id[assignment_task_id] = answer
             answer.reviewed_at = utc_now()
+            if assignment_task_id not in evaluation_recorded_task_ids:
+                from app.assignments.evaluation_history import record_answer_evaluation
+                record_answer_evaluation(
+                    answer, method="teacher_reviewed_without_score", actor_user_id=int(current_user.id),
+                    score=None, max_score=int(assignment_task.max_score) if assignment_task.max_score is not None else None,
+                    is_correct=None, teacher_comment=answer.teacher_comment,
+                )
+                evaluation_recorded_task_ids.add(assignment_task_id)
 
         # Полный максимум работы не зависит от того, какие поля формы браузер прислал.
         # Это не позволяет автосохранению пустой карточки «съесть» баллы остальных задач.
@@ -6359,7 +6536,8 @@ def submission_grade_save(submission_id):
         submission.total_score = total_score
         submission.max_score = max_score
         submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
-        submission.teacher_feedback = teacher_feedback
+        if teacher_feedback_provided:
+            submission.teacher_feedback = teacher_feedback
 
         if not scores_only:
             if status == 'RETURNED':
@@ -6463,6 +6641,14 @@ def submission_grade_save(submission_id):
             try:
                 student = Student.query.get(submission.student_id)
                 if student:
+                    grade_meta = {
+                        'submission_id': submission.submission_id,
+                        'assignment_id': assignment.assignment_id,
+                        'assignment_title': assignment.title or 'Домашняя работа',
+                        'score': submission.total_score,
+                        'teacher_comment': (teacher_feedback or '').strip() or None,
+                        'status': status,
+                    }
                     if status == 'GRADED':
                         notify_student_and_parents(
                             student,
@@ -6470,7 +6656,7 @@ def submission_grade_save(submission_id):
                             title='Работа проверена',
                             body=(teacher_feedback or '').strip() or None,
                             link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
-                            meta={'submission_id': submission.submission_id, 'assignment_id': assignment.assignment_id, 'status': status},
+                            meta=grade_meta,
                         )
                     else:
                         notify_student_and_parents(
@@ -6479,7 +6665,7 @@ def submission_grade_save(submission_id):
                             title='Работа возвращена на доработку',
                             body=(teacher_feedback or '').strip() or None,
                             link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
-                            meta={'submission_id': submission.submission_id, 'assignment_id': assignment.assignment_id, 'status': status},
+                            meta=grade_meta,
                         )
             except Exception as e:
                 logger.warning(f"Failed to notify student about submission grade: {e}")

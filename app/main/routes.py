@@ -30,7 +30,11 @@ def get_active_role():
     иначе возвращает current_user.role.
     """
     from flask import session, current_app
-    if (current_app.config.get('DEBUG') or current_app.config.get('TESTING')) and session.get('sandbox_role'):
+    if (
+        (current_app.config.get('DEBUG') or current_app.config.get('TESTING'))
+        and session.get('sandbox_role')
+        and _synthetic_role_switch_enabled()
+    ):
         return session['sandbox_role']
     if current_user and current_user.is_authenticated:
         return getattr(current_user, 'role', 'student')
@@ -2184,9 +2188,8 @@ def debug_streak(student_id):
 
 
 def is_godmode_user():
-    role = getattr(current_user, 'role', '')
-    sb_role = session.get('sandbox_role', '')
-    return role == 'creator' or sb_role == 'creator' or getattr(current_user, 'is_admin', lambda: False)() or role in ['admin', 'chief_admin']
+    role = get_active_role()
+    return role == 'creator' or getattr(current_user, 'is_admin', lambda: False)() or role in ['admin', 'chief_admin']
 
 
 @main_bp.route('/api/students/<int:student_id>/link_tutor', methods=['POST'])
@@ -3944,6 +3947,56 @@ def universal_profile_view(user_id=None):
             'generic_stats': generic_stats
         })
 
+    context['adaptive_learning_summary'] = None
+    if (can_manage_student and role == 'student'
+            and str(target_user.username or '').startswith(('demo_', 'synthetic_'))):
+        from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+        if has_verified_safe_ai_lab_db():
+            try:
+                from app.ai_lab.tutor_core31 import get_tutor_core31_state
+                from app.models import Student
+
+                target_student = Student.query.filter_by(user_id=target_user.id).first()
+                state = get_tutor_core31_state(int(viewer.id))
+                learner = next((item for item in state.get('learners', [])
+                                if target_student and item.get('student_id') == target_student.student_id), None)
+                if target_student:
+                    comparison = (learner.get('comparison') or {}) if learner else {}
+                    decision = comparison.get('decision') or {}
+                    from app.ai_lab.analytics import all_analytics_evidence
+                    subject_id = f"platform-student:{int(target_user.id)}"
+                    source_rows = [
+                        ('ai_classwork', 'Классная работа'),
+                        ('ai_homework', 'Домашняя работа'),
+                        ('ai_practice', 'Свободная практика'),
+                        ('ai_lesson_intelligence', 'Анализ урока'),
+                    ]
+                    subject_events = [
+                        event for event in all_analytics_evidence(actor_user_id=int(viewer.id))
+                        if event.get('subject_id') == subject_id
+                    ]
+                    source_evidence = [
+                        {
+                            'label': label,
+                            'count': sum(1 for event in subject_events if event.get('source_module') == source),
+                        }
+                        for source, label in source_rows
+                    ]
+                    if viewer_role in {'creator', 'admin', 'chief_admin'}:
+                        details_url = url_for('ai_lab.tutor_core_page')
+                    else:
+                        details_url = url_for('students.student_practice', student_id=target_student.student_id)
+                    context['adaptive_learning_summary'] = {
+                        'event_count': int(learner.get('event_count') or 0) if learner else 0,
+                        'next_step': decision.get('title') or 'Пока нет основания менять следующий шаг',
+                        'reason': decision.get('reason') or 'Нужно собрать подтверждённые учебные события по этому профилю.',
+                        'source_evidence': source_evidence,
+                        'details_url': details_url,
+                        'curriculum_status': learner.get('curriculum_status') or 'not_linked',
+                    }
+            except Exception:
+                logger.exception('Unable to build synthetic adaptive learning profile summary')
+
     return render_template('sandbox/profile.html', **context)
 
 
@@ -4148,35 +4201,69 @@ def api_enroll_mentor_program(teacher_id):
 # =========================================================================
 # DEV ROLE SWITCHER & IMPERSONATION API
 # =========================================================================
-def _require_dev_tools(*, administrator_only=False):
-    """Restrict local QA helpers to a signed-in staff session."""
-    is_privileged_user = False
+def _is_dev_or_sandbox():
+    env = (os.environ.get('ENVIRONMENT') or 'local').strip().lower()
+    return bool(
+        current_app.config.get('DEBUG')
+        or current_app.config.get('TESTING')
+        or env in {'local', 'development', 'dev', 'sandbox'}
+    )
 
-    session_user_id = session.get('_user_id')
+
+def _synthetic_role_switch_enabled():
+    """Allow dev role switching in dev/sandbox/testing or when safe AI lab is active."""
+    if _is_dev_or_sandbox():
+        return True
     try:
-        authenticated_user = db.session.get(User, int(session_user_id)) if session_user_id else None
+        from app.ai_lab.database_safety import has_verified_safe_ai_lab_db
+        from app.ai_lab.provider import is_local_ai_lab_enabled
+
+        return has_verified_safe_ai_lab_db() and is_local_ai_lab_enabled()
+    except Exception:
+        return False
+
+
+def _safe_synthetic_student_user(user):
+    """Only allow a linked, active demo learner from the verified synthetic DB."""
+    if (
+        not user
+        or not user.is_active
+        or (user.role or '').lower() != 'student'
+        or not (user.username or '').startswith(('demo_', 'synthetic_'))
+    ):
+        return False
+    from app.models import Student
+
+    return Student.query.filter_by(user_id=user.id).first() is not None
+
+
+_CANONICAL_DEV_IMPERSONATION_USERS = {
+    'creator', 'chief_admin', 'demo_admin_1',
+    'qa_pool_teacher_1', 'demo_teacher_2', 'demo_tutor_1',
+    'demo_student_1', 'demo_student_2', 'demo_student_3',
+    'demo_parent_1', 'demo_parent_2', 'demo_parent_3',
+    'qa_pool_admin_2', 'qa_pool_student_4', 'demo_auditor',
+}
+
+
+def _require_dev_tools(*, administrator_only=False):
+    """Allow QA identity switching only to staff in dev/sandbox or verified synthetic lab."""
+    if not _synthetic_role_switch_enabled():
+        abort(403)
+
+    actor_id = session.get('impersonator_id') or session.get('_user_id')
+    try:
+        authenticated_user = db.session.get(User, int(actor_id)) if actor_id else None
     except (TypeError, ValueError):
         authenticated_user = None
 
-    if authenticated_user and authenticated_user.is_active:
-        user_role = (authenticated_user.role or '').lower()
-        if (
-            authenticated_user.is_admin() or
-            authenticated_user.is_creator() or
-            authenticated_user.is_chief_tester() or
-            authenticated_user.is_tester() or
-            user_role in ['creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'] or
-            session.get('is_impersonating', False) or
-            session.get('impersonator_id') is not None
-        ):
-            is_privileged_user = True
-
-    # Локальная/тестовая среда не расширяет права: переключатель ролей сам
-    # является привилегированной операцией и доступен только staff/QA-сессиям.
-    if not is_privileged_user:
+    if not authenticated_user or not authenticated_user.is_active:
         abort(403)
-
-    if not authenticated_user:
+    user_role = (authenticated_user.role or '').lower()
+    privileged_roles = {'creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'}
+    if user_role not in privileged_roles:
+        abort(403)
+    if administrator_only and user_role not in {'creator', 'admin', 'chief_admin'}:
         abort(403)
 
 
@@ -4186,17 +4273,7 @@ def _require_dev_tools(*, administrator_only=False):
 @login_required
 def dev_get_users_api():
     """API отдачи 15 сбалансированных пользователей (по 3 на каждую роль) для виджета Dev Role Switcher (Alt + I)."""
-    if not (
-        current_user and current_user.is_authenticated and (
-            current_user.is_admin() or 
-            current_user.is_creator() or 
-            getattr(current_user, 'is_chief_tester', lambda: False)() or
-            getattr(current_user, 'is_tester', lambda: False)() or
-            getattr(current_user, 'role', '') in ['creator', 'admin', 'chief_admin', 'chief_tester', 'tester', 'tutor', 'teacher'] or
-            session.get('is_impersonating', False)
-        )
-    ):
-        return jsonify({'success': False, 'error': 'Недостаточно прав'}), 403
+    _require_dev_tools()
 
     # В изолированном pytest схема создаётся уже после app bootstrap, поэтому
     # системная учётная запись creator должна быть добавлена только здесь.
@@ -4333,10 +4410,19 @@ def dev_impersonate_user(target_identifier=None, user_id=None):
         user = User.query.filter_by(username=str(target)).first()
 
     if not user:
-        user = User.query.filter((User.username == 'creator') | (User.role == 'creator')).first()
-
-    if not user:
         abort(404)
+
+    allowed_target = (
+        user.is_active
+        and (
+            user.username in _CANONICAL_DEV_IMPERSONATION_USERS
+            or _safe_synthetic_student_user(user)
+            or current_app.config.get('TESTING')
+            or _is_dev_or_sandbox()
+        )
+    )
+    if not allowed_target:
+        abort(403)
 
     if 'impersonator_id' not in session:
         original_user_id = session.get('_user_id')
@@ -4348,7 +4434,7 @@ def dev_impersonate_user(target_identifier=None, user_id=None):
     session['sandbox_role'] = user.role
     session['is_impersonating'] = True
 
-    login_user(user, remember=True)
+    login_user(user, remember=False)
     flash(f"Вы вошли под пользователем {user.username} ({user.role})", "info")
     return redirect(url_for('main.dashboard'))
 
@@ -4362,7 +4448,7 @@ def dev_revert_impersonation():
         orig_user = User.query.get(imp_id)
         if orig_user:
             session['_user_id'] = str(orig_user.id)
-            login_user(orig_user, remember=True)
+            login_user(orig_user, remember=False)
     # Нельзя оставлять маркеры прошлой имперсонации: они подменяют активную
     # роль после возврата и способны снова открыть ученический кабинет.
     session.pop('impersonator_id', None)

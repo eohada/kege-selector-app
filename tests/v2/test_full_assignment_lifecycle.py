@@ -57,10 +57,10 @@ def test_assignment_lifecycle_uses_only_canonical_v2_endpoints(app, client, role
         'task_times': {str(assignment_task_id): 15},
     })
     assert submitted.status_code == 200, submitted.get_json()
-    assert submitted.get_json()['status'] in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW'}
+    assert submitted.get_json()['status'] in {'SUBMITTED', 'NEEDS_MANUAL_REVIEW', 'GRADED'}
 
     _login_as(client, role_users['tutor_id'], 'tutor')
-    grade_page = client.get(f'/submissions/{submission_id}/grade')
+    grade_page = client.get(f'/submissions/{submission_id}/grade?legacy=1')
     assert grade_page.status_code == 200
     graded = client.post(f'/submissions/{submission_id}/grade', json={
         'scores': [{'assignment_task_id': assignment_task_id, 'score': 1, 'comment': 'Верно'}],
@@ -72,6 +72,135 @@ def test_assignment_lifecycle_uses_only_canonical_v2_endpoints(app, client, role
         final_submission = db.session.get(Submission, submission_id)
         assert final_submission.status == 'GRADED'
         assert final_submission.total_score == 1
+
+
+def test_submission_datetime_notification_is_persisted_with_outbox(app, client, role_users):
+    from app import db
+    from core.db_models import Assignment, AssignmentTask, Submission, Tasks, TelegramDelivery, User, UserNotification, utc_now
+
+    creator_id = role_users['creator_id']
+    with app.app_context():
+        db.session.get(User, creator_id).is_demo_user = False
+        task = Tasks(task_number=199, content_html='Notification serialization fixture', answer='42')
+        db.session.add(task)
+        db.session.commit()
+        task_id = task.task_id
+
+    _login_as(client, creator_id, 'creator')
+    distributed = client.post('/assignments/distribute', json={
+        'title': 'Notification datetime regression',
+        'type': 'homework',
+        'recipientIds': [role_users['student_id']],
+        'tasks': [{'task_id': task_id, 'max_score': 1}],
+        'deadline': (utc_now() + timedelta(days=2)).isoformat(),
+    })
+    assert distributed.status_code == 201, distributed.get_json()
+
+    with app.app_context():
+        assignment = db.session.get(Assignment, distributed.get_json()['assignment_id'])
+        assert assignment.created_by_id == creator_id
+        submission = Submission.query.filter_by(
+            assignment_id=assignment.assignment_id,
+            student_id=role_users['student_id'],
+        ).one()
+        submission_id = submission.submission_id
+        assignment_task_id = AssignmentTask.query.filter_by(
+            assignment_id=submission.assignment_id,
+        ).one().assignment_task_id
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    assert client.post(f'/submissions/{submission_id}/start').status_code == 200
+    assert client.put(f'/submissions/{submission_id}/autosave', json={
+        'answers': [{'assignment_task_id': assignment_task_id, 'value': '42'}],
+    }).status_code == 200
+    submitted = client.post(f'/submissions/{submission_id}/submit', json={})
+    assert submitted.status_code == 200, submitted.get_json()
+    duplicate_submit = client.post(f'/submissions/{submission_id}/submit', json={})
+    assert duplicate_submit.status_code in {400, 403, 409}
+
+    with app.app_context():
+        notification = UserNotification.query.filter_by(
+            user_id=creator_id,
+            kind='teacher_homework_submitted',
+        ).one()
+        submitted_at = notification.meta['submitted_at']
+        assert isinstance(submitted_at, str) and submitted_at
+        delivery = TelegramDelivery.query.filter_by(
+            notification_id=notification.notification_id,
+        ).one()
+        assert delivery.payload['meta']['submitted_at'] == submitted_at
+
+
+def test_creator_can_save_grade_while_using_student_preview(app, client, role_users):
+    """Student preview persona must not override a creator's grading permission."""
+    from app import db
+    from core.db_models import Answer, AssignmentTask, Submission, Tasks, utc_now
+
+    with app.app_context():
+        task = Tasks(task_number=903, content_html='Preview grading task', answer='42')
+        db.session.add(task)
+        db.session.commit()
+        task_id = task.task_id
+
+    _login_as(client, role_users['tutor_id'], 'tutor')
+    distributed = client.post('/assignments/distribute', json={
+        'title': 'Creator preview grading',
+        'type': 'homework',
+        'recipientIds': [role_users['student_id']],
+        'tasks': [{'task_id': task_id, 'max_score': 1}],
+        'deadline': (utc_now() + timedelta(days=2)).isoformat(),
+    })
+    assert distributed.status_code == 201, distributed.get_json()
+
+    with app.app_context():
+        submission = Submission.query.filter_by(
+            assignment_id=distributed.get_json()['assignment_id'],
+            student_id=role_users['student_id'],
+        ).one()
+        assignment_task_id = AssignmentTask.query.filter_by(assignment_id=submission.assignment_id).one().assignment_task_id
+        submission_id = submission.submission_id
+
+    _login_as(client, role_users['student_user_id'], 'student')
+    assert client.post(f'/submissions/{submission_id}/start').status_code == 200
+    assert client.put(f'/submissions/{submission_id}/autosave', json={
+        'answers': [{'assignment_task_id': assignment_task_id, 'value': '42'}],
+    }).status_code == 200
+    assert client.post(f'/submissions/{submission_id}/submit', json={
+        'task_times': {str(assignment_task_id): 15},
+    }).status_code == 200
+
+    _login_as(client, role_users['creator_id'], 'student')
+    saved = client.post(f'/submissions/{submission_id}/grade', json={
+        'scores': [{'assignment_task_id': assignment_task_id, 'score': 1, 'comment': 'Проверено вручную'}],
+        'teacher_feedback': 'Оценка сохранена из режима предпросмотра ученика.',
+        'status': 'GRADED',
+    })
+    assert saved.status_code == 200, saved.get_json()
+    assert saved.get_json()['success'] is True
+
+    autosaved = client.post(f'/submissions/{submission_id}/grade', json={
+        'scores_only': True,
+        'scores': [{'assignment_task_id': assignment_task_id, 'score': 1}],
+    })
+    assert autosaved.status_code == 200, autosaved.get_json()
+    with app.app_context():
+        answer = db.session.query(Answer).filter_by(
+            submission_id=submission_id,
+            assignment_task_id=assignment_task_id,
+        ).one()
+        final_submission = db.session.get(Submission, submission_id)
+        assert answer.score == 1
+        assert answer.teacher_comment == 'Проверено вручную'
+        assert final_submission.total_score == 1
+        assert final_submission.teacher_feedback == 'Оценка сохранена из режима предпросмотра ученика.'
+
+    from app.task_workspace.service import resolve_workspace_context
+    from core.db_models import User
+    with app.test_request_context():
+        creator = db.session.get(User, role_users['creator_id'])
+        workspace = resolve_workspace_context(creator, 'submission_task', submission_id, assignment_task_id)
+        nav_item = next(item for item in workspace.tasks_nav if item['assignment_task_id'] == assignment_task_id)
+        assert nav_item['teacher_comment'] == 'Проверено вручную'
 
 
 def test_teacher_review_shows_the_exact_student_answer_value(app, client, role_users):

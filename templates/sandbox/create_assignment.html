@@ -307,7 +307,13 @@
   <div class="bg-[#F4F7FA] border-2 border-slate-200 shadow-[0_4px_0_#DAE1E9] rounded-[2rem] p-6 sm:p-8 max-w-[1100px] w-full max-h-[90vh] flex flex-col gap-5">
     <div class="flex items-center justify-between pb-3 border-b-2 border-slate-200">
       <div><h3 class="text-lg font-black text-slate-800 font-display flex items-center gap-2"><span class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center justify-center"><i class="ph-bold ph-books text-lg"></i></span> Банк заданий</h3><p class="text-xs text-slate-500 mt-1">Выберите курс, тему и добавьте нужные задания.</p></div>
-      <button onclick="closeBankModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer">&times;</button>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="openTaskBankPage()" class="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 border-b-[2px] active:border-b-[1px] active:translate-y-[1px] text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all" title="Открыть полный Банк заданий со структурой тем и фильтрами">
+          <i class="ph-bold ph-arrow-square-out text-sm"></i>
+          <span class="hidden sm:inline">Открыть полный банк</span>
+        </button>
+        <button onclick="closeBankModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold bg-white border-2 border-slate-200 w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer">&times;</button>
+      </div>
     </div>
     <div class="space-y-3">
       <input id="bank-search" oninput="scheduleBankSearch()" placeholder="Поиск по названию, теме или условию" class="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 rounded-xl px-4 py-3 text-sm outline-none">
@@ -700,6 +706,7 @@
   "initialTasks": {{ (initial_tasks if initial_tasks is defined else []) | tojson | safe }},
   "assignmentId": {{ ((source_meta.assignment_id if (source_meta is defined and source_meta and source_meta.assignment_id) else (assignment_id if assignment_id is defined else None))) | tojson | safe }},
   "isEditMode": {{ (is_edit_mode if is_edit_mode is defined else false) | tojson | safe }},
+  "hasAnswers": {{ (has_answers if has_answers is defined else (existing_assignment.has_answers if (existing_assignment is defined and existing_assignment and existing_assignment.has_answers is defined) else false)) | tojson | safe }},
   "lessonId": {{ ((source_meta.lesson_id if (source_meta is defined and source_meta and source_meta.lesson_id) else (lesson_id if lesson_id is defined else None))) | tojson | safe }},
   "defaultRecipientIds": {{ (default_recipient_ids if default_recipient_ids is defined else []) | tojson | safe }}
 }
@@ -796,7 +803,7 @@ function applyPreset(presetType) {
 }
 
 function scheduleDraftSave() {
-  if (!isBuilderReady || pageData.isEditMode) return;
+  if (!isBuilderReady) return;
   window.clearTimeout(draftSaveTimer);
   draftSaveTimer = window.setTimeout(() => saveAssignmentDraft(false), 900);
 }
@@ -822,11 +829,11 @@ function requiresManualGrading(task) {
 function assignmentTaskPayload(task, idx) {
   return {
     task_id: task.task_id,
-    max_score: task.max_score || 1,
+    max_score: Number(task.max_score) || 1,
     order_index: idx + 1,
     requires_manual_grading: requiresManualGrading(task),
     max_attempts: task.max_attempts !== undefined ? task.max_attempts : null,
-    answer_override: task.answer_override || null,
+    answer_override: (task.answer_override !== undefined && task.answer_override !== null) ? task.answer_override : (task.answer ? String(task.answer).trim() : null),
   };
 }
 
@@ -1030,13 +1037,20 @@ function renderAttachedTasks() {
   attachedTasks.forEach((t, idx) => {
     const snippet = (t.content_html || '').replace(/<[^>]*>?/gm, '').substring(0, 70);
     const isManual = requiresManualGrading(t);
+    const examBadge = t.task_number ? `ЕГЭ №${t.task_number}` : (t.topic || 'Задание');
 
     html += `
-      <div id="task-card-${idx}" class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 transition-all space-y-3">
+      <div id="task-card-${idx}" draggable="true" ondragstart="handleDragStart(event, ${idx})" ondragover="handleDragOver(event, ${idx})" ondragleave="handleDragLeave(event, ${idx})" ondrop="handleDrop(event, ${idx})" ondragend="handleDragEnd(event)" class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 transition-all space-y-3">
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 overflow-hidden flex-1 cursor-pointer" onclick="toggleTaskExpand(${idx})">
-            <span class="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-black shadow-xs flex-shrink-0">
-              № ${t.task_number}
+            <span class="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 p-0.5 flex items-center justify-center flex-shrink-0" title="Перетащите для изменения порядка">
+              <i class="ph-bold ph-dots-six-vertical text-base"></i>
+            </span>
+            <span class="w-6 h-6 rounded-md bg-slate-900 text-white text-[11px] font-black flex items-center justify-center flex-shrink-0 shadow-xs" title="Порядковый номер задания в работе">
+              № ${idx + 1}
+            </span>
+            <span class="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-black flex-shrink-0" title="Номер темы в экзамене">
+              ${escapeHtml(examBadge)}
             </span>
             <span class="text-xs font-bold text-slate-700 truncate">${escapeHtml(snippet)}...</span>
           </div>
@@ -1052,13 +1066,13 @@ function renderAttachedTasks() {
               <input type="number" min="1" max="100" value="${t.max_score || 1}" onchange="updateTaskScore(${idx}, this.value)" class="w-10 bg-transparent text-xs font-black text-slate-800 text-center outline-none">
             </div>
 
-            <button onclick="moveTaskUp(${idx})" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30" title="Переместить выше">
+            <button type="button" onclick="moveTaskUp(${idx})" ${idx === 0 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30" title="Переместить выше">
               ↑
             </button>
-            <button onclick="moveTaskDown(${idx})" ${idx === attachedTasks.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30" title="Переместить ниже">
+            <button type="button" onclick="moveTaskDown(${idx})" ${idx === attachedTasks.length - 1 ? 'disabled' : ''} class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer disabled:opacity-30" title="Переместить ниже">
               ↓
             </button>
-            <button onclick="removeTaskFromAssignment(${idx})" class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer" title="Удалить из работы">
+            <button type="button" onclick="removeTaskFromAssignment(${idx})" class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold flex items-center justify-center border-none cursor-pointer" title="Удалить из работы">
               &times;
             </button>
           </div>
@@ -1205,7 +1219,56 @@ function moveTaskDown(idx) {
   scheduleDraftSave();
 }
 
+let dragSrcIdx = null;
+
+function handleDragStart(e, idx) {
+  dragSrcIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(idx));
+  const card = document.getElementById(`task-card-${idx}`);
+  if (card) card.style.opacity = '0.4';
+}
+
+function handleDragOver(e, idx) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const card = document.getElementById(`task-card-${idx}`);
+  if (card && dragSrcIdx !== idx) {
+    card.classList.add('border-indigo-400', 'bg-indigo-50/40');
+  }
+}
+
+function handleDragLeave(e, idx) {
+  const card = document.getElementById(`task-card-${idx}`);
+  if (card) card.classList.remove('border-indigo-400', 'bg-indigo-50/40');
+}
+
+function handleDrop(e, targetIdx) {
+  e.preventDefault();
+  const card = document.getElementById(`task-card-${targetIdx}`);
+  if (card) card.classList.remove('border-indigo-400', 'bg-indigo-50/40');
+  if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+  const moved = attachedTasks.splice(dragSrcIdx, 1)[0];
+  attachedTasks.splice(targetIdx, 0, moved);
+  dragSrcIdx = null;
+  renderAttachedTasks();
+  scheduleDraftSave();
+}
+
+function handleDragEnd(e) {
+  dragSrcIdx = null;
+  document.querySelectorAll('[id^="task-card-"]').forEach(el => {
+    el.style.opacity = '';
+    el.classList.remove('border-indigo-400', 'bg-indigo-50/40');
+  });
+}
+
 function removeTaskFromAssignment(idx) {
+  if (pageData.hasAnswers) {
+    if (!confirm('У учеников уже есть ответы на задания в этой работе. Удаление задания может повлиять на их результаты.\n\nУдалить задание?')) {
+      return;
+    }
+  }
   attachedTasks.splice(idx, 1);
   renderAttachedTasks();
   scheduleDraftSave();
@@ -1232,10 +1295,30 @@ function closeInputIdsModal() {
   document.getElementById('input-ids-modal').classList.add('hidden');
 }
 
-function openTaskBankPage() {
+async function openTaskBankPage() {
+  const triggerBtn = event?.currentTarget || document.activeElement;
+  if (triggerBtn && triggerBtn.tagName === 'BUTTON') {
+    triggerBtn.disabled = true;
+  }
+  window.clearTimeout(draftSaveTimer);
+  show3DToast('Сохраняем изменения перед переходом в банк...');
+  try {
+    await saveAssignmentDraft(false);
+  } catch (err) {
+    console.error('Error saving assignment before opening bank:', err);
+  }
+
   const current = new URL(window.location.href);
+  if (pageData.assignmentId && !pageData.isEditMode) {
+    current.searchParams.set('assignment_id', pageData.assignmentId);
+    current.searchParams.set('draft_id', pageData.assignmentId);
+  }
   const returnTo = `${current.pathname}${current.search}`;
-  window.location.href = `/task-generator/bank?return_to=${encodeURIComponent(returnTo)}`;
+  let bankUrl = `/task-generator/bank?return_to=${encodeURIComponent(returnTo)}`;
+  if (pageData.assignmentId) {
+    bankUrl += `&assignment_id=${pageData.assignmentId}&mode=assignment`;
+  }
+  window.location.href = bankUrl;
 }
 
 function openBankModal() {
@@ -2402,30 +2485,51 @@ function filterRecipients() {
 }
 
 /* --- SAVE & SUBMIT LOGIC --- */
-async function saveAssignmentDraft(showAlert = true) {
+function buildAssignmentData() {
   const presetCard = document.querySelector('.preset-card.border-indigo-600');
   const presetType = presetCard ? presetCard.id.replace('preset-card-', '') : 'homework';
 
-  const body = {
+  const selectedGroups = (pageData.groups || []).filter(group => selectedGroupIds.has(group.group_id));
+  const recipientIds = new Set(Array.from(selectedStudentIds));
+  selectedGroups.forEach(group => (group.member_ids || []).forEach(studentId => recipientIds.add(studentId)));
+
+  const titleInput = document.getElementById('assignment-title')?.value?.trim();
+  const title = titleInput || (pageData.isEditMode ? 'Без названия' : `${presetType === 'exam' ? 'Пробник' : presetType === 'test' ? 'Контрольная работа' : 'Домашняя работа'} — ${new Intl.DateTimeFormat('ru-RU').format(new Date())}`);
+
+  return {
+    draft_id: pageData.assignmentId,
     assignment_id: pageData.assignmentId,
     lesson_id: pageData.lessonId || null,
-    title: document.getElementById('assignment-title').value,
-    description: document.getElementById('assignment-description').value,
+    title,
+    description: document.getElementById('assignment-description')?.value || '',
+    type: presetType,
     assignment_type: presetType,
-    deadline: document.getElementById('assignment-deadline').value,
-    time_limit_minutes: document.getElementById('assignment-time-limit').value,
-    max_attempts_default: document.getElementById('assignment-max-attempts').value,
-    hard_deadline: document.getElementById('assignment-hard-deadline').checked,
-    hide_before_start: document.getElementById('assignment-hide-before-start').checked,
-    allow_separate_submission: document.getElementById('assignment-allow-separate').checked,
-    course_id: document.getElementById('assignment-course').value || null,
+    deadline: document.getElementById('assignment-deadline')?.value || '',
+    time_limit_minutes: document.getElementById('assignment-time-limit')?.value || '',
+    max_attempts_default: document.getElementById('assignment-max-attempts')?.value || '1',
+    hard_deadline: Boolean(document.getElementById('assignment-hard-deadline')?.checked),
+    hide_before_start: Boolean(document.getElementById('assignment-hide-before-start')?.checked),
+    allow_separate_submission: Boolean(document.getElementById('assignment-allow-separate')?.checked),
+    grading_mode: selectedGradingMode(),
+    exam_course_id: document.getElementById('assignment-course')?.value || null,
+    course_id: document.getElementById('assignment-course')?.value || null,
     target_students: Array.from(selectedStudentIds),
     target_groups: Array.from(selectedGroupIds),
+    recipientIds: Array.from(recipientIds),
+    recipient_ids: Array.from(recipientIds),
     tasks: attachedTasks.map(assignmentTaskPayload)
   };
+}
+
+async function saveAssignmentDraft(showAlert = true) {
+  if (!isBuilderReady) return null;
+  const body = buildAssignmentData();
 
   try {
-    const res = await fetch('/assignments/api/create/draft', {
+    const isEdit = Boolean(pageData.isEditMode && pageData.assignmentId);
+    const url = isEdit ? `/assignments/${pageData.assignmentId}/update` : '/assignments/api/create/draft';
+
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2435,45 +2539,36 @@ async function saveAssignmentDraft(showAlert = true) {
     });
     const data = await res.json();
     if (data.success) {
-      pageData.assignmentId = data.assignment_id;
+      if (!isEdit && data.assignment_id) {
+        pageData.assignmentId = data.assignment_id;
+        const currentUrl = new URL(window.location.href);
+        if (!currentUrl.searchParams.has('draft_id')) {
+          currentUrl.searchParams.set('draft_id', data.assignment_id);
+          window.history.replaceState({}, '', currentUrl.toString());
+        }
+      }
       const badge = document.getElementById('draft-status-badge');
-      if (badge) badge.textContent = `Черновик ID #${data.assignment_id}`;
-      if (showAlert) show3DToast(data.message || 'Черновик сохранен!');
+      if (badge) {
+        if (isEdit) {
+          badge.textContent = `Работа #${pageData.assignmentId} (сохранено)`;
+        } else {
+          badge.textContent = `Черновик ID #${pageData.assignmentId}`;
+        }
+      }
+      if (showAlert) show3DToast(data.message || (isEdit ? 'Изменения сохранены!' : 'Черновик сохранен!'));
       return data;
+    } else {
+      if (showAlert) show3DToast(data.error || data.message || 'Ошибка сохранения', null, 'error');
     }
   } catch (e) {
-    if (showAlert) show3DToast('Ошибка сохранения черновика');
+    console.error('Save failed:', e);
+    if (showAlert) show3DToast('Ошибка соединения при сохранении', null, 'error');
   }
   return null;
 }
 
 async function submitAssignmentForm() {
-  const presetCard = document.querySelector('.preset-card.border-indigo-600');
-  const presetType = presetCard ? presetCard.id.replace('preset-card-', '') : 'homework';
-
-  const selectedGroups = (pageData.groups || []).filter(group => selectedGroupIds.has(group.group_id));
-  const recipientIds = new Set(Array.from(selectedStudentIds));
-  selectedGroups.forEach(group => (group.member_ids || []).forEach(studentId => recipientIds.add(studentId)));
-  const titleInput = document.getElementById('assignment-title').value.trim();
-  const title = titleInput || `${presetType === 'exam' ? 'Пробник' : presetType === 'test' ? 'Контрольная работа' : 'Домашняя работа'} — ${new Intl.DateTimeFormat('ru-RU').format(new Date())}`;
-  const body = {
-    draft_id: pageData.assignmentId,
-    assignment_id: pageData.assignmentId,
-    lesson_id: pageData.lessonId || null,
-    title,
-    description: document.getElementById('assignment-description').value,
-    type: presetType,
-    deadline: document.getElementById('assignment-deadline').value,
-    time_limit_minutes: document.getElementById('assignment-time-limit').value,
-    max_attempts_default: document.getElementById('assignment-max-attempts').value,
-    hard_deadline: document.getElementById('assignment-hard-deadline').checked,
-    hide_before_start: document.getElementById('assignment-hide-before-start').checked,
-    allow_separate_submission: document.getElementById('assignment-allow-separate').checked,
-    grading_mode: selectedGradingMode(),
-    exam_course_id: document.getElementById('assignment-course').value || null,
-    tasks: attachedTasks.map(assignmentTaskPayload),
-    recipientIds: Array.from(recipientIds)
-  };
+  const body = buildAssignmentData();
 
   try {
     const url = pageData.isEditMode ? `/assignments/${pageData.assignmentId}/update` : '/assignments/distribute';

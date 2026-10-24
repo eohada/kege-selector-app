@@ -126,6 +126,6 @@
     </nav>
     {% endblock %}
     {% block sandbox_content %}{% endblock %}
-    {% if show_dev_tools %}{% include "sandbox/_dev_role_switcher.html" %}{% endif %}
+    {% if show_dev_tools %}{% include 'sandbox/components/dev_switcher.html' %}{% endif %}
 </body>
 </html>

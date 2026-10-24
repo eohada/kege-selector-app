@@ -178,6 +178,43 @@
       {% endfor %}
     </div>
     
+    <!-- 4. Состав заданий работы -->
+    <div class="mt-8 pt-8 border-t-2 border-slate-200/80 space-y-4">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 class="text-xl font-display font-black text-slate-900 m-0">Состав заданий в работе</h2>
+          <p class="text-xs font-bold text-slate-400 m-0 mt-0.5">Всего задач: {{ assignment.tasks|length }}. Вы можете изменить порядок, удалить или добавить новые задачи.</p>
+        </div>
+        {% if can_manage %}
+        <a href="/assignments/{{ assignment.assignment_id }}/edit" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs px-5 py-2.5 rounded-xl border border-indigo-700 border-b-[4px] shadow-[0_2px_5px_rgba(79,70,229,0.2)] active:border-b-[1px] active:translate-y-[3px] transition-all flex items-center gap-1.5 no-underline">
+          <i class="ph-bold ph-pencil-simple text-sm"></i> Изменить состав задач
+        </a>
+        {% endif %}
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% for at in assignment.tasks|sort(attribute='order_index') %}
+        {% set t = at.task %}
+        {% if t %}
+        <div class="bg-white border-2 border-slate-200 shadow-[0_3px_0_#DAE1E9] rounded-2xl p-4 flex items-start gap-3">
+          <span class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 font-black text-xs flex items-center justify-center shrink-0 border border-indigo-200">
+            {{ loop.index }}
+          </span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="text-xs font-bold text-[#5046E5]">{{ 'ЕГЭ №' ~ t.task_number if t.task_number else (t.topic or 'Задание') }}</span>
+              <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                {{ at.max_score or 1 }} б.
+              </span>
+            </div>
+            <p class="text-xs text-slate-600 line-clamp-2 m-0">{{ t.content_html|striptags|truncate(120) }}</p>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    
   </div>
 </main>
 
