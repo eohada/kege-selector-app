@@ -1035,7 +1035,8 @@ function renderAttachedTasks() {
 
   let html = '';
   attachedTasks.forEach((t, idx) => {
-    const snippet = (t.content_html || '').replace(/<[^>]*>?/gm, '').substring(0, 70);
+    const cleanRaw = (t.content_html || '').replace(/<[^>]*>?/gm, '').replace(/^[(\[][А-ЯЁ][^)\]]{1,60}[)\]]\s*/i, '').trim();
+    const snippet = cleanRaw.substring(0, 70);
     const isManual = requiresManualGrading(t);
     const examBadge = t.task_number ? `ЕГЭ №${t.task_number}` : (t.topic || 'Задание');
 

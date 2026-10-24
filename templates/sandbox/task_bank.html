@@ -1602,11 +1602,21 @@ function plainText(html) {
   return (node.textContent || node.innerText || '').replace(/\s+/g, ' ').trim();
 }
 
+function cleanTaskConditionHtml(rawHtml) {
+  if (!rawHtml) return '';
+  let out = rawHtml;
+  out = out.replace(/^(<p\b[^>]*>)\s*(?:<(?:strong|b|em|i|span)\b[^>]*>\s*)*(?:<a\b[^>]*>[\s\S]*?<\/a>|[(\[][^()\[\]]{1,60}[)\]])(?:\s*<\/(?:strong|b|em|i|span)>)*(?:[\s\xa0]|&nbsp;)*/i, '$1');
+  out = out.replace(/\\\//g, '∨').replace(/\/\\/g, '∧').replace(/ -> /g, ' → ');
+  return out;
+}
+
 function conditionSummary(html) {
   const node = document.createElement('div');
-  node.innerHTML = html || '';
+  node.innerHTML = cleanTaskConditionHtml(html) || '';
   node.querySelectorAll('pre, code, table').forEach(element => element.remove());
-  return (node.textContent || node.innerText || '').replace(/\s+/g, ' ').trim();
+  let text = (node.textContent || node.innerText || '').replace(/\s+/g, ' ').trim();
+  text = text.replace(/^[(\[][А-ЯЁ][^)\]]{1,60}[)\]]\s*/i, '').trim();
+  return text;
 }
 
 function taskForBuilder(task) {

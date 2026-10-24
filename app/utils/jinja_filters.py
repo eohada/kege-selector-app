@@ -737,8 +737,7 @@ _AUTHOR_SIGNATURE_RE = re.compile(
 )
 _LEADING_PARENS_RE = re.compile(r'^\s*\(([^)]{1,120})\)\s*')
 _LEADING_HTML_AUTHOR_RE = re.compile(
-    r'^\s*\(\s*(?:<a\b[^>]*>\s*)?[А-ЯЁA-Z][^)]{0,80}(?:\s*</a>)?\s*\)\s*',
-    re.IGNORECASE,
+    r'^\s*[\(\[]\s*(?:<a\b[^>]*>[^<]+</a>|[А-ЯЁ][а-яёА-ЯЁ0-9\s\.\-№«»"\',]{1,60})\s*[\)\]]\s*'
 )
 _FORCE_REMOVE_AUTHOR_RE = re.compile(
     r'\(\s*(?:<a\b[^>]*>\s*)?Иглин\s*К\.?(?:\s*</a>)?\s*\)\s*',
@@ -798,15 +797,30 @@ _INLINE_CLOSE_TAGS_RE = r'(?:</(?:strong|b|em|i|span|a)>\s*)+'
 _LEADING_AUTHOR_WRAPPED_RE = re.compile(
     r'^\s*'
     + _INLINE_OPEN_TAGS_RE
-    + r'\s*\(\s*'
+    + r'\s*[\(\[]\s*'
     + r'(?:'
     + r'[А-ЯЁA-Z]\.?\s*(?:[А-ЯЁA-Z]\.?\s*)?[А-ЯЁA-Z][а-яёa-z-]{2,}'
     + r'|'
     + r'[А-ЯЁA-Z][а-яёa-z-]{2,}\s+[А-ЯЁA-Z]\.?\s*(?:[А-ЯЁA-Z]\.?)?'
     + r')'
-    + r'\s*\)\s*'
+    + r'\s*[\)\]]*'
     + _INLINE_CLOSE_TAGS_RE,
     re.IGNORECASE,
+)
+_LEADING_AUTHOR_NODE_RE = re.compile(
+    r'^\s*'
+    r'(?:<(?:strong|b|em|i|span)\b[^>]*>\s*)*'
+    r'(?:'
+    r'<a\b[^>]*>'
+    r'(?:<(?:strong|b|em|i|span)\b[^>]*>\s*)*'
+    r'[\(\[]?[А-ЯЁA-Z][а-яёА-ЯЁa-zA-Z0-9\s\.\-№«»"\':;/]{1,80}[\)\]]?'
+    r'(?:\s*</(?:strong|b|em|i|span)>)*'
+    r'\s*</a>'
+    r'|'
+    r'[\(\[]\s*(?:<a\b[^>]*>[^<]+</a>|[А-ЯЁ][а-яёА-ЯЁ0-9\s\.\-№«»"\',]{1,60})\s*[\)\]]'
+    r')'
+    r'(?:\s*</(?:strong|b|em|i|span)>)*'
+    r'(?:[\s\xa0]|&nbsp;)*'
 )
 
 
@@ -817,6 +831,7 @@ def _strip_leading_author_from_fragment(fragment_html: str) -> str:
     out = str(fragment_html)
     for _ in range(4):
         prev = out
+        out = _LEADING_AUTHOR_NODE_RE.sub('', out, count=1)
         out = _LEADING_AUTHOR_WRAPPED_RE.sub('', out, count=1)
         out = _FORCE_REMOVE_AUTHOR_RE.sub('', out, count=1)
         out = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', out, count=1)
@@ -832,8 +847,15 @@ def _strip_leading_empty_inline_tags(fragment_html: str) -> str:
     if not fragment_html:
         return fragment_html
     out = str(fragment_html)
-    for _ in range(4):
+    for _ in range(5):
         prev = out
+        out = re.sub(
+            r'^\s*<(strong|b|em|i|span|a)\b[^>]*>(?:[\s\xa0]|&nbsp;|<(strong|b|em|i|span|a)\b[^>]*>\s*</\2>)*</\1>(?:[\s\xa0]|&nbsp;)*',
+            '',
+            out,
+            count=1,
+            flags=re.IGNORECASE,
+        )
         out = re.sub(
             r'^\s*<(strong|b|em|i|span|a)\b[^>]*>\s*</\1>\s*',
             '',
@@ -843,6 +865,7 @@ def _strip_leading_empty_inline_tags(fragment_html: str) -> str:
         )
         if out == prev:
             break
+    out = re.sub(r'^(?:[\s\xa0]|&nbsp;)+', '', out)
     return out
 
 
@@ -995,11 +1018,23 @@ def convert_text_tables_to_html(html_content: Optional[str], task_number: Option
 def _strip_author_signatures_from_html(decoded_html: str) -> str:
     """
     Удаляет подписи составителей в начале условий:
-    (И. Карпачев), (С.А. Скопинцева), (Иглин К.) и подобные.
+    (И. Карпачев), (С.А. Скопинцева), (Иглин К.), [Д. Бахтиев] и подобные.
     """
     if not decoded_html:
         return decoded_html
+
+    # Сначала проверяем удаление с самого начала фрагмента (включая <p>...</p>)
+    p_match = re.match(r'^\s*(<p\b[^>]*>)', decoded_html, re.IGNORECASE)
+    if p_match:
+        prefix = p_match.group(1)
+        body = decoded_html[len(prefix):]
+        stripped_body = _strip_leading_author_from_fragment(body)
+        stripped_body = _strip_leading_empty_inline_tags(stripped_body)
+        if stripped_body != body:
+            decoded_html = prefix + stripped_body
+
     text_first = _strip_leading_author_from_fragment(decoded_html)
+    text_first = _strip_leading_empty_inline_tags(text_first)
     text_first = _FORCE_REMOVE_AUTHOR_RE.sub('', text_first)
     text_first = _FORCE_REMOVE_AUTHOR_SIMPLE_RE.sub('', text_first)
     text_first = _FORCE_REMOVE_KARPACHEV_RE.sub('', text_first)
@@ -1025,19 +1060,19 @@ def _strip_author_signatures_from_html(decoded_html: str) -> str:
             stripped_inner = _strip_leading_author_parenthesized(stripped_inner)
             stripped_inner = _AUTHOR_SIGNATURE_RE.sub('', stripped_inner, count=1)
             stripped_inner = re.sub(
-                r'^\s*\(\s*[А-ЯЁA-Z]\.\s*[А-ЯЁA-Z]\.\s*[А-ЯЁA-Z][а-яёa-z-]+\s*\)\s*',
+                r'^\s*[\(\[]\s*[А-ЯЁA-Z]\.\s*[А-ЯЁA-Z]\.\s*[А-ЯЁA-Z][а-яёa-z-]+\s*[\)\]]\s*',
                 '',
                 stripped_inner,
                 count=1,
             )
             stripped_inner = re.sub(
-                r'^\s*\(\s*[А-ЯЁA-Z][а-яёa-z-]+\s*[А-ЯЁA-Z]\.\s*\)\s*',
+                r'^\s*[\(\[]\s*[А-ЯЁA-Z][а-яёa-z-]+\s*[А-ЯЁA-Z]\.\s*[\)\]]\s*',
                 '',
                 stripped_inner,
                 count=1,
             )
             stripped_inner = re.sub(
-                r'^\s*\(\s*[А-ЯЁA-Z][а-яёa-z-]+\s*\)\s*',
+                r'^\s*[\(\[]\s*[А-ЯЁA-Z][а-яёa-z-]+\s*[\)\]]\s*',
                 '',
                 stripped_inner,
                 count=1,
@@ -1060,6 +1095,59 @@ def strip_task_author_signatures(html_content: Optional[str]) -> str:
     if not html_content:
         return html_content or ''
     return _strip_author_signatures_from_html(str(html_content))
+
+
+def normalize_task_logic_operators(text: str) -> str:
+    """
+    Нормализует логические операторы:
+    \\/ -> ∨ (дизъюнкция, U+2228)
+    /\\ -> ∧ (конъюнкция, U+2227)
+    изолированные -> -> → (импликация, U+2192)
+    Не затрагивает теги, ссылки и блоки кода.
+    """
+    if not text:
+        return text or ''
+    out = text
+
+    # Замена \\/ на ∨ (если это не часть HTML-тега или URL)
+    if r'\/' in out:
+        out = re.sub(r'(?<![<a-zA-Z0-9_\-.:/])\\/(?![a-zA-Z0-9_\-.:/])', '∨', out)
+        out = out.replace(r' \/ ', ' ∨ ')
+        out = out.replace(r')\/', ') ∨ ')
+        out = out.replace(r'\/¬', ' ∨ ¬')
+        out = out.replace(r'\/ ¬', ' ∨ ¬')
+        out = out.replace(r'\/~', ' ∨ ~')
+        out = out.replace(r'\/ (', ' ∨ (')
+        out = out.replace(r'\/(', ' ∨ (')
+
+    # Замена /\\ на ∧
+    if '/\\' in out:
+        out = re.sub(r'(?<![<a-zA-Z0-9_\-.:/])\/\\(?![a-zA-Z0-9_\-.:/])', '∧', out)
+        out = out.replace(' /\\ ', ' ∧ ')
+        out = out.replace(')/\\', ') ∧ ')
+        out = out.replace('/\\¬', ' ∧ ¬')
+        out = out.replace('/\\ ¬', ' ∧ ¬')
+        out = out.replace('/\\ (', ' ∧ (')
+        out = out.replace('/\\(', ' ∧ (')
+
+    # Замена изолированных -> и -&gt; на → (импликация)
+    if ' -> ' in out:
+        out = out.replace(' -> ', ' → ')
+    if ' -&gt; ' in out:
+        out = out.replace(' -&gt; ', ' → ')
+    out = re.sub(r'(?<=[a-zA-Z0-9_\)])\s*(?:->|-&gt;)\s*(?=[a-zA-Z0-9_\(¬~])', ' → ', out)
+
+    return out
+
+
+def clean_task_condition(html_content: Optional[str]) -> str:
+    """
+    Публичный Jinja/API helper: удаляет авторские подписи и нормализует логические операторы.
+    """
+    if not html_content:
+        return html_content or ''
+    cleaned = _strip_author_signatures_from_html(str(html_content))
+    return normalize_task_logic_operators(cleaned)
 
 
 def _strip_known_authors_raw(html_text: str) -> str:
@@ -1099,8 +1187,11 @@ def prepare_task_content_html(raw_content: Optional[str]) -> str:
         .replace("\\u003c", "<")
         .replace("\\u003e", ">")
         .replace("\\u0026", "&")
-        .replace("\\/", "/")
+        # NOTE: .replace("\\/", "/") intentionally removed to preserve boolean disjunction \/
     )
+    # Заменяем экранированные закрывающие теги и протоколы, если они были экранированы
+    decoded = re.sub(r'<\s*\\/', '</', decoded)
+    decoded = re.sub(r'(https?:)\\/\\/', r'\1//', decoded)
     # Важно: не ломаем LaTeX-команды вида \neg, \neq, \nu и т.п.
     # Декодируем escaped-newline только в позициях, похожих на реальные переносы.
     decoded = re.sub(r"\\r\\n(?=(?:\s*<)|\s|$)", "\n", decoded)
@@ -1108,6 +1199,7 @@ def prepare_task_content_html(raw_content: Optional[str]) -> str:
     # Исторически часть заданий хранится как HTML, но экранированный (&lt;table&gt;...).
     decoded = html_lib.unescape(decoded)
     decoded = _strip_author_signatures_from_html(decoded)
+    decoded = normalize_task_logic_operators(decoded)
     if _HTML_TAG_PATTERN.search(decoded):
         if '<p' in decoded and ('<br' in decoded or '\n' in decoded):
             decoded = _reformat_code_in_html_paragraphs(decoded)
@@ -1208,6 +1300,8 @@ def init_jinja_filters(app):
     app.jinja_env.filters['sanitize_html'] = sanitize_html
     app.jinja_env.filters['prepare_task_content_html'] = prepare_task_content_html
     app.jinja_env.filters['strip_task_author_signatures'] = strip_task_author_signatures
+    app.jinja_env.filters['clean_task_condition'] = clean_task_condition
+    app.jinja_env.filters['normalize_task_logic_operators'] = normalize_task_logic_operators
     app.jinja_env.filters['convert_text_tables_to_html'] = convert_text_tables_to_html
     app.jinja_env.filters['normalize_task_plain_text_to_html'] = normalize_task_plain_text_to_html
     app.jinja_env.filters['normalize_task_attachments'] = normalize_task_attachments

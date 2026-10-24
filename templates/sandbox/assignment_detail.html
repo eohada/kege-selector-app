@@ -207,7 +207,7 @@
                 {{ at.max_score or 1 }} б.
               </span>
             </div>
-            <p class="text-xs text-slate-600 line-clamp-2 m-0">{{ t.content_html|striptags|truncate(120) }}</p>
+            <p class="text-xs text-slate-600 line-clamp-2 m-0">{{ t.content_html|clean_task_condition|striptags|truncate(120) }}</p>
           </div>
         </div>
         {% endif %}
