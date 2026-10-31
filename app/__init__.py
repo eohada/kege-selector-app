@@ -1042,6 +1042,13 @@ def create_app(config_name=None):
                 or user_can_use_tools
             )
         }
+
+    @app.context_processor
+    def inject_oristera_switch():
+        from app.utils.oristera_switch import is_oristera_next_switch_enabled
+        return {
+            'oristera_next_switch_enabled': is_oristera_next_switch_enabled(app)
+        }
     
     @app.context_processor
     def inject_user_data():

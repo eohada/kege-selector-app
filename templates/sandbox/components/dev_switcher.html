@@ -48,10 +48,12 @@
         </select>
       </div>
 
+      {% if oristera_next_switch_enabled %}
       <!-- Oristera Next Switcher Button -->
       <a href="/oristera/toggle?to=oristera" id="dev-switcher-oristera-btn" class="w-full py-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-500 hover:to-pink-400 text-white font-black text-xs rounded-xl border-b-4 border-indigo-900 shadow-md flex items-center justify-center gap-2 no-underline transition-all active:translate-y-0.5 cursor-pointer uppercase tracking-wider">
         <span>✨ Войти в Oristera Next</span>
       </a>
+      {% endif %}
 
       <!-- Bright Red Revert Button if Impersonating -->
       <a href="/sandbox/impersonate/revert" id="dev-switcher-revert-btn" class="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl border-b-4 border-rose-800 shadow-md flex items-center justify-center gap-2 no-underline transition-all active:translate-y-0.5 cursor-pointer uppercase tracking-wider {% if not session.get('impersonator_id') %}hidden{% endif %}">
